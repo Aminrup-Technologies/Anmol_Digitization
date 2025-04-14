@@ -1,0 +1,12 @@
+{
+	"name": "Flot",
+	"version": "0.8.3",
+	"main": "jquery.flot.js",
+	"scripts": {
+		"test": "make test"
+	},
+	"devDependencies": {
+		"eslint": "^8.44.0",
+		"jshint": "0.9.1"
+	}
+}

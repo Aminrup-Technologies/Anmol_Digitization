@@ -1,0 +1,24 @@
+[2024-11-26 13:31:07] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [BM1P287CA0012.INDP287.PROD.OUTLOOK.COM 2024-11-26T08:01:05.754Z 08DD0C287C0F3DAA]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\OfficeWorks\AnmolOTP\AnmolDristi\AnmolDristi\EmailNotifier.cs:line 54
+
+[2024-11-26 14:47:38] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [BM1P287CA0020.INDP287.PROD.OUTLOOK.COM 2024-11-26T09:17:36.178Z 08DD0DBDF6B38ABC]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\OfficeWorks\AnmolOTP\AnmolDristi\AnmolDristi\EmailNotifier.cs:line 54
+
+[2024-11-26 14:50:02] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.139 Authentication unsuccessful, the user credentials were incorrect. [BMXPR01CA0076.INDPRD01.PROD.OUTLOOK.COM 2024-11-26T09:20:00.079Z 08DD0D6F2E55D2D7]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\OfficeWorks\AnmolOTP\AnmolDristi\AnmolDristi\EmailNotifier.cs:line 54
+

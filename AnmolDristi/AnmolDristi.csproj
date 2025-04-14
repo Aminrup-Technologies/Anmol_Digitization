@@ -1,0 +1,1225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\EntityFramework.6.4.4\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.props')" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.Default.props" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.Default.props')" />
+  <Import Project="..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.1.0.0\build\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props" Condition="Exists('..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.1.0.0\build\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" />
+  <Import Project="..\packages\Microsoft.Net.Compilers.1.0.0\build\Microsoft.Net.Compilers.props" Condition="Exists('..\packages\Microsoft.Net.Compilers.1.0.0\build\Microsoft.Net.Compilers.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{0EF93370-9A88-455A-A095-0634916A07C3}</ProjectGuid>
+    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>AnmolDristi</RootNamespace>
+    <AssemblyName>AnmolDristi</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <UseIISExpress>true</UseIISExpress>
+    <IISExpressSSLPort />
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
+    <UseGlobalApplicationHostFile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+    <TypeScriptToolsVersion>1.8</TypeScriptToolsVersion>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ExcludeGeneratedDebugSymbol>false</ExcludeGeneratedDebugSymbol>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ClosedXML, Version=0.94.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\ClosedXML.0.94.2\lib\net46\ClosedXML.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="DocumentFormat.OpenXml, Version=2.7.2.0, Culture=neutral, PublicKeyToken=8fb06cb64d019a17, processorArchitecture=MSIL">
+      <HintPath>..\packages\DocumentFormat.OpenXml.2.7.2\lib\net46\DocumentFormat.OpenXml.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="EPPlus, Version=4.5.3.3, Culture=neutral, PublicKeyToken=ea159fdaa78159a1, processorArchitecture=MSIL">
+      <HintPath>..\packages\EPPlus.4.5.3.3\lib\net40\EPPlus.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ExcelNumberFormat, Version=1.0.3.0, Culture=neutral, PublicKeyToken=23c6f5d73be07eca, processorArchitecture=MSIL">
+      <HintPath>..\packages\ExcelNumberFormat.1.0.3\lib\net20\ExcelNumberFormat.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="FastMember, Version=1.3.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\FastMember.1.3.0\lib\net45\FastMember.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.Agent.Intercept, Version=2.4.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.Agent.Intercept.2.4.0\lib\net45\Microsoft.AI.Agent.Intercept.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.DependencyCollector, Version=2.9.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.DependencyCollector.2.9.0\lib\net45\Microsoft.AI.DependencyCollector.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.PerfCounterCollector, Version=2.9.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.PerfCounterCollector.2.9.0\lib\net45\Microsoft.AI.PerfCounterCollector.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.ServerTelemetryChannel, Version=2.9.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.2.9.0\lib\net45\Microsoft.AI.ServerTelemetryChannel.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.Web, Version=2.9.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.Web.2.9.0\lib\net45\Microsoft.AI.Web.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AI.WindowsServer, Version=2.9.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.WindowsServer.2.9.0\lib\net45\Microsoft.AI.WindowsServer.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.ApplicationInsights, Version=2.22.0.997, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.2.22.0\lib\net46\Microsoft.ApplicationInsights.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.ApplicationInsights.NLogTarget, Version=2.22.0.997, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationInsights.NLogTarget.2.22.0\lib\net452\Microsoft.ApplicationInsights.NLogTarget.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.CodeDom.Providers.DotNetCompilerPlatform, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.1.0.0\lib\net45\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
+      <HintPath>..\packages\NLog.5.3.4\lib\net46\NLog.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=5.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Diagnostics.DiagnosticSource.5.0.0\lib\net46\System.Diagnostics.DiagnosticSource.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.FileSystem.Primitives">
+      <HintPath>..\packages\System.IO.FileSystem.Primitives.4.0.1\lib\net46\System.IO.FileSystem.Primitives.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.Packaging, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.IO.Packaging.4.0.0\lib\net46\System.IO.Packaging.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Management" />
+    <Reference Include="System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Memory.4.5.4\lib\net461\System.Memory.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Runtime.Caching" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.5.0.0\lib\net45\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web.DynamicData" />
+    <Reference Include="System.Web.Entity" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="404.aspx" />
+    <Content Include="Aata_Maida_Approval.aspx" />
+    <Content Include="Aata_Maida_Detailed.aspx" />
+    <Content Include="Aata_Maida_Form.aspx" />
+    <Content Include="aata_maida_frmctrl.aspx" />
+    <Content Include="Aata_Maida_Submitter.aspx" />
+    <Content Include="add_branch.aspx" />
+    <Content Include="add_brandtypes.aspx" />
+    <Content Include="add_company.aspx" />
+    <Content Include="add_plants.aspx" />
+    <Content Include="add_plant_lines.aspx" />
+    <Content Include="add_prodcategory.aspx" />
+    <Content Include="add_prod_plants.aspx" />
+    <Content Include="add_region.aspx" />
+    <Content Include="add_users.aspx" />
+    <Content Include="apps.aspx" />
+    <Content Include="app_qc_inspectorreport.aspx" />
+    <Content Include="bopp_tape.aspx" />
+    <Content Include="bopp_tape_approval.aspx" />
+    <Content Include="bopp_tape_Detailed.aspx" />
+    <Content Include="bopp_tape_View.aspx" />
+    <Content Include="ccp_checklist.aspx" />
+    <Content Include="CCP_Checklist_detailed.aspx" />
+    <Content Include="CorrugatedBoardBoxReport.aspx" />
+    <Content Include="CorrugatedBoardBox_Approval.aspx" />
+    <Content Include="CorrugatedBoardBox_Detailed.aspx" />
+    <Content Include="CorrugatedBoardBox_View.aspx" />
+    <Content Include="Critical_Incident_Detailed.aspx" />
+    <Content Include="Critical_Incident_ViewPage.aspx" />
+    <Content Include="critical_quality_report.aspx" />
+    <Content Include="datamastering_home.aspx" />
+    <Content Include="EditEmployee.aspx" />
+    <Content Include="FinalCbbWtVM.aspx" />
+    <Content Include="Final_CBB_Detailed.aspx" />
+    <Content Include="Form_Approval_Matrix.aspx" />
+    <Content Include="Form_Master.aspx" />
+    <Content Include="Global.asax" />
+    <Content Include="home.aspx" />
+    <Content Include="LeakAndSlant_Detailed.aspx" />
+    <Content Include="leak_test.aspx" />
+    <Content Include="New_User.aspx" />
+    <Content Include="Oven_Report_Detailed.aspx" />
+    <Content Include="overwrap_approval.aspx" />
+    <Content Include="overwrap_Detailed.aspx" />
+    <Content Include="PM_LaminateTesting.aspx" />
+    <Content Include="PM_Laminate_Approval.aspx" />
+    <Content Include="PM_Laminate_FinalApproval.aspx" />
+    <Content Include="PM_Laminate_Report.aspx" />
+    <Content Include="preDispatchVM.aspx" />
+    <Content Include="Pre_Dispatch_Detailed.aspx" />
+    <Content Include="Process_Approval.aspx" />
+    <Content Include="Process_FinalApproval.aspx" />
+    <Content Include="Process_Report.aspx" />
+    <Content Include="prod_misc.aspx" />
+    <Content Include="prod_misc_rpts.aspx" />
+    <Content Include="PVC_Tray.aspx" />
+    <Content Include="PVC_Tray_ViewPage.aspx" />
+    <Content Include="qaqc_add_users.aspx" />
+    <Content Include="qaqc_leaktest_rev1.aspx" />
+    <Content Include="qaqc_mst_sku.aspx" />
+    <Content Include="packages.config" />
+    <Content Include="qaqc_home.aspx" />
+    <Content Include="qaqc_inspector_rpt.aspx" />
+    <Content Include="Dristi.Master" />
+    <Content Include="qaqc_oven_report.aspx" />
+    <Content Include="qaqc_oven_viewpage.aspx" />
+    <Content Include="qaqc_overwrap.aspx" />
+    <Content Include="qaqc_pre_dispatch_QI_Report.aspx" />
+    <Content Include="qaqc_process_rpt.aspx" />
+    <Content Include="qaqc_qaapprovals.aspx" />
+    <Content Include="qaqc_qahome_rpt.aspx" />
+    <Content Include="qaqc_qcapprovals.aspx" />
+    <Content Include="qaqc_qcinspector_frmctrl.aspx" />
+    <Content Include="qaqc_rotaryline_approval.aspx" />
+    <Content Include="qaqc_rotaryline_detailview.aspx" />
+    <Content Include="qaqc_rotaryline_view.aspx" />
+    <Content Include="qaqc_rotary_line.aspx" />
+    <Content Include="qa_qc_FinalCbbWtReport.aspx" />
+    <Content Include="redirect.aspx" />
+    <Content Include="RM_Class2.aspx" />
+    <Content Include="RM_Class2_FrmCtrl.aspx" />
+    <Content Include="RM_Class5.aspx" />
+    <Content Include="RM_Class_1.aspx" />
+    <Content Include="RM_Class_1_Approval.aspx" />
+    <Content Include="RM_Class_1_Detailed.aspx" />
+    <Content Include="rm_class_1_frmctrl.aspx" />
+    <Content Include="RM_Class_1_Submitter.aspx" />
+    <Content Include="RM_Class_3.aspx" />
+    <Content Include="RM_Class_3_Approval.aspx" />
+    <Content Include="RM_Class_3_Detailed.aspx" />
+    <Content Include="rm_class_3_frmctrl.aspx" />
+    <Content Include="RM_Class_3_Submitter.aspx" />
+    <Content Include="RM_Class_4.aspx" />
+    <Content Include="RM_Class_4_Approval.aspx" />
+    <Content Include="RM_Class_4_Detailed.aspx" />
+    <Content Include="rm_class_4_frmctrl.aspx" />
+    <Content Include="RM_Class_4_Submitter.aspx" />
+    <Content Include="RM_Class_5.aspx" />
+    <Content Include="RM_Class_5_Approval.aspx" />
+    <Content Include="RM_Class_5_Detailed.aspx" />
+    <Content Include="rm_class_5_frmctrl.aspx" />
+    <Content Include="RM_Class_5_Submitter.aspx" />
+    <Content Include="viewusers.aspx" />
+    <Content Include="vm_ccp_checklist.aspx" />
+    <Content Include="vm_leak_test.aspx" />
+    <Content Include="vm_overwrap.aspx" />
+    <Content Include="vw_app_qcireport.aspx" />
+    <Content Include="WebData\anmolaing.png" />
+    <Content Include="WebData\anmolgurukul.png" />
+    <Content Include="WebData\Anmol_Logo.png" />
+    <Content Include="WebData\approval.jpg" />
+    <Content Include="WebData\confbook.png" />
+    <Content Include="WebData\crossgif.gif" />
+    <Content Include="WebData\Internal\bank.jpg" />
+    <Content Include="WebData\Internal\crossgif.gif" />
+    <Content Include="WebData\Internal\cross_icon.png" />
+    <Content Include="WebData\Internal\delete_icon.png" />
+    <Content Include="WebData\Internal\DoneRight.gif" />
+    <Content Include="WebData\Internal\edit.png" />
+    <Content Include="WebData\Internal\fi-sr-cross-circle.svg" />
+    <Content Include="WebData\Internal\fi-sr-disk.svg" />
+    <Content Include="WebData\Internal\fi-sr-pencil.svg" />
+    <Content Include="WebData\Internal\fi-sr-trash.svg" />
+    <Content Include="WebData\Internal\Hourglass.gif" />
+    <Content Include="WebData\Internal\pending.png" />
+    <Content Include="WebData\Internal\piggy.png" />
+    <Content Include="WebData\Internal\printer.png" />
+    <Content Include="WebData\Internal\right.png" />
+    <Content Include="WebData\Internal\rightarrow.gif" />
+    <Content Include="WebData\Internal\SingleTick.gif" />
+    <Content Include="WebData\Internal\success_gif.gif" />
+    <Content Include="WebData\Internal\tick-icon.png" />
+    <Content Include="WebData\Internal\view.svg" />
+    <Content Include="WebData\itop-logo-external.png" />
+    <Content Include="WebData\No_Image.jpg" />
+    <Content Include="WebData\PrimarySales.png" />
+    <Content Include="WebData\qaqc.png" />
+    <Content Include="WebData\sales.png" />
+    <Content Include="WebData\sapfiori.png" />
+    <Content Include="WebData\SecondarySales.png" />
+    <Content Include="WebData\SingleTick.gif" />
+    <Content Include="WebData\success_gif.gif" />
+    <Content Include="WebData\TertiarySales.png" />
+    <Content Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ApplicationInsights.config" />
+    <Content Include=".bowerrc" />
+    <Content Include="WebData\webdatacapture.jpg" />
+    <Content Include="WebData\webtos.png" />
+    <Content Include="webdetails.aspx" />
+    <Content Include="WebsiteCredentialsView.aspx" />
+    <None Include="NLog.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Properties\PublishProfiles\AnmolDristi.pubxml" />
+    <Content Include="UploadImageHandler.ashx" />
+    <None Include="Web.Debug.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+    <None Include="Web.Release.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="blank.aspx" />
+    <Content Include="login.aspx" />
+    <Content Include="qaqc_qahome.aspx" />
+    <Content Include="qaqc_qchome.aspx" />
+    <Content Include="qaqc_qchome_rpt.aspx" />
+    <Content Include="qaqc_qcinspector_rpt_.aspx" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="404.aspx.cs">
+      <DependentUpon>404.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="404.aspx.designer.cs">
+      <DependentUpon>404.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Aata_Maida_Approval.aspx.cs">
+      <DependentUpon>Aata_Maida_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Aata_Maida_Approval.aspx.designer.cs">
+      <DependentUpon>Aata_Maida_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Aata_Maida_Detailed.aspx.cs">
+      <DependentUpon>Aata_Maida_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Aata_Maida_Detailed.aspx.designer.cs">
+      <DependentUpon>Aata_Maida_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Aata_Maida_Form.aspx.cs">
+      <DependentUpon>Aata_Maida_Form.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Aata_Maida_Form.aspx.designer.cs">
+      <DependentUpon>Aata_Maida_Form.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="aata_maida_frmctrl.aspx.cs">
+      <DependentUpon>aata_maida_frmctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="aata_maida_frmctrl.aspx.designer.cs">
+      <DependentUpon>aata_maida_frmctrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Aata_Maida_Submitter.aspx.cs">
+      <DependentUpon>Aata_Maida_Submitter.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Aata_Maida_Submitter.aspx.designer.cs">
+      <DependentUpon>Aata_Maida_Submitter.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_branch.aspx.cs">
+      <DependentUpon>add_branch.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_branch.aspx.designer.cs">
+      <DependentUpon>add_branch.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_brandtypes.aspx.cs">
+      <DependentUpon>add_brandtypes.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_brandtypes.aspx.designer.cs">
+      <DependentUpon>add_brandtypes.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_company.aspx.cs">
+      <DependentUpon>add_company.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_company.aspx.designer.cs">
+      <DependentUpon>add_company.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_plants.aspx.cs">
+      <DependentUpon>add_plants.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_plants.aspx.designer.cs">
+      <DependentUpon>add_plants.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_plant_lines.aspx.cs">
+      <DependentUpon>add_plant_lines.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_plant_lines.aspx.designer.cs">
+      <DependentUpon>add_plant_lines.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_prodcategory.aspx.cs">
+      <DependentUpon>add_prodcategory.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_prodcategory.aspx.designer.cs">
+      <DependentUpon>add_prodcategory.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_prod_plants.aspx.cs">
+      <DependentUpon>add_prod_plants.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_prod_plants.aspx.designer.cs">
+      <DependentUpon>add_prod_plants.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_region.aspx.cs">
+      <DependentUpon>add_region.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_region.aspx.designer.cs">
+      <DependentUpon>add_region.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="add_users.aspx.cs">
+      <DependentUpon>add_users.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="add_users.aspx.designer.cs">
+      <DependentUpon>add_users.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AesEncryptionHelper.cs" />
+    <Compile Include="apps.aspx.cs">
+      <DependentUpon>apps.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="apps.aspx.designer.cs">
+      <DependentUpon>apps.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="app_qc_inspectorreport.aspx.cs">
+      <DependentUpon>app_qc_inspectorreport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="app_qc_inspectorreport.aspx.designer.cs">
+      <DependentUpon>app_qc_inspectorreport.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="blank.aspx.cs">
+      <DependentUpon>blank.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="blank.aspx.designer.cs">
+      <DependentUpon>blank.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="bopp_tape.aspx.cs">
+      <DependentUpon>bopp_tape.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="bopp_tape.aspx.designer.cs">
+      <DependentUpon>bopp_tape.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="bopp_tape_approval.aspx.cs">
+      <DependentUpon>bopp_tape_approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="bopp_tape_approval.aspx.designer.cs">
+      <DependentUpon>bopp_tape_approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="bopp_tape_Detailed.aspx.cs">
+      <DependentUpon>bopp_tape_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="bopp_tape_Detailed.aspx.designer.cs">
+      <DependentUpon>bopp_tape_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="bopp_tape_View.aspx.cs">
+      <DependentUpon>bopp_tape_View.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="bopp_tape_View.aspx.designer.cs">
+      <DependentUpon>bopp_tape_View.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ccp_checklist.aspx.cs">
+      <DependentUpon>ccp_checklist.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ccp_checklist.aspx.designer.cs">
+      <DependentUpon>ccp_checklist.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="CCP_Checklist_detailed.aspx.cs">
+      <DependentUpon>CCP_Checklist_detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="CCP_Checklist_detailed.aspx.designer.cs">
+      <DependentUpon>CCP_Checklist_detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="CorrugatedBoardBoxReport.aspx.cs">
+      <DependentUpon>CorrugatedBoardBoxReport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="CorrugatedBoardBoxReport.aspx.designer.cs">
+      <DependentUpon>CorrugatedBoardBoxReport.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="CorrugatedBoardBox_Approval.aspx.cs">
+      <DependentUpon>CorrugatedBoardBox_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="CorrugatedBoardBox_Approval.aspx.designer.cs">
+      <DependentUpon>CorrugatedBoardBox_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="CorrugatedBoardBox_Detailed.aspx.cs">
+      <DependentUpon>CorrugatedBoardBox_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="CorrugatedBoardBox_Detailed.aspx.designer.cs">
+      <DependentUpon>CorrugatedBoardBox_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="CorrugatedBoardBox_View.aspx.cs">
+      <DependentUpon>CorrugatedBoardBox_View.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="CorrugatedBoardBox_View.aspx.designer.cs">
+      <DependentUpon>CorrugatedBoardBox_View.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Critical_Incident_Detailed.aspx.cs">
+      <DependentUpon>Critical_Incident_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Critical_Incident_Detailed.aspx.designer.cs">
+      <DependentUpon>Critical_Incident_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Critical_Incident_ViewPage.aspx.cs">
+      <DependentUpon>Critical_Incident_ViewPage.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Critical_Incident_ViewPage.aspx.designer.cs">
+      <DependentUpon>Critical_Incident_ViewPage.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="critical_quality_report.aspx.cs">
+      <DependentUpon>critical_quality_report.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="critical_quality_report.aspx.designer.cs">
+      <DependentUpon>critical_quality_report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DAL\QCInspectorDataAccess.cs" />
+    <Compile Include="DAL\Shift.cs" />
+    <Compile Include="DAL\ShiftManager.cs" />
+    <Compile Include="DatabaseHelper.cs" />
+    <Compile Include="datamastering_home.aspx.cs">
+      <DependentUpon>datamastering_home.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="datamastering_home.aspx.designer.cs">
+      <DependentUpon>datamastering_home.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DB_Utility_OH4Y.cs" />
+    <Compile Include="Dristi.Master.cs">
+      <DependentUpon>Dristi.Master</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Dristi.Master.designer.cs">
+      <DependentUpon>Dristi.Master</DependentUpon>
+    </Compile>
+    <Compile Include="EditEmployee.aspx.cs">
+      <DependentUpon>EditEmployee.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="EditEmployee.aspx.designer.cs">
+      <DependentUpon>EditEmployee.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="EmailNotifier.cs" />
+    <Compile Include="EmailRecipientManager.cs" />
+    <Compile Include="EmailRecipientMgr.cs" />
+    <Compile Include="FinalCbbWtVM.aspx.cs">
+      <DependentUpon>FinalCbbWtVM.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="FinalCbbWtVM.aspx.designer.cs">
+      <DependentUpon>FinalCbbWtVM.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Final_CBB_Detailed.aspx.cs">
+      <DependentUpon>Final_CBB_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Final_CBB_Detailed.aspx.designer.cs">
+      <DependentUpon>Final_CBB_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Form_Approval_Matrix.aspx.cs">
+      <DependentUpon>Form_Approval_Matrix.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Form_Approval_Matrix.aspx.designer.cs">
+      <DependentUpon>Form_Approval_Matrix.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Form_Master.aspx.cs">
+      <DependentUpon>Form_Master.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Form_Master.aspx.designer.cs">
+      <DependentUpon>Form_Master.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Global.asax.cs">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="home.aspx.cs">
+      <DependentUpon>home.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="home.aspx.designer.cs">
+      <DependentUpon>home.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="LeakAndSlant_Detailed.aspx.cs">
+      <DependentUpon>LeakAndSlant_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="LeakAndSlant_Detailed.aspx.designer.cs">
+      <DependentUpon>LeakAndSlant_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="leak_test.aspx.cs">
+      <DependentUpon>leak_test.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="leak_test.aspx.designer.cs">
+      <DependentUpon>leak_test.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="login.aspx.cs">
+      <DependentUpon>login.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="login.aspx.designer.cs">
+      <DependentUpon>login.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="LoginNotifier.cs" />
+    <Compile Include="New_User.aspx.cs">
+      <DependentUpon>New_User.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="New_User.aspx.designer.cs">
+      <DependentUpon>New_User.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Oven_Report_Detailed.aspx.cs">
+      <DependentUpon>Oven_Report_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Oven_Report_Detailed.aspx.designer.cs">
+      <DependentUpon>Oven_Report_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="overwrap_approval.aspx.cs">
+      <DependentUpon>overwrap_approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="overwrap_approval.aspx.designer.cs">
+      <DependentUpon>overwrap_approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="overwrap_Detailed.aspx.cs">
+      <DependentUpon>overwrap_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="overwrap_Detailed.aspx.designer.cs">
+      <DependentUpon>overwrap_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PM_LaminateTesting.aspx.cs">
+      <DependentUpon>PM_LaminateTesting.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PM_LaminateTesting.aspx.designer.cs">
+      <DependentUpon>PM_LaminateTesting.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PM_Laminate_Approval.aspx.cs">
+      <DependentUpon>PM_Laminate_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PM_Laminate_Approval.aspx.designer.cs">
+      <DependentUpon>PM_Laminate_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PM_Laminate_FinalApproval.aspx.cs">
+      <DependentUpon>PM_Laminate_FinalApproval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PM_Laminate_FinalApproval.aspx.designer.cs">
+      <DependentUpon>PM_Laminate_FinalApproval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PM_Laminate_Report.aspx.cs">
+      <DependentUpon>PM_Laminate_Report.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PM_Laminate_Report.aspx.designer.cs">
+      <DependentUpon>PM_Laminate_Report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="preDispatchVM.aspx.cs">
+      <DependentUpon>preDispatchVM.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="preDispatchVM.aspx.designer.cs">
+      <DependentUpon>preDispatchVM.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Pre_Dispatch_Detailed.aspx.cs">
+      <DependentUpon>Pre_Dispatch_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Pre_Dispatch_Detailed.aspx.designer.cs">
+      <DependentUpon>Pre_Dispatch_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Process_Approval.aspx.cs">
+      <DependentUpon>Process_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Process_Approval.aspx.designer.cs">
+      <DependentUpon>Process_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Process_FinalApproval.aspx.cs">
+      <DependentUpon>Process_FinalApproval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Process_FinalApproval.aspx.designer.cs">
+      <DependentUpon>Process_FinalApproval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Process_Report.aspx.cs">
+      <DependentUpon>Process_Report.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Process_Report.aspx.designer.cs">
+      <DependentUpon>Process_Report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="prod_misc.aspx.cs">
+      <DependentUpon>prod_misc.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="prod_misc.aspx.designer.cs">
+      <DependentUpon>prod_misc.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="prod_misc_rpts.aspx.cs">
+      <DependentUpon>prod_misc_rpts.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="prod_misc_rpts.aspx.designer.cs">
+      <DependentUpon>prod_misc_rpts.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PVC_Tray.aspx.cs">
+      <DependentUpon>PVC_Tray.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PVC_Tray.aspx.designer.cs">
+      <DependentUpon>PVC_Tray.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PVC_Tray_ViewPage.aspx.cs">
+      <DependentUpon>PVC_Tray_ViewPage.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PVC_Tray_ViewPage.aspx.designer.cs">
+      <DependentUpon>PVC_Tray_ViewPage.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="QAProcessCheckingDataAcess.cs" />
+    <Compile Include="qaqc_add_users.aspx.cs">
+      <DependentUpon>qaqc_add_users.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_add_users.aspx.designer.cs">
+      <DependentUpon>qaqc_add_users.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_leaktest_rev1.aspx.cs">
+      <DependentUpon>qaqc_leaktest_rev1.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_leaktest_rev1.aspx.designer.cs">
+      <DependentUpon>qaqc_leaktest_rev1.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_mst_sku.aspx.cs">
+      <DependentUpon>qaqc_mst_sku.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_mst_sku.aspx.designer.cs">
+      <DependentUpon>qaqc_mst_sku.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="qaqc_home.aspx.cs">
+      <DependentUpon>qaqc_home.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_home.aspx.designer.cs">
+      <DependentUpon>qaqc_home.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_inspector_rpt.aspx.cs">
+      <DependentUpon>qaqc_inspector_rpt.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_inspector_rpt.aspx.designer.cs">
+      <DependentUpon>qaqc_inspector_rpt.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_oven_report.aspx.cs">
+      <DependentUpon>qaqc_oven_report.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_oven_report.aspx.designer.cs">
+      <DependentUpon>qaqc_oven_report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_oven_viewpage.aspx.cs">
+      <DependentUpon>qaqc_oven_viewpage.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_oven_viewpage.aspx.designer.cs">
+      <DependentUpon>qaqc_oven_viewpage.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_overwrap.aspx.cs">
+      <DependentUpon>qaqc_overwrap.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_overwrap.aspx.designer.cs">
+      <DependentUpon>qaqc_overwrap.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_pre_dispatch_QI_Report.aspx.cs">
+      <DependentUpon>qaqc_pre_dispatch_QI_Report.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_pre_dispatch_QI_Report.aspx.designer.cs">
+      <DependentUpon>qaqc_pre_dispatch_QI_Report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_process_rpt.aspx.cs">
+      <DependentUpon>qaqc_process_rpt.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_process_rpt.aspx.designer.cs">
+      <DependentUpon>qaqc_process_rpt.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qaapprovals.aspx.cs">
+      <DependentUpon>qaqc_qaapprovals.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qaapprovals.aspx.designer.cs">
+      <DependentUpon>qaqc_qaapprovals.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qahome.aspx.cs">
+      <DependentUpon>qaqc_qahome.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qahome.aspx.designer.cs">
+      <DependentUpon>qaqc_qahome.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qahome_rpt.aspx.cs">
+      <DependentUpon>qaqc_qahome_rpt.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qahome_rpt.aspx.designer.cs">
+      <DependentUpon>qaqc_qahome_rpt.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qcapprovals.aspx.cs">
+      <DependentUpon>qaqc_qcapprovals.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qcapprovals.aspx.designer.cs">
+      <DependentUpon>qaqc_qcapprovals.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qchome.aspx.cs">
+      <DependentUpon>qaqc_qchome.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qchome.aspx.designer.cs">
+      <DependentUpon>qaqc_qchome.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qchome_rpt.aspx.cs">
+      <DependentUpon>qaqc_qchome_rpt.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qchome_rpt.aspx.designer.cs">
+      <DependentUpon>qaqc_qchome_rpt.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qcinspector_frmctrl.aspx.cs">
+      <DependentUpon>qaqc_qcinspector_frmctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qcinspector_frmctrl.aspx.designer.cs">
+      <DependentUpon>qaqc_qcinspector_frmctrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qcinspector_rpt_.aspx.cs">
+      <DependentUpon>qaqc_qcinspector_rpt_.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qcinspector_rpt_.aspx.designer.cs">
+      <DependentUpon>qaqc_qcinspector_rpt_.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_rotaryline_approval.aspx.cs">
+      <DependentUpon>qaqc_rotaryline_approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_rotaryline_approval.aspx.designer.cs">
+      <DependentUpon>qaqc_rotaryline_approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_rotaryline_detailview.aspx.cs">
+      <DependentUpon>qaqc_rotaryline_detailview.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_rotaryline_detailview.aspx.designer.cs">
+      <DependentUpon>qaqc_rotaryline_detailview.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_rotaryline_view.aspx.cs">
+      <DependentUpon>qaqc_rotaryline_view.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_rotaryline_view.aspx.designer.cs">
+      <DependentUpon>qaqc_rotaryline_view.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_rotary_line.aspx.cs">
+      <DependentUpon>qaqc_rotary_line.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_rotary_line.aspx.designer.cs">
+      <DependentUpon>qaqc_rotary_line.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qa_qc_FinalCbbWtReport.aspx.cs">
+      <DependentUpon>qa_qc_FinalCbbWtReport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qa_qc_FinalCbbWtReport.aspx.designer.cs">
+      <DependentUpon>qa_qc_FinalCbbWtReport.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="redirect.aspx.cs">
+      <DependentUpon>redirect.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="redirect.aspx.designer.cs">
+      <DependentUpon>redirect.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class2.aspx.cs">
+      <DependentUpon>RM_Class2.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2.aspx.designer.cs">
+      <DependentUpon>RM_Class2.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class2_FrmCtrl.aspx.cs">
+      <DependentUpon>RM_Class2_FrmCtrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2_FrmCtrl.aspx.designer.cs">
+      <DependentUpon>RM_Class2_FrmCtrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class5.aspx.cs">
+      <DependentUpon>RM_Class5.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class5.aspx.designer.cs">
+      <DependentUpon>RM_Class5.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_1.aspx.cs">
+      <DependentUpon>RM_Class_1.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_1.aspx.designer.cs">
+      <DependentUpon>RM_Class_1.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_1_Approval.aspx.cs">
+      <DependentUpon>RM_Class_1_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_1_Approval.aspx.designer.cs">
+      <DependentUpon>RM_Class_1_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_1_Detailed.aspx.cs">
+      <DependentUpon>RM_Class_1_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_1_Detailed.aspx.designer.cs">
+      <DependentUpon>RM_Class_1_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="rm_class_1_frmctrl.aspx.cs">
+      <DependentUpon>rm_class_1_frmctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="rm_class_1_frmctrl.aspx.designer.cs">
+      <DependentUpon>rm_class_1_frmctrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_1_Submitter.aspx.cs">
+      <DependentUpon>RM_Class_1_Submitter.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_1_Submitter.aspx.designer.cs">
+      <DependentUpon>RM_Class_1_Submitter.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_3.aspx.cs">
+      <DependentUpon>RM_Class_3.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_3.aspx.designer.cs">
+      <DependentUpon>RM_Class_3.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_3_Approval.aspx.cs">
+      <DependentUpon>RM_Class_3_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_3_Approval.aspx.designer.cs">
+      <DependentUpon>RM_Class_3_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_3_Detailed.aspx.cs">
+      <DependentUpon>RM_Class_3_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_3_Detailed.aspx.designer.cs">
+      <DependentUpon>RM_Class_3_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="rm_class_3_frmctrl.aspx.cs">
+      <DependentUpon>rm_class_3_frmctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="rm_class_3_frmctrl.aspx.designer.cs">
+      <DependentUpon>rm_class_3_frmctrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_3_Submitter.aspx.cs">
+      <DependentUpon>RM_Class_3_Submitter.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_3_Submitter.aspx.designer.cs">
+      <DependentUpon>RM_Class_3_Submitter.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_4.aspx.cs">
+      <DependentUpon>RM_Class_4.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_4.aspx.designer.cs">
+      <DependentUpon>RM_Class_4.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_4_Approval.aspx.cs">
+      <DependentUpon>RM_Class_4_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_4_Approval.aspx.designer.cs">
+      <DependentUpon>RM_Class_4_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_4_Detailed.aspx.cs">
+      <DependentUpon>RM_Class_4_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_4_Detailed.aspx.designer.cs">
+      <DependentUpon>RM_Class_4_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="rm_class_4_frmctrl.aspx.cs">
+      <DependentUpon>rm_class_4_frmctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="rm_class_4_frmctrl.aspx.designer.cs">
+      <DependentUpon>rm_class_4_frmctrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_4_Submitter.aspx.cs">
+      <DependentUpon>RM_Class_4_Submitter.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_4_Submitter.aspx.designer.cs">
+      <DependentUpon>RM_Class_4_Submitter.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_5.aspx.cs">
+      <DependentUpon>RM_Class_5.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_5.aspx.designer.cs">
+      <DependentUpon>RM_Class_5.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_5_Approval.aspx.cs">
+      <DependentUpon>RM_Class_5_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_5_Approval.aspx.designer.cs">
+      <DependentUpon>RM_Class_5_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_5_Detailed.aspx.cs">
+      <DependentUpon>RM_Class_5_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_5_Detailed.aspx.designer.cs">
+      <DependentUpon>RM_Class_5_Detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="rm_class_5_frmctrl.aspx.cs">
+      <DependentUpon>rm_class_5_frmctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="rm_class_5_frmctrl.aspx.designer.cs">
+      <DependentUpon>rm_class_5_frmctrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class_5_Submitter.aspx.cs">
+      <DependentUpon>RM_Class_5_Submitter.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class_5_Submitter.aspx.designer.cs">
+      <DependentUpon>RM_Class_5_Submitter.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="UploadImageHandler.ashx.cs">
+      <DependentUpon>UploadImageHandler.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="viewusers.aspx.cs">
+      <DependentUpon>viewusers.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="viewusers.aspx.designer.cs">
+      <DependentUpon>viewusers.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="vm_ccp_checklist.aspx.cs">
+      <DependentUpon>vm_ccp_checklist.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="vm_ccp_checklist.aspx.designer.cs">
+      <DependentUpon>vm_ccp_checklist.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="vm_leak_test.aspx.cs">
+      <DependentUpon>vm_leak_test.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="vm_leak_test.aspx.designer.cs">
+      <DependentUpon>vm_leak_test.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="vm_overwrap.aspx.cs">
+      <DependentUpon>vm_overwrap.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="vm_overwrap.aspx.designer.cs">
+      <DependentUpon>vm_overwrap.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="vw_app_qcireport.aspx.cs">
+      <DependentUpon>vw_app_qcireport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="vw_app_qcireport.aspx.designer.cs">
+      <DependentUpon>vw_app_qcireport.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="webdetails.aspx.cs">
+      <DependentUpon>webdetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="webdetails.aspx.designer.cs">
+      <DependentUpon>webdetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="WebsiteCredentialsView.aspx.cs">
+      <DependentUpon>WebsiteCredentialsView.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WebsiteCredentialsView.aspx.designer.cs">
+      <DependentUpon>WebsiteCredentialsView.aspx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets')" />
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != ''" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
+        <WebProjectProperties>
+          <UseIIS>True</UseIIS>
+          <AutoAssignPort>True</AutoAssignPort>
+          <DevelopmentServerPort>53713</DevelopmentServerPort>
+          <DevelopmentServerVPath>/</DevelopmentServerVPath>
+          <IISUrl>http://localhost:53713/</IISUrl>
+          <NTLMAuthentication>False</NTLMAuthentication>
+          <UseCustomServer>False</UseCustomServer>
+          <CustomServerUrl>
+          </CustomServerUrl>
+          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+        </WebProjectProperties>
+      </FlavorProperties>
+    </VisualStudio>
+  </ProjectExtensions>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Microsoft.Net.Compilers.1.0.0\build\Microsoft.Net.Compilers.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Net.Compilers.1.0.0\build\Microsoft.Net.Compilers.props'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.1.0.0\build\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.1.0.0\build\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.props'))" />
+    <Error Condition="!Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.4.4\build\EntityFramework.props'))" />
+    <Error Condition="!Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.4.4\build\EntityFramework.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ApplicationInsights.DependencyCollector.2.9.0\build\Microsoft.ApplicationInsights.DependencyCollector.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ApplicationInsights.DependencyCollector.2.9.0\build\Microsoft.ApplicationInsights.DependencyCollector.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ApplicationInsights.PerfCounterCollector.2.9.0\build\Microsoft.ApplicationInsights.PerfCounterCollector.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ApplicationInsights.PerfCounterCollector.2.9.0\build\Microsoft.ApplicationInsights.PerfCounterCollector.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ApplicationInsights.WindowsServer.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ApplicationInsights.WindowsServer.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ApplicationInsights.Web.2.9.0\build\Microsoft.ApplicationInsights.Web.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ApplicationInsights.Web.2.9.0\build\Microsoft.ApplicationInsights.Web.targets'))" />
+  </Target>
+  <Import Project="..\packages\EntityFramework.6.4.4\build\EntityFramework.targets" Condition="Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.targets')" />
+  <Import Project="..\packages\Microsoft.ApplicationInsights.DependencyCollector.2.9.0\build\Microsoft.ApplicationInsights.DependencyCollector.targets" Condition="Exists('..\packages\Microsoft.ApplicationInsights.DependencyCollector.2.9.0\build\Microsoft.ApplicationInsights.DependencyCollector.targets')" />
+  <Import Project="..\packages\Microsoft.ApplicationInsights.PerfCounterCollector.2.9.0\build\Microsoft.ApplicationInsights.PerfCounterCollector.targets" Condition="Exists('..\packages\Microsoft.ApplicationInsights.PerfCounterCollector.2.9.0\build\Microsoft.ApplicationInsights.PerfCounterCollector.targets')" />
+  <Import Project="..\packages\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.targets" Condition="Exists('..\packages\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.TelemetryChannel.targets')" />
+  <Import Project="..\packages\Microsoft.ApplicationInsights.WindowsServer.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.targets" Condition="Exists('..\packages\Microsoft.ApplicationInsights.WindowsServer.2.9.0\build\Microsoft.ApplicationInsights.WindowsServer.targets')" />
+  <Import Project="..\packages\Microsoft.ApplicationInsights.Web.2.9.0\build\Microsoft.ApplicationInsights.Web.targets" Condition="Exists('..\packages\Microsoft.ApplicationInsights.Web.2.9.0\build\Microsoft.ApplicationInsights.Web.targets')" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
