@@ -572,7 +572,7 @@ namespace AnmolDristi
 
                 TB_MfgName.Text = dt.Rows[0]["MfgName"].ToString();
 
-                TB_BeforeDate.Text = dt.Rows[0]["BeforeDate"].ToString();
+                TB_BeforeDate.Text = dt.Rows[0]["BB_Dates"].ToString();
 
                 TB_FssaiNo.Text = dt.Rows[0]["FssaiNo"].ToString();
 
@@ -635,6 +635,7 @@ namespace AnmolDristi
 
                 imgMaterial.ImageUrl = dt.Rows[0]["Material_Image"].ToString();
 
+                TXB_Remarks.Text = dt.Rows[0]["Remarks"].ToString();
 
                 string FormID = row["FormID"].ToString();
                 LoadFormDetails(FormID, PlantId);

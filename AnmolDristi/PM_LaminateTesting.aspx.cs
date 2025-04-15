@@ -4,8 +4,10 @@ using System.Configuration;
 using System.Data;
 using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Services;
 using System.Web.UI;
@@ -420,6 +422,9 @@ namespace AnmolDristi
             string plantName = DDL_Plant.SelectedValue;
             string productBrand = DDL_ProductBrand.SelectedValue;
 
+            // added on  14/04/2025
+            string sku = string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) ? null : DDL_BrandSKU.Text;
+
             string supplier = string.IsNullOrEmpty(TB_Supplier.Text) ? null : TB_Supplier.Text;
             decimal? sampleSize = !string.IsNullOrEmpty(TB_Size.Text) ? Convert.ToDecimal(TB_Size.Text) : (decimal?)null;
 
@@ -447,8 +452,27 @@ namespace AnmolDristi
             decimal? obsHeight = !string.IsNullOrEmpty(TB_Height.Text) ? Convert.ToDecimal(TB_Height.Text) : (decimal?)null;
             string heightRemarks =string.IsNullOrEmpty(TXB_Height_Remarks.Text) ? null : TXB_Height_Remarks.Text;
 
-            decimal? stdGsm = !string.IsNullOrEmpty(TB_Std_GSM.Text) ? Convert.ToDecimal(TB_Std_GSM.Text) : (decimal?)null;
-            decimal? obsGsm = !string.IsNullOrEmpty(TB_GSM.Text) ? Convert.ToDecimal(TB_GSM.Text) : (decimal?)null;
+            //decimal? stdGsm = !string.IsNullOrEmpty(TB_Std_GSM.Text) ? Convert.ToDecimal(TB_Std_GSM.Text) : (decimal?)null;
+            //decimal? obsGsm = !string.IsNullOrEmpty(TB_GSM.Text) ? Convert.ToDecimal(TB_GSM.Text) : (decimal?)null;
+
+            // Extract Standard gsm (Only the numeric part)
+            decimal gsmStd = 0;
+            string gsmStdInput = TB_Std_GSM.Text.Trim();
+            if (!string.IsNullOrEmpty(gsmStdInput))
+            {
+                Regex regex = new Regex(@"^([\d.]+)"); // Match only the first numeric part
+                Match match = regex.Match(gsmStdInput);
+                if (match.Success)
+                    gsmStd = Convert.ToDecimal(match.Groups[1].Value, CultureInfo.InvariantCulture);
+            }
+
+            // Extract Observed gsm
+            decimal gsmObs = 0;
+            if (!decimal.TryParse(TB_GSM.Text.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out gsmObs))
+            {
+                gsmObs = 0; // Handle invalid input
+            }
+
             string gsmRemarks = string.IsNullOrEmpty(TXB_GSM_Remarks.Text) ? null : TXB_GSM_Remarks.Text;
 
             string remarks = string.IsNullOrEmpty(TXB_Remarks.Text) ? null : TXB_Remarks.Text;
@@ -477,6 +501,7 @@ namespace AnmolDristi
 
                         command.Parameters.AddWithValue("@PlantName", plantName);
                         command.Parameters.AddWithValue("@ProductBrand", productBrand);
+                        command.Parameters.AddWithValue("@SKUId", sku);
                         command.Parameters.AddWithValue("@Supplier_Name", supplier);
                         command.Parameters.AddWithValue("@SampleSize", sampleSize);
                         command.Parameters.AddWithValue("@Smell", smell);
@@ -500,8 +525,8 @@ namespace AnmolDristi
                         command.Parameters.AddWithValue("@Obs_Height", obsHeight);
                         command.Parameters.AddWithValue("@Height_Remarks", heightRemarks);
 
-                        command.Parameters.AddWithValue("@GMS_Std", stdGsm);
-                        command.Parameters.AddWithValue("@GSM_Obs", obsGsm);
+                        command.Parameters.AddWithValue("@GMS_Std", gsmStd);
+                        command.Parameters.AddWithValue("@GSM_Obs", gsmObs);
                         command.Parameters.AddWithValue("@GSM_Remarks", gsmRemarks);
 
                         command.Parameters.AddWithValue("@Remarks", remarks);
