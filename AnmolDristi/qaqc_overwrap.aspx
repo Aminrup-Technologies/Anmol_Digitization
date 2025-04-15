@@ -105,7 +105,20 @@
             }
         }
 
-        function validateObservedGSM() {
+        function validateDimension() {
+            var dimensionValue = parseFloat(document.getElementById('<%= TB_DimensionStd.ClientID %>').value);
+            var remarkSection = document.getElementById("remarkSection1");
+            var lowerLimit = 0.00;
+            var upperLimit = 1000.00;
+            if (isNaN(dimensionValue) || dimensionValue < lowerLimit || dimensionValue > upperLimit) {
+                remarkSection.style.display = "block";
+            } else {
+                remarkSection.style.display = "none";
+            }
+        }
+
+        // % tolerance
+        <%--function validateObservedGSM() {
             var stdGSMInput = document.getElementById('<%= TB_GMS_Std.ClientID %>').value.trim();
             var obsGSMValue = parseFloat(document.getElementById('<%= TB_GSM_Obs.ClientID %>').value);
             var remarksDiv = document.getElementById("GSM_ObsremarkSection");
@@ -162,11 +175,10 @@
             } else {
                 console.warn("Invalid Observed GSM Value.");
             }
-        }
+        }--%>
 
-
-
-        function validateObservedDimension() {
+        // % tolerance
+        <%--function validateObservedDimension() {
             var stdDimInput = document.getElementById('<%= TB_DimensionStd.ClientID %>').value.trim();
             var obsDimValue = parseFloat(document.getElementById('<%= TB_DimensionObs.ClientID %>').value);
             var remarksDiv = document.getElementById("Dimension_ObsremarkSection");
@@ -223,22 +235,128 @@
             } else {
                 console.warn("Invalid Observed Dimension Value.");
             }
-        }
+        }--%>
 
 
+        // mm tolerance
+        function validateObservedGSM() {
+            var stdGsmInput = document.getElementById('<%= TB_GMS_Std.ClientID %>').value.trim();
+            var obsGsmValue = parseFloat(document.getElementById('<%= TB_GSM_Obs.ClientID %>').value);
+            var remarksDiv = document.getElementById("GSM_ObsremarkSection");
+            var rangeText = document.getElementById("GSM_ValidRange");
 
+            console.log("Raw STD GSM Input:", stdGsmInput);
+            console.log("Raw Observed GSM Input:", obsGsmValue);
 
-        function validateDimension() {
-            var dimensionValue = parseFloat(document.getElementById('<%= TB_DimensionStd.ClientID %>').value);
-            var remarkSection = document.getElementById("remarkSection1");
-            var lowerLimit = 0.00;
-            var upperLimit = 1000.00;
-            if (isNaN(dimensionValue) || dimensionValue < lowerLimit || dimensionValue > upperLimit) {
-                remarkSection.style.display = "block";
+            var regex = /^([\d.]+)\s*±\s*([\d.]+)?$/; // Match "30.5 ± 2" OR just "30.5"
+
+            var stdGsmValue, toleranceValue;
+
+            if (regex.test(stdGsmInput)) {
+                var matches = stdGsmInput.match(regex);
+                stdGsmValue = parseFloat(matches[1]); // Extract standard value (e.g., 30.5)
+                toleranceValue = matches[2] ? parseFloat(matches[2]) : 0; // Extract tolerance if present, else 0
             } else {
-                remarkSection.style.display = "none";
+                stdGsmValue = parseFloat(stdGsmInput); // If no ± tolerance, assume 0 mm tolerance
+                toleranceValue = 1; // Default tolerance to 1 mm
+            }
+
+            console.log("Parsed STD GSM Value:", stdGsmValue);
+            console.log("Parsed Tolerance Value:", toleranceValue, "mm");
+
+            if (isNaN(stdGsmValue)) {
+                rangeText.innerHTML = "Expected Range: (Enter a valid STD GSM first)";
+                rangeText.style.color = "red";
+                console.warn("Invalid STD GSM Value. Cannot calculate range.");
+                return;
+            }
+
+            // Calculate tolerance range dynamically
+            var lowerLimit = (stdGsmValue - toleranceValue).toFixed(2);
+            var upperLimit = (stdGsmValue + toleranceValue).toFixed(2);
+
+            console.log("Expected Range:", lowerLimit, "-", upperLimit);
+
+            // Show expected range
+            rangeText.innerHTML = `Expected Range: ${lowerLimit} - ${upperLimit} mm`;
+            rangeText.style.color = "green";
+
+            // Validate Observed GSM
+            if (!isNaN(obsGsmValue)) {
+                console.log("Observed GSM Value:", obsGsmValue);
+                if (obsGsmValue < lowerLimit || obsGsmValue > upperLimit) {
+                    console.warn("Observed GSM is OUT of range. Showing remark section.");
+                    remarksDiv.style.display = "block"; // Show remarks
+                } else {
+                    console.log("Observed GSM is WITHIN range. Hiding remark section.");
+                    remarksDiv.style.display = "none"; // Hide remarks
+                }
+            } else {
+                console.warn("Invalid Observed GSM Value.");
             }
         }
+
+        // mm tolerance
+        function validateObservedDimension() {
+            var stdDimInput = document.getElementById('<%= TB_DimensionStd.ClientID %>').value.trim();
+            var obsDimValue = parseFloat(document.getElementById('<%= TB_DimensionObs.ClientID %>').value);
+            var remarksDiv = document.getElementById("Dimension_ObsremarkSection");
+            var rangeText = document.getElementById("Dimension_ValidRange");
+
+            console.log("Raw STD Dimension Input:", stdDimInput);
+            console.log("Raw Observed Dimension Input:", obsDimValue);
+
+            var regex = /^([\d.]+)\s*±\s*([\d.]+)?$/; // Match "30.5 ± 2" OR just "30.5"
+
+            var stdDimValue, toleranceValue;
+
+            if (regex.test(stdDimInput)) {
+                var matches = stdDimInput.match(regex);
+                stdDimValue = parseFloat(matches[1]); // Extract standard value (e.g., 30.5)
+                toleranceValue = matches[2] ? parseFloat(matches[2]) : 0; // Extract tolerance if present, else 0
+            } else {
+                stdDimValue = parseFloat(stdDimInput); // If no ± tolerance, assume 0 mm tolerance
+                toleranceValue = 1; // Default tolerance to 1 mm
+            }
+
+            console.log("Parsed STD Dimension Value:", stdDimValue);
+            console.log("Parsed Tolerance Value:", toleranceValue, "mm");
+
+            if (isNaN(stdDimValue)) {
+                rangeText.innerHTML = "Expected Range: (Enter a valid STD Dimension first)";
+                rangeText.style.color = "red";
+                console.warn("Invalid STD Dimension Value. Cannot calculate range.");
+                return;
+            }
+
+            // Calculate tolerance range dynamically
+            var lowerLimit = (stdDimValue - toleranceValue).toFixed(2);
+            var upperLimit = (stdDimValue + toleranceValue).toFixed(2);
+
+            console.log("Expected Range:", lowerLimit, "-", upperLimit);
+
+            // Show expected range
+            rangeText.innerHTML = `Expected Range: ${lowerLimit} - ${upperLimit} mm`;
+            rangeText.style.color = "green";
+
+            // Validate Observed Dimension
+            if (!isNaN(obsDimValue)) {
+                console.log("Observed Dimension Value:", obsDimValue);
+                if (obsDimValue < lowerLimit || obsDimValue > upperLimit) {
+                    console.warn("Observed Dimension is OUT of range. Showing remark section.");
+                    remarksDiv.style.display = "block"; // Show remarks
+                } else {
+                    console.log("Observed Dimension is WITHIN range. Hiding remark section.");
+                    remarksDiv.style.display = "none"; // Hide remarks
+                }
+            } else {
+                console.warn("Invalid Observed Dimension Value.");
+            }
+        }
+
+
+
+        
     </script>
 
     <asp:HiddenField ID="hdn_formid" runat="server" />
@@ -393,7 +511,7 @@
                                     <asp:Label ID="LBL_DimensionStd" runat="server" AssociatedControlID="TB_DimensionStd" Text="Dimension (STD):" ForeColor="Black" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:Literal ID="span_Dimension" runat="server" Text='<%# string.IsNullOrEmpty(Eval("GMS_Std")?.ToString()) ? "0.00" : Eval("GMS_Std") %>'></asp:Literal>
                                     <asp:RequiredFieldValidator ID="RFV_TB_DimensionStd" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_DimensionStd" ValidationGroup="Submit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:CustomValidator ID="CV_TB_DimensionStd" runat="server" ControlToValidate="TB_DimensionStd" ValidationGroup="Submit" ErrorMessage="Invalid input format! Use: '27.3 ± 5%', '8.2 to 10.2', or '420'" Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                    <asp:CustomValidator ID="CV_TB_DimensionStd" runat="server" ControlToValidate="TB_DimensionStd" ValidationGroup="Submit" ErrorMessage="Invalid format! Use '27.3 ± 2 mm' or '420 mm'." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_DimensionStd" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Enter STD Dimension" MaxLength="10" onkeyup="validateObservedDimension()" ClientIDMode="Static"></asp:TextBox>
                                     </div>
@@ -416,7 +534,7 @@
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_DimensionObs" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Enter Observed Dimension" MaxLength="10" onkeyup="validateObservedDimension()" ClientIDMode="Static"></asp:TextBox>
                                         <small id="Dimension_ValidRange" class="form-text text-muted" style="font-weight: bold; color: green;">
-                                            Expected Range: (STD Value Missing)
+                                            Expected Range: (STD Value Missing, enter in mm)
                                         </small>
                                     </div>
                                 </div>
@@ -436,7 +554,7 @@
                                     <asp:Label ID="Lbl_TB_GMS_Std" runat="server" AssociatedControlID="TB_GMS_Std" Text="GSM/WT per 10 PS (STD):" ForeColor="Black" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:Literal ID="span_GMS" runat="server" Text='<%# string.IsNullOrEmpty(Eval("GMS_Std")?.ToString()) ? "0.00" : Eval("GMS_Std") %>'></asp:Literal>
                                     <asp:RequiredFieldValidator ID="RFV_TB_GMS_Std" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_GMS_Std" ValidationGroup="Submit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:CustomValidator ID="CV_TB_GMS_Std" runat="server" ControlToValidate="TB_GMS_Std" ValidationGroup="Submit" ErrorMessage="Invalid input format! Use: '27.3 ± 5%', '8.2 to 10.2', or '420'" Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                    <asp:CustomValidator ID="CV_TB_GMS_Std" runat="server" ControlToValidate="TB_GMS_Std" ValidationGroup="Submit" ErrorMessage="Invalid format! Use '27.3 ± 2 mm' or '420 mm'." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_GMS_Std" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Enter STD GSM" MaxLength="10" onkeyup="validateObservedGSM()" ClientIDMode="Static"></asp:TextBox>
                                     </div>
@@ -459,7 +577,7 @@
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_GSM_Obs" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Enter Observed GSM" MaxLength="10" onkeyup="validateObservedGSM()" ClientIDMode="Static"></asp:TextBox>
                                         <small id="GSM_ValidRange" class="form-text text-muted" style="font-weight: bold; color: green;">
-                                            Expected Range: (STD Value Missing)
+                                            Expected Range: (STD Value Missing, enter in mm)
                                         </small>
                                     </div>
                                 </div>

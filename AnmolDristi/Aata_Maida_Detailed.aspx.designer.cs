@@ -1014,6 +1014,15 @@ namespace AnmolDristi
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl BeforeDateDIV;
 
         /// <summary>
+        /// Lbl_TB_BeforeDate control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Lbl_TB_BeforeDate;
+
+        /// <summary>
         /// RFV_TB_BeforeDate control.
         /// </summary>
         /// <remarks>
@@ -1023,13 +1032,13 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_TB_BeforeDate;
 
         /// <summary>
-        /// Lbl_TB_BeforeDate control.
+        /// REV_TB_BeforeDate control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Lbl_TB_BeforeDate;
+        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_TB_BeforeDate;
 
         /// <summary>
         /// TB_BeforeDate control.
@@ -2551,6 +2560,42 @@ namespace AnmolDristi
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Image imgMaterial;
+
+        /// <summary>
+        /// Lbl_Remarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Lbl_Remarks;
+
+        /// <summary>
+        /// RFV_TXB_Remarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_TXB_Remarks;
+
+        /// <summary>
+        /// REV_TXB_Remarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_TXB_Remarks;
+
+        /// <summary>
+        /// TXB_Remarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXB_Remarks;
 
         /// <summary>
         /// Lbl_BasicbtnApprove control.
