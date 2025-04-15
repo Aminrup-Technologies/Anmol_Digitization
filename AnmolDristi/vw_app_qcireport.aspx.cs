@@ -163,12 +163,12 @@ namespace AnmolDristi
                         FU_DesgImp_Img.Visible = true;
 
                         // Set the valid image URL from the database
-                        uploadedImage1.ImageUrl = imageUrl;
+                        uploadedImage2.ImageUrl = imageUrl;
                     }
                     else
                     {
                         // If the image URL is invalid, set the default "No Image" placeholder
-                        uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                        uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                         // Show the file uploader and hide the image control
                         FU_DesgImp_Upldr.Visible = false;
@@ -178,7 +178,7 @@ namespace AnmolDristi
                 else
                 {
                     // If no data exists, display a default "No Image" placeholder
-                    uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                    uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                     // Show the file uploader and hide the image control
                     FU_DesgImp_Upldr.Visible = true;
@@ -197,12 +197,12 @@ namespace AnmolDristi
                         FU_ClrApp_Img.Visible = true;
 
                         // Set the valid image URL from the database
-                        uploadedImage2.ImageUrl = imageUrl;
+                        uploadedImage1.ImageUrl = imageUrl;
                     }
                     else
                     {
                         // If the image URL is invalid, set the default "No Image" placeholder
-                        uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                        uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                         // Show the file uploader and hide the image control
                         FU_ClrApp_Upldr.Visible = false;
@@ -212,7 +212,7 @@ namespace AnmolDristi
                 else
                 {
                     // If no data exists, display a default "No Image" placeholder
-                    uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                    uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                     // Show the file uploader and hide the image control
                     FU_ClrApp_Upldr.Visible = true;
