@@ -3,7 +3,7 @@
   <PropertyGroup>
     <UseIISExpress>true</UseIISExpress>
     <ProjectView>ProjectFiles</ProjectView>
-    <NameOfLastUsedPublishProfile>AnmolDristi</NameOfLastUsedPublishProfile>
+    <NameOfLastUsedPublishProfile>AnmolDristi_Live</NameOfLastUsedPublishProfile>
   </PropertyGroup>
   <ProjectExtensions>
     <VisualStudio>

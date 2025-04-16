@@ -333,12 +333,7 @@
     </None>
     <None Include="Properties\PublishProfiles\AnmolDristi.pubxml" />
     <Content Include="UploadImageHandler.ashx" />
-    <None Include="Web.Debug.config">
-      <DependentUpon>Web.config</DependentUpon>
-    </None>
-    <None Include="Web.Release.config">
-      <DependentUpon>Web.config</DependentUpon>
-    </None>
+    <None Include="Properties\PublishProfiles\AnmolDristi_Live.pubxml" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="blank.aspx" />
@@ -347,9 +342,6 @@
     <Content Include="qaqc_qchome.aspx" />
     <Content Include="qaqc_qchome_rpt.aspx" />
     <Content Include="qaqc_qcinspector_rpt_.aspx" />
-    <Content Include="Web.config">
-      <SubType>Designer</SubType>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="404.aspx.cs">
