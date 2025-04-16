@@ -6,7 +6,8 @@ by editing this MSBuild file. In order to learn more about this please visit htt
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <TimeStampOfAssociatedLegacyPublishXmlFile />
-    <_PublishTargetUrl>D:\OfficeWorks\AnmolOTP\DristiPub</_PublishTargetUrl>
+    <_PublishTargetUrl>ftp://150.242.202.11/httpdocs</_PublishTargetUrl>
+    <EncryptedPassword>AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAATp26Wb+m10qSO/gOOfSZVgAAAAACAAAAAAAQZgAAAAEAACAAAADyKsg23+j+MZg+zexcUhqLwWaMJkHxkBFjVh5wFQ3UVgAAAAAOgAAAAAIAACAAAAD6OTmhfQ8qoxwwIh6kNDr7MdOC/+U22fWWE6vFjyOGmjAAAACDojE9KbB78ybzH9POjTNMzrMbPTYFyJ8M+nhhhMaoWjhb7w6DFAxbOdRqf1xh5W9AAAAASYoezcVm4cHQcAs5HTw+T657R0ILf7Xn8dLT8kYoIq38zUexpwQ92uIl3VGl3JvFBoY9Yo+OneggQqSlZvtshw==</EncryptedPassword>
   </PropertyGroup>
   <ItemGroup>
     <File Include=".bowerrc">
