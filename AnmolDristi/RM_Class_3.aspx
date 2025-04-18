@@ -971,7 +971,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Quantity" runat="server" AssociatedControlID="TB_Quantity" Text="Quantity Supplied :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Quantity" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_Quantity" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Quantity" ValidationGroup="Save" runat="server" ControlToValidate="TB_Quantity" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Quantity" ValidationGroup="Save" runat="server" ControlToValidate="TB_Quantity" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_Quantity" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [1000.00-2000.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Quantity" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Quantity Value(in kg)" oninput="validateQuantityValue(this);"></asp:TextBox>
@@ -993,7 +993,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Size" runat="server" AssociatedControlID="TB_Size" Text="Sample Size :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Size" runat="server" ValidationGroup="Save" ErrorMessage="Input Required" ControlToValidate="TB_Size" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Size" runat="server" ValidationGroup="Save" ControlToValidate="TB_Size" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Size" runat="server" ValidationGroup="Save" ControlToValidate="TB_Size" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_Size" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [1.00-10.00]" Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Size" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Size(in pkts)"></asp:TextBox>
@@ -1568,7 +1568,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_PH" runat="server" AssociatedControlID="TB_PH" Text=" PH Value :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_PH" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_PH" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_PH" runat="server" ControlToValidate="TB_PH" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_PH" runat="server" ControlToValidate="TB_PH" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_PH" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_PH" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="PH Value" oninput="validatePhValue(this);"></asp:TextBox>
@@ -1590,7 +1590,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Moisture" runat="server" AssociatedControlID="TB_Moisture" Text="Moisture (%)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Moisture" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_Moisture" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Moisture" runat="server" ControlToValidate="TB_Moisture" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Moisture" runat="server" ControlToValidate="TB_Moisture" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_Moisture" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Moisture" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Moisture Value" oninput="validateMoistureValue(this);"></asp:TextBox>
@@ -1612,7 +1612,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_TotalAsh" runat="server" AssociatedControlID="TB_TotalAsh" Text="Total Ash" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_TotalAsh" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_TotalAsh" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_TotalAsh" runat="server" ControlToValidate="TB_TotalAsh" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_TotalAsh" runat="server" ControlToValidate="TB_TotalAsh" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_TotalAsh" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_TotalAsh" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Total Ash Value " oninput="validateAshValue(this);"></asp:TextBox>
@@ -1634,7 +1634,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_InsolubleAsh" runat="server" AssociatedControlID="TB_InsolubleAsh" Text="Acid Insoluble Ash:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_InsolubleAsh" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_InsolubleAsh" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_InsolubleAsh" runat="server" ControlToValidate="TB_InsolubleAsh" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_InsolubleAsh" runat="server" ControlToValidate="TB_InsolubleAsh" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_InsolubleAsh" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_InsolubleAsh" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Insoluble Ash Value " oninput="validateInsolubleAshValue(this);"></asp:TextBox>
@@ -1656,7 +1656,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_TotalSolid" runat="server" AssociatedControlID="TB_TotalSolid" Text="Total Solids:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_TotalSolid" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_TotalSolid" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_TotalSolid" runat="server" ControlToValidate="TB_TotalSolid" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_TotalSolid" runat="server" ControlToValidate="TB_TotalSolid" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_TotalSolid" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_TotalSolid" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Total Solids Value " oninput="validateSolidValue(this);"></asp:TextBox>
@@ -1678,7 +1678,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Dextrose" runat="server" AssociatedControlID="TB_Dextrose" Text="Dextrose Equivalent:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Dextrose" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_Dextrose" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Dextrose" runat="server" ControlToValidate="TB_Dextrose" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Dextrose" runat="server" ControlToValidate="TB_Dextrose" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_Dextrose" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Dextrose" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Dextrose Equivalent Value " oninput="validateDextroseValue(this);"></asp:TextBox>
@@ -1700,7 +1700,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_TitrableAcidity" runat="server" AssociatedControlID="TB_TitrableAcidity" Text=" Titrable Acidity :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_TitrableAcidity" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_TitrableAcidity" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_TitrableAcidity" runat="server" ControlToValidate="TB_TitrableAcidity" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_TitrableAcidity" runat="server" ControlToValidate="TB_TitrableAcidity" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_TitrableAcidity" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_TitrableAcidity" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Titrable Acidity Value " oninput="validateTitrableAcidityValue(this);"></asp:TextBox>
@@ -1722,7 +1722,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_AlcoholicAcidity" runat="server" AssociatedControlID="TB_TitrableAcidity" Text=" Alcoholic Acidity :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_AlcoholicAcidity" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_AlcoholicAcidity" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_AlcoholicAcidity" runat="server" ControlToValidate="TB_AlcoholicAcidity" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_AlcoholicAcidity" runat="server" ControlToValidate="TB_AlcoholicAcidity" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_AlcoholicAcidity" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_AlcoholicAcidity" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Alcoholic Acidity Value " oninput="validateAlcoholicAcidityValue(this);"></asp:TextBox>
@@ -1744,7 +1744,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_SO2" runat="server" AssociatedControlID="TB_SO2" Text="SO2:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_SO2" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_SO2" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_SO2" runat="server" ValidationGroup="Save" ControlToValidate="TB_SO2" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_SO2" runat="server" ValidationGroup="Save" ControlToValidate="TB_SO2" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_SO2" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_SO2" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="So2 Value " oninput="validateSO2Value(this);"></asp:TextBox>
@@ -1766,7 +1766,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_GlycerineContent" runat="server" AssociatedControlID="TB_GlycerineContent" Text="Glycerine Content  :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_GlycerineContent" runat="server" ValidationGroup="Save" ErrorMessage="Input Required" ControlToValidate="TB_GlycerineContent" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_GlycerineContent" runat="server" ValidationGroup="Save" ControlToValidate="TB_GlycerineContent" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_GlycerineContent" runat="server" ValidationGroup="Save" ControlToValidate="TB_GlycerineContent" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_GlycerineContent" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_GlycerineContent" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Glycerine Content(in mm)" oninput="validateGlycerineContentValue(this);"></asp:TextBox>
@@ -1788,7 +1788,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_GlucoseContent" runat="server" AssociatedControlID="TB_GlucoseContent" Text="Glucose Content  :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_GlucoseContent" runat="server" ValidationGroup="Save" ErrorMessage="Input Required" ControlToValidate="TB_GlucoseContent" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_GlucoseContent" runat="server" ValidationGroup="Save" ControlToValidate="TB_GlucoseContent" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_GlucoseContent" runat="server" ValidationGroup="Save" ControlToValidate="TB_GlucoseContent" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_GlucoseContent" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_GlucoseContent" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Glucose Content(in mm)" oninput="validateGlucoseContentValue(this);"></asp:TextBox>
@@ -1810,7 +1810,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_LossOnDrying" runat="server" AssociatedControlID="TB_LossOnDrying" Text="Loss On Drying:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_LossOnDrying" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_LossOnDrying" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_LossOnDrying" runat="server" ControlToValidate="TB_LossOnDrying" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_LossOnDrying" runat="server" ControlToValidate="TB_LossOnDrying" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_LossOnDrying" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_LossOnDrying" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Loss On Drying Value " oninput="validateLossOnDryingValue(this);"></asp:TextBox>
@@ -1832,7 +1832,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Solubility" runat="server" AssociatedControlID="TB_Solubility" Text="Solubility:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Solubility" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_Solubility" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Solubility" runat="server" ControlToValidate="TB_Solubility" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Solubility" runat="server" ControlToValidate="TB_Solubility" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_Solubility" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Solubility" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Solubility Value " oninput="validateSolubilityValue(this);"></asp:TextBox>
@@ -1854,7 +1854,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_ShapeOrSize" runat="server" AssociatedControlID="TB_ShapeOrSize" Text="ShapeOrSize  :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_ShapeOrSize" runat="server" ValidationGroup="Save" ErrorMessage="Input Required" ControlToValidate="TB_ShapeOrSize" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_ShapeOrSize" runat="server" ValidationGroup="Save" ControlToValidate="TB_ShapeOrSize" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_ShapeOrSize" runat="server" ValidationGroup="Save" ControlToValidate="TB_ShapeOrSize" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_ShapeOrSize" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [2.00-3.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_ShapeOrSize" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="ShapeOrSize(in mm)" oninput="validateShapeOrSizeValue(this);"></asp:TextBox>
@@ -1876,7 +1876,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Sucrose" runat="server" AssociatedControlID="TB_Sucrose" Text="Sucrose Content :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Sucrose" runat="server" ValidationGroup="Save" ErrorMessage="Input Required" ControlToValidate="TB_Sucrose" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Sucrose" runat="server" ValidationGroup="Save" ControlToValidate="TB_Sucrose" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Sucrose" runat="server" ValidationGroup="Save" ControlToValidate="TB_Sucrose" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_Sucrose" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Sucrose" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Sucrose Content (%) " oninput="validateSucroseValue(this);"></asp:TextBox>
@@ -1898,7 +1898,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Sulphide" runat="server" AssociatedControlID="TB_Sulphide" Text="Sulphide Content :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Sulphide" runat="server" ValidationGroup="Save" ErrorMessage="Input Required" ControlToValidate="TB_Sulphide" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Sulphide" runat="server" ValidationGroup="Save" ControlToValidate="TB_Sulphide" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Sulphide" runat="server" ValidationGroup="Save" ControlToValidate="TB_Sulphide" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_Sulphide" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Sulphide" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Sucrose Content (%) " oninput="validateSulphideValue(this);"></asp:TextBox>
@@ -1920,7 +1920,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_SulphatedAsh" runat="server" AssociatedControlID="TB_SulphatedAsh" Text="Sulphated Ash" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_SulphatedAsh" runat="server" ErrorMessage="*" ValidationGroup="Save" ControlToValidate="TB_SulphatedAsh" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_SulphatedAsh" runat="server" ControlToValidate="TB_SulphatedAsh" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_SulphatedAsh" runat="server" ControlToValidate="TB_SulphatedAsh" ValidationGroup="Save" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_SulphatedAsh" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_SulphatedAsh" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="Sulphated Ash Value " oninput="validateSulphatedAshValue(this);"></asp:TextBox>
@@ -1942,7 +1942,7 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_WIM" runat="server" AssociatedControlID="TB_WIM" Text="Water Insoluble Matter (%) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_WIM" runat="server" ValidationGroup="Save" ErrorMessage="Input Required" ControlToValidate="TB_WIM" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_WIM" runat="server" ValidationGroup="Save" ControlToValidate="TB_WIM" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_WIM" runat="server" ValidationGroup="Save" ControlToValidate="TB_WIM" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:CustomValidator ID="CV_TB_WIM" runat="server" ValidationGroup="Save" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_WIM" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Save" Placeholder="WIM (%) " oninput="validateWIMValue(this);"></asp:TextBox>

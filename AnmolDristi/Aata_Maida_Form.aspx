@@ -646,6 +646,27 @@
                 remarksDiv.style.display = "none";
             }
         }
+        function validateBromateIodateValue(textbox) {
+            console.log("validateBromateIodateValue function called");
+
+            // Retrieve elements and values
+            var BromateValue = parseFloat(document.getElementById('<%= TB_Bromate.ClientID %>').value);
+            var remarksDiv = document.getElementById("BromateRemarksDIV");
+            var minBromateValue = parseFloat(document.getElementById('<%= hdnMinBromateValue.ClientID %>').value);
+            var maxBromateValue = parseFloat(document.getElementById('<%= hdnMaxBromateValue.ClientID %>').value);
+
+            // Define the valid range
+            //var minBromateValue = 20.00;
+            //var maxBromateValue = 30.00;
+
+            // Check if Bromate value is within the valid range
+            if (!isNaN(BromateValue) && BromateValue !== "" && BromateValue < minBromateValue || BromateValue > maxBromateValue) {
+                remarksDiv.style.display = "block";
+
+            } else {
+                remarksDiv.style.display = "none";
+            }
+        }
 
     </script>
 
@@ -1361,9 +1382,20 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Label_Bromate" runat="server" AssociatedControlID="TB_Bromate" Text="Bromate and Iodate :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Bromate" runat="server" ErrorMessage="Input Required" ValidationGroup="Submit" ControlToValidate="TB_Bromate" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Bromate" runat="server" ControlToValidate="TB_Bromate" ValidationGroup="Submit" ForeColor="Red" ErrorMessage="Alphabet Only" ValidationExpression="^[A-Za-z\s]+$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Bromate" runat="server" ControlToValidate="TB_Bromate" ValidationGroup="Submit" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:CustomValidator ID="CV_TB_Bromate" runat="server" ValidationGroup="Submit" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
-                                        <asp:TextBox ID="TB_Bromate" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="Bromate and Iodate (3-20 characters)" MaxLength="20"></asp:TextBox>
+                                        <asp:TextBox ID="TB_Bromate" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="Bromate and Iodate " oninput="validateBromateIodateValue(this);"></asp:TextBox>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3" id="BromateRemarksDIV" style="display: none;">
+                                <div class="mb-3">
+                                    <asp:Label ID="Label_TXB_Bromate_Remarks" runat="server" AssociatedControlID="TXB_Bromate_Remarks" Text="Bromate Remarks" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:RequiredFieldValidator ID="RFV_TXB_Bromate_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_Bromate_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                    <div class="input-group-sm">
+                                        <asp:TextBox ID="TXB_Bromate_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
