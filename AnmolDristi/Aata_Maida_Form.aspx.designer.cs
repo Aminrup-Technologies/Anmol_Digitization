@@ -2148,15 +2148,6 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_TB_Bromate;
 
         /// <summary>
-        /// CV_TB_Bromate control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.CustomValidator CV_TB_Bromate;
-
-        /// <summary>
         /// TB_Bromate control.
         /// </summary>
         /// <remarks>
@@ -2164,33 +2155,6 @@ namespace AnmolDristi
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox TB_Bromate;
-
-        /// <summary>
-        /// Label_TXB_Bromate_Remarks control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Label_TXB_Bromate_Remarks;
-
-        /// <summary>
-        /// RFV_TXB_Bromate_Remarks control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_TXB_Bromate_Remarks;
-
-        /// <summary>
-        /// TXB_Bromate_Remarks control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox TXB_Bromate_Remarks;
 
         /// <summary>
         /// TotalAshDIV control.

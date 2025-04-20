@@ -632,7 +632,6 @@ namespace AnmolDristi
                 TXB_Retention_Remarks.Text = dt.Rows[0]["Retention_Remarks"].ToString();
 
                 TB_Bromate.Text = dt.Rows[0]["Bromate"].ToString();
-                TB_Bromate.Text = dt.Rows[0]["Bromate_Remarks"].ToString();
 
                 imgMaterial.ImageUrl = dt.Rows[0]["Material_Image"].ToString();
 
