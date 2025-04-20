@@ -850,20 +850,9 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Label_Bromate" runat="server" AssociatedControlID="TB_Bromate" Text="Bromate and Iodate :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Bromate" runat="server" ErrorMessage="Input Required" ValidationGroup="Submit" ControlToValidate="TB_Bromate" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_Bromate" runat="server" ControlToValidate="TB_Bromate" ValidationGroup="Submit" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>
-                                    <asp:CustomValidator ID="CV_TB_Bromate" runat="server" ValidationGroup="Submit" ErrorMessage="Input Range [20.00-30.00]." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Bromate" runat="server" ControlToValidate="TB_Bromate" ValidationGroup="Submit" ForeColor="Red" ErrorMessage="Alphabet or Numeric or decimal Only" ValidationExpression="^([a-zA-Z]+|\d+(\.\d{1,4})?)$" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <div class="input-group-sm">
-                                        <asp:TextBox ID="TB_Bromate" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true" ValidationGroup="Submit" Placeholder="Bromate and Iodate " oninput="validateBromateIodateValue(this);"></asp:TextBox>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-3" id="BromateRemarksDIV" style="display: none;">
-                                <div class="mb-3">
-                                    <asp:Label ID="Label_TXB_Bromate_Remarks" runat="server" AssociatedControlID="TXB_Bromate_Remarks" Text="Bromate Remarks" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                    <asp:RequiredFieldValidator ID="RFV_TXB_Bromate_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_Bromate_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
-                                    <div class="input-group-sm">
-                                        <asp:TextBox ID="TXB_Bromate_Remarks" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true"></asp:TextBox>
+                                        <asp:TextBox ID="TB_Bromate" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true" ValidationGroup="Submit" Placeholder="Bromate and Iodate "></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
