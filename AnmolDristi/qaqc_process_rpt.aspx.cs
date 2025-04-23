@@ -873,7 +873,7 @@ namespace AnmolDristi
             string skuId = DDL_BrandSKU.SelectedValue;
             string shift = hdn_shiftvalue.Value.ToString();
             decimal processWaterTemp = Convert.ToDecimal(TB_ProcessWaterTemp.Text);
-            string commentForProcessWater = "";
+            string commentForProcessWater = "" ;
             decimal waterPh = Convert.ToDecimal(TB_WaterPH.Text);
             string commentForWaterPh = "";
             decimal waterHardness = Convert.ToDecimal(TB_WaterHardness.Text);
@@ -1412,7 +1412,7 @@ namespace AnmolDristi
             string commentForMixingTime = "";
             TimeSpan bakingTime = TimeSpan.Parse(TB_BakingTime.Text);
             string commentForBakingTime = "";
-            int diceRmp = Convert.ToInt32(TB_DiceRpm.Text);
+            decimal diceRmp = Convert.ToDecimal(TB_DiceRpm.Text);
             string commentForDice = "";
             int doughCondition = Convert.ToInt32(RBL_DoughCondition.SelectedValue);
             string commentForDoughCondition = TXB_DoughCondition_Remarks.Text;
@@ -1698,28 +1698,28 @@ namespace AnmolDristi
             var dataSave = new List<VarietyInfo>
             {
                 // Add all 22 varieties here
-                new VarietyInfo {Sl = 1,   sap_IngredientName = "Maida", BOM_Qnty = 500 } ,
-                new VarietyInfo {Sl = 2,   sap_IngredientName = "Sugar", BOM_Qnty = 500 } ,
-                new VarietyInfo {Sl = 3,   sap_IngredientName = "Butter", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 4,   sap_IngredientName = "S.M.P", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 5,   sap_IngredientName = "Process Water", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 6,   sap_IngredientName = "Lecithin", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 7,   sap_IngredientName = "GMS Paste", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 8,   sap_IngredientName = "SSL paste/ LS. Powder", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 9,   sap_IngredientName = "Glucose", BOM_Qnty = 500 },
-                new VarietyInfo {Sl = 10,  sap_IngredientName = "H.V.O", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 11,  sap_IngredientName = "Syrup", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 12,  sap_IngredientName = "Malt", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 13,  sap_IngredientName = "Broken Biscuit", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 14,  sap_IngredientName = "A.B.C.", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 15,  sap_IngredientName = "S.B.C.", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 16,  sap_IngredientName = "S.M.B.S.", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 17,  sap_IngredientName = "Whey Powder", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 18,  sap_IngredientName = "Condence Milk", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 19,  sap_IngredientName = "Salt", BOM_Qnty = 500 } ,
-                new VarietyInfo {Sl = 20,  sap_IngredientName = "Yeast (Smell & Wt.)", BOM_Qnty = 500  },
-                new VarietyInfo {Sl = 21,  sap_IngredientName = "E1", BOM_Qnty = 500 } ,
-                new VarietyInfo {Sl = 22,  sap_IngredientName = "Caramel", BOM_Qnty = 500 } ,
+                new VarietyInfo {Sl = 1,   sap_IngredientName = "Maida", BOM_Qnty = 0 } ,
+                new VarietyInfo {Sl = 2,   sap_IngredientName = "Sugar", BOM_Qnty = 0 } ,
+                new VarietyInfo {Sl = 3,   sap_IngredientName = "Butter", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 4,   sap_IngredientName = "S.M.P", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 5,   sap_IngredientName = "Process Water", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 6,   sap_IngredientName = "Lecithin", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 7,   sap_IngredientName = "GMS Paste", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 8,   sap_IngredientName = "SSL paste/ LS. Powder", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 9,   sap_IngredientName = "Glucose", BOM_Qnty = 0 },
+                new VarietyInfo {Sl = 10,  sap_IngredientName = "H.V.O", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 11,  sap_IngredientName = "Syrup", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 12,  sap_IngredientName = "Malt", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 13,  sap_IngredientName = "Broken Biscuit", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 14,  sap_IngredientName = "A.B.C.", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 15,  sap_IngredientName = "S.B.C.", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 16,  sap_IngredientName = "S.M.B.S.", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 17,  sap_IngredientName = "Whey Powder", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 18,  sap_IngredientName = "Condence Milk", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 19,  sap_IngredientName = "Salt", BOM_Qnty = 0 } ,
+                new VarietyInfo {Sl = 20,  sap_IngredientName = "Yeast (Smell & Wt.)", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 21,  sap_IngredientName = "E1", BOM_Qnty = 0 } ,
+                new VarietyInfo {Sl = 22,  sap_IngredientName = "Caramel", BOM_Qnty = 0 } ,
 
             };
 

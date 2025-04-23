@@ -726,6 +726,7 @@ namespace AnmolDristi
             string retentionRemarks = string.IsNullOrEmpty(TXB_Retention_Remarks.Text) ? null : TXB_Retention_Remarks.Text;
 
             string bromate = string.IsNullOrEmpty(TB_Bromate.Text) ? null : TB_Bromate.Text;
+            //string bromateRemarks = string.IsNullOrEmpty(TXB_Bromate_Remarks.Text) ? null : TXB_Bromate_Remarks.Text;
 
             int submitstatus = 0;
             if (!string.IsNullOrEmpty(ash?.ToString()) && !string.IsNullOrEmpty(insolubleAsh?.ToString()) && !string.IsNullOrEmpty(glutentContent?.ToString()) && !string.IsNullOrEmpty(alcoholicAcidity?.ToString()))
@@ -849,6 +850,7 @@ namespace AnmolDristi
                         command.Parameters.AddWithValue("@Retention_Remarks", (object)retentionRemarks ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@Bromate", (object)bromate ?? DBNull.Value);
+                        //command.Parameters.AddWithValue("@Bromate_Remarks", (object)bromateRemarks ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@Remarks", (object)remarks ?? DBNull.Value);
 

@@ -797,17 +797,17 @@
             var deviationPercentage = standardWeight !== 0 ? (deviationWeight * 100) / standardWeight : 0;
             deviationPercentageElement.value = deviationPercentage.toFixed(2);
 
-            if (Math.abs(deviationPercentage) > 5) {
-                //console.warn("Deviation exceeds 5%! Triggering notification...");
-                setTimeout(function () {
-                    new PNotify({
-                        title: 'Deviation Alert',
-                        text: 'Weight deviation exceeds 5%',
-                        type: 'warning',
-                        styling: 'bootstrap3'
-                    });
-                }, 100);
-            }
+            //if (Math.abs(deviationPercentage) > 5) {
+            //    //console.warn("Deviation exceeds 5%! Triggering notification...");
+            //    setTimeout(function () {
+            //        new PNotify({
+            //            title: 'Deviation Alert',
+            //            text: 'Weight deviation exceeds 5%',
+            //            type: 'warning',
+            //            styling: 'bootstrap3'
+            //        });
+            //    }, 100);
+            //}
 
             var varietyElement = row.querySelector('.variety');
             var varietyName = varietyElement ? varietyElement.value.trim() : "Unknown";
@@ -1259,7 +1259,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label1" runat="server" AssociatedControlID="DDL_Plant" Text="Plant Name" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_Plant" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="DDL_Plant" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_Plant" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="DDL_Plant" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:DropDownList ID="DDL_Plant" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_Plant_SelectedIndexChanged"></asp:DropDownList>
                                                                     </div>
@@ -1269,7 +1269,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label2" runat="server" AssociatedControlID="DDL_PlantLine" Text="Select Line" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_PlantLine" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="DDL_PlantLine" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_PlantLine" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="DDL_PlantLine" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:DropDownList ID="DDL_PlantLine" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_PlantLine_SelectedIndexChanged"></asp:DropDownList>
                                                                     </div>
@@ -1279,7 +1279,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label3" runat="server" AssociatedControlID="DDL_ProductCategory" Text="Product Category" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_ProductCategory" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" InitialValue="0" ControlToValidate="DDL_ProductCategory" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_ProductCategory" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" InitialValue="0" ControlToValidate="DDL_ProductCategory" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:DropDownList ID="DDL_ProductCategory" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_ProductCategory_SelectedIndexChanged"></asp:DropDownList>
                                                                     </div>
@@ -1289,7 +1289,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label4" runat="server" AssociatedControlID="DDL_ProductBrand" Text="Product Brand" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_ProductBrand" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="DDL_ProductBrand" InitialValue="0" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_ProductBrand" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="DDL_ProductBrand" InitialValue="0" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:DropDownList ID="DDL_ProductBrand" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_ProductBrand_SelectedIndexChanged"></asp:DropDownList>
                                                                     </div>
@@ -1299,7 +1299,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label5" runat="server" AssociatedControlID="DDL_BrandSKU" Text="Brand SKU Type" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_BrandSKU" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSaveNOT" ForeColor="Red" ControlToValidate="DDL_BrandSKU" InitialValue="0" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DDL_BrandSKU" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSaveNOT" ForeColor="Red" ControlToValidate="DDL_BrandSKU" InitialValue="0" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
                                                                     </div>
@@ -1309,7 +1309,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_ProcessWaterTemp" runat="server" AssociatedControlID="TB_ProcessWaterTemp" Text="Process Water Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_ProcessWaterTemp" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_ProcessWaterTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_ProcessWaterTemp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_ProcessWaterTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_ProcessWaterTemp" runat="server" ControlToValidate="TB_ProcessWaterTemp" ForeColor="Red" ErrorMessage="Decimal only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_ProcessWaterTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Process Water Temp. "></asp:TextBox>
@@ -1321,7 +1321,7 @@
                                                             <div class="col-md-3" id="ProcessWaterTempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelProcessWaterTempRemarks" runat="server" AssociatedControlID="TXB_ProcessWaterTemp_Remarks" Text="Process Water Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessWaterTemp_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_ProcessWaterTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessWaterTemp_Remarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_ProcessWaterTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_ProcessWaterTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1331,7 +1331,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_WaterPH" runat="server" AssociatedControlID="TB_WaterPH" Text="Water PH Value :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_WaterPH" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_WaterPH" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_WaterPH" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_WaterPH" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_WaterPH" runat="server" ControlToValidate="TB_WaterPH" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_WaterPH" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Water PH Value "></asp:TextBox>
@@ -1342,7 +1342,7 @@
                                                             <div class="col-md-3" id="WaterPHRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelWaterPHRemarks" runat="server" AssociatedControlID="TXB_WaterPH_Remarks" Text="Water PH Value Remarks:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_WaterPH_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_WaterPH_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_WaterPH_Remarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_WaterPH_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_WaterPH_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1352,7 +1352,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_WaterHardness" runat="server" AssociatedControlID="TB_WaterHardness" Text="Water Hardness" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_WaterHardness" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_WaterHardness" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_WaterHardness" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_WaterHardness" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_WaterHardness" runat="server" ControlToValidate="TB_WaterHardness" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_WaterHardness" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Water Hardness Value "></asp:TextBox>
@@ -1363,7 +1363,7 @@
                                                             <div class="col-md-3" id="WaterHardnessRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelWaterHardnessRemarks" runat="server" AssociatedControlID="TXB_WaterHardness_Remarks" Text="Water Hardness Remarks:" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_WaterHardness_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_WaterHardness_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_WaterHardness_Remarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_WaterHardness_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_WaterHardness_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1384,7 +1384,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_TDS" runat="server" AssociatedControlID="TB_TDS" Text="TDS" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_TDS" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_TDS" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_TDS" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_TDS" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_TDS" runat="server" ControlToValidate="TB_TDS" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_TDS" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="TDS Value "></asp:TextBox>
@@ -1396,7 +1396,7 @@
                                                             <div class="col-md-3" id="TDSRemarks" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelTDSRemarks" runat="server" AssociatedControlID="TXB_TDS_Remarks" Text="Tds Remarks:" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TDS_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_TDS_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TDS_Remarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_TDS_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_TDS_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1439,7 +1439,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMaidaColorApp" runat="server" AssociatedControlID="RBL_MaidaColorApp" Text="Maida Color Appearance :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_RBL_MaidaColorApp" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MaidaColorApp" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_RBL_MaidaColorApp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MaidaColorApp" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_MaidaColorApp" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleMaidaColorAppRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1453,7 +1453,7 @@
                                                             <div class="col-md-3" id="MaidaColorAppRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMaidaColorAppRemarks" runat="server" AssociatedControlID="TXB_MaidaColorApp_Remarks" Text="Maida Color Appearance (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaColorAppRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_MaidaColorApp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaColorAppRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_MaidaColorApp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_MaidaColorApp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1463,7 +1463,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMaidaFlavorTaste" runat="server" AssociatedControlID="RBL_MaidaFlavorTaste" Text="Maida Flavor Taste :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaFlavorTaste" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MaidaFlavorTaste" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaFlavorTaste" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MaidaFlavorTaste" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_MaidaFlavorTaste" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleMaidaFlavorTasteRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1477,7 +1477,7 @@
                                                             <div class="col-md-3" id="MaidaFlavorTasteRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMaidaFlavorTasteRemarks" runat="server" AssociatedControlID="TXB_MaidaFlavorTaste_Remarks" Text="Maida Flavor Taste (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaFlavorTasteRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_MaidaFlavorTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaFlavorTasteRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_MaidaFlavorTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_MaidaFlavorTaste_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1487,7 +1487,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMaidaGrittiness" runat="server" AssociatedControlID="RBL_MaidaGrittiness" Text="Maida Grittiness :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaGrittiness" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MaidaGrittiness" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaGrittiness" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MaidaGrittiness" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_MaidaGrittiness" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleMaidaGrittinessRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1501,7 +1501,7 @@
                                                             <div class="col-md-3" id="MaidaGrittinessRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMaidaGrittinessRemarks" runat="server" AssociatedControlID="TXB_MaidaGrittiness_Remarks" Text="Maida Grittiness (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaGrittinessRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_MaidaGrittiness_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaGrittinessRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_MaidaGrittiness_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_MaidaGrittiness_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1511,7 +1511,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelBBColorApp" runat="server" AssociatedControlID="RBL_BBColorApp" Text="Broken Biscuit Color Appearance :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BBColorApp" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_BBColorApp" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BBColorApp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_BBColorApp" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_BBColorApp" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleBBColorAppRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1525,7 +1525,7 @@
                                                             <div class="col-md-3" id="BBColorAppRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelBBColorAppRemarks" runat="server" AssociatedControlID="TXB_BBColorApp_Remarks" Text="BB Color Appearance (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BBColorAppRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_BBColorApp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BBColorAppRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_BBColorApp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_BBColorApp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1535,7 +1535,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelBBFlavorTaste" runat="server" AssociatedControlID="RBL_BBFlavorTaste" Text="Broken Biscuit Flavor Taste :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BBFlavorTaste" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_BBFlavorTaste" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BBFlavorTaste" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_BBFlavorTaste" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_BBFlavorTaste" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleBBFlavorTasteRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1549,7 +1549,7 @@
                                                             <div class="col-md-3" id="BBFlavorTasteRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelBBFlavorTasteRemarks" runat="server" AssociatedControlID="TXB_BBFlavorTaste_Remarks" Text="BB Flavor Taste (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BBFlavorTasteRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_BBFlavorTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BBFlavorTasteRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_BBFlavorTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_BBFlavorTaste_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1559,7 +1559,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelBBMouthFeel" runat="server" AssociatedControlID="RBL_BBMouthFeel" Text="Broken Biscuit Mouth Feel :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BBMouthFeel" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_BBMouthFeel" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BBMouthFeel" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_BBMouthFeel" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_BBMouthFeel" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleBBMouthFeelRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1573,7 +1573,7 @@
                                                             <div class="col-md-3" id="BBMouthFeelRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelBBMouthFeelRemarks" runat="server" AssociatedControlID="TXB_BBMouthFeel_Remarks" Text="BB Mouth Feel (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BBMouthFeelRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_BBMouthFeel_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BBMouthFeelRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_BBMouthFeel_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_BBMouthFeel_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1583,7 +1583,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelHvoSmell" runat="server" AssociatedControlID="RBL_HvoSmell" Text="HVO Smell :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_HvoSmell" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_HvoSmell" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_HvoSmell" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_HvoSmell" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_HvoSmell" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleHvoSmellRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1597,7 +1597,7 @@
                                                             <div class="col-md-3" id="HvoSmellRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelHvoSmellRemarks" runat="server" AssociatedControlID="TXB_HvoSmell_Remarks" Text="HVO Smell (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_HvoSmellRemakrs" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_HvoSmell_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_HvoSmellRemakrs" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_HvoSmell_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_HvoSmell_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1607,7 +1607,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelHvoTaste" runat="server" AssociatedControlID="RBL_HvoTaste" Text="HVO Taste :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTaste" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_HvoTaste" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTaste" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_HvoTaste" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_HvoTaste" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleHvoTasteRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1621,7 +1621,7 @@
                                                             <div class="col-md-3" id="HvoTasteRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelHvoTasteRemarks" runat="server" AssociatedControlID="TXB_HvoTaste_Remarks" Text="HVO Taste (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTasteRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_HvoTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTasteRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_HvoTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_HvoTaste_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1631,7 +1631,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelHvoTemp" runat="server" AssociatedControlID="TB_HvoTemp" Text="HVO Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTemp" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_HvoTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTemp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_HvoTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_HvoTemp" runat="server" ControlToValidate="TB_HvoTemp" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_HvoTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="HVO Temp. "></asp:TextBox>
@@ -1643,7 +1643,7 @@
                                                             <div class="col-md-3" id="HvoTempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelHvoTempRemarks" runat="server" AssociatedControlID="TXB_HvoTemp_Remarks" Text="HVO Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTempRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_HvoTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_HvoTempRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_HvoTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_HvoTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1653,7 +1653,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSMPSmell" runat="server" AssociatedControlID="RBL_SMPSmell" Text="SMP Smell :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SMPSmell" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SMPSmell" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SMPSmell" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SMPSmell" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_SMPSmell" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleSMPSmellRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1667,7 +1667,7 @@
                                                             <div class="col-md-3" id="SMPSmellRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSMPSmellRemarks" runat="server" AssociatedControlID="TXB_SMPSmell_Remarks" Text="SMP Smell (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SMPSmell_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SMPSmell_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SMPSmell_Remarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SMPSmell_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SMPSmell_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1677,7 +1677,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSMPTaste" runat="server" AssociatedControlID="RBL_SMPTaste" Text="SMP Taste :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SMPTaste" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SMPTaste" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SMPTaste" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SMPTaste" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_SMPTaste" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleSMPTasteRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1691,7 +1691,7 @@
                                                             <div class="col-md-3" id="SMPTasteRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSMPTasteRemarks" runat="server" AssociatedControlID="TXB_SMPTaste_Remarks" Text="SMP Taste (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SMPTasteRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SMPTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SMPTasteRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SMPTaste_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SMPTaste_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1701,7 +1701,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSMPColor" runat="server" AssociatedControlID="RBL_SMPColor" Text="SMP Color :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SMPColor" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SMPColor" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SMPColor" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SMPColor" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_SMPColor" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleSMPColorRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1715,7 +1715,7 @@
                                                             <div class="col-md-3" id="SMPColorRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSMPColor_Remarks" runat="server" AssociatedControlID="TXB_SMPColor_Remarks" Text="SMP Color Appearance (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TXB_SMPColorRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SMPColor_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TXB_SMPColorRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SMPColor_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SMPColor_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1724,11 +1724,11 @@
 
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
-                                                                    <asp:Label ID="LabelSyrupTemp" runat="server" AssociatedControlID="TB_HvoTemp" Text="Syrup Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupTemp" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_SyrupTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:Label ID="LabelSyrupTemp" runat="server" AssociatedControlID="TB_SyrupTemp" Text="Syrup Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupTemp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_SyrupTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_SyrupTemp" runat="server" ControlToValidate="TB_SyrupTemp" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
-                                                                        <asp:TextBox ID="TB_SyrupTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="HVO Temp. "></asp:TextBox>
+                                                                        <asp:TextBox ID="TB_SyrupTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Syrup Temp. "></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1737,7 +1737,7 @@
                                                             <div class="col-md-3" id="SyrupTempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSyrupTempRemarks" runat="server" AssociatedControlID="TXB_SyrupTemp_Remarks" Text="Syrup Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupTempRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SyrupTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupTempRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SyrupTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SyrupTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1747,7 +1747,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSyrupColor" runat="server" AssociatedControlID="RBL_SyrupColor" Text="Syrup Color :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupColor" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SyrupColor" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupColor" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SyrupColor" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_SyrupColor" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleSyrupColorRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1761,7 +1761,7 @@
                                                             <div class="col-md-3" id="SyrupColorRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSyrupColorRemarksDiv" runat="server" AssociatedControlID="TXB_SyrupColor_Remarks" Text="Syrup Color Appearance (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupColorRemarksDiv" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SyrupColor_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupColorRemarksDiv" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SyrupColor_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SyrupColor_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1771,7 +1771,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_SyrupPH" runat="server" AssociatedControlID="TB_SyrupPH" Text="Syrup PH Value :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_SyrupPH" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_SyrupPH" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_SyrupPH" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_SyrupPH" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_SyrupPH" runat="server" ControlToValidate="TB_SyrupPH" ForeColor="Red" ErrorMessage="Decimal" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_SyrupPH" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Syrup PH Value "></asp:TextBox>
@@ -1783,7 +1783,7 @@
                                                             <div class="col-md-3" id="SyrupPHRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSyrupPHRemarks" runat="server" AssociatedControlID="TXB_SyrupPH_Remarks" Text=" Syrup PH Value Remarks:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupPHRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SyrupPH_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SyrupPHRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SyrupPH_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SyrupPH_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1793,7 +1793,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelInvertSyrupBucket" runat="server" AssociatedControlID="RBL_InvertSyrupBucket" Text="Invert Syrup Bucket Filter Sieve :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_InvertSyrupBucket" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_InvertSyrupBucket" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_InvertSyrupBucket" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_InvertSyrupBucket" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_InvertSyrupBucket" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleInvertSyrupBucketRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1807,7 +1807,7 @@
                                                             <div class="col-md-3" id="InvertSyrupBucketRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelInvertSyrupBucketRemarks" runat="server" AssociatedControlID="TXB_InvertSyrupBucket_Remarks" Text="Invert Syrup Bucket Filter Sieve Remarks (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_InvertSyrupBucketRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_InvertSyrupBucket_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_InvertSyrupBucketRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_InvertSyrupBucket_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_InvertSyrupBucket_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1817,7 +1817,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSugarSolBucket" runat="server" AssociatedControlID="RBL_SugarSolBucket" Text="Sugar Sol Bucket Filter Sieve :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SugarSolBucket" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SugarSolBucket" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SugarSolBucket" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SugarSolBucket" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_SugarSolBucket" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleSugarSolBucketRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1831,7 +1831,7 @@
                                                             <div class="col-md-3" id="SugarSolBucketRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSugarSolBucketRemarks" runat="server" AssociatedControlID="TXB_SugarSolBucket_Remarks" Text="Sugar Sol Bucket Filter Sieve Remarks (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SugarSolBucketRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SugarSolBucket_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SugarSolBucketRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SugarSolBucket_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SugarSolBucket_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1841,7 +1841,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelCreamerBucketFilter" runat="server" AssociatedControlID="RBL_CreamerBucketFilter" Text="Creamer Bucket Filter Sheet :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_CreamerBucketFilter" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_CreamerBucketFilter" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_CreamerBucketFilter" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_CreamerBucketFilter" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_CreamerBucketFilter" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleCreamerBucketRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1855,7 +1855,7 @@
                                                             <div class="col-md-3" id="CreamerBucketRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label12" runat="server" AssociatedControlID="TXB_CreamerBucket_Remarks" Text="Creamer Bucket Filter Sheet Remarks (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_CreamerBucketRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_CreamerBucket_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_CreamerBucketRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_CreamerBucket_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_CreamerBucket_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1865,7 +1865,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSugarGrinder" runat="server" AssociatedControlID="RBL_SugarGrinder" Text="Sugar Grinder Sheet :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SugarGrinder" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SugarGrinder" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SugarGrinder" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_SugarGrinder" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_SugarGrinder" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleSugarGrinderRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1879,7 +1879,7 @@
                                                             <div class="col-md-3" id="SugarGrinderRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelSugarGrinderRemarks" runat="server" AssociatedControlID="TXB_SugarGrinder_Remarks" Text="Sugar Grinder Sheet Remarks (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_SugarGrinderRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_SugarGrinder_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_SugarGrinderRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_SugarGrinder_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SugarGrinder_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1889,7 +1889,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelOilSystem" runat="server" AssociatedControlID="RBL_OilSystem" Text="Oil System Bucket Filter :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_OilSystem" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_OilSystem" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_OilSystem" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_OilSystem" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_OilSystem" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleOilSystemRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1903,7 +1903,7 @@
                                                             <div class="col-md-3" id="OilSystemRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelOilSystemRemarks" runat="server" AssociatedControlID="TXB_OilSystem_Remarks" Text="Oil System Bucket Filter Remarks (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_OilSystemRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_OilSystem_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_OilSystemRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_OilSystem_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_OilSystem_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1913,7 +1913,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelOilSpray" runat="server" AssociatedControlID="RBL_OilSpray" Text="Oil Spray Seive :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_OilSpray" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_OilSpray" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_OilSpray" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_OilSpray" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_OilSpray" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleOilSprayRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1927,7 +1927,7 @@
                                                             <div class="col-md-3" id="OilSprayRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelOilSprayRemarks" runat="server" AssociatedControlID="TXB_OilSpray_Remarks" Text="Oil Spray Seive Remarks (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_OilSprayRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_OilSpray_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_OilSprayRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_OilSpray_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_OilSpray_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1937,7 +1937,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMilkSpray" runat="server" AssociatedControlID="RBL_MilkSpray" Text="Milk Spray Seive :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MilkSpray" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MilkSpray" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MilkSpray" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ForeColor="Red" ControlToValidate="RBL_MilkSpray" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_MilkSpray" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleMilkSprayRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -1951,7 +1951,7 @@
                                                             <div class="col-md-3" id="MilkSprayRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label13" runat="server" AssociatedControlID="TXB_MilkSpray_Remarks" Text="Milk Spray Seive Remarks (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MilkSprayRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_MilkSpray_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MilkSprayRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_MilkSpray_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_MilkSpray_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1961,7 +1961,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelColdRoomTemp" runat="server" AssociatedControlID="TB_ColdRoomTemp" Text="Temp. Of Cold Rooom:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_ColdRoomTemp" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_ColdRoomTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_ColdRoomTemp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_ColdRoomTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_ColdRoomTemp" runat="server" ControlToValidate="TB_ColdRoomTemp" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_ColdRoomTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder=" Temp. Of Cold Room "></asp:TextBox>
@@ -1973,7 +1973,7 @@
                                                             <div class="col-md-3" id="ColdRoomTempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelColdRoomTempRemarks" runat="server" AssociatedControlID="TXB_ColdRoomTemp_Remarks" Text="Cold Room Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_ColdRoomTempRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_ColdRoomTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_ColdRoomTempRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_ColdRoomTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_ColdRoomTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1983,7 +1983,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelDeepFreezeTemp" runat="server" AssociatedControlID="TB_ColdRoomTemp" Text="Temp. Of Deep Freeze:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DeepFreezeTemp" runat="server" ErrorMessage="*" ValidationGroup="BasicDataSave" ControlToValidate="TB_DeepFreezeTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DeepFreezeTemp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TB_DeepFreezeTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_DeepFreezeTemp" runat="server" ControlToValidate="TB_DeepFreezeTemp" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_DeepFreezeTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder=" Temp. Of Deep Freeze"></asp:TextBox>
@@ -1995,7 +1995,7 @@
                                                             <div class="col-md-3" id="DeepFreezeTempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label14" runat="server" AssociatedControlID="TXB_DeepFreezeTemp_Remarks" Text="Deep Freeze Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DeepFreezeTempRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_DeepFreezeTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DeepFreezeTempRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="TXB_DeepFreezeTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DeepFreezeTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2005,7 +2005,7 @@
                                                             <div class="col-md-3" id="FU_MaidaImage_Upldr" runat="server" data-prefix="QAPC/MaidaImage">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_FU_MaidaImage" runat="server" AssociatedControlID="FU_MaidaImage" Text="Maida Appearance" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_FU_MaidaImage" runat="server" ErrorMessage="*" ControlToValidate="FU_MaidaImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_FU_MaidaImage" runat="server" ErrorMessage="Input required" ControlToValidate="FU_MaidaImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:CustomValidator ID="CV_FU_MaidaImage" runat="server" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="BasicDataSave" ErrorMessage="Please upload file"></asp:CustomValidator>
                                                                     <asp:Label ID="lblErrorMessage2" runat="server" CssClass="text-danger"></asp:Label>
                                                                     <div class="input-group input-group-sm">
@@ -2022,7 +2022,7 @@
                                                             <%--<div class="col-md-3" id="FU_BBImage_Upldr" runat="server" visible="true">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_FU_BBImage" runat="server" AssociatedControlID="FU_BBImage" Text="Broken Biscuit Appearance" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_FU_BBImage" runat="server" ErrorMessage="*" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="ValidationGroup2" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_FU_BBImage" runat="server" ErrorMessage="Input required" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="ValidationGroup2" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:CustomValidator ID="CV_FU_BBImage" runat="server" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="ValidationGroup2" ErrorMessage="Please upload file"></asp:CustomValidator>
                                                                     <asp:Label ID="lblErrorMessage1" runat="server" CssClass="text-danger"></asp:Label>
                                                                     <div class="input-group input-group-sm">
@@ -2041,7 +2041,7 @@
                                                             <div class="col-md-3" id="FU_BBImage_Upldr" runat="server" visible="true">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_FU_BBImage" runat="server" AssociatedControlID="FU_BBImage" Text="Broken Biscuit Appearance" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_FU_BBImage" runat="server" ErrorMessage="*" ControlToValidate="FU_BBImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_FU_BBImage" runat="server" ErrorMessage="Input required" ControlToValidate="FU_BBImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:CustomValidator ID="CV_FU_BBImage" runat="server" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="BasicDataSave" ErrorMessage="Please upload file"></asp:CustomValidator>
                                                                     <asp:Label ID="lblErrorMessage1" runat="server" CssClass="text-danger"></asp:Label>
                                                                     <div class="input-group input-group-sm">
@@ -2092,7 +2092,7 @@
                                                                     <asp:TemplateField HeaderText="Standard Weight" HeaderStyle-Width="15%">
                                                                         <ItemTemplate>
                                                                             <asp:TextBox ID="txtStandardWeight" runat="server" CssClass="standard-weight form-control form-control-sm rounded"
-                                                                                ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>' ForeColor="DimGray" Text='<%# Eval("BOM_Qnty") %>'></asp:TextBox>
+                                                                                ForeColor="DimGray" Text='<%# Eval("BOM_Qnty") %>'></asp:TextBox><%--ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'--%> 
                                                                         </ItemTemplate>
                                                                     </asp:TemplateField>
 
@@ -2132,7 +2132,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelRoomTemp" runat="server" AssociatedControlID="TB_RoomTemp" Text="Room Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_RoomTemp" runat="server" ErrorMessage="*" ValidationGroup="SpongeSubmit" ControlToValidate="TB_RoomTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_RoomTemp" runat="server" ErrorMessage="Input required" ValidationGroup="SpongeSubmit" ControlToValidate="TB_RoomTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_RoomTemp" runat="server" ValidationGroup="SpongeSubmit" ControlToValidate="TB_RoomTemp" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_RoomTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Room Temp." oninput="toggleRoomTempRemarksDiv(this);"></asp:TextBox>
@@ -2143,7 +2143,7 @@
                                                             <div class="col-md-3" id="RoomTempRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label15" runat="server" AssociatedControlID="TXB_RoomTemp_Remarks" Text="Room Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_RoomTempRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_RoomTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_RoomTempRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_RoomTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_RoomTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2153,7 +2153,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelDrumCovered" runat="server" AssociatedControlID="RBL_DrumCovered" Text="Sponge Drum Covered :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DrumCovered" runat="server" ValidationGroup="SpongeSubmit" ErrorMessage="*" ForeColor="Red" ControlToValidate="RBL_DrumCovered" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DrumCovered" runat="server" ValidationGroup="SpongeSubmit" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="RBL_DrumCovered" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_DrumCovered" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleDrumCoveredRemarksDiv(this);">
                                                                             <asp:ListItem Text="Yes" Value="1"></asp:ListItem>
@@ -2167,7 +2167,7 @@
                                                             <div class="col-md-3" id="DrumCoveredRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label16" runat="server" AssociatedControlID="TXB_DrumCovered_Remarks" Text="Sponge Drum Covered (No)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DrumCoveredRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_DrumCovered_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DrumCoveredRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_DrumCovered_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DrumCovered_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2177,7 +2177,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelQuality" runat="server" AssociatedControlID="RBL_Quality" Text="Quality :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_Quality" runat="server" ValidationGroup="SpongeSubmit" ErrorMessage="*" ForeColor="Red" ControlToValidate="RBL_Quality" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_Quality" runat="server" ValidationGroup="SpongeSubmit" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="RBL_Quality" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_Quality" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleQualityRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -2190,7 +2190,7 @@
                                                             <div class="col-md-3" id="QualityRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label17" runat="server" AssociatedControlID="TXB_Quality_Remarks" Text="Quality (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_QualityRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_Quality_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_QualityRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_Quality_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_Quality_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2201,7 +2201,7 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelStandingTime" runat="server" AssociatedControlID="TB_StandingTime" Text="Standing Time :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_Time" runat="server" ErrorMessage="Standing Time is required " ControlToValidate="TB_StandingTime" ValidationGroup="SpongeSubmit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_StandingTime" runat="server" ControlToValidate="TB_StandingTime" ForeColor="Red" ValidationGroup="SpongeSubmit" Display="Dynamic" ErrorMessage="Please enter time in hhmmsss format" ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_StandingTime" runat="server" ControlToValidate="TB_StandingTime" ForeColor="Red" ValidationGroup="SpongeSubmit" Display="Dynamic" ErrorMessage="Please enter time in hhmmss format.Time must be in 24-hour format: hours 00–23, minutes/seconds 00–59 " ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_StandingTime" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="hh:mm:ss" MaxLength="8" oninput="formatTimeInput(event)"></asp:TextBox>
                                                                     </div>
@@ -2211,7 +2211,7 @@
                                                             <div class="col-md-3" id="StandingTimeRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label77" runat="server" AssociatedControlID="TXB_StandingTime_Remarks" Text="Standing Time Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_StandingTimeRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_StandingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_StandingTimeRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_StandingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_StandingTime_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2221,7 +2221,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelTemp" runat="server" AssociatedControlID="TB_Temp" Text="Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_Temp" runat="server" ErrorMessage="*" ValidationGroup="SpongeSubmit" ControlToValidate="TB_Temp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_Temp" runat="server" ErrorMessage="Input required" ValidationGroup="SpongeSubmit" ControlToValidate="TB_Temp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_Temp" runat="server" ValidationGroup="SpongeSubmit" ControlToValidate="TB_Temp" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_Temp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Temp. " oninput="toggleTempRemarksDIV(this);"></asp:TextBox>
@@ -2232,7 +2232,7 @@
                                                             <div class="col-md-3" id="TempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label18" runat="server" AssociatedControlID="TXB_Temp_Remarks" Text="Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TempRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_Temp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TempRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="SpongeSubmit" ControlToValidate="TXB_Temp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_Temp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2263,7 +2263,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelDoughTemp" runat="server" AssociatedControlID="TB_DoughTemp" Text="Dough Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DoughTemp" runat="server" ErrorMessage="*" ValidationGroup="DoughSubmit" ControlToValidate="TB_DoughTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DoughTemp" runat="server" ErrorMessage="Input required" ValidationGroup="DoughSubmit" ControlToValidate="TB_DoughTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_DoughTemp" runat="server" ValidationGroup="DoughSubmit" ControlToValidate="TB_Temp" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_DoughTemp" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Temp." oninput="toggleDoughTempRemarksDIV(this);"></asp:TextBox>
@@ -2274,7 +2274,7 @@
                                                             <div class="col-md-3" id="DoughTempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label19" runat="server" AssociatedControlID="TXB_DoughTemp_Remarks" Text="Dough Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DoughTempRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DoughTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DoughTempRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DoughTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DoughTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2285,7 +2285,7 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelDoughRestTime" runat="server" AssociatedControlID="TB_DoughRestTime" Text="Dough Rest Time :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_DoughRestTime" runat="server" ErrorMessage="Dough Rest Time is required " ControlToValidate="TB_DoughRestTime" ValidationGroup="DoughSubmit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_DoughRestTime" runat="server" ControlToValidate="TB_DoughRestTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmsss format" ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_DoughRestTime" runat="server" ControlToValidate="TB_DoughRestTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmss format. Time must be in 24-hour format: hours 00–23, minutes/seconds 00–59 " ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_DoughRestTime" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="hh:mm:ss" MaxLength="8" oninput="formatTimeInput(event)"></asp:TextBox>
                                                                     </div>
@@ -2295,7 +2295,7 @@
                                                             <div class="col-md-3" id="DoughRestTimeRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label70" runat="server" AssociatedControlID="TXB_DoughRestTime_Remarks" Text="Dough Remarks Temp . Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DoughRestTimeRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DoughRestTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DoughRestTimeRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DoughRestTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DoughRestTime_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2305,7 +2305,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMetalDectector" runat="server" AssociatedControlID="RBL_MetalDectector" Text="Metal Detector Condition :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MetalDectector" runat="server" ValidationGroup="DoughSubmit" ErrorMessage="*" ForeColor="Red" ControlToValidate="RBL_MetalDectector" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MetalDectector" runat="server" ValidationGroup="DoughSubmit" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="RBL_MetalDectector" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_MetalDectector" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleMetalDetectorRemarksDiv(this);">
                                                                             <asp:ListItem Text="Yes" Value="1"></asp:ListItem>
@@ -2319,7 +2319,7 @@
                                                             <div class="col-md-3" id="MetalDetectorRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label20" runat="server" AssociatedControlID="TXB_MetalDetector_Remarks" Text="Condition (No)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MetalDetectorRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_MetalDetector_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MetalDetectorRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_MetalDetector_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_MetalDetector_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2329,7 +2329,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelProcessSequence" runat="server" AssociatedControlID="RBL_ProcessSequence" Text="Process Sequence :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessSequence" runat="server" ValidationGroup="DoughSubmit" ErrorMessage="*" ForeColor="Red" ControlToValidate="RBL_MetalDectector" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessSequence" runat="server" ValidationGroup="DoughSubmit" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="RBL_MetalDectector" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_ProcessSequence" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleProcessSequenceRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -2343,7 +2343,7 @@
                                                             <div class="col-md-3" id="ProcessSequenceRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label21" runat="server" AssociatedControlID="TXB_ProcessSequence_Remarks" Text="Process Sequence (NoT Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessSequenceRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_ProcessSequence_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessSequenceRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_ProcessSequence_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_ProcessSequence_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2354,7 +2354,7 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelCreamingTime" runat="server" AssociatedControlID="TB_CreamingTime" Text="Creaming Time :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_CreamingTime" runat="server" ErrorMessage="Creaming Time is required " ControlToValidate="TB_CreamingTime" ValidationGroup="DoughSubmit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_CreamingTime" runat="server" ControlToValidate="TB_CreamingTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmsss format" ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_CreamingTime" runat="server" ControlToValidate="TB_CreamingTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmss format. Time must be in 24-hour format: hours 00–23, minutes/seconds 00–59 " ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_CreamingTime" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="hh:mm:ss" MaxLength="8" oninput="formatTimeInput(event)"></asp:TextBox>
                                                                     </div>
@@ -2364,7 +2364,7 @@
                                                             <div class="col-md-3" id="CreamingTimeRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label71" runat="server" AssociatedControlID="TXB_CreamingTime_Remarks" Text="CreamingTime Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_CreamingTimeRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_CreamingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_CreamingTimeRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_CreamingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_CreamingTime_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2375,7 +2375,7 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelMixingTime" runat="server" AssociatedControlID="TB_MixingTime" Text="Mixing Time :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_MixingTime" runat="server" ErrorMessage="Mixing Time is required " ControlToValidate="TB_MixingTime" ValidationGroup="DoughSubmit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_MixingTime" runat="server" ControlToValidate="TB_MixingTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmsss format" ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_MixingTime" runat="server" ControlToValidate="TB_MixingTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmss format. Time must be in 24-hour format: hours 00–23, minutes/seconds 00–59 " ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_MixingTime" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="hh:mm:ss" MaxLength="8" oninput="formatTimeInput(event)"></asp:TextBox>
                                                                     </div>
@@ -2385,7 +2385,7 @@
                                                             <div class="col-md-3" id="MixingTimeRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label72" runat="server" AssociatedControlID="TXB_MixingTime_Remarks" Text="Mixing Time Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MixingTimeRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_MixingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MixingTimeRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_MixingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_MixingTime_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2396,7 +2396,7 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelBakingTime" runat="server" AssociatedControlID="TB_BakingTime" Text="Baking Time :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_BakingTime" runat="server" ErrorMessage="Baking Time is required " ControlToValidate="TB_DoughRestTime" ValidationGroup="DoughSubmit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_BakingTime" runat="server" ControlToValidate="TB_BakingTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmsss format" ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_BakingTime" runat="server" ControlToValidate="TB_BakingTime" ForeColor="Red" ValidationGroup="DoughSubmit" ErrorMessage="Please enter time in hhmmss format. Time must be in 24-hour format: hours 00–23, minutes/seconds 00–59 " ValidationExpression="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_BakingTime" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="hh:mm:ss" MaxLength="8" oninput="formatTimeInput(event)"></asp:TextBox>
                                                                     </div>
@@ -2406,7 +2406,7 @@
                                                             <div class="col-md-3" id="BakingTimeRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label73" runat="server" AssociatedControlID="TXB_BakingTime_Remarks" Text="Baking time Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BakingTimeRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_BakingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BakingTimeRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_BakingTime_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_BakingTime_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2416,7 +2416,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelDiceRpm" runat="server" AssociatedControlID="TB_DoughTemp" Text="Dice RPM :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DiceRpm" runat="server" ErrorMessage="*" ValidationGroup="DoughSubmit" ControlToValidate="TB_DiceRpm" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DiceRpm" runat="server" ErrorMessage="Input required" ValidationGroup="DoughSubmit" ControlToValidate="TB_DiceRpm" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_DiceRpm" runat="server" ValidationGroup="DoughSubmit" ControlToValidate="TB_DiceRpm" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_DiceRpm" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Dice Rmp"></asp:TextBox>
@@ -2427,7 +2427,7 @@
                                                             <div class="col-md-3" id="DiceRpmRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label74" runat="server" AssociatedControlID="TXB_DiceRpm_Remarks" Text="Dice Rpm Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DiceRpmRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DiceRpm_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DiceRpmRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DiceRpm_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DiceRpm_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2437,7 +2437,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LabelDoughCondition" runat="server" AssociatedControlID="RBL_DoughCondition" Text="Condition Of Dough :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DoughCondition" runat="server" ValidationGroup="DoughSubmit" ErrorMessage="*" ForeColor="Red" ControlToValidate="RBL_DoughCondition" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DoughCondition" runat="server" ValidationGroup="DoughSubmit" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="RBL_DoughCondition" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_DoughCondition" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleDoughConditionRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -2451,7 +2451,7 @@
                                                             <div class="col-md-3" id="DoughConditionRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label22" runat="server" AssociatedControlID="TXB_DoughCondition_Remarks" Text="Dough Condition (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_DoughConditionRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DoughCondition_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_DoughConditionRemarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="DoughSubmit" ControlToValidate="TXB_DoughCondition_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DoughCondition_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -2520,7 +2520,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label10" runat="server" AssociatedControlID="RBL_BalanceCondition" Text="Weighing Balance Condition :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BalanceCondition" runat="server" ValidationGroup="VerifiedSubmit" ErrorMessage="*" ForeColor="Red" ControlToValidate="RBL_BalanceCondition" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BalanceCondition" runat="server" ValidationGroup="VerifiedSubmit" ErrorMessage="Input required" ForeColor="Red" ControlToValidate="RBL_BalanceCondition" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:RadioButtonList ID="RBL_BalanceCondition" runat="server" CssClass="form-control form-control-sm rounded remove-border" RepeatLayout="Table" RepeatDirection="Horizontal" CellPadding="5" CellSpacing="5" RepeatColumns="3" Width="100%" onchange="toggleBalanceConditionRemarksDiv(this);">
                                                                             <asp:ListItem Text="Ok" Value="1"></asp:ListItem>
@@ -2534,7 +2534,7 @@
                                                             <div class="col-md-3" id="BalanceConditionRemarksDiv" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Label46" runat="server" AssociatedControlID="TXB_BalanceCondition_Remarks" Text="Weighing Balance Condition (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_BalanceCondition_Remarks" runat="server" ErrorMessage="*" ValidationGroup="VerifiedSubmit" ForeColor="Red" ControlToValidate="TXB_BalanceCondition_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_BalanceCondition_Remarks" runat="server" ErrorMessage="Input required" ValidationGroup="VerifiedSubmit" ForeColor="Red" ControlToValidate="TXB_BalanceCondition_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_BalanceCondition_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
