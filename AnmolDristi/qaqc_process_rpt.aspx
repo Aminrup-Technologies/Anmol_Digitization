@@ -1373,7 +1373,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_WaterTest" runat="server" AssociatedControlID="TB_WaterTest" Text="Water Test :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_WaterTest" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_WaterTest" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_WaterTest" runat="server" ErrorMessage="Input Required" ValidationGroup="BasicDataSave" ControlToValidate="TB_WaterTest" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_WaterTest" runat="server" ControlToValidate="TB_WaterTest" ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationExpression="^[a-zA-Z0-9, /]*$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_WaterTest" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Water Test (3-20 characters)" MaxLength="20"></asp:TextBox>
@@ -1406,7 +1406,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_MaidaBrand" runat="server" AssociatedControlID="TB_MaidaBrand" Text="Maida Brand :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_MaidaBrand" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_MaidaBrand" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_MaidaBrand" runat="server" ErrorMessage="Input Required" ValidationGroup="BasicDataSave" ControlToValidate="TB_MaidaBrand" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_MaidaBrand" runat="server" ControlToValidate="TB_MaidaBrand" ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationExpression="^[a-zA-Z0-9, /]*$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_MaidaBrand" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Maida Brand (3-30 characters)" MaxLength="30"></asp:TextBox>
@@ -1417,7 +1417,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_MaidaBatchNo" runat="server" AssociatedControlID="TB_MaidaBatchNo" Text="Maida Batch No. :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_TB_MaidaBatchNo" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_MaidaBatchNo" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_TB_MaidaBatchNo" runat="server" ErrorMessage="Input Required" ValidationGroup="BasicDataSave" ControlToValidate="TB_MaidaBatchNo" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TB_MaidaBatchNo" runat="server" ControlToValidate="TB_MaidaBatchNo" ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationExpression="^[a-zA-Z0-9, /]*$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_MaidaBatchNo" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Maida Batch No"></asp:TextBox>
@@ -1428,7 +1428,7 @@
                                                             <div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_MaidaMfg" runat="server" AssociatedControlID="TB_MaidaMfg" Text="Maida Mfg :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaMfg" runat="server" ErrorMessage="Date is required " ControlToValidate="TB_MaidaMfg" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaMfg" runat="server" ErrorMessage="Date is required" ValidationGroup="BasicDataSave"  ControlToValidate="TB_MaidaMfg" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_MaidaMfg" runat="server" ControlToValidate="TB_MaidaMfg" ForeColor="Red" ErrorMessage="" Display="Dynamic" ValidationExpression=" "></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_MaidaMfg" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="" TextMode="Date"></asp:TextBox>

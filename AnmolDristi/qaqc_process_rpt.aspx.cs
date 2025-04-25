@@ -1723,8 +1723,8 @@ namespace AnmolDristi
 
             };
 
-            // Add 5 blank rows
-            for (int i = 0; i < 8; i++)
+            // Add 10 blank rows
+            for (int i = 0; i < 10; i++)
             {
                 dataSave.Add(new VarietyInfo { Sl = dataSave.Count + 1, sap_IngredientName = "", BOM_Qnty = 0 });
             }
