@@ -213,7 +213,7 @@ namespace AnmolDristi.DAL
         public void InsertDoughData(string PcrNo, decimal doughTemp, string commentForDoughTemp, TimeSpan restTime, string commentForRestTime,
                                        int metalDetector, string commentForMetalDetector, int processSequence, string commentForProcessSequence,
                                        TimeSpan creamingTime, string commentForCreamingTime, TimeSpan mixingTime, string commentForMixingTime,
-                                       TimeSpan bakingTime, string commentForBakingTime, int diceRmp, string commentForDice, int doughCondition, string commentForDoughCondition)
+                                       TimeSpan bakingTime, string commentForBakingTime, decimal diceRmp, string commentForDice, int doughCondition, string commentForDoughCondition)
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
