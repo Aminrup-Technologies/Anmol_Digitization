@@ -1,0 +1,350 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Dristi.master.cs" Inherits="AnmolDristi.Dristi" %>
+
+<!DOCTYPE html>
+
+<html>
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="icon" href="WebData/Anmol_Logo.png" type="image/ico" />
+
+    <title>Anmol</title>
+
+    <link href="Resources/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="Resources/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+    <link href="Resources/nprogress/nprogress.css" rel="stylesheet" />
+    <link href="Resources/iCheck/skins/flat/green.css" rel="stylesheet" />
+    <link href="Resources/bootstrap-progressbar/css/bootstrap-progressbar-3.3.4.min.css" rel="stylesheet" />
+    <link href="Resources/jqvmap/dist/jqvmap.min.css" rel="stylesheet" />
+    <link href="Resources/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet" />
+    <link href="Resources/DataTables/datatables.min.css" rel="stylesheet" />
+    <link href="Resources/pnotify/dist/pnotify.css" rel="stylesheet" />
+    <link href="Resources/pnotify/dist/pnotify.buttons.css" rel="stylesheet" />
+    <link href="Resources/pnotify/dist/pnotify.nonblock.css" rel="stylesheet" />
+    <link href="Resources/loader/loader.css" rel="stylesheet" />
+    <link href="Resources/custom/custom.css" rel="stylesheet" />
+
+    <asp:ContentPlaceHolder ID="head" runat="server">
+    </asp:ContentPlaceHolder>
+
+    <script src="Resources/Scripts/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript">
+        var idleTimeout;
+        var logoutTime;
+
+        function startIdleTimer() {
+            idleTimeout = setTimeout(function () {
+                location.href = 'login.aspx';
+            }, 10 * 60 * 1000); // 5 minutes in milliseconds
+
+            // Calculate the logout time
+            logoutTime = new Date();
+            logoutTime.setMinutes(logoutTime.getMinutes() + 10); // Adding 5 minutes to the current time
+
+            // Update the display
+            updateDisplay();
+        }
+
+        function resetIdleTimer() {
+            clearTimeout(idleTimeout);
+            startIdleTimer();
+        }
+
+        function handleUserActivity() {
+            resetIdleTimer();
+        }
+
+        function updateDisplay() {
+            var dt = new Date();
+            var currentTimeLabel = document.getElementById("lblTime");
+            var logoutTimeLabel = document.getElementById("lblTime1");
+
+            // Display current time
+            currentTimeLabel.innerHTML = dt.toLocaleTimeString();
+
+            // Calculate time left until auto logout
+            var timeLeft = Math.max(0, (logoutTime - dt) / 1000); // Time left in seconds
+            var minutesLeft = Math.floor(timeLeft / 60);
+            var secondsLeft = Math.floor(timeLeft % 60);
+            var timeLeftString = (minutesLeft < 10 ? "0" : "") + minutesLeft + ":" + (secondsLeft < 10 ? "0" : "") + secondsLeft;
+            logoutTimeLabel.innerHTML = timeLeftString;
+
+            // If we've reached 0 minutes and 0 seconds, initiate logout
+            if (timeLeft <= 0) {
+                location.href = 'login.aspx';
+                return;
+            }
+        }
+
+        $(document).ready(function () {
+            startIdleTimer();
+            setInterval(updateDisplay, 1000);
+            document.addEventListener("mousemove", handleUserActivity);
+            document.addEventListener("keypress", handleUserActivity);
+        });
+    </script>
+</head>
+<body class="nav-md footer_fixed">
+    <div id="loader">
+        <img src="WebData/Internal/Hourglass.gif" alt="loadergif" />
+    </div>
+    <div style="display: none;" id="content">
+        <form id="form1" runat="server">
+
+            <div class="container body">
+                <div class="main_container">
+
+                    <div class="col-md-3 left_col menu_fixed">
+                        <div class="left_col scroll-view">
+                            <div class="navbar nav_title" style="border: 0;">
+                                <a href="#" class="site_title">
+                                    <asp:Image ID="Image1" runat="server" ImageUrl="~/WebData/Anmol_Logo.png" Height="40" Width="50" /><span>&nbsp;&nbsp;ANMOL</span>
+                                </a>
+                            </div>
+
+                            <div class="clearfix"></div>
+
+                            <!-- menu profile quick info -->
+                            <div class="profile clearfix">
+                                <div class="profile_pic">
+                                    <img id="ProfilePic_1" src="~/WebData/No_Image.jpg" runat="server" alt="..." class="img-circle profile_img">
+                                </div>
+                                <div class="profile_info">
+                                    Hi,
+                                <asp:Label ID="lbl_loginusername1" runat="server" Text="Login_Name" Font-Bold="true"></asp:Label>
+                                </div>
+                            </div>
+                            <!-- /menu profile quick info -->
+
+                            <br />
+
+                            <!-- sidebar menu -->
+                            <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
+                                <div class="menu_section">
+                                    <h3>General</h3>
+                                    <ul class="nav side-menu">
+                                        <li id="HomePage" runat="server" visible="true"><a><i class="fa fa-home"></i>Home <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="Home1" runat="server" visible="true"><a href="home.aspx">Dashboard-1<span class="label label-success pull-right">Click !!</span></a></li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="ImputForms" runat="server" visible="true"><a><i class="fa fa-pencil-square-o"></i>Forms<span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="frms_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="frms_qc" runat="server" class="sub_menu"><a href="qaqc_qahome.aspx">Quality Assurance</a></li>
+                                                        <li id="frms_qa" runat="server"><a href="qaqc_qchome.aspx">Quality Control</a></li>
+                                                    </ul>
+                                                </li>
+                                                <li id="frms_production" runat="server" visible="true"><a>Production<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="Li3" runat="server" class="sub_menu"><a href="prod_misc.aspx">No Category</a></li>
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="FormsApprovals" runat="server" visible="true"><a><i class="fa fa-file-text"></i>Approvals<span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="app_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="app_qa" runat="server" class="sub_menu"><a href="qaqc_qaapprovals.aspx">Quality Assurance</a></li>
+                                                        <li id="app_qc" runat="server"><a href="qaqc_qcapprovals.aspx">Quality Control</a></li>
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="Reports" runat="server" visible="true"><a><i class="fa fa-file-text"></i>Reports<span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="rpts_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="rpts_qa" runat="server" class="sub_menu"><a href="qaqc_qahome_rpt.aspx">Quality Assurance</a></li>
+                                                        <li id="rpts_qc" runat="server"><a href="qaqc_qchome_rpt.aspx">Quality Control</a></li>
+                                                    </ul>
+                                                </li>
+                                                <li id="rpts_production" runat="server" visible="true"><a>Production<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="Li2" runat="server" class="sub_menu"><a href="prod_misc_rpts.aspx">No Category</a></li>
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="AdminControl" runat="server" visible="true"><a><i class="fa fa-database"></i>ADMIN Control <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="DataMST" runat="server" visible="true"><a href="datamastering_home.aspx">Data Mastering<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="FormMST" runat="server" visible="false"><a href="#">Forms Mastering<span class="label label-success pull-right">Click !!</span></a></li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="WebLogins" runat="server" visible="false"><a><i class="fa fa-database"></i>Web Logins <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="WebLogins_Add" runat="server" visible="true"><a href="webdetails.aspx">Add/Modify<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="WebLogins_Viewall" runat="server" visible="false"><a href="WebsiteCredentialsView.aspx">View All<span class="label label-success pull-right">Click !!</span></a></li>
+                                            </ul>
+                                        </li>
+
+                                    </ul>
+                                </div>
+                            </div>
+                            <!-- /sidebar menu -->
+
+                            <!-- /menu footer buttons -->
+                            <div class="sidebar-footer hidden-small">
+                                <a data-toggle="tooltip" data-placement="top" title="Settings">
+                                    <span class="glyphicon glyphicon-cog" aria-hidden="true"></span>
+                                </a>
+                                <a data-toggle="tooltip" data-placement="top" title="FullScreen">
+                                    <span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>
+                                </a>
+                                <a data-toggle="tooltip" data-placement="top" title="Lock">
+                                    <span class="glyphicon glyphicon-eye-close" aria-hidden="true"></span>
+                                </a>
+                                <a data-toggle="tooltip" data-placement="top" title="Logout" href="#">
+                                    <span class="glyphicon glyphicon-off" aria-hidden="true"></span>
+                                </a>
+                            </div>
+                            <!-- /menu footer buttons -->
+                        </div>
+                    </div>
+
+                    <!-- top navigation -->
+                    <div class="top_nav">
+                        <div class="nav_menu">
+                            <div class="nav toggle">
+                                <a id="menu_toggle"><i class="fa fa-bars"></i></a>
+                            </div>
+                            <nav class="nav navbar-nav">
+                                <ul class="navbar-right">
+                                    <li class="nav-item dropdown open" style="padding-left: 15px;">
+                                        <a href="javascript:;" class="user-profile dropdown-toggle" aria-haspopup="true" id="navbarDropdown" data-toggle="dropdown" aria-expanded="false">
+                                            <img id="ProfilePic_2" runat="server" alt="" src="~/WebData/No_Image.jpg"><asp:Label ID="lbl_loginusername2" runat="server" Text="Login_Name"></asp:Label>
+                                        </a>
+                                        <div class="dropdown-menu dropdown-usermenu pull-right" aria-labelledby="navbarDropdown">
+                                            <a class="dropdown-item" href="manage_profile.aspx">Manage Profile</a>
+                                            <a class="dropdown-item" target="_blank" href="#">Support</a>
+                                            <%--<a class="dropdown-item" href="#"><i class="fa fa-sign-out pull-right"></i>Log Out</a>--%>
+                                            <button type="button" class="dropdown-item btn btn-primary btn-sm" id="btn_Logout" data-toggle="modal" data-target="#MyModal_Logout">Logout</button>
+                                            <%--<asp:Button ID="btn_Logout" runat="server" Text="Logout" CssClass="dropdown-item btn btn-primary btn-sm" data-toggle="modal" data-target="#MyModal_Logout"/>--%>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                    <!-- /top navigation -->
+                </div>
+                <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
+            </div>
+            <br />
+            <footer class="footer_fixed">
+                <div class="pull-right small">
+                    Autologout >
+                <asp:Label ID="lblTime1" runat="server" Text="N/A" Font-Bold="true" ForeColor="IndianRed" Visible="true"></asp:Label>
+                    || Time :<asp:Label ID="lblTime" runat="server" Text="N/A" Font-Bold="true" ForeColor="Black" Visible="true"></asp:Label>
+                    || © 2024
+                <asp:Label ID="Label1" runat="server" Text="Anmol " Font-Bold="true" ForeColor="Black" Visible="true"></asp:Label>
+
+                </div>
+                <div class="clearfix"></div>
+            </footer>
+            <%--- Logout Modal --%>
+            <div class="modal fade" id="MyModal_Logout" data-backdrop="static">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="modal-title">Confirm your Log Out</h4>
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group">
+                                        <div class="col-md-6 col-sm-12 form-group">
+                                            <label><span class="text text-danger">Click to Close the Session</span></label>
+                                        </div>
+                                        <div class="col-md-6 col-sm-12 form-group">
+                                            <asp:Button ID="btn_lgout" runat="server" CausesValidation="false" Text="Yes" CssClass="btn btn-danger btn-sm" OnClick="btn_Logout_Click" />
+                                            <button type="button" class="btn btn-sm btn-success" data-dismiss="modal">No</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <%--- Logout Modal -------- END --%>
+
+            <!-- Small modal -->
+            <asp:Button ID="ShowPopup" runat="server" Text="Button" class="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />
+            <div id="MyPopup" class="modal fade bs-example-modal-sm" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="modal-title" id="myModalLabel2"></h4>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <!-- Small Modal - END---->
+            <script type="text/javascript">
+                document.addEventListener("DOMContentLoaded", function () {
+                    document.getElementById('content').style.display = 'block';
+                    document.getElementById('loader').style.display = 'none';
+                });
+
+                function ShowPopup(title, body) {
+                    $("#MyPopup .modal-title").html(title);
+                    $("#MyPopup .modal-body").html(body);
+                    $("#MyPopup").modal("show");
+                }
+            </script>
+
+            <script src="Resources/jquery/dist/jquery.min.js"></script>
+            <script src="Resources/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+            <script src="Resources/fastclick/lib/fastclick.js"></script>
+            <script src="Resources/nprogress/nprogress.js"></script>
+            <script src="Resources/Chart.js/dist/Chart.min.js"></script>
+            <script src="Resources/gauge.js/dist/gauge.min.js"></script>
+            <script src="Resources/bootstrap-progressbar/bootstrap-progressbar.min.js"></script>
+            <script src="Resources/iCheck/icheck.min.js"></script>
+            <script src="Resources/skycons/skycons.js"></script>
+            <script src="Resources/Flot/jquery.flot.js"></script>
+            <script src="Resources/Flot/jquery.flot.pie.js"></script>
+            <script src="Resources/Flot/jquery.flot.time.js"></script>
+            <script src="Resources/Flot/jquery.flot.stack.js"></script>
+            <script src="Resources/Flot/jquery.flot.resize.js"></script>
+            <script src="Resources/flot.orderbars/js/jquery.flot.orderBars.js"></script>
+            <script src="Resources/flot-spline/js/jquery.flot.spline.min.js"></script>
+            <script src="Resources/flot.curvedlines/curvedLines.js"></script>
+            <script src="Resources/DateJS/build/date.js"></script>
+            <script src="Resources/moment/min/moment.min.js"></script>
+            <script src="Resources/bootstrap-daterangepicker/daterangepicker.js"></script>
+            <script src="Resources/custom/custom.js"></script>
+            <script src="Resources//pnotify/dist/pnotify.js"></script>
+            <script src="Resources//pnotify/dist/pnotify.buttons.js"></script>
+            <script src="Resources//pnotify/dist/pnotify.nonblock.js"></script>
+            <script src="Resources//jQuery-Smart-Wizard/js/jquery.smartWizard.js"></script>
+
+        </form>
+    </div>
+</body>
+</html>

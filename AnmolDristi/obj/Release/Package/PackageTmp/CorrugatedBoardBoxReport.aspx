@@ -161,9 +161,9 @@
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_NoOfPkt" runat="server" AssociatedControlID="TB_NoOfPkt" Text="No of Packets :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                    <asp:RequiredFieldValidator ID="RFV_TB_NoOfPkt" runat="server" ErrorMessage="*" ValidationGroup="Submit" ControlToValidate="TB_NoOfPkt" Display="Dynamic" ForeColor="Red" InitialValue=""></asp:RequiredFieldValidator>
-                                    <asp:RegularExpressionValidator ID="REV_TB_NoOfPkt" runat="server" ValidationGroup="Submit" ControlToValidate="TB_NoOfPkt" ForeColor="Red" ErrorMessage="Input Required" ValidationExpression="^\d+(\.\d+)?\s*[xX]\s\d+(\.\d+)?$" Display="Dynamic"></asp:RegularExpressionValidator>
-                                    <asp:CustomValidator ID="CV_TB_NoOfPkt" runat="server" ControlToValidate="TB_NoOfPkt" ValidationGroup="Submit" ErrorMessage="Invalid input format! Use: 10 * 40" Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                    <asp:RequiredFieldValidator ID="RFV_TB_NoOfPkt" runat="server" ErrorMessage="Input Required" ValidationGroup="Submit" ControlToValidate="TB_NoOfPkt" Display="Dynamic" ForeColor="Red" InitialValue=""></asp:RequiredFieldValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_NoOfPkt" runat="server" ValidationGroup="Submit" ControlToValidate="TB_NoOfPkt" ForeColor="Red" ErrorMessage="Invalid input format! Use: 2.3x12 , 2.3X12, 2.3*12" ValidationExpression="^\s*\d+(\.\d+)?\s*[*xX×]\s*\d+(\.\d+)?\s*$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <asp:CustomValidator ID="CV_TB_NoOfPkt" runat="server" ControlToValidate="TB_NoOfPkt" ValidationGroup="Submit" ErrorMessage="Invalid input format! Use: 2.3x12 , 2.3X12, 2.3*12" Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_NoOfPkt" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Number of Packets [10 * 40]" Text=""></asp:TextBox>
                                     </div>

@@ -46,6 +46,12 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <FilesToIncludeForPublish>OnlyFilesToRunTheApp</FilesToIncludeForPublish>
+    <PublishDatabaseSettings>
+      <Objects>
+      </Objects>
+    </PublishDatabaseSettings>
+    <PublishDatabases>false</PublishDatabases>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ClosedXML, Version=0.94.2.0, Culture=neutral, processorArchitecture=MSIL">
@@ -331,9 +337,15 @@
     <None Include="NLog.xsd">
       <SubType>Designer</SubType>
     </None>
-    <None Include="Properties\PublishProfiles\AnmolDristi.pubxml" />
     <Content Include="UploadImageHandler.ashx" />
-    <None Include="Properties\PublishProfiles\AnmolDristi_Live.pubxml" />
+    <Content Include="Web.config" />
+    <None Include="Properties\PublishProfiles\ailqaqc.aminruptechnologies.co.in - Web Deploy.pubxml" />
+    <None Include="Web.Debug.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+    <None Include="Web.Release.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Content Include="blank.aspx" />
@@ -1161,6 +1173,7 @@
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
+  <ItemGroup />
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
@@ -1214,4 +1227,7 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <Target Name="CleanLockedAspNetMergeDir" BeforeTargets="Build">
+    <RemoveDir Directories="$(BaseIntermediateOutputPath)\AspnetCompileMerge\TempBuildDir" />
+  </Target>
 </Project>
