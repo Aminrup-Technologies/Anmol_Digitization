@@ -339,8 +339,11 @@
       <SubType>Designer</SubType>
     </None>
     <Content Include="UploadImageHandler.ashx" />
-    <Content Include="Web.config" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
     <None Include="Properties\PublishProfiles\ailqaqc.aminruptechnologies.co.in - Web Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\LIVE_Deploy.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
