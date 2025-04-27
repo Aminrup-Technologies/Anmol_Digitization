@@ -14,13 +14,66 @@ namespace AnmolDristi
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["USERID"] == null || Session["USERNAME"] == null || Session["WORKMAN"] == null)
+            if (!IsPostBack)
             {
-                Response.Redirect("login.aspx");
+                if (Session["USERID"] == null || Session["USERNAME"] == null || Session["WORKMAN"] == null)
+                {
+                    Response.Redirect("login.aspx");
+                }
+                else
+                {
+                    DepartmentBinder();
+                    BranchBinder();
+
+                    BindGrid();
+                }
             }
-            else
+        }
+
+        private void DepartmentBinder()
+        {
+            string query = "SELECT Department_Description, Department_ID FROM MST_Department";
+            string textField = "Department_Description";
+            string valueField = "Department_ID";
+
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_Department, textField, valueField, out recordsBound);
+
+            if (!recordsBound)
             {
-                BindGrid();
+                string DDL_Department_Error_script = @"<script type='text/javascript'>
+                    new PNotify({
+                        title: 'Error',
+                        text: 'Invalid Selection!',
+                        type: 'error',
+                        styling: 'bootstrap3'
+                    });
+                </script>";
+                ClientScript.RegisterStartupScript(this.GetType(), "ShowDepartmentBinderBinderErrorNotification", DDL_Department_Error_script, false);
+            }
+        }
+
+        private void BranchBinder()
+        {
+            string query = "SELECT Branch_Description, Branch_ID FROM MST_Branch";
+            string textField = "Branch_Description";
+            string valueField = "Branch_ID";
+
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_Branch, textField, valueField, out recordsBound);
+
+            if (!recordsBound)
+            {
+                string PN_Error_script = @"<script type='text/javascript'>
+                    new PNotify({
+                        title: 'Error',
+                        text: 'No line categories found for the selected plant and line!',
+                        type: 'error',
+                        styling: 'bootstrap3'
+                    });
+                </script>";
+
+                ClientScript.RegisterStartupScript(this.GetType(), "ShowLineProductsBinderErrorNotification", PN_Error_script, false);
             }
         }
 
@@ -49,49 +102,71 @@ namespace AnmolDristi
             string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection conn = new SqlConnection(connStr))
             {
-                string query = @"SELECT SiteName, Purpose, UsageFrequency, AddedByCode, AddedByName FROM WebsiteCredentials WHERE IsDeleted = 0";
+                string query = @"SELECT SiteName, Purpose, OfficeLocation, Department, UsageFrequency, AddedByCode, AddedByName 
+                         FROM WebsiteCredentials WHERE IsDeleted = 0";
 
                 List<string> conditions = new List<string>();
 
+                // Collect conditions based on input values
                 if (!string.IsNullOrWhiteSpace(txtAddedByCode.Text))
                     conditions.Add("AddedByCode LIKE @AddedByCode");
 
                 if (!string.IsNullOrWhiteSpace(txtAddedByName.Text))
                     conditions.Add("AddedByName LIKE @AddedByName");
 
-                if (!string.IsNullOrWhiteSpace(ddlWebsiteType.SelectedValue))
-                    conditions.Add("Purpose = @WebsiteType");
+                if (!string.IsNullOrWhiteSpace(DDL_Branch.SelectedValue) && DDL_Branch.SelectedValue != "0")
+                    conditions.Add("OfficeLocation = @OfficeLocation");
+
+                if (!string.IsNullOrWhiteSpace(DDL_Department.SelectedValue) && DDL_Department.SelectedValue != "0")
+                    conditions.Add("Department = @Department");
 
                 if (!string.IsNullOrWhiteSpace(txtSearchSiteName.Text))
                     conditions.Add("SiteName LIKE @SiteName");
 
+                // Add conditions to the query if there are any
                 if (conditions.Any())
                     query += " AND " + string.Join(" AND ", conditions);
 
+                // Output the final query string
+                //string finalQuery = query;
+                //Console.WriteLine("Final Query: " + finalQuery);
+
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
+                    // Add parameters for the conditions to the command
                     if (!string.IsNullOrWhiteSpace(txtAddedByCode.Text))
                         cmd.Parameters.AddWithValue("@AddedByCode", "%" + txtAddedByCode.Text.Trim() + "%");
 
                     if (!string.IsNullOrWhiteSpace(txtAddedByName.Text))
                         cmd.Parameters.AddWithValue("@AddedByName", "%" + txtAddedByName.Text.Trim() + "%");
 
-                    if (!string.IsNullOrWhiteSpace(ddlWebsiteType.SelectedValue))
-                        cmd.Parameters.AddWithValue("@WebsiteType", ddlWebsiteType.SelectedValue);
+                    if (!string.IsNullOrWhiteSpace(DDL_Branch.SelectedValue))
+                        cmd.Parameters.AddWithValue("@OfficeLocation", DDL_Branch.SelectedValue);
+
+                    if (!string.IsNullOrWhiteSpace(DDL_Department.SelectedValue))
+                        cmd.Parameters.AddWithValue("@Department", DDL_Department.SelectedValue);
 
                     if (!string.IsNullOrWhiteSpace(txtSearchSiteName.Text))
                         cmd.Parameters.AddWithValue("@SiteName", "%" + txtSearchSiteName.Text.Trim() + "%");
 
+                    // Execute the query and bind the result to GridView
                     using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                     {
                         DataTable dt = new DataTable();
                         da.Fill(dt);
+
+                        // Clear existing GridView data (optional but good practice)
+                        GridViewFiltered.DataSource = null;
+                        GridViewFiltered.DataBind();
+
+                        // Bind new results to the GridView
                         GridViewFiltered.DataSource = dt;
                         GridViewFiltered.DataBind();
                     }
                 }
             }
         }
+
 
         protected void GridViewFiltered_RowCommand(object sender, GridViewCommandEventArgs e)
         {

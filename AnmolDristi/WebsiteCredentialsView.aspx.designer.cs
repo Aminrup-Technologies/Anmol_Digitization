@@ -31,13 +31,22 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox txtAddedByName;
         
         /// <summary>
-        /// ddlWebsiteType control.
+        /// DDL_Branch control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList ddlWebsiteType;
+        protected global::System.Web.UI.WebControls.DropDownList DDL_Branch;
+        
+        /// <summary>
+        /// DDL_Department control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList DDL_Department;
         
         /// <summary>
         /// txtSearchSiteName control.

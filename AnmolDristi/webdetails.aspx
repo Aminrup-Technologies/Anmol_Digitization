@@ -46,7 +46,7 @@
         }
     </script>--%>
 
-    <script type="text/javascript">
+    <%--<script type="text/javascript">
         function validateForm() {
             var isValid = true;
 
@@ -101,7 +101,115 @@
 
             return isValid;
         }
+    </script>--%>
+
+    <script type="text/javascript">
+        function validateForm() {
+            var isValid = true;
+
+            // Helper to highlight or reset field styles
+            function markInvalid(control, highlight) {
+                if (highlight) {
+                    control.classList.add("is-invalid");
+                } else {
+                    control.classList.remove("is-invalid");
+                }
+            }
+
+            // Capture all controls
+            var siteName = document.getElementById('<%= txtSiteName.ClientID %>');
+            var siteURL = document.getElementById('<%= txtSiteURL.ClientID %>');
+            var purpose = document.getElementById('<%= txtPurpose.ClientID %>');
+            var frequency = document.getElementById('<%= ddlFrequency.ClientID %>');
+            var loginID = document.getElementById('<%= txtLoginID.ClientID %>');
+            var password = document.getElementById('<%= txtPassword.ClientID %>');
+            var mobile = document.getElementById('<%= txtMobile.ClientID %>');
+            var mobileOwner = document.getElementById('<%= txtMobileOwnerName.ClientID %>');
+            var email = document.getElementById('<%= txtEmail.ClientID %>');
+            var emailOwner = document.getElementById('<%= txtEmailOwnerName.ClientID %>');
+            var otpRequired = document.getElementById('<%= chkOTPRequired.ClientID %>');
+            var otpType = document.getElementById('<%= ddlOTPType.ClientID %>');
+            var officeLocation = document.getElementById('<%= DDL_Branch.ClientID %>');
+            var department = document.getElementById('<%= DDL_Department.ClientID %>');
+
+            // Validate required fields
+            if (siteName.value.trim() === "") { markInvalid(siteName, true); isValid = false; } else { markInvalid(siteName, false); }
+            if (purpose.value.trim() === "") { markInvalid(purpose, true); isValid = false; } else { markInvalid(purpose, false); }
+            if (frequency.value === "") { markInvalid(frequency, true); isValid = false; } else { markInvalid(frequency, false); }
+            if (loginID.value.trim() === "") { markInvalid(loginID, true); isValid = false; } else { markInvalid(loginID, false); }
+            if (password.value.trim() === "") { markInvalid(password, true); isValid = false; } else { markInvalid(password, false); }
+
+            // Validate mobile owner name if mobile is entered
+            if (mobile.value.trim() !== "" && mobileOwner.value.trim() === "") {
+                markInvalid(mobileOwner, true);
+                isValid = false;
+            } else {
+                markInvalid(mobileOwner, false);
+            }
+
+            // Validate email owner name if email is entered
+            if (email.value.trim() !== "" && emailOwner.value.trim() === "") {
+                markInvalid(emailOwner, true);
+                isValid = false;
+            } else {
+                markInvalid(emailOwner, false);
+            }
+
+            // Optional email format validation
+            var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (email.value.trim() !== "" && !emailRegex.test(email.value)) {
+                markInvalid(email, true);
+                isValid = false;
+                new PNotify({
+                    title: 'Invalid Email',
+                    text: 'Please enter a valid email address.',
+                    type: 'warning',
+                    styling: 'bootstrap3'
+                });
+            } else {
+                markInvalid(email, false);
+            }
+
+            // If OTP is checked, validate OTP Type dropdown
+            if (otpRequired.checked) {
+                if (otpType.value === "") {
+                    markInvalid(otpType, true);
+                    isValid = false;
+                } else {
+                    markInvalid(otpType, false);
+                }
+            }
+
+            // Validate Office Location selection
+            if (officeLocation.value === "") {
+                markInvalid(officeLocation, true);
+                isValid = false;
+            } else {
+                markInvalid(officeLocation, false);
+            }
+
+            // Validate Department selection
+            if (department.value === "") {
+                markInvalid(department, true);
+                isValid = false;
+            } else {
+                markInvalid(department, false);
+            }
+
+            // Notify if validation fails
+            if (!isValid) {
+                new PNotify({
+                    title: 'Validation Error',
+                    text: 'Please correct the highlighted fields.',
+                    type: 'error',
+                    styling: 'bootstrap3'
+                });
+            }
+
+            return isValid;
+        }
     </script>
+
 
 
     <div class="right_col" role="main">
@@ -163,6 +271,11 @@
                                 <asp:Label ID="lblMobile" runat="server" Text="Registered Mobile" CssClass="text-primary font-weight-bold small"></asp:Label>
                                 <asp:TextBox ID="txtMobile" runat="server" CssClass="form-control form-control-sm rounded" MaxLength="15" />
                             </div>
+                            <!-- Registered Mobile Owner Name -->
+                            <div class="col-md-3">
+                                <asp:Label ID="lblMobileOwnerName" runat="server" Text="Mobile Owner Name" CssClass="text-primary font-weight-bold small"></asp:Label>
+                                <asp:TextBox ID="txtMobileOwnerName" runat="server" CssClass="form-control form-control-sm rounded" MaxLength="100" />
+                            </div>
 
                             <!-- Registered Email -->
                             <div class="col-md-3">
@@ -170,10 +283,39 @@
                                 <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control form-control-sm rounded" MaxLength="100" />
                             </div>
 
+                            <!-- Registered Email Owner Name -->
+                            <div class="col-md-3">
+                                <asp:Label ID="lblEmailOwnerName" runat="server" Text="Email Owner Name" CssClass="text-primary font-weight-bold small"></asp:Label>
+                                <asp:TextBox ID="txtEmailOwnerName" runat="server" CssClass="form-control form-control-sm rounded" MaxLength="100" />
+                            </div>
+
                             <!-- OTP Required -->
                             <div class="col-md-3">
                                 <asp:Label ID="lblOTP" runat="server" Text="OTP Required?" CssClass="text-primary font-weight-bold small"></asp:Label><br />
-                                <asp:CheckBox ID="chkOTPRequired" runat="server" />
+                                <asp:CheckBox ID="chkOTPRequired" runat="server" />&nbsp;Yes
+                            </div>
+
+                            <!-- OTP Type -->
+                            <div class="col-md-3">
+                                <asp:Label ID="lblOTPType" runat="server" Text="OTP Type" CssClass="text-primary font-weight-bold small"></asp:Label>
+                                <asp:DropDownList ID="ddlOTPType" runat="server" CssClass="form-control form-control-sm rounded">
+                                    <asp:ListItem Text="Select" Value="" />
+                                    <asp:ListItem Text="Mobile OTP" Value="Mobile" />
+                                    <asp:ListItem Text="Email OTP" Value="Email" />
+                                    <asp:ListItem Text="Both" Value="Both" />
+                                </asp:DropDownList>
+                            </div>
+
+                            <!-- Office Location -->
+                            <div class="col-md-3">
+                                <asp:Label ID="lblOfficeLocation" runat="server" Text="Office Location" CssClass="text-primary font-weight-bold small"></asp:Label>
+                                <asp:DropDownList ID="DDL_Branch" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
+                            </div>
+
+                            <!-- Department -->
+                            <div class="col-md-3">
+                                <asp:Label ID="lblDepartment" runat="server" Text="Department" CssClass="text-primary font-weight-bold small"></asp:Label>
+                                <asp:DropDownList ID="DDL_Department" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
                             </div>
 
                             <!-- Notes -->
