@@ -26,13 +26,13 @@
                             </div>
 
                             <div class="col-md-2">
-                                <label class="small text-primary font-weight-bold">Website Type</label>
-                                <asp:DropDownList ID="ddlWebsiteType" runat="server" CssClass="form-control form-control-sm rounded">
-                                    <asp:ListItem Text="All" Value="" />
-                                    <asp:ListItem Text="Govt" Value="Govt" />
-                                    <asp:ListItem Text="Commercial" Value="Commercial" />
-                                    <asp:ListItem Text="Internal" Value="Internal" />
-                                </asp:DropDownList>
+                                <label class="small text-primary font-weight-bold">Office Location</label>
+                                <asp:DropDownList ID="DDL_Branch" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="small text-primary font-weight-bold">Department</label>
+                                <asp:DropDownList ID="DDL_Department" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
                             </div>
 
                             <div class="col-md-3">
