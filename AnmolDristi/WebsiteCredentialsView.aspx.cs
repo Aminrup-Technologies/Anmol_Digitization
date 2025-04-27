@@ -102,7 +102,7 @@ namespace AnmolDristi
             string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection conn = new SqlConnection(connStr))
             {
-                string query = @"SELECT SiteName, Purpose, OfficeLocation, Department, UsageFrequency, AddedByCode, AddedByName 
+                string query = @"SELECT Id, SiteName, Purpose, OfficeLocation, Department, UsageFrequency, AddedByCode, AddedByName 
                          FROM WebsiteCredentials WHERE IsDeleted = 0";
 
                 List<string> conditions = new List<string>();
@@ -202,16 +202,41 @@ namespace AnmolDristi
                             decryptedPassword = "[Unable to decrypt]";
                         }
 
+                        //string detailsHtml = $@"
+                        //    <b>Site Name:</b> {reader["SiteName"]}<br />
+                        //    <b>Purpose:</b> {reader["Purpose"]}<br />
+                        //    <b>Frequency:</b> {reader["UsageFrequency"]}<br />
+                        //    <b>Login ID:</b> {reader["LoginId"]}<br />
+                        //    <b><span class='text-danger'>Password:</span></b> <span class='font-weight-bold'>{decryptedPassword}</span><br />
+                        //    <b>Email:</b> {reader["RegisteredEmail"]}<br />
+                        //    <b>Mobile:</b> {reader["RegisteredMobile"]}<br />
+                        //    <b>OTP Required:</b> {(Convert.ToBoolean(reader["IsOTPRequired"]) ? "Yes" : "No")}<br />
+                        //    <b>Notes:</b> {reader["Notes"]}<br />
+                        //";
+
+
+                        // Retrieve the dropdown text for OfficeLocation and Department
+                        string officeLocationText = GetDropDownText(DDL_Branch, reader["OfficeLocation"].ToString());
+                        string departmentText = GetDropDownText(DDL_Department, reader["Department"].ToString());
+
                         string detailsHtml = $@"
                             <b>Site Name:</b> {reader["SiteName"]}<br />
+                            <b>Site URL:</b> {reader["SiteURL"]}<br />
                             <b>Purpose:</b> {reader["Purpose"]}<br />
                             <b>Frequency:</b> {reader["UsageFrequency"]}<br />
                             <b>Login ID:</b> {reader["LoginId"]}<br />
                             <b><span class='text-danger'>Password:</span></b> <span class='font-weight-bold'>{decryptedPassword}</span><br />
                             <b>Email:</b> {reader["RegisteredEmail"]}<br />
+                            <b>Email Owner Name:</b> {reader["EmailOwnerName"]}<br />
                             <b>Mobile:</b> {reader["RegisteredMobile"]}<br />
+                            <b>Mobile Owner Name:</b> {reader["MobileOwnerName"]}<br />
                             <b>OTP Required:</b> {(Convert.ToBoolean(reader["IsOTPRequired"]) ? "Yes" : "No")}<br />
-                            <b>Notes:</b> {reader["Notes"]}<br />
+                            <b>OTP Type:</b> {reader["OTPType"]}<br />
+                            <b>Office Location:</b> {officeLocationText}<br />
+                            <b>Department:</b> {departmentText}<br />
+                            <b>Notes:</b> {reader["Notes"]}<br /><br />
+                            <b>Created Date:</b> {reader["CreatedDate"]}<br />
+                            <b>Last Updated:</b> {reader["LastUpdated"]}<br />
                         ";
 
                         lblModalContent.Text = detailsHtml;
@@ -221,6 +246,17 @@ namespace AnmolDristi
             }
         }
 
+        private string GetDropDownText(DropDownList ddl, string selectedValue)
+        {
+            foreach (ListItem item in ddl.Items)
+            {
+                if (item.Value == selectedValue)
+                {
+                    return item.Text;
+                }
+            }
+            return "N/A"; // Return a default value if not found
+        }
 
         protected void btnTestDecrypt_Click(object sender, EventArgs e)
         {
