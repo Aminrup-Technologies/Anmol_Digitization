@@ -1991,67 +1991,64 @@ namespace AnmolDristi.qaqc
             {
                 return new QCInspectorData
                 {
-                    PlantName = DDL_Plant.SelectedValue,
-                    Line = DDL_PlantLine.SelectedValue,
-                    ProductCategory = DDL_ProductCategory.SelectedValue,
-                    ProductBrand = DDL_ProductBrand.SelectedValue,
-                    BrandSKU = DDL_BrandSKU.SelectedValue, // Changed BrandSKU to SKUId
+                    PlantName = DDL_Plant?.SelectedValue ?? string.Empty,
+                    Line = DDL_PlantLine?.SelectedValue ?? string.Empty,
+                    ProductCategory = DDL_ProductCategory?.SelectedValue ?? string.Empty,
+                    ProductBrand = DDL_ProductBrand?.SelectedValue ?? string.Empty,
+                    BrandSKU = DDL_BrandSKU?.SelectedValue ?? string.Empty, // Changed BrandSKU to SKUId
 
-                    //NumberOfPieces = Convert.ToInt32(TB_NoOfPcs.Text),
-                    NumberOfPieces = TryParseInt(TB_Length.Text) ?? 0,
-                    VarietyOrLotNo = !string.IsNullOrEmpty(TB_VartyPkt.Text) ? TB_VartyPkt.Text : null,
-                    BakingTime = !string.IsNullOrEmpty(TB_BakingTime.Text) ? TB_BakingTime.Text : null,
-                    BakingTime2 = !string.IsNullOrEmpty(TB_BakingTime2.Text) ? TB_BakingTime2.Text : null,
+                    NumberOfPieces = TryParseInt(TB_Length?.Text?.Trim()) ?? 0,
+                    VarietyOrLotNo = string.IsNullOrWhiteSpace(TB_VartyPkt?.Text) ? null : TB_VartyPkt.Text.Trim(),
+                    BakingTime = string.IsNullOrWhiteSpace(TB_BakingTime?.Text) ? null : TB_BakingTime.Text.Trim(),
+                    BakingTime2 = string.IsNullOrWhiteSpace(TB_BakingTime2?.Text) ? null : TB_BakingTime2.Text.Trim(),
 
-                    ColorAppearance = Convert.ToInt32(RBL_ColorApp.SelectedValue),
-                    CommentsForColorAppearance = TXB_ColorApp_Remarks.Text,
+                    ColorAppearance = TryParseInt(RBL_ColorApp?.SelectedValue) ?? 0,
+                    CommentsForColorAppearance = TXB_ColorApp_Remarks?.Text?.Trim() ?? string.Empty,
 
-                    FlavourAndTaste = Convert.ToInt32(RBL_FlavTst.SelectedValue),
-                    CommentsForFlavourAndTaste = TXB_RBL_FlavTst_Rmrks.Text,
+                    FlavourAndTaste = TryParseInt(RBL_FlavTst?.SelectedValue) ?? 0,
+                    CommentsForFlavourAndTaste = TXB_RBL_FlavTst_Rmrks?.Text?.Trim() ?? string.Empty,
 
-                    DesignImplementation = Convert.ToInt32(RBL_DesignImp.SelectedValue),
-                    CommentsForDesignImplementation = TXB_DesignImp_Remarks.Text,
+                    DesignImplementation = TryParseInt(RBL_DesignImp?.SelectedValue) ?? 0,
+                    CommentsForDesignImplementation = TXB_DesignImp_Remarks?.Text?.Trim() ?? string.Empty,
 
-                    TextureBite = Convert.ToInt32(RBL_TextureBite.SelectedValue), // Changed to decimal
-                    CommentsForTextureBite = TXB_TextureBite_Remarks.Text,
+                    TextureBite = TryParseInt(RBL_TextureBite?.SelectedValue) ?? 0,
+                    CommentsForTextureBite = TXB_TextureBite_Remarks?.Text?.Trim() ?? string.Empty,
 
-                    ShapeOrSize = !string.IsNullOrEmpty(TB_ShapeSize.Text) ? TB_ShapeSize.Text : null,
-                    //ShapeOrSize = TB_ShapeSize.Text,
-                    CommentsForShapeOrSize = string.Empty,
+                    ShapeOrSize = string.IsNullOrWhiteSpace(TB_ShapeSize?.Text) ? null : TB_ShapeSize.Text.Trim(),
+                    CommentsForShapeOrSize = string.Empty, // Keeping it empty as per your current logic
 
-                    GaugeValue = TryParseDecimal(TB_Length.Text) ?? 0,
-                    DryWeight = TryParseDecimal(TB_Breadth.Text) ?? 0,
-                    DippedWeight = TryParseDecimal(TB_Height.Text) ?? 0,
+                    GaugeValue = TryParseDecimal(TB_Length?.Text?.Trim()) ?? 0,
+                    DryWeight = TryParseDecimal(TB_Breadth?.Text?.Trim()) ?? 0,
+                    DippedWeight = TryParseDecimal(TB_Height?.Text?.Trim()) ?? 0,
 
-                    Moisture = TryParseDecimal(TB_Moisture.Text) ?? 0,
-                    aWmax = TryParseDecimal(TB_aWMAX.Text) ?? 0, // Changed to aW_max
-                    pHvalue = TryParseDecimal(TB_pHvalue.Text) ?? 0, // Changed to pH_value
+                    Moisture = TryParseDecimal(TB_Moisture?.Text?.Trim()) ?? 0,
+                    aWmax = TryParseDecimal(TB_aWMAX?.Text?.Trim()) ?? 0,
+                    pHvalue = TryParseDecimal(TB_pHvalue?.Text?.Trim()) ?? 0,
 
-                    GaugeLength = TryParseDecimal(TB_GaugeLen.Text) ?? 0,
-                    CommentsGaugeLength = TXB_GaugeLen_Remarks.Text,
+                    GaugeLength = TryParseDecimal(TB_GaugeLen?.Text?.Trim()) ?? 0,
+                    CommentsGaugeLength = TXB_GaugeLen_Remarks?.Text?.Trim() ?? string.Empty,
 
-                    WeightWithoutOil = TryParseDecimal(TB_wgtwtoil.Text) ?? 0,
-                    WeightWithOil = TryParseDecimal(TB_wgtwoil.Text) ?? 0,
-                    OilPercentValue = TryParseDecimal(TB_oilpercent.Text) ?? 0, // Changed to OilPercentage
+                    WeightWithoutOil = TryParseDecimal(TB_wgtwtoil?.Text?.Trim()) ?? 0,
+                    WeightWithOil = TryParseDecimal(TB_wgtwoil?.Text?.Trim()) ?? 0,
+                    OilPercentValue = TryParseDecimal(TB_oilpercent?.Text?.Trim()) ?? 0,
 
-                    PacketWeight = TryParseDecimal(TB_PktWgt.Text) ?? 0,
+                    PacketWeight = TryParseDecimal(TB_PktWgt?.Text?.Trim()) ?? 0,
 
-                    
-                    DesignAndImplementation = hdn_img1.Value,
-                    ColourAndAppearance = hdn_img2.Value,
+                    DesignAndImplementation = hdn_img1?.Value ?? string.Empty,
+                    ColourAndAppearance = hdn_img2?.Value ?? string.Empty,
 
-                    Remarks = !string.IsNullOrEmpty(TXB_Remarks.Text) ? TXB_Remarks.Text : null,
+                    Remarks = string.IsNullOrWhiteSpace(TXB_Remarks?.Text) ? null : TXB_Remarks.Text.Trim(),
 
-                    SubmittedByPNo = Session["WORKMAN"].ToString(),
-                    SubmittedById = Convert.ToInt32(Session["USERID"].ToString()),
+                    SubmittedByPNo = Session["WORKMAN"]?.ToString() ?? string.Empty,
+                    SubmittedById = Convert.ToInt32(Session["USERID"]?.ToString() ?? "0"),
 
-                    Shift = hdn_shiftvalue.Value.ToString(),
+                    Shift = hdn_shiftvalue?.Value?.Trim() ?? string.Empty,
 
                     FormID = 1,
 
-                    Approver1EmployeeCode = Approver1CodeLabel.Text.ToString(),
-                    Approver2EmployeeCode = Approver2CodeLabel.Text.ToString(),
-                    DottedLineApproverEmployeeCode = DottedLineApproverCodeLabel.Text.ToString()
+                    Approver1EmployeeCode = Approver1CodeLabel?.Text?.Trim() ?? string.Empty,
+                    Approver2EmployeeCode = Approver2CodeLabel?.Text?.Trim() ?? string.Empty,
+                    DottedLineApproverEmployeeCode = DottedLineApproverCodeLabel?.Text?.Trim() ?? string.Empty
                 };
             }
             catch (FormatException ex)
@@ -2102,7 +2099,16 @@ namespace AnmolDristi.qaqc
             return int.TryParse(value, out result) ? (int?)result : null;
         }
 
+        private DateTime? TryParseDateTime(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
 
+            DateTime result;
+            return DateTime.TryParse(value, out result) ? (DateTime?)result : null;
+        }
 
 
         private void LogFormData(QCInspectorData qcData)
