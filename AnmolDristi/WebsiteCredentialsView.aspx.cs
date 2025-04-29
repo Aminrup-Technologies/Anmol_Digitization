@@ -202,41 +202,31 @@ namespace AnmolDristi
                             decryptedPassword = "[Unable to decrypt]";
                         }
 
-                        //string detailsHtml = $@"
-                        //    <b>Site Name:</b> {reader["SiteName"]}<br />
-                        //    <b>Purpose:</b> {reader["Purpose"]}<br />
-                        //    <b>Frequency:</b> {reader["UsageFrequency"]}<br />
-                        //    <b>Login ID:</b> {reader["LoginId"]}<br />
-                        //    <b><span class='text-danger'>Password:</span></b> <span class='font-weight-bold'>{decryptedPassword}</span><br />
-                        //    <b>Email:</b> {reader["RegisteredEmail"]}<br />
-                        //    <b>Mobile:</b> {reader["RegisteredMobile"]}<br />
-                        //    <b>OTP Required:</b> {(Convert.ToBoolean(reader["IsOTPRequired"]) ? "Yes" : "No")}<br />
-                        //    <b>Notes:</b> {reader["Notes"]}<br />
-                        //";
-
-
                         // Retrieve the dropdown text for OfficeLocation and Department
                         string officeLocationText = GetDropDownText(DDL_Branch, reader["OfficeLocation"].ToString());
                         string departmentText = GetDropDownText(DDL_Department, reader["Department"].ToString());
 
                         string detailsHtml = $@"
+                            <b>Office Location:</b> {officeLocationText}<br />
+                            <b>Department:</b> {departmentText}<br /><br />
                             <b>Site Name:</b> {reader["SiteName"]}<br />
                             <b>Site URL:</b> {reader["SiteURL"]}<br />
-                            <b>Purpose:</b> {reader["Purpose"]}<br />
+                            <b>Purpose:</b> {reader["Purpose"]}<br /><br />
+                            
+
                             <b>Frequency:</b> {reader["UsageFrequency"]}<br />
                             <b>Login ID:</b> {reader["LoginId"]}<br />
-                            <b><span class='text-danger'>Password:</span></b> <span class='font-weight-bold'>{decryptedPassword}</span><br />
-                            <b>Email:</b> {reader["RegisteredEmail"]}<br />
-                            <b>Email Owner Name:</b> {reader["EmailOwnerName"]}<br />
-                            <b>Mobile:</b> {reader["RegisteredMobile"]}<br />
-                            <b>Mobile Owner Name:</b> {reader["MobileOwnerName"]}<br />
+                            <b><span class='text-danger'>Password:</span></b> <span class='font-weight-bold'>{decryptedPassword}</span><br /><br />
+                            <b>Registered Email-id:</b> {reader["RegisteredEmail"]}<br />
+                            <b>Registered Person Name for Email OTP:</b> {reader["EmailOwnerName"]}<br />
+                            <b>Registered Mobile:</b> {reader["RegisteredMobile"]}<br />
+                            <b>Registered Person Name for Mobile OTP:</b> {reader["MobileOwnerName"]}<br />
                             <b>OTP Required:</b> {(Convert.ToBoolean(reader["IsOTPRequired"]) ? "Yes" : "No")}<br />
-                            <b>OTP Type:</b> {reader["OTPType"]}<br />
-                            <b>Office Location:</b> {officeLocationText}<br />
-                            <b>Department:</b> {departmentText}<br />
+                            <b>OTP Type:</b> {reader["OTPType"]}<br /><br />
+                            
                             <b>Notes:</b> {reader["Notes"]}<br /><br />
-                            <b>Created Date:</b> {reader["CreatedDate"]}<br />
-                            <b>Last Updated:</b> {reader["LastUpdated"]}<br />
+                            <b>Creation Date:</b> {Convert.ToDateTime(reader["CreatedDate"]).ToString("dd-MMM-yyyy hh:mm:ss tt")}<br />
+                            <b>Last Updated:</b> {Convert.ToDateTime(reader["LastUpdated"]).ToString("dd-MMM-yyyy hh:mm:ss tt")}<br />
                         ";
 
                         lblModalContent.Text = detailsHtml;

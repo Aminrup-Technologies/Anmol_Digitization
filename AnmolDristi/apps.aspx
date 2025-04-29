@@ -259,6 +259,19 @@
                                                 </div>
                                             </div>
 
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="login.aspx" target="_blank">
+                                                            <img style="width: 60%; display: block;" src="WebData/vault.jpg" alt="image" height="70%" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>Digital Vault</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <%--<div class="col-md-55">
                                                 <div class="thumbnail">
                                                     <div class="image view view-first">

@@ -53,8 +53,8 @@
                                 <asp:BoundField DataField="SiteName" HeaderText="Site Name" />
                                 <asp:BoundField DataField="Purpose" HeaderText="Purpose" />
                                 <asp:BoundField DataField="UsageFrequency" HeaderText="Frequency" />
-                                <asp:BoundField DataField="AddedByCode" HeaderText="Added By Code" />
-                                <asp:BoundField DataField="AddedByName" HeaderText="Added By Name" />
+                                <asp:BoundField DataField="AddedByCode" HeaderText="Added By Emp. Code" />
+                                <asp:BoundField DataField="AddedByName" HeaderText="Added By Emp. Name" />
                                 <asp:TemplateField HeaderText="Details">
                                     <ItemTemplate>
                                         <asp:LinkButton ID="btnViewDetails" runat="server" Text="View" CssClass="btn btn-sm btn-info"
