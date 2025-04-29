@@ -371,7 +371,7 @@ namespace AnmolDristi
             DataLoader();
         }
 
-        public void LoadAllData()
+        public void LoadAllData_OLD()
         {
             SqlConnection con = new SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString);
             SqlCommand cmd = new SqlCommand("select * from TRN_Pre_Dispatch_Clearance_Report", con);
@@ -755,8 +755,6 @@ namespace AnmolDristi
         //    }
         //}
 
-
-
         private void loadAlldata()
         {
             try
@@ -803,8 +801,7 @@ namespace AnmolDristi
                         1 = 1
                     ORDER BY 
                         c.[SubmittedDate] DESC, 
-                        c.[SubmittedTime] DESC;
-                ";
+                        c.[SubmittedTime] DESC;";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
@@ -812,6 +809,7 @@ namespace AnmolDristi
                     {
                         SqlDataAdapter sda = new SqlDataAdapter(cmd);
                         DataTable dt = new DataTable();
+                        dt.Clear();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
