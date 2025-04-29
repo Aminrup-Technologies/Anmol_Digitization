@@ -245,3 +245,8 @@ ModelManifest.xml
 # FAKE - F# Make
 .fake/
 .vs/AnmolDristi/v14/.suo
+/AnmolDristi/bin
+/AnmolDristi/bin
+/AnmolDristi/obj/Release
+/AnmolDristi/obj/Release
+/AnmolDristi/obj
