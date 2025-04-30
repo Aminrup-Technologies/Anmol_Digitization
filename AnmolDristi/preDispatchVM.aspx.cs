@@ -384,6 +384,8 @@ namespace AnmolDristi
 
         public class ReportInfo
         {
+            public int DBID { get; set; }
+            public string RecordID { get; set; }
             public int Id { get; set; }
             public string FormID { get; set; }
             public string PDCR_PK { get; set; }
@@ -452,7 +454,31 @@ namespace AnmolDristi
 
             using (SqlConnection con = new SqlConnection(connectionString))
             {
-                string sqlQuery = "SELECT * FROM [dbo].[TRN_Pre_Dispatch_Clearance_Report] WHERE ViewMode=1";
+                string sqlQuery = @"
+                            SELECT 
+                        ID AS DBID,
+                        PDCR_PK AS RecordID,
+                        FormID,
+                        PlantName AS PlantName,
+                        Line AS LineName,
+                        ProductCategory AS ProductCategory,
+                        ProductBrand AS ProductBrand,
+                        SubmittedByEmployeeCode AS EmpCode,
+                        SubmittedDate AS SDate,
+                        SubmittedTime AS STime,
+                        Shift AS SShift,
+                        Approver1EmployeeCode AS L1,
+                        Approver1_Status,
+                        Approver1_TimeStamp,
+                        Approver2EmployeeCode AS L2,
+                        Approver2_Status,
+                        Approver2_TimeStamp,
+                        DottedLineApproverEmployeeCode AS L3,
+                        DottedApprover_Status,
+                        DottedApprover_TimeStamp
+                    FROM TRN_LeakSealSlanted_Data 
+                    WHERE ViewMode = 1";
+                    //"SELECT * FROM [dbo].[TRN_Pre_Dispatch_Clearance_Report] WHERE ViewMode=1";
 
                 // Add filters to SQL query based on the selected values
                 if (!string.IsNullOrEmpty(DDL_Plant.SelectedValue) && DDL_Plant.SelectedValue != "0")
@@ -534,7 +560,8 @@ namespace AnmolDristi
             {
                 ReportInfo info = new ReportInfo
                 {
-                    Id = row["Id"] == DBNull.Value ? 0 : Convert.ToInt32(row["Id"]),
+                    DBID = row["DBID"] == DBNull.Value ? 0 : Convert.ToInt32(row["DBID"]),
+                    RecordID = row["RecordID"] == DBNull.Value ? string.Empty : row["RecordID"].ToString(),
                     FormID = row["FormID"] == DBNull.Value ? string.Empty : row["FormID"].ToString(),
                     PDCR_PK = row["PDCR_PK"] == DBNull.Value ? string.Empty : row["PDCR_PK"].ToString(),
                     PlantName = row["PlantName"] == DBNull.Value ? string.Empty : row["PlantName"].ToString(),
@@ -764,10 +791,12 @@ namespace AnmolDristi
                 string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
                 string query = @"
-                    SELECT TOP(30)
+                    WITH RankedData AS (
+                        SELECT 
                         c.ID AS DBID,
                         c.FormID as FormID,
-                        'NA' as RecordID,
+                        c.BatchID,
+                        c.PDCR_PK AS RecordID,
                         p.plant_name AS PlantName,
                         l.line_name AS LineName,
 	                    pc.category_name AS ProductCategory,
@@ -777,7 +806,7 @@ namespace AnmolDristi
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
                         c.Shift as SShift,
-                        c.Remarks as Remarks,
+                        'No Comment' AS Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
                         c.Approver1_TimeStamp,
@@ -786,7 +815,11 @@ namespace AnmolDristi
                         c.Approver2_TimeStamp,
                         c.DottedLineApproverEmployeeCode as L3,
                         c.DottedApprover_Status,
-                        c.DottedApprover_TimeStamp
+                        c.DottedApprover_TimeStamp,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY c.BatchID 
+                            ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC
+                        ) AS RowNum
                     FROM 
                         TRN_Pre_Dispatch_Clearance_Report c
                     LEFT JOIN 
@@ -799,11 +832,19 @@ namespace AnmolDristi
                         MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
                     LEFT JOIN
                         MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                    )
+                    SELECT TOP(30)
+                        DBID, FormID, BatchID, RecordID, PlantName, LineName, ProductCategory, 
+                        ProductBrand, EmpCode, EmpName, SDate, STime, SShift, Remarks, 
+                        L1, Approver1_Status, Approver1_TimeStamp, 
+                        L2, Approver2_Status, Approver2_TimeStamp, 
+                        L3, DottedApprover_Status, DottedApprover_TimeStamp
+                    FROM 
+                        RankedData
                     WHERE 
-                        1 = 1
+                        RowNum = 1
                     ORDER BY 
-                        c.[SubmittedDate] DESC, 
-                        c.[SubmittedTime] DESC;
+                        SDate DESC, STime DESC;
                 ";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
@@ -822,6 +863,7 @@ namespace AnmolDristi
             {
                 var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
                 EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
+                ShowNotification("Error", $"An error occurred while exporting: {ex.Message}", "error");
             }
         }
 
@@ -942,9 +984,10 @@ namespace AnmolDristi
             int rowIndex = Convert.ToInt32(e.CommandArgument);
             GridViewRow row = GridView1.Rows[rowIndex];
             string dbid = (row.FindControl("lbl_rowid") as Label).Text;
+            string batchid = (row.FindControl("lbl_batchid") as Label).Text;
             if (e.CommandName == "View")
             {
-                Response.Redirect("Pre_Dispatch_Detailed.aspx?ID=" + dbid + "&VM=1", false);
+                Response.Redirect("Pre_Dispatch_Detailed.aspx?ID=" + batchid + "&VM=1", false);
             }
         }
     }
