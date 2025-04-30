@@ -126,7 +126,7 @@
                                 <asp:Label ID="lbl_msg" runat="server" Text="Click SUBMIT to view Data!!"></asp:Label>
                             </div>
                             <div class="col-md-6 col-sm-12">
-                                <asp:Button ID="btn_cancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" CausesValidation="false" OnClick="btn_cancel_Click"/>
+                                <asp:Button ID="btn_cancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" CausesValidation="false" OnClick="btn_cancel_Click" />
                                 <asp:Button ID="btn_insert" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" />
                                 <asp:Button ID="btn_submit" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" CausesValidation="true" ValidationGroup="Submit" OnClick="btn_submit_Click" />
                             </div>
@@ -146,79 +146,80 @@
                         </div>
                         <div class="x_content">
                             <div class="row">
-                                <asp:GridView ID="GridViewLineCategory" runat="server" Width="100%" class="table table-striped table-hover table-bordered table-responsive table-sm table-condensed"
-                                    AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" AllowPaging="True" PageSize="50" EmptyDataText="No Data Found" DataKeyNames="id" OnRowEditing="GridViewLineCategory_RowEditing" OnRowCancelingEdit="GridViewLineCategory_RowCancelingEdit" OnRowUpdating="GridViewLineCategory_RowUpdating" OnRowDeleting="GridViewLineCategory_RowDeleting" OnPageIndexChanging="GridViewLineCategory_PageIndexChanging">
-                                    <Columns>
-                                        <asp:BoundField DataField="id" HeaderText="ID" ReadOnly="True" HeaderStyle-Width="5%" ItemStyle-Width="5%" />
-                                        <asp:TemplateField HeaderText="Plant ID">
-                                            <ItemTemplate>
-                                                <asp:Label ID="lblPlantID" runat="server" Text='<%# Eval("plant_id") %>'></asp:Label>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtPlantID" runat="server" Text='<%# Bind("plant_id") %>'></asp:TextBox>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Line ID" HeaderStyle-Width="5%" ItemStyle-Width="5%">
-                                            <ItemTemplate>
-                                                <asp:Label ID="lblLineID" runat="server" Text='<%# Eval("line_id") %>'></asp:Label>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtLineID" runat="server" Text='<%# Bind("line_id") %>'></asp:TextBox>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Category ID" HeaderStyle-Width="10%" ItemStyle-Width="10%">
-                                            <ItemTemplate>
-                                                <asp:Label ID="lblCategoryID" runat="server" Text='<%# Eval("category_id") %>'></asp:Label>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtCategoryID" runat="server" Text='<%# Bind("category_id") %>'></asp:TextBox>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Category Name" HeaderStyle-Width="10%" ItemStyle-Width="10%">
-                                            <ItemTemplate>
-                                                <asp:Label ID="lblCategoryName" runat="server" Text='<%# Eval("category_name") %>'></asp:Label>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtCategoryName" runat="server" Text='<%# Bind("category_name") %>'></asp:TextBox>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Category SAP Code" HeaderStyle-Width="10%" ItemStyle-Width="10%">
-                                            <ItemTemplate>
-                                                <asp:Label ID="lblCategorySapCode" runat="server" Text='<%# Eval("category_sapcode") %>'></asp:Label>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtCategorySapCode" runat="server" Text='<%# Bind("category_sapcode") %>'></asp:TextBox>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Local Name" HeaderStyle-Width="10%" ItemStyle-Width="10%">
-                                            <ItemTemplate>
-                                                <asp:Label ID="lblLocalName" runat="server" Text='<%# Eval("local_name") %>'></asp:Label>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtLocalName" runat="server" Text='<%# Bind("local_name") %>'></asp:TextBox>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:BoundField DataField="added_on" HeaderText="Added On" DataFormatString="{0:dd/MM/yyyy}" HeaderStyle-Width="10%" ItemStyle-Width="10%" />
-                                        <asp:TemplateField HeaderText="View Status" HeaderStyle-Width="10%" ItemStyle-Width="10%">
-                                            <ItemTemplate>
-                                                <asp:CheckBox ID="view_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' Enabled="false" />
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:CheckBox ID="view_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' />
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Delete Status" HeaderStyle-Width="10%" ItemStyle-Width="10%">
-                                            <ItemTemplate>
-                                                <asp:CheckBox ID="delete_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' Enabled="false" />
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:CheckBox ID="delete_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' />
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:CommandField ShowEditButton="True" ShowDeleteButton="True" HeaderStyle-Width="10%" ItemStyle-Width="10%" />
-                                    </Columns>
-                                </asp:GridView>
-
+                                <div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 450px; overflow: scroll;">
+                                    <asp:GridView ID="GridViewLineCategory" runat="server" Width="100%" class="table table-striped table-hover table-bordered table-responsive table-sm table-condensed"
+                                        AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" AllowPaging="True" PageSize="50" EmptyDataText="No Data Found" DataKeyNames="id" OnRowEditing="GridViewLineCategory_RowEditing" OnRowCancelingEdit="GridViewLineCategory_RowCancelingEdit" OnRowUpdating="GridViewLineCategory_RowUpdating" OnRowDeleting="GridViewLineCategory_RowDeleting" OnPageIndexChanging="GridViewLineCategory_PageIndexChanging">
+                                        <Columns>
+                                            <asp:BoundField DataField="id" HeaderText="ID" ReadOnly="True" HeaderStyle-Width="5%" ItemStyle-Width="5%" />
+                                            <asp:TemplateField HeaderText="Plant ID">
+                                                <ItemTemplate>
+                                                    <asp:Label ID="lblPlantID" runat="server" Text='<%# Eval("plant_id") %>'></asp:Label>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtPlantID" runat="server" Text='<%# Bind("plant_id") %>'></asp:TextBox>
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Line ID" HeaderStyle-Width="5%" ItemStyle-Width="5%">
+                                                <ItemTemplate>
+                                                    <asp:Label ID="lblLineID" runat="server" Text='<%# Eval("line_id") %>'></asp:Label>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtLineID" runat="server" Text='<%# Bind("line_id") %>'></asp:TextBox>
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Category ID" HeaderStyle-Width="10%" ItemStyle-Width="10%">
+                                                <ItemTemplate>
+                                                    <asp:Label ID="lblCategoryID" runat="server" Text='<%# Eval("category_id") %>'></asp:Label>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtCategoryID" runat="server" Text='<%# Bind("category_id") %>'></asp:TextBox>
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Category Name" HeaderStyle-Width="10%" ItemStyle-Width="10%">
+                                                <ItemTemplate>
+                                                    <asp:Label ID="lblCategoryName" runat="server" Text='<%# Eval("category_name") %>'></asp:Label>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtCategoryName" runat="server" Text='<%# Bind("category_name") %>'></asp:TextBox>
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Category SAP Code" HeaderStyle-Width="10%" ItemStyle-Width="10%">
+                                                <ItemTemplate>
+                                                    <asp:Label ID="lblCategorySapCode" runat="server" Text='<%# Eval("category_sapcode") %>'></asp:Label>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtCategorySapCode" runat="server" Text='<%# Bind("category_sapcode") %>'></asp:TextBox>
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Local Name" HeaderStyle-Width="10%" ItemStyle-Width="10%">
+                                                <ItemTemplate>
+                                                    <asp:Label ID="lblLocalName" runat="server" Text='<%# Eval("local_name") %>'></asp:Label>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtLocalName" runat="server" Text='<%# Bind("local_name") %>'></asp:TextBox>
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:BoundField DataField="added_on" HeaderText="Added On" DataFormatString="{0:dd/MM/yyyy}" HeaderStyle-Width="10%" ItemStyle-Width="10%" />
+                                            <asp:TemplateField HeaderText="View Status" HeaderStyle-Width="10%" ItemStyle-Width="10%">
+                                                <ItemTemplate>
+                                                    <asp:CheckBox ID="view_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' Enabled="false" />
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:CheckBox ID="view_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Delete Status" HeaderStyle-Width="10%" ItemStyle-Width="10%">
+                                                <ItemTemplate>
+                                                    <asp:CheckBox ID="delete_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' Enabled="false" />
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:CheckBox ID="delete_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:CommandField ShowEditButton="True" ShowDeleteButton="True" HeaderStyle-Width="10%" ItemStyle-Width="10%" />
+                                        </Columns>
+                                    </asp:GridView>
+                                </div>
                             </div>
                         </div>
                     </div>

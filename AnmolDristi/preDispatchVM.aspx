@@ -146,6 +146,7 @@
                                         <ItemTemplate>
                                             <asp:Label ID="lblSl" runat="server" Text='<%# Container.DataItemIndex + 1 %>'></asp:Label><br />
                                             DBID:<asp:Label ID="lbl_rowid" runat="server" Text='<%# Eval("DBID") %>' Visible="true" />
+                                            <asp:Label ID="lbl_batchid" runat="server" Text='<%# Eval("BatchID") %>' Visible="false" />
                                         </ItemTemplate>
                                     </asp:TemplateField>
 
@@ -179,11 +180,11 @@
                                     <asp:TemplateField HeaderText="Approvals" HeaderStyle-Width="20%">
                                         <ItemTemplate>
                                             L1:<asp:Label ID="lbl_Approver1" runat="server" Text='<%# Eval("L1") %>' />
-                                            [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                            [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") != null && Convert.ToString(Eval("Approver1_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                             L2:<asp:Label ID="lbl_Approver2" runat="server" Text='<%# Eval("L2") %>' />
-                                            [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                            [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status")!= null && Convert.ToString(Eval("Approver2_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                             L3:<asp:Label ID="lbl_DottedLineApproverEmployeeCode" runat="server" Text='<%# Eval("L3") %>' />
-                                            [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                            [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status")!= null && Convert.ToString(Eval("DottedApprover_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                         </ItemTemplate>
                                         <ItemStyle CssClass="text" />
                                     </asp:TemplateField>
