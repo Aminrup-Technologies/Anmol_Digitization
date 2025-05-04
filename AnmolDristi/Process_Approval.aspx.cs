@@ -10,6 +10,7 @@ using System.Configuration;
 using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.IO;
 using System.Web.Services;
+using ClosedXML.Excel;
 
 //using Microsoft.Office.Interop.Excel;
 //using System.Runtime.InteropServices; // Optional, for Excel interop cleanup
@@ -377,16 +378,24 @@ namespace AnmolDristi
                 {
                     cmd.Parameters.AddWithValue("@FromDate", fromDate);
                     cmd.Parameters.AddWithValue("@ToDate", toDate);
+
+                    cmd.Parameters.AddWithValue("@Plant_Name", string.IsNullOrEmpty(DDL_Plant.SelectedValue) || DDL_Plant.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_Plant.SelectedValue));
+                    cmd.Parameters.AddWithValue("@Plant_Line", string.IsNullOrEmpty(DDL_PlantLine.SelectedValue) || DDL_PlantLine.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_PlantLine.SelectedValue));
+                    cmd.Parameters.AddWithValue("@Product_Category", string.IsNullOrEmpty(DDL_ProductCategory.SelectedValue) || DDL_ProductCategory.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                    cmd.Parameters.AddWithValue("@Product_Brand", string.IsNullOrEmpty(DDL_ProductBrand.SelectedValue) || DDL_ProductBrand.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                    cmd.Parameters.AddWithValue("@SkuId", string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) || DDL_BrandSKU.SelectedValue == "0" ? (object)DBNull.Value : DDL_BrandSKU.SelectedValue);
+
                     cmd.CommandType = CommandType.StoredProcedure;
                     using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
                     {
                         System.Data.DataTable dt = new System.Data.DataTable();
                         sda.Fill(dt);
-                        if (dt.Rows.Count > 0)
-                        {
+                        //if (dt.Rows.Count > 0)
+                        //{
+                            ViewState["ExportData"] = dt;
                             GridView1.DataSource = dt;
                             GridView1.DataBind();
-                        }
+                        //}
                     }
                 }
             }
@@ -458,7 +467,7 @@ namespace AnmolDristi
             public string Approver1EmployeeCode { get; set; }
             public string Approver2EmployeeCode { get; set; }
             public string DottedLineApproverEmployeeCode { get; set; }
-            public string Id {  get; set; }
+            public string Id { get; set; }
 
             //added on 09/04/2025
             public string EmployeeName { get; set; }
@@ -486,6 +495,7 @@ namespace AnmolDristi
                     {
                         System.Data.DataTable dt = new System.Data.DataTable();
                         sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
                     }
@@ -537,6 +547,7 @@ namespace AnmolDristi
                     {
                         System.Data.DataTable dt = new System.Data.DataTable();
                         sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
                     }
@@ -574,7 +585,7 @@ namespace AnmolDristi
 
         //protected void ExportBtn_Click(object sender, EventArgs e)
         //{
-            
+
         //    string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
         //    using (SqlConnection con = new SqlConnection(connectionString))
@@ -685,10 +696,50 @@ namespace AnmolDristi
 
             if (e.CommandName == "ViewApprove")
             {
-                Response.Redirect("Process_FinalApproval.aspx?PcrNo="+pcrno +"&ID="+dbid+"&VM=1", false);
+                Response.Redirect("Process_FinalApproval.aspx?PcrNo=" + pcrno + "&ID=" + dbid + "&VM=1", false);
 
             }
         }
 
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCProcessCheckingReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCProcessCheckingRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+
+        }
     }
 }
