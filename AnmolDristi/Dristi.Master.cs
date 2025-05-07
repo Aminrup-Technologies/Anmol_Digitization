@@ -25,23 +25,40 @@ namespace AnmolDristi
                     Label lbl2 = (Label)Page.Master.FindControl("lbl_loginusername1");
                     lbl2.Text = Session["USERFNAME"].ToString();
 
-                    if (Session["WORKMAN"].ToString() == "AHO445" || Session["WORKMAN"].ToString() == "ADMIN")
+                    if (Session["MODULE"].ToString() == "Quality")
                     {
-                        AdminControl.Visible = true;
-                        WebLogins.Visible = true;
-                        WebLogins_Viewall.Visible = true;
+                        if (Session["WORKMAN"].ToString() == "AHO445" || Session["WORKMAN"].ToString() == "ADMIN")
+                        {
+                            AdminControl.Visible = true;
+                            WebLogins.Visible = true;
+                            WebLogins_Viewall.Visible = true;
+                        }
+                        else
+                        {
+                            AdminControl.Visible = false;
+                            WebLogins.Visible = false;
+                        }
                     }
-                    else if (Session["WORKMAN"].ToString() == "D006")
+                    else if (Session["MODULE"].ToString() == "Vault")
                     {
-                        AdminControl.Visible = false;
-                        WebLogins.Visible = true;
-                        FormsApprovals.Visible = false;
-                        WebLogins_Viewall.Visible = true;
-                    }
-                    else
-                    {
-                        AdminControl.Visible = false;
-                        WebLogins.Visible = false;
+                        if (Session["WORKMAN"].ToString() == "D006")
+                        {
+                            ImputForms.Visible = false;
+                            Reports.Visible = false;
+                            AdminControl.Visible = false;
+                            WebLogins.Visible = true;
+                            FormsApprovals.Visible = false;
+                            WebLogins_Viewall.Visible = true;
+                        }
+                        else
+                        {
+                            ImputForms.Visible = false;
+                            Reports.Visible = false;
+                            AdminControl.Visible = false;
+                            WebLogins.Visible = true;
+                            FormsApprovals.Visible = false;
+                            WebLogins_Viewall.Visible = false;
+                        }
                     }
                 }
             }

@@ -69,7 +69,7 @@ namespace AnmolDristi
                 string id = txt_loginid.Text;
                 string pass = txt_password.Text;
 
-                string query = "SELECT Id, EmployeeCode, EmployeeName, BranchId, PlantId, EmployeeStatus, CompanyId, DepartmentId, GradeId, SubDepartmentId, DOJ, CategoryId, Email, Mobile, Gender, RegionId, DivisionId, CreatedDate, CreatedBy, CreationMode, Password, LastLoginDate, LastLogoutDate from MST_UserMaster where EmployeeCode=@EmployeeCode and Password=@Password";
+                string query = "SELECT Id, EmployeeCode, EmployeeName, BranchId, PlantId, EmployeeStatus, CompanyId, DepartmentId, GradeId, SubDepartmentId, DOJ, CategoryId, Email, Mobile, Gender, RegionId, DivisionId, CreatedDate, CreatedBy, CreationMode, Password, LastLoginDate, LastLogoutDate, Module from MST_UserMaster where EmployeeCode=@EmployeeCode and Password=@Password";
                 SqlParameter[] pram = {
                                           new SqlParameter("@EmployeeCode",id),
                                           new SqlParameter("@Password",pass),
@@ -86,6 +86,8 @@ namespace AnmolDristi
                         string BranchId = dt.Rows[0]["BranchId"].ToString();
                         string PlantId = dt.Rows[0]["PlantId"].ToString();
                         string Workman = dt.Rows[0]["EmployeeCode"].ToString();
+
+                        string Module = dt.Rows[0]["Module"].ToString();
                         //string User_FirstName = dt.Rows[0]["EmployeeName"].ToString();
 
                         // Assuming the input string is in dt.Rows[0]["EmployeeName"]
@@ -116,6 +118,7 @@ namespace AnmolDristi
                         //Session["PERMISSION"] = User_Permission;
                         Session["REGION"] = RegionId;
                         Session["STATE"] = BranchId;
+                        Session["MODULE"] = Module;
                         Session["PLANTID"] = PlantId;
                         Session["U_SITE"] = User_Worksite;
                         Session["U_SITECODE"] = User_WRKSTCode;
