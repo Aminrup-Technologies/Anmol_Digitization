@@ -74,7 +74,7 @@ namespace AnmolDristi
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue);
-
+                DataLoader();
             }
             else
             {
@@ -154,7 +154,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qchome_rpt.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)

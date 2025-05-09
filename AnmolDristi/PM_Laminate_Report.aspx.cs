@@ -39,8 +39,8 @@ namespace AnmolDristi
                     lbl_viewname.Text = "View and Search for Detailed View || ";
 
                     PlantBinder();
-                    //loadAlldata();
-                    LoadData("TRN_PM_LaminateTestingReport");
+                    loadAlldata();
+                    //LoadData("TRN_PM_LaminateTestingReport");
                 }
 
             }
