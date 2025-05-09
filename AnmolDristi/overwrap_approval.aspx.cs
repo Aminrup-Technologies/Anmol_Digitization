@@ -8,6 +8,8 @@ using System.Data;
 using System.Configuration;
 using System.Data.SqlClient;
 using System.Text;
+using ClosedXML.Excel;
+using System.IO;
 
 
 namespace AnmolDristi
@@ -71,7 +73,7 @@ namespace AnmolDristi
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue);
-                //FilterData();
+                DataLoader();
             }
             else
             {
@@ -152,7 +154,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qcapprovals.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -174,36 +176,48 @@ namespace AnmolDristi
 
                 string query = @"
                     SELECT TOP(30)
-                        c.ID AS DBID,
-                        c.FormID as FormID,
-                        'NA' as RecordID,
-                        p.plant_name AS PlantName,
-                        c.ProductBrand AS ProductBrand,
-                        c.SubmittedByEmployeeCode as EmpCode,
-                        u.EmployeeName AS EmpName,
-                        c.SubmittedDate as SDate,
-                        c.SubmittedTime as STime,
-                        c.Remarks as Remarks,
-                        c.Approver1EmployeeCode as L1,
-                        c.Approver1_Status,
-                        c.Approver1_TimeStamp,
-                        c.Approver2EmployeeCode as L2,
-                        c.Approver2_Status,
-                        c.Approver2_TimeStamp,
-                        c.DottedLineApproverEmployeeCode as L3,
-                        c.DottedApprover_Status,
-                        c.DottedApprover_TimeStamp
-                    FROM 
-                        TRN_OVERWRAP c
-                    LEFT JOIN 
-                        MST_PlantDetails p ON c.PlantName = p.plant_id
-                    LEFT JOIN
-                        MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                    WHERE 
-                        1 = 1
-                    ORDER BY 
-                        c.[SubmittedDate] DESC, 
-                        c.[SubmittedTime] DESC;
+                    c.ID AS DBID,
+                    c.FormID as FormID,
+                    OVRID as RecordID,
+                    p.plant_name AS PlantName,
+                    c.ProductBrand AS Material,
+                    c.SubmittedByEmployeeCode as EmpCode,
+                    u.EmployeeName AS EmpName,
+                    c.SubmittedDate as SDate,
+                    c.SubmittedTime as STime,
+	                c.SupplierName,
+                    c.ChallanNo,
+                    c.ChallanDate,
+                    c.LotGateNo,
+                    c.VehicleNo,
+                    c.SealingValue,
+                    c.DimensionStd,
+                    c.RemarkForDimensionStd,
+                    c.DimensionObs,
+                    c.GMS_Std,
+                    c.RemarkForGSM_Std,
+                    c.GSM_Obs,
+                    c.Remarks as Remarks,
+                    c.Approver1EmployeeCode as L1,
+                    c.Approver1_Status,
+                    c.Approver1_TimeStamp,
+                    c.Approver2EmployeeCode as L2,
+                    c.Approver2_Status,
+                    c.Approver2_TimeStamp,
+                    c.DottedLineApproverEmployeeCode as L3,
+                    c.DottedApprover_Status,
+                    c.DottedApprover_TimeStamp
+                FROM 
+                    TRN_OVERWRAP c
+                LEFT JOIN 
+                    MST_PlantDetails p ON c.PlantName = p.plant_id
+                LEFT JOIN
+                    MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                WHERE 
+                    1 = 1
+                ORDER BY 
+                    c.[SubmittedDate] DESC, 
+                    c.[SubmittedTime] DESC;
                 ";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
@@ -214,6 +228,7 @@ namespace AnmolDristi
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -234,12 +249,25 @@ namespace AnmolDristi
                 SELECT 
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    OVRID as RecordID,
                     p.plant_name AS PlantName,
-                    pb.brand_name AS ProductBrand,
+                    c.ProductBrand AS Material,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
+                    c.SupplierName,
+                    c.ChallanNo,
+                    c.ChallanDate,
+                    c.LotGateNo,
+                    c.VehicleNo,
+                    c.SealingValue,
+                    c.DimensionStd,
+                    c.RemarkForDimensionStd,
+                    c.DimensionObs,
+                    c.GMS_Std,
+                    c.RemarkForGSM_Std,
+                    c.GSM_Obs,
                     'No Comment' AS Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
@@ -253,7 +281,6 @@ namespace AnmolDristi
                 FROM 
                     TRN_OVERWRAP c
                 LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
-                LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
                 LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                 WHERE 1 = 1");
 
@@ -302,6 +329,7 @@ namespace AnmolDristi
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
             }
             catch (Exception ex)
@@ -355,6 +383,45 @@ namespace AnmolDristi
             }
         }
 
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QC_HMBagPPBag_Report");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QC_HMBagPPBag_Records.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
 
     }
 }

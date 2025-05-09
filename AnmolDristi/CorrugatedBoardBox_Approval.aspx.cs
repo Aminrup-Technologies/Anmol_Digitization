@@ -12,6 +12,7 @@ using System.IO;
 using System.Web.Services;
 using System.Security.Cryptography;
 using System.Text;
+using ClosedXML.Excel;
 
 namespace AnmolDristi
 {
@@ -74,7 +75,7 @@ namespace AnmolDristi
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue);
-                //FilterData();
+                DataLoader();
             }
             else
             {
@@ -155,7 +156,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qcapprovals.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -179,13 +180,40 @@ namespace AnmolDristi
                     SELECT TOP(30)
                         c.ID AS DBID,
                         c.FormID as FormID,
-                        'NA' as RecordID,
+                        CBBID as RecordID,
                         p.plant_name AS PlantName,
                         pb.brand_name AS ProductBrand,
                         c.SubmittedByEmployeeCode as EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
+                        c.SupplierName,
+                        c.ChallanNo,
+                        c.ChallanDate,
+                        c.LotGateNo,
+                        c.VehicleNo,
+                        c.NoOfPackets,
+                        c.SampleSize,
+                        c.DimensionStd_L,
+                        c.RemarkForDimensionStd_L,
+                        c.DimensionStd_W,
+                        c.RemarkForDimensionStd_W,
+                        c.DimensionStd_H,
+                        c.RemarkForDimensionStd_H,
+                        c.DimensionObs_L,
+                        c.DimensionObs_W,
+                        c.DimensionObs_H,
+                        c.GMS_Std,
+                        c.RemarkForGSM_Std,
+                        c.GSM_Obs,
+                        c.BS_KgPerCm2,
+                        c.BS_Remarks,
+                        c.Comp_Strength,
+                        c.Comp_Remarks,
+                        c.Flute_Percentage,
+                        c.Flute_Remarks,
+                        c.Moisture_Percentage,
+                        c.Moisture_Remarks,
                         c.Remarks as Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
@@ -219,6 +247,7 @@ namespace AnmolDristi
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -239,12 +268,40 @@ namespace AnmolDristi
                 SELECT 
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    CBBID as RecordID,
                     p.plant_name AS PlantName,
                     pb.brand_name AS ProductBrand,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
+                    c.SupplierName,
+                    c.ChallanNo,
+                    c.ChallanDate,
+                    c.LotGateNo,
+                    c.VehicleNo,
+                    c.NoOfPackets,
+                    c.SampleSize,
+                    c.DimensionStd_L,
+                    c.RemarkForDimensionStd_L,
+                    c.DimensionStd_W,
+                    c.RemarkForDimensionStd_W,
+                    c.DimensionStd_H,
+                    c.RemarkForDimensionStd_H,
+                    c.DimensionObs_L,
+                    c.DimensionObs_W,
+                    c.DimensionObs_H,
+                    c.GMS_Std,
+                    c.RemarkForGSM_Std,
+                    c.GSM_Obs,
+                    c.BS_KgPerCm2,
+                    c.BS_Remarks,
+                    c.Comp_Strength,
+                    c.Comp_Remarks,
+                    c.Flute_Percentage,
+                    c.Flute_Remarks,
+                    c.Moisture_Percentage,
+                    c.Moisture_Remarks,
                     'No Comment' AS Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
@@ -307,6 +364,7 @@ namespace AnmolDristi
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
             }
             catch (Exception ex)
@@ -357,6 +415,47 @@ namespace AnmolDristi
                     // Show an error message or log the issue.
                     System.Diagnostics.Debug.WriteLine("Invalid DBID passed: " + e.CommandArgument);
                 }
+            }
+        }
+
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCCorrugatedBoardBoxReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCCorrugatedBoardBoxRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
             }
         }
 

@@ -30,7 +30,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-3" runat="server" visible="false">
                                             <div class="mb-3">
                                                 <asp:Label ID="Label4" runat="server" AssociatedControlID="DDL_ProductBrand" Text="Product Brand" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                 <asp:RequiredFieldValidator ID="RFV_DDL_ProductBrand" runat="server" ErrorMessage="" ForeColor="Red" ControlToValidate="DDL_ProductBrand" InitialValue="" Display="Dynamic"></asp:RequiredFieldValidator>
@@ -89,7 +89,7 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="lbl_viewname" runat="server" Text="Label"></asp:Label>
-                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" />
+                                <%--<asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" />--%>
                             </h2>
                             <div class="clearfix"></div>
                         </div>

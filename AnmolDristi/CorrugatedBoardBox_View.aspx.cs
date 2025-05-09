@@ -38,6 +38,7 @@ namespace AnmolDristi
             }
         }
 
+        
         private void PlantBinder()
         {
             string query = "SELECT plant_id, CONCAT(plant_name, '[', sap_code, ']') AS plant_name FROM MST_PlantDetails";
@@ -74,7 +75,7 @@ namespace AnmolDristi
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue);
-
+                DataLoader();
             }
             else
             {
@@ -95,14 +96,15 @@ namespace AnmolDristi
         private void ProductBrandsBinder(string selectedPlantValue)
         {
             // Construct the SQL query with parameters
-            string query = "SELECT brand_id, brand_name FROM MST_LineCatBrands WHERE plant_id = @PlantId ";
+            //string query = "SELECT brand_id, brand_name FROM MST_LineCatBrands WHERE plant_id = @PlantId ";
+            string query = "SELECT c.brand_id, CONCAT (c.brand_name,'[' ,l.line_name, ']') as brand_name  FROM MST_LineCatBrands c, MST_Plant_Lines l WHERE c.plant_id = @PlantId and c.line_id = l.line_id order by l.line_name";
             string textField = "brand_name"; // Assuming this is the correct field for displaying in the DropDownList
             string valueField = "brand_id"; // Assuming this is the correct field for storing in the DropDownList
 
             // Create SQL parameters for plant_id and line_id
             SqlParameter[] parameters = new SqlParameter[]
             {
-                new SqlParameter("@PlantId", selectedPlantValue)
+        new SqlParameter("@PlantId", selectedPlantValue)
             };
 
             // Call the BindDropDownList method with parameters
@@ -113,13 +115,13 @@ namespace AnmolDristi
             if (!recordsBound)
             {
                 string ProductBrands_Error_script = @"<script type='text/javascript'>
-                    new PNotify({
-                        title: 'Error',
-                        text: 'No Brands found for the selected plant and line!',
-                        type: 'error',
-                        styling: 'bootstrap3'
-                    });
-                </script>";
+            new PNotify({
+                title: 'Error',
+                text: 'No Brands found for the selected plant and line!',
+                type: 'error',
+                styling: 'bootstrap3'
+            });
+        </script>";
 
                 // RegisterStartupScript adds the JavaScript code to the page
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowProductBrandsBinderErrorNotification", ProductBrands_Error_script, false);
@@ -131,7 +133,7 @@ namespace AnmolDristi
             if (DDL_ProductBrand.SelectedIndex != 0)
             {
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
-
+                DataLoader();
             }
             else
             {
@@ -152,7 +154,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qchome_rpt.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -178,7 +180,7 @@ namespace AnmolDristi
                         c.FormID as FormID,
                         'NA' as RecordID,
                         p.plant_name AS PlantName,
-                        pb.brand_name AS ProductBrand,
+                        CONCAT(pb.brand_name, ' [', l.line_name, ']') AS ProductBrand,
                         c.SubmittedByEmployeeCode as EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
@@ -199,6 +201,8 @@ namespace AnmolDristi
                         MST_PlantDetails p ON c.PlantName = p.plant_id
                     LEFT JOIN
                         MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                    LEFT JOIN
+                        MST_Plant_Lines l ON pb.line_id = l.line_id
                     LEFT JOIN
                         MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                     WHERE 
@@ -237,7 +241,7 @@ namespace AnmolDristi
                     c.ID AS DBID,
                     c.FormID AS FormID,
                     p.plant_name AS PlantName,
-                    pb.brand_name AS ProductBrand,
+                    CONCAT(pb.brand_name, ' [', l.line_name, ']') AS ProductBrand,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
@@ -255,6 +259,7 @@ namespace AnmolDristi
                 FROM TRN_Corrugated_Board_Box_Report c
                 LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
                 LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                LEFT JOIN MST_Plant_Lines l ON pb.line_id = l.line_id
                 LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                 WHERE 1 = 1");
 
