@@ -549,50 +549,176 @@ namespace AnmolDristi
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification6", BrandSKUBinder_Error_script6, false);
             }
         }
+        //protected void btn_submit_Click(object sender, EventArgs e)
+        //{
+        //    string startdate = txt_date1.Text.ToString();
+        //    string enddate = txt_date2.Text.ToString();
+
+        //    string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+        //    string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
+        //    string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
+        //    string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
+        //    string selectedBrandSKU = DDL_BrandSKU.SelectedValue.ToString();
+
+
+
+        //    if (DDL_Plant.SelectedIndex != 0)
+        //    {
+        //        if (DDL_PlantLine.SelectedIndex != 0)
+        //        {
+        //            if (DDL_ProductBrand.SelectedIndex != 0)
+        //            {
+        //                if (txt_date1.Text != "" && txt_date1.Text != "")
+        //                {
+        //                    BindGridView(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue, selectedProductBrandValue, selectedBrandSKU, startdate, enddate);
+        //                }
+        //                else
+        //                {
+        //                    // Define the PNotify script for no records found
+        //                    string noRecordsScript9 = @"<script type='text/javascript'>
+        //                        new PNotify({
+        //                            title: 'No Records Found',
+        //                            text: 'No Calender Date Selection by User',
+        //                            type: 'info',
+        //                            styling: 'bootstrap3'
+        //                        });
+        //                    </script>";
+
+        //                    // Register the script to show the notification
+        //                    ClientScript.RegisterStartupScript(this.GetType(), "ShowNoRecordsNotification9", noRecordsScript9, false);
+
+        //                    BindGridView(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue, selectedProductBrandValue, selectedBrandSKU);
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+
+
+        //protected void btn_submit_Click(object sender, EventArgs e)
+        //{
+        //    string startDate = txt_date1.Text.Trim();
+        //    string endDate = txt_date2.Text.Trim();
+
+        //    string plant = DDL_Plant.SelectedIndex > 0 ? DDL_Plant.SelectedValue : null;
+        //    string line = DDL_PlantLine.SelectedIndex > 0 ? DDL_PlantLine.SelectedValue : null;
+        //    string category = DDL_ProductCategory.SelectedIndex > 0 ? DDL_ProductCategory.SelectedValue : null;
+        //    string brand = DDL_ProductBrand.SelectedIndex > 0 ? DDL_ProductBrand.SelectedValue : null;
+        //    string sku = DDL_BrandSKU.SelectedIndex > 0 ? DDL_BrandSKU.SelectedValue : null;
+
+        //    DateTime? start = string.IsNullOrWhiteSpace(startDate) ? (DateTime?)null : DateTime.Parse(startDate);
+        //    DateTime? end = string.IsNullOrWhiteSpace(endDate) ? (DateTime?)null : DateTime.Parse(endDate);
+
+        //    if (plant != null || line != null || category != null || brand != null || sku != null || start != null || end != null)
+        //    {
+        //        BindGridView_FlexibleFilter(plant, line, category, brand, sku, start, end);
+        //    }
+        //    else
+        //    {
+        //        // Show warning if no filters selected
+        //        string script = @"<script type='text/javascript'>
+        //                    new PNotify({
+        //                        title: 'Input Required',
+        //                        text: 'Please select at least one filter or a date range.',
+        //                        type: 'warning',
+        //                        styling: 'bootstrap3'
+        //                    });
+        //                  </script>";
+        //        ClientScript.RegisterStartupScript(this.GetType(), "FilterWarning", script, false);
+        //    }
+        //}
+
         protected void btn_submit_Click(object sender, EventArgs e)
         {
-            string startdate = txt_date1.Text.ToString();
-            string enddate = txt_date2.Text.ToString();
+            string plant = DDL_Plant.SelectedIndex > 0 ? DDL_Plant.SelectedValue : null;
+            string line = DDL_PlantLine.SelectedIndex > 0 ? DDL_PlantLine.SelectedValue : null;
+            string category = DDL_ProductCategory.SelectedIndex > 0 ? DDL_ProductCategory.SelectedValue : null;
+            string brand = DDL_ProductBrand.SelectedIndex > 0 ? DDL_ProductBrand.SelectedValue : null;
+            string sku = DDL_BrandSKU.SelectedIndex > 0 ? DDL_BrandSKU.SelectedValue : null;
 
-            string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
-            string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
-            string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
-            string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
-            string selectedBrandSKU = DDL_BrandSKU.SelectedValue.ToString();
+            // If user hasn't selected dates, default to current month
+            DateTime start = DateTime.Today;
+            DateTime end = DateTime.Today;
 
-
-
-            if (DDL_Plant.SelectedIndex != 0)
+            if (!string.IsNullOrWhiteSpace(txt_date1.Text) && !string.IsNullOrWhiteSpace(txt_date2.Text))
             {
-                if (DDL_PlantLine.SelectedIndex != 0)
+                // Use user-selected dates
+                start = DateTime.Parse(txt_date1.Text.Trim());
+                end = DateTime.Parse(txt_date2.Text.Trim());
+            }
+            else
+            {
+                // Default to first and last day of current month
+                start = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                end = start.AddMonths(1).AddDays(-1);
+            }
+
+            // Proceed only if at least one dropdown is selected
+            if (plant != null || line != null || category != null || brand != null || sku != null)
+            {
+                BindGridView_FlexibleFilter(plant, line, category, brand, sku, start, end);
+            }
+            else
+            {
+                // Show warning if no dropdown selected
+                string script = @"<script type='text/javascript'>
+                            new PNotify({
+                                title: 'Filter Required',
+                                text: 'Please select at least one filter (Plant, Line, Category, Brand, or SKU).',
+                                type: 'warning',
+                                styling: 'bootstrap3'
+                            });
+                          </script>";
+                ClientScript.RegisterStartupScript(this.GetType(), "FilterWarning", script, false);
+            }
+        }
+
+
+        private void BindGridView_FlexibleFilter(string plant, string line, string category, string brand, string sku, DateTime? startDate, DateTime? endDate)
+        {
+            using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand("GetQCInspectorRecordsFlexibleFilter", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.AddWithValue("@PlantName", (object)plant ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@PlantLine", (object)line ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ProductCategory", (object)category ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BrandName", (object)brand ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@SKUId", (object)sku ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@StartDate", (object)startDate ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@EndDate", (object)endDate ?? DBNull.Value);
+
+                SqlDataAdapter da = new SqlDataAdapter(cmd);
+                DataTable dt = new DataTable();
+                da.Fill(dt);
+                ViewState["ExportData"] = dt;
+
+                GridView1.DataSource = dt.Rows.Count > 0 ? dt : null;
+                GridView1.DataBind();
+
+                if (dt.Rows.Count == 0)
                 {
-                    if (DDL_ProductBrand.SelectedIndex != 0)
-                    {
-                        if (txt_date1.Text != "" && txt_date1.Text != "")
-                        {
-                            BindGridView(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue, selectedProductBrandValue, selectedBrandSKU, startdate, enddate);
-                        }
-                        else
-                        {
-                            // Define the PNotify script for no records found
-                            string noRecordsScript9 = @"<script type='text/javascript'>
-                                new PNotify({
-                                    title: 'No Records Found',
-                                    text: 'No Calender Date Selection by User',
-                                    type: 'info',
-                                    styling: 'bootstrap3'
-                                });
-                            </script>";
-
-                            // Register the script to show the notification
-                            ClientScript.RegisterStartupScript(this.GetType(), "ShowNoRecordsNotification9", noRecordsScript9, false);
-
-                            BindGridView(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue, selectedProductBrandValue, selectedBrandSKU);
-                        }
-                    }
+                    NotifyNoRecordsFound();
                 }
             }
         }
+
+        private void NotifyNoRecordsFound()
+        {
+            string script = @"<script type='text/javascript'>
+                        new PNotify({
+                            title: 'No Records Found',
+                            text: 'No records match the applied filters.',
+                            type: 'info',
+                            styling: 'bootstrap3'
+                        });
+                      </script>";
+
+            ClientScript.RegisterStartupScript(this.GetType(), "NoDataAlert", script, false);
+        }
+
+
         private void BindGridView(string plantName, string plantLine, string productCategory, string brandName, string skuid, string startDate, string endDate)
         {
             // Get the connection string from Web.config
