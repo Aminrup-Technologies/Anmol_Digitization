@@ -83,7 +83,7 @@
                                     <asp:Label ID="Label5" runat="server" AssociatedControlID="DDL_BrandSKU" Text="Brand SKU Type" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_DDL_BrandSKU" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="Submit" ControlToValidate="DDL_BrandSKU" InitialValue="" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
-                                        <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
+                                        <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_BrandSKU_SelectedIndexChanged"></asp:DropDownList>
                                     </div>
                                 </div>
                             </div>
@@ -118,8 +118,8 @@
         <!-- Action Buttons -->
         <div class="action-buttons" style="display: flex; justify-content: center; align-items: center; text-align: center;">
             <asp:Label ID="lblInstruction" runat="server" Text="Click SUBMIT to view data!!!" CssClass="clearfix" Style="padding-right: 5em" />
-            <asp:Button ID="ReportbtnCancel" runat="server" Text="Home" CssClass="btn btn-danger btn-sm" CausesValidation="false" PostBackUrl="~/qaqc_qaapprovals.aspx" />
-            <asp:Button ID="Submit" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" CausesValidation="false" OnClick="Submit_Click" />
+            <asp:Button ID="ReportbtnCancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" CausesValidation="false" PostBackUrl="~/qaqc_qaapprovals.aspx" />
+            <asp:Button ID="Submit" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClick="Submit_Click" />
             <asp:Button ID="Reset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="Reset_Click" />
         </div>
 
@@ -130,16 +130,19 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="label_lower" runat="server" Text="Filtered Data" Style="margin-right: 6px;"></asp:Label>
-                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" />
+                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" OnClick="ExportBtn_Click" />
                             </h2>
-                            <ul class="nav navbar-right panel_toolbox">
+                            <%--<ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
-                            </ul>
+                            </ul>--%>
                             <div class="clearfix"></div>
                         </div>
                         <!-- GridView for displaying filtered data -->
                         <div class="table-responsive">
                             <asp:GridView ID="GridView1" runat="server" AutoGenerateColumns="False" ShowHeaderWhenEmpty="true" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" OnRowCommand="GridView1_RowCommand">
+                                <EmptyDataTemplate>
+                                    <div style="text-align: center; padding: 10px;">No records found for the selected filters.</div>
+                                </EmptyDataTemplate>
                                 <Columns>
 
                                     <asp:TemplateField HeaderText="Sl" HeaderStyle-Width="5%">
@@ -157,6 +160,7 @@
                                             Line:<asp:Label ID="lbl_Line" runat="server" Text='<%# Eval("LineName") %>' Font-Bold="true" /><br />
                                             Category:<asp:Label ID="lbl_ProductCategory" runat="server" Text='<%# Eval("ProductCategory") %>' Font-Bold="true" /><br />
                                             Brand:<asp:Label ID="lbl_ProductBrand" runat="server" Text='<%# Eval("ProductBrand") %>' Font-Bold="true" /><br />
+                                            SKU:<asp:Label ID="lbl_BrandSku" runat="server" Text='<%# Eval("SKU_name") %>' Font-Bold="true" /><br />
                                         </ItemTemplate>
                                     </asp:TemplateField>
 

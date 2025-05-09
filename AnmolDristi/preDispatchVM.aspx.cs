@@ -14,6 +14,7 @@ using System.Security.Cryptography;
 //using Microsoft.Office.Interop.Excel;
 using System.Runtime.InteropServices;
 using System.Text;
+using ClosedXML.Excel;
 //using ExcelInterop = Microsoft.Office.Interop.Excel;
 
 namespace AnmolDristi
@@ -115,6 +116,7 @@ namespace AnmolDristi
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 PlantLinesBinder(selectedPlantValue);
+                DataLoader();
             }
             else
             {
@@ -130,7 +132,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_Plant_Error_script, false);
             }
-            DataLoader();
+            
         }
 
         private void PlantLinesBinder(string selectedPlantValue)
@@ -165,6 +167,7 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 LineProductsBinder(selectedPlantValue, selectedPlantLineValue);
+                DataLoader();
             }
             else
             {
@@ -180,7 +183,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_PlantLine_Error_script, false);
             }
-            DataLoader();
+            
         }
 
         private void LineProductsBinder(string selectedPlantValue, string selectedPlantLineValue)
@@ -226,6 +229,8 @@ namespace AnmolDristi
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue);
+                DataLoader();
+
             }
             else
             {
@@ -241,7 +246,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_PlantLine_Error_script, false);
             }
-            DataLoader();
+            
         }
 
         private void ProductBrandsBinder(string selectedPlantValue, string selectedPlantLineValue, string selectedProductCategoryValue)
@@ -286,6 +291,8 @@ namespace AnmolDristi
             {
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 BrandSKUBinder(selectedProductBrandValue);
+                DataLoader();
+
 
                 System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
 
@@ -342,7 +349,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowSKUInvalidErrorNotification", DDL_ProductBrand_Error_script, false);
             }
-            DataLoader();
+            
         }
 
         private void BrandSKUBinder(string selectedProductBrandValue)
@@ -792,59 +799,143 @@ namespace AnmolDristi
 
                 string query = @"
                     WITH RankedData AS (
-                        SELECT 
-                        c.ID AS DBID,
-                        c.FormID as FormID,
-                        c.BatchID,
-                        c.PDCR_PK AS RecordID,
-                        p.plant_name AS PlantName,
-                        l.line_name AS LineName,
-	                    pc.category_name AS ProductCategory,
-	                    pb.brand_name AS ProductBrand,
-                        c.SubmittedByEmployeeCode as EmpCode,
-                        u.EmployeeName AS EmpName,
-                        c.SubmittedDate as SDate,
-                        c.SubmittedTime as STime,
-                        c.Shift as SShift,
-                        'No Comment' AS Remarks,
-                        c.Approver1EmployeeCode as L1,
-                        c.Approver1_Status,
-                        c.Approver1_TimeStamp,
-                        c.Approver2EmployeeCode as L2,
-                        c.Approver2_Status,
-                        c.Approver2_TimeStamp,
-                        c.DottedLineApproverEmployeeCode as L3,
-                        c.DottedApprover_Status,
-                        c.DottedApprover_TimeStamp,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY c.BatchID 
-                            ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC
-                        ) AS RowNum
-                    FROM 
-                        TRN_Pre_Dispatch_Clearance_Report c
-                    LEFT JOIN 
-                        MST_PlantDetails p ON c.PlantName = p.plant_id
-                    LEFT JOIN 
-                        MST_Plant_Lines l ON c.Line = l.line_id
-                    LEFT JOIN 
-                        MST_LineCategory pc ON c.ProductCategory = pc.category_id
-                    LEFT JOIN 
-                        MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
-                    LEFT JOIN
-                        MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                    )
-                    SELECT TOP(30)
-                        DBID, FormID, BatchID, RecordID, PlantName, LineName, ProductCategory, 
-                        ProductBrand, EmpCode, EmpName, SDate, STime, SShift, Remarks, 
-                        L1, Approver1_Status, Approver1_TimeStamp, 
-                        L2, Approver2_Status, Approver2_TimeStamp, 
-                        L3, DottedApprover_Status, DottedApprover_TimeStamp
-                    FROM 
-                        RankedData
-                    WHERE 
-                        RowNum = 1
-                    ORDER BY 
-                        SDate DESC, STime DESC;
+                    SELECT 
+                    c.ID AS DBID,
+                    c.FormID as FormID,
+                    c.BatchID,
+                    c.PDCR_PK AS RecordID,
+                    p.plant_name AS PlantName,
+                    l.line_name AS LineName,
+                    pc.category_name AS ProductCategory,
+                    pb.brand_name AS ProductBrand,
+	                s.SKU_name,
+                    c.SubmittedByEmployeeCode as EmpCode,
+                    u.EmployeeName AS EmpName,
+                    c.SubmittedDate as SDate,
+                    c.SubmittedTime as STime,
+                    c.Shift as SShift,
+	                c.InspectionLot,
+	                c.MaterialCode,
+	                c.CBB_Produced,
+	                c.CBB_Checked,
+	                CASE 
+		                WHEN c.CBB_Box_Condition= 1 THEN 'Ok'
+		                WHEN c.CBB_Box_Condition = 0 THEN 'Not Ok'
+	                END AS CBB_Box_Condition,
+	                c.CBB_Box_ConditionRemarks,
+	                c.Packets_CBB,
+	                CASE 
+		                WHEN c.CBB_tapping= 1 THEN 'Ok'
+		                WHEN c.CBB_tapping = 0 THEN 'Not Ok'
+	                END AS CBB_tapping,
+	                c.CBB_tappingRemarks,
+	                c.PacketsChecked_CBB,
+	                c.WeightofPackets,
+	                c.PackageDate,
+	                c.BatchNo,
+	                c.PacketsMRP,
+	                CASE 
+		                WHEN c.LongSeal= 1 THEN 'Ok'
+		                WHEN c.LongSeal = 0 THEN 'Not Ok'
+	                END AS LongSeal,
+	                c.LongSealRemarks,
+	                CASE 
+		                WHEN c.EndSeal= 1 THEN 'Ok'
+		                WHEN c.EndSeal = 0 THEN 'Not Ok'
+	                END AS EndSeal,
+	                c.EndSealRemarks,
+	                CASE 
+		                WHEN c.MainPanel= 1 THEN 'Ok'
+		                WHEN c.MainPanel = 0 THEN 'Not Ok'
+	                END AS MainPanel,
+	                c.MainPanelRemarks,
+	                CASE 
+		                WHEN c.Cuts_Packets= 1 THEN 'NO'
+		                WHEN c.Cuts_Packets = 0 THEN 'Yes'
+	                END AS Cuts_Packets,
+	                c.Cuts_PacketsRemarks,
+	                CASE 
+		                WHEN c.BackingStatus= 1 THEN 'Ok'
+		                WHEN c.BackingStatus = 0 THEN 'Under/Over Baked'
+	                END AS BackingStatus,
+	                c.BackingStatusRemarks,
+	                CASE 
+		                WHEN c.ElongOval= 1 THEN 'Ok'
+		                WHEN c.ElongOval = 0 THEN 'Not Ok'
+	                END AS ElongOval,
+	                c.ElongOvalRemarks,
+	                CASE 
+		                WHEN c.Cupping= 1 THEN 'NO'
+		                WHEN c.Cupping = 0 THEN 'Yes'
+	                END AS Cupping,
+	                c.CuppingRemarks,
+	                CASE 
+		                WHEN c.Impression= 1 THEN 'Ok'
+		                WHEN c.Impression = 0 THEN 'Not Ok'
+	                END AS Impression,
+	                c.ImpressionRemarks,
+	                CASE 
+		                WHEN c.SoggyStatus= 1 THEN 'Ok'
+		                WHEN c.SoggyStatus = 0 THEN 'Not Ok'
+	                END AS SoggyStatus,
+	                c.SoggyStatusRemarks,
+	                CASE 
+		                WHEN c.ForeignBody= 1 THEN 'NO'
+		                WHEN c.ForeignBody = 0 THEN 'Yes'
+	                END AS ForeignBody,
+	                c.ForeignBodyRemarks,
+	                CASE 
+		                WHEN c.OffOdour= 1 THEN 'NO'
+		                WHEN c.OffOdour = 0 THEN 'Yes'
+	                END AS OffOdour,
+	                c.OffOdourRemarks,
+                    'No Comment' AS Remarks,
+                    c.Approver1EmployeeCode as L1,
+                    c.Approver1_Status,
+                    c.Approver1_TimeStamp,
+                    c.Approver2EmployeeCode as L2,
+                    c.Approver2_Status,
+                    c.Approver2_TimeStamp,
+                    c.DottedLineApproverEmployeeCode as L3,
+                    c.DottedApprover_Status,
+                    c.DottedApprover_TimeStamp,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY c.BatchID 
+                        ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC
+                    ) AS RowNum
+                FROM 
+                    TRN_Pre_Dispatch_Clearance_Report c
+                LEFT JOIN 
+                    MST_PlantDetails p ON c.PlantName = p.plant_id
+                LEFT JOIN 
+                    MST_Plant_Lines l ON c.Line = l.line_id
+                LEFT JOIN 
+                    MST_LineCategory pc ON c.ProductCategory = pc.category_id
+                LEFT JOIN 
+                    MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                LEFT JOIN 
+                    MST_Brand_SKU s ON c.SKUId = s.SKUId
+                LEFT JOIN
+                    MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                )
+                SELECT TOP(30)
+                    DBID, FormID, BatchID, RecordID, PlantName, LineName, ProductCategory, 
+                    ProductBrand, SKU_name, EmpCode, EmpName, SDate, STime, SShift, 
+	                InspectionLot, MaterialCode, CBB_Produced, CBB_Checked, CBB_Box_Condition, CBB_Box_ConditionRemarks,
+	                Packets_CBB, CBB_tapping, CBB_tappingRemarks, PacketsChecked_CBB, WeightofPackets, PackageDate,
+	                BatchNo, PacketsMRP, LongSeal, LongSealRemarks, EndSeal, EndSealRemarks, MainPanel, MainPanelRemarks,
+	                Cuts_Packets, Cuts_PacketsRemarks, BackingStatus, BackingStatusRemarks, ElongOval, ElongOvalRemarks,
+	                Cupping, CuppingRemarks, Impression, ImpressionRemarks, SoggyStatus, SoggyStatusRemarks, ForeignBody,
+	                ForeignBodyRemarks, OffOdour, OffOdourRemarks, Remarks, 
+                    L1, Approver1_Status, Approver1_TimeStamp, 
+                    L2, Approver2_Status, Approver2_TimeStamp, 
+                    L3, DottedApprover_Status, DottedApprover_TimeStamp
+                FROM 
+                    RankedData
+                WHERE 
+                    RowNum = 1
+                ORDER BY 
+                    SDate DESC, STime DESC;
                 ";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
@@ -855,6 +946,7 @@ namespace AnmolDristi
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -876,15 +968,92 @@ namespace AnmolDristi
                 SELECT 
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    c.BatchID,
                     p.plant_name AS PlantName,
                     l.line_name AS LineName,
                     pc.category_name AS ProductCategory,
                     pb.brand_name AS ProductBrand,
+                    s.SKU_name,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
                     c.Shift AS SShift,
+                    c.InspectionLot,
+	                c.MaterialCode,
+	                c.CBB_Produced,
+	                c.CBB_Checked,
+	                CASE 
+		                WHEN c.CBB_Box_Condition= 1 THEN 'Ok'
+		                WHEN c.CBB_Box_Condition = 0 THEN 'Not Ok'
+	                END AS CBB_Box_Condition,
+	                c.CBB_Box_ConditionRemarks,
+	                c.Packets_CBB,
+	                CASE 
+		                WHEN c.CBB_tapping= 1 THEN 'Ok'
+		                WHEN c.CBB_tapping = 0 THEN 'Not Ok'
+	                END AS CBB_tapping,
+	                c.CBB_tappingRemarks,
+	                c.PacketsChecked_CBB,
+	                c.WeightofPackets,
+	                c.PackageDate,
+	                c.BatchNo,
+	                c.PacketsMRP,
+	                CASE 
+		                WHEN c.LongSeal= 1 THEN 'Ok'
+		                WHEN c.LongSeal = 0 THEN 'Not Ok'
+	                END AS LongSeal,
+	                c.LongSealRemarks,
+	                CASE 
+		                WHEN c.EndSeal= 1 THEN 'Ok'
+		                WHEN c.EndSeal = 0 THEN 'Not Ok'
+	                END AS EndSeal,
+	                c.EndSealRemarks,
+	                CASE 
+		                WHEN c.MainPanel= 1 THEN 'Ok'
+		                WHEN c.MainPanel = 0 THEN 'Not Ok'
+	                END AS MainPanel,
+	                c.MainPanelRemarks,
+	                CASE 
+		                WHEN c.Cuts_Packets= 1 THEN 'NO'
+		                WHEN c.Cuts_Packets = 0 THEN 'Yes'
+	                END AS Cuts_Packets,
+	                c.Cuts_PacketsRemarks,
+	                CASE 
+		                WHEN c.BackingStatus= 1 THEN 'Ok'
+		                WHEN c.BackingStatus = 0 THEN 'Under/Over Baked'
+	                END AS BackingStatus,
+	                c.BackingStatusRemarks,
+	                CASE 
+		                WHEN c.ElongOval= 1 THEN 'Ok'
+		                WHEN c.ElongOval = 0 THEN 'Not Ok'
+	                END AS ElongOval,
+	                c.ElongOvalRemarks,
+	                CASE 
+		                WHEN c.Cupping= 1 THEN 'NO'
+		                WHEN c.Cupping = 0 THEN 'Yes'
+	                END AS Cupping,
+	                c.CuppingRemarks,
+	                CASE 
+		                WHEN c.Impression= 1 THEN 'Ok'
+		                WHEN c.Impression = 0 THEN 'Not Ok'
+	                END AS Impression,
+	                c.ImpressionRemarks,
+	                CASE 
+		                WHEN c.SoggyStatus= 1 THEN 'Ok'
+		                WHEN c.SoggyStatus = 0 THEN 'Not Ok'
+	                END AS SoggyStatus,
+	                c.SoggyStatusRemarks,
+	                CASE 
+		                WHEN c.ForeignBody= 1 THEN 'NO'
+		                WHEN c.ForeignBody = 0 THEN 'Yes'
+	                END AS ForeignBody,
+	                c.ForeignBodyRemarks,
+	                CASE 
+		                WHEN c.OffOdour= 1 THEN 'NO'
+		                WHEN c.OffOdour = 0 THEN 'Yes'
+	                END AS OffOdour,
+	                c.OffOdourRemarks,
                     'No Comment' AS Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
@@ -900,6 +1069,7 @@ namespace AnmolDristi
                 LEFT JOIN MST_Plant_Lines l ON c.Line = l.line_id
                 LEFT JOIN MST_LineCategory pc ON c.ProductCategory = pc.category_id
                 LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                LEFT JOIN MST_Brand_SKU s ON c.SKUId = s.SKUId
                 LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                 WHERE 1 = 1");
 
@@ -942,12 +1112,19 @@ namespace AnmolDristi
                 parameters.Add(new SqlParameter("@ProductBrand", SqlDbType.Int) { Value = DDL_ProductBrand.SelectedValue });
             }
 
+            if (!string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) && DDL_BrandSKU.SelectedValue != "0")
+            {
+                queryBuilder.Append(" AND c.SKUId = @SKUId");
+                parameters.Add(new SqlParameter("@SKUId", SqlDbType.VarChar) { Value = DDL_BrandSKU.SelectedValue });
+            }
+
             queryBuilder.Append(" ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC");
 
             try
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
             }
             catch (Exception ex)
@@ -990,5 +1167,74 @@ namespace AnmolDristi
                 Response.Redirect("Pre_Dispatch_Detailed.aspx?ID=" + batchid + "&VM=1", false);
             }
         }
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCPreDispatchReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCPreDispatchRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
+
+
+        protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (DDL_Plant.SelectedIndex != 0)
+            {
+                if (DDL_PlantLine.SelectedIndex != 0)
+                {
+                    if (DDL_ProductCategory.SelectedIndex != 0)
+                    {
+                        if (DDL_ProductBrand.SelectedIndex != 0)
+                        {
+                            if (DDL_BrandSKU.SelectedIndex != 0)
+                            {
+                                string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+                                string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
+                                string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
+                                string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
+                                string selectedBrandSKU = DDL_BrandSKU.SelectedValue.ToString();
+
+                                DataLoader();
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+
     }
 }

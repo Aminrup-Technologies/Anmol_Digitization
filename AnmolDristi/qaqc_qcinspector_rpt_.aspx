@@ -173,7 +173,8 @@
                     <div class="x_panel">
                         <div class="x_title">
                             <h2>View and Select for Detailed View ||
-                                <asp:Button ID="Button1" runat="server" Text="Export" OnClick="ExportExcel" CssClass="btn btn-primary btn-sm" CausesValidation="false" /></h2>
+                                <%--<asp:Button ID="Button1" runat="server" Text="Export" OnClick="ExportExcel" CssClass="btn btn-primary btn-sm" CausesValidation="false" />--%>
+                                </h2>
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
@@ -223,11 +224,11 @@
                                             <asp:TemplateField HeaderText="Approvals" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
                                                     L1:<asp:Label ID="lbl_Approver1" runat="server" Text='<%# Eval("L1") %>' />
-                                                    [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                                    [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") != null && Convert.ToString(Eval("Approver1_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                                     L2:<asp:Label ID="lbl_Approver2" runat="server" Text='<%# Eval("L2") %>' />
-                                                    [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                                    [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status") != null && Convert.ToString(Eval("Approver2_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                                     L3:<asp:Label ID="lbl_DottedLineApproverEmployeeCode" runat="server" Text='<%# Eval("L3") %>' />
-                                                    [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                                    [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status") != null && Convert.ToString(Eval("DottedApprover_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                                 </ItemTemplate>
                                                 <ItemStyle CssClass="text" />
                                             </asp:TemplateField>

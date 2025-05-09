@@ -551,7 +551,7 @@ namespace AnmolDristi
 
         protected void btn_view_cancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qahome_rpt.aspx");
         }
 
         protected void btn_view_reset_Click(object sender, EventArgs e)

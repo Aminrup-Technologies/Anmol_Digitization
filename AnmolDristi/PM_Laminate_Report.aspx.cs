@@ -13,6 +13,7 @@ using System.Web.Services;
 using System.Security.Cryptography;
 using System.Text;
 using DocumentFormat.OpenXml.Office2010.Excel;
+using ClosedXML.Excel;
 
 //using Microsoft.Office.Interop.Excel;
 //using System.Runtime.InteropServices; // Optional, for Excel interop cleanup
@@ -38,7 +39,8 @@ namespace AnmolDristi
                     lbl_viewname.Text = "View and Search for Detailed View || ";
 
                     PlantBinder();
-                    loadAlldata();
+                    //loadAlldata();
+                    LoadData("TRN_PM_LaminateTestingReport");
                 }
 
             }
@@ -81,6 +83,7 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue);
                 //FilterData();
+                DataLoader();
             }
             else
             {
@@ -139,7 +142,7 @@ namespace AnmolDristi
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 //StandardValueBinder(selectedProductBrandValue);
                 //FilterData();
-
+                DataLoader();
 
             }
             else
@@ -161,7 +164,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qchome_rpt.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -224,6 +227,7 @@ namespace AnmolDristi
                         SqlDataAdapter sda = new SqlDataAdapter(cmd);
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
                     }
@@ -311,6 +315,7 @@ namespace AnmolDristi
             try
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataSource = filteredData;
                 GridView1.DataBind();
             }
@@ -361,6 +366,78 @@ namespace AnmolDristi
                     // Show an error message or log the issue.
                     System.Diagnostics.Debug.WriteLine("Invalid DBID passed: " + e.CommandArgument);
                 }
+            }
+        }
+
+        //04 may 2025
+
+        private void LoadData(string tableName)
+        {
+            try
+            {
+                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                using (SqlConnection con = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("USP_LoadViewListDataPM", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@TableName", tableName);
+                        cmd.Parameters.AddWithValue("@TopRecords", 30);
+
+                        SqlDataAdapter sda = new SqlDataAdapter(cmd);
+                        DataTable dt = new DataTable();
+                        sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
+                        GridView1.DataSource = dt;
+                        GridView1.DataBind();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
+            }
+        }
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCDailyLaminateReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCDailyLaminateRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
             }
         }
 

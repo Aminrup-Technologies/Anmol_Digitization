@@ -76,7 +76,7 @@
                                     <asp:Label ID="Label7" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Class 2
                             </a>
-                            <a class="btn btn-app" href="RM_Class_3_Report.aspx">
+                            <a class="btn btn-app" href="RM_Class_3_Submitter.aspx">
                                 <span class="badge bg-green">Ok
                                     <asp:Label ID="Label8" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Class 3
@@ -86,7 +86,7 @@
                                     <asp:Label ID="Label9" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Class 4
                             </a>
-                            <a class="btn btn-app" href="RM_Class_5_Submitter">
+                            <a class="btn btn-app" href="RM_Class_5_Submitter.aspx">
                                 <span class="badge bg-green">Ok
                                     <asp:Label ID="Label10" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Class 5

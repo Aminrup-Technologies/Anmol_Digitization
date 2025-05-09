@@ -71,7 +71,7 @@
                                                 <asp:Label ID="Label5" runat="server" AssociatedControlID="DDL_BrandSKU" Text="Brand SKU Type" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                 <asp:RequiredFieldValidator ID="RFV_DDL_BrandSKU" runat="server" ErrorMessage="" ForeColor="Red" ControlToValidate="DDL_BrandSKU" InitialValue="" Display="Dynamic"></asp:RequiredFieldValidator>
                                                 <div class="input-group-sm">
-                                                    <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
+                                                    <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_BrandSKU_SelectedIndexChanged"></asp:DropDownList>
                                                 </div>
                                             </div>
                                         </div>
@@ -125,7 +125,7 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="lbl_viewname" runat="server" Text="Label"></asp:Label>
-                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" OnClick="ExportBtn_Click" />
+                                <%--<asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" OnClick="ExportBtn_Click" />--%>
                             </h2>
                             <div class="clearfix"></div>
                         </div>
@@ -151,6 +151,7 @@
                                         Line:<asp:Label ID="lbl_Line" runat="server" Text='<%# Eval("LineName") %>' Font-Bold="true" /><br />
                                         Category:<asp:Label ID="lbl_ProductCategory" runat="server" Text='<%# Eval("ProductCategory") %>' Font-Bold="true" /><br />
                                         Brand:<asp:Label ID="lbl_ProductBrand" runat="server" Text='<%# Eval("ProductBrand") %>' Font-Bold="true" /><br />
+                                        SKU:<asp:Label ID="lbl_BrandSku" runat="server" Text='<%# Eval("SKU_name") %>' Font-Bold="true" /><br />
                                     </ItemTemplate>
                                 </asp:TemplateField>
 

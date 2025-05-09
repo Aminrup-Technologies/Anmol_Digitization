@@ -7,11 +7,13 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace AnmolDristi {
-    
-    
-    public partial class qaqc_qcinspector_rpt_ {
-        
+namespace AnmolDristi
+{
+
+
+    public partial class qaqc_qcinspector_rpt_
+    {
+
         /// <summary>
         /// Label1 control.
         /// </summary>
@@ -20,7 +22,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label1;
-        
+
         /// <summary>
         /// lbl_DDL_Plant_Value control.
         /// </summary>
@@ -29,7 +31,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_DDL_Plant_Value;
-        
+
         /// <summary>
         /// RFV_DDL_Plant control.
         /// </summary>
@@ -38,7 +40,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_DDL_Plant;
-        
+
         /// <summary>
         /// DDL_Plant control.
         /// </summary>
@@ -47,7 +49,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.DropDownList DDL_Plant;
-        
+
         /// <summary>
         /// Label2 control.
         /// </summary>
@@ -56,7 +58,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label2;
-        
+
         /// <summary>
         /// lbl_DDL_PlantLine_Value control.
         /// </summary>
@@ -65,7 +67,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_DDL_PlantLine_Value;
-        
+
         /// <summary>
         /// RFV_DDL_PlantLine control.
         /// </summary>
@@ -74,7 +76,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_DDL_PlantLine;
-        
+
         /// <summary>
         /// DDL_PlantLine control.
         /// </summary>
@@ -83,7 +85,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.DropDownList DDL_PlantLine;
-        
+
         /// <summary>
         /// Label4 control.
         /// </summary>
@@ -92,7 +94,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label4;
-        
+
         /// <summary>
         /// lbl_DDL_ProductCategory_Value control.
         /// </summary>
@@ -101,7 +103,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_DDL_ProductCategory_Value;
-        
+
         /// <summary>
         /// RFV_DDL_ProductCategory control.
         /// </summary>
@@ -110,7 +112,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_DDL_ProductCategory;
-        
+
         /// <summary>
         /// DDL_ProductCategory control.
         /// </summary>
@@ -119,7 +121,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.DropDownList DDL_ProductCategory;
-        
+
         /// <summary>
         /// Label5 control.
         /// </summary>
@@ -128,7 +130,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label5;
-        
+
         /// <summary>
         /// lbl_DDL_ProductBrand_Value control.
         /// </summary>
@@ -137,7 +139,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_DDL_ProductBrand_Value;
-        
+
         /// <summary>
         /// RFV_DDL_ProductBrand control.
         /// </summary>
@@ -146,7 +148,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_DDL_ProductBrand;
-        
+
         /// <summary>
         /// DDL_ProductBrand control.
         /// </summary>
@@ -155,7 +157,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.DropDownList DDL_ProductBrand;
-        
+
         /// <summary>
         /// Label7 control.
         /// </summary>
@@ -164,7 +166,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label7;
-        
+
         /// <summary>
         /// RFV_DDL_BrandSKU control.
         /// </summary>
@@ -173,7 +175,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_DDL_BrandSKU;
-        
+
         /// <summary>
         /// DDL_BrandSKU control.
         /// </summary>
@@ -182,7 +184,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.DropDownList DDL_BrandSKU;
-        
+
         /// <summary>
         /// Label3 control.
         /// </summary>
@@ -191,7 +193,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label3;
-        
+
         /// <summary>
         /// RFV_txt_date1 control.
         /// </summary>
@@ -200,7 +202,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_txt_date1;
-        
+
         /// <summary>
         /// txt_date1 control.
         /// </summary>
@@ -209,7 +211,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txt_date1;
-        
+
         /// <summary>
         /// Label6 control.
         /// </summary>
@@ -218,7 +220,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label6;
-        
+
         /// <summary>
         /// RFV_txt_date2 control.
         /// </summary>
@@ -227,7 +229,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_txt_date2;
-        
+
         /// <summary>
         /// txt_date2 control.
         /// </summary>
@@ -236,7 +238,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txt_date2;
-        
+
         /// <summary>
         /// ShowPopup control.
         /// </summary>
@@ -245,7 +247,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button ShowPopup;
-        
+
         /// <summary>
         /// lbl_msg control.
         /// </summary>
@@ -254,7 +256,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_msg;
-        
+
         /// <summary>
         /// btnHome control.
         /// </summary>
@@ -263,7 +265,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnHome;
-        
+
         /// <summary>
         /// btnReset control.
         /// </summary>
@@ -272,7 +274,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnReset;
-        
+
         /// <summary>
         /// btn_submit control.
         /// </summary>
@@ -281,16 +283,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btn_submit;
-        
-        /// <summary>
-        /// Button1 control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button Button1;
-        
+
         /// <summary>
         /// GridView1 control.
         /// </summary>

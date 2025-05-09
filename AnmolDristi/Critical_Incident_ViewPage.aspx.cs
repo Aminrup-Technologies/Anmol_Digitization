@@ -9,6 +9,7 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Text;
+using ClosedXML.Excel;
 
 namespace AnmolDristi
 {
@@ -66,7 +67,7 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 lbl_DDL_Plant_Value.Text = selectedPlantValue;
                 PlantLinesBinder(selectedPlantValue);
-
+                DataLoader();
             }
             else
             {
@@ -82,7 +83,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_Plant_Error_script, false);
             }
-            DataLoader();
+            
         }
         private void PlantLinesBinder(string selectedPlantValue)
         {
@@ -116,7 +117,7 @@ namespace AnmolDristi
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 LineProductsBinder(selectedPlantValue, selectedPlantLineValue);
                 lbl_DDL_PlantLine_Value.Text = selectedPlantLineValue;
-
+                DataLoader();
             }
             else
             {
@@ -132,7 +133,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_PlantLine_Error_script, false);
             }
-            DataLoader();
+           
         }
         private void LineProductsBinder(string selectedPlantValue, string selectedPlantLineValue)
         {
@@ -177,7 +178,7 @@ namespace AnmolDristi
                 string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue);
                 lbl_DDL_ProductCategory_Value.Text = selectedProductCategoryValue;
-
+                DataLoader();
             }
             else
             {
@@ -193,7 +194,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_PlantLine_Error_script, false);
             }
-            DataLoader();
+           
         }
         private void ProductBrandsBinder(string selectedPlantValue, string selectedPlantLineValue, string selectedProductCategoryValue)
         {
@@ -240,6 +241,7 @@ namespace AnmolDristi
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 BrandSKUBinder(selectedProductBrandValue);
                 lbl_DDL_ProductBrand_Value.Text = selectedProductBrandValue;
+                DataLoader();
             }
             else
             {
@@ -255,7 +257,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowSKUInvalidErrorNotification", DDL_ProductBrand_Error_script, false);
             }
-            DataLoader();
+            
         }
         private void BrandSKUBinder(string selectedProductBrandValue)
         {
@@ -288,7 +290,7 @@ namespace AnmolDristi
         }
         protected void ReportbtnReset_Click(object sender, EventArgs e)
         {
-            Response.Redirect("critical_quality_report.aspx");
+            Response.Redirect("Critical_Incident_ViewPage.aspx");
         }
         protected void btn_submit_Click(object sender, EventArgs e)
         {
@@ -408,11 +410,29 @@ namespace AnmolDristi
                         l.line_name AS LineName,
 	                    pc.category_name AS ProductCategory,
 	                    pb.brand_name AS ProductBrand,
+                        s.SKU_name ,
                         c.SubmittedByPNo as EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
                         c.Shift as SShift,
+                        c.BatchCode,
+                        c.QCI_EmpCode,
+                        c.SftInCharge_EmpCode,
+                        c.QAQCInCharge,
+                        c.QIDetails,
+                        c.RjtdQty,
+                        c.WhenObserved,
+                        c.ImmediateAction,
+                        c.CorrectiveAction,
+                        c.TgtDtOfComp,
+                        c.Responsibility_EmpCode,
+	                    CASE 
+		                    WHEN c.DispatchAppRB= 1 THEN 'Ok'
+		                    WHEN c.DispatchAppRB = 0 THEN 'Not Ok'
+	                    END AS DispatchAppRB, 
+                        c.DispatchApp,
+                        c.TimeOfIssueing,
                         c.QIDetails as Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
@@ -433,6 +453,8 @@ namespace AnmolDristi
                         MST_LineCategory pc ON c.ProductCategory = pc.category_id
                     LEFT JOIN 
                         MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                    LEFT JOIN 
+                        MST_Brand_SKU s ON c.SKUId = s.SKUId
                     LEFT JOIN
                         MST_UserMaster u ON c.SubmittedByPNo = u.EmployeeCode
                     WHERE 
@@ -450,6 +472,7 @@ namespace AnmolDristi
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -475,11 +498,29 @@ namespace AnmolDristi
                     l.line_name AS LineName,
                     pc.category_name AS ProductCategory,
                     pb.brand_name AS ProductBrand,
+                    s.SKU_name,
                     c.SubmittedByPNo AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
                     c.Shift AS SShift,
+                    c.BatchCode,
+                    c.QCI_EmpCode,
+                    c.SftInCharge_EmpCode,
+                    c.QAQCInCharge,
+                    c.QIDetails,
+                    c.RjtdQty,
+                    c.WhenObserved,
+                    c.ImmediateAction,
+                    c.CorrectiveAction,
+                    c.TgtDtOfComp,
+                    c.Responsibility_EmpCode,
+	                CASE 
+		                WHEN c.DispatchAppRB= 1 THEN 'Ok'
+		                WHEN c.DispatchAppRB = 0 THEN 'Not Ok'
+	                END AS DispatchAppRB, 
+                    c.DispatchApp,
+                    c.TimeOfIssueing,
                     c.QIDetails AS Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
@@ -495,6 +536,7 @@ namespace AnmolDristi
                 LEFT JOIN MST_Plant_Lines l ON c.Line = l.line_id
                 LEFT JOIN MST_LineCategory pc ON c.ProductCategory = pc.category_id
                 LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                LEFT JOIN MST_Brand_SKU s ON c.SKUId = s.SKUId
                 LEFT JOIN MST_UserMaster u ON c.SubmittedByPNo = u.EmployeeCode
                 WHERE 1 = 1");
 
@@ -543,6 +585,7 @@ namespace AnmolDristi
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
             }
             catch (Exception ex)
@@ -584,6 +627,74 @@ namespace AnmolDristi
                 Response.Redirect("Critical_Incident_Detailed.aspx?ID=" + dbid + "&VM=0", false);
             }
         }
+
+        protected void BtnExport_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCCriticalIncidentReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCCriticalIncidentRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
+
+        protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (DDL_Plant.SelectedIndex != 0)
+            {
+                if (DDL_PlantLine.SelectedIndex != 0)
+                {
+                    if (DDL_ProductCategory.SelectedIndex != 0)
+                    {
+                        if (DDL_ProductBrand.SelectedIndex != 0)
+                        {
+                            if (DDL_BrandSKU.SelectedIndex != 0)
+                            {
+                                string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+                                string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
+                                string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
+                                string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
+                                string selectedBrandSKU = DDL_BrandSKU.SelectedValue.ToString();
+
+                                DataLoader();
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+
     }
 }
 

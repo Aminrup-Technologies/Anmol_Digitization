@@ -93,6 +93,7 @@ namespace AnmolDristi
             if (DDL_Plant.SelectedIndex != 0)
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+                lbl_DDL_Plant_Value.Text = selectedPlantValue;
                 PlantLinesBinder(selectedPlantValue);
                 FilterData();
             }
@@ -141,6 +142,7 @@ namespace AnmolDristi
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
+                lbl_DDL_PlantLine_Value.Text = selectedPlantLineValue;
                 LineProductsBinder(selectedPlantValue, selectedPlantLineValue);
                 FilterData();
             }
@@ -200,6 +202,7 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
+                lbl_DDL_ProductCategory_Value.Text = selectedProductCategoryValue;
                 ProductBrandsBinder(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue);
                 FilterData();
             }
@@ -258,7 +261,9 @@ namespace AnmolDristi
             if (DDL_ProductBrand.SelectedIndex != 0)
             {
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
+                lbl_DDL_ProductBrand_Value.Text = selectedProductBrandValue;
                 BrandSKUBinder(selectedProductBrandValue);
+                FilterData();
 
                 System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
 
@@ -300,7 +305,7 @@ namespace AnmolDristi
                     // For example, you can pass it to a method to set up validators
                     //SetUpValidatorsForField(fieldName, criteria);
                 }
-                FilterData();
+                
             }
             else
             {
@@ -340,9 +345,35 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification", BrandSKUBinder_Error_script, false);
             }
-            FilterData();
+            //FilterData();
         }
 
+        protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (DDL_Plant.SelectedIndex != 0)
+            {
+                if (DDL_PlantLine.SelectedIndex != 0)
+                {
+                    if (DDL_ProductCategory.SelectedIndex != 0)
+                    {
+                        if (DDL_ProductBrand.SelectedIndex != 0)
+                        {
+                            if (DDL_BrandSKU.SelectedIndex != 0)
+                            {
+                                string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+                                string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
+                                string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
+                                string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
+                                string selectedBrandSKU = DDL_BrandSKU.SelectedValue.ToString();
+
+                                FilterData();
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
@@ -741,5 +772,7 @@ namespace AnmolDristi
             }
 
         }
+
+        
     }
 }
