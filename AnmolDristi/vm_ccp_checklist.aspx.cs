@@ -10,6 +10,7 @@ using System.Configuration;
 using System.Text;
 using System.IO;
 using Newtonsoft.Json;
+using ClosedXML.Excel;
 
 namespace AnmolDristi
 {
@@ -321,6 +322,10 @@ namespace AnmolDristi
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
                         c.Shift as SShift,
+	                    c.MetalCheck,
+                        c.SieveCheck,
+                        c.MD_Remarks,
+                        c.MetalDataJson1,
                         c.MD_Remarks as Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
@@ -363,6 +368,7 @@ namespace AnmolDristi
                         //}
 
                         // Bind the DataTable to the GridView
+                        ViewState["ExportData"] = dt;
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
                     }
@@ -419,7 +425,7 @@ namespace AnmolDristi
             public string CSR { get; set; }
         }
 
-        protected void ExportBtn_Click(object sender, EventArgs e)
+        protected void ExportBtn_Click_old(object sender, EventArgs e)
         {
             try
             {
@@ -597,6 +603,7 @@ namespace AnmolDristi
 
         protected void btn_view_submit_Click(object sender, EventArgs e)
         {
+
             try
             {
                 // Retrieve date range from textboxes
@@ -613,6 +620,10 @@ namespace AnmolDristi
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
                         c.Shift as SShift,
+                        c.MetalCheck,
+                        c.SieveCheck,
+                        c.MD_Remarks,
+                        c.MetalDataJson1,
                         c.MD_Remarks as Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
@@ -678,6 +689,7 @@ namespace AnmolDristi
 
                 // Bind to GridView
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
 
                 //if (!filteredData.Any())
@@ -691,6 +703,7 @@ namespace AnmolDristi
                 EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
                 ShowNotification("Error", "An unexpected error occurred.", "error");
             }
+
         }
 
         private DataTable GetDataFromTable(string query, SqlParameter[] parameters)
@@ -717,7 +730,7 @@ namespace AnmolDristi
 
         protected void btn_view_Cancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx",false);
+            Response.Redirect("home.aspx", false);
         }
 
         protected void btn_view_Reset_Click(object sender, EventArgs e)
@@ -737,5 +750,50 @@ namespace AnmolDristi
                 //Response.Redirect("#", false);
             }
         }
+
+
+        //8 may 2025
+
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QC_CCPChecklistReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QC_CCPChecklistRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
+
     }
 }

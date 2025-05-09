@@ -62,6 +62,7 @@ namespace AnmolDristi
                         l.line_name AS LineName,
 	                    pc.category_name AS ProductCategory,
 	                    pb.brand_name AS ProductBrand,
+                        s.SKU_name ,
                         c.SubmittedByEmployeeCode as EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
@@ -87,6 +88,8 @@ namespace AnmolDristi
                         MST_LineCategory pc ON c.ProductCategory = pc.category_id
                     LEFT JOIN 
                         MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                    LEFT JOIN 
+                        MST_Brand_SKU s ON c.SKUId = s.SKUId
                     LEFT JOIN
                         MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                     WHERE 
@@ -330,6 +333,7 @@ namespace AnmolDristi
             {
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 BrandSKUBinder(selectedProductBrandValue);
+                DataLoader();
 
                 //DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
                 System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
@@ -371,7 +375,7 @@ namespace AnmolDristi
                     // For example, you can pass it to a method to set up validators
                     //SetUpValidatorsForField(fieldName, criteria);
                 }
-                DataLoader();
+                
             }
             else
             {
@@ -411,13 +415,38 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification", BrandSKUBinder_Error_script, false);
             }
-            DataLoader();
+            //DataLoader();
         }
 
+        protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (DDL_Plant.SelectedIndex != 0)
+            {
+                if (DDL_PlantLine.SelectedIndex != 0)
+                {
+                    if (DDL_ProductCategory.SelectedIndex != 0)
+                    {
+                        if (DDL_ProductBrand.SelectedIndex != 0)
+                        {
+                            if (DDL_BrandSKU.SelectedIndex != 0)
+                            {
+                                string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+                                string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
+                                string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
+                                string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
+                                string selectedBrandSKU = DDL_BrandSKU.SelectedValue.ToString();
 
+                                DataLoader();
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx", false);
+            Response.Redirect("qaqc_qahome_rpt.aspx");
         }
         protected void ReportbtnReset_Click(object sender, EventArgs e)
         {
@@ -741,6 +770,7 @@ namespace AnmolDristi
                     l.line_name AS LineName,
                     pc.category_name AS ProductCategory,
                     pb.brand_name AS ProductBrand,
+                    s.SKU_name,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
@@ -755,12 +785,14 @@ namespace AnmolDristi
                     c.Approver2_TimeStamp,
                     c.DottedLineApproverEmployeeCode AS L3,
                     c.DottedApprover_Status,
-                    c.DottedApprover_TimeStamp
+                    c.DottedApprover_TimeStamp,
+                    c.*
                 FROM TRN_ProcessChecking_BasicData c
                 LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
                 LEFT JOIN MST_Plant_Lines l ON c.Line = l.line_id
                 LEFT JOIN MST_LineCategory pc ON c.ProductCategory = pc.category_id
                 LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                LEFT JOIN MST_Brand_SKU s ON c.SKUId = s.SKUId
                 LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                 WHERE 1 = 1");
 
@@ -801,6 +833,12 @@ namespace AnmolDristi
             {
                 queryBuilder.Append(" AND c.ProductBrand = @ProductBrand");
                 parameters.Add(new SqlParameter("@ProductBrand", SqlDbType.Int) { Value = DDL_ProductBrand.SelectedValue });
+            }
+
+            if (!string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) && DDL_BrandSKU.SelectedValue != "0")
+            {
+                queryBuilder.Append(" AND c.SKUId = @SKUId");
+                parameters.Add(new SqlParameter("@SKUId", SqlDbType.VarChar) { Value = DDL_BrandSKU.SelectedValue });
             }
 
             queryBuilder.Append(" ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC");

@@ -97,7 +97,7 @@
                 <div class="col-md-12 text-center">
                     <asp:Label ID="lbl_oven" runat="server" Text="" ForeColor="SlateGray" Font-Bold="true"></asp:Label>
                     <asp:Button ID="btn_view_submit" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" OnClick="btn_view_submit_Click" CausesValidation="false" />
-                    <asp:Button ID="btn_view_cancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" OnClick="btn_view_cancel_Click" CausesValidation="true" />
+                    <asp:Button ID="btn_view_cancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" OnClick="btn_view_cancel_Click" CausesValidation="false" />
                     <asp:Button ID="btn_view_reset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" OnClick="btn_view_reset_Click" CausesValidation="false" />
                 </div>
 
@@ -108,13 +108,13 @@
                             <h2>
                                 <asp:Label ID="lbl_lower" runat="server" Text="Label"></asp:Label>
                             </h2>
-                            <asp:Button ID="btn_view_export" runat="server" Text="Export" class="btn btn-primary btn-sm" OnClick="btn_view_export_Click" />
+                            <%--<asp:Button ID="btn_view_export" runat="server" Text="Export" class="btn btn-primary btn-sm" OnClick="btn_view_export_Click" />--%>
 
 
-                            <ul class="nav navbar-right panel_toolbox">
+                           <%-- <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
                                 </li>
-                            </ul>
+                            </ul>--%>
                             <div class="clearfix"></div>
                         </div>
 
@@ -162,11 +162,11 @@
                                     <asp:TemplateField HeaderText="Approvals" HeaderStyle-Width="20%">
                                         <ItemTemplate>
                                             L1:<asp:Label ID="lbl_Approver1" runat="server" Text='<%# Eval("L1") %>' />
-                                            [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                            [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") != null && Convert.ToString(Eval("Approver1_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                             L2:<asp:Label ID="lbl_Approver2" runat="server" Text='<%# Eval("L2") %>' />
-                                            [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                            [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status") != null && Convert.ToString(Eval("Approver2_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                             L3:<asp:Label ID="lbl_DottedLineApproverEmployeeCode" runat="server" Text='<%# Eval("L3") %>' />
-                                            [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                            [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status") != null && Convert.ToString(Eval("DottedApprover_Status")) == "1" ? "Approved" : "Pending" %>' />]<br />
                                         </ItemTemplate>
                                         <ItemStyle CssClass="text" />
                                     </asp:TemplateField>

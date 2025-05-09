@@ -89,13 +89,16 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="lbl_viewname" runat="server" Text="Label"></asp:Label>
-                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" />
+                                <%--<asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" OnClick="ExportBtn_Click" />--%>
                             </h2>
                             <div class="clearfix"></div>
                         </div>
 
                         <asp:GridView ID="GridView1" runat="server" Width="100%" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" AutoGenerateColumns="false"
                             ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowCommand="GridView1_RowCommand">
+                            <EmptyDataTemplate>
+                                <div style="text-align: center; padding: 10px;">No records found for the selected filters.</div>
+                            </EmptyDataTemplate>
                             <Columns>
 
                                 <asp:TemplateField HeaderText="Sl" HeaderStyle-Width="5%">
