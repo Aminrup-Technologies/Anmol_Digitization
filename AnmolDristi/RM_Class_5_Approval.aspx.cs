@@ -8,6 +8,8 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Text;
+using ClosedXML.Excel;
+using System.IO;
 
 namespace AnmolDristi
 {
@@ -66,7 +68,7 @@ namespace AnmolDristi
             {
                 string selectedMaterialValue = DDL_Material.SelectedValue.ToString();
                 PlantBinder();
-
+                DataLoader();
                 // Call method to show relevant controls based on selected material
                 //DivBinders(selectedMaterialValue);
             }
@@ -122,7 +124,7 @@ namespace AnmolDristi
             if (DDL_Plant.SelectedIndex != 0)
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
-
+                DataLoader();
             }
             else
             {
@@ -142,7 +144,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qcapprovals.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -166,13 +168,62 @@ namespace AnmolDristi
                     SELECT TOP(30)
                     c.ID AS DBID,
                     c.FormID as FormID,
-                    'NA' as RecordID,
-	                m.Material_Name AS MaterialName,
+                    RMFID as RecordID,
+                    m.Material_Name AS MaterialName,
                     p.plant_name AS PlantName,
                     c.SubmittedByEmployeeCode as EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate as SDate,
                     c.SubmittedTime as STime,
+                    c.ProductBrand,
+                    c.Supplier_Name,
+                    c.Challan_No,
+                    c.Challan_Date,
+                    c.Pkd_Date,
+                    c.Quantity,
+                    c.CommentsForQuantity,
+                    c.Lot_No,
+                    c.Batch_No,
+                    c.Vehicle_No,
+                    c.Grade,
+                    c.CommentsForGrade,
+                    c.Color,
+                    c.CommentsForColor,
+                    c.Smell,
+                    c.CommentsForSmell,
+                    c.Appearance,
+                    c.CommentsForAppearance,
+                    c.Taste,
+                    c.CommentsForTaste,
+                    c.Foreign_Matter_Impurities,
+                    c.Purity,
+                    c.CommentsForPurity,
+                    c.PH,
+                    c.CommentsForPH,
+                    c.Moisture,
+                    c.CommentsForMoisture,
+                    c.Acid,
+                    c.CommentsForAcid,
+                    c.MpCp,
+                    c.CommentsForMpCp,
+                    c.Dispersability,
+                    c.CommentsForDispersability,
+                    c.Drc,
+                    c.CommentsForDrc,
+                    c.MonoGlycerideContent,
+                    c.CommentsForMonoGlycerideContent,
+                    c.NeutralizingValue,
+                    c.CommentsForNeutralizingValue,
+                    c.Brix,
+                    c.CommentsForBrix,
+                    c.WIM,
+                    c.CommentsForWIM,
+                    CASE
+	                    WHEN AppStatus = 1 THEN 'Accepted'
+	                    WHEN AppStatus = 0 THEN 'Rejected'	
+                    END AS AppStatus,
+                    c.AppStatusRemarks,
+                    c.Material_Image,
                     c.Approver1EmployeeCode as L1,
                     c.Approver1_Status,
                     c.Approver1_TimeStamp,
@@ -182,19 +233,19 @@ namespace AnmolDristi
                     c.DottedLineApproverEmployeeCode as L3,
                     c.DottedApprover_Status,
                     c.DottedApprover_TimeStamp
-                    FROM 
-                        TRN_RM_CLASS_5 c
-                    LEFT JOIN
-                        RM_MATERIAL m ON c.MaterialName = m.Material_Id
-                    LEFT JOIN 
-                        MST_PlantDetails p ON c.PlantName = p.plant_id
-                    LEFT JOIN
-                        MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                    WHERE 
-                        1 = 1
-                    ORDER BY 
-                        c.[SubmittedDate] DESC, 
-                        c.[SubmittedTime] DESC;
+                     FROM 
+                         TRN_RM_CLASS_5 c
+                     LEFT JOIN
+                         RM_MATERIAL m ON c.MaterialName = m.Material_Id
+                     LEFT JOIN 
+                         MST_PlantDetails p ON c.PlantName = p.plant_id
+                     LEFT JOIN
+                         MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                     WHERE 
+                         1 = 1
+                     ORDER BY 
+                         c.[SubmittedDate] DESC, 
+                         c.[SubmittedTime] DESC;
                 ";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
@@ -205,6 +256,7 @@ namespace AnmolDristi
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -225,13 +277,62 @@ namespace AnmolDristi
                 SELECT 
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    RMFID as RecordID,
 	                m.Material_Name AS MaterialName,
                     p.plant_name AS PlantName,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
-                    'No Comment' AS Remarks,
+                c.ProductBrand,
+                    c.Supplier_Name,
+                    c.Challan_No,
+                    c.Challan_Date,
+                    c.Pkd_Date,
+                    c.Quantity,
+                    c.CommentsForQuantity,
+                    c.Lot_No,
+                    c.Batch_No,
+                    c.Vehicle_No,
+                    c.Grade,
+                    c.CommentsForGrade,
+                    c.Color,
+                    c.CommentsForColor,
+                    c.Smell,
+                    c.CommentsForSmell,
+                    c.Appearance,
+                    c.CommentsForAppearance,
+                    c.Taste,
+                    c.CommentsForTaste,
+                    c.Foreign_Matter_Impurities,
+                    c.Purity,
+                    c.CommentsForPurity,
+                    c.PH,
+                    c.CommentsForPH,
+                    c.Moisture,
+                    c.CommentsForMoisture,
+                    c.Acid,
+                    c.CommentsForAcid,
+                    c.MpCp,
+                    c.CommentsForMpCp,
+                    c.Dispersability,
+                    c.CommentsForDispersability,
+                    c.Drc,
+                    c.CommentsForDrc,
+                    c.MonoGlycerideContent,
+                    c.CommentsForMonoGlycerideContent,
+                    c.NeutralizingValue,
+                    c.CommentsForNeutralizingValue,
+                    c.Brix,
+                    c.CommentsForBrix,
+                    c.WIM,
+                    c.CommentsForWIM,
+                    CASE
+	                    WHEN AppStatus = 1 THEN 'Accepted'
+	                    WHEN AppStatus = 0 THEN 'Rejected'	
+                    END AS AppStatus,
+                    c.AppStatusRemarks,
+                    c.Material_Image,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
                     c.Approver1_TimeStamp,
@@ -298,6 +399,7 @@ namespace AnmolDristi
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
             }
             catch (Exception ex)
@@ -347,6 +449,46 @@ namespace AnmolDristi
                     // Show an error message or log the issue.
                     System.Diagnostics.Debug.WriteLine("Invalid DBID passed: " + e.CommandArgument);
                 }
+            }
+        }
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCRMClass5Report");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCRMClass5Records.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
             }
         }
 

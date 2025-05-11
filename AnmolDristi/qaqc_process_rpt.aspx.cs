@@ -587,7 +587,7 @@ namespace AnmolDristi
             catch (Exception ex)
             {
                 // Log the exception or display an error message
-
+                throw ex;
             }
 
             return imgSaved;
@@ -657,6 +657,7 @@ namespace AnmolDristi
             catch (Exception ex)
             {
                 // Log the exception or display an error message
+                throw ex;
             }
 
             return imgSaved;
@@ -873,14 +874,14 @@ namespace AnmolDristi
             string skuId = DDL_BrandSKU.SelectedValue;
             string shift = hdn_shiftvalue.Value.ToString();
             decimal processWaterTemp = Convert.ToDecimal(TB_ProcessWaterTemp.Text);
-            string commentForProcessWater = "" ;
+            string commentForProcessWater = string.IsNullOrEmpty(TXB_ProcessWaterTemp_Remarks.Text) ? null : TXB_ProcessWaterTemp_Remarks.Text; ;
             decimal waterPh = Convert.ToDecimal(TB_WaterPH.Text);
-            string commentForWaterPh = "";
+            string commentForWaterPh = string.IsNullOrEmpty(TXB_WaterPH_Remarks.Text) ? null : TXB_WaterPH_Remarks.Text;
             decimal waterHardness = Convert.ToDecimal(TB_WaterHardness.Text);
-            string commentForWaterHardness = "";
+            string commentForWaterHardness = string.IsNullOrEmpty(TXB_WaterHardness_Remarks.Text) ? null : TXB_WaterHardness_Remarks.Text;
             string waterTest = TB_WaterTest.Text;
             decimal tds = Convert.ToDecimal(TB_TDS.Text);
-            string commentForTds = "";
+            string commentForTds = string.IsNullOrEmpty(TXB_TDS_Remarks.Text) ? null : TXB_TDS_Remarks.Text; ;
             string maidaBrand = TB_MaidaBrand.Text;
             string maidaBatchNo = TB_MaidaBatchNo.Text;
             DateTime maidaMfg = DateTime.Parse(TB_MaidaMfg.Text).Date;
@@ -901,7 +902,7 @@ namespace AnmolDristi
             int hvoTaste = Convert.ToInt32(RBL_HvoTaste.SelectedValue);
             string commentForHvoTaste = TXB_HvoTaste_Remarks.Text;
             decimal hvoTemp = Convert.ToDecimal(TB_HvoTemp.Text);
-            string commentForHvoTemp = "";
+            string commentForHvoTemp = string.IsNullOrEmpty(TXB_HvoTemp_Remarks.Text) ? null : TXB_HvoTemp_Remarks.Text;
             int smpSmell = Convert.ToInt32(RBL_SMPSmell.SelectedValue);
             string commentForSmpSmell = TXB_SMPSmell_Remarks.Text;
             int smpTaste = Convert.ToInt32(RBL_SMPTaste.SelectedValue);
@@ -909,11 +910,11 @@ namespace AnmolDristi
             int smpColor = Convert.ToInt32(RBL_SMPColor.SelectedValue);
             string commentForSmpColor = TXB_SMPColor_Remarks.Text;
             decimal syrupTemp = Convert.ToDecimal(TB_SyrupTemp.Text);
-            string commentForSyrupTemp = "";
+            string commentForSyrupTemp = string.IsNullOrEmpty(TXB_SyrupTemp_Remarks.Text) ? null : TXB_SyrupTemp_Remarks.Text;
             int syrupColor = Convert.ToInt32(RBL_SyrupColor.SelectedValue);
             string commentForSyrupColor = TXB_SyrupColor_Remarks.Text;
             decimal syrupPh = Convert.ToDecimal(TB_SyrupPH.Text);
-            string commentForSyrupPh = "";
+            string commentForSyrupPh = string.IsNullOrEmpty(TXB_SyrupPH_Remarks.Text) ? null : TXB_SyrupPH_Remarks.Text;
             int invertSyrup = Convert.ToInt32(RBL_InvertSyrupBucket.SelectedValue);
             string commentForInvertSyrup = TXB_InvertSyrupBucket_Remarks.Text;
             int sugarSol = Convert.ToInt32(RBL_SugarSolBucket.SelectedValue);
@@ -929,13 +930,13 @@ namespace AnmolDristi
             int milkSpray = Convert.ToInt32(RBL_MilkSpray.SelectedValue);
             string commentForMilkSpray = TXB_MilkSpray_Remarks.Text;
             decimal coldRoomTemp = Convert.ToDecimal(TB_ColdRoomTemp.Text);
-            string commentForColdRoom = "";
+            string commentForColdRoom = string.IsNullOrEmpty(TXB_ColdRoomTemp_Remarks.Text) ? null : TXB_ColdRoomTemp_Remarks.Text;
             decimal DeepFreezeTemp = Convert.ToDecimal(TB_DeepFreezeTemp.Text);
-            string commentForDeepFreeze = "";
+            string commentForDeepFreeze = string.IsNullOrEmpty(TXB_DeepFreezeTemp_Remarks.Text) ? null : TXB_DeepFreezeTemp_Remarks.Text;
 
 
             //QAProcessCheckingDataAcess dataAccess = new QAProcessCheckingDataAcess();
-            
+
             try
             {
                 // Call the InsertBasicData method with the retrieved values

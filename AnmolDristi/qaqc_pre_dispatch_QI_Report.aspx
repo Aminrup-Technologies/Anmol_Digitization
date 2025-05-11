@@ -845,73 +845,73 @@
 
                             <div class="col-md-12 text-center">
                                 <%--<div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 350px; overflow: scroll;">--%>
-                                    <asp:GridView ID="gvData" runat="server" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" AutoGenerateColumns="false" ShowFooter="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowDeleting="gvData_RowDeleting">
-                                        <Columns>
-                                            <asp:TemplateField HeaderText="Sl No.">
-                                                <ItemTemplate>
-                                                    <%# Container.DataItemIndex + 1 %>
-                                                </ItemTemplate>
-                                            </asp:TemplateField>
-                                            <asp:BoundField DataField="Plant" HeaderText="Plant" SortExpression="Plant" Visible="false" />
-                                            <asp:BoundField DataField="PlantId" HeaderText="Plant Id" SortExpression="PlantId" Visible="false" />
-                                            <asp:BoundField DataField="PlantLine" HeaderText="Plant Line" SortExpression="PlantLine" Visible="false" />
-                                            <asp:BoundField DataField="PlantLineId" HeaderText="Plant Line Id" SortExpression="PlantLineId" Visible="false" />
-                                            <asp:BoundField DataField="ProductCategory" HeaderText="Product Category" SortExpression="ProductCategory" Visible="false" />
-                                            <asp:BoundField DataField="ProductCategoryId" HeaderText="Product Category Id" SortExpression="ProductCategoryId" Visible="false" />
-                                            <asp:BoundField DataField="ProductBrand" HeaderText="Product Brand" SortExpression="ProductBrand" />
-                                            <asp:BoundField DataField="ProductBrandId" HeaderText="Product Brand Id" SortExpression="ProductBrandId" Visible="false" />
-                                            <asp:BoundField DataField="BrandSKU" HeaderText="Brand SKU" SortExpression="BrandSKU" />
-                                            <asp:BoundField DataField="BrandSKUId" HeaderText="Brand SKU Id" SortExpression="BrandSKUId" Visible="false" />
+                                <asp:GridView ID="gvData" runat="server" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" AutoGenerateColumns="false" ShowFooter="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowDeleting="gvData_RowDeleting">
+                                    <Columns>
+                                        <asp:TemplateField HeaderText="Sl No.">
+                                            <ItemTemplate>
+                                                <%# Container.DataItemIndex + 1 %>
+                                            </ItemTemplate>
+                                        </asp:TemplateField>
+                                        <asp:BoundField DataField="Plant" HeaderText="Plant" SortExpression="Plant" Visible="false" />
+                                        <asp:BoundField DataField="PlantId" HeaderText="Plant Id" SortExpression="PlantId" Visible="false" />
+                                        <asp:BoundField DataField="PlantLine" HeaderText="Plant Line" SortExpression="PlantLine" Visible="false" />
+                                        <asp:BoundField DataField="PlantLineId" HeaderText="Plant Line Id" SortExpression="PlantLineId" Visible="false" />
+                                        <asp:BoundField DataField="ProductCategory" HeaderText="Product Category" SortExpression="ProductCategory" Visible="false" />
+                                        <asp:BoundField DataField="ProductCategoryId" HeaderText="Product Category Id" SortExpression="ProductCategoryId" Visible="false" />
+                                        <asp:BoundField DataField="ProductBrand" HeaderText="Product Brand" SortExpression="ProductBrand" />
+                                        <asp:BoundField DataField="ProductBrandId" HeaderText="Product Brand Id" SortExpression="ProductBrandId" Visible="false" />
+                                        <asp:BoundField DataField="BrandSKU" HeaderText="Brand SKU" SortExpression="BrandSKU" />
+                                        <asp:BoundField DataField="BrandSKUId" HeaderText="Brand SKU Id" SortExpression="BrandSKUId" Visible="false" />
 
-                                            <asp:BoundField DataField="InspectionLot" HeaderText="Inspection Lot" SortExpression="InspectionLot" />
-                                            <asp:BoundField DataField="MaterialCode" HeaderText="Material Code" SortExpression="MaterialCode" />
-                                            <asp:BoundField DataField="NoOfCBBProduced" HeaderText="No of CBB Produced" SortExpression="NoOfCBBProduced" />
-                                            <asp:BoundField DataField="NoOfCBBChecked" HeaderText="No of CBB Checked" SortExpression="NoOfCBBChecked" />
-                                            <asp:BoundField DataField="BoxCondition" HeaderText="Box Condition" SortExpression="BoxCondition" />
-                                            <asp:BoundField DataField="BoxConditionNotOkRemarks" HeaderText="Box Condition Not Ok Remarks" SortExpression="BoxConditionNotOkRemarks" />
-                                            <asp:BoundField DataField="NoOfPacketsInCBB" HeaderText="No of Packets in CBB" SortExpression="NoOfPacketsInCBB" />
-                                            <asp:BoundField DataField="TappingOfCBB" HeaderText="Tapping Of CBB" SortExpression="TappingOfCBB" />
-                                            <asp:BoundField DataField="TappingOfCBBNotOkRemarks" HeaderText="Tapping Of CBB Not Ok Remarks" SortExpression="TappingOfCBBNotOkRemarks" />
-                                            <asp:BoundField DataField="PktsCheckedCBBBox" HeaderText="Pkts Checked CBB Box" SortExpression="PktsCheckedCBBBox" />
-                                            <asp:BoundField DataField="WtOfPkts" HeaderText="Wt. Of Pkts" SortExpression="WtOfPkts" />
-                                            <asp:BoundField DataField="PkgDate" HeaderText="Pkg Date" SortExpression="PkgDate" />
-                                            <asp:BoundField DataField="BatchLotNo" HeaderText="Batch / Lot No." SortExpression="BatchLotNo" />
-                                            <asp:BoundField DataField="MRPOfPkts" HeaderText="MRP of Pkts (in ₹)" SortExpression="MRPOfPkts" />
-                                            <asp:BoundField DataField="LongSealCondition" HeaderText="Long Seal Condition" SortExpression="LongSealCondition" />
-                                            <asp:BoundField DataField="LongSealConditionNotOkRemarks" HeaderText="Long Seal Condition Not Ok Remarks" SortExpression="LongSealConditionNotOkRemarks" />
-                                            <asp:BoundField DataField="EndSealCondition" HeaderText="End Seal Condition" SortExpression="EndSealCondition" />
-                                            <asp:BoundField DataField="EndSealConditionNotOkRemarks" HeaderText="End Seal Condition Not Ok Remarks" SortExpression="EndSealConditionNotOkRemarks" />
-                                            <asp:BoundField DataField="MainPanelCentralNot" HeaderText="Main Panel Central/ Not" SortExpression="MainPanelCentralNot" />
-                                            <asp:BoundField DataField="MainPanelCentralNotOkRemarks" HeaderText="Main Panel Central Not Ok Remarks" SortExpression="MainPanelCentralNotOkRemarks" />
-                                            <asp:BoundField DataField="CutsInPackets" HeaderText="Cuts in Packets" SortExpression="MainPanelCentralNot" />
-                                            <asp:BoundField DataField="CutsInPacketsNotOkRemarks" HeaderText="Cuts in Packets Not Ok Remarks" SortExpression="CutsInPacketsNotOkRemarks" />
-                                            <asp:BoundField DataField="BakingUnderOverBaked" HeaderText="Baking (Under/Over Baked)" SortExpression="BakingUnderOverBaked" />
-                                            <asp:BoundField DataField="BakingUnderOverBakedNotOkRemarks" HeaderText="Baking (Under/Over Baked) Remarks" SortExpression="BakingUnderOverBakedNotOkRemarks" />
-                                            <asp:BoundField DataField="ShapeConditionElongatedOrOval" HeaderText="Shape Condition (Elongated or Oval)" SortExpression="ShapeConditionElongatedOrOval" />
-                                            <asp:BoundField DataField="ShapeConditionElongatedOrOvalNotOkRemarks" HeaderText="Shape Condition (Elongated or Oval) Not Ok Remarks" SortExpression="ShapeConditionElongatedOrOvalNotOkRemarks" />
-                                            <asp:BoundField DataField="CuppingCondition" HeaderText="Cupping Condition" SortExpression="CuppingCondition" />
-                                            <asp:BoundField DataField="CuppingConditionNotOkRemarks" HeaderText="Cupping Condition Not Ok Remarks" SortExpression="CuppingConditionNotOkRemarks" />
-                                            <asp:BoundField DataField="ImpressionOnBiscuits" HeaderText="Impression on Biscuits" SortExpression="ImpressionOnBiscuits" />
-                                            <asp:BoundField DataField="ImpressionOnBiscuitsNotOkRemarks" HeaderText="Impression on Biscuits Not Ok Remarks" SortExpression="ImpressionOnBiscuitsNotOkRemarks" />
-                                            <asp:BoundField DataField="BiscuitSoggy" HeaderText="Biscuit Soggy" SortExpression="BiscuitSoggy" />
-                                            <asp:BoundField DataField="BiscuitSoggyNotOkRemarks" HeaderText="Biscuit Soggy Not Ok Remarks" SortExpression="BiscuitSoggyNotOkRemarks" />
-                                            <asp:BoundField DataField="ForeignBodyInBiscuit" HeaderText="Foreign Body in Biscuit" SortExpression="ForeignBodyInBiscuit" />
-                                            <asp:BoundField DataField="ForeignBodyInBiscuitNotOkRemarks" HeaderText="Foreign Body in Biscuit Not Ok Remarks" SortExpression="ForeignBodyInBiscuitNotOkRemarks" />
-                                            <asp:BoundField DataField="OffOdour" HeaderText="Off Odour (Yes/No)" SortExpression="OffOdour" />
-                                            <asp:BoundField DataField="OffOdourNotOkRemarks" HeaderText="Off Odour Not Ok Remarks" SortExpression="OffOdourNotOkRemarks" />
-                                            <asp:BoundField DataField="Remarks" HeaderText="Remarks" SortExpression="Remarks" />
+                                        <asp:BoundField DataField="InspectionLot" HeaderText="Inspection Lot" SortExpression="InspectionLot" />
+                                        <asp:BoundField DataField="MaterialCode" HeaderText="Material Code" SortExpression="MaterialCode" />
+                                        <asp:BoundField DataField="NoOfCBBProduced" HeaderText="No of CBB Produced" SortExpression="NoOfCBBProduced" />
+                                        <asp:BoundField DataField="NoOfCBBChecked" HeaderText="No of CBB Checked" SortExpression="NoOfCBBChecked" />
+                                        <asp:BoundField DataField="BoxCondition" HeaderText="Box Condition" SortExpression="BoxCondition" />
+                                        <asp:BoundField DataField="BoxConditionNotOkRemarks" HeaderText="Box Condition Not Ok Remarks" SortExpression="BoxConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="NoOfPacketsInCBB" HeaderText="No of Packets in CBB" SortExpression="NoOfPacketsInCBB" />
+                                        <asp:BoundField DataField="TappingOfCBB" HeaderText="Tapping Of CBB" SortExpression="TappingOfCBB" />
+                                        <asp:BoundField DataField="TappingOfCBBNotOkRemarks" HeaderText="Tapping Of CBB Not Ok Remarks" SortExpression="TappingOfCBBNotOkRemarks" />
+                                        <asp:BoundField DataField="PktsCheckedCBBBox" HeaderText="Pkts Checked CBB Box" SortExpression="PktsCheckedCBBBox" />
+                                        <asp:BoundField DataField="WtOfPkts" HeaderText="Wt. Of Pkts" SortExpression="WtOfPkts" />
+                                        <asp:BoundField DataField="PkgDate" HeaderText="Pkg Date" SortExpression="PkgDate" />
+                                        <asp:BoundField DataField="BatchLotNo" HeaderText="Batch / Lot No." SortExpression="BatchLotNo" />
+                                        <asp:BoundField DataField="MRPOfPkts" HeaderText="MRP of Pkts (in ₹)" SortExpression="MRPOfPkts" />
+                                        <asp:BoundField DataField="LongSealCondition" HeaderText="Long Seal Condition" SortExpression="LongSealCondition" />
+                                        <asp:BoundField DataField="LongSealConditionNotOkRemarks" HeaderText="Long Seal Condition Not Ok Remarks" SortExpression="LongSealConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="EndSealCondition" HeaderText="End Seal Condition" SortExpression="EndSealCondition" />
+                                        <asp:BoundField DataField="EndSealConditionNotOkRemarks" HeaderText="End Seal Condition Not Ok Remarks" SortExpression="EndSealConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="MainPanelCentralNot" HeaderText="Main Panel Central/ Not" SortExpression="MainPanelCentralNot" />
+                                        <asp:BoundField DataField="MainPanelCentralNotOkRemarks" HeaderText="Main Panel Central Not Ok Remarks" SortExpression="MainPanelCentralNotOkRemarks" />
+                                        <asp:BoundField DataField="CutsInPackets" HeaderText="Cuts in Packets" SortExpression="MainPanelCentralNot" />
+                                        <asp:BoundField DataField="CutsInPacketsNotOkRemarks" HeaderText="Cuts in Packets Not Ok Remarks" SortExpression="CutsInPacketsNotOkRemarks" />
+                                        <asp:BoundField DataField="BakingUnderOverBaked" HeaderText="Baking (Under/Over Baked)" SortExpression="BakingUnderOverBaked" />
+                                        <asp:BoundField DataField="BakingUnderOverBakedNotOkRemarks" HeaderText="Baking (Under/Over Baked) Remarks" SortExpression="BakingUnderOverBakedNotOkRemarks" />
+                                        <asp:BoundField DataField="ShapeConditionElongatedOrOval" HeaderText="Shape Condition (Elongated or Oval)" SortExpression="ShapeConditionElongatedOrOval" />
+                                        <asp:BoundField DataField="ShapeConditionElongatedOrOvalNotOkRemarks" HeaderText="Shape Condition (Elongated or Oval) Not Ok Remarks" SortExpression="ShapeConditionElongatedOrOvalNotOkRemarks" />
+                                        <asp:BoundField DataField="CuppingCondition" HeaderText="Cupping Condition" SortExpression="CuppingCondition" />
+                                        <asp:BoundField DataField="CuppingConditionNotOkRemarks" HeaderText="Cupping Condition Not Ok Remarks" SortExpression="CuppingConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="ImpressionOnBiscuits" HeaderText="Impression on Biscuits" SortExpression="ImpressionOnBiscuits" />
+                                        <asp:BoundField DataField="ImpressionOnBiscuitsNotOkRemarks" HeaderText="Impression on Biscuits Not Ok Remarks" SortExpression="ImpressionOnBiscuitsNotOkRemarks" />
+                                        <asp:BoundField DataField="BiscuitSoggy" HeaderText="Biscuit Soggy" SortExpression="BiscuitSoggy" />
+                                        <asp:BoundField DataField="BiscuitSoggyNotOkRemarks" HeaderText="Biscuit Soggy Not Ok Remarks" SortExpression="BiscuitSoggyNotOkRemarks" />
+                                        <asp:BoundField DataField="ForeignBodyInBiscuit" HeaderText="Foreign Body in Biscuit" SortExpression="ForeignBodyInBiscuit" />
+                                        <asp:BoundField DataField="ForeignBodyInBiscuitNotOkRemarks" HeaderText="Foreign Body in Biscuit Not Ok Remarks" SortExpression="ForeignBodyInBiscuitNotOkRemarks" />
+                                        <asp:BoundField DataField="OffOdour" HeaderText="Off Odour (Yes/No)" SortExpression="OffOdour" />
+                                        <asp:BoundField DataField="OffOdourNotOkRemarks" HeaderText="Off Odour Not Ok Remarks" SortExpression="OffOdourNotOkRemarks" />
+                                        <asp:BoundField DataField="Remarks" HeaderText="Remarks" SortExpression="Remarks" />
 
-                                            <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%">
-                                                <ItemTemplate>
-                                                    <asp:ImageButton ID="btndelete" runat="server" CommandName="Delete" Height="15px" ImageUrl="~/WebData/Internal/delete_icon.png" Width="15px" ToolTip="Delete" OnClientClick="return confirm('Do you want to DELETE...?')" ImageAlign="Middle" />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text text-center" />
-                                            </asp:TemplateField>
-                                        </Columns>
-                                        <EmptyDataTemplate>
-                                            <div class="grid">No Data Found</div>
-                                        </EmptyDataTemplate>
-                                    </asp:GridView>
+                                        <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%">
+                                            <ItemTemplate>
+                                                <asp:ImageButton ID="btndelete" runat="server" CommandName="Delete" Height="15px" ImageUrl="~/WebData/Internal/delete_icon.png" Width="15px" ToolTip="Delete" OnClientClick="return confirm('Do you want to DELETE...?')" ImageAlign="Middle" />
+                                            </ItemTemplate>
+                                            <ItemStyle CssClass="text text-center" />
+                                        </asp:TemplateField>
+                                    </Columns>
+                                    <EmptyDataTemplate>
+                                        <div class="grid">No Data Found</div>
+                                    </EmptyDataTemplate>
+                                </asp:GridView>
                                 <%--</div>--%>
                             </div>
 

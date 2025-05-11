@@ -9,6 +9,7 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Text;
+using ClosedXML.Excel;
 
 
 namespace AnmolDristi
@@ -123,11 +124,11 @@ namespace AnmolDristi
 
 		protected void ReportbtnCancel_Click(object sender, EventArgs e)
 		{
-			Response.Redirect("qaqc_qchome_rpt.aspx");
+			Response.Redirect("home.aspx");
 		}
 		protected void ReportbtnReset_Click(object sender, EventArgs e)
 		{
-			Response.Redirect("critical_quality_report.aspx");
+			Response.Redirect("PVC_Tray_ViewPage.aspx");
 		}
 		protected void btn_submit_Click(object sender, EventArgs e)
 		{
@@ -232,35 +233,52 @@ namespace AnmolDristi
 				string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
 				string query = @"
-					SELECT TOP(30)
-						c.ID AS DBID,
-						c.FormID as FormID,
-						c.PVCID as RecordID,
-						p.plant_name AS PlantName,
-						c.ProductBrand AS Material,
-						c.SubmittedByEmployeeCode as EmpCode,
-						u.EmployeeName AS EmpName,
-						c.SubmittedDate as SDate,
-						c.SubmittedTime as STime,
-						c.Approver1EmployeeCode as L1,
-						c.Approver1_Status,
-						c.Approver2EmployeeCode as L2,
-						c.Approver2_Status,
-						c.DottedLineApproverEmployeeCode as L3,
-						c.DottedApprover_Status
-					FROM
-						TRN_PVC_Tray c
-					LEFT JOIN
-						MST_PlantDetails p ON c.PlantName = p.plant_id
-					
-					LEFT JOIN
-						MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-					WHERE
-						1 = 1
-					ORDER BY
-						c.[SubmittedDate] DESC,
-						c.[SubmittedTime] DESC;
-				";
+						SELECT TOP(30)
+							c.ID AS DBID,
+							c.FormID as FormID,
+							c.PVCID as RecordID,
+							p.plant_name AS PlantName,
+							c.ProductBrand AS Material,
+							s.SKU_name AS BrandSku,
+							c.SubmittedByEmployeeCode as EmpCode,
+							u.EmployeeName AS EmpName,
+							c.SubmittedDate as SDate,
+							c.SubmittedTime as STime,
+							c.Supplier_Name,
+							c.SampleSize,
+							c.Challan_No,
+							c.Challan_Date,
+							c.Lot_No,
+							c.Vehicle_No,
+							c.Dimension_Std_L,
+							c.Dimension_Std_W,
+							c.Dimension_Std_H,
+							c.Dimension_Obs_L,
+							c.Dimension_Obs_W,
+							c.Dimension_Obs_H,
+							c.GSM_Std,
+							c.GSM_Obs,
+							ISNULL(c.Remarks, 'No Comment') AS Remarks,
+							c.Approver1EmployeeCode as L1,
+							c.Approver1_Status,
+							c.Approver2EmployeeCode as L2,
+							c.Approver2_Status,
+							c.DottedLineApproverEmployeeCode as L3,
+							c.DottedApprover_Status
+						FROM
+							TRN_PVC_Tray c
+						LEFT JOIN
+							MST_PlantDetails p ON c.PlantName = p.plant_id
+						LEFT JOIN
+							MST_Brand_SKU s ON c.BrandSku = s.SKUId
+						LEFT JOIN
+							MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+						WHERE
+							1 = 1
+						ORDER BY
+							c.[SubmittedDate] DESC,
+							c.[SubmittedTime] DESC;
+					";
 
 				using (SqlConnection con = new SqlConnection(connectionString))
 				{
@@ -270,7 +288,8 @@ namespace AnmolDristi
 						DataTable dt = new DataTable();
 						sda.Fill(dt);
 						GridView1.DataSource = dt;
-						GridView1.DataBind();
+                        ViewState["ExportData"] = dt;
+                        GridView1.DataBind();
 					}
 				}
 			}
@@ -292,10 +311,26 @@ namespace AnmolDristi
 					c.PVCID as RecordID,
 					p.plant_name AS PlantName,
 					c.ProductBrand AS Material,
+					s.SKU_name AS BrandSku,
 					c.SubmittedByEmployeeCode AS EmpCode,
 					u.EmployeeName AS EmpName,
 					c.SubmittedDate AS SDate,
 					c.SubmittedTime AS STime,
+					c.Supplier_Name,
+					c.SampleSize,
+					c.Challan_No,
+					c.Challan_Date,
+					c.Lot_No,
+					c.Vehicle_No,
+					c.Dimension_Std_L,
+					c.Dimension_Std_W,
+					c.Dimension_Std_H,
+					c.Dimension_Obs_L,
+					c.Dimension_Obs_W,
+					c.Dimension_Obs_H,
+					c.GSM_Std,
+					c.GSM_Obs,
+					ISNULL(c.Remarks, 'No Comment') AS Remarks,
 					c.Approver1EmployeeCode AS L1,
 					c.Approver1_Status,
 					c.Approver2EmployeeCode AS L2,
@@ -304,7 +339,7 @@ namespace AnmolDristi
 					c.DottedApprover_Status
 				FROM TRN_PVC_Tray c
 				LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
-				
+				LEFT JOIN MST_Brand_SKU s ON c.BrandSku = s.SKUId
 				LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
 				WHERE 1 = 1");
 
@@ -341,7 +376,8 @@ namespace AnmolDristi
 			{
 				DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
 				GridView1.DataSource = filteredData;
-				GridView1.DataBind();
+                ViewState["ExportData"] = filteredData;
+                GridView1.DataBind();
 			}
 			catch (Exception ex)
 			{
@@ -382,5 +418,46 @@ namespace AnmolDristi
 			}
 		}
 
-	}
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCPvcTrayReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCPvcTrayRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
+
+    }
 }

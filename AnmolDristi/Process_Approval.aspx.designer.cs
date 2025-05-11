@@ -213,15 +213,6 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_Date_From;
 
         /// <summary>
-        /// REV_Date_From control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_Date_From;
-
-        /// <summary>
         /// TB_Date_From control.
         /// </summary>
         /// <remarks>
@@ -247,15 +238,6 @@ namespace AnmolDristi
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_Date_To;
-
-        /// <summary>
-        /// REV_Date_To control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_Date_To;
 
         /// <summary>
         /// TB_Date_To control.

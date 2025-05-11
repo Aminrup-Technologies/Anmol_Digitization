@@ -377,7 +377,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qaapprovals.aspx");
         }
         protected void ReportbtnReset_Click(object sender, EventArgs e)
         {

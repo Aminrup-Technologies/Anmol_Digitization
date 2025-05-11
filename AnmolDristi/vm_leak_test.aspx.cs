@@ -1143,8 +1143,8 @@ namespace AnmolDristi
 			                    WHEN c.LeakTestStatus = 1 THEN 'Ok'
 			                    WHEN c.LeakTestStatus = 0 THEN 'Not Ok'
 		                    END AS LeakTestStatus,
-		                    c.RemarksForFail,
-		                    c.Slanted_Percent,
+		                c.RemarksForFail,
+		                c.Slanted_Percent,
                         'No Comment' AS Remarks,
                         c.Approver1EmployeeCode AS L1,
                         c.Approver1_Status,
