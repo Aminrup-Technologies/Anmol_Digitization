@@ -934,7 +934,7 @@ namespace AnmolDristi
                     RankedData
                 WHERE 
                     RowNum = 1
-                ORDER BY 
+                ORDER BY
                     SDate DESC, STime DESC;
                 ";
 

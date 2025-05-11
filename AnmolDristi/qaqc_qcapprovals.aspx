@@ -43,8 +43,8 @@
                                 </span>
                                 <i class="fa fa-edit"></i>BOPP Tape
                             </a>
-                            <a class="btn btn-app" href="#">
-                                <span class="badge bg-warning">WIP
+                            <a class="btn btn-app" href="PVC_Tray_ViewPage.aspx">
+                                <span class="badge bg-green">Ok
                                     <asp:label id="Label5" runat="server" text="0" visible="false"></asp:label>
                                 </span>
                                 <i class="fa fa-edit"></i>PVC Tray
@@ -85,8 +85,8 @@
                                     <asp:Label ID="Label8" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Class 3
                             </a>
-                            <a class="btn btn-app" href="#">
-                                <span class="badge bg-orange">WIP
+                            <a class="btn btn-app" href="RM_Class_4_Approval.aspx">
+                                <span class="badge bg-green">Ok
                                     <asp:Label ID="Label9" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Class 4
                             </a>

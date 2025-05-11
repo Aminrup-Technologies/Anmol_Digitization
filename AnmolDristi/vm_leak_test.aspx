@@ -107,7 +107,7 @@
 
         <div class="action-buttons" style="display: flex; justify-content: center; align-items: center; text-align: center;">
             <p style="margin-right: 10px; margin-bottom: 0;">Click SUBMIT to view Data!!</p>
-            <asp:Button ID="btn_view_Cancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" CausesValidation="false" PostBackUrl="~/qaqc_qahome_rpt.aspx" />
+            <asp:Button ID="btn_view_Cancel" runat="server" Text="Home" CssClass="btn btn-danger btn-sm" CausesValidation="false" PostBackUrl="~/home.aspx" />
             <asp:Button ID="btn_view_Reset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="btn_view_Reset_Click" />
             <asp:Button ID="btn_view_submit" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClick="btn_view_submit_Click" />
         </div>

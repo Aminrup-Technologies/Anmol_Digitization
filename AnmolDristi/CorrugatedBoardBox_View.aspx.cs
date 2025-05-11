@@ -154,7 +154,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("qaqc_qchome_rpt.aspx");
+            Response.Redirect("qaqc_qchome_rpt.aspx"); 
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)

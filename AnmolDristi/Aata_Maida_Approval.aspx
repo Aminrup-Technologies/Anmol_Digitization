@@ -90,7 +90,7 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="lbl_viewname" runat="server" Text="Label"></asp:Label>
-                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" />
+                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" OnClick="ExportBtn_Click" />
                             </h2>
                             <div class="clearfix"></div>
                         </div>

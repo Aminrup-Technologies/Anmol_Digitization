@@ -66,7 +66,7 @@ namespace AnmolDristi
             {
                 string selectedMaterialValue = DDL_Material.SelectedValue.ToString();
                 PlantBinder();
-
+                DataLoader();
                 // Call method to show relevant controls based on selected material
                 //DivBinders(selectedMaterialValue);
             }

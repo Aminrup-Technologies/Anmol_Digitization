@@ -79,7 +79,6 @@
                                             <div class="mb-2">
                                                 <asp:Label ID="Lbl_Date_From" runat="server" AssociatedControlID="TB_Date_From" Text="Date From :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                 <asp:RequiredFieldValidator ID="RFV_Date_From" runat="server" ErrorMessage="Date is required " ValidationGroup="Submit" ControlToValidate="TB_Date_From" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                <asp:RegularExpressionValidator ID="REV_Date_From" runat="server" ControlToValidate="TB_Date_From" ValidationGroup="Submit" ForeColor="Red" ErrorMessage="" Display="Dynamic" ValidationExpression=" "></asp:RegularExpressionValidator>
                                                 <div class="input-group-sm">
                                                     <asp:TextBox ID="TB_Date_From" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="" TextMode="Date"></asp:TextBox>
                                                 </div>
@@ -90,7 +89,6 @@
                                             <div class="mb-2">
                                                 <asp:Label ID="Lbl_Date_To" runat="server" AssociatedControlID="TB_Date_To" Text="Date To :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                 <asp:RequiredFieldValidator ID="RFV_Date_To" runat="server" ErrorMessage="Date is required " ValidationGroup="Submit" ControlToValidate="TB_Date_To" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                <asp:RegularExpressionValidator ID="REV_Date_To" runat="server" ControlToValidate="TB_Date_To" ValidationGroup="Submit" ForeColor="Red" ErrorMessage="" Display="Dynamic" ValidationExpression=" "></asp:RegularExpressionValidator>
                                                 <div class="input-group-sm">
                                                     <asp:TextBox ID="TB_Date_To" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="" TextMode="Date"></asp:TextBox>
                                                 </div>
