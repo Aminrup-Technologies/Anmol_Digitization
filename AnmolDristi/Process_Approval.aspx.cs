@@ -38,7 +38,7 @@ namespace AnmolDristi
                     lbl_viewname.Text = "View and Search for Detailed View || ";
                     PlantBinder();
                     BindGridView();
-                    ShowHideGridViewColumns();
+                    //ShowHideGridViewColumns();
 
                 }
 
