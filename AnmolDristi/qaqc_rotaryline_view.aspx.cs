@@ -32,9 +32,9 @@ namespace AnmolDristi
 
                     //lbl_upper.Text = "Search Filters for Rotary Line Report";
                     lbl_lower.Text = "View and Select for Detailed View  ||   ";
-                    DataLoader();
+                    //DataLoader();
                     PlantBinder();
-                    //loadAlldata();  // Load all data on initial load
+                    loadAlldata();  // Load all data on initial load
                 }
 
             }
@@ -112,6 +112,7 @@ namespace AnmolDristi
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 PlantLinesBinder(selectedPlantValue);
+                DataLoader();
             }
             else
             {
@@ -127,7 +128,6 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_Plant_Error_script, false);
             }
-            DataLoader();
 
         }
         private void PlantLinesBinder(string selectedPlantValue)
@@ -163,6 +163,7 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 LineProductsBinder(selectedPlantValue, selectedPlantLineValue);
+                DataLoader();
             }
             else
             {
@@ -178,7 +179,6 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_PlantLine_Error_script, false);
             }
-            DataLoader();
 
 
         }
@@ -227,6 +227,7 @@ namespace AnmolDristi
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue);
+                DataLoader();
             }
             else
             {
@@ -242,7 +243,6 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_PlantLine_Error_script, false);
             }
-            DataLoader();
 
         }
         private void ProductBrandsBinder(string selectedPlantValue, string selectedPlantLineValue, string selectedProductCategoryValue)
@@ -289,6 +289,7 @@ namespace AnmolDristi
             {
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 BrandSKUBinder(selectedProductBrandValue);
+                DataLoader();
 
                 DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
 
@@ -345,7 +346,7 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowSKUInvalidErrorNotification", DDL_ProductBrand_Error_script, false);
             }
-            DataLoader();
+            
 
         }
         private void BrandSKUBinder(string selectedProductBrandValue)
@@ -551,7 +552,7 @@ namespace AnmolDristi
 
         protected void btn_view_cancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("qaqc_qahome_rpt.aspx");
+            Response.Redirect("qaqc_rotaryline_view.aspx");
         }
 
         protected void btn_view_reset_Click(object sender, EventArgs e)
@@ -728,6 +729,8 @@ namespace AnmolDristi
             return dt;
         }
 
+
+        
         private void loadAlldata()
         {
             try
@@ -738,13 +741,23 @@ namespace AnmolDristi
                     SELECT TOP(30)
                         c.ID AS DBID,
                         c.FormID as FormID,
-                        c.CcpId as RecordID,
+                        c.RLWt as RecordID,
                         p.plant_name AS PlantName,
+	                    l.line_name AS LineName,
+	                    pc.category_name AS ProductCategory,
+	                    pb.brand_name AS ProductBrand,
                         c.SubmittedByEmployeeCode as EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
                         c.Shift as SShift,
+	                    c.linewt,
+                        c.avglinewt,
+                        c.gaugevalues,
+                        c.avggaugevalue,
+                        c.weightvalue,
+                        c.avgweightvalue,
+                        c.gaugeandweight,
                         'No Comment' AS Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
@@ -758,7 +771,13 @@ namespace AnmolDristi
                     FROM 
                         TRN_RotaryLine_OvenEnd c
                     LEFT JOIN 
-                        MST_PlantDetails p ON c.PlantId = p.plant_id
+                        MST_PlantDetails p ON c.PlantName = p.plant_id
+                    LEFT JOIN 
+                        MST_Plant_Lines l ON c.Line = l.line_id
+                    LEFT JOIN 
+                        MST_LineCategory pc ON c.ProductCategory = pc.category_id
+                    LEFT JOIN 
+                        MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
                     LEFT JOIN
                         MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                     WHERE 
@@ -800,7 +819,6 @@ namespace AnmolDristi
             }
         }
 
-
         private void DataLoader()
         {
             DateTime? dateFrom = string.IsNullOrEmpty(TxtDateFrom.Text) ? (DateTime?)null : DateTime.ParseExact(TxtDateFrom.Text, "yyyy-MM-dd", null);
@@ -810,6 +828,7 @@ namespace AnmolDristi
                 SELECT TOP(30)
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    c.RLWt as RecordID,
                     p.plant_name AS PlantName,
                     l.line_name AS LineName,
                     pc.category_name AS ProductCategory,
@@ -819,6 +838,13 @@ namespace AnmolDristi
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
                     c.Shift AS SShift,
+                    c.linewt,
+                    c.avglinewt,
+                    c.gaugevalues,
+                    c.avggaugevalue,
+                    c.weightvalue,
+                    c.avgweightvalue,
+                    c.gaugeandweight,
                     'No Comment' AS Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
