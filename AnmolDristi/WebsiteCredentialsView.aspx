@@ -1,7 +1,6 @@
 ﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="WebsiteCredentialsView.aspx.cs" Inherits="AnmolDristi.WebsiteCredentialsView" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
-
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
@@ -48,8 +47,13 @@
                         </div>
 
                         <asp:GridView ID="GridViewFiltered" runat="server" AutoGenerateColumns="false" CssClass="table table-bordered table-sm"
-                            EmptyDataText="No credentials found." AllowPaging="true" PageSize="20" OnRowCommand="GridViewFiltered_RowCommand">
+                            EmptyDataText="No credentials found." OnRowCommand="GridViewFiltered_RowCommand" AllowPaging="true" PageSize="25" OnRowDataBound="GridViewFiltered_RowDataBound" OnPageIndexChanging="GridViewFiltered_PageIndexChanging">
                             <Columns>
+                                <asp:TemplateField HeaderText="SL No">
+                                    <ItemTemplate>
+                                        <asp:Label ID="lblSerial" runat="server" />
+                                    </ItemTemplate>
+                                </asp:TemplateField>
                                 <asp:BoundField DataField="SiteName" HeaderText="Site Name" />
                                 <asp:BoundField DataField="Purpose" HeaderText="Purpose" />
                                 <asp:BoundField DataField="UsageFrequency" HeaderText="Frequency" />

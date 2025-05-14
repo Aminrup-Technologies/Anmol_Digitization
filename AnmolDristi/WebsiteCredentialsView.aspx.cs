@@ -30,6 +30,25 @@ namespace AnmolDristi
             }
         }
 
+        protected void GridViewFiltered_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                // Get current page index and page size
+                int index = e.Row.RowIndex + (GridViewFiltered.PageIndex * GridViewFiltered.PageSize);
+                Label lblSerial = (Label)e.Row.FindControl("lblSerial");
+                lblSerial.Text = (index + 1).ToString(); // SL No starts from 1
+            }
+        }
+
+        protected void GridViewFiltered_PageIndexChanging(object sender, GridViewPageEventArgs e)
+        {
+            GridViewFiltered.PageIndex = e.NewPageIndex;
+
+            // Call your bind method again (e.g., BindGrid or LoadData)
+            BindGrid(); // Replace with your actual method
+        }
+
         private void DepartmentBinder()
         {
             string query = "SELECT Department_Description, Department_ID FROM MST_Department";
