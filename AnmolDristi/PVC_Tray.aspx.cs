@@ -366,7 +366,7 @@ namespace AnmolDristi
             //DDL_BrandSKU.Enabled = false;
             TB_BrandSKU.ReadOnly = true;
             TB_ChalanNo.ReadOnly = true;
-            TB_ChalanNo.ReadOnly = true;
+            //TB_ChalanNo.ReadOnly = true;
             TB_MatVarietyName.ReadOnly = true;
             TB_Supplier.ReadOnly = true;
             TB_Size.ReadOnly = true;

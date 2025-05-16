@@ -555,7 +555,7 @@ namespace AnmolDristi
             }
             else if (ViewerMode == 1)
             {
-                Response.Redirect("app_qc_inspectorreport.aspx", false);
+                Response.Redirect("Critical_Incident_ViewPage.aspx", false);
             }
             else
             {
