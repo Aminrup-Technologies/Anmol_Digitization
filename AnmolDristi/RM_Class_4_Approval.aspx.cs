@@ -185,12 +185,21 @@ namespace AnmolDristi
                     c.Vehicle_No,
                     c.Color,
                     c.CommentsForColor,
-                    c.Smell,
-                    c.CommentsForSmell,
-                    c.Appearance,
-                    c.CommentsForAppearance,
-                    c.Taste,
-                    c.CommentsForTaste,
+                    CASE 
+		                WHEN c.Smell = 1 THEN 'Ok'
+		                WHEN c.Smell = 0 THEN 'Not Ok'
+	                END AS Smell,
+	                c.CommentsForSmell,
+	                CASE 
+		                WHEN c.Appearance = 1 THEN 'Ok'
+		                WHEN c.Appearance = 0 THEN 'Not Ok'
+	                END AS Appearance,
+	                c.CommentsForAppearance,
+	                CASE 
+		                WHEN c.Taste = 1 THEN 'Ok'
+		                WHEN c.Taste = 0 THEN 'Not Ok'
+	                END AS Taste,
+	                c.CommentsForTaste,
                     c.Fungus,
                     c.CommentsForFungus,
                     c.PH,
@@ -292,12 +301,21 @@ namespace AnmolDristi
                     c.Vehicle_No,
                     c.Color,
                     c.CommentsForColor,
-                    c.Smell,
-                    c.CommentsForSmell,
-                    c.Appearance,
-                    c.CommentsForAppearance,
-                    c.Taste,
-                    c.CommentsForTaste,
+                    CASE 
+		                WHEN c.Smell = 1 THEN 'Ok'
+		                WHEN c.Smell = 0 THEN 'Not Ok'
+	                END AS Smell,
+	                c.CommentsForSmell,
+	                CASE 
+		                WHEN c.Appearance = 1 THEN 'Ok'
+		                WHEN c.Appearance = 0 THEN 'Not Ok'
+	                END AS Appearance,
+	                c.CommentsForAppearance,
+	                CASE 
+		                WHEN c.Taste = 1 THEN 'Ok'
+		                WHEN c.Taste = 0 THEN 'Not Ok'
+	                END AS Taste,
+	                c.CommentsForTaste,
                     c.Fungus,
                     c.CommentsForFungus,
                     c.PH,

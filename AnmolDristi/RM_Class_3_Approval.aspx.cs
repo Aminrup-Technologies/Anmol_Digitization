@@ -190,33 +190,73 @@ namespace AnmolDristi
                         c.Vehicle_No,
                         c.MfgName,
                         c.FssaiNo,
-                        c.MfgYesNo,
+                        CASE 
+                            WHEN c.MfgYesNo = 1 THEN 'Yes'
+                            WHEN c.MfgYesNo = 0 THEN 'No'
+                        END AS MfgYesNo,
                         c.MfgYesNoRemarks,
-                        c.PkdDate_YesNo,
+                        CASE 
+                            WHEN c.PkdDate_YesNo = 1 THEN 'Yes'
+                            WHEN c.PkdDate_YesNo = 0 THEN 'No'
+                        END AS PkdDate_YesNo,
                         c.PkdDateYesNoRemarks,
-                        c.BestbfrDate_YesNo,
+                        CASE 
+                            WHEN c.BestbfrDate_YesNo = 1 THEN 'Yes'
+                            WHEN c.BestbfrDate_YesNo = 0 THEN 'No'
+                        END AS BestbfrDate_YesNo,
                         c.BestbfrDate_YesNoRemarks,
-                        c.BatchLotNo_YesNo,
-                        c.BatchLotNo_YesNoRemarks,
-                        c.fssaiYesNo,
-                        c.fssaiYesNoRemarks,
-                        c.Fssai_Logo,
-                        c.Veg_Logo,
-                        c.Smell,
+                        CASE 
+                            WHEN c.BatchLotNo_YesNo = 1 THEN 'Yes'
+                            WHEN c.BatchLotNo_YesNo = 0 THEN 'No'
+                        END AS BatchLotNo_YesNo,
+                        c.BatchLotNo_YesNoRemarks,   
+                        CASE 
+	                        WHEN c.Fssai_Logo = 1 THEN 'Present'
+	                        WHEN c.Fssai_Logo = 0 THEN 'Absent'
+                        END AS Fssai_Logo,
+                        CASE 
+                            WHEN c.Veg_Logo = 1 THEN 'Absent'
+                            WHEN c.Veg_Logo = 0 THEN 'Present'
+                        END AS Veg_Logo,
+                        CASE 
+                            WHEN c.Smell = 1 THEN 'Ok'
+                            WHEN c.Smell = 0 THEN 'Not Ok'
+                        END AS Smell,
                         c.CommentsForSmell,
-                        c.OdourAftrAcid,
+                        CASE 
+                            WHEN c.OdourAftrAcid = 1 THEN 'Absent'
+                            WHEN c.OdourAftrAcid = 0 THEN 'Present'
+                        END AS OdourAftrAcid,
                         c.OdourAftrAcid_Remarks,
-                        c.Packing_Condition,
+                        CASE 
+                            WHEN c.Packing_Condition = 1 THEN 'Ok'
+                            WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+                        END AS Packing_Condition,
                         c.PackingCondition_Remarks,
-                        c.Appearance,
+                        CASE 
+                            WHEN c.Appearance = 1 THEN 'Ok'
+                            WHEN c.Appearance = 0 THEN 'Not Ok'
+                        END AS Appearance,
                         c.CommentsForAppearance,
-                        c.Color,
+                        CASE 
+                            WHEN c.Color = 1 THEN 'Ok'
+                            WHEN c.Color = 0 THEN 'Not Ok'
+                        END AS Color,
                         c.CommentsForColor,
-                        c.Taste,
+                        CASE 
+                            WHEN c.Taste = 1 THEN 'Ok'
+                            WHEN c.Taste = 0 THEN 'Not Ok'
+                        END AS Taste,
                         c.CommentsForTaste,
-                        c.Grade,
+                        CASE 
+                            WHEN c.Grade = 1 THEN 'Yes'
+                            WHEN c.Grade = 0 THEN 'No'
+                        END AS Grade,
                         c.CommentsForGrade,
-                        c.Foreign_Matter_YesNo,
+                        CASE 
+                            WHEN c.Foreign_Matter_YesNo = 1 THEN 'Absent'
+                            WHEN c.Foreign_Matter_YesNo = 0 THEN 'Present'
+                        END AS Foreign_Matter_YesNo,
                         c.Foreign_Matter_YesNoRemarks,
                         c.Foreign_Matter_Impurities,
                         c.PH,
@@ -253,7 +293,10 @@ namespace AnmolDristi
                         c.CommentsForSulphideContent,
                         c.SulphatedAsh,
                         c.CommentsForSulphatedAsh,
-                        c.Beverage,
+                        CASE 
+                        WHEN c.Beverage = 1 THEN 'Positive'
+                        WHEN c.Beverage = 0 THEN 'Negative'
+                    END AS Beverage,
                         c.Material_Image,
                         CASE
                             WHEN c.ApprovalStatus = 1 THEN 'Accepted'
@@ -281,7 +324,7 @@ namespace AnmolDristi
                             1 = 1
                         ORDER BY 
                             c.[SubmittedDate] DESC, 
-                            c.[SubmittedTime] DESC;                ";
+                            c.[SubmittedTime] DESC;                  ";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
@@ -334,33 +377,73 @@ namespace AnmolDristi
                     c.Vehicle_No,
                     c.MfgName,
                     c.FssaiNo,
-                    c.MfgYesNo,
+                    CASE 
+                        WHEN c.MfgYesNo = 1 THEN 'Yes'
+                        WHEN c.MfgYesNo = 0 THEN 'No'
+                    END AS MfgYesNo,
                     c.MfgYesNoRemarks,
-                    c.PkdDate_YesNo,
+                    CASE 
+                        WHEN c.PkdDate_YesNo = 1 THEN 'Yes'
+                        WHEN c.PkdDate_YesNo = 0 THEN 'No'
+                    END AS PkdDate_YesNo,
                     c.PkdDateYesNoRemarks,
-                    c.BestbfrDate_YesNo,
+                    CASE 
+                        WHEN c.BestbfrDate_YesNo = 1 THEN 'Yes'
+                        WHEN c.BestbfrDate_YesNo = 0 THEN 'No'
+                    END AS BestbfrDate_YesNo,
                     c.BestbfrDate_YesNoRemarks,
-                    c.BatchLotNo_YesNo,
-                    c.BatchLotNo_YesNoRemarks,
-                    c.fssaiYesNo,
-                    c.fssaiYesNoRemarks,
-                    c.Fssai_Logo,
-                    c.Veg_Logo,
-                    c.Smell,
+                    CASE 
+                        WHEN c.BatchLotNo_YesNo = 1 THEN 'Yes'
+                        WHEN c.BatchLotNo_YesNo = 0 THEN 'No'
+                    END AS BatchLotNo_YesNo,
+                    c.BatchLotNo_YesNoRemarks,   
+                    CASE 
+	                    WHEN c.Fssai_Logo = 1 THEN 'Present'
+	                    WHEN c.Fssai_Logo = 0 THEN 'Absent'
+                    END AS Fssai_Logo,
+                    CASE 
+                        WHEN c.Veg_Logo = 1 THEN 'Absent'
+                        WHEN c.Veg_Logo = 0 THEN 'Present'
+                    END AS Veg_Logo,
+                    CASE 
+                        WHEN c.Smell = 1 THEN 'Ok'
+                        WHEN c.Smell = 0 THEN 'Not Ok'
+                    END AS Smell,
                     c.CommentsForSmell,
-                    c.OdourAftrAcid,
+                    CASE 
+                        WHEN c.OdourAftrAcid = 1 THEN 'Absent'
+                        WHEN c.OdourAftrAcid = 0 THEN 'Present'
+                    END AS OdourAftrAcid,
                     c.OdourAftrAcid_Remarks,
-                    c.Packing_Condition,
+                    CASE 
+                        WHEN c.Packing_Condition = 1 THEN 'Ok'
+                        WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+                    END AS Packing_Condition,
                     c.PackingCondition_Remarks,
-                    c.Appearance,
+                    CASE 
+                        WHEN c.Appearance = 1 THEN 'Ok'
+                        WHEN c.Appearance = 0 THEN 'Not Ok'
+                    END AS Appearance,
                     c.CommentsForAppearance,
-                    c.Color,
+                    CASE 
+                        WHEN c.Color = 1 THEN 'Ok'
+                        WHEN c.Color = 0 THEN 'Not Ok'
+                    END AS Color,
                     c.CommentsForColor,
-                    c.Taste,
+                    CASE 
+                        WHEN c.Taste = 1 THEN 'Ok'
+                        WHEN c.Taste = 0 THEN 'Not Ok'
+                    END AS Taste,
                     c.CommentsForTaste,
-                    c.Grade,
+                    CASE 
+                        WHEN c.Grade = 1 THEN 'Yes'
+                        WHEN c.Grade = 0 THEN 'No'
+                    END AS Grade,
                     c.CommentsForGrade,
-                    c.Foreign_Matter_YesNo,
+                    CASE 
+                        WHEN c.Foreign_Matter_YesNo = 1 THEN 'Absent'
+                        WHEN c.Foreign_Matter_YesNo = 0 THEN 'Present'
+                    END AS Foreign_Matter_YesNo,
                     c.Foreign_Matter_YesNoRemarks,
                     c.Foreign_Matter_Impurities,
                     c.PH,

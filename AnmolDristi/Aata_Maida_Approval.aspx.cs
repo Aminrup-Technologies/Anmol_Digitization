@@ -186,27 +186,57 @@ namespace AnmolDristi
                         c.BatchNo,
                         c.LotNo,
                         c.VehicleNo,
-                        c.MfgYesNo,
-                        c.MfgYesNoRemarks,
+                        CASE 
+		                    WHEN c.MfgYesNo = 1 THEN 'Ok'
+		                    WHEN c.MfgYesNo = 0 THEN 'Not Ok'
+	                    END AS MfgYesNo,
+	                    c.MfgYesNoRemarks
                         c.MfgName,
-                        c.BBDateYesNo,
-                        c.BBDateYesNoRemarks,
+                        CASE 
+		                    WHEN c.BBDateYesNo = 1 THEN 'Ok'
+		                    WHEN c.BBDateYesNo = 0 THEN 'Not Ok'
+	                    END AS BBDateYesNo,
+	                    c.BBDateYesNoRemarks
                         c.BB_Dates,
-                        c.fssaiYesNo,
-                        c.fssaiYesNoRemarks,
+	                    CASE 
+		                    WHEN c.fssaiYesNo = 1 THEN 'Ok'
+		                    WHEN c.fssaiYesNo = 0 THEN 'Not Ok'
+	                    END AS fssaiYesNo,
+	                    c.fssaiYesNoRemarks
                         c.FssaiNo,
-                        c.Fssai_Logo,
-                        c.Veg_Logo,
-                        c.Packing_Condition,
-                        c.PackingCondition_Remarks,
-                        c.ColorApp,
-                        c.ColorApp_Remarks,
-                        c.Odour,
-                        c.Odour_Remarks,
-                        c.TasteFlavor,
-                        c.TasteFlavor_Remarks,
-                        c.Impurities,
-                        c.Impurities_Remarks,
+	                    CASE 
+		                    WHEN c.Fssai_Logo = 1 THEN 'Present'
+		                    WHEN c.Fssai_Logo = 0 THEN 'Absent'
+	                    END AS Fssai_Logo,
+	                    CASE 
+		                    WHEN c.Veg_Logo = 1 THEN 'Present'
+		                    WHEN c.Veg_Logo = 0 THEN 'Absent'
+	                    END AS Veg_Logo,
+	                    CASE 
+		                    WHEN c.Packing_Condition = 1 THEN 'Ok'
+		                    WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+	                    END AS Packing_Condition,
+	                    c.PackingCondition_Remarks
+	                    CASE 
+		                    WHEN c.ColorApp = 1 THEN 'Ok'
+		                    WHEN c.ColorApp = 0 THEN 'Not Ok'
+	                    END AS ColorApp,
+	                    c.ColorApp_Remarks
+	                    CASE 
+		                    WHEN c.Odour = 1 THEN 'Ok'
+		                    WHEN c.Odour = 0 THEN 'Not Ok'
+	                    END AS Odour,
+	                    c.Odour_Remarks
+	                    CASE 
+		                    WHEN c.TasteFlavor = 1 THEN 'Ok'
+		                    WHEN c.TasteFlavor = 0 THEN 'Not Ok'
+	                    END AS TasteFlavor,
+	                    c.TasteFlavor_Remarks
+	                    CASE 
+		                    WHEN c.Impurities = 1 THEN 'Ok'
+		                    WHEN c.Impurities = 0 THEN 'Not Ok'
+	                    END AS Impurities,
+	                    c.Impurities_Remarks
                         c.Moisture,
                         c.Moisture_Remarks,
                         c.TotalAsh,
@@ -221,8 +251,14 @@ namespace AnmolDristi
                         c.Absorption_Remarks,
                         c.Sedimentation,
                         c.Sedimentation_Remarks,
-                        c.Grittiness,
-                        c.Grittiness_Remarks,
+	                    CASE 
+		                    WHEN c.Grittiness = 1 THEN 'Positive'
+		                    WHEN c.Grittiness = 0 THEN 'Negative'
+	                    END AS Grittiness,
+	                    CASE 
+		                    WHEN c.Grittiness_Remarks IS NULL OR c.Grittiness_Remarks = '' THEN 'No Remarks'
+		                    ELSE c.Grittiness_Remarks
+	                    END AS Grittiness_Remarks,
                         c.Acidity,
                         c.Acidity_Remarks,
                         c.Granularity,
@@ -305,27 +341,58 @@ namespace AnmolDristi
                     c.BatchNo,
                     c.LotNo,
                     c.VehicleNo,
-                    c.MfgYesNo,
-                    c.MfgYesNoRemarks,
+                    c.VehicleNo,
+                    CASE 
+		                WHEN c.MfgYesNo = 1 THEN 'Ok'
+		                WHEN c.MfgYesNo = 0 THEN 'Not Ok'
+	                END AS MfgYesNo,
+	                c.MfgYesNoRemarks
                     c.MfgName,
-                    c.BBDateYesNo,
-                    c.BBDateYesNoRemarks,
+                    CASE 
+		                WHEN c.BBDateYesNo = 1 THEN 'Ok'
+		                WHEN c.BBDateYesNo = 0 THEN 'Not Ok'
+	                END AS BBDateYesNo,
+	                c.BBDateYesNoRemarks
                     c.BB_Dates,
-                    c.fssaiYesNo,
-                    c.fssaiYesNoRemarks,
+	                CASE 
+		                WHEN c.fssaiYesNo = 1 THEN 'Ok'
+		                WHEN c.fssaiYesNo = 0 THEN 'Not Ok'
+	                END AS fssaiYesNo,
+	                c.fssaiYesNoRemarks
                     c.FssaiNo,
-                    c.Fssai_Logo,
-                    c.Veg_Logo,
-                    c.Packing_Condition,
-                    c.PackingCondition_Remarks,
-                    c.ColorApp,
-                    c.ColorApp_Remarks,
-                    c.Odour,
-                    c.Odour_Remarks,
-                    c.TasteFlavor,
-                    c.TasteFlavor_Remarks,
-                    c.Impurities,
-                    c.Impurities_Remarks,
+	                CASE 
+		                WHEN c.Fssai_Logo = 1 THEN 'Present'
+		                WHEN c.Fssai_Logo = 0 THEN 'Absent'
+	                END AS Fssai_Logo,
+	                CASE 
+		                WHEN c.Veg_Logo = 1 THEN 'Present'
+		                WHEN c.Veg_Logo = 0 THEN 'Absent'
+	                END AS Veg_Logo,
+	                CASE 
+		                WHEN c.Packing_Condition = 1 THEN 'Ok'
+		                WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+	                END AS Packing_Condition,
+	                c.PackingCondition_Remarks
+	                CASE 
+		                WHEN c.ColorApp = 1 THEN 'Ok'
+		                WHEN c.ColorApp = 0 THEN 'Not Ok'
+	                END AS ColorApp,
+	                c.ColorApp_Remarks
+	                CASE 
+		                WHEN c.Odour = 1 THEN 'Ok'
+		                WHEN c.Odour = 0 THEN 'Not Ok'
+	                END AS Odour,
+	                c.Odour_Remarks
+	                CASE 
+		                WHEN c.TasteFlavor = 1 THEN 'Ok'
+		                WHEN c.TasteFlavor = 0 THEN 'Not Ok'
+	                END AS TasteFlavor,
+	                c.TasteFlavor_Remarks
+	                CASE 
+		                WHEN c.Impurities = 1 THEN 'Ok'
+		                WHEN c.Impurities = 0 THEN 'Not Ok'
+	                END AS Impurities,
+	                c.Impurities_Remarks
                     c.Moisture,
                     c.Moisture_Remarks,
                     c.TotalAsh,
@@ -340,8 +407,14 @@ namespace AnmolDristi
                     c.Absorption_Remarks,
                     c.Sedimentation,
                     c.Sedimentation_Remarks,
-                    c.Grittiness,
-                    c.Grittiness_Remarks,
+	                CASE 
+		                WHEN c.Grittiness = 1 THEN 'Positive'
+		                WHEN c.Grittiness = 0 THEN 'Negative'
+	                END AS Grittiness,
+	                CASE 
+		                WHEN c.Grittiness_Remarks IS NULL OR c.Grittiness_Remarks = '' THEN 'No Remarks'
+		                ELSE c.Grittiness_Remarks
+	                END AS Grittiness_Remarks,
                     c.Acidity,
                     c.Acidity_Remarks,
                     c.Granularity,

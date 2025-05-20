@@ -627,7 +627,7 @@ namespace AnmolDristi
             {
                 string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
                 string query = @"
-                     SELECT
+                       SELECT
                             A.plant_name AS Plant, 
                             B.line_name AS PlantLine, 
                             C.category_name AS ProductCategory, 
@@ -637,38 +637,116 @@ namespace AnmolDristi
                             P.MaterialCode AS MaterialCode,
                             P.CBB_Produced AS NoOfCBBProduced,
                             P.CBB_Checked AS NoOfCBBChecked,
-                            P.CBB_Box_Condition AS BoxCondition,
-                            P.CBB_Box_ConditionRemarks AS BoxConditionRemarks,
+                            CASE 
+                                WHEN  P.CBB_Box_Condition = 1 THEN 'Ok'
+                                WHEN  P.CBB_Box_Condition = 0 THEN 'Not Ok'
+                            END AS BoxCondition,
+                            CASE 
+				                WHEN P.CBB_Box_ConditionRemarks IS NULL OR P.CBB_Box_ConditionRemarks = '' THEN 'No Remarks'
+				                ELSE P.CBB_Box_ConditionRemarks
+			                END AS BoxConditionRemarks,
                             P.Packets_CBB AS NoOfPacketsInCBB,
-                            P.CBB_tapping AS TappingOfCBB,
-                            P.CBB_tappingRemarks AS TappingOfCBBRemarks,
+                            CASE 
+                                WHEN  P.CBB_tapping = 1 THEN 'Ok'
+                                WHEN  P.CBB_tapping = 0 THEN 'Not Ok'
+                            END AS TappingOfCBB,
+                            CASE 
+                                WHEN P.CBB_tappingRemarks IS NULL OR P.CBB_tappingRemarks = '' THEN 'No Remarks'
+                                ELSE P.CBB_tappingRemarks 
+                            END AS TappingOfCBBRemarks,
                             P.PacketsChecked_CBB AS PktsCheckedCBBBox,
                             P.WeightofPackets AS WtOfPkts,
                             P.PackageDate AS PkgDate,
                             P.BatchNo AS BatchLotNo,
                             P.PacketsMRP AS MRPOfPkts,
-                            P.LongSeal AS LongSealCondition,
-                            P.LongSealRemarks AS LongSealConditionRemarks,
-                            P.EndSeal AS EndSealCondition,
-                            P.EndSealRemarks AS EndSealConditionRemarks,
-                            P.MainPanel AS MainPanelCentralNot,
-                            P.MainPanelRemarks AS MainPanelCentralRemarks,
-                            P.Cuts_Packets AS CutsInPackets,
-                            P.Cuts_PacketsRemarks AS CutsInPacketsRemarks,
-                            P.BackingStatus AS BakingUnderOverBaked,
-                            P.BackingStatusRemarks AS BakingUnderOverBakedRemarks,
-                            P.ElongOval AS ShapeConditionElongatedOrOval,
-                            P.ElongOvalRemarks AS ShapeConditionElongatedOrOvalRemarks,
-                            P.Cupping AS CuppingCondition,
-                            P.CuppingRemarks AS CuppingConditionRemarks,
-                            P.Impression AS ImpressionOnBiscuits,
-                            P.ImpressionRemarks AS ImpressionOnBiscuitsRemarks,
-                            P.SoggyStatus AS BiscuitSoggy,
-                            P.SoggyStatusRemarks AS BiscuitSoggyRemarks,
-                            P.ForeignBody AS ForeignBodyInBiscuit,
-                            P.ForeignBodyRemarks AS ForeignBodyInBiscuitRemarks,
-                            P.OffOdour AS OffOdour,
-                            P.OffOdourRemarks AS OffOdourRemarks,
+                            CASE 
+                                WHEN P.LongSeal= 1 THEN 'Ok'
+                                WHEN P.LongSeal = 0 THEN 'Not Ok'
+                            END AS LongSealCondition,
+                            CASE 
+                                WHEN P.LongSealRemarks IS NULL OR P.LongSealRemarks = '' THEN 'No Remarks'
+                                ELSE P.LongSealRemarks 
+                            END AS LongSealConditionRemarks,
+                            CASE 
+                                WHEN P.EndSeal = 1 THEN 'Ok'
+                                WHEN P.EndSeal = 0 THEN 'Not Ok'
+                            END AS EndSealCondition,
+                            CASE 
+                                WHEN P.EndSealRemarks IS NULL OR P.EndSealRemarks = '' THEN 'No Remarks'
+                                ELSE P.EndSealRemarks 
+                            END AS EndSealConditionRemarks,
+                            CASE 
+                                WHEN P.MainPanel = 1 THEN 'Ok'
+                                WHEN P.MainPanel = 0 THEN 'Not Ok'
+                            END AS MainPanelCentralNot,
+                            CASE 
+                                WHEN P.MainPanelRemarks IS NULL OR P.MainPanelRemarks = '' THEN 'No Remarks'
+                                ELSE P.MainPanelRemarks 
+                            END AS MainPanelCentralRemarks,
+                            CASE 
+                                WHEN P.Cuts_Packets = 1 THEN 'NO'
+                                WHEN P.Cuts_Packets  = 0 THEN 'Yes'
+                            END AS CutsInPackets,
+                            CASE 
+                                WHEN P.Cuts_PacketsRemarks IS NULL OR P.Cuts_PacketsRemarks = '' THEN 'No Remarks'
+                                ELSE P.Cuts_PacketsRemarks 
+                            END AS CutsInPacketsRemarks,
+                            CASE 
+                                WHEN P.BackingStatus= 1 THEN 'Ok'
+                                WHEN P.BackingStatus = 0 THEN 'Under/Over Baked'
+                            END AS BakingUnderOverBaked,
+                            CASE 
+                                WHEN P.BackingStatusRemarks IS NULL OR P.BackingStatusRemarks = '' THEN 'No Remarks'
+                                ELSE P.BackingStatusRemarks 
+                            END AS BakingUnderOverBakedRemarks,
+                            CASE 
+                                WHEN P.ElongOval= 1 THEN 'Ok'
+                                WHEN P.ElongOval = 0 THEN 'Not Ok'
+                            END AS ShapeConditionElongatedOrOval,
+                            CASE 
+                                WHEN P.ElongOvalRemarks IS NULL OR P.ElongOvalRemarks = '' THEN 'No Remarks'
+                                ELSE P.ElongOvalRemarks 
+                            END AS ShapeConditionElongatedOrOvalRemarks,
+                            CASE 
+           	                    WHEN P.Cupping = 1 THEN 'NO'
+           	                    WHEN P.Cupping = 0 THEN 'Yes'
+           	                END AS CuppingCondition,
+                            CASE 
+                                WHEN P.CuppingRemarks IS NULL OR P.CuppingRemarks = '' THEN 'No Remarks'
+                                ELSE P.CuppingRemarks 
+                            END AS CuppingConditionRemarks,
+                            CASE 
+              		            WHEN P.Impression= 1 THEN 'Ok'
+              		            WHEN P.Impression = 0 THEN 'Not Ok'
+           	                END AS ImpressionOnBiscuits,
+                            CASE 
+                                WHEN P.ImpressionRemarks IS NULL OR P.ImpressionRemarks = '' THEN 'No Remarks'
+                                ELSE P.ImpressionRemarks 
+                            END AS ImpressionOnBiscuitsRemarks,
+                            CASE
+              		            WHEN P.SoggyStatus = 1 THEN 'Ok'
+              		            WHEN P.SoggyStatus  = 0 THEN 'Not Ok'
+           	                END AS BiscuitSoggy,
+                            CASE 
+                                WHEN P.SoggyStatusRemarks IS NULL OR P.SoggyStatusRemarks = '' THEN 'No Remarks'
+                                ELSE P.SoggyStatusRemarks 
+                            END AS BiscuitSoggyRemarks,
+                            CASE
+              		            WHEN P.ForeignBody= 1 THEN 'NO'
+           	                    WHEN P.ForeignBody = 0 THEN 'Yes'
+           	                END AS ForeignBodyInBiscuit,
+                            CASE 
+                                WHEN P.ForeignBodyRemarks IS NULL OR P.ForeignBodyRemarks = '' THEN 'No Remarks'
+                                ELSE P.ForeignBodyRemarks 
+                            END AS ForeignBodyInBiscuitRemarks,
+                            CASE
+                                WHEN P.OffOdour= 1 THEN 'NO'
+                                WHEN P.OffOdour = 0 THEN 'Yes'
+                            END AS OffOdour,
+                            CASE 
+                                WHEN P.OffOdourRemarks IS NULL OR P.OffOdourRemarks = '' THEN 'No Remarks'
+                                ELSE P.OffOdourRemarks 
+                            END AS OffOdourRemarks,
                             P.Remarks AS Remarks
                     FROM
                         TRN_Pre_Dispatch_Clearance_Report P
@@ -676,7 +754,7 @@ namespace AnmolDristi
                     JOIN dbo.MST_Plant_Lines B ON P.Line = B.line_id
                     JOIN dbo.MST_LineCategory C ON P.ProductCategory = C.category_id
                     JOIN dbo.MST_LineCatBrands D ON P.ProductBrand = D.brand_id
-                    JOIN dbo.MST_Brand_SKU E ON P.SKUId = E.SKUId  
+                    JOIN dbo.MST_Brand_SKU E ON P.SKUId = E.SKUId   
                     WHERE P.BatchID = @BatchID";
 
 
