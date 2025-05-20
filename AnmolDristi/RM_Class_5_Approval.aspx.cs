@@ -185,16 +185,28 @@ namespace AnmolDristi
                     c.Lot_No,
                     c.Batch_No,
                     c.Vehicle_No,
-                    c.Grade,
-                    c.CommentsForGrade,
+                    CASE 
+		                WHEN c.Grade = 1 THEN 'Yes'
+		                WHEN c.Grade = 0 THEN 'No'
+	                END AS Grade,
+	                c.CommentsForGrade,
                     c.Color,
                     c.CommentsForColor,
-                    c.Smell,
-                    c.CommentsForSmell,
-                    c.Appearance,
-                    c.CommentsForAppearance,
-                    c.Taste,
-                    c.CommentsForTaste,
+                    CASE 
+		                WHEN c.Smell = 1 THEN 'Ok'
+		                WHEN c.Smell = 0 THEN 'Not Ok'
+	                END AS Smell,
+	                c.CommentsForSmell,
+	                CASE 
+		                WHEN c.Appearance = 1 THEN 'Ok'
+		                WHEN c.Appearance = 0 THEN 'Not Ok'
+	                END AS Appearance,
+	                c.CommentsForAppearance,
+	                CASE 
+		                WHEN c.Taste = 1 THEN 'Ok'
+		                WHEN c.Taste = 0 THEN 'Not Ok'
+	                END AS Taste,
+	                c.CommentsForTaste,
                     c.Foreign_Matter_Impurities,
                     c.Purity,
                     c.CommentsForPurity,
@@ -284,7 +296,7 @@ namespace AnmolDristi
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
-                c.ProductBrand,
+                    c.ProductBrand,
                     c.Supplier_Name,
                     c.Challan_No,
                     c.Challan_Date,
@@ -294,16 +306,28 @@ namespace AnmolDristi
                     c.Lot_No,
                     c.Batch_No,
                     c.Vehicle_No,
-                    c.Grade,
-                    c.CommentsForGrade,
+                    CASE 
+		                WHEN c.Grade = 1 THEN 'Yes'
+		                WHEN c.Grade = 0 THEN 'No'
+	                END AS Grade,
+	                c.CommentsForGrade,
                     c.Color,
                     c.CommentsForColor,
-                    c.Smell,
-                    c.CommentsForSmell,
-                    c.Appearance,
-                    c.CommentsForAppearance,
-                    c.Taste,
-                    c.CommentsForTaste,
+                    CASE 
+		                WHEN c.Smell = 1 THEN 'Ok'
+		                WHEN c.Smell = 0 THEN 'Not Ok'
+	                END AS Smell,
+	                c.CommentsForSmell,
+	                CASE 
+		                WHEN c.Appearance = 1 THEN 'Ok'
+		                WHEN c.Appearance = 0 THEN 'Not Ok'
+	                END AS Appearance,
+	                c.CommentsForAppearance,
+	                CASE 
+		                WHEN c.Taste = 1 THEN 'Ok'
+		                WHEN c.Taste = 0 THEN 'Not Ok'
+	                END AS Taste,
+	                c.CommentsForTaste,
                     c.Foreign_Matter_Impurities,
                     c.Purity,
                     c.CommentsForPurity,

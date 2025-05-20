@@ -185,14 +185,23 @@ namespace AnmolDristi
                         c.Lot_No,
                         c.Vehicle_No,
                         c.Color,
-                        c.CommentsForColor,
-                        c.Smell,
-                        c.CommentsForSmell,
-                        c.Appearance,
-                        c.CommentsForAppearance,
-                        c.Taste,
-                        c.CommentsForTaste,
-                        c.Foreign_Matter_Impurities,
+	                    c.CommentsForColor,
+	                    CASE 
+		                    WHEN c.Smell = 1 THEN 'Ok'
+		                    WHEN c.Smell = 0 THEN 'Not Ok'
+	                    END AS Smell,
+	                    c.CommentsForSmell,
+                        CASE 
+		                    WHEN c.Appearance = 1 THEN 'Ok'
+		                    WHEN c.Appearance = 0 THEN 'Not Ok'
+	                    END AS Appearance,
+	                    c.CommentsForAppearance,
+                        CASE 
+		                    WHEN c.Taste = 1 THEN 'Ok'
+		                    WHEN c.Taste = 0 THEN 'Not Ok'
+	                    END AS Taste,
+	                    c.CommentsForTaste,
+	                    c.Foreign_Matter_Impurities,
                         c.PH,
                         c.CommentsForPH,
                         c.Moisture,
@@ -220,8 +229,8 @@ namespace AnmolDristi
                         c.TS,
                         c.CommentsForTS,
                         CASE
-	                        WHEN c.ApprovalStatus = 1 THEN 'Accepted'
-	                        WHEN c.ApprovalStatus = 0 THEN 'Rejected'
+                            WHEN c.ApprovalStatus = 1 THEN 'Accepted'
+                            WHEN c.ApprovalStatus = 0 THEN 'Rejected'
                         END AS ApprovalStatus,
                         c.Remarks,
                         c.Material_Image,
@@ -295,13 +304,22 @@ namespace AnmolDristi
                     c.Lot_No,
                     c.Vehicle_No,
                     c.Color,
-                    c.CommentsForColor,
-                    c.Smell,
-                    c.CommentsForSmell,
-                    c.Appearance,
-                    c.CommentsForAppearance,
-                    c.Taste,
-                    c.CommentsForTaste,
+	                c.CommentsForColor,
+	                CASE 
+		                WHEN c.Smell = 1 THEN 'Ok'
+		                WHEN c.Smell = 0 THEN 'Not Ok'
+	                END AS Smell,
+	                c.CommentsForSmell,
+                    CASE 
+		                WHEN c.Appearance = 1 THEN 'Ok'
+		                WHEN c.Appearance = 0 THEN 'Not Ok'
+	                END AS Appearance,
+	                c.CommentsForAppearance,
+                        CASE 
+		                WHEN c.Taste = 1 THEN 'Ok'
+		                WHEN c.Taste = 0 THEN 'Not Ok'
+	                END AS Taste,
+	                c.CommentsForTaste,
                     c.Foreign_Matter_Impurities,
                     c.PH,
                     c.CommentsForPH,
