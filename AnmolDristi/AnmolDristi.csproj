@@ -256,6 +256,7 @@
     <Content Include="qaqc_qahome_rpt.aspx" />
     <Content Include="qaqc_qcapprovals.aspx" />
     <Content Include="qaqc_qcinspector_frmctrl.aspx" />
+    <Content Include="qaqc_qci_analtics.aspx" />
     <Content Include="qaqc_rotaryline_approval.aspx" />
     <Content Include="qaqc_rotaryline_detailview.aspx" />
     <Content Include="qaqc_rotaryline_view.aspx" />
@@ -913,6 +914,13 @@
     </Compile>
     <Compile Include="qaqc_qcinspector_rpt_.aspx.designer.cs">
       <DependentUpon>qaqc_qcinspector_rpt_.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_qci_analtics.aspx.cs">
+      <DependentUpon>qaqc_qci_analtics.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qci_analtics.aspx.designer.cs">
+      <DependentUpon>qaqc_qci_analtics.aspx</DependentUpon>
     </Compile>
     <Compile Include="qaqc_rotaryline_approval.aspx.cs">
       <DependentUpon>qaqc_rotaryline_approval.aspx</DependentUpon>
