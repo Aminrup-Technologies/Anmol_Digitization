@@ -26,6 +26,8 @@
     <link href="Resources/loader/loader.css" rel="stylesheet" />
     <link href="Resources/custom/custom.css" rel="stylesheet" />
 
+    <style type="text/css">
+    </style>
     <asp:ContentPlaceHolder ID="head" runat="server">
     </asp:ContentPlaceHolder>
 
