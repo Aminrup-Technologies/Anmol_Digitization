@@ -29,7 +29,7 @@
                                     [<asp:Label ID="lbl_DDL_Plant_Value" runat="server" AssociatedControlID="DDL_Plant" Text="N/A" ForeColor="LightBlue" Font-Bold="true" Font-Size="Smaller"></asp:Label>]
                                     <asp:RequiredFieldValidator ID="RFV_DDL_Plant" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="DDL_Plant" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
-                                        <asp:DropDownList ID="DDL_Plant" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_Plant_SelectedIndexChanged"></asp:DropDownList>
+                                        <asp:DropDownList ID="DDL_Plant" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="false" OnSelectedIndexChanged="DDL_Plant_SelectedIndexChanged"></asp:DropDownList>
                                     </div>
                                 </div>
                             </div>
@@ -85,7 +85,7 @@
                     <div class="x_panel">
                         <div class="x_title">
                             <h2>View and Select for Detailed View ||
-                                <%--<asp:Button ID="Button1" runat="server" Text="Export" CssClass="btn btn-primary btn-sm" />--%>
+                                <asp:Button ID="Button1" runat="server" CausesValidation="false" Text="Export" CssClass="btn btn-primary btn-sm" OnClick="ExportBtn_Click" />
                             </h2>
                             <%--<ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>

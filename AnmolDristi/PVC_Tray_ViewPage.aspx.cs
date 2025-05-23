@@ -132,27 +132,29 @@ namespace AnmolDristi
 		}
 		protected void btn_submit_Click(object sender, EventArgs e)
 		{
-			DateTime fromDate = Convert.ToDateTime(TB_Date_From.Text);
-			DateTime toDate = Convert.ToDateTime(TB_Date_To.Text);
+			//DateTime fromDate = Convert.ToDateTime(TB_Date_From.Text);
+			//DateTime toDate = Convert.ToDateTime(TB_Date_To.Text);
 
-			string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+			//string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
 
-			if (DDL_Plant.SelectedIndex != 0)
-			{
-				if (toDate > DateTime.Now)
-				{
-					Response.Write("<script>alert('ToDate cannot be greater than current date!');</script>");
-				}
-				else if (fromDate > toDate)
-				{
-					Response.Write("<script>alert('FromDate cannot be greater than ToDate!');</script>");
-				}
-				else
-				{
-					DataLoader();
-				}
-			}
-		}
+            //if (DDL_Plant.SelectedIndex != 0)
+            //{
+            //	if (toDate > DateTime.Now)
+            //	{
+            //		Response.Write("<script>alert('ToDate cannot be greater than current date!');</script>");
+            //	}
+            //	else if (fromDate > toDate)
+            //	{
+            //		Response.Write("<script>alert('FromDate cannot be greater than ToDate!');</script>");
+            //	}
+            //	else
+            //	{
+            //		DataLoader();
+            //	}
+            //}
+
+            DataLoader();
+        }
 		public class ReportInfo
 		{
 			public string PlantName { get; set; }
