@@ -239,6 +239,7 @@
     <Content Include="prod_misc.aspx" />
     <Content Include="prod_misc_rpts.aspx" />
     <Content Include="PVC_Tray.aspx" />
+    <Content Include="PVC_Tray_Detailed.aspx" />
     <Content Include="PVC_Tray_ViewPage.aspx" />
     <Content Include="qaqc_add_users.aspx" />
     <Content Include="qaqc_leaktest_rev1.aspx" />
@@ -264,7 +265,10 @@
     <Content Include="qa_qc_FinalCbbWtReport.aspx" />
     <Content Include="redirect.aspx" />
     <Content Include="RM_Class2.aspx" />
+    <Content Include="RM_Class2_Approval.aspx" />
+    <Content Include="RM_Class2_Detailed.aspx" />
     <Content Include="RM_Class2_FrmCtrl.aspx" />
+    <Content Include="RM_Class2_Submitter.aspx" />
     <Content Include="RM_Class5.aspx" />
     <Content Include="RM_Class_1.aspx" />
     <Content Include="RM_Class_1_Approval.aspx" />
@@ -780,6 +784,13 @@
     <Compile Include="PVC_Tray.aspx.designer.cs">
       <DependentUpon>PVC_Tray.aspx</DependentUpon>
     </Compile>
+    <Compile Include="PVC_Tray_Detailed.aspx.cs">
+      <DependentUpon>PVC_Tray_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PVC_Tray_Detailed.aspx.designer.cs">
+      <DependentUpon>PVC_Tray_Detailed.aspx</DependentUpon>
+    </Compile>
     <Compile Include="PVC_Tray_ViewPage.aspx.cs">
       <DependentUpon>PVC_Tray_ViewPage.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -971,12 +982,33 @@
     <Compile Include="RM_Class2.aspx.designer.cs">
       <DependentUpon>RM_Class2.aspx</DependentUpon>
     </Compile>
+    <Compile Include="RM_Class2_Approval.aspx.cs">
+      <DependentUpon>RM_Class2_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2_Approval.aspx.designer.cs">
+      <DependentUpon>RM_Class2_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class2_Detailed.aspx.cs">
+      <DependentUpon>RM_Class2_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2_Detailed.aspx.designer.cs">
+      <DependentUpon>RM_Class2_Detailed.aspx</DependentUpon>
+    </Compile>
     <Compile Include="RM_Class2_FrmCtrl.aspx.cs">
       <DependentUpon>RM_Class2_FrmCtrl.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="RM_Class2_FrmCtrl.aspx.designer.cs">
       <DependentUpon>RM_Class2_FrmCtrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class2_Submitter.aspx.cs">
+      <DependentUpon>RM_Class2_Submitter.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2_Submitter.aspx.designer.cs">
+      <DependentUpon>RM_Class2_Submitter.aspx</DependentUpon>
     </Compile>
     <Compile Include="RM_Class5.aspx.cs">
       <DependentUpon>RM_Class5.aspx</DependentUpon>

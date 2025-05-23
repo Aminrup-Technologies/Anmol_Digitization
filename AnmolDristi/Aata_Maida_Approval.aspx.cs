@@ -166,133 +166,132 @@ namespace AnmolDristi
 
                 string query = @"
                     SELECT TOP(30)
-                        c.ID AS DBID,
-                        c.FormID as FormID,
-                        AMFID as RecordID,
-                        m.Material_Name AS MaterialName,
-                        p.plant_name AS PlantName,
-                        c.SubmittedByEmployeeCode as EmpCode,
-                        u.EmployeeName AS EmpName,
-                        c.SubmittedDate as SDate,
-                        c.SubmittedTime as STime,
-                        c.ProductBrand,
-                        c.Quantity,
-                        c.Supplier_Name,
-                        c.Size,
-                        c.Size_Remarks,
-                        c.Challan_No,
-                        c.Challan_Dates,
-                        c.Mfg_Dates,
-                        c.BatchNo,
-                        c.LotNo,
-                        c.VehicleNo,
-                        CASE 
-		                    WHEN c.MfgYesNo = 1 THEN 'Ok'
-		                    WHEN c.MfgYesNo = 0 THEN 'Not Ok'
-	                    END AS MfgYesNo,
-	                    c.MfgYesNoRemarks
-                        c.MfgName,
-                        CASE 
-		                    WHEN c.BBDateYesNo = 1 THEN 'Ok'
-		                    WHEN c.BBDateYesNo = 0 THEN 'Not Ok'
-	                    END AS BBDateYesNo,
-	                    c.BBDateYesNoRemarks
-                        c.BB_Dates,
-	                    CASE 
-		                    WHEN c.fssaiYesNo = 1 THEN 'Ok'
-		                    WHEN c.fssaiYesNo = 0 THEN 'Not Ok'
-	                    END AS fssaiYesNo,
-	                    c.fssaiYesNoRemarks
-                        c.FssaiNo,
-	                    CASE 
-		                    WHEN c.Fssai_Logo = 1 THEN 'Present'
-		                    WHEN c.Fssai_Logo = 0 THEN 'Absent'
-	                    END AS Fssai_Logo,
-	                    CASE 
-		                    WHEN c.Veg_Logo = 1 THEN 'Present'
-		                    WHEN c.Veg_Logo = 0 THEN 'Absent'
-	                    END AS Veg_Logo,
-	                    CASE 
-		                    WHEN c.Packing_Condition = 1 THEN 'Ok'
-		                    WHEN c.Packing_Condition = 0 THEN 'Not Ok'
-	                    END AS Packing_Condition,
-	                    c.PackingCondition_Remarks
-	                    CASE 
-		                    WHEN c.ColorApp = 1 THEN 'Ok'
-		                    WHEN c.ColorApp = 0 THEN 'Not Ok'
-	                    END AS ColorApp,
-	                    c.ColorApp_Remarks
-	                    CASE 
-		                    WHEN c.Odour = 1 THEN 'Ok'
-		                    WHEN c.Odour = 0 THEN 'Not Ok'
-	                    END AS Odour,
-	                    c.Odour_Remarks
-	                    CASE 
-		                    WHEN c.TasteFlavor = 1 THEN 'Ok'
-		                    WHEN c.TasteFlavor = 0 THEN 'Not Ok'
-	                    END AS TasteFlavor,
-	                    c.TasteFlavor_Remarks
-	                    CASE 
-		                    WHEN c.Impurities = 1 THEN 'Ok'
-		                    WHEN c.Impurities = 0 THEN 'Not Ok'
-	                    END AS Impurities,
-	                    c.Impurities_Remarks
-                        c.Moisture,
-                        c.Moisture_Remarks,
-                        c.TotalAsh,
-                        c.Ash_Remarks,
-                        c.InsolubleAsh,
-                        c.InsolubleAsh_Remarks,
-                        c.GlutentContent,
-                        c.GlutentContent_Remarks,
-                        c.AlcoholicAcidity,
-                        c.AlcoholicAcidity_Remarks,
-                        c.Absorption,
-                        c.Absorption_Remarks,
-                        c.Sedimentation,
-                        c.Sedimentation_Remarks,
-	                    CASE 
-		                    WHEN c.Grittiness = 1 THEN 'Positive'
-		                    WHEN c.Grittiness = 0 THEN 'Negative'
-	                    END AS Grittiness,
-	                    CASE 
-		                    WHEN c.Grittiness_Remarks IS NULL OR c.Grittiness_Remarks = '' THEN 'No Remarks'
-		                    ELSE c.Grittiness_Remarks
-	                    END AS Grittiness_Remarks,
-                        c.Acidity,
-                        c.Acidity_Remarks,
-                        c.Granularity,
-                        c.Granularity_Remarks,
-                        c.GranularityRetention,
-                        c.GranularityRetention_Remarks,
-                        c.Retention,
-                        c.Retention_Remarks,
-                        c.Bromate,
-                        c.Material_Image,
-                        c.Remarks,
-                        c.Approver1EmployeeCode as L1,
-                        c.Approver1_Status,
-                        c.Approver1_TimeStamp,
-                        c.Approver2EmployeeCode as L2,
-                        c.Approver2_Status,
-                        c.Approver2_TimeStamp,
-                        c.DottedLineApproverEmployeeCode as L3,
-                        c.DottedApprover_Status,
-                        c.DottedApprover_TimeStamp
-                        FROM 
-                            TRN_Aata_Maida c
-                        LEFT JOIN
-                            RM_MATERIAL m ON c.MaterialName = m.Material_Id
-                        LEFT JOIN 
-                            MST_PlantDetails p ON c.PlantName = p.plant_id
-                        LEFT JOIN
-                            MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                        WHERE 
-                            1 = 1
-                        ORDER BY 
-                            c.[SubmittedDate] DESC, 
-                            c.[SubmittedTime] DESC;
-                ";
+                    c.ID AS DBID,
+                    c.FormID AS FormID,
+                    AMFID AS RecordID,
+                    m.Material_Name AS MaterialName,
+                    p.plant_name AS PlantName,
+                    c.SubmittedByEmployeeCode AS EmpCode,
+                    u.EmployeeName AS EmpName,
+                    c.SubmittedDate AS SDate,
+                    c.SubmittedTime AS STime,
+                    c.ProductBrand,
+                    c.Quantity,
+                    c.Supplier_Name,
+                    c.Size,
+                    c.Size_Remarks,
+                    c.Challan_No,
+                    c.Challan_Dates,
+                    c.Mfg_Dates,
+                    c.BatchNo,
+                    c.LotNo,
+                    c.VehicleNo,
+                    CASE 
+                        WHEN c.MfgYesNo = 1 THEN 'Ok'
+                        WHEN c.MfgYesNo = 0 THEN 'Not Ok'
+                    END AS MfgYesNo,
+                    c.MfgYesNoRemarks,
+                    c.MfgName,
+                    CASE 
+                        WHEN c.BBDateYesNo = 1 THEN 'Ok'
+                        WHEN c.BBDateYesNo = 0 THEN 'Not Ok'
+                    END AS BBDateYesNo,
+                    c.BBDateYesNoRemarks,
+                    c.BB_Dates,
+                    CASE 
+                        WHEN c.fssaiYesNo = 1 THEN 'Ok'
+                        WHEN c.fssaiYesNo = 0 THEN 'Not Ok'
+                    END AS fssaiYesNo,
+                    c.fssaiYesNoRemarks,
+                    c.FssaiNo,
+                    CASE 
+                        WHEN c.Fssai_Logo = 1 THEN 'Present'
+                        WHEN c.Fssai_Logo = 0 THEN 'Absent'
+                    END AS Fssai_Logo,
+                    CASE 
+                        WHEN c.Veg_Logo = 1 THEN 'Present'
+                        WHEN c.Veg_Logo = 0 THEN 'Absent'
+                    END AS Veg_Logo,
+                    CASE 
+                        WHEN c.Packing_Condition = 1 THEN 'Ok'
+                        WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+                    END AS Packing_Condition,
+                    c.PackingCondition_Remarks,
+                    CASE 
+                        WHEN c.ColorApp = 1 THEN 'Ok'
+                        WHEN c.ColorApp = 0 THEN 'Not Ok'
+                    END AS ColorApp,
+                    c.ColorApp_Remarks,
+                    CASE 
+                        WHEN c.Odour = 1 THEN 'Ok'
+                        WHEN c.Odour = 0 THEN 'Not Ok'
+                    END AS Odour,
+                    c.Odour_Remarks,
+                    CASE 
+                        WHEN c.TasteFlavor = 1 THEN 'Ok'
+                        WHEN c.TasteFlavor = 0 THEN 'Not Ok'
+                    END AS TasteFlavor,
+                    c.TasteFlavor_Remarks,
+                    CASE 
+                        WHEN c.Impurities = 1 THEN 'Ok'
+                        WHEN c.Impurities = 0 THEN 'Not Ok'
+                    END AS Impurities,
+                    c.Impurities_Remarks,
+                    c.Moisture,
+                    c.Moisture_Remarks,
+                    c.TotalAsh,
+                    c.Ash_Remarks,
+                    c.InsolubleAsh,
+                    c.InsolubleAsh_Remarks,
+                    c.GlutentContent,
+                    c.GlutentContent_Remarks,
+                    c.AlcoholicAcidity,
+                    c.AlcoholicAcidity_Remarks,
+                    c.Absorption,
+                    c.Absorption_Remarks,
+                    c.Sedimentation,
+                    c.Sedimentation_Remarks,
+                    CASE 
+                        WHEN c.Grittiness = 1 THEN 'Positive'
+                        WHEN c.Grittiness = 0 THEN 'Negative'
+                    END AS Grittiness,
+                    CASE 
+                        WHEN c.Grittiness_Remarks IS NULL OR c.Grittiness_Remarks = '' THEN 'No Remarks'
+                        ELSE c.Grittiness_Remarks
+                    END AS Grittiness_Remarks,
+                    c.Acidity,
+                    c.Acidity_Remarks,
+                    c.Granularity,
+                    c.Granularity_Remarks,
+                    c.GranularityRetention,
+                    c.GranularityRetention_Remarks,
+                    c.Retention,
+                    c.Retention_Remarks,
+                    c.Bromate,
+                    c.Material_Image,
+                    c.Remarks,
+                    c.Approver1EmployeeCode AS L1,
+                    c.Approver1_Status,
+                    c.Approver1_TimeStamp,
+                    c.Approver2EmployeeCode AS L2,
+                    c.Approver2_Status,
+                    c.Approver2_TimeStamp,
+                    c.DottedLineApproverEmployeeCode AS L3,
+                    c.DottedApprover_Status,
+                    c.DottedApprover_TimeStamp
+                FROM 
+                    TRN_Aata_Maida c
+                LEFT JOIN
+                    RM_MATERIAL m ON c.MaterialName = m.Material_Id
+                LEFT JOIN 
+                    MST_PlantDetails p ON c.PlantName = p.plant_id
+                LEFT JOIN
+                    MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                WHERE 
+                    1 = 1
+                ORDER BY 
+                    c.SubmittedDate DESC, 
+                    c.SubmittedTime DESC;";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {

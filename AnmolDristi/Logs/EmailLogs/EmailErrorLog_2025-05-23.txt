@@ -1,0 +1,40 @@
+[2025-05-23 11:22:15] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.3 Authentication unsuccessful [MAXPR01CA0101.INDPRD01.PROD.OUTLOOK.COM 2025-05-23T05:51:36.337Z 08DD997F713DFDC8]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\EmailNotifier.cs:line 66
+
+[2025-05-23 12:14:40] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.3 Authentication unsuccessful [PN3PR01CA0037.INDPRD01.PROD.OUTLOOK.COM 2025-05-23T06:44:00.780Z 08DD99B0C3C22CE4]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\EmailNotifier.cs:line 66
+
+[2025-05-23 12:15:04] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.3 Authentication unsuccessful [PN3PR01CA0049.INDPRD01.PROD.OUTLOOK.COM 2025-05-23T06:44:24.888Z 08DD999226E0A150]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\EmailNotifier.cs:line 66
+
+[2025-05-23 12:17:58] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.3 Authentication unsuccessful [MA0P287CA0003.INDP287.PROD.OUTLOOK.COM 2025-05-23T06:47:19.347Z 08DD995C0B7EED3D]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\EmailNotifier.cs:line 66
+
+[2025-05-23 15:19:03] Error: The SMTP server requires a secure connection or the client was not authenticated. The server response was: 5.7.57 Client not authenticated to send mail. Error: 535 5.7.3 Authentication unsuccessful [MA0PR01CA0006.INDPRD01.PROD.OUTLOOK.COM 2025-05-23T09:48:24.206Z 08DD9962150F87E0]
+Stack Trace:
+   at System.Net.Mail.MailCommand.CheckResponse(SmtpStatusCode statusCode, String response)
+   at System.Net.Mail.MailCommand.Send(SmtpConnection conn, Byte[] command, MailAddress from, Boolean allowUnicode)
+   at System.Net.Mail.SmtpTransport.SendMail(MailAddress sender, MailAddressCollection recipients, String deliveryNotify, Boolean allowUnicode, SmtpFailedRecipientException& exception)
+   at System.Net.Mail.SmtpClient.Send(MailMessage message)
+   at AnmolDristi.EmailNotifier.Notify(String subject, String body, List`1 recipients) in D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\EmailNotifier.cs:line 66
+

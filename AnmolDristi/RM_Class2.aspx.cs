@@ -623,8 +623,8 @@ namespace AnmolDristi
             decimal? PV = TryParseDecimal(TB_PV.Text);
             decimal? Moisture = TryParseDecimal(TB_Moisture.Text);
             decimal? Iodine_Val = TryParseDecimal(TB_IodineVal.Text);
-            decimal? SAP_Val = TryParseDecimal(TB_IodineVal.Text);
-            decimal? Acid_Val = TryParseDecimal(TB_IodineVal.Text);
+            decimal? SAP_Val = TryParseDecimal(TB_SapVal.Text);
+            decimal? Acid_Val = TryParseDecimal(TB_AcidValue.Text);
 
             int? KriesTest = string.IsNullOrEmpty(RBL_KriesTest.SelectedValue) ? (int?)null : (int?)Convert.ToInt32(RBL_KriesTest.SelectedValue);
             string CommentsForKriesTest = string.IsNullOrEmpty(TB_KriesTest_Remarks.Text) ? null : TB_KriesTest_Remarks.Text;

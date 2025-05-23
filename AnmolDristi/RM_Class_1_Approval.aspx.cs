@@ -252,7 +252,9 @@ namespace AnmolDristi
                         LEFT JOIN
                             MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                         WHERE 
-                            1 = 1
+                            YEAR(c2.SubmittedDate) = YEAR(GETDATE()) 
+                            AND MONTH(c2.SubmittedDate) = MONTH(GETDATE())
+                            AND 1 = 1
                         ORDER BY 
                             c.[SubmittedDate] DESC, 
                             c.[SubmittedTime] DESC;
