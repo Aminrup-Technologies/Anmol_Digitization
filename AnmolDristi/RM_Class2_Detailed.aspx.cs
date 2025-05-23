@@ -186,8 +186,8 @@ namespace AnmolDristi
 				DDL_Plant.SelectedValue = PlantId;
 				DDL_Plant.Enabled = false;
 
-
-				TB_BrandName.Text = dt.Rows[0]["Brand"].ToString();
+                TB_ProductName.Text = dt.Rows[0]["Product"].ToString();
+                TB_BrandName.Text = dt.Rows[0]["Brand"].ToString();
 				TB_Supplier.Text = dt.Rows[0]["Supplier_Name"].ToString();
 
 				TB_ChalanNo.Text = dt.Rows[0]["Challan_No"].ToString();

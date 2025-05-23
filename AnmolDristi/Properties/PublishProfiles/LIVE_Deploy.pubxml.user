@@ -16,7 +16,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/10/2025 15:00:00</publishTime>
     </File>
     <File Include="Aata_Maida_Approval.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:24</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="Aata_Maida_Detailed.aspx">
       <publishTime>04/26/2025 02:13:05</publishTime>
@@ -61,6 +65,7 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/10/2025 15:00:01</publishTime>
     </File>
     <File Include="apps.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 11:14:36</publishTime>
     </File>
     <File Include="app_qc_inspectorreport.aspx">
@@ -74,6 +79,21 @@ by editing this MSBuild file. In order to learn more about this please visit htt
     </File>
     <File Include="bin/App_global.asax.dll">
       <publishTime>05/23/2025 16:37:24</publishTime>
+=======
+      <publishTime>05/14/2025 18:51:07</publishTime>
+    </File>
+    <File Include="app_qc_inspectorreport.aspx">
+      <publishTime>05/14/2025 18:51:07</publishTime>
+    </File>
+    <File Include="bin/AnmolDristi.dll">
+      <publishTime>05/14/2025 19:11:12</publishTime>
+    </File>
+    <File Include="bin/App_global.asax.compiled">
+      <publishTime>05/14/2025 19:11:35</publishTime>
+    </File>
+    <File Include="bin/App_global.asax.dll">
+      <publishTime>05/14/2025 19:11:34</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="bin/ClosedXML.dll">
       <publishTime>12/18/2018 08:56:38</publishTime>
@@ -226,7 +246,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>05/23/2025 10:43:24</publishTime>
     </File>
     <File Include="Critical_Incident_ViewPage.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:24</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="critical_quality_report.aspx">
       <publishTime>04/10/2025 15:00:01</publishTime>
@@ -262,7 +286,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/10/2025 15:00:02</publishTime>
     </File>
     <File Include="login.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 11:14:36</publishTime>
+=======
+      <publishTime>05/14/2025 18:51:07</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="New_User.aspx">
       <publishTime>04/10/2025 15:00:02</publishTime>
@@ -295,16 +323,27 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>05/11/2025 16:42:23</publishTime>
     </File>
     <File Include="PrecompiledApp.config">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 16:37:13</publishTime>
     </File>
     <File Include="preDispatchVM.aspx">
       <publishTime>05/23/2025 10:43:25</publishTime>
+=======
+      <publishTime>05/14/2025 19:11:14</publishTime>
+    </File>
+    <File Include="preDispatchVM.aspx">
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="Pre_Dispatch_Detailed.aspx">
       <publishTime>05/06/2025 17:42:50</publishTime>
     </File>
     <File Include="Process_Approval.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:24</publishTime>
+=======
+      <publishTime>05/14/2025 18:46:01</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="Process_FinalApproval.aspx">
       <publishTime>04/10/2025 15:00:02</publishTime>
@@ -325,7 +364,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>05/23/2025 12:32:36</publishTime>
     </File>
     <File Include="PVC_Tray_ViewPage.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 12:32:37</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="qaqc_add_users.aspx">
       <publishTime>04/10/2025 15:00:02</publishTime>
@@ -352,7 +395,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/26/2025 02:13:06</publishTime>
     </File>
     <File Include="qaqc_pre_dispatch_QI_Report.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:25</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="qaqc_process_rpt.aspx">
       <publishTime>04/26/2025 02:13:06</publishTime>
@@ -367,6 +414,7 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>05/23/2025 11:14:36</publishTime>
     </File>
     <File Include="qaqc_qcapprovals.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 16:12:19</publishTime>
     </File>
     <File Include="qaqc_qchome.aspx">
@@ -374,24 +422,43 @@ by editing this MSBuild file. In order to learn more about this please visit htt
     </File>
     <File Include="qaqc_qchome_rpt.aspx">
       <publishTime>05/23/2025 11:59:13</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+    </File>
+    <File Include="qaqc_qchome.aspx">
+      <publishTime>05/11/2025 16:42:23</publishTime>
+    </File>
+    <File Include="qaqc_qchome_rpt.aspx">
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="qaqc_qcinspector_frmctrl.aspx">
       <publishTime>04/10/2025 15:00:03</publishTime>
     </File>
     <File Include="qaqc_qcinspector_rpt_.aspx">
       <publishTime>05/11/2025 16:42:23</publishTime>
+<<<<<<< Updated upstream
     </File>
     <File Include="qaqc_qci_analtics.aspx">
       <publishTime>05/23/2025 11:14:36</publishTime>
     </File>
     <File Include="qaqc_rotaryline_approval.aspx">
       <publishTime>05/23/2025 10:43:25</publishTime>
+=======
+    </File>
+    <File Include="qaqc_rotaryline_approval.aspx">
+      <publishTime>05/14/2025 18:51:11</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="qaqc_rotaryline_detailview.aspx">
       <publishTime>04/10/2025 15:00:03</publishTime>
     </File>
     <File Include="qaqc_rotaryline_view.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:25</publishTime>
+=======
+      <publishTime>05/14/2025 18:51:11</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="qaqc_rotary_line.aspx">
       <publishTime>04/10/2025 15:00:03</publishTime>
@@ -403,6 +470,7 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/10/2025 15:00:03</publishTime>
     </File>
     <File Include="RM_Class2.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 14:49:52</publishTime>
     </File>
     <File Include="RM_Class2_Approval.aspx">
@@ -410,6 +478,9 @@ by editing this MSBuild file. In order to learn more about this please visit htt
     </File>
     <File Include="RM_Class2_Detailed.aspx">
       <publishTime>05/23/2025 14:49:53</publishTime>
+=======
+      <publishTime>05/11/2025 16:22:44</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="RM_Class2_FrmCtrl.aspx">
       <publishTime>05/23/2025 14:49:53</publishTime>
@@ -424,7 +495,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/26/2025 02:13:05</publishTime>
     </File>
     <File Include="RM_Class_1_Approval.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 12:07:13</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="RM_Class_1_Detailed.aspx">
       <publishTime>04/10/2025 15:00:04</publishTime>
@@ -439,7 +514,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/26/2025 02:13:05</publishTime>
     </File>
     <File Include="RM_Class_3_Approval.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:24</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="RM_Class_3_Detailed.aspx">
       <publishTime>04/10/2025 15:00:04</publishTime>
@@ -454,7 +533,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/26/2025 02:13:05</publishTime>
     </File>
     <File Include="RM_Class_4_Approval.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:24</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="RM_Class_4_Detailed.aspx">
       <publishTime>04/10/2025 15:00:04</publishTime>
@@ -469,7 +552,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/26/2025 02:13:05</publishTime>
     </File>
     <File Include="RM_Class_5_Approval.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:24</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="RM_Class_5_Detailed.aspx">
       <publishTime>04/11/2025 14:45:53</publishTime>
@@ -490,7 +577,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>05/11/2025 16:42:23</publishTime>
     </File>
     <File Include="vm_leak_test.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 10:43:25</publishTime>
+=======
+      <publishTime>05/11/2025 16:42:23</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="vm_overwrap.aspx">
       <publishTime>05/11/2025 16:42:23</publishTime>
@@ -499,7 +590,11 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/10/2025 15:00:05</publishTime>
     </File>
     <File Include="Web.config">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 16:37:11</publishTime>
+=======
+      <publishTime>05/14/2025 19:11:13</publishTime>
+>>>>>>> Stashed changes
     </File>
     <File Include="WebData/anmolaing.png">
       <publishTime>04/10/2025 15:00:05</publishTime>
@@ -616,10 +711,17 @@ by editing this MSBuild file. In order to learn more about this please visit htt
       <publishTime>04/10/2025 15:00:05</publishTime>
     </File>
     <File Include="webdetails.aspx">
+<<<<<<< Updated upstream
       <publishTime>05/23/2025 11:14:36</publishTime>
     </File>
     <File Include="WebsiteCredentialsView.aspx">
       <publishTime>05/23/2025 11:14:36</publishTime>
+=======
+      <publishTime>05/14/2025 18:51:07</publishTime>
+    </File>
+    <File Include="WebsiteCredentialsView.aspx">
+      <publishTime>05/14/2025 19:00:02</publishTime>
+>>>>>>> Stashed changes
     </File>
   </ItemGroup>
 </Project>
