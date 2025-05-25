@@ -627,12 +627,28 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3" id="ChallanDateDIV" runat="server">
+                            <%--<div class="col-md-3" id="ChallanDateDIV" runat="server">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_ChallanDate" runat="server" AssociatedControlID="TB_ChallanDate" Text="Challan Date :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_ChallanDate" runat="server" ErrorMessage="Date is required " ValidationGroup="Submit" ControlToValidate="TB_ChallanDate" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_ChallanDate" runat="server" CssClass="form-control form-control-sm rounded" TextMode="Date" ValidationGroup="Submit"></asp:TextBox>
+                                    </div>
+                                </div>
+                            </div>--%>
+
+                            <div class="col-md-3" id="ChallanDateDIV" runat="server">
+                                <div class="mb-3">
+                                    <asp:Label ID="Lbl_TB_ChallanDate" runat="server" AssociatedControlID="TB_ChallanDate" Text="Challan Date :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:RequiredFieldValidator ID="RFV_TB_ChallanDate" runat="server" ErrorMessage="Date is required " ValidationGroup="Submit" ControlToValidate="TB_ChallanDate" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_ChallanDate" runat="server"
+                                        ControlToValidate="TB_ChallanDate" ValidationGroup="Submit" ForeColor="Red"
+                                        ErrorMessage="Enter valid dates in DD-MM-YYYY format, separated by commas"
+                                        ValidationExpression="^(\d{2}-\d{2}-\d{4})(,\s*\d{2}-\d{2}-\d{4})*$"
+                                        Display="Dynamic">
+                                    </asp:RegularExpressionValidator>
+                                    <div class="input-group-sm">
+                                        <asp:TextBox ID="TB_ChallanDate" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit"></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
@@ -670,12 +686,28 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3" id="PkdMfgDIV" runat="server">
+                            <%--<div class="col-md-3" id="PkdMfgDIV" runat="server">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_PkdMfg" runat="server" AssociatedControlID="TB_PkdMfg" Text="Pkd/Mfg Date :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_PkdMfg" runat="server" ErrorMessage="Date is required " ValidationGroup="Save" ControlToValidate="TB_PkdMfg" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_PkdMfg" runat="server" CssClass="form-control form-control-sm rounded" TextMode="Date" ValidationGroup="Save"></asp:TextBox>
+                                    </div>
+                                </div>
+                            </div>--%>
+
+                            <div class="col-md-3" id="PkdMfgDIV" runat="server">
+                                <div class="mb-3">
+                                    <asp:Label ID="Lbl_TB_PkdMfg" runat="server" AssociatedControlID="TB_PkdMfg" Text=" Pkd/Mfg. Date :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:RequiredFieldValidator ID="RFV_TB_PkdMfg" runat="server" ErrorMessage="Date is required " ValidationGroup="Submit" ControlToValidate="TB_PkdMfg" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_PkdMfg" runat="server"
+                                        ControlToValidate="TB_PkdMfg" ValidationGroup="Submit" ForeColor="Red"
+                                        ErrorMessage="Enter valid dates in DD-MM-YYYY format, separated by commas"
+                                        ValidationExpression="^(\d{2}-\d{2}-\d{4})(,\s*\d{2}-\d{2}-\d{4})*$"
+                                        Display="Dynamic">
+                                    </asp:RegularExpressionValidator>
+                                    <div class="input-group-sm">
+                                        <asp:TextBox ID="TB_PkdMfg" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder=""></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
@@ -1128,6 +1160,18 @@
 
                             <div class="col-md-3" id="FU_MaterialImage_img" runat="server" visible="false">
                                 <asp:Image ID="uploadedImage1" runat="server" CssClass="img-fluid" />
+                            </div>
+
+                            
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <asp:Label ID="Lbl_Remarks" runat="server" AssociatedControlID="TXB_Remarks" Text="Remarks :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:RequiredFieldValidator ID="RFV_TXB_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TXB_Remarks" runat="server" ControlToValidate="TXB_Remarks" ForeColor="Red" ErrorMessage="Alphabet Only" ValidationExpression="^[a-zA-Z, /]*$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <div class="input-group-sm">
+                                        <asp:TextBox ID="TXB_Remarks" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Remarks"></asp:TextBox>
+                                    </div>
+                                </div>
                             </div>
 
                             <%--Button--%>
