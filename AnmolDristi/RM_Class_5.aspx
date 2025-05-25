@@ -445,33 +445,33 @@
 
             // Get the actual IDs of the controls rendered by ASP.NET
             var remarksInput = document.getElementById('<%= TXB_AppStatus_Remarks.ClientID %>');
-             var remarksValidator = document.getElementById('<%= RFV_TXB_AppStatus_Remarks.ClientID %>');
+            var remarksValidator = document.getElementById('<%= RFV_TXB_AppStatus_Remarks.ClientID %>');
 
-             if (!remarksInput || !remarksValidator) {
-                 console.error("Remarks input or validator not found in the DOM.");
-                 return;
-             }
+            if (!remarksInput || !remarksValidator) {
+                console.error("Remarks input or validator not found in the DOM.");
+                return;
+            }
 
-             var selectedValue = radioButtonList.querySelector("input:checked").value;
-             console.log("Selected value: " + selectedValue);
+            var selectedValue = radioButtonList.querySelector("input:checked").value;
+            console.log("Selected value: " + selectedValue);
 
-             if (selectedValue === "0") { // "Rejected" selected
-                 remarksInput.required = true;
-                 remarksValidator.style.display = "inline"; // Show validation error if not provided
-                 setTimeout(function () {
-                     // Display a PNotify notification
-                     new PNotify({
-                         title: 'Input Required',
-                         text: 'You have selected "Rejected". Remarks are mandatory.',
-                         type: 'warning',
-                         styling: 'bootstrap3'
-                     });
-                 }, 200); // Adjust delay as necessary
-             } else { // "Accepted" selected
-                 remarksInput.required = false;
-                 remarksValidator.style.display = "none"; // Hide validation error
-             }
-         }
+            if (selectedValue === "0") { // "Rejected" selected
+                remarksInput.required = true;
+                remarksValidator.style.display = "inline"; // Show validation error if not provided
+                setTimeout(function () {
+                    // Display a PNotify notification
+                    new PNotify({
+                        title: 'Input Required',
+                        text: 'You have selected "Rejected". Remarks are mandatory.',
+                        type: 'warning',
+                        styling: 'bootstrap3'
+                    });
+                }, 200); // Adjust delay as necessary
+            } else { // "Accepted" selected
+                remarksInput.required = false;
+                remarksValidator.style.display = "none"; // Hide validation error
+            }
+        }
 
         function showNotification(title, text, type) {
             new PNotify({
@@ -959,7 +959,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3" id="DispersabilityDIV" runat="server">
+                            <%--<div class="col-md-3" id="DispersabilityDIV" runat="server">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Dispersability" runat="server" AssociatedControlID="TB_Dispersability" Text="Dispersability in water:" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TB_Dispersability" runat="server" ErrorMessage="*" ValidationGroup="Submit" ControlToValidate="TB_Dispersability" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
@@ -977,6 +977,17 @@
                                     <asp:RequiredFieldValidator ID="RFV_TXB_Dispersability_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_Dispersability_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_Dispersability_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
+                                    </div>
+                                </div>
+                            </div>--%>
+
+                            <div class="col-md-3" id="DispersabilityDIV" runat="server">
+                                <div class="mb-3">
+                                    <asp:Label ID="Lbl_TB_Dispersability" runat="server" AssociatedControlID="TB_Dispersability" Text="Dispersability :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:RequiredFieldValidator ID="RFV_TB_Dispersability" runat="server" ErrorMessage="Input Required" ValidationGroup="Submit" ControlToValidate="TB_Dispersability" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_Dispersability" runat="server" ControlToValidate="TB_Dispersability" ValidationGroup="Submit" ForeColor="Red" ErrorMessage="Alphabet Only" ValidationExpression="^[a-zA-Z, /]*$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                    <div class="input-group-sm">
+                                        <asp:TextBox ID="TB_Dispersability" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Text="" Placeholder="Dispersability (3-30 characters)" MaxLength="30"></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
