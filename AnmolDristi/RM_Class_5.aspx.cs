@@ -1054,8 +1054,8 @@ namespace AnmolDristi
                     REV_TB_Dispersability.ValidationExpression = criteria.RegularExpression;
                     REV_TB_Dispersability.Enabled = criteria.IsRegularExpressionRequired;
 
-                    CV_TB_Dispersability.ErrorMessage = criteria.RangeErrorMessage;
-                    CV_TB_Dispersability.Enabled = criteria.IsRangeRequired;
+                    //CV_TB_Dispersability.ErrorMessage = criteria.RangeErrorMessage;
+                    //CV_TB_Dispersability.Enabled = criteria.IsRangeRequired;
 
                     hdnMinDispersabilityValue.Value = criteria.MinimumValue.ToString();
                     hdnMaxDispersabilityValue.Value = criteria.MaximumValue.ToString();
@@ -1232,8 +1232,10 @@ namespace AnmolDristi
             decimal? mpcp = !string.IsNullOrEmpty(TB_Mpcp.Text) ? Convert.ToDecimal(TB_Mpcp.Text) : (decimal?)null;
             string mpcpRemarks = string.IsNullOrEmpty(TXB_Mpcp_Remarks.Text) ? null : TXB_Mpcp_Remarks.Text;
 
-            decimal? dispersabiity = !string.IsNullOrEmpty(TB_Dispersability.Text) ? Convert.ToDecimal(TB_Dispersability.Text) : (decimal?)null;
-            string dispersabiityRemarks = string.IsNullOrEmpty(TXB_Dispersability_Remarks.Text) ? null : TXB_Dispersability_Remarks.Text;
+            //decimal? dispersabiity = !string.IsNullOrEmpty(TB_Dispersability.Text) ? Convert.ToDecimal(TB_Dispersability.Text) : (decimal?)null;
+            //string dispersabiityRemarks = string.IsNullOrEmpty(TXB_Dispersability_Remarks.Text) ? null : TXB_Dispersability_Remarks.Text;
+
+            string dispersabiity = string.IsNullOrEmpty(TB_Dispersability.Text) ? null : TB_Dispersability.Text;
 
             decimal? drc = !string.IsNullOrEmpty(TB_Drc.Text) ? Convert.ToDecimal(TB_Drc.Text) : (decimal?)null;
             string drcRemarks = string.IsNullOrEmpty(TXB_Drc_Remarks.Text) ? null : TXB_Drc_Remarks.Text;
@@ -1325,7 +1327,7 @@ namespace AnmolDristi
                         command.Parameters.AddWithValue("@CommentsForMpCp", (object)mpcpRemarks ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@Dispersability", (object)dispersabiity ?? DBNull.Value);
-                        command.Parameters.AddWithValue("@CommentsForDispersability", (object)dispersabiityRemarks ?? DBNull.Value);
+                        //command.Parameters.AddWithValue("@CommentsForDispersability", (object)dispersabiityRemarks ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@Drc", (object)drc ?? DBNull.Value);
                         command.Parameters.AddWithValue("@CommentsForDrc", (object)drcRemarks ?? DBNull.Value);
@@ -1431,7 +1433,7 @@ namespace AnmolDristi
             TXB_Mpcp_Remarks.ReadOnly = true;
 
             TB_Dispersability.ReadOnly = true;
-            TXB_Dispersability_Remarks.ReadOnly = true;
+            //TXB_Dispersability_Remarks.ReadOnly = true;
 
             TB_Drc.ReadOnly = true;
             TXB_Drc_Remarks.ReadOnly = true;
