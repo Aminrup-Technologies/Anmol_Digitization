@@ -94,8 +94,9 @@ namespace AnmolDristi
                                 DDL_Plant.SelectedValue = plantId;
 
                                 // Bind textboxes and other controls
+                                DDL_Material.SelectedValue = reader["MaterialType"].ToString();
                                 TB_BrandSKU.Text = reader["BrandSku"].ToString();
-                                TB_ChalanNo.Text = reader["Challan_No"].ToString();
+                                TB_ChalanNo.Text = reader["Challan_No"].ToString(); 
                                 TB_MatVarietyName.Text = reader["ProductBrand"].ToString();
                                 TB_Supplier.Text = reader["Supplier_Name"].ToString();
                                 TB_Size.Text = reader["SampleSize"].ToString();
