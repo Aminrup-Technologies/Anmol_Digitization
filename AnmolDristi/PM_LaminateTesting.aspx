@@ -257,12 +257,23 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3" runat="server" >
+                            <%-- <div class="col-md-3" runat="server" >
                                 <div class="mb-3">
                                     <asp:Label ID="Label6" runat="server" AssociatedControlID="DDL_BrandSKU" Text="Brand SKU Type" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_DDL_BrandSKU" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="Submit" ControlToValidate="DDL_BrandSKU" InitialValue="" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
+                                    </div>
+                                </div>
+                            </div>--%>
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <asp:Label ID="Label6" runat="server" AssociatedControlID="TB_BrandSKU" Text="Brand SKU Type" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:RequiredFieldValidator ID="RFV_TB_BrandSKU" runat="server" ErrorMessage="*" ForeColor="Red" ValidationGroup="Submit" ControlToValidate="TB_BrandSKU" InitialValue="" Display="Dynamic"></asp:RequiredFieldValidator>
+                                    <asp:RegularExpressionValidator ID="REV_TB_BrandSKU" runat="server" ControlToValidate="TB_BrandSKU" ValidationGroup="Submit" ForeColor="Red" Display="Dynamic" ErrorMessage="Enter valid decimal value" ValidationExpression="^\d+(\.\d{1,2})?$"></asp:RegularExpressionValidator>
+                                    <div class="input-group-sm">
+                                        <asp:TextBox ID="TB_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="e.g. 10.25"></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
@@ -392,7 +403,7 @@
                                 </div>
                             </div>
 
-                             <!-- Observed Value TextBox for Length -->
+                            <!-- Observed Value TextBox for Length -->
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Length" runat="server" AssociatedControlID="TB_Length" Text="Observered Length Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
@@ -405,11 +416,11 @@
                                 </div>
                             </div>
 
-                             <!-- Remarks TextBox for Length -->
+                            <!-- Remarks TextBox for Length -->
                             <div class="col-md-3" id="LengthRemarksDIV" style="display: none;">
                                 <div class="mb-3">
                                     <asp:Label ID="Label19" runat="server" AssociatedControlID="TXB_Length_Remarks" Text="Length Remarks" ForeColor="Brown" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                    <asp:RequiredFieldValidator ID="RFV_LengthRemarks" runat="server" ErrorMessage="*" ForeColor="Red"  ControlToValidate="TXB_Length_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                    <asp:RequiredFieldValidator ID="RFV_LengthRemarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_Length_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_Length_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                     </div>
@@ -429,7 +440,7 @@
                                 </div>
                             </div>
 
-                             <!-- Observed Value TextBox for Width -->
+                            <!-- Observed Value TextBox for Width -->
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Width" runat="server" AssociatedControlID="TB_Width" Text="Observered Width Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
@@ -442,7 +453,7 @@
                                 </div>
                             </div>
 
-                             <!-- Remarks TextBox for Width -->
+                            <!-- Remarks TextBox for Width -->
                             <div class="col-md-3" id="WidthRemarksDIV" style="display: none;">
                                 <div class="mb-3">
                                     <asp:Label ID="Label2" runat="server" AssociatedControlID="TXB_Width_Remarks" Text="Width Remarks" ForeColor="Brown" Font-Bold="true" Font-Size="Small"></asp:Label>
@@ -466,7 +477,7 @@
                                 </div>
                             </div>
 
-                             <!-- Observed Value TextBox for Height -->
+                            <!-- Observed Value TextBox for Height -->
                             <div class="col-md-3" id="Dimension_Height_Row" runat="server" visible="false">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_Height" runat="server" AssociatedControlID="TB_Height" Text="Observered Height Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
@@ -479,7 +490,7 @@
                                 </div>
                             </div>
 
-                             <!-- Remarks TextBox for Height -->
+                            <!-- Remarks TextBox for Height -->
                             <div class="col-md-3" id="HeightRemarksDIV" style="display: none;">
                                 <div class="mb-3">
                                     <asp:Label ID="Label3" runat="server" AssociatedControlID="TXB_Height_Remarks" Text="Height Remarks" ForeColor="Brown" Font-Bold="true" Font-Size="Small"></asp:Label>
@@ -497,7 +508,7 @@
                                     <asp:RequiredFieldValidator ID="RFV_TB_Std_GSM" runat="server" ErrorMessage="*" ValidationGroup="Submit" ControlToValidate="TB_Std_GSM" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                     <%--<asp:RegularExpressionValidator ID="REV_TB_Std_GSM" runat="server" ValidationGroup="Submit" ControlToValidate="TB_Std_GSM" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,4})?" Display="Dynamic"></asp:RegularExpressionValidator>--%>
                                     <%--<asp:RangeValidator ID="RV_TB_Std_GSM" runat="server" ErrorMessage="0.00 to 1000.00" ValidationGroup="Submit" ControlToValidate="TB_Std_GSM" MinimumValue="0.00" MaximumValue="1000.00" Type="Double" Display="Dynamic" ForeColor="Red"></asp:RangeValidator>--%>
-                                    <asp:CustomValidator ID="CV_TB_Std_GSM" runat="server" ControlToValidate="TB_Std_GSM" ValidationGroup="Submit" ErrorMessage="Invalid format! Use '27.3 ± 2 mm' or '420 mm'."  Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                    <asp:CustomValidator ID="CV_TB_Std_GSM" runat="server" ControlToValidate="TB_Std_GSM" ValidationGroup="Submit" ErrorMessage="Invalid format! Use '27.3 ± 2 mm' or '420 mm'." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TB_Std_GSM" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="e.g., 27.3 ± 2 mm" onkeyup="validateObservedGSM()" ClientIDMode="Static"></asp:TextBox>
                                     </div>
@@ -505,7 +516,7 @@
                             </div>
 
                             <!-- Observed Value TextBox for GSM -->
-                            <div class="col-md-3" >
+                            <div class="col-md-3">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_GSM" runat="server" AssociatedControlID="TB_GSM" Text="Observered GSM Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:Literal ID="span_GSM" runat="server" Text='<%# string.IsNullOrEmpty(Eval("GMS_Std")?.ToString()) ? "0.00" : Eval("GMS_Std") %>'></asp:Literal>
