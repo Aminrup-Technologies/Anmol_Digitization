@@ -330,6 +330,51 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.TextBox TXB_GSM_Remarks;
 
         /// <summary>
+        /// Lbl_TB_GSM_GUM control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Lbl_TB_GSM_GUM;
+
+        /// <summary>
+        /// Label_Std_GSM_GUM control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Label_Std_GSM_GUM;
+
+        /// <summary>
+        /// TB_GSM_GUM control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TB_GSM_GUM;
+
+        /// <summary>
+        /// lbl_TB_GUM_GSMRemarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_TB_GUM_GSMRemarks;
+
+        /// <summary>
+        /// TB_GUM_GSMRemarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TB_GUM_GSMRemarks;
+
+        /// <summary>
         /// Lbl_Remarks control.
         /// </summary>
         /// <remarks>

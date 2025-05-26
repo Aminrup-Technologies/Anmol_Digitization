@@ -124,7 +124,7 @@
                                                         <div class="mb-3">
                                                             <asp:Label ID="Lbl_TB_MatVarietyName" runat="server" AssociatedControlID="TB_MatVarietyName" Text="Material / Variety" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                             <div class="input-group-sm">
-                                                                <asp:TextBox ID="TB_MatVarietyName" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true" ></asp:TextBox>
+                                                                <asp:TextBox ID="TB_MatVarietyName" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true"></asp:TextBox>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -203,7 +203,7 @@
 
                                                     <div class="col-md-3">
                                                         <div class="mb-3">
-                                                            <asp:Label ID="Lbl_TB_Std_Dimension" runat="server" AssociatedControlID="TB_Std_Dimension" Text="Observed Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                            <asp:Label ID="Lbl_TB_Std_Dimension" runat="server" AssociatedControlID="TB_Std_Dimension" Text="Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                             <asp:Label ID="Label_TB_Std_Dimension" runat="server" Text='<%# Eval("DimensionStd") %>' EnableViewState="false" ForeColor="Red"></asp:Label>
                                                             <div class="input-group-sm">
                                                                 <asp:TextBox ID="TB_Std_Dimension" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true" Text='<%#  Eval("DimensionObs") %>'></asp:TextBox>
@@ -222,7 +222,7 @@
 
                                                     <div class="col-md-3">
                                                         <div class="mb-3">
-                                                            <asp:Label ID="Lbl_TB_GSM" runat="server" AssociatedControlID="TB_GSM" Text="Observed GSM Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                            <asp:Label ID="Lbl_TB_GSM" runat="server" AssociatedControlID="TB_GSM" Text="INK GSM Dimension(in mm.) :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                             <asp:Label ID="Label_Std_GSM" runat="server" Text=' <%# Eval("GMS_Std") %>' EnableViewState="false" ForeColor="Red"></asp:Label>
                                                             <div class="input-group-sm">
                                                                 <asp:TextBox ID="TB_GSM" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true" Text='<%#  Eval("GSM_Obs") %>'></asp:TextBox>
@@ -238,6 +238,29 @@
                                                             </div>
                                                         </div>
                                                     </div>
+
+
+                                                    <%--obs GUM --%>
+                                                    <div class="col-md-3">
+                                                        <div class="mb-3">
+                                                            <asp:Label ID="Lbl_TB_GSM_GUM" runat="server" AssociatedControlID="TB_GSM_GUM" Text="Gum/Glue GSM Dimension(in mm.)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                            <asp:label ID="Label_Std_GSM_GUM" runat="server" Text='<%# Eval("GUM_GMS_Std") %>' EnableViewState="false" ForeColor="Red"></asp:label>
+                                                            <div class="input-group-sm">
+                                                                <asp:TextBox ID="TB_GSM_GUM" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true"></asp:TextBox>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <%--GUM remarks--%>
+                                                    <div class="col-md-3" id="GUM_GSM_ObsremarkSection" style="display: none;">
+                                                        <div class="mb-3">
+                                                            <asp:Label ID="lbl_TB_GUM_GSMRemarks" runat="server" AssociatedControlID="TB_GUM_GSMRemarks" Text="Please provide a remark for deviation:" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                            <div class="input-group-sm">
+                                                                <asp:TextBox ID="TB_GUM_GSMRemarks" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly" ReadOnly="true"></asp:TextBox>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
 
                                                     <div class="col-md-3">
                                                         <div class="mb-3">

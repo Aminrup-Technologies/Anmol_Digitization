@@ -204,6 +204,10 @@ namespace AnmolDristi
                 TB_GSM.Text = dt.Rows[0]["GSM_Obs"].ToString();
                 TXB_GSM_Remarks.Text = dt.Rows[0]["RemarkForGSM_Std"].ToString();
 
+                Label_Std_GSM_GUM.Text = dt.Rows[0]["GUM_GMS_Std"].ToString();
+                TB_GSM_GUM.Text = dt.Rows[0]["GUM_GSM_Obs"].ToString();
+                TB_GUM_GSMRemarks.Text = dt.Rows[0]["GUM_RemarkForGSM_Std"].ToString();
+                
                 TXB_Remarks.Text = dt.Rows[0]["Remarks"].ToString();
 
 
