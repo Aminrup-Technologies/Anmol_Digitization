@@ -300,6 +300,7 @@
     <Content Include="WebData\Anmol_Logo.png" />
     <Content Include="WebData\approval.jpg" />
     <Content Include="WebData\confbook.png" />
+    <Content Include="WebData\crm.jpg" />
     <Content Include="WebData\crossgif.gif" />
     <Content Include="WebData\Internal\bank.jpg" />
     <Content Include="WebData\Internal\crossgif.gif" />
@@ -336,6 +337,7 @@
     </Content>
     <Content Include="ApplicationInsights.config" />
     <Content Include=".bowerrc" />
+    <Content Include="WebData\vault.jpg" />
     <Content Include="WebData\webdatacapture.jpg" />
     <Content Include="WebData\webtos.png" />
     <Content Include="webdetails.aspx" />

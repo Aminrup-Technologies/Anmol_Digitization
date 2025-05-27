@@ -114,6 +114,19 @@
                                                 </div>
                                             </div>
 
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="https://mdmdev.anmolindustries.com/authentication/sign-in" target="_blank">
+                                                            <img style="width: 80%; display: block;" src="WebData/crm.png" alt="image" height="100%" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>CRM/ MDM Portal</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div class="col-md-55" id="powerbi_net" runat="server" visible="false">
                                                 <div class="thumbnail">
                                                     <div class="image view view-first">
@@ -154,18 +167,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="col-md-55">
-                                                <div class="thumbnail">
-                                                    <div class="image view view-first">
-                                                        <a href="https://portal.zinghr.com/2015/pages/authentication/zing.aspx?ccode=anmol" target="_blank">
-                                                            <img style="width: 70%; display: block;" src="WebData/anmolaing.png" alt="image" height="100px" />
-                                                        </a>
-                                                    </div>
-                                                    <div class="caption">
-                                                        <p>ZingHR - Anmol Dost</p>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            
 
                                             <div class="col-md-55">
                                                 <div class="thumbnail">
@@ -262,6 +264,18 @@
                                             <div class="col-md-55">
                                                 <div class="thumbnail">
                                                     <div class="image view view-first">
+                                                        <a href="https://portal.zinghr.com/2015/pages/authentication/zing.aspx?ccode=anmol" target="_blank">
+                                                            <img style="width: 70%; display: block;" src="WebData/anmolaing.png" alt="image" height="100px" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>ZingHR - Anmol Dost</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
                                                         <a href="login.aspx" target="_blank">
                                                             <img style="width: 60%; display: block;" src="WebData/vault.jpg" alt="image" height="70%" />
                                                         </a>
@@ -271,6 +285,8 @@
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            
 
                                             <%--<div class="col-md-55">
                                                 <div class="thumbnail">
