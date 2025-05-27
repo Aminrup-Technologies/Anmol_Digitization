@@ -33,6 +33,12 @@ namespace AnmolDristi
                             WebLogins.Visible = true;
                             WebLogins_Viewall.Visible = true;
                         }
+                        else if (Session["WORKMAN"].ToString() == "S449")
+                        {
+                            AdminControl.Visible = true;
+                            WebLogins.Visible = false;
+                            WebLogins_Viewall.Visible = false;
+                        }
                         else
                         {
                             AdminControl.Visible = false;
