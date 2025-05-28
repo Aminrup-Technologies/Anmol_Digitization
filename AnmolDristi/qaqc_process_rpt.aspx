@@ -1157,22 +1157,22 @@
                                 }
 
                                 // Clear the file input uploader
-                            input.value = '';
+                                input.value = '';
 
-                            new PNotify({
-                                title: 'Upload Success',
-                                text: 'Image Saved!',
-                                type: 'success',
-                                styling: 'bootstrap3'
-                            });
-                        } else {
-                            new PNotify({
-                                title: 'Upload Failed',
-                                text: 'An error occurred during the upload.',
-                                type: 'error',
-                                styling: 'bootstrap3'
-                            });
-                        }
+                                new PNotify({
+                                    title: 'Upload Success',
+                                    text: 'Image Saved!',
+                                    type: 'success',
+                                    styling: 'bootstrap3'
+                                });
+                            } else {
+                                new PNotify({
+                                    title: 'Upload Failed',
+                                    text: 'An error occurred during the upload.',
+                                    type: 'error',
+                                    styling: 'bootstrap3'
+                                });
+                            }
                         };
 
                         xhr.send(formData);
@@ -1180,23 +1180,23 @@
                 };
             };
 
-        reader.readAsDataURL(file);
-    }
+            reader.readAsDataURL(file);
+        }
 
-    function validateImages() {
-        var image1 = document.getElementById('<%= uploadedImage1.ClientID %>'); // First image
+        function validateImages() {
+            var image1 = document.getElementById('<%= uploadedImage1.ClientID %>'); // First image
             var image2 = document.getElementById('<%= uploadedImage2.ClientID %>'); // Second image
 
             // Check if images are displayed
-        if (image1.style.display === 'none' && image2.style.display === 'none') {
-            console.log("Image Element Checking");
+            if (image1.style.display === 'none' && image2.style.display === 'none') {
+                console.log("Image Element Checking");
                 new PNotify({
                     title: 'Missing Input',
                     text: 'Please upload at least one image before submitting.',
-                    type: 'error',
+                    type: 'warning',
                     styling: 'bootstrap3'
                 });
-                return false; // Prevent form submission
+                //return false; // Prevent form submission
             }
 
             return true; // Allow form submission if all validations pass
@@ -1407,7 +1407,7 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_MaidaBrand" runat="server" AssociatedControlID="TB_MaidaBrand" Text="Maida Brand :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_TB_MaidaBrand" runat="server" ErrorMessage="Input Required" ValidationGroup="BasicDataSave" ControlToValidate="TB_MaidaBrand" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_TB_MaidaBrand" runat="server" ControlToValidate="TB_MaidaBrand" ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationExpression="^[a-zA-Z0-9, /]*$" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_TB_MaidaBrand" runat="server" ControlToValidate="TB_MaidaBrand" ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationExpression="^[a-zA-Z0-9, /.]*$" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_MaidaBrand" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Maida Brand (3-30 characters)" MaxLength="30"></asp:TextBox>
                                                                     </div>
@@ -1425,13 +1425,30 @@
                                                                 </div>
                                                             </div>
 
-                                                            <div class="col-md-3">
+                                                            <%--<div class="col-md-3">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_TB_MaidaMfg" runat="server" AssociatedControlID="TB_MaidaMfg" Text="Maida Mfg :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_MaidaMfg" runat="server" ErrorMessage="Date is required" ValidationGroup="BasicDataSave"  ControlToValidate="TB_MaidaMfg" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_MaidaMfg" runat="server" ControlToValidate="TB_MaidaMfg" ForeColor="Red" ErrorMessage="" Display="Dynamic" ValidationExpression=" "></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TB_MaidaMfg" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="" TextMode="Date"></asp:TextBox>
+                                                                    </div>
+                                                                </div>
+                                                            </div>--%>
+
+                                                            <%--26 May 2025--%>
+                                                            <div class="col-md-3" id="MaidaMfgDIV" runat="server">
+                                                                <div class="mb-3">
+                                                                    <asp:Label ID="Lbl_TB_MaidaMfg" runat="server" AssociatedControlID="TB_MaidaMfg" Text=" Maida Mfg. Date :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                                    <asp:RequiredFieldValidator ID="RFV_MaidaMfg" runat="server" ErrorMessage="Date is required " ValidationGroup="Submit" ControlToValidate="TB_MaidaMfg" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_TB_Dates" runat="server"
+                                                                        ControlToValidate="TB_MaidaMfg" ValidationGroup="Submit" ForeColor="Red"
+                                                                        ErrorMessage="Enter valid dates in DD-MM-YYYY format, separated by commas"
+                                                                        ValidationExpression="^(\d{2}-\d{2}-\d{4})(,\s*\d{2}-\d{2}-\d{4})*$"
+                                                                        Display="Dynamic">
+                                                                    </asp:RegularExpressionValidator>
+                                                                    <div class="input-group-sm">
+                                                                        <asp:TextBox ID="TB_MaidaMfg" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder=""></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2005,8 +2022,8 @@
                                                             <div class="col-md-3" id="FU_MaidaImage_Upldr" runat="server" data-prefix="QAPC/MaidaImage">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_FU_MaidaImage" runat="server" AssociatedControlID="FU_MaidaImage" Text="Maida Appearance" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_FU_MaidaImage" runat="server" ErrorMessage="Input required" ControlToValidate="FU_MaidaImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:CustomValidator ID="CV_FU_MaidaImage" runat="server" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="BasicDataSave" ErrorMessage="Please upload file"></asp:CustomValidator>
+                                                                    <%--<asp:RequiredFieldValidator ID="RFV_FU_MaidaImage" runat="server" ErrorMessage="Input required" ControlToValidate="FU_MaidaImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>--%>
+                                                                    <%--<asp:CustomValidator ID="CV_FU_MaidaImage" runat="server" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="BasicDataSave" ErrorMessage="Please upload file"></asp:CustomValidator>--%>
                                                                     <asp:Label ID="lblErrorMessage2" runat="server" CssClass="text-danger"></asp:Label>
                                                                     <div class="input-group input-group-sm">
                                                                         <asp:FileUpload ID="FU_MaidaImage" runat="server" CssClass="form-control rounded" data-prefix="QAPC/MaidaImage" onchange="displayImage(this);" />
@@ -2041,8 +2058,8 @@
                                                             <div class="col-md-3" id="FU_BBImage_Upldr" runat="server" visible="true">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="Lbl_FU_BBImage" runat="server" AssociatedControlID="FU_BBImage" Text="Broken Biscuit Appearance" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_FU_BBImage" runat="server" ErrorMessage="Input required" ControlToValidate="FU_BBImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:CustomValidator ID="CV_FU_BBImage" runat="server" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="BasicDataSave" ErrorMessage="Please upload file"></asp:CustomValidator>
+                                                                    <%--<asp:RequiredFieldValidator ID="RFV_FU_BBImage" runat="server" ErrorMessage="Input required" ControlToValidate="FU_BBImage" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>--%>
+                                                                    <%--<asp:CustomValidator ID="CV_FU_BBImage" runat="server" ControlToValidate="FU_BBImage" Display="Dynamic" ValidationGroup="BasicDataSave" ErrorMessage="Please upload file"></asp:CustomValidator>--%>
                                                                     <asp:Label ID="lblErrorMessage1" runat="server" CssClass="text-danger"></asp:Label>
                                                                     <div class="input-group input-group-sm">
                                                                         <asp:FileUpload ID="FU_BBImage" runat="server" CssClass="form-control rounded" data-prefix="QAPC/BBImage" onchange="displayImage(this);" />
@@ -2092,7 +2109,7 @@
                                                                     <asp:TemplateField HeaderText="Standard Weight" HeaderStyle-Width="15%">
                                                                         <ItemTemplate>
                                                                             <asp:TextBox ID="txtStandardWeight" runat="server" CssClass="standard-weight form-control form-control-sm rounded"
-                                                                                ForeColor="DimGray" Text='<%# Eval("BOM_Qnty") %>'></asp:TextBox><%--ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'--%> 
+                                                                                ForeColor="DimGray" Text='<%# Eval("BOM_Qnty") %>'></asp:TextBox><%--ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'--%>
                                                                         </ItemTemplate>
                                                                     </asp:TemplateField>
 

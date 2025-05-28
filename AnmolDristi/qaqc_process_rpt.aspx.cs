@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Web;
@@ -11,6 +12,7 @@ using System.Web.Services;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using AnmolDristi.DAL;
+using DocumentFormat.OpenXml.Drawing.Charts;
 using Newtonsoft.Json;
 using static AnmolDristi.DAL.QAProcessCheckingDataAcess;
 
@@ -44,7 +46,7 @@ namespace AnmolDristi
                     //BindGridView();
                     DisplayCurrentShift();
                     BindGridView1();
-                    
+
                 }
 
             }
@@ -191,7 +193,7 @@ namespace AnmolDristi
                     using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                     {
                         hdn_formid.Value = "6";
-                        DataTable dt = new DataTable();
+                        System.Data.DataTable dt = new System.Data.DataTable();
                         da.Fill(dt);
 
                         if (dt.Rows.Count > 0)
@@ -374,7 +376,7 @@ namespace AnmolDristi
 
                 //BindGridViewfromDB(selectedPlantValue, selectedProductBrandValue);
 
-                DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
+                System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
 
 
                 // Example: Querying the DataTable for a specific field name
@@ -434,7 +436,7 @@ namespace AnmolDristi
         private void GetSAPCodes(int brandId)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-            string query = @"SELECT p.[sap_code] AS Plant_SAP_Code, b.[brand_sapcode] AS Brand_SAP_Code FROM [MST_PlantDetails] p JOIN [MST_LineCatBrands] b ON p.[plant_id] = b.[plant_id] AND  b.[brand_id]= @brand_id"; 
+            string query = @"SELECT p.[sap_code] AS Plant_SAP_Code, b.[brand_sapcode] AS Brand_SAP_Code FROM [MST_PlantDetails] p JOIN [MST_LineCatBrands] b ON p.[plant_id] = b.[plant_id] AND  b.[brand_id]= @brand_id";
             // Using parameterized query for brand_id
 
             using (SqlConnection conn = new SqlConnection(connectionString))
@@ -686,8 +688,8 @@ namespace AnmolDristi
             if (Page.IsValid)
             {
                 // Ensure hidden fields have values before proceeding
-                if (!string.IsNullOrWhiteSpace(hdn_img1.Value) && !string.IsNullOrWhiteSpace(hdn_img2.Value))
-                {
+                //if (!string.IsNullOrWhiteSpace(hdn_img1.Value) && !string.IsNullOrWhiteSpace(hdn_img2.Value))
+                //{
                     try
                     {
                         // Collect form data
@@ -705,12 +707,12 @@ namespace AnmolDristi
                     {
                         ShowErrorNotification(ex.Message);
                     }
-                }
-                else
-                {
-                    // Show error message if hidden fields are empty
-                    ShowErrorNotification("Please upload both images before submitting.");
-                }
+                //}
+                //else
+                //{
+                //    // Show error message if hidden fields are empty
+                //    ShowErrorNotification("Please upload both images before submitting.");
+                //}
             }
             else
             {
@@ -752,7 +754,24 @@ namespace AnmolDristi
 
                 MaidaBrand = TB_MaidaBrand.Text,
                 MaidaBatchNo = TB_MaidaBatchNo.Text,
-                MaidaMfgDate = string.IsNullOrWhiteSpace(TB_MaidaMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_MaidaMfg.Text),
+                //MaidaMfgDate = string.IsNullOrWhiteSpace(TB_MaidaMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_MaidaMfg.Text),
+
+                MaidaMfgDate = string.IsNullOrEmpty(TB_MaidaMfg.Text)
+                    ? new List<DateTime?>()
+                    : TB_MaidaMfg.Text
+                        .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                        .Select(dateStr =>
+                        {
+                            DateTime parsedDate;
+                            return DateTime.TryParseExact(dateStr.Trim(), "dd-MM-yyyy",
+                                CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate)
+                                ? (DateTime?)parsedDate
+                                : null;
+                        })
+                        .ToList(),
+
+
+
                 MaidaAppearanceColor = Convert.ToInt32(RBL_MaidaColorApp.SelectedValue),
                 CommentForMaidaColor = TXB_MaidaColorApp_Remarks.Text,
 
@@ -982,7 +1001,22 @@ namespace AnmolDristi
 
                     MaidaBrand = TB_MaidaBrand.Text,
                     MaidaBatchNo = TB_MaidaBatchNo.Text,
-                    MaidaMfgDate = string.IsNullOrWhiteSpace(TB_MaidaMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_MaidaMfg.Text),
+
+                    //MaidaMfgDate = string.IsNullOrWhiteSpace(TB_MaidaMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_MaidaMfg.Text),
+                    MaidaMfgDate = string.IsNullOrEmpty(TB_MaidaMfg.Text)
+                    ? new List<DateTime?>()
+                    : TB_MaidaMfg.Text
+                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(dateStr =>
+                    {
+                        DateTime parsedDate;
+                        return DateTime.TryParseExact(dateStr.Trim(), "dd-MM-yyyy",
+                            CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate)
+                            ? (DateTime?)parsedDate
+                            : null;
+                    })
+                    .ToList(),
+
                     MaidaAppearanceColor = Convert.ToInt32(RBL_MaidaColorApp.SelectedValue),
                     CommentForMaidaColor = TXB_MaidaColorApp_Remarks.Text,
 
@@ -1791,7 +1825,7 @@ namespace AnmolDristi
             string query = "SELECT ROW_NUMBER() OVER (ORDER BY ComponentDescription) AS Sl, ComponentDescription as sap_IngredientName, BOMQuantity as BOM_Qnty FROM PlantMaterialData where PlantID=@plant_id and MaterialID=@brand_id and IsActive=1 order by Sl";
 
             // Create a DataTable to hold the data
-            DataTable dataTable = new DataTable();
+            System.Data.DataTable dataTable = new System.Data.DataTable();
 
             try
             {
@@ -1952,7 +1986,7 @@ namespace AnmolDristi
 
 
         [WebMethod]
-        public static void SaveData1(string jsonData )
+        public static void SaveData1(string jsonData)
         {
 
             // Deserialize JSON data to a list of objects
@@ -2009,7 +2043,7 @@ namespace AnmolDristi
             ClientScript.RegisterStartupScript(this.GetType(), "ShowDataSuccessNotification", Data_SuccessScript, false);
             ScriptManager.RegisterStartupScript(this, this.GetType(), "SwitchTab", "document.getElementById('verificationData-tab').click();", true);
 
-            
+
 
         }
         protected void OvenBtnReset_Click(object sender, EventArgs e)
@@ -2037,7 +2071,7 @@ namespace AnmolDristi
 
                 ScriptManager.RegisterStartupScript(this, GetType(), "activateTab", "activateTab('doughData-tab');", true);
 
-                
+
             }
         }
     }
