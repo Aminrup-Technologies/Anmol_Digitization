@@ -22,7 +22,9 @@ namespace AnmolDristi.DAL
         public void InsertBasicData(string pcrNo, string plantName, string line, string productCategory, string productBrand, string skuId, DateTime date, string shift,
                                     TimeSpan time, decimal processWaterTemp, string commentForProcessWater, decimal waterPh, string commentForWaterPh,
                                     decimal waterHardness, string commentForWaterHardness, string waterTest, decimal tds, string commentForTds, string maidaBrand,
-                                    string maidaBatchNo, DateTime maidaMfg, int maidaAppColor, string commentForMaidaAppColor, int maidaFlavorTaste,
+                                    string maidaBatchNo,
+                                    DateTime maidaMfg,
+                                    int maidaAppColor, string commentForMaidaAppColor, int maidaFlavorTaste,
                                     string commentForMaidaFlavorTaste, int maidaGrittiness, string commentsForMaidaGrittiness, int bbAppColor, string commentForBBColor,
                                     int bbMouthFeel, string commentForBBMouthFeel, int bbFlavorTaste, string commentForBBFlavorTaste, int hvoSmell,
                                     string commentForHvoSmell, int hvoTaste, string commentForHvoTaste, decimal hvoTemp, string commentForHvoTemp, int smpSmell,
@@ -370,7 +372,8 @@ namespace AnmolDristi.DAL
             public string TdsCmnt { get; set; }
             public string MaidaBrand { get; set; }
             public string MaidaBatchNo { get; set; }
-            public DateTime? MaidaMfgDate { get; set; }
+            //public DateTime? MaidaMfgDate { get; set; }
+            public List<DateTime?> MaidaMfgDate { get; set; }   //26 May 2025
             public int? MaidaAppearanceColor { get; set; }
             public string CommentForMaidaColor { get; set; }
             public int? MaidaFlavorAndTaste { get; set; }
@@ -465,7 +468,17 @@ namespace AnmolDristi.DAL
                     cmd.Parameters.AddWithValue("@TdsCmnt", (object)data.TdsCmnt ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@MaidaBrand", (object)data.MaidaBrand ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@MaidaBatchNo", (object)data.MaidaBatchNo ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@MaidaMfgDate", (object)data.MaidaMfgDate ?? DBNull.Value);
+
+                    //cmd.Parameters.AddWithValue("@MaidaMfgDate", (object)data.MaidaMfgDate ?? DBNull.Value);
+
+                    string dateList = data.MaidaMfgDate != null
+                    ? string.Join(",", data.MaidaMfgDate
+                        .Where(d => d.HasValue)
+                        .Select(d => d.Value.ToString("yyyy-MM-dd")))
+                    : null;
+
+                    cmd.Parameters.AddWithValue("@MaidaMfg_Dates", (object)dateList ?? DBNull.Value);     //26 May 2025
+
                     cmd.Parameters.AddWithValue("@MaidaAppearanceColor", (object)data.MaidaAppearanceColor ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@CommentForMaidaColor", (object)data.CommentForMaidaColor ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@MaidaFlavorAndTaste", (object)data.MaidaFlavorAndTaste ?? DBNull.Value);

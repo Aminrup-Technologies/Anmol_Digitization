@@ -290,7 +290,9 @@ namespace AnmolDristi
 
                                 TB_MaidaBrand.Text = dt.Rows[0]["MaidaBrand"].ToString();
                                 TB_MaidaBatchNo.Text = dt.Rows[0]["MaidaBatchNo"].ToString();
-                                TB_MaidaMfg.Text = dt.Rows[0]["MaidaMfgDate"].ToString();
+
+                                //TB_MaidaMfg.Text = dt.Rows[0]["MaidaMfgDate"].ToString();
+                                TB_MaidaMfg.Text = dt.Rows[0]["MaidaMfg_Dates"].ToString();     // 26 May 2025
 
                                 RBL_MaidaColorApp.SelectedValue = dt.Rows[0]["MaidaAppearanceColor"].ToString();
                                 TXB_MaidaColorApp_Remarks.Text = dt.Rows[0]["CommentForMaidaColor"].ToString();
