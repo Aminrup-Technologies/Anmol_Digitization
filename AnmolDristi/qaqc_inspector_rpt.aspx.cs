@@ -1828,6 +1828,74 @@ namespace AnmolDristi.qaqc
                     RV_TB_oilpercent.Enabled = criteria.IsRangeRequired;
                     break;
 
+
+                case "Shell10Weight":
+
+                    TB_shell10_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_shell10.Text = criteria.DisplayName;
+
+                    RFV_TB_shell10.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_shell10.Enabled = criteria.IsRequired;
+                    RFV_TB_shell10.InitialValue = "";
+
+                    TB_shell10.Attributes["placeholder"] = criteria.RangeErrorMessage;
+                    TB_shell10.Text = "";
+
+                    REV_TB_shell10.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_shell10.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_shell10.Enabled = criteria.IsRegularExpressionRequired;
+
+                    // Optional range validator (add if used)
+                    RV_TB_shell10.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_shell10.MinimumValue = criteria.MinimumValue;
+                    RV_TB_shell10.MaximumValue = criteria.MaximumValue;
+                    RV_TB_shell10.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "Shell5CreamWeight":
+
+                    TB_shell5cream_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_shell5cream.Text = criteria.DisplayName;
+
+                    RFV_TB_shell5cream.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_shell5cream.Enabled = criteria.IsRequired;
+                    RFV_TB_shell5cream.InitialValue = "";
+
+                    TB_shell5cream.Attributes["placeholder"] = criteria.RangeErrorMessage;
+                    TB_shell5cream.Text = "";
+
+                    REV_TB_shell5cream.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_shell5cream.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_shell5cream.Enabled = criteria.IsRegularExpressionRequired;
+
+                    // Optional range validator (add if used)
+                    RV_TB_shell5cream.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_shell5cream.MinimumValue = criteria.MinimumValue;
+                    RV_TB_shell5cream.MaximumValue = criteria.MaximumValue;
+                    RV_TB_shell5cream.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "CreamPercentage":
+
+                    TB_creampercent_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_creampercent.Text = criteria.DisplayName;
+
+                    RFV_TB_creampercent.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_creampercent.Enabled = criteria.IsRequired;
+
+                    TB_creampercent.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_creampercent.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_creampercent.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_creampercent.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_creampercent.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_creampercent.MinimumValue = criteria.MinimumValue;
+                    RV_TB_creampercent.MaximumValue = criteria.MaximumValue;
+                    RV_TB_creampercent.Enabled = criteria.IsRangeRequired;
+                    break;
+
+
                 case "PktWgt":
 
                     Lbl_TB_PktWgt.Text = criteria.DisplayName;
@@ -1923,68 +1991,6 @@ namespace AnmolDristi.qaqc
             }
         }
 
-        private QCInspectorData RetrieveFormDataOld()
-        {
-            return new QCInspectorData
-            {
-                //PlantName = DDL_Plant.SelectedValue,
-                //Line = DDL_PlantLine.SelectedValue,
-                //ProductCategory = DDL_ProductCategory.SelectedValue,
-                //ProductBrand = DDL_ProductBrand.SelectedValue,
-                //BrandSKU = DDL_BrandSKU.SelectedValue,
-
-                //NumberOfPieces = Convert.ToInt32(TB_NoOfPcs.Text),
-                //VarietyOrLotNo = !string.IsNullOrEmpty(TB_VartyPkt.Text) ? TB_VartyPkt.Text : null,
-                //BakingTime = !string.IsNullOrEmpty(TB_BakingTime.Text) ? TB_BakingTime.Text : null,
-
-                //BakingTime2 = !string.IsNullOrEmpty(TB_BakingTime2.Text) ? TB_BakingTime2.Text : null,
-
-                //ColorAppearance = Convert.ToInt32(RBL_ColorApp.SelectedValue),
-                //CommentsForColorAppearance = TXB_ColorApp_Remarks.Text,
-
-                //FlavourAndTaste = Convert.ToInt32(RBL_FlavTst.SelectedValue),
-                //CommentsForFlavourAndTaste = TXB_RBL_FlavTst_Rmrks.Text,
-
-                //DesignImplementation = Convert.ToInt32(RBL_DesignImp.SelectedValue),
-                //CommentsForDesignImplementation = TXB_DesignImp_Remarks.Text,
-
-                //TextureBite = Convert.ToInt32(RBL_TextureBite.SelectedValue),
-                //CommentsForTextureBite = TXB_TextureBite_Remarks.Text,
-
-                //ShapeOrSize = TB_ShapeSize.Text,
-                //CommentsForShapeOrSize = string.Empty,
-
-                //GaugeValue = Convert.ToDecimal(TB_Length.Text), //Length
-                //DryWeight = Convert.ToDecimal(TB_Breadth.Text), //Breadth
-                //DippedWeight = Convert.ToDecimal(TB_Height.Text), //Height
-
-
-                //Moisture = Convert.ToDecimal(TB_Moisture.Text),
-
-                //aWmax = Convert.ToDecimal(TB_aWMAX.Text),
-                //pHvalue = Convert.ToDecimal(TB_pHvalue.Text),
-
-                //GaugeLength = Convert.ToDecimal(TB_GaugeLen.Text),
-                //CommentsGaugeLength = TXB_GaugeLen_Remarks.Text,
-
-                //WeightWithoutOil = TryParseDecimal(TB_wgtwtoil.Text),
-                //WeightWithOil = TryParseDecimal(TB_wgtwoil.Text),
-                //OilPercentValue = TryParseDecimal(TB_oilpercent.Text),
-
-                //PacketWeight = Convert.ToDecimal(TB_PktWgt.Text),
-
-                //DesignAndImplementation = ImgLink1,
-                //ColourAndAppearance = ImgLink2,
-
-                //SubmittedByPNo = Session["WORKMAN"].ToString(),
-
-                //SubmittedById = Convert.ToInt32(Session["USERID"].ToString()),
-
-                //Shift = string.Empty
-            };
-        }
-
-
         private QCInspectorData RetrieveFormData()
         {
             try
@@ -2031,6 +2037,11 @@ namespace AnmolDristi.qaqc
                     WeightWithoutOil = TryParseDecimal(TB_wgtwtoil?.Text?.Trim()) ?? 0,
                     WeightWithOil = TryParseDecimal(TB_wgtwoil?.Text?.Trim()) ?? 0,
                     OilPercentValue = TryParseDecimal(TB_oilpercent?.Text?.Trim()) ?? 0,
+
+                    //newly added on 04-Jun-2025----------for capturing the Cream Biscuits Values
+                    Shell10Weight = TryParseDecimal(TB_shell10?.Text?.Trim()) ?? 0,
+                    Shell5CreamWeight = TryParseDecimal(TB_shell5cream?.Text?.Trim()) ?? 0,
+                    CreamPercentage = TryParseDecimal(TB_creampercent?.Text?.Trim()) ?? 0,
 
                     PacketWeight = TryParseDecimal(TB_PktWgt?.Text?.Trim()) ?? 0,
 
@@ -2136,7 +2147,7 @@ namespace AnmolDristi.qaqc
                 qcData.GaugeLength, qcData.CommentsGaugeLength, qcData.WeightWithoutOil, qcData.WeightWithOil,
                 qcData.OilPercentValue, // Changed OilPercentValue to OilPercentage
                 qcData.PacketWeight, qcData.DesignAndImplementation, qcData.ColourAndAppearance, qcData.Remarks, qcData.SubmittedById,
-                DateTime.Now.Date, DateTime.Now.TimeOfDay, qcData.Shift, qcData.SubmittedByPNo, qcData.FormID, qcData.Approver1EmployeeCode, qcData.Approver2EmployeeCode, qcData.DottedLineApproverEmployeeCode
+                DateTime.Now.Date, DateTime.Now.TimeOfDay, qcData.Shift, qcData.SubmittedByPNo, qcData.FormID, qcData.Approver1EmployeeCode, qcData.Approver2EmployeeCode, qcData.DottedLineApproverEmployeeCode, qcData.Shell10Weight, qcData.Shell5CreamWeight, qcData.CreamPercentage
             );
 
         }
@@ -2157,7 +2168,7 @@ namespace AnmolDristi.qaqc
                         qcData.Moisture, qcData.aWmax, qcData.pHvalue, qcData.GaugeLength, qcData.CommentsGaugeLength, qcData.WeightWithoutOil,
                         qcData.WeightWithOil, qcData.OilPercentValue, qcData.PacketWeight, qcData.DesignAndImplementation,
                         qcData.ColourAndAppearance, qcData.Remarks, qcData.SubmittedById, DateTime.Now.Date, DateTime.Now.TimeOfDay,
-                        qcData.Shift, qcData.SubmittedByPNo, qcData.FormID, qcData.Approver1EmployeeCode, qcData.Approver2EmployeeCode, qcData.DottedLineApproverEmployeeCode
+                        qcData.Shift, qcData.SubmittedByPNo, qcData.FormID, qcData.Approver1EmployeeCode, qcData.Approver2EmployeeCode, qcData.DottedLineApproverEmployeeCode, qcData.Shell10Weight, qcData.Shell5CreamWeight, qcData.CreamPercentage
                     );
 
                     transaction.Complete();
@@ -2234,6 +2245,10 @@ namespace AnmolDristi.qaqc
             public string Approver1EmployeeCode { get; set; }
             public string Approver2EmployeeCode { get; set; }
             public string DottedLineApproverEmployeeCode { get; set; }
+
+            public decimal Shell10Weight { get; set; } // 10-piece shell weight (g)
+            public decimal Shell5CreamWeight { get; set; } // 5-piece shell weight with cream (g)
+            public decimal CreamPercentage { get; set; } // Auto-calculated cream percentage
         }
 
     }
