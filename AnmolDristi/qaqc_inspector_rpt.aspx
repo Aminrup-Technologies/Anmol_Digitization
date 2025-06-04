@@ -152,9 +152,9 @@
                 var fileInput = document.getElementById('<%= FU_DesgImp.ClientID %>');
                 if (fileInput.value === "") {
                     document.getElementById('<%= lblErrorMessage2.ClientID %>').innerText = "Please upload file.";
-                return false;
-            }
-            document.getElementById('<%= lblErrorMessage2.ClientID %>').innerText = "";
+                    return false;
+                }
+                document.getElementById('<%= lblErrorMessage2.ClientID %>').innerText = "";
                 return true;
             }
 
@@ -187,56 +187,56 @@
                 console.log("showTextbox function called");
                 var selectedValue = radioButtonList.querySelector("input:checked").value;
                 var remarksValidator = document.getElementById('<%= RFV_RBL_FlavTst_Rmrks.ClientID %>');
-            console.log("Selected value: " + selectedValue);
-            if (selectedValue === "0") {
-                FlavTxt_RemarksDIV.style.display = "block";
-                remarksValidator.validationGroup = "Submit";
-            } else {
-                FlavTxt_RemarksDIV.style.display = "none";
-                remarksValidator.validationGroup = "";
+                console.log("Selected value: " + selectedValue);
+                if (selectedValue === "0") {
+                    FlavTxt_RemarksDIV.style.display = "block";
+                    remarksValidator.validationGroup = "Submit";
+                } else {
+                    FlavTxt_RemarksDIV.style.display = "none";
+                    remarksValidator.validationGroup = "";
+                }
             }
-        }
 
-        function toggleSpSzRemarksDiv(radioButtonList) {
-            console.log("toggleSpSzRemarksDiv function called");
-            var selectedValue = radioButtonList.querySelector("input:checked").value;
-            console.log("Selected value: " + selectedValue);
-            if (selectedValue === "0") {
-                SpSz_RemarksDIV.style.display = "block";
-            } else {
-                SpSz_RemarksDIV.style.display = "none";
+            function toggleSpSzRemarksDiv(radioButtonList) {
+                console.log("toggleSpSzRemarksDiv function called");
+                var selectedValue = radioButtonList.querySelector("input:checked").value;
+                console.log("Selected value: " + selectedValue);
+                if (selectedValue === "0") {
+                    SpSz_RemarksDIV.style.display = "block";
+                } else {
+                    SpSz_RemarksDIV.style.display = "none";
+                }
             }
-        }
 
-        function toggleColorAppRemarksDiv(radioButtonList) {
-            console.log("toggleColorAppRemarksDiv function called");
-            var selectedValue = radioButtonList.querySelector("input:checked").value;
-            var remarksDiv = document.getElementById("ColorAppRemarksDiv");
-            console.log("Selected value: " + selectedValue);
-            if (selectedValue === "0") {
-                remarksDiv.style.display = "block";
-            } else {
-                remarksDiv.style.display = "none";
+            function toggleColorAppRemarksDiv(radioButtonList) {
+                console.log("toggleColorAppRemarksDiv function called");
+                var selectedValue = radioButtonList.querySelector("input:checked").value;
+                var remarksDiv = document.getElementById("ColorAppRemarksDiv");
+                console.log("Selected value: " + selectedValue);
+                if (selectedValue === "0") {
+                    remarksDiv.style.display = "block";
+                } else {
+                    remarksDiv.style.display = "none";
+                }
             }
-        }
 
 
-        function toggleTextureBiteRemarksDiv(radioButtonList) {
-            console.log("toggleTextureBiteRemarksDiv function called");
-            var selectedValue = radioButtonList.querySelector("input:checked").value;
-            var remarksDiv = document.getElementById("TextureBiteRemarksDiv");
-            console.log("Selected value: " + selectedValue);
-            if (selectedValue === "0") {
-                remarksDiv.style.display = "block";
-            } else {
-                remarksDiv.style.display = "none";
+            function toggleTextureBiteRemarksDiv(radioButtonList) {
+                console.log("toggleTextureBiteRemarksDiv function called");
+                var selectedValue = radioButtonList.querySelector("input:checked").value;
+                var remarksDiv = document.getElementById("TextureBiteRemarksDiv");
+                console.log("Selected value: " + selectedValue);
+                if (selectedValue === "0") {
+                    remarksDiv.style.display = "block";
+                } else {
+                    remarksDiv.style.display = "none";
+                }
             }
-        }
 
 
 
-        function validateSubmit() {
-            var fileUpload = document.getElementById('<%= FU_ClrApp.ClientID %>'); // Get the FileUpload control
+            function validateSubmit() {
+                var fileUpload = document.getElementById('<%= FU_ClrApp.ClientID %>'); // Get the FileUpload control
             var errorMessageLabel = document.getElementById('<%= lblErrorMessage1.ClientID %>'); // Get the error message label
 
             if (fileUpload.value === "") {
@@ -263,18 +263,23 @@
         }
 
         function calculateCreamPercentage() {
-            var weight10 = parseFloat(document.getElementById('<%= TB_shell10.ClientID %>').value) || 0;
-            var weight5WithCream = parseFloat(document.getElementById('<%= TB_shell5cream.ClientID %>').value) || 0;
+            var weight10Input = parseFloat(document.getElementById('<%= TB_shell10.ClientID %>').value) || 0;
+                var weight5WithCreamInput = parseFloat(document.getElementById('<%= TB_shell5cream.ClientID %>').value) || 0;
 
-            if (weight10 > 0 && weight5WithCream > 0) {
-                var avgShellWeight = weight10 / 10;
-                var expectedWeight5 = avgShellWeight * 5;
-                var creamWeight = weight5WithCream - expectedWeight5;
-                var creamPercent = (creamWeight / weight5WithCream) * 100;
-
-                document.getElementById('<%= TB_creampercent.ClientID %>').value = creamPercent.toFixed(2);
+                if (weight10Input && weight5WithCreamInput) {
+                    //var avgShellWeight = weight10Input / 10;
+                    //var expectedWeight5 = avgShellWeight * 5;
+                    //var creamWeight = weight5WithCreamInput - expectedWeight5;
+                    //var creamPercent = (creamWeight / weight5WithCreamInput) * 100;
+                    var creamPercent = ((weight5WithCreamInput - weight10Input) / weight5WithCreamInput) * 100;
+                    //console.log("Cream percentage calculated:", creamPercent);
+                    document.getElementById('<%= TB_creampercent.ClientID %>').value = creamPercent.toFixed(2);
+                } else {
+                    console.error("One or more input values are invalid or zero.");
+                }
             }
-        }
+
+
 
 
 
@@ -1265,7 +1270,7 @@
                                     <asp:Label ID="Lbl_TB_creampercent" runat="server" AssociatedControlID="TB_creampercent"
                                         Text="Cream Percentage (%):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
                                     <asp:RequiredFieldValidator ID="RFV_TB_creampercent" runat="server" ValidationGroup="Submit"
-                                        ErrorMessage="Input Required" ControlToValidate="TB_creampercent" Display="Dynamic" ForeColor="Red" />
+                                        ErrorMessage="Input Required" ControlToValidate="TB_creampercent" Display="Dynamic" ForeColor="Red" InitialValue="0.00" />
                                     <asp:RegularExpressionValidator ID="REV_TB_creampercent" runat="server" ValidationGroup="Submit"
                                         ControlToValidate="TB_creampercent" ForeColor="Red" ErrorMessage="Decimal Only"
                                         ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
