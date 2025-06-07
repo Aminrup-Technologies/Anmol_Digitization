@@ -51,7 +51,7 @@ namespace AnmolDristi.qaqc
         {
             ShiftManager shiftManager = new ShiftManager();
             string currentShift = shiftManager.GetCurrentShiftType();
-            hdn_shiftvalue.Value =currentShift;
+            hdn_shiftvalue.Value = currentShift;
         }
 
         private void LoadApproversOld(string selectedPlantValue, string selectedPlantLineValue)
@@ -213,7 +213,7 @@ namespace AnmolDristi.qaqc
                             else
                             {
                                 // If default insertion fails
-                                ShowErrorNotification("Failed to insert default approvers."); 
+                                ShowErrorNotification("Failed to insert default approvers.");
                             }
                         }
                     }
@@ -860,19 +860,17 @@ namespace AnmolDristi.qaqc
 
         //}
 
-        private void LogToTextFile(params object[] data)
+        private void LogToTextFile_OLD(params object[] data)
         {
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
             string targetFolderPath = Server.MapPath("~/UploadedFiles/Logs/");
             string filePath = Path.Combine(targetFolderPath, $"QCInspectorLog_{currentDate}.txt");
 
-            // Check if the directory exists, if not, create it
             if (!Directory.Exists(targetFolderPath))
             {
                 Directory.CreateDirectory(targetFolderPath);
             }
 
-            // Check if the file exists, if not, create it
             if (!File.Exists(filePath))
             {
                 string headers = string.Join(", ", data.Select((param, index) => $"@param{index + 1}"));
@@ -882,12 +880,53 @@ namespace AnmolDristi.qaqc
                 }
             }
 
-            // Write data to text file
             using (StreamWriter writer = File.AppendText(filePath))
             {
                 writer.WriteLine(string.Join(", ", data));
             }
         }
+
+        private void LogToTextFile(Dictionary<string, object> data)
+        {
+            //string currentDate = DateTime.Now.ToString("yyyy-MM-dd");
+            //string timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+            string targetFolderPath = Server.MapPath("~/UploadedFiles/Logs/");
+            //string filePath = Path.Combine(targetFolderPath, $"QCInspectorLog_{timestamp}.txt");
+            //string filePath = Path.Combine(targetFolderPath, $"QCInspectorLog_{currentDate}.txt");
+
+            string guid = Guid.NewGuid().ToString("N").Substring(0, 8);
+            string filePath = Path.Combine(targetFolderPath, $"QCInspectorLog_{DateTime.Now:yyyy-MM-dd}_{guid}.txt");
+
+        
+            if (!Directory.Exists(targetFolderPath))
+            {
+                Directory.CreateDirectory(targetFolderPath);
+            }
+
+            //if (!File.Exists(filePath))
+            //{
+            //    string headers = string.Join(", ", data.Keys);
+            //    using (StreamWriter writer = File.CreateText(filePath))
+            //    {
+            //        writer.WriteLine(headers);
+            //    }
+            //}
+
+            //using (StreamWriter writer = File.AppendText(filePath))
+            //{
+            //    string values = string.Join(", ", data.Values.Select(v => v?.ToString().Replace(",", " ") ?? ""));
+            //    writer.WriteLine(values);
+            //}
+
+            using (StreamWriter writer = File.CreateText(filePath))
+            {
+                foreach (var pair in data)
+                {
+                    writer.WriteLine($"{pair.Key}: {pair.Value}");
+                }
+            }
+        }
+
 
         private void MakeInputsReadOnly()
         {
@@ -2003,7 +2042,7 @@ namespace AnmolDristi.qaqc
                     ProductBrand = DDL_ProductBrand?.SelectedValue ?? string.Empty,
                     BrandSKU = DDL_BrandSKU?.SelectedValue ?? string.Empty, // Changed BrandSKU to SKUId
 
-                    NumberOfPieces = TryParseInt(TB_Length?.Text?.Trim()) ?? 0,
+                    NumberOfPieces = TryParseInt(TB_NoOfPcs?.Text?.Trim()) ?? 0,
                     VarietyOrLotNo = string.IsNullOrWhiteSpace(TB_VartyPkt?.Text) ? null : TB_VartyPkt.Text.Trim(),
                     BakingTime = string.IsNullOrWhiteSpace(TB_BakingTime?.Text) ? null : TB_BakingTime.Text.Trim(),
                     BakingTime2 = string.IsNullOrWhiteSpace(TB_BakingTime2?.Text) ? null : TB_BakingTime2.Text.Trim(),
@@ -2023,27 +2062,46 @@ namespace AnmolDristi.qaqc
                     ShapeOrSize = string.IsNullOrWhiteSpace(TB_ShapeSize?.Text) ? null : TB_ShapeSize.Text.Trim(),
                     CommentsForShapeOrSize = string.Empty, // Keeping it empty as per your current logic
 
-                    GaugeValue = TryParseDecimal(TB_Length?.Text?.Trim()) ?? 0,
-                    DryWeight = TryParseDecimal(TB_Breadth?.Text?.Trim()) ?? 0,
-                    DippedWeight = TryParseDecimal(TB_Height?.Text?.Trim()) ?? 0,
+                    //GaugeValue = TryParseDecimal(TB_Length?.Text?.Trim()) ?? 0,
+                    //DryWeight = TryParseDecimal(TB_Breadth?.Text?.Trim()) ?? 0,
+                    //DippedWeight = TryParseDecimal(TB_Height?.Text?.Trim()) ?? 0,
 
-                    Moisture = TryParseDecimal(TB_Moisture?.Text?.Trim()) ?? 0,
-                    aWmax = TryParseDecimal(TB_aWMAX?.Text?.Trim()) ?? 0,
-                    pHvalue = TryParseDecimal(TB_pHvalue?.Text?.Trim()) ?? 0,
+                    //Moisture = TryParseDecimal(TB_Moisture?.Text?.Trim()) ?? 0,
+                    //aWmax = TryParseDecimal(TB_aWMAX?.Text?.Trim()) ?? 0,
+                    //pHvalue = TryParseDecimal(TB_pHvalue?.Text?.Trim()) ?? 0,
 
-                    GaugeLength = TryParseDecimal(TB_GaugeLen?.Text?.Trim()) ?? 0,
+                    //GaugeLength = TryParseDecimal(TB_GaugeLen?.Text?.Trim()) ?? 0,
                     CommentsGaugeLength = TXB_GaugeLen_Remarks?.Text?.Trim() ?? string.Empty,
 
-                    WeightWithoutOil = TryParseDecimal(TB_wgtwtoil?.Text?.Trim()) ?? 0,
-                    WeightWithOil = TryParseDecimal(TB_wgtwoil?.Text?.Trim()) ?? 0,
-                    OilPercentValue = TryParseDecimal(TB_oilpercent?.Text?.Trim()) ?? 0,
+                    //WeightWithoutOil = TryParseDecimal(TB_wgtwtoil?.Text?.Trim()) ?? 0,
+                    //WeightWithOil = TryParseDecimal(TB_wgtwoil?.Text?.Trim()) ?? 0,
+                    //OilPercentValue = TryParseDecimal(TB_oilpercent?.Text?.Trim()) ?? 0,
 
-                    //newly added on 04-Jun-2025----------for capturing the Cream Biscuits Values
-                    Shell10Weight = TryParseDecimal(TB_shell10?.Text?.Trim()) ?? 0,
-                    Shell5CreamWeight = TryParseDecimal(TB_shell5cream?.Text?.Trim()) ?? 0,
-                    CreamPercentage = TryParseDecimal(TB_creampercent?.Text?.Trim()) ?? 0,
+                    ////newly added on 04-Jun-2025----------for capturing the Cream Biscuits Values
+                    //Shell10Weight = TryParseDecimal(TB_shell10?.Text?.Trim()) ?? 0,
+                    //Shell5CreamWeight = TryParseDecimal(TB_shell5cream?.Text?.Trim()) ?? 0,
+                    //CreamPercentage = TryParseDecimal(TB_creampercent?.Text?.Trim()) ?? 0,
 
-                    PacketWeight = TryParseDecimal(TB_PktWgt?.Text?.Trim()) ?? 0,
+                    //PacketWeight = TryParseDecimal(TB_PktWgt?.Text?.Trim()) ?? 0,
+
+                    GaugeValue = TryParseDecimalWithContext(TB_Length?.Text?.Trim(), "Length") ?? 0,
+                    DryWeight = TryParseDecimalWithContext(TB_Breadth?.Text?.Trim(), "Breadth") ?? 0,
+                    DippedWeight = TryParseDecimalWithContext(TB_Height?.Text?.Trim(), "Height") ?? 0,
+
+                    Moisture = TryParseDecimalWithContext(TB_Moisture?.Text?.Trim(), "Moisture") ?? 0,
+                    aWmax = TryParseDecimalWithContext(TB_aWMAX?.Text?.Trim(), "aWmax") ?? 0,
+                    pHvalue = TryParseDecimalWithContext(TB_pHvalue?.Text?.Trim(), "pHvalue") ?? 0,
+
+                    GaugeLength = TryParseDecimalWithContext(TB_GaugeLen?.Text?.Trim(), "GaugeLength") ?? 0,
+                    WeightWithoutOil = TryParseDecimalWithContext(TB_wgtwtoil?.Text?.Trim(), "WeightWithoutOil") ?? 0,
+                    WeightWithOil = TryParseDecimalWithContext(TB_wgtwoil?.Text?.Trim(), "WeightWithOil") ?? 0,
+                    OilPercentValue = TryParseDecimalWithContext(TB_oilpercent?.Text?.Trim(), "OilPercentValue") ?? 0,
+
+                    Shell10Weight = TryParseDecimalWithContext(TB_shell10?.Text?.Trim(), "Shell10Weight") ?? 0,
+                    Shell5CreamWeight = TryParseDecimalWithContext(TB_shell5cream?.Text?.Trim(), "Shell5CreamWeight") ?? 0,
+                    CreamPercentage = TryParseDecimalWithContext(TB_creampercent?.Text?.Trim(), "CreamPercentage") ?? 0,
+
+                    PacketWeight = TryParseDecimalWithContext(TB_PktWgt?.Text?.Trim(), "PacketWeight") ?? 0,
 
                     DesignAndImplementation = hdn_img1?.Value ?? string.Empty,
                     ColourAndAppearance = hdn_img2?.Value ?? string.Empty,
@@ -2066,37 +2124,66 @@ namespace AnmolDristi.qaqc
             {
                 var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
                 EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
-
-                //logger.Error(ex, "An error occurred in RetrieveFormData");
-                // Log or display the error message
-                // For example, you could use Console.WriteLine or a logging framework
                 Console.WriteLine($"FormatException: {ex.Message}");
-                throw; 
-                // Optional: rethrow the exception if you want it to propagate further
+                throw;
             }
             catch (Exception ex)
             {
                 var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
                 EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
-
-                //logger.Error(ex, "An error occurred in RetrieveFormData");
-                // Handle other potential exceptions
                 Console.WriteLine($"Exception: {ex.Message}");
-                throw; // Optional: rethrow the exception if you want it to propagate further
+                throw;
             }
         }
 
-        private decimal? TryParseDecimal(string value)
+        //private decimal? TryParseDecimal(string value)
+        //{
+        //    if (string.IsNullOrWhiteSpace(value))
+        //    {
+        //        // Return null if the input is null, empty, or consists only of whitespace
+        //        return null;
+        //    }
+
+        //    decimal result;
+        //    return decimal.TryParse(value, out result) ? (decimal?)result : null;
+        //}
+
+        private decimal? TryParseDecimal(string input)
         {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                // Return null if the input is null, empty, or consists only of whitespace
+            if (string.IsNullOrWhiteSpace(input))
                 return null;
-            }
+
+            input = input.Replace(" ", "").Replace(",", ".").Trim(); // strip spaces and fix decimal commas
 
             decimal result;
-            return decimal.TryParse(value, out result) ? (decimal?)result : null;
+            if (decimal.TryParse(input, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out result))
+            {
+                return result;
+            }
+            else
+            {
+                throw new FormatException($"Invalid decimal input: '{input}'");
+            }
         }
+
+        private decimal? TryParseDecimalWithContext(string input, string fieldName)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return null;
+
+            string sanitizedInput = input.Replace(" ", "").Replace(",", ".").Trim();
+            decimal result;
+            if (decimal.TryParse(sanitizedInput, System.Globalization.NumberStyles.Any,
+                                 System.Globalization.CultureInfo.InvariantCulture, out result))
+            {
+                return result;
+            }
+            else
+            {
+                throw new FormatException($"Invalid decimal value '{input}' in field '{fieldName}'");
+            }
+        }
+
 
         private int? TryParseInt(string value)
         {
@@ -2136,20 +2223,69 @@ namespace AnmolDristi.qaqc
             //    DateTime.Now.TimeOfDay, qcData.Shift, qcData.SubmittedByPNo
             //);
 
-            LogToTextFile(
-                qcData.PlantName, qcData.Line, qcData.ProductCategory, qcData.ProductBrand, qcData.BrandSKU, // Changed BrandSKU to SKUId
-                qcData.NumberOfPieces, qcData.GaugeValue, qcData.DryWeight, qcData.DippedWeight,
-                qcData.VarietyOrLotNo, qcData.BakingTime, qcData.BakingTime2, qcData.ColorAppearance, qcData.CommentsForColorAppearance,
-                qcData.FlavourAndTaste, qcData.CommentsForFlavourAndTaste, qcData.DesignImplementation,
-                qcData.CommentsForDesignImplementation, qcData.TextureBite, qcData.CommentsForTextureBite,
-                qcData.ShapeOrSize, qcData.CommentsForShapeOrSize, qcData.Moisture, qcData.aWmax, // Changed aWmax to aW_max
-                qcData.pHvalue, // Changed pHvalue to pH_value
-                qcData.GaugeLength, qcData.CommentsGaugeLength, qcData.WeightWithoutOil, qcData.WeightWithOil,
-                qcData.OilPercentValue, // Changed OilPercentValue to OilPercentage
-                qcData.PacketWeight, qcData.DesignAndImplementation, qcData.ColourAndAppearance, qcData.Remarks, qcData.SubmittedById,
-                DateTime.Now.Date, DateTime.Now.TimeOfDay, qcData.Shift, qcData.SubmittedByPNo, qcData.FormID, qcData.Approver1EmployeeCode, qcData.Approver2EmployeeCode, qcData.DottedLineApproverEmployeeCode, qcData.Shell10Weight, qcData.Shell5CreamWeight, qcData.CreamPercentage
-            );
+            //LogToTextFile_OLD(
+            //    qcData.PlantName, qcData.Line, qcData.ProductCategory, qcData.ProductBrand, qcData.BrandSKU, // Changed BrandSKU to SKUId
+            //    qcData.NumberOfPieces, qcData.GaugeValue, qcData.DryWeight, qcData.DippedWeight,
+            //    qcData.VarietyOrLotNo, qcData.BakingTime, qcData.BakingTime2, qcData.ColorAppearance, qcData.CommentsForColorAppearance,
+            //    qcData.FlavourAndTaste, qcData.CommentsForFlavourAndTaste, qcData.DesignImplementation,
+            //    qcData.CommentsForDesignImplementation, qcData.TextureBite, qcData.CommentsForTextureBite,
+            //    qcData.ShapeOrSize, qcData.CommentsForShapeOrSize, qcData.Moisture, qcData.aWmax, // Changed aWmax to aW_max
+            //    qcData.pHvalue, // Changed pHvalue to pH_value
+            //    qcData.GaugeLength, qcData.CommentsGaugeLength, qcData.WeightWithoutOil, qcData.WeightWithOil,
+            //    qcData.OilPercentValue, // Changed OilPercentValue to OilPercentage
+            //    qcData.PacketWeight, qcData.DesignAndImplementation, qcData.ColourAndAppearance, qcData.Remarks, qcData.SubmittedById,
+            //    DateTime.Now.Date, DateTime.Now.TimeOfDay, qcData.Shift, qcData.SubmittedByPNo, qcData.FormID, qcData.Approver1EmployeeCode, qcData.Approver2EmployeeCode, qcData.DottedLineApproverEmployeeCode, qcData.Shell10Weight, qcData.Shell5CreamWeight, qcData.CreamPercentage
+            //);
 
+            LogToTextFile(new Dictionary<string, object>
+            {
+                { "PlantName", qcData.PlantName },
+                { "Line", qcData.Line },
+                { "ProductCategory", qcData.ProductCategory },
+                { "ProductBrand", qcData.ProductBrand },
+                { "BrandSKU", qcData.BrandSKU },
+                { "NumberOfPieces", qcData.NumberOfPieces },
+                { "GaugeValue", qcData.GaugeValue },
+                { "DryWeight", qcData.DryWeight },
+                { "DippedWeight", qcData.DippedWeight },
+                { "VarietyOrLotNo", qcData.VarietyOrLotNo },
+                { "BakingTime", qcData.BakingTime },
+                { "BakingTime2", qcData.BakingTime2 },
+                { "ColorAppearance", qcData.ColorAppearance },
+                { "CommentsForColorAppearance", qcData.CommentsForColorAppearance },
+                { "FlavourAndTaste", qcData.FlavourAndTaste },
+                { "CommentsForFlavourAndTaste", qcData.CommentsForFlavourAndTaste },
+                { "DesignImplementation", qcData.DesignImplementation },
+                { "CommentsForDesignImplementation", qcData.CommentsForDesignImplementation },
+                { "TextureBite", qcData.TextureBite },
+                { "CommentsForTextureBite", qcData.CommentsForTextureBite },
+                { "ShapeOrSize", qcData.ShapeOrSize },
+                { "CommentsForShapeOrSize", qcData.CommentsForShapeOrSize },
+                { "Moisture", qcData.Moisture },
+                { "aWmax", qcData.aWmax },
+                { "pHvalue", qcData.pHvalue },
+                { "GaugeLength", qcData.GaugeLength },
+                { "CommentsGaugeLength", qcData.CommentsGaugeLength },
+                { "WeightWithoutOil", qcData.WeightWithoutOil },
+                { "WeightWithOil", qcData.WeightWithOil },
+                { "OilPercentValue", qcData.OilPercentValue },
+                { "PacketWeight", qcData.PacketWeight },
+                { "DesignAndImplementation", qcData.DesignAndImplementation },
+                { "ColourAndAppearance", qcData.ColourAndAppearance },
+                { "Remarks", qcData.Remarks },
+                { "SubmittedById", qcData.SubmittedById },
+                { "Date", DateTime.Now.Date },
+                { "Time", DateTime.Now.TimeOfDay },
+                { "Shift", qcData.Shift },
+                { "SubmittedByPNo", qcData.SubmittedByPNo },
+                { "FormID", qcData.FormID },
+                { "Approver1EmployeeCode", qcData.Approver1EmployeeCode },
+                { "Approver2EmployeeCode", qcData.Approver2EmployeeCode },
+                { "DottedLineApproverEmployeeCode", qcData.DottedLineApproverEmployeeCode },
+                { "Shell10Weight", qcData.Shell10Weight },
+                { "Shell5CreamWeight", qcData.Shell5CreamWeight },
+                { "CreamPercentage", qcData.CreamPercentage }
+            });
         }
 
         private void InsertQCDataWithTransaction(QCInspectorData qcData)

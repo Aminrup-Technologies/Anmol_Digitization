@@ -381,11 +381,13 @@ namespace AnmolDristi
             string vehicleNo = TB_VehicleNo.Text;
             //decimal sealingValue = Convert.ToDecimal(TB_SealingValue.Text);
             string sealingValue = TB_SealingValue.Text.ToString();
-            decimal dimensionStd = Convert.ToDecimal(TB_DimensionStd.Text);
-            decimal dimensionObs = Convert.ToDecimal(TB_DimensionObs.Text);
-            decimal gmsStd = Convert.ToDecimal(TB_GMS_Std.Text);
-            decimal gsmObs = Convert.ToDecimal(TB_GSM_Obs.Text);
-            string remarks = TB_Remarks.Text;
+            //decimal dimensionStd = Convert.ToDecimal(TB_DimensionStd.Text.Trim().ToString());
+            string dimensionStd = TB_DimensionStd.Text.Trim().ToString();
+            decimal dimensionObs = Convert.ToDecimal(TB_DimensionObs.Text.Trim().ToString());
+            //decimal gmsStd = Convert.ToDecimal(TB_GMS_Std.Text.Trim().ToString());
+            string gmsStd = TB_GMS_Std.Text.Trim().ToString();
+            decimal gsmObs = Convert.ToDecimal(TB_GSM_Obs.Text.Trim().ToString());
+            string remarks = TB_Remarks.Text.Trim().ToString();
 
             // Additional remarks
             string remarkForDimensionStd = TB_Remark_Dimension.Text;

@@ -152,7 +152,6 @@ namespace AnmolDristi.DAL
                     //Newly added on 28-Nov-2024------------------------
                     command.Parameters.AddWithValue("@Remarks", Remarks);
 
-
                     command.Parameters.AddWithValue("@SubmittedById", submittedById);
                     command.Parameters.AddWithValue("@SubmittedDate", submittedDate);
                     command.Parameters.AddWithValue("@SubmittedTime", submittedTime);

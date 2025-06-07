@@ -237,21 +237,21 @@
 
             function validateSubmit() {
                 var fileUpload = document.getElementById('<%= FU_ClrApp.ClientID %>'); // Get the FileUpload control
-            var errorMessageLabel = document.getElementById('<%= lblErrorMessage1.ClientID %>'); // Get the error message label
+                var errorMessageLabel = document.getElementById('<%= lblErrorMessage1.ClientID %>'); // Get the error message label
 
-            if (fileUpload.value === "") {
-                errorMessageLabel.innerHTML = "Please select a file before submitting."; // Display error message
-                errorMessageLabel.style.color = "red"; // Change color to red
-                return false; // Prevent form submission
+                if (fileUpload.value === "") {
+                    errorMessageLabel.innerHTML = "Please select a file before submitting."; // Display error message
+                    errorMessageLabel.style.color = "red"; // Change color to red
+                    return false; // Prevent form submission
+                }
+
+                // File is selected, return true to allow form submission
+                return true;
             }
 
-            // File is selected, return true to allow form submission
-            return true;
-        }
-
-        // Function to calculate oil percentage
-        function calculateOilPercentage() {
-            var weightWithOilInput = parseFloat(document.getElementById('<%= TB_wgtwoil.ClientID %>').value) || 0;
+            // Function to calculate oil percentage
+            function calculateOilPercentage() {
+                var weightWithOilInput = parseFloat(document.getElementById('<%= TB_wgtwoil.ClientID %>').value) || 0;
             var weightWithoutOilInput = parseFloat(document.getElementById('<%= TB_wgtwtoil.ClientID %>').value) || 0;
             if (weightWithOilInput && weightWithoutOilInput) {
                 var oilPercentage = ((weightWithOilInput - weightWithoutOilInput) / weightWithOilInput) * 100;
@@ -264,118 +264,33 @@
 
         function calculateCreamPercentage() {
             var weight10Input = parseFloat(document.getElementById('<%= TB_shell10.ClientID %>').value) || 0;
-                var weight5WithCreamInput = parseFloat(document.getElementById('<%= TB_shell5cream.ClientID %>').value) || 0;
+            var weight5WithCreamInput = parseFloat(document.getElementById('<%= TB_shell5cream.ClientID %>').value) || 0;
 
-                if (weight10Input && weight5WithCreamInput) {
-                    //var avgShellWeight = weight10Input / 10;
-                    //var expectedWeight5 = avgShellWeight * 5;
-                    //var creamWeight = weight5WithCreamInput - expectedWeight5;
-                    //var creamPercent = (creamWeight / weight5WithCreamInput) * 100;
-                    var creamPercent = ((weight5WithCreamInput - weight10Input) / weight5WithCreamInput) * 100;
-                    //console.log("Cream percentage calculated:", creamPercent);
-                    document.getElementById('<%= TB_creampercent.ClientID %>').value = creamPercent.toFixed(2);
+            if (weight10Input && weight5WithCreamInput) {
+                var creamPercent = ((weight5WithCreamInput - weight10Input) / weight5WithCreamInput) * 100;
+                console.log("Cream percentage calculated:", creamPercent);
+                document.getElementById('<%= TB_creampercent.ClientID %>').value = creamPercent.toFixed(2);
                 } else {
                     console.error("One or more input values are invalid or zero.");
                 }
             }
 
 
-
-
-
-        <%--function validateDryWeight(sender, args) {
-            console.log("validateDryWeight function called");
-            var remarks = document.getElementById('<%= TXB_DryWeight_Remarks.ClientID %>').value;
-            var dryWeight = parseFloat(document.getElementById('<%= TB_DryWeight.ClientID %>').value);
-            if (isNaN(dryWeight) || dryWeight < 42.00 || dryWeight > 43.00) {
-                args.IsValid = false;
-                document.getElementById('DryWeightRemarksDIV').style.display = 'block'; // Show the remarks div
-                
-                //showNotification('Error', 'Dry weight must be between ' + minDryWeight + ' and ' + maxDryWeight + ' or remarks must be provided!', 'error');
-                if (remarks.trim() === '') {
-                    // Remarks are not provided
-                    remarks.validationGroup = "Submit";
-                    showNotification('Error', 'Dry weight must be between [42.00 to 43.00]!', 'error');
-                    showNotification('Error', 'Remarks must be provided!', 'error');
-                    return false;
-                } else {
-                    // Remarks are provided
-                    return true;
-                }
-                
-            } else {
-                args.IsValid = true;
-                document.getElementById('DryWeightRemarksDIV').style.display = 'none'; // Hide the remarks div
-            }
-        }--%>
-
-        <%--function validateDryWeight(sender, args) {
-            console.log("validateDryWeight function called");
-
-            // Retrieve elements and values
-            var remarks = document.getElementById('<%= TXB_DryWeight_Remarks.ClientID %>').value;
-            var dryWeight = parseFloat(document.getElementById('<%= TB_DryWeight.ClientID %>').value);
-
-            // Check if dry weight field is empty
-            if (dryWeight === '' || isNaN(dryWeight)) {
-                args.IsValid = false;
-                showNotification('Error', 'Dry weight is required.', 'error');
-                return false;
-            } else {
-                // Define the valid range
-                var minDryWeight = 42.00;
-                var maxDryWeight = 43.00;
-
-                // Check if dry weight is within the valid range
-                if (dryWeight < minDryWeight || dryWeight > maxDryWeight) {
-                    args.IsValid = false;
-                    document.getElementById('DryWeightRemarksDIV').style.display = 'block'; // Show the remarks div
-
-                    // Check if remarks are provided
-                    if (remarks.trim() === '') {
-                        // Remarks are not provided, show error
-                        showNotification('Error', 'Dry weight must be between ' + minDryWeight + ' and ' + maxDryWeight + ' and reason must be provided!', 'error');
-                        return false;
-                    } else {
-                        // Remarks are provided, allow submission
-                        args.IsValid = true;
-                        return true;
-                    }
-                } else {
-                    // Dry weight is within the valid range, hide remarks div
-                    args.IsValid = true;
-                    document.getElementById('DryWeightRemarksDIV').style.display = 'none';
-                    return true;
-                }
-            }
-        }--%>
-
-
-        function validateShapeSize(sender, args) {
-            console.log("validateShapeSize function called");
-
-            // Retrieve elements and values
-            var remarks = document.getElementById('<%= TXB_ShapeSize_Remarks.ClientID %>').value;
+            function validateShapeSize(sender, args) {
+                console.log("validateShapeSize function called");
+                var remarks = document.getElementById('<%= TXB_ShapeSize_Remarks.ClientID %>').value;
             var shapeSize = parseFloat(document.getElementById('<%= TB_ShapeSize.ClientID %>').value);
             var minShapeSize = parseFloat(document.getElementById('<%= hdnMinShapeSize.ClientID %>').value);
             var maxShapeSize = parseFloat(document.getElementById('<%= hdnMaxShapeSize.ClientID %>').value);
-
-            // Check if shape size field is empty
             if (shapeSize === '' || isNaN(shapeSize)) {
                 args.IsValid = false;
                 showNotification('Error', 'Shape size is required.', 'error');
                 return false;
             } else {
-                // Define the valid range
-                //var minShapeSize = 5.00;
-                //var maxShapeSize = 10.00;
-
-                // Check if shape size is within the valid range
                 if (shapeSize <= minShapeSize || shapeSize >= maxShapeSize) {
                     args.IsValid = false;
                     document.getElementById('ShapeSizeRemarksDIV').style.display = 'block'; // Show the remarks div
 
-                    // Check if remarks are provided
                     if (remarks.trim() === '') {
                         // Remarks are not provided, show error
                         showNotification('Error', 'Shape size must be between ' + minShapeSize + ' and ' + maxShapeSize + ' and reason must be provided!', 'error');
@@ -394,21 +309,7 @@
             }
         }
 
-
-        //function toggleDesignImpRemarksDiv(radioButtonList) {
-        //    console.log("toggleDesignImpRemarksDiv function called");
-        //    var selectedValue = radioButtonList.querySelector("input:checked").value;
-        //    var remarksDiv = document.getElementById("DesignImpRemarksDiv");
-        //    console.log("Selected value: " + selectedValue);
-        //    if (selectedValue === "0") {
-        //        remarksDiv.style.display = "block";
-        //    } else {
-        //        remarksDiv.style.display = "none";
-        //    }
-        //}
-
         var remarksVisible = false;
-
         function toggleDesignImpRemarksDiv(radioButtonList) {
             console.log("toggleDesignImpRemarksDiv function called");
             var selectedValue = radioButtonList.querySelector("input:checked").value;
@@ -471,29 +372,6 @@
                 }
             }
         }
-
-
-
-
-        <%--function validateDryWeightOnInput() {
-            var dryWeightInput = document.getElementById('<%= TB_DryWeight.ClientID %>').value;
-            var isValid = validateDryWeightValue(dryWeightInput);
-            if (!isValid) {
-                document.getElementById('DryWeightRemarksDIV').style.display = 'block'; // Show the remarks div
-            } else {
-                document.getElementById('DryWeightRemarksDIV').style.display = 'none'; // Hide the remarks div
-            }
-        }
-
-        function validateDryWeightValue(inputValue) {
-            var dryWeight = parseFloat(inputValue);
-            if (isNaN(dryWeight) || dryWeight < 0.00 || dryWeight > 100.00) {
-                return false;
-            } else {
-                return true;
-            }
-        }--%>
-
 
         function showNotification(title, text, type) {
             new PNotify({
@@ -708,51 +586,23 @@
         reader.readAsDataURL(file);
     }
 
-        <%--function validateImages() {
-            var image1 = document.getElementById('<%= uploadedImage1.ClientID %>'); // First image
-            var image2 = document.getElementById('<%= uploadedImage2.ClientID %>'); // Second image
+    function validateImages() {
+        var image1 = document.getElementById('<%= uploadedImage1.ClientID %>'); // First image
+        var image2 = document.getElementById('<%= uploadedImage2.ClientID %>'); // Second image
 
-            // Check if images are displayed
-            if (image1.style.display === 'none' && image2.style.display === 'none') {
-                new PNotify({
-                    title: 'Validation Error',
-                    text: 'Please upload at least one image before submitting.',
-                    type: 'error',
-                    styling: 'bootstrap3'
-                });
-                return false; // Prevent form submission
-            }
-
-            // Check ASP.NET validation controls
-            var isValid = Page_ClientValidate("Submit"); // Replace "Submit" with your ValidationGroup if different
-            if (!isValid) {
-                return false; // Prevent form submission if ASP.NET validations fail
-            }
-
-            return true; // Allow form submission if all validations pass
-        }--%>
-
-        function validateImages() {
-            var image1 = document.getElementById('<%= uploadedImage1.ClientID %>'); // First image
-            var image2 = document.getElementById('<%= uploadedImage2.ClientID %>'); // Second image
-
-            // Check if images are displayed
-            if (image1.style.display === 'none' && image2.style.display === 'none') {
-                new PNotify({
-                    title: 'Missing Input',
-                    text: 'Please upload at least one image before submitting.',
-                    type: 'error',
-                    styling: 'bootstrap3'
-                });
-                return false; // Prevent form submission
-            }
-
-            return true; // Allow form submission if all validations pass
+        // Check if images are displayed
+        if (image1.style.display === 'none' && image2.style.display === 'none') {
+            new PNotify({
+                title: 'Missing Input',
+                text: 'Please upload at least one image before submitting.',
+                type: 'error',
+                styling: 'bootstrap3'
+            });
+            return false; // Prevent form submission
         }
 
-
-
-
+        return true; // Allow form submission if all validations pass
+    }
     </script>
 
 
@@ -1142,7 +992,7 @@
                                     <asp:RegularExpressionValidator ID="REV_TB_Length" runat="server" ValidationGroup="Submit" ControlToValidate="TB_Length" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <asp:RangeValidator ID="RV_TB_Length" runat="server" ControlToValidate="TB_Length" ErrorMessage="[100.00]" ForeColor="Red" MinimumValue="0.00" MaximumValue="100.00" Type="Double" Display="Dynamic"></asp:RangeValidator>
                                     <div class="input-group-sm">
-                                        <asp:TextBox ID="TB_Length" runat="server" CssClass="form-control form-control-sm rounded" Text="" Placeholder="Length of the Product"></asp:TextBox>
+                                        <asp:TextBox ID="TB_Length" runat="server" CssClass="form-control form-control-sm rounded" Text="0" Placeholder="Length of the Product"></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
@@ -1208,8 +1058,6 @@
                                 </div>
                             </div>
 
-
-
                             <div class="col-md-3" id="TB_wgtwoil_DIV" runat="server" visible="true">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_wgtwoil" runat="server" AssociatedControlID="TB_wgtwoil" Text="Weight with oil / Dipped Weight (g):" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
@@ -1221,9 +1069,6 @@
                                     </div>
                                 </div>
                             </div>
-
-
-
 
                             <div class="col-md-3" id="TB_oilpercent_DIV" runat="server" visible="true">
                                 <div class="mb-3">
@@ -1237,12 +1082,10 @@
                                 </div>
                             </div>
 
-
-                            <!-- 10-Piece Shell Weight (without cream) -->
                             <div class="col-md-3" id="TB_shell10_DIV" runat="server" visible="true">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_shell10" runat="server" AssociatedControlID="TB_shell10" Text="10-Piece Shell Weight (g):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
-                                    <asp:RequiredFieldValidator ID="RFV_TB_shell10" runat="server" ValidationGroup="Submit" ErrorMessage="Input Required" ControlToValidate="TB_shell10" Display="Dynamic" ForeColor="Red" InitialValue="0.00" />
+                                    <asp:RequiredFieldValidator ID="RFV_TB_shell10" runat="server" ValidationGroup="Submit" ErrorMessage="Input Required" ControlToValidate="TB_shell10" Display="Dynamic" ForeColor="Red" InitialValue="0" />
                                     <asp:RegularExpressionValidator ID="REV_TB_shell10" runat="server" ValidationGroup="Submit" ControlToValidate="TB_shell10" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
                                     <asp:RangeValidator ID="RV_TB_shell10" runat="server" ValidationGroup="Submit" ControlToValidate="TB_shell10" ErrorMessage="0.00 - 500.00 g" ForeColor="Red" MinimumValue="0.00" MaximumValue="500.00" Type="Double" Display="Dynamic" />
                                     <div class="input-group-sm">
@@ -1255,7 +1098,7 @@
                             <div class="col-md-3" id="TB_shell5cream_DIV" runat="server" visible="true">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_shell5cream" runat="server" AssociatedControlID="TB_shell5cream" Text="5-Piece Shell with Cream Weight (g):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
-                                    <asp:RequiredFieldValidator ID="RFV_TB_shell5cream" runat="server" ValidationGroup="Submit" ErrorMessage="Input Required" ControlToValidate="TB_shell5cream" Display="Dynamic" ForeColor="Red" InitialValue="0.00" />
+                                    <asp:RequiredFieldValidator ID="RFV_TB_shell5cream" runat="server" ValidationGroup="Submit" ErrorMessage="Input Required" ControlToValidate="TB_shell5cream" Display="Dynamic" ForeColor="Red" InitialValue="0" />
                                     <asp:RegularExpressionValidator ID="REV_TB_shell5cream" runat="server" ValidationGroup="Submit" ControlToValidate="TB_shell5cream" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
                                     <asp:RangeValidator ID="RV_TB_shell5cream" runat="server" ValidationGroup="Submit" ControlToValidate="TB_shell5cream" ErrorMessage="0.00 - 500.00 g" ForeColor="Red" MinimumValue="0.00" MaximumValue="500.00" Type="Double" Display="Dynamic" />
                                     <div class="input-group-sm">
@@ -1264,13 +1107,12 @@
                                 </div>
                             </div>
 
-                            <!-- Cream Percentage -->
                             <div class="col-md-3" id="TB_creampercent_DIV" runat="server" visible="true">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_TB_creampercent" runat="server" AssociatedControlID="TB_creampercent"
                                         Text="Cream Percentage (%):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
                                     <asp:RequiredFieldValidator ID="RFV_TB_creampercent" runat="server" ValidationGroup="Submit"
-                                        ErrorMessage="Input Required" ControlToValidate="TB_creampercent" Display="Dynamic" ForeColor="Red" InitialValue="0.00" />
+                                        ErrorMessage="Input Required" ControlToValidate="TB_creampercent" Display="Dynamic" ForeColor="Red" InitialValue="0" />
                                     <asp:RegularExpressionValidator ID="REV_TB_creampercent" runat="server" ValidationGroup="Submit"
                                         ControlToValidate="TB_creampercent" ForeColor="Red" ErrorMessage="Decimal Only"
                                         ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
@@ -1283,9 +1125,6 @@
                                     </div>
                                 </div>
                             </div>
-
-
-
 
                             <div class="col-md-3">
                                 <div class="mb-3">
@@ -1377,7 +1216,6 @@
 
                         </div>
                         <div class="x_content">
-                            <!-- Approver Flow Diagram -->
                             <div class="approver-flow">
                                 <div class="approver-item">
                                     <p>
@@ -1421,7 +1259,6 @@
 
                             <hr />
 
-                            <!-- GridView for Detailed Information -->
                             <asp:GridView ID="GridViewApprovers" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" Visible="false">
                                 <Columns>
                                     <asp:BoundField DataField="Approver1Name" HeaderText="Approver 1 Name" HtmlEncode="false" />
