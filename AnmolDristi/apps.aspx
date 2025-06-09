@@ -117,7 +117,7 @@
                                             <div class="col-md-55">
                                                 <div class="thumbnail">
                                                     <div class="image view view-first">
-                                                        <a href="https://mdmdev.anmolindustries.com/authentication/sign-in" target="_blank">
+                                                        <a href="https://crm.anmolindustries.com/authentication/sign-in" target="_blank">
                                                             <img style="width: 80%; display: block;" src="WebData/crm.png" alt="image" height="100%" />
                                                         </a>
                                                     </div>

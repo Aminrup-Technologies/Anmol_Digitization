@@ -252,11 +252,11 @@
             // Function to calculate oil percentage
             function calculateOilPercentage() {
                 var weightWithOilInput = parseFloat(document.getElementById('<%= TB_wgtwoil.ClientID %>').value) || 0;
-            var weightWithoutOilInput = parseFloat(document.getElementById('<%= TB_wgtwtoil.ClientID %>').value) || 0;
-            if (weightWithOilInput && weightWithoutOilInput) {
-                var oilPercentage = ((weightWithOilInput - weightWithoutOilInput) / weightWithOilInput) * 100;
-                console.log("Weight with oil input:", oilPercentage);
-                document.getElementById('<%= TB_oilpercent.ClientID %>').value = oilPercentage.toFixed(2);
+                var weightWithoutOilInput = parseFloat(document.getElementById('<%= TB_wgtwtoil.ClientID %>').value) || 0;
+                if (weightWithOilInput && weightWithoutOilInput) {
+                    var oilPercentage = ((weightWithOilInput - weightWithoutOilInput) / weightWithOilInput) * 100;
+                    console.log("Weight with oil input:", oilPercentage);
+                    document.getElementById('<%= TB_oilpercent.ClientID %>').value = oilPercentage.toFixed(2);
             } else {
                 console.error("One or more input elements not found.");
             }
@@ -270,71 +270,71 @@
                 var creamPercent = ((weight5WithCreamInput - weight10Input) / weight5WithCreamInput) * 100;
                 console.log("Cream percentage calculated:", creamPercent);
                 document.getElementById('<%= TB_creampercent.ClientID %>').value = creamPercent.toFixed(2);
-                } else {
-                    console.error("One or more input values are invalid or zero.");
-                }
-            }
-
-
-            function validateShapeSize(sender, args) {
-                console.log("validateShapeSize function called");
-                var remarks = document.getElementById('<%= TXB_ShapeSize_Remarks.ClientID %>').value;
-            var shapeSize = parseFloat(document.getElementById('<%= TB_ShapeSize.ClientID %>').value);
-            var minShapeSize = parseFloat(document.getElementById('<%= hdnMinShapeSize.ClientID %>').value);
-            var maxShapeSize = parseFloat(document.getElementById('<%= hdnMaxShapeSize.ClientID %>').value);
-            if (shapeSize === '' || isNaN(shapeSize)) {
-                args.IsValid = false;
-                showNotification('Error', 'Shape size is required.', 'error');
-                return false;
             } else {
-                if (shapeSize <= minShapeSize || shapeSize >= maxShapeSize) {
-                    args.IsValid = false;
-                    document.getElementById('ShapeSizeRemarksDIV').style.display = 'block'; // Show the remarks div
+                console.error("One or more input values are invalid or zero.");
+            }
+        }
 
-                    if (remarks.trim() === '') {
-                        // Remarks are not provided, show error
-                        showNotification('Error', 'Shape size must be between ' + minShapeSize + ' and ' + maxShapeSize + ' and reason must be provided!', 'error');
-                        return false;
+
+        function validateShapeSize(sender, args) {
+            console.log("validateShapeSize function called");
+            var remarks = document.getElementById('<%= TXB_ShapeSize_Remarks.ClientID %>').value;
+                var shapeSize = parseFloat(document.getElementById('<%= TB_ShapeSize.ClientID %>').value);
+                var minShapeSize = parseFloat(document.getElementById('<%= hdnMinShapeSize.ClientID %>').value);
+                var maxShapeSize = parseFloat(document.getElementById('<%= hdnMaxShapeSize.ClientID %>').value);
+                if (shapeSize === '' || isNaN(shapeSize)) {
+                    args.IsValid = false;
+                    showNotification('Error', 'Shape size is required.', 'error');
+                    return false;
+                } else {
+                    if (shapeSize <= minShapeSize || shapeSize >= maxShapeSize) {
+                        args.IsValid = false;
+                        document.getElementById('ShapeSizeRemarksDIV').style.display = 'block'; // Show the remarks div
+
+                        if (remarks.trim() === '') {
+                            // Remarks are not provided, show error
+                            showNotification('Error', 'Shape size must be between ' + minShapeSize + ' and ' + maxShapeSize + ' and reason must be provided!', 'error');
+                            return false;
+                        } else {
+                            // Remarks are provided, allow submission
+                            args.IsValid = true;
+                            return true;
+                        }
                     } else {
-                        // Remarks are provided, allow submission
+                        // Shape size is within the valid range, hide remarks div
                         args.IsValid = true;
+                        document.getElementById('ShapeSizeRemarksDIV').style.display = 'none';
                         return true;
                     }
-                } else {
-                    // Shape size is within the valid range, hide remarks div
-                    args.IsValid = true;
-                    document.getElementById('ShapeSizeRemarksDIV').style.display = 'none';
-                    return true;
                 }
             }
-        }
 
-        var remarksVisible = false;
-        function toggleDesignImpRemarksDiv(radioButtonList) {
-            console.log("toggleDesignImpRemarksDiv function called");
-            var selectedValue = radioButtonList.querySelector("input:checked").value;
-            var remarksDiv = document.getElementById("DesignImpRemarksDiv");
-            console.log("Selected value: " + selectedValue);
-            if (selectedValue === "0") {
-                remarksDiv.style.display = "block";
-                remarksVisible = true;
-            } else {
-                remarksDiv.style.display = "none";
-                remarksVisible = false;
+            var remarksVisible = false;
+            function toggleDesignImpRemarksDiv(radioButtonList) {
+                console.log("toggleDesignImpRemarksDiv function called");
+                var selectedValue = radioButtonList.querySelector("input:checked").value;
+                var remarksDiv = document.getElementById("DesignImpRemarksDiv");
+                console.log("Selected value: " + selectedValue);
+                if (selectedValue === "0") {
+                    remarksDiv.style.display = "block";
+                    remarksVisible = true;
+                } else {
+                    remarksDiv.style.display = "none";
+                    remarksVisible = false;
+                }
             }
-        }
 
-        function validateDesignImpRemarks(sender, args) {
-            var remarksInput = document.getElementById("TXB_DesignImp_Remarks");
-            args.IsValid = !remarksVisible || (remarksVisible && remarksInput.value.trim() !== "");
-        }
+            function validateDesignImpRemarks(sender, args) {
+                var remarksInput = document.getElementById("TXB_DesignImp_Remarks");
+                args.IsValid = !remarksVisible || (remarksVisible && remarksInput.value.trim() !== "");
+            }
 
 
-        function validateGaugeLen(sender, args) {
-            console.log("validateGaugeLen function called");
+            function validateGaugeLen(sender, args) {
+                console.log("validateGaugeLen function called");
 
-            // Retrieve elements and values
-            var remarks = document.getElementById('<%= TXB_GaugeLen_Remarks.ClientID %>').value;
+                // Retrieve elements and values
+                var remarks = document.getElementById('<%= TXB_GaugeLen_Remarks.ClientID %>').value;
             var gaugeLen = parseFloat(document.getElementById('<%= TB_GaugeLen.ClientID %>').value);
             var minGaugeLen = parseFloat(document.getElementById('<%= hdnMinGaugelen.ClientID %>').value);
             var maxGaugeLen = parseFloat(document.getElementById('<%= hdnMaxGaugelen.ClientID %>').value);
@@ -1094,10 +1094,9 @@
                                 </div>
                             </div>
 
-                            <!-- 5-Piece Shell With Cream -->
                             <div class="col-md-3" id="TB_shell5cream_DIV" runat="server" visible="true">
                                 <div class="mb-3">
-                                    <asp:Label ID="Lbl_TB_shell5cream" runat="server" AssociatedControlID="TB_shell5cream" Text="5-Piece Shell with Cream Weight (g):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
+                                    <asp:Label ID="Lbl_TB_shell5cream" runat="server" AssociatedControlID="TB_shell5cream" Text="5-Piece Shell Weight with Cream  (g):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
                                     <asp:RequiredFieldValidator ID="RFV_TB_shell5cream" runat="server" ValidationGroup="Submit" ErrorMessage="Input Required" ControlToValidate="TB_shell5cream" Display="Dynamic" ForeColor="Red" InitialValue="0" />
                                     <asp:RegularExpressionValidator ID="REV_TB_shell5cream" runat="server" ValidationGroup="Submit" ControlToValidate="TB_shell5cream" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
                                     <asp:RangeValidator ID="RV_TB_shell5cream" runat="server" ValidationGroup="Submit" ControlToValidate="TB_shell5cream" ErrorMessage="0.00 - 500.00 g" ForeColor="Red" MinimumValue="0.00" MaximumValue="500.00" Type="Double" Display="Dynamic" />
@@ -1109,19 +1108,12 @@
 
                             <div class="col-md-3" id="TB_creampercent_DIV" runat="server" visible="true">
                                 <div class="mb-3">
-                                    <asp:Label ID="Lbl_TB_creampercent" runat="server" AssociatedControlID="TB_creampercent"
-                                        Text="Cream Percentage (%):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
-                                    <asp:RequiredFieldValidator ID="RFV_TB_creampercent" runat="server" ValidationGroup="Submit"
-                                        ErrorMessage="Input Required" ControlToValidate="TB_creampercent" Display="Dynamic" ForeColor="Red" InitialValue="0" />
-                                    <asp:RegularExpressionValidator ID="REV_TB_creampercent" runat="server" ValidationGroup="Submit"
-                                        ControlToValidate="TB_creampercent" ForeColor="Red" ErrorMessage="Decimal Only"
-                                        ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
-                                    <asp:RangeValidator ID="RV_TB_creampercent" runat="server" ValidationGroup="Submit"
-                                        ControlToValidate="TB_creampercent" ErrorMessage="0.00% - 50.00%" ForeColor="Red"
-                                        MinimumValue="0.00" MaximumValue="50.00" Type="Double" Display="Dynamic" />
+                                    <asp:Label ID="Lbl_TB_creampercent" runat="server" AssociatedControlID="TB_creampercent" Text="Cream Percentage (%):" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
+                                    <asp:RequiredFieldValidator ID="RFV_TB_creampercent" runat="server" ValidationGroup="Submit" ErrorMessage="Input Required" ControlToValidate="TB_creampercent" Display="Dynamic" ForeColor="Red" InitialValue="0" />
+                                    <asp:RegularExpressionValidator ID="REV_TB_creampercent" runat="server" ValidationGroup="Submit" ControlToValidate="TB_creampercent" ForeColor="Red" ErrorMessage="Decimal Only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
+                                    <asp:RangeValidator ID="RV_TB_creampercent" runat="server" ValidationGroup="Submit" ControlToValidate="TB_creampercent" ErrorMessage="0.00% - 50.00%" ForeColor="Red" MinimumValue="0.00" MaximumValue="50.00" Type="Double" Display="Dynamic" />
                                     <div class="input-group-sm">
-                                        <asp:TextBox ID="TB_creampercent" runat="server" CssClass="form-control form-control-sm rounded"
-                                            Placeholder="Cream %" Text="0.00" ReadOnly="false" />
+                                        <asp:TextBox ID="TB_creampercent" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Cream %" Text="0.00" ReadOnly="false" />
                                     </div>
                                 </div>
                             </div>
@@ -1146,7 +1138,6 @@
                                     <asp:CustomValidator ID="CV_FU_DesgImp" runat="server" ControlToValidate="FU_DesgImp" Display="Dynamic" ErrorMessage="Please upload file" ValidationGroup="Submit"></asp:CustomValidator>
                                     <asp:Label ID="lblErrorMessage2" runat="server" CssClass="text-danger"></asp:Label>
                                     <div class="input-group input-group-sm">
-
                                         <asp:FileUpload ID="FU_DesgImp" runat="server" CssClass="form-control rounded" data-prefix="QCIR/ClrApp" onchange="displayImage2(this);" />
                                         <asp:Label ID="lbl_QCIR_ClrApp" runat="server" Text="" CssClass="image-label" data-prefix="QCIR/ClrApp" Visible="true" ForeColor="Black"></asp:Label>
                                         <span class="input-group-btn">
@@ -1194,7 +1185,6 @@
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_btnSubmit" runat="server" AssociatedControlID="btnSubmit" Text="Click to SUBMIT" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <div class="input-group input-group-sm">
-                                        <%--<asp:Button ID="btnSubmit" runat="server" Text="Submit" CssClass="btn btn-primary btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClientClick="return Page_ClientValidate('Submit') && validateImages();" OnClick="btnSubmit_Click" />--%>
                                         <asp:Button ID="btnSubmit" runat="server" Text="Submit" CssClass="btn btn-primary btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClientClick="var valid = Page_ClientValidate('Submit') && validateImages(); if (!valid) highlightMissingFields(); return valid;" OnClick="btnSubmit_Click" />
                                         <asp:Button ID="btnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="btnReset_Click" />
                                     </div>

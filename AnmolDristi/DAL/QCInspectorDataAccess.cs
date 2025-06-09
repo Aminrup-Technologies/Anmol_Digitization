@@ -20,9 +20,9 @@ namespace AnmolDristi.DAL
         }
 
 
-        public void InsertQCInspectorDataOld(string plantName, string line, string productCategory, string productBrand, string SKUId, int numberOfPieces, decimal gaugeValue, decimal dryWeight, decimal dippedWeight, string varietyOrLotNo, string bakingTime, string bakingTime2, int ColorAppearance, string CommentsForColorAppearance,  int flavourAndTaste, string commentsForFlavourAndTaste, int DesignImplementation, string CommentsForDesignImplementation,int TextureBite,string CommentsForTextureBite, string shapeOrSize, string commentsForShapeOrSize, decimal moisture, decimal aWmax, decimal pHvalue, decimal gaugeLength, string CommentsGaugeLength, decimal weightWithoutOil, decimal weightWithOil, decimal oilPercentage, decimal packetWeight, string designAndImplementation, string colourAndAppearance, int submittedById, DateTime submittedDate, TimeSpan submittedTime, string Shift, string SubmittedByPNo)
+        public void InsertQCInspectorDataOld(string plantName, string line, string productCategory, string productBrand, string SKUId, int numberOfPieces, decimal gaugeValue, decimal dryWeight, decimal dippedWeight, string varietyOrLotNo, string bakingTime, string bakingTime2, int ColorAppearance, string CommentsForColorAppearance, int flavourAndTaste, string commentsForFlavourAndTaste, int DesignImplementation, string CommentsForDesignImplementation, int TextureBite, string CommentsForTextureBite, string shapeOrSize, string commentsForShapeOrSize, decimal moisture, decimal aWmax, decimal pHvalue, decimal gaugeLength, string CommentsGaugeLength, decimal weightWithoutOil, decimal weightWithOil, decimal oilPercentage, decimal packetWeight, string designAndImplementation, string colourAndAppearance, int submittedById, DateTime submittedDate, TimeSpan submittedTime, string Shift, string SubmittedByPNo)
         {
-            
+
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -175,11 +175,6 @@ namespace AnmolDristi.DAL
                 }
             }
         }
-
-
-
-
-
 
         //private void LogToTextFile(params object[] data)
         //{
