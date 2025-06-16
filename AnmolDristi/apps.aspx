@@ -99,7 +99,7 @@
                                     </div>
                                     <div class="x_content">
 
-                                        <div class="row" >
+                                        <div class="row">
                                             <div class="col-md-55" id="powerbi_com" runat="server" visible="false">
                                                 <div class="thumbnail">
                                                     <div class="image view view-first">
@@ -167,7 +167,7 @@
                                                 </div>
                                             </div>
 
-                                            
+
 
                                             <div class="col-md-55">
                                                 <div class="thumbnail">
@@ -286,7 +286,7 @@
                                                 </div>
                                             </div>
 
-                                            
+
 
                                             <%--<div class="col-md-55">
                                                 <div class="thumbnail">

@@ -227,8 +227,8 @@
                                             <img id="ProfilePic_2" runat="server" alt="" src="~/WebData/No_Image.jpg"><asp:Label ID="lbl_loginusername2" runat="server" Text="Login_Name"></asp:Label>
                                         </a>
                                         <div class="dropdown-menu dropdown-usermenu pull-right" aria-labelledby="navbarDropdown">
-                                            <a class="dropdown-item" href="manage_profile.aspx">Manage Profile</a>
-                                            <a class="dropdown-item" target="_blank" href="#">Support</a>
+                                            <a class="dropdown-item" href="pwdchange.aspx">Change Password</a>
+                                            <%--<a class="dropdown-item" target="_blank" href="#">Support</a>--%>
                                             <%--<a class="dropdown-item" href="#"><i class="fa fa-sign-out pull-right"></i>Log Out</a>--%>
                                             <button type="button" class="dropdown-item btn btn-primary btn-sm" id="btn_Logout" data-toggle="modal" data-target="#MyModal_Logout">Logout</button>
                                             <%--<asp:Button ID="btn_Logout" runat="server" Text="Logout" CssClass="dropdown-item btn btn-primary btn-sm" data-toggle="modal" data-target="#MyModal_Logout"/>--%>

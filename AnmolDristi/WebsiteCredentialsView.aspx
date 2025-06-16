@@ -43,6 +43,10 @@
                                 <asp:Button ID="btnSearch" runat="server" Text="Search" CssClass="btn btn-info btn-sm" OnClick="btnSearch_Click" />
                             </div>
 
+                            <div class="col-md-2 mt-4">
+                                <asp:Button ID="btnExport" runat="server" Text="Export" CssClass="btn btn-primary btn-sm" OnClick="btnExport_Click" />
+                            </div>
+
                             <%--<asp:Button ID="btnTestDecrypt" runat="server" Text="Test Decrypt" CssClass="btn btn-info mt-2" OnClick="btnTestDecrypt_Click" />--%>
                         </div>
 

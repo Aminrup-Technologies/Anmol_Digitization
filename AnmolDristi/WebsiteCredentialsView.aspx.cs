@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.Linq;
 using System.Web;
 using System.Web.UI;
@@ -285,7 +286,295 @@ namespace AnmolDristi
             return bytes;
         }
 
+        //protected void btnExport_Click(object sender, EventArgs e)
+        //{
+        //    string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        //    using (SqlConnection conn = new SqlConnection(connStr))
+        //    {
+        //        string query = @"SELECT * FROM WebsiteCredentials WHERE IsDeleted = 0 ORDER BY CreatedDate DESC";
 
+        //        using (SqlCommand cmd = new SqlCommand(query, conn))
+        //        {
+        //            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+        //            {
+        //                DataTable dt = new DataTable();
+        //                da.Fill(dt);
+
+        //                if (dt.Rows.Count > 0)
+        //                {
+        //                    // Prepare GridView for export
+        //                    GridView gvExport = new GridView();
+        //                    gvExport.DataSource = dt;
+        //                    gvExport.DataBind();
+
+        //                    // Export logic
+        //                    Response.Clear();
+        //                    Response.Buffer = true;
+        //                    Response.AddHeader("content-disposition", "attachment;filename=WebsiteCredentials.xls");
+        //                    Response.Charset = "";
+        //                    Response.ContentType = "application/vnd.ms-excel";
+
+        //                    using (System.IO.StringWriter sw = new System.IO.StringWriter())
+        //                    {
+        //                        HtmlTextWriter hw = new HtmlTextWriter(sw);
+        //                        gvExport.RenderControl(hw);
+        //                        Response.Output.Write(sw.ToString());
+        //                        Response.Flush();
+        //                        Response.End();
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+
+        //// Required override
+        //public override void VerifyRenderingInServerForm(Control control)
+        //{
+        //    // Required for GridView export
+        //}
+
+
+        //protected void btnExport_Click(object sender, EventArgs e)
+        //{
+        //    string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        //    using (SqlConnection conn = new SqlConnection(connStr))
+        //    {
+        //        string query = @"SELECT * FROM WebsiteCredentials WHERE IsDeleted = 0 ORDER BY CreatedDate DESC";
+
+        //        using (SqlCommand cmd = new SqlCommand(query, conn))
+        //        {
+        //            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+        //            {
+        //                DataTable dt = new DataTable();
+        //                da.Fill(dt);
+
+        //                if (dt.Rows.Count > 0)
+        //                {
+        //                    using (OfficeOpenXml.ExcelPackage pck = new OfficeOpenXml.ExcelPackage())
+        //                    {
+        //                        var ws = pck.Workbook.Worksheets.Add("WebsiteCredentials");
+        //                        ws.Cells["A1"].LoadFromDataTable(dt, true);
+
+        //                        // Optional: AutoFit columns
+        //                        ws.Cells[ws.Dimension.Address].AutoFitColumns();
+
+        //                        // Export as .xlsx
+        //                        Response.Clear();
+        //                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        //                        Response.AddHeader("content-disposition", "attachment; filename=WebsiteCredentials.xlsx");
+        //                        Response.BinaryWrite(pck.GetAsByteArray());
+        //                        Response.End();
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+
+        //protected void btnExport_Click(object sender, EventArgs e)
+        //{
+        //    string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+        //    using (SqlConnection conn = new SqlConnection(connStr))
+        //    {
+        //        string query = @"SELECT SiteName, SiteURL, Purpose, UsageFrequency, LoginId, EncryptedPassword,
+        //                        RegisteredMobile, MobileOwnerName, RegisteredEmail, EmailOwnerName,
+        //                        IsOTPRequired, OTPType, OfficeLocation, Department, Notes, CreatedDate
+        //                 FROM WebsiteCredentials
+        //                 WHERE IsDeleted = 0
+        //                 ORDER BY CreatedDate DESC";
+
+        //        using (SqlCommand cmd = new SqlCommand(query, conn))
+        //        {
+        //            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+        //            {
+        //                DataTable dt = new DataTable();
+        //                da.Fill(dt);
+
+        //                // Add DecryptedPassword column
+        //                dt.Columns.Add("DecryptedPassword", typeof(string));
+
+        //                TextInfo textInfo = CultureInfo.CurrentCulture.TextInfo;
+
+        //                foreach (DataRow row in dt.Rows)
+        //                {
+        //                    // Decrypt password
+        //                    if (row["EncryptedPassword"] != DBNull.Value)
+        //                    {
+        //                        byte[] encrypted = (byte[])row["EncryptedPassword"];
+        //                        row["DecryptedPassword"] = AesEncryptionHelper.Decrypt(encrypted);
+        //                    }
+
+        //                    // Optional: Sentence/title case certain fields
+        //                    if (row["Purpose"] != DBNull.Value)
+        //                        row["Purpose"] = textInfo.ToTitleCase(row["Purpose"].ToString().ToLower());
+
+        //                    if (row["UsageFrequency"] != DBNull.Value)
+        //                        row["UsageFrequency"] = textInfo.ToTitleCase(row["UsageFrequency"].ToString().ToLower());
+        //                }
+
+        //                // Remove encrypted password column
+        //                dt.Columns.Remove("EncryptedPassword");
+
+        //                // Export to Excel
+        //                using (OfficeOpenXml.ExcelPackage pck = new OfficeOpenXml.ExcelPackage())
+        //                {
+        //                    var ws = pck.Workbook.Worksheets.Add("WebsiteCredentials");
+        //                    ws.Cells["A1"].LoadFromDataTable(dt, true);
+
+        //                    // Format CreatedDate column
+        //                    int createdDateCol = dt.Columns.IndexOf("CreatedDate") + 1;
+        //                    if (createdDateCol > 0)
+        //                    {
+        //                        ws.Column(createdDateCol).Style.Numberformat.Format = "dd-MMM-yyyy";
+        //                    }
+
+        //                    // Header formatting
+        //                    for (int col = 1; col <= dt.Columns.Count; col++)
+        //                    {
+        //                        string originalHeader = dt.Columns[col - 1].ColumnName;
+        //                        string formattedHeader = textInfo.ToTitleCase(originalHeader.Replace("_", " ").ToLower());
+
+        //                        ws.Cells[1, col].Value = formattedHeader;
+        //                        ws.Cells[1, col].Style.Font.Bold = true;
+        //                        ws.Cells[1, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+        //                        ws.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+        //                        ws.Column(col).AutoFit();
+        //                    }
+
+        //                    // Row styling
+        //                    using (var range = ws.Cells[2, 1, dt.Rows.Count + 1, dt.Columns.Count])
+        //                    {
+        //                        range.Style.Font.Size = 11;
+        //                        range.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+        //                        range.Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+        //                    }
+
+        //                    // Output the file
+        //                    Response.Clear();
+        //                    Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        //                    Response.AddHeader("content-disposition", "attachment; filename=WebsiteCredentials.xlsx");
+        //                    Response.BinaryWrite(pck.GetAsByteArray());
+        //                    Response.End();
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
+
+        protected void btnExport_Click(object sender, EventArgs e)
+        {
+            string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            using (SqlConnection conn = new SqlConnection(connStr))
+            {
+                string query = @"
+            SELECT 
+                wc.[Id] as RecordId,
+                wc.[SiteName] as Website Name,
+                wc.[SiteURL] as Website URL,
+                wc.[Purpose],
+                wc.[MobileOwnerName],
+                wc.[EmailOwnerName],
+                wc.[OTPType],
+                br.[Branch_Description] AS [OfficeLocation_Description],
+                dp.[Department_Description] AS [Department_Description],
+                wc.[UsageFrequency],
+                wc.[LoginId],
+                wc.[EncryptedPassword],
+                wc.[RegisteredMobile],
+                wc.[RegisteredEmail],
+                wc.[IsOTPRequired],
+                wc.[Notes],
+                wc.[CreatedDate],
+                wc.[LastUpdated],
+                wc.[IsDeleted],
+                wc.[AddedByCode],
+                wc.[AddedByName],
+                wc.[ModifiedByCode],
+                wc.[ModifiedByName],
+                wc.[DeletedByCode],
+                wc.[DeletedByName],
+                wc.[DeletedDate]                
+            FROM [AnmolDristi].[dbo].[WebsiteCredentials] wc
+            LEFT JOIN [AnmolDristi].[dbo].[MST_Branch] br 
+                ON wc.[OfficeLocation] = br.[Branch_ID]
+            LEFT JOIN [AnmolDristi].[dbo].[MST_Department] dp 
+                ON wc.[Department] = dp.[Department_ID]
+            WHERE wc.IsDeleted = 0
+                ORDER BY wc.CreatedDate DESC";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
+
+                        // Add decrypted password column
+                        dt.Columns.Add("DecryptedPassword", typeof(string));
+
+                        TextInfo textInfo = CultureInfo.CurrentCulture.TextInfo;
+
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            // Decrypt EncryptedPassword if not null
+                            if (row["EncryptedPassword"] != DBNull.Value)
+                            {
+                                byte[] encrypted = (byte[])row["EncryptedPassword"];
+                                row["DecryptedPassword"] = AesEncryptionHelper.Decrypt(encrypted);
+                            }
+                        }
+
+                        dt.Columns.Remove("EncryptedPassword"); // Remove original encrypted column
+
+                        using (OfficeOpenXml.ExcelPackage pck = new OfficeOpenXml.ExcelPackage())
+                        {
+                            var ws = pck.Workbook.Worksheets.Add("WebsiteCredentials");
+                            ws.Cells["A1"].LoadFromDataTable(dt, true);
+
+                            // Format headers as Title Case
+                            for (int col = 1; col <= dt.Columns.Count; col++)
+                            {
+                                string originalHeader = dt.Columns[col - 1].ColumnName;
+                                string formattedHeader = textInfo.ToTitleCase(originalHeader.Replace("_", " ").ToLower());
+                                ws.Cells[1, col].Value = formattedHeader;
+
+                                ws.Cells[1, col].Style.Font.Bold = true;
+                                ws.Cells[1, col].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                                ws.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                                ws.Column(col).AutoFit();
+                            }
+
+                            // Apply date formatting to all known date columns
+                            string[] dateColumns = { "CreatedDate", "LastUpdated", "DeletedDate" };
+                            foreach (string dateCol in dateColumns)
+                            {
+                                int colIndex = dt.Columns.IndexOf(dateCol) + 1;
+                                if (colIndex > 0)
+                                    ws.Column(colIndex).Style.Numberformat.Format = "dd-MMM-yyyy HH:mm";
+                            }
+
+                            // General row styling
+                            using (var range = ws.Cells[2, 1, dt.Rows.Count + 1, dt.Columns.Count])
+                            {
+                                range.Style.Font.Size = 11;
+                                range.Style.HorizontalAlignment = OfficeOpenXml.Style.ExcelHorizontalAlignment.Left;
+                                range.Style.VerticalAlignment = OfficeOpenXml.Style.ExcelVerticalAlignment.Center;
+                            }
+
+                            // Send file to browser
+                            Response.Clear();
+                            Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                            Response.AddHeader("content-disposition", "attachment; filename=WebsiteCredentials.xlsx");
+                            Response.BinaryWrite(pck.GetAsByteArray());
+                            Response.End();
+                        }
+                    }
+                }
+            }
+        }
 
     }
 }

@@ -241,6 +241,7 @@
     <Content Include="PVC_Tray.aspx" />
     <Content Include="PVC_Tray_Detailed.aspx" />
     <Content Include="PVC_Tray_ViewPage.aspx" />
+    <Content Include="pwdchange.aspx" />
     <Content Include="qaqc_add_users.aspx" />
     <Content Include="qaqc_leaktest_rev1.aspx" />
     <Content Include="qaqc_mst_sku.aspx" />
@@ -800,6 +801,13 @@
     </Compile>
     <Compile Include="PVC_Tray_ViewPage.aspx.designer.cs">
       <DependentUpon>PVC_Tray_ViewPage.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="pwdchange.aspx.cs">
+      <DependentUpon>pwdchange.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="pwdchange.aspx.designer.cs">
+      <DependentUpon>pwdchange.aspx</DependentUpon>
     </Compile>
     <Compile Include="QAProcessCheckingDataAcess.cs" />
     <Compile Include="qaqc_add_users.aspx.cs">
