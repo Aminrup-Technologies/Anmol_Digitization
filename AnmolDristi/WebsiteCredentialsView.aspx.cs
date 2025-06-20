@@ -472,8 +472,8 @@ namespace AnmolDristi
                 string query = @"
             SELECT 
                 wc.[Id] as RecordId,
-                wc.[SiteName] as Website Name,
-                wc.[SiteURL] as Website URL,
+                wc.[SiteName] as Website_Name,
+                wc.[SiteURL] as Website_URL,
                 wc.[Purpose],
                 wc.[MobileOwnerName],
                 wc.[EmailOwnerName],
@@ -489,14 +489,7 @@ namespace AnmolDristi
                 wc.[Notes],
                 wc.[CreatedDate],
                 wc.[LastUpdated],
-                wc.[IsDeleted],
-                wc.[AddedByCode],
-                wc.[AddedByName],
-                wc.[ModifiedByCode],
-                wc.[ModifiedByName],
-                wc.[DeletedByCode],
-                wc.[DeletedByName],
-                wc.[DeletedDate]                
+                wc.[AddedByName]              
             FROM [AnmolDristi].[dbo].[WebsiteCredentials] wc
             LEFT JOIN [AnmolDristi].[dbo].[MST_Branch] br 
                 ON wc.[OfficeLocation] = br.[Branch_ID]
