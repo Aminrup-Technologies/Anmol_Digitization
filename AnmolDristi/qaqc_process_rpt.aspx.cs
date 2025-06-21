@@ -369,6 +369,8 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 BrandSKUBinder(selectedProductBrandValue);
+
+                BindGridView();
                 //GetSAPCodes(Convert.ToInt32(selectedProductBrandValue));
 
                 //Here goes the function call to get the BT code against the Plant and Brand Selection which will be used for binding the recipe in RM Section
