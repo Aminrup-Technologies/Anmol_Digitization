@@ -1067,7 +1067,6 @@
         }
 
         function collectAndSendData1() {
-            // Ensure all rows are processed
             document.querySelectorAll('#GridView2 tbody tr').forEach(row => {
                 var ovenTopElement = row.querySelector('#txtOvenTop');
                 var ovenBottomElement = row.querySelector('#txtOvenBottom');
@@ -1079,11 +1078,11 @@
 
             // Convert data to JSON
             var jsonData = JSON.stringify(gridViewData1);
-            //console.log('Data to be sent:', jsonData);
+            console.log('Data to be sent:', jsonData);
 
             // Send data to the server
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'qaqc_process_rpt.aspx/SaveData1', true); // URL to your Web Method
+            xhr.open('POST', 'qaqc_process_rpt.aspx/SaveData1', true);
             xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
             xhr.setRequestHeader('Accept', 'application/json');
             xhr.onreadystatechange = function () {
@@ -3047,7 +3046,12 @@
                                                             <asp:GridView ID="GridView2" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" OnRowDataBound="GridView2_RowDataBound">
                                                                 <Columns>
                                                                     <asp:BoundField DataField="Sl" HeaderText="Sl" />
-                                                                    <asp:BoundField DataField="Zone" HeaderText="Zone" />
+                                                                    <%--<asp:BoundField DataField="Zone" HeaderText="Zone" />--%>
+                                                                    <asp:TemplateField HeaderText="Zone">
+                                                                        <ItemTemplate>
+                                                                            <span class="zone"><%# Eval("Zone") %></span>
+                                                                        </ItemTemplate>
+                                                                    </asp:TemplateField>
 
                                                                     <asp:TemplateField HeaderText="Oven Top">
                                                                         <ItemTemplate>

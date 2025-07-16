@@ -184,7 +184,7 @@
                                                                         <asp:ListItem Text="--Select Regex--" Value=""></asp:ListItem>
                                                                         <asp:ListItem Text="Numeric" Value="^\d+$" />
                                                                         <asp:ListItem Text="CS Numeric" Value="^(\d+\s*(,\s*\d+\s*)*)?$" />
-                                                                        <asp:ListItem Text="Decimal" Value="^\d+(\.\d{1,2})?$" />
+                                                                        <asp:ListItem Text="Decimal" Value="^\d+(\.\d{1,4})?$" />
                                                                         <asp:ListItem Text="CS Decimal" Value="^(\d+(\.\d+)?)(\s*,\s*\d+(\.\d+)?)*$" />
                                                                         <asp:ListItem Text="Alpha Only" Value="^[A-Za-z]+$" />
                                                                         <asp:ListItem Text="CS Alpha Only" Value="^([A-Za-z]+\s*(,\s*[A-Za-z]+\s*)*)?$" />
@@ -366,7 +366,7 @@
                                         <asp:ListItem Text="--Select Regex--" Value=""></asp:ListItem>
                                         <asp:ListItem Text="Numeric" Value="^\d+$" />
                                         <asp:ListItem Text="CS Numeric" Value="^(\d+\s*(,\s*\d+\s*)*)?$" />
-                                        <asp:ListItem Text="Decimal" Value="^\d+(\.\d{1,2})?$" />
+                                        <asp:ListItem Text="Decimal" Value="^\d+(\.\d{1,4})?$" />
                                         <asp:ListItem Text="CS Decimal" Value="^(\d+(\.\d+)?)(\s*,\s*\d+(\.\d+)?)*$" />
                                         <asp:ListItem Text="Alpha Only" Value="^[A-Za-z]+$" />
                                         <asp:ListItem Text="CS Alpha Only" Value="^([A-Za-z]+\s*(,\s*[A-Za-z]+\s*)*)?$" />
