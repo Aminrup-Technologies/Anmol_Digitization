@@ -1,0 +1,395 @@
+===================================================
+Log Created At: 2025-07-16 11:17:11.922
+===================================================
+--- 2025-07-16 11:17:11 | Field: ProcessWaterTemp (Process Water Temp :) ---
+--- Configuring Field: ProcessWaterTemp (Process Water Temp :) ---
+✔ Container found: ProcessWaterTemp, Visible: True
+✔ Container found: ProcessWaterTemp, Visible: True
+✔ Input control found: TXB_ProcessWaterTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=50.00, Max=100.00
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for ProcessWaterTemp - Min: 50.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for ProcessWaterTemp
+✖ DropDownList not found for ProcessWaterTemp
+--- 2025-07-16 11:17:11 | Field: WaterPH (Water PH Value :) ---
+--- Configuring Field: WaterPH (Water PH Value :) ---
+✔ Container found: WaterPH, Visible: True
+✔ Container found: WaterPH, Visible: True
+✔ Input control found: TXB_WaterPH, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for WaterPH - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for WaterPH
+✖ DropDownList not found for WaterPH
+--- 2025-07-16 11:17:11 | Field: WaterHardness (Water Hardness :) ---
+--- Configuring Field: WaterHardness (Water Hardness :) ---
+✔ Container found: WaterHardness, Visible: True
+✔ Container found: WaterHardness, Visible: True
+✔ Input control found: TXB_WaterHardness, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for WaterHardness - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for WaterHardness
+✖ DropDownList not found for WaterHardness
+--- 2025-07-16 11:17:11 | Field: WaterTest (Water Test :) ---
+--- Configuring Field: WaterTest (Water Test :) ---
+✔ Container found: WaterTest, Visible: True
+✔ Container found: WaterTest, Visible: True
+✔ Input control found: TXB_WaterTest, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for WaterTest - Min: , Max: , Enabled: False
+✖ RadioButtonList not found for WaterTest
+✖ DropDownList not found for WaterTest
+--- 2025-07-16 11:17:11 | Field: TDS (TDS Value:) ---
+--- Configuring Field: TDS (TDS Value:) ---
+✔ Container found: TDS, Visible: True
+✔ Container found: TDS, Visible: True
+✔ Input control found: TXB_TDS, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for TDS - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for TDS
+✖ DropDownList not found for TDS
+--- 2025-07-16 11:17:11 | Field: MaidaColorApp (Maida Color Appearance :) ---
+--- Configuring Field: MaidaColorApp (Maida Color Appearance :) ---
+✔ Container found: MaidaColorApp, Visible: True
+✔ Container found: MaidaColorApp, Visible: True
+✔ Input control found: RBL_MaidaColorApp, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 1 for MaidaColorApp
+✔ RadioButtonList configured for MaidaColorApp, Visible: True
+✖ DropDownList not found for MaidaColorApp
+--- 2025-07-16 11:17:11 | Field: MaidaFlavorTaste (Maida Flavor Taste :) ---
+--- Configuring Field: MaidaFlavorTaste (Maida Flavor Taste :) ---
+✔ Container found: MaidaFlavorTaste, Visible: True
+✔ Container found: MaidaFlavorTaste, Visible: True
+✔ Input control found: RBL_MaidaFlavorTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for MaidaFlavorTaste
+✔ RadioButtonList configured for MaidaFlavorTaste, Visible: True
+✖ DropDownList not found for MaidaFlavorTaste
+--- 2025-07-16 11:17:11 | Field: BBColorApp (BB Color Appearance :) ---
+--- Configuring Field: BBColorApp (BB Color Appearance :) ---
+✔ Container found: BBColorApp, Visible: True
+✔ Container found: BBColorApp, Visible: True
+✔ Input control found: RBL_BBColorApp, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for BBColorApp
+✔ RadioButtonList configured for BBColorApp, Visible: True
+✖ DropDownList not found for BBColorApp
+--- 2025-07-16 11:17:11 | Field: MaidaGrittiness (Maida Grittiness :) ---
+--- Configuring Field: MaidaGrittiness (Maida Grittiness :) ---
+✔ Container found: MaidaGrittiness, Visible: True
+✔ Container found: MaidaGrittiness, Visible: True
+✔ Input control found: RBL_MaidaGrittiness, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for MaidaGrittiness
+✔ RadioButtonList configured for MaidaGrittiness, Visible: True
+✖ DropDownList not found for MaidaGrittiness
+--- 2025-07-16 11:17:11 | Field: BBFlavorTaste (BB Flavor Taste :) ---
+--- Configuring Field: BBFlavorTaste (BB Flavor Taste :) ---
+✔ Container found: BBFlavorTaste, Visible: True
+✔ Container found: BBFlavorTaste, Visible: True
+✔ Input control found: RBL_BBFlavorTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for BBFlavorTaste
+✔ RadioButtonList configured for BBFlavorTaste, Visible: True
+✖ DropDownList not found for BBFlavorTaste
+--- 2025-07-16 11:17:11 | Field: BBMouthFeel (BB Mouth Feel :) ---
+--- Configuring Field: BBMouthFeel (BB Mouth Feel :) ---
+✔ Container found: BBMouthFeel, Visible: True
+✔ Container found: BBMouthFeel, Visible: True
+✔ Input control found: RBL_BBMouthFeel, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for BBMouthFeel
+✔ RadioButtonList configured for BBMouthFeel, Visible: True
+✖ DropDownList not found for BBMouthFeel
+--- 2025-07-16 11:17:11 | Field: HvoSmell (HVO Smell :) ---
+--- Configuring Field: HvoSmell (HVO Smell :) ---
+✔ Container found: HvoSmell, Visible: True
+✔ Container found: HvoSmell, Visible: True
+✔ Input control found: RBL_HvoSmell, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for HvoSmell
+✔ RadioButtonList configured for HvoSmell, Visible: True
+✖ DropDownList not found for HvoSmell
+--- 2025-07-16 11:17:11 | Field: HvoTaste (HVO Taste :) ---
+--- Configuring Field: HvoTaste (HVO Taste :) ---
+✔ Container found: HvoTaste, Visible: True
+✔ Container found: HvoTaste, Visible: True
+✔ Input control found: RBL_HvoTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for HvoTaste
+✔ RadioButtonList configured for HvoTaste, Visible: True
+✖ DropDownList not found for HvoTaste
+--- 2025-07-16 11:17:11 | Field: HvoTemp (HVO Temperature :) ---
+--- Configuring Field: HvoTemp (HVO Temperature :) ---
+✔ Container found: HvoTemp, Visible: True
+✔ Container found: HvoTemp, Visible: True
+✔ Input control found: TXB_HvoTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for HvoTemp - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for HvoTemp
+✖ DropDownList not found for HvoTemp
+--- 2025-07-16 11:17:11 | Field: SMPSmell (SMP Smell :) ---
+--- Configuring Field: SMPSmell (SMP Smell :) ---
+✔ Container found: SMPSmell, Visible: True
+✔ Container found: SMPSmell, Visible: True
+✔ Input control found: RBL_SMPSmell, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for SMPSmell
+✔ RadioButtonList configured for SMPSmell, Visible: True
+✖ DropDownList not found for SMPSmell
+--- 2025-07-16 11:17:11 | Field: SMPTaste (SMP Taste :) ---
+--- Configuring Field: SMPTaste (SMP Taste :) ---
+✔ Container found: SMPTaste, Visible: True
+✔ Container found: SMPTaste, Visible: True
+✔ Input control found: RBL_SMPTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for SMPTaste
+✔ RadioButtonList configured for SMPTaste, Visible: True
+✖ DropDownList not found for SMPTaste
+--- 2025-07-16 11:17:11 | Field: SMPColor (SMP Color :) ---
+--- Configuring Field: SMPColor (SMP Color :) ---
+✔ Container found: SMPColor, Visible: True
+✔ Container found: SMPColor, Visible: True
+✔ Input control found: RBL_SMPColor, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for SMPColor
+✔ RadioButtonList configured for SMPColor, Visible: True
+✖ DropDownList not found for SMPColor
+--- 2025-07-16 11:17:11 | Field: SyrupTemp (Syrup Temperature :) ---
+--- Configuring Field: SyrupTemp (Syrup Temperature :) ---
+✔ Container found: SyrupTemp, Visible: True
+✔ Container found: SyrupTemp, Visible: True
+✔ Input control found: TXB_SyrupTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for SyrupTemp - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for SyrupTemp
+✖ DropDownList not found for SyrupTemp
+--- 2025-07-16 11:17:11 | Field: SyrupColor (Syrup Color :) ---
+--- Configuring Field: SyrupColor (Syrup Color :) ---
+✔ Container found: SyrupColor, Visible: True
+✔ Container found: SyrupColor, Visible: True
+✔ Input control found: RBL_SyrupColor, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for SyrupColor
+✔ RadioButtonList configured for SyrupColor, Visible: True
+✖ DropDownList not found for SyrupColor
+--- 2025-07-16 11:17:11 | Field: SyrupPH (Syrup pH :) ---
+--- Configuring Field: SyrupPH (Syrup pH :) ---
+✔ Container found: SyrupPH, Visible: True
+✔ Container found: SyrupPH, Visible: True
+✔ Input control found: TXB_SyrupPH, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for SyrupPH - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for SyrupPH
+✖ DropDownList not found for SyrupPH
+--- 2025-07-16 11:17:11 | Field: InvertSyrupBucket (Invert Syrup Bucket :) ---
+--- Configuring Field: InvertSyrupBucket (Invert Syrup Bucket :) ---
+✔ Container found: InvertSyrupBucket, Visible: True
+✔ Container found: InvertSyrupBucket, Visible: True
+✔ Input control found: RBL_InvertSyrupBucket, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for InvertSyrupBucket
+✔ RadioButtonList configured for InvertSyrupBucket, Visible: True
+✖ DropDownList not found for InvertSyrupBucket
+--- 2025-07-16 11:17:11 | Field: SugarSolBucket (Sugar Solution Bucket :) ---
+--- Configuring Field: SugarSolBucket (Sugar Solution Bucket :) ---
+✔ Container found: SugarSolBucket, Visible: True
+✔ Container found: SugarSolBucket, Visible: True
+✔ Input control found: RBL_SugarSolBucket, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for SugarSolBucket
+✔ RadioButtonList configured for SugarSolBucket, Visible: True
+✖ DropDownList not found for SugarSolBucket
+--- 2025-07-16 11:17:11 | Field: CreamerBucketFilter (Creamer Bucket Filter :) ---
+--- Configuring Field: CreamerBucketFilter (Creamer Bucket Filter :) ---
+✔ Container found: CreamerBucketFilter, Visible: True
+✔ Container found: CreamerBucketFilter, Visible: True
+✔ Input control found: RBL_CreamerBucketFilter, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for CreamerBucketFilter
+✔ RadioButtonList configured for CreamerBucketFilter, Visible: True
+✖ DropDownList not found for CreamerBucketFilter
+--- 2025-07-16 11:17:11 | Field: SugarGrinder (Sugar Grinder :) ---
+--- Configuring Field: SugarGrinder (Sugar Grinder :) ---
+✔ Container found: SugarGrinder, Visible: True
+✔ Container found: SugarGrinder, Visible: True
+✔ Input control found: RBL_SugarGrinder, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for SugarGrinder
+✔ RadioButtonList configured for SugarGrinder, Visible: True
+✖ DropDownList not found for SugarGrinder
+--- 2025-07-16 11:17:11 | Field: OilSystem (Oil System :) ---
+--- Configuring Field: OilSystem (Oil System :) ---
+✔ Container found: OilSystem, Visible: True
+✔ Container found: OilSystem, Visible: True
+✔ Input control found: RBL_OilSystem, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for OilSystem
+✔ RadioButtonList configured for OilSystem, Visible: True
+✖ DropDownList not found for OilSystem
+--- 2025-07-16 11:17:11 | Field: OilSpray (Oil Spray :) ---
+--- Configuring Field: OilSpray (Oil Spray :) ---
+✔ Container found: OilSpray, Visible: True
+✔ Container found: OilSpray, Visible: True
+✔ Input control found: RBL_OilSpray, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for OilSpray
+✔ RadioButtonList configured for OilSpray, Visible: True
+✖ DropDownList not found for OilSpray
+--- 2025-07-16 11:17:11 | Field: MilkSpray (Milk Spray :) ---
+--- Configuring Field: MilkSpray (Milk Spray :) ---
+✔ Container found: MilkSpray, Visible: True
+✔ Container found: MilkSpray, Visible: True
+✔ Input control found: RBL_MilkSpray, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for MilkSpray
+✔ RadioButtonList configured for MilkSpray, Visible: True
+✖ DropDownList not found for MilkSpray
+--- 2025-07-16 11:17:11 | Field: DeepFreezeTemp (Deep Freeze Temp :) ---
+--- Configuring Field: DeepFreezeTemp (Deep Freeze Temp :) ---
+✔ Container found: DeepFreezeTemp, Visible: True
+✔ Container found: DeepFreezeTemp, Visible: True
+✔ Input control found: TXB_DeepFreezeTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for DeepFreezeTemp - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for DeepFreezeTemp
+✖ DropDownList not found for DeepFreezeTemp
+--- 2025-07-16 11:17:11 | Field: MaidaBrand (Maida Brand :) ---
+--- Configuring Field: MaidaBrand (Maida Brand :) ---
+✔ Container found: MaidaBrand, Visible: True
+✔ Container found: MaidaBrand, Visible: True
+✔ Input control found: TXB_MaidaBrand, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✖ RangeValidator not found
+✖ RadioButtonList not found for MaidaBrand
+✖ DropDownList not found for MaidaBrand
+--- 2025-07-16 11:17:11 | Field: MaidaBatchNo (Maida Batch No :) ---
+--- Configuring Field: MaidaBatchNo (Maida Batch No :) ---
+✔ Container found: MaidaBatchNo, Visible: True
+✔ Container found: MaidaBatchNo, Visible: True
+✔ Input control found: TXB_MaidaBatchNo, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✖ RangeValidator not found
+✖ RadioButtonList not found for MaidaBatchNo
+✖ DropDownList not found for MaidaBatchNo
+--- 2025-07-16 11:17:11 | Field: MaidaMfg (Maida Mfg Date :) ---
+--- Configuring Field: MaidaMfg (Maida Mfg Date :) ---
+✔ Container found: MaidaMfg, Visible: True
+✔ Container found: MaidaMfg, Visible: True
+✔ Input control found: TXB_MaidaMfg, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✖ RangeValidator not found
+✖ RadioButtonList not found for MaidaMfg
+✖ DropDownList not found for MaidaMfg
+--- 2025-07-16 11:17:11 | Field: ColdRoomTemp (Cold Room Temp :) ---
+--- Configuring Field: ColdRoomTemp (Cold Room Temp :) ---
+✔ Container found: ColdRoomTemp, Visible: True
+✔ Container found: ColdRoomTemp, Visible: True
+✔ Input control found: TXB_ColdRoomTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for ColdRoomTemp - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for ColdRoomTemp
+✖ DropDownList not found for ColdRoomTemp
+
+

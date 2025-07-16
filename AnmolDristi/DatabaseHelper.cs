@@ -320,21 +320,12 @@ namespace AnmolDristi
         public static DataTable GetBrandFieldsControlByBrandId(int brandId)
         {
             DataTable dataTable = new DataTable();
-
-            // Create a SqlConnection
             using (SqlConnection connection = GetConnection())
             {
-                // Open the connection
-
-                // Create a SqlCommand for the stored procedure
                 using (SqlCommand command = new SqlCommand("GetBrandFieldsControlByBrandId", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
-
-                    // Add parameters
                     command.Parameters.AddWithValue("@brand_id", brandId);
-
-                    // Execute the SqlCommand and load results into the DataTable
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
                         dataTable.Load(reader);
@@ -342,9 +333,45 @@ namespace AnmolDristi
                 }
                 connection.Close();
             }
-
             return dataTable;
         }
+
+
+        public static DataTable GetFormFieldControlByFormAndBrand(int formId, int plantId, int lineId, int brandId, int categoryId)
+        {
+            using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(@"
+                SELECT field_name, DisplayName,
+                       RFV_YesNo, RFV_ErrorMsg,
+                       REV_YesNo, REV_ErrorMsg, REV_Expression,
+                       RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue,
+                       ViewMode
+                FROM MST_FormFieldControls
+                WHERE FormID = @FormID 
+                  AND plant_id = @PlantID 
+                  AND LineId = @LineId 
+                  AND material_id = @BrandID
+                  AND category_id = @CategoryID
+                  AND IsDeleted = 0 AND IsLatest = 1", conn))
+                {
+                    cmd.Parameters.AddWithValue("@FormID", formId);
+                    cmd.Parameters.AddWithValue("@PlantID", plantId);
+                    cmd.Parameters.AddWithValue("@LineId", lineId);
+                    cmd.Parameters.AddWithValue("@BrandID", brandId);
+                    cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
+                        return dt;
+                    }
+                }
+            }
+        }
+
+
 
 
 

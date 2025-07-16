@@ -186,6 +186,11 @@
                             <div class="clearfix"></div>
                         </div>
                         <div class="x_content">
+                            <a class="btn btn-app" href="global_formctrl.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label28" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Global
+                            </a>
                             <a class="btn btn-app" href="qaqc_qcinspector_frmctrl.aspx">
                                 <span class="badge bg-green">OK
                                     <asp:Label ID="Label15" runat="server" Text="0" Visible="false"></asp:Label></span>

@@ -220,6 +220,7 @@
     <Content Include="Form_Approval_Matrix.aspx" />
     <Content Include="Form_Master.aspx" />
     <Content Include="Global.asax" />
+    <Content Include="global_formctrl.aspx" />
     <Content Include="home.aspx" />
     <Content Include="LeakAndSlant_Detailed.aspx" />
     <Content Include="leak_test.aspx" />
@@ -646,6 +647,13 @@
     </Compile>
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="global_formctrl.aspx.cs">
+      <DependentUpon>global_formctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="global_formctrl.aspx.designer.cs">
+      <DependentUpon>global_formctrl.aspx</DependentUpon>
     </Compile>
     <Compile Include="home.aspx.cs">
       <DependentUpon>home.aspx</DependentUpon>
@@ -1168,6 +1176,7 @@
     <Compile Include="RM_Class_5_Submitter.aspx.designer.cs">
       <DependentUpon>RM_Class_5_Submitter.aspx</DependentUpon>
     </Compile>
+    <Compile Include="TimeParser.cs" />
     <Compile Include="UploadImageHandler.ashx.cs">
       <DependentUpon>UploadImageHandler.ashx</DependentUpon>
     </Compile>

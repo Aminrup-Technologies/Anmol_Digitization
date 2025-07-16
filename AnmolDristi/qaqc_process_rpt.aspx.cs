@@ -15,6 +15,7 @@ using AnmolDristi.DAL;
 using DocumentFormat.OpenXml.Drawing.Charts;
 using Newtonsoft.Json;
 using static AnmolDristi.DAL.QAProcessCheckingDataAcess;
+using System.Text;
 
 namespace AnmolDristi
 {
@@ -25,6 +26,7 @@ namespace AnmolDristi
         public static string ImgLink2 = string.Empty;
         public static string PcrNo = string.Empty;
         public static string Brand_BTCode = string.Empty;
+        private Dictionary<string, ZoneFieldControl> _zoneFieldControls;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -43,14 +45,455 @@ namespace AnmolDristi
                     lbl_docnumber.Text = "ANMOL/DOC/CORP/QA/02";
                     PlantBinder();
 
+                    //_zoneFieldControls = LoadZoneFieldControls();
+
                     //BindGridView();
                     DisplayCurrentShift();
-                    BindGridView1();
-
                 }
 
             }
         }
+
+        public class DynamicFieldControl
+        {
+            public string FieldName { get; set; }
+            public string DisplayName { get; set; }
+            public bool IsVisible { get; set; }
+            public bool IsRequired { get; set; }
+            public string RequiredError { get; set; }
+            public bool IsRegex { get; set; }
+            public string RegexExpression { get; set; }
+            public string RegexError { get; set; }
+            public bool IsRange { get; set; }
+            public string RangeError { get; set; }
+            public string MinValue { get; set; }
+            public string MaxValue { get; set; }
+            public string ControlType { get; set; } // TextBox, DropDownList, RadioButtonList, etc.
+            public string DefaultValue { get; set; } // New
+        }
+
+        // Fetch dynamic field control data from DB
+        public Dictionary<string, DynamicFieldControl> LoadBasicFieldControls(string SectionName)
+        {
+            var controls = new Dictionary<string, DynamicFieldControl>();
+
+            int formId = 6;
+            int plantId = !string.IsNullOrWhiteSpace(DDL_Plant.SelectedValue) ? Convert.ToInt32(DDL_Plant.SelectedValue) : 0;
+            int lineId = !string.IsNullOrWhiteSpace(DDL_PlantLine.SelectedValue) ? Convert.ToInt32(DDL_PlantLine.SelectedValue) : 0;
+            int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+            int brandId = !string.IsNullOrWhiteSpace(DDL_ProductBrand.SelectedValue) ? Convert.ToInt32(DDL_ProductBrand.SelectedValue) : 0;
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                string query = @"SELECT field_name, DisplayName, ViewMode, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND Sub_Form = @SubForm AND plant_id = @PlantID AND lineId = @LineID AND category_id = @CategoryID AND material_id = @BrandID AND IsLatest = 1 AND IsDeleted = 0";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@FormID", formId);
+                    cmd.Parameters.AddWithValue("@SubForm", SectionName);
+                    cmd.Parameters.AddWithValue("@PlantID", plantId);
+                    cmd.Parameters.AddWithValue("@LineID", lineId);
+                    cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+                    cmd.Parameters.AddWithValue("@BrandID", brandId);
+
+                    con.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            var control = new DynamicFieldControl
+                            {
+                                FieldName = reader["field_name"].ToString(),
+                                DisplayName = reader["DisplayName"].ToString(),
+                                IsVisible = Convert.ToBoolean(reader["ViewMode"]),
+                                IsRequired = Convert.ToBoolean(reader["RFV_YesNo"]),
+                                RequiredError = reader["RFV_ErrorMsg"].ToString(),
+                                IsRegex = Convert.ToBoolean(reader["REV_YesNo"]),
+                                RegexError = reader["REV_ErrorMsg"].ToString(),
+                                RegexExpression = reader["REV_Expression"].ToString(),
+                                IsRange = Convert.ToBoolean(reader["RV_Yesno"]),
+                                RangeError = reader["RV_ErrorMsg"].ToString(),
+                                MinValue = reader["RV_MinValue"].ToString(),
+                                MaxValue = reader["RV_MaxValue"].ToString(),
+                                ControlType = reader["ControlType"].ToString(),
+                                DefaultValue = reader["DefaultValue"].ToString()
+                            };
+
+                            controls[control.FieldName.ToLower()] = control;
+                        }
+                    }
+                }
+            }
+            return controls;
+        }
+
+        private void ApplyDynamicControls(Dictionary<string, DynamicFieldControl> controls)
+        {
+            StringBuilder logBuilder = new StringBuilder();
+
+            foreach (var entry in controls)
+            {
+                string key = entry.Key;
+                var config = entry.Value;
+
+                string controlId = GetPrefixedID(config.ControlType, config.FieldName);
+                // Control references
+                //Control container = FindControlRecursive(Page, config.FieldName);
+                //Control inputCtrl = FindControlRecursive(Page, GetControlIDNew(config));
+                //Control labelCtrl = FindControlRecursive(Page, "LBL_" + GetControlIDNew(config));
+                //Control rfvCtrl = FindControlRecursive(Page, "RFV_" + GetControlIDNew(config));
+                //Control revCtrl = FindControlRecursive(Page, "REV_" + GetControlIDNew(config));
+
+                //Control inputCtrl = FindControlRecursive(Page, GetPrefixedID(config.ControlType, config.FieldName));
+                //Control labelCtrl = FindControlRecursive(Page, "LBL_" + GetPrefixedID(config.ControlType, config.FieldName));
+                //Control rfvCtrl = FindControlRecursive(Page, "RFV_" + GetPrefixedID(config.ControlType, config.FieldName));
+                //Control revCtrl = FindControlRecursive(Page, "REV_" + GetPrefixedID(config.ControlType, config.FieldName));
+                //Control container = FindControlRecursive(Page, config.FieldName); // e.g. 'ProcessWaterTemp'
+
+                Control inputCtrl = FindControlRecursive(Page, controlId);
+                Control labelCtrl = FindControlRecursive(Page, "LBL_" + controlId);
+                Control rfvCtrl = FindControlRecursive(Page, "RFV_" + controlId);
+                Control revCtrl = FindControlRecursive(Page, "REV_" + controlId);
+                Control rvCtrl = FindControlRecursive(Page, "RV_" + controlId);
+                Control container = FindControlRecursive(Page, config.FieldName);
+                Control customValCtrl = FindControlRecursive(Page, "CVAL_" + controlId);
+
+                logBuilder.AppendLine($"--- {DateTime.Now:yyyy-MM-dd HH:mm:ss} | Field: {config.FieldName} ({config.DisplayName}) ---");
+                logBuilder.AppendLine($"--- Configuring Field: {config.FieldName} ({config.DisplayName}) ---");
+                logBuilder.AppendLine(container != null
+                    ? $"✔ Container found: {config.FieldName}, Visible: {config.IsVisible}"
+                    : $"✖ Container not found: {config.FieldName}");
+
+                if (container != null)
+                {
+                    container.Visible = config.IsVisible;
+                    logBuilder.AppendLine($"✔ Container found: {config.FieldName}, Visible: {config.IsVisible}");
+                }
+                else
+                {
+                    logBuilder.AppendLine($"✖ Container not found: {config.FieldName}");
+                }
+
+                //Set input control visibility
+                if (inputCtrl != null)
+                {
+                    inputCtrl.Visible = config.IsVisible;
+                    logBuilder.AppendLine($"✔ Input control found: {controlId}, Visible: {config.IsVisible}");
+
+                    // If input control is a TextBox, add data-min and data-max
+                    if (inputCtrl is TextBox)
+                    {
+                        TextBox txt = (TextBox)inputCtrl;
+
+                        // Only set if range is enabled
+                        if (config.IsRange)
+                        {
+                            txt.Attributes["data-min"] = config.MinValue;
+                            txt.Attributes["data-max"] = config.MaxValue;
+                            logBuilder.AppendLine($"✔ Set data-min and data-max on TextBox: Min={config.MinValue}, Max={config.MaxValue}");
+                        }
+                    }
+                }
+                else
+                {
+                    logBuilder.AppendLine($"✖ Input control not found: {controlId}");
+                }
+
+                // Set label text and visibility
+                if (labelCtrl != null && labelCtrl is Label)
+                {
+                    Label lbl = (Label)labelCtrl;
+                    lbl.Text = config.DisplayName;
+                    lbl.Visible = config.IsVisible;
+                    logBuilder.AppendLine("✔ Label updated");
+                }
+                else
+                {
+                    logBuilder.AppendLine("✖ Label not found");
+                }
+
+                // RequiredFieldValidator
+                if (rfvCtrl != null && rfvCtrl is RequiredFieldValidator)
+                {
+                    RequiredFieldValidator rfv = (RequiredFieldValidator)rfvCtrl;
+                    rfv.Enabled = config.IsRequired;
+                    rfv.ErrorMessage = config.RequiredError;
+                    rfv.Visible = config.IsVisible; // Optional
+                    logBuilder.AppendLine("✔ RequiredFieldValidator configured");
+                }
+                else
+                {
+                    logBuilder.AppendLine("✖ RequiredFieldValidator not found");
+                }
+
+                // RegularExpressionValidator
+                if (revCtrl != null && revCtrl is RegularExpressionValidator)
+                {
+                    RegularExpressionValidator rev = (RegularExpressionValidator)revCtrl;
+                    rev.Enabled = config.IsRegex;
+                    rev.ValidationExpression = config.RegexExpression;
+                    rev.ErrorMessage = config.RegexError;
+                    rev.Visible = config.IsVisible; // Optional
+                    logBuilder.AppendLine("✔ RegularExpressionValidator configured");
+                }
+                else
+                {
+                    logBuilder.AppendLine("✖ RegularExpressionValidator not found");
+                }
+
+                // ✅ RangeValidator
+                if (rvCtrl != null && rvCtrl is RangeValidator)
+                {
+                    RangeValidator range = (RangeValidator)rvCtrl;
+                    range.Enabled = config.IsRange;
+                    range.MinimumValue = config.MinValue;
+                    range.MaximumValue = config.MaxValue;
+                    //range.Type = ValidationDataType.Double; // or Integer if needed
+                    range.ErrorMessage = config.RangeError;
+                    range.Visible = config.IsVisible;
+                    logBuilder.AppendLine("✔ RangeValidator configured");
+                    logBuilder.AppendLine($"Applied RangeValidator for {config.FieldName} - Min: {config.MinValue}, Max: {config.MaxValue}, Enabled: {config.IsRange}");
+                }
+                else
+                {
+                    logBuilder.AppendLine("✖ RangeValidator not found");
+                }
+
+                // ✅ RadioButtonList
+                if (inputCtrl != null && inputCtrl is RadioButtonList)
+                {
+                    RadioButtonList rbl = (RadioButtonList)inputCtrl;
+                    rbl.Visible = config.IsVisible;
+
+                    // Pre-select value if DefaultValue is set
+                    if (!string.IsNullOrEmpty(config.DefaultValue))
+                    {
+                        ListItem selectedItem = rbl.Items.FindByValue(config.DefaultValue);
+                        if (selectedItem != null)
+                        {
+                            rbl.ClearSelection();
+                            selectedItem.Selected = true;
+                            logBuilder.AppendLine("✔ RadioButtonList default selected: " + config.DefaultValue + " for " + config.FieldName);
+                        }
+                        else
+                        {
+                            logBuilder.AppendLine("⚠ RadioButtonList default value '" + config.DefaultValue + "' not found in items for " + config.FieldName);
+                        }
+                    }
+                    logBuilder.AppendLine("✔ RadioButtonList configured for " + config.FieldName + ", Visible: " + config.IsVisible.ToString());
+                }
+                else
+                {
+                    logBuilder.AppendLine("✖ RadioButtonList not found for " + config.FieldName);
+                }
+
+                // ✅ DropDownList
+                if (inputCtrl != null && inputCtrl is DropDownList)
+                {
+                    DropDownList ddl = (DropDownList)inputCtrl;
+                    ddl.Visible = config.IsVisible;
+
+                    // Pre-select value if DefaultValue is set
+                    if (!string.IsNullOrEmpty(config.DefaultValue))
+                    {
+                        ListItem selectedItem = ddl.Items.FindByValue(config.DefaultValue);
+                        if (selectedItem != null)
+                        {
+                            ddl.ClearSelection();
+                            selectedItem.Selected = true;
+                            logBuilder.AppendLine("✔ DropDownList default selected: " + config.DefaultValue + " for " + config.FieldName);
+                        }
+                        else
+                        {
+                            logBuilder.AppendLine("⚠ DropDownList default value '" + config.DefaultValue + "' not found in items for " + config.FieldName);
+                        }
+                    }
+                    logBuilder.AppendLine("✔ DropDownList configured for " + config.FieldName + ", Visible: " + config.IsVisible.ToString());
+                }
+                else
+                {
+                    logBuilder.AppendLine("✖ DropDownList not found for " + config.FieldName);
+                }
+
+                // ✅ TimeBox Validation (CustomValidator for HH:MM:SS range)
+                if (config.ControlType.ToLower() == "timebox")
+                {
+                    CustomValidator timeValidator = FindControlRecursive(Page, "CV_" + controlId) as CustomValidator;
+                    if (timeValidator != null)
+                    {
+                        timeValidator.Enabled = config.IsRange;
+                        timeValidator.ClientValidationFunction = "validateTimeRange_" + controlId;
+                        timeValidator.ErrorMessage = !string.IsNullOrEmpty(config.RangeError)
+                                                        ? config.RangeError
+                                                        : $"Time must be between {config.MinValue} and {config.MaxValue}";
+                        timeValidator.Visible = config.IsVisible;
+                        timeValidator.Display = ValidatorDisplay.Dynamic;
+
+                        logBuilder.AppendLine("✔ CustomValidator configured for TimeBox");
+                        logBuilder.AppendLine($"⮞ Time Range for {config.FieldName}: {config.MinValue} to {config.MaxValue}");
+                    }
+                    else
+                    {
+                        logBuilder.AppendLine("✖ CustomValidator not found for TimeBox: " + config.FieldName);
+                    }
+                }
+
+                if (customValCtrl != null && customValCtrl is CustomValidator && config.ControlType.ToLower() == "timebox" && config.IsRange)
+                {
+                    CustomValidator customVal = (CustomValidator)customValCtrl;
+                    customVal.ClientValidationFunction = "validateTimeRange_" + controlId;
+                    customVal.Enabled = true;
+                    customVal.ErrorMessage = config.RangeError;
+                    customVal.Display = ValidatorDisplay.Dynamic;
+                    customVal.Visible = config.IsVisible;
+                    logBuilder.AppendLine("✔ CustomValidator set for time range: " + config.FieldName);
+                }
+            }
+            WriteLogToFile(logBuilder.ToString());
+        }
+
+        private void RegisterTimeRangeScripts(Dictionary<string, DynamicFieldControl> controls)
+        {
+            StringBuilder scriptBuilder = new StringBuilder("<script type='text/javascript'>");
+
+            foreach (var config in controls.Values.Where(c => c.ControlType.ToLower() == "timebox" && c.IsRange))
+            {
+                string jsFuncName = "validateTimeRange_" + GetPrefixedID(config.ControlType, config.FieldName);
+                string min = config.MinValue.Replace(":", ","); // e.g., "00:30:00" => "00,30,00"
+                string max = config.MaxValue.Replace(":", ",");
+
+                scriptBuilder.Append($@"
+                    function {jsFuncName}(sender, args) {{
+                        var input = args.Value;
+                        if (!/^\d{{1,2}}:[0-5]\d:[0-5]\d$/.test(input)) {{
+                            args.IsValid = false;
+                            return;
+                        }}
+                        var parts = input.split(':');
+                        var entered = new Date(0, 0, 0, parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
+                        var min = new Date(0, 0, 0, {min});
+                        var max = new Date(0, 0, 0, {max});
+                        args.IsValid = entered >= min && entered <= max;
+                    }}
+                ");
+            }
+
+            scriptBuilder.Append("</script>");
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "TimeRangeValidators", scriptBuilder.ToString(), false);
+        }
+
+        private void WriteLogToFile(string logContent)
+        {
+            try
+            {
+                string folderPath = Server.MapPath("~/Logs");
+                if (!Directory.Exists(folderPath))
+                {
+                    Directory.CreateDirectory(folderPath);
+                }
+
+                // Generate a unique log file name using timestamp and a short GUID
+                string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+                string guidPart = Guid.NewGuid().ToString("N").Substring(0, 6); // optional short GUID for uniqueness
+                string logFileName = $"DynamicFieldLog_{timeStamp}_{guidPart}.txt";
+
+                string logFilePath = Path.Combine(folderPath, logFileName);
+
+                using (StreamWriter writer = new StreamWriter(logFilePath, true))
+                {
+                    writer.WriteLine("===================================================");
+                    writer.WriteLine($"Log Created At: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+                    writer.WriteLine("===================================================");
+                    writer.WriteLine(logContent);
+                    writer.WriteLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Silent fail or debug output
+                System.Diagnostics.Debug.WriteLine("Logging failed: " + ex.Message);
+            }
+        }
+
+
+        //private void WriteLogToFile(string logContent)
+        //{
+        //    try
+        //    {
+        //        string folderPath = Server.MapPath("~/Logs");
+        //        if (!Directory.Exists(folderPath))
+        //        {
+        //            Directory.CreateDirectory(folderPath);
+        //        }
+
+        //        string logFile = Path.Combine(folderPath, $"DynamicFieldLog_{DateTime.Now:yyyyMMdd}.txt");
+
+        //        using (StreamWriter writer = new StreamWriter(logFile, true)) // Append mode
+        //        {
+        //            writer.WriteLine("===================================================");
+        //            writer.WriteLine($"Log Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        //            writer.WriteLine("===================================================");
+        //            writer.WriteLine(logContent);
+        //            writer.WriteLine();
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // Optional: fallback log location or event viewer
+        //        System.Diagnostics.Debug.WriteLine("Logging failed: " + ex.Message);
+        //    }
+        //}
+
+
+        private string GetPrefixedID(string controlType, string fieldName)
+        {
+            switch (controlType.ToLower())
+            {
+                case "textbox": return "TXB_" + fieldName;
+                case "dropdownlist": return "DDL_" + fieldName;
+                case "radiobuttonlist": return "RBL_" + fieldName;
+                case "checkbox": return "CHB_" + fieldName;
+                case "timebox": return "TXB_" + fieldName;
+                default: return fieldName; // fallback
+            }
+        }
+
+
+        private string GetControlIDNew(DynamicFieldControl config)
+        {
+            switch (config.ControlType.ToLower())
+            {
+                case "textbox": return "TXB_" + config.FieldName;
+                case "dropdownlist": return "DDL_" + config.FieldName;
+                case "radiobuttonlist": return "RBL_" + config.FieldName;
+                case "checkbox": return "CHB_" + config.FieldName;
+                default: return config.FieldName;
+            }
+        }
+
+        public static Control FindControlRecursive(Control root, string id)
+        {
+            if (root.ID == id) return root;
+            foreach (Control child in root.Controls)
+            {
+                Control found = FindControlRecursive(child, id);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        private string GetControlID(DynamicFieldControl config)
+        {
+            switch (config.ControlType.ToLower())
+            {
+                case "textbox": return "TXB_" + config.FieldName;
+                case "dropdownlist": return "DDL_" + config.FieldName;
+                case "radiobuttonlist": return "RBL_" + config.FieldName;
+                case "checkbox": return "CHB_" + config.FieldName;
+                default: return config.FieldName;
+            }
+        }
+
         private void DisplayCurrentShift()
         {
             ShiftManager shiftManager = new ShiftManager();
@@ -63,13 +506,8 @@ namespace AnmolDristi
             string query = "SELECT plant_id, CONCAT(plant_name, '[', sap_code, ']') AS plant_name FROM MST_PlantDetails";
             string textField = "plant_name";
             string valueField = "plant_id";
-
             bool recordsBound;
-
-            // Bind the DropDownList and get the flag indicating whether records were bound
             DatabaseHelper.BindDropDownList(query, DDL_Plant, textField, valueField, out recordsBound);
-
-            // Check if any records were bound
             if (!recordsBound)
             {
                 DatabaseHelper.BindWithDefaultNoRecords(DDL_Plant);
@@ -81,10 +519,7 @@ namespace AnmolDristi
                                 styling: 'bootstrap3'
                             });
                         </script>";
-
-                // RegisterStartupScript adds the JavaScript code to the page
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantBinderErrorNotification", PlantBinder_Error_script, false);
-
             }
         }
 
@@ -100,7 +535,6 @@ namespace AnmolDristi
             public bool IsRegularExpressionRequired { get; set; }
             public bool IsRangeRequired { get; set; }
         }
-
 
         protected void DDL_Plant_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -156,6 +590,7 @@ namespace AnmolDristi
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 LineProductsBinder(selectedPlantValue, selectedPlantLineValue);
                 LoadApprovers(selectedPlantValue, selectedPlantLineValue);
+                
             }
             else
             {
@@ -370,18 +805,42 @@ namespace AnmolDristi
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 BrandSKUBinder(selectedProductBrandValue);
 
-                BindGridView();
+                var Basic_controls= LoadBasicFieldControls("BasicData");
+                ApplyDynamicControls(Basic_controls);
+                RegisterTimeRangeScripts(Basic_controls);
+                InjectDynamicTimeRangeValidators(Basic_controls);
+
+                //Raw Material TAB
+                BindGridView(); //to show all 22 varieties and standard weight 
+
+                var Sponge_controls = LoadBasicFieldControls("SpongeData");
+                ApplyDynamicControls(Sponge_controls);
+                RegisterTimeRangeScripts(Sponge_controls);
+                InjectDynamicTimeRangeValidators(Sponge_controls);
+
+
+                var Dough_controls = LoadBasicFieldControls("DoughData");
+                ApplyDynamicControls(Dough_controls);
+                RegisterTimeRangeScripts(Dough_controls);
+                InjectDynamicTimeRangeValidators(Dough_controls);
+
+
+                //Oven Data Tab
+                BindGridView1(); //OvenTempData
+
+                var Verify_controls = LoadBasicFieldControls("VerifyData");
+                ApplyDynamicControls(Verify_controls);
+                RegisterTimeRangeScripts(Verify_controls);
+                InjectDynamicTimeRangeValidators(Verify_controls);
+
                 //GetSAPCodes(Convert.ToInt32(selectedProductBrandValue));
-
-                //Here goes the function call to get the BT code against the Plant and Brand Selection which will be used for binding the recipe in RM Section
-
 
                 //BindGridViewfromDB(selectedPlantValue, selectedProductBrandValue);
 
-                System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
+                //System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
+                //dataTable.Clear();
 
-
-                // Example: Querying the DataTable for a specific field name
+                System.Data.DataTable dataTable = new System.Data.DataTable();
                 //string fieldName = "no_of_pcs"; // Specify the field name you want to query
                 //DataRow[] rows = dataTable.Select($"brand_id = {selectedProductBrandValue} AND field_name = '{fieldName}'");
 
@@ -414,10 +873,13 @@ namespace AnmolDristi
                     criteria.MinimumValue = rvMinValue;
                     criteria.MaximumValue = rvMaxValue;
 
-                    // Use the criteria as needed
                     // For example, you can pass it to a method to set up validators
                     //SetUpValidatorsForField(fieldName, criteria);
+
+                    
                 }
+
+                
             }
             else
             {
@@ -434,6 +896,59 @@ namespace AnmolDristi
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowSKUInvalidErrorNotification", DDL_ProductBrand_Error_script, false);
             }
         }
+
+        private void InjectDynamicTimeRangeValidators(Dictionary<string, DynamicFieldControl> controls)
+        {
+            StringBuilder scriptBuilder = new StringBuilder();
+            scriptBuilder.AppendLine("<script type='text/javascript'>");
+
+            foreach (var entry in controls)
+            {
+                var config = entry.Value;
+                if (config.ControlType.ToLower() == "timebox" && config.IsRange)
+                {
+                    string controlId = GetPrefixedID(config.ControlType, config.FieldName);
+                    string functionName = $"validateTimeRange_{controlId}";
+
+                    // JS function to compare HH:MM:SS
+                    scriptBuilder.AppendLine($@"
+                    function {functionName}(sender, args) {{
+                        var value = args.Value.trim();
+                        var min = '{config.MinValue}';
+                        var max = '{config.MaxValue}';
+
+                        function toSeconds(time) {{
+                            var parts = time.split(':');
+                            return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+                        }}
+
+                        try {{
+                            if (!/^\d{{1,2}}:[0-5]\d:[0-5]\d$/.test(value)) {{
+                                args.IsValid = false;
+                                return;
+                            }}
+                            var valSec = toSeconds(value);
+                            var minSec = toSeconds(min);
+                            var maxSec = toSeconds(max);
+                            args.IsValid = (valSec >= minSec && valSec <= maxSec);
+                        }} catch (e) {{
+                            args.IsValid = false;
+                        }}
+                    }}");
+                }
+            }
+
+            scriptBuilder.AppendLine("</script>");
+
+            string finalScript = scriptBuilder.ToString();
+            if (!string.IsNullOrWhiteSpace(finalScript))
+            {
+                //ScriptManager.RegisterStartupScript(Page, Page.GetType(), "TimeBoxRangeValidators", finalScript, false);
+                ScriptManager.RegisterStartupScript(Page, Page.GetType(), "TimeBoxRangeValidators_" + Guid.NewGuid().ToString(), finalScript, false);
+
+            }
+        }
+
 
         private void GetSAPCodes(int brandId)
         {
@@ -482,7 +997,6 @@ namespace AnmolDristi
                 }
             }
         }
-
         private void BrandSKUBinder(string selectedProductBrandValue)
         {
             string query = "SELECT SKUId, SKU_name FROM MST_Brand_SKU WHERE brand_id = @SelectedPlantValue";
@@ -507,7 +1021,6 @@ namespace AnmolDristi
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification", BrandSKUBinder_Error_script, false);
             }
         }
-
         protected void BtnUploadFU_MaidaImage_Click(object sender, EventArgs e)
         {
             //Maida image
@@ -684,7 +1197,6 @@ namespace AnmolDristi
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowImage2SuccessNotification", UI_2_Successscript, false);
             }
         }
-
         protected void BasicBtnSubmit_Click(object sender, EventArgs e)
         {
             if (Page.IsValid)
@@ -722,7 +1234,6 @@ namespace AnmolDristi
             }
         }
 
-
         private ProcessCheckingBasicData CollectFormData()
         {
             return new ProcessCheckingBasicData
@@ -740,27 +1251,27 @@ namespace AnmolDristi
                 ProductBrand = DDL_ProductBrand.SelectedValue,
                 SKUId = DDL_BrandSKU.SelectedValue,
 
-                ProcessWaterTemp = string.IsNullOrWhiteSpace(TB_ProcessWaterTemp.Text) ? (decimal?)null : decimal.Parse(TB_ProcessWaterTemp.Text),
+                ProcessWaterTemp = string.IsNullOrWhiteSpace(TXB_ProcessWaterTemp.Text) ? (decimal?)null : decimal.Parse(TXB_ProcessWaterTemp.Text),
                 ProcessWaterCmnt = TXB_ProcessWaterTemp_Remarks.Text,
 
-                WaterPH = string.IsNullOrWhiteSpace(TB_WaterPH.Text) ? (decimal?)null : decimal.Parse(TB_WaterPH.Text),
+                WaterPH = string.IsNullOrWhiteSpace(TXB_WaterPH.Text) ? (decimal?)null : decimal.Parse(TXB_WaterPH.Text),
                 WaterPhCmnt = TXB_WaterPH_Remarks.Text,
 
-                WaterHardness = string.IsNullOrWhiteSpace(TB_WaterHardness.Text) ? (decimal?)null : decimal.Parse(TB_WaterHardness.Text),
+                WaterHardness = string.IsNullOrWhiteSpace(TXB_WaterHardness.Text) ? (decimal?)null : decimal.Parse(TXB_WaterHardness.Text),
                 HardnessCmnt = TXB_WaterHardness_Remarks.Text,
 
-                WaterTest = TB_WaterTest.Text,
+                WaterTest = TXB_WaterTest.Text,
 
-                TDS = string.IsNullOrWhiteSpace(TB_TDS.Text) ? (decimal?)null : decimal.Parse(TB_TDS.Text),
+                TDS = string.IsNullOrWhiteSpace(TXB_TDS.Text) ? (decimal?)null : decimal.Parse(TXB_TDS.Text),
                 TdsCmnt = TXB_TDS_Remarks.Text,
 
-                MaidaBrand = TB_MaidaBrand.Text,
-                MaidaBatchNo = TB_MaidaBatchNo.Text,
+                MaidaBrand = TXB_MaidaBrand.Text,
+                MaidaBatchNo = TXB_MaidaBatchNo.Text,
                 //MaidaMfgDate = string.IsNullOrWhiteSpace(TB_MaidaMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_MaidaMfg.Text),
 
-                MaidaMfgDate = string.IsNullOrEmpty(TB_MaidaMfg.Text)
+                MaidaMfgDate = string.IsNullOrEmpty(TXB_MaidaMfg.Text)
                     ? new List<DateTime?>()
-                    : TB_MaidaMfg.Text
+                    : TXB_MaidaMfg.Text
                         .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(dateStr =>
                         {
@@ -798,7 +1309,7 @@ namespace AnmolDristi
                 HvoTaste = Convert.ToInt32(RBL_HvoTaste.SelectedValue),
                 CommentForHvoTaste = TXB_HvoTaste_Remarks.Text,
 
-                HvoTemp = string.IsNullOrWhiteSpace(TB_HvoTemp.Text) ? (decimal?)null : decimal.Parse(TB_HvoTemp.Text),
+                HvoTemp = string.IsNullOrWhiteSpace(TXB_HvoTemp.Text) ? (decimal?)null : decimal.Parse(TXB_HvoTemp.Text),
                 HvoCmnt = TXB_HvoTemp_Remarks.Text,
 
                 SmpSmell = Convert.ToInt32(RBL_SMPSmell.SelectedValue),
@@ -810,13 +1321,13 @@ namespace AnmolDristi
                 SmpColor = Convert.ToInt32(RBL_SMPColor.SelectedValue),
                 CommentForSmpColor = TXB_SMPColor_Remarks.Text,
 
-                SyrupTemp = string.IsNullOrWhiteSpace(TB_SyrupTemp.Text) ? (decimal?)null : decimal.Parse(TB_SyrupTemp.Text),
+                SyrupTemp = string.IsNullOrWhiteSpace(TXB_SyrupTemp.Text) ? (decimal?)null : decimal.Parse(TXB_SyrupTemp.Text),
                 SyrupCmnt = TXB_SyrupTemp_Remarks.Text,
 
                 SyrupColor = Convert.ToInt32(RBL_SyrupColor.SelectedValue),
                 CommentForSyrupColor = TXB_SyrupColor_Remarks.Text,
 
-                SyrupPH = string.IsNullOrWhiteSpace(TB_SyrupPH.Text) ? (decimal?)null : decimal.Parse(TB_SyrupPH.Text),
+                SyrupPH = string.IsNullOrWhiteSpace(TXB_SyrupPH.Text) ? (decimal?)null : decimal.Parse(TXB_SyrupPH.Text),
                 SyrupPhCmnt = TXB_SyrupPH_Remarks.Text,
 
                 InvertSyrpBucketFilter = Convert.ToInt32(RBL_InvertSyrupBucket.SelectedValue),
@@ -840,10 +1351,10 @@ namespace AnmolDristi
                 MilkSpray = Convert.ToInt32(RBL_MilkSpray.SelectedValue),
                 CommentForMilkSpray = TXB_MilkSpray_Remarks.Text,
 
-                ColdRoomTemp = string.IsNullOrWhiteSpace(TB_ColdRoomTemp.Text) ? (decimal?)null : decimal.Parse(TB_ColdRoomTemp.Text),
+                ColdRoomTemp = string.IsNullOrWhiteSpace(TXB_ColdRoomTemp.Text) ? (decimal?)null : decimal.Parse(TXB_ColdRoomTemp.Text),
                 ColdRoomCmnt = TXB_ColdRoomTemp_Remarks.Text,
 
-                DeepFreezeTemp = string.IsNullOrWhiteSpace(TB_DeepFreezeTemp.Text) ? (decimal?)null : decimal.Parse(TB_DeepFreezeTemp.Text),
+                DeepFreezeTemp = string.IsNullOrWhiteSpace(TXB_DeepFreezeTemp.Text) ? (decimal?)null : decimal.Parse(TXB_DeepFreezeTemp.Text),
                 DeepFreezeCmnt = TXB_DeepFreezeTemp_Remarks.Text,
 
                 MaidaImageUrl = hdn_img1.Value,
@@ -875,7 +1386,6 @@ namespace AnmolDristi
         //    ClientScript.RegisterStartupScript(this.GetType(), "ShowErrorNotification", errorScript, false);
         //}
 
-
         private void HandleError(Exception ex)
         {
             string errorMessage = ex.Message.Replace("'", "\\'");
@@ -894,18 +1404,18 @@ namespace AnmolDristi
             string productBrand = DDL_ProductBrand.SelectedValue;
             string skuId = DDL_BrandSKU.SelectedValue;
             string shift = hdn_shiftvalue.Value.ToString();
-            decimal processWaterTemp = Convert.ToDecimal(TB_ProcessWaterTemp.Text);
+            decimal processWaterTemp = Convert.ToDecimal(TXB_ProcessWaterTemp.Text);
             string commentForProcessWater = string.IsNullOrEmpty(TXB_ProcessWaterTemp_Remarks.Text) ? null : TXB_ProcessWaterTemp_Remarks.Text; ;
-            decimal waterPh = Convert.ToDecimal(TB_WaterPH.Text);
+            decimal waterPh = Convert.ToDecimal(TXB_WaterPH.Text);
             string commentForWaterPh = string.IsNullOrEmpty(TXB_WaterPH_Remarks.Text) ? null : TXB_WaterPH_Remarks.Text;
-            decimal waterHardness = Convert.ToDecimal(TB_WaterHardness.Text);
+            decimal waterHardness = Convert.ToDecimal(TXB_WaterHardness.Text);
             string commentForWaterHardness = string.IsNullOrEmpty(TXB_WaterHardness_Remarks.Text) ? null : TXB_WaterHardness_Remarks.Text;
-            string waterTest = TB_WaterTest.Text;
-            decimal tds = Convert.ToDecimal(TB_TDS.Text);
+            string waterTest = TXB_WaterTest.Text;
+            decimal tds = Convert.ToDecimal(TXB_TDS.Text);
             string commentForTds = string.IsNullOrEmpty(TXB_TDS_Remarks.Text) ? null : TXB_TDS_Remarks.Text; ;
-            string maidaBrand = TB_MaidaBrand.Text;
-            string maidaBatchNo = TB_MaidaBatchNo.Text;
-            DateTime maidaMfg = DateTime.Parse(TB_MaidaMfg.Text).Date;
+            string maidaBrand = TXB_MaidaBrand.Text;
+            string maidaBatchNo = TXB_MaidaBatchNo.Text;
+            DateTime maidaMfg = DateTime.Parse(TXB_MaidaMfg.Text).Date;
             int maidaAppColor = Convert.ToInt32(RBL_MaidaColorApp.SelectedValue);
             string commentForMaidaAppColor = TXB_MaidaColorApp_Remarks.Text;
             int maidaFlavorTaste = Convert.ToInt32(RBL_MaidaFlavorTaste.SelectedValue);
@@ -922,7 +1432,7 @@ namespace AnmolDristi
             string commentForHvoSmell = TXB_HvoSmell_Remarks.Text;
             int hvoTaste = Convert.ToInt32(RBL_HvoTaste.SelectedValue);
             string commentForHvoTaste = TXB_HvoTaste_Remarks.Text;
-            decimal hvoTemp = Convert.ToDecimal(TB_HvoTemp.Text);
+            decimal hvoTemp = Convert.ToDecimal(TXB_HvoTemp.Text);
             string commentForHvoTemp = string.IsNullOrEmpty(TXB_HvoTemp_Remarks.Text) ? null : TXB_HvoTemp_Remarks.Text;
             int smpSmell = Convert.ToInt32(RBL_SMPSmell.SelectedValue);
             string commentForSmpSmell = TXB_SMPSmell_Remarks.Text;
@@ -930,11 +1440,11 @@ namespace AnmolDristi
             string commentForSmpTaste = TXB_SMPSmell_Remarks.Text;
             int smpColor = Convert.ToInt32(RBL_SMPColor.SelectedValue);
             string commentForSmpColor = TXB_SMPColor_Remarks.Text;
-            decimal syrupTemp = Convert.ToDecimal(TB_SyrupTemp.Text);
+            decimal syrupTemp = Convert.ToDecimal(TXB_SyrupTemp.Text);
             string commentForSyrupTemp = string.IsNullOrEmpty(TXB_SyrupTemp_Remarks.Text) ? null : TXB_SyrupTemp_Remarks.Text;
             int syrupColor = Convert.ToInt32(RBL_SyrupColor.SelectedValue);
             string commentForSyrupColor = TXB_SyrupColor_Remarks.Text;
-            decimal syrupPh = Convert.ToDecimal(TB_SyrupPH.Text);
+            decimal syrupPh = Convert.ToDecimal(TXB_SyrupPH.Text);
             string commentForSyrupPh = string.IsNullOrEmpty(TXB_SyrupPH_Remarks.Text) ? null : TXB_SyrupPH_Remarks.Text;
             int invertSyrup = Convert.ToInt32(RBL_InvertSyrupBucket.SelectedValue);
             string commentForInvertSyrup = TXB_InvertSyrupBucket_Remarks.Text;
@@ -950,9 +1460,9 @@ namespace AnmolDristi
             string commentForOilSpray = TXB_OilSystem_Remarks.Text;
             int milkSpray = Convert.ToInt32(RBL_MilkSpray.SelectedValue);
             string commentForMilkSpray = TXB_MilkSpray_Remarks.Text;
-            decimal coldRoomTemp = Convert.ToDecimal(TB_ColdRoomTemp.Text);
+            decimal coldRoomTemp = Convert.ToDecimal(TXB_ColdRoomTemp.Text);
             string commentForColdRoom = string.IsNullOrEmpty(TXB_ColdRoomTemp_Remarks.Text) ? null : TXB_ColdRoomTemp_Remarks.Text;
-            decimal DeepFreezeTemp = Convert.ToDecimal(TB_DeepFreezeTemp.Text);
+            decimal DeepFreezeTemp = Convert.ToDecimal(TXB_DeepFreezeTemp.Text);
             string commentForDeepFreeze = string.IsNullOrEmpty(TXB_DeepFreezeTemp_Remarks.Text) ? null : TXB_DeepFreezeTemp_Remarks.Text;
 
 
@@ -987,27 +1497,27 @@ namespace AnmolDristi
                     ProductBrand = DDL_ProductBrand.SelectedValue,
                     SKUId = DDL_BrandSKU.SelectedValue,
 
-                    ProcessWaterTemp = string.IsNullOrWhiteSpace(TB_ProcessWaterTemp.Text) ? (decimal?)null : decimal.Parse(TB_ProcessWaterTemp.Text),
+                    ProcessWaterTemp = string.IsNullOrWhiteSpace(TXB_ProcessWaterTemp.Text) ? (decimal?)null : decimal.Parse(TXB_ProcessWaterTemp.Text),
                     ProcessWaterCmnt = TXB_ProcessWaterTemp_Remarks.Text,
 
-                    WaterPH = string.IsNullOrWhiteSpace(TB_WaterPH.Text) ? (decimal?)null : decimal.Parse(TB_WaterPH.Text),
+                    WaterPH = string.IsNullOrWhiteSpace(TXB_WaterPH.Text) ? (decimal?)null : decimal.Parse(TXB_WaterPH.Text),
                     WaterPhCmnt = TXB_WaterPH_Remarks.Text,
 
-                    WaterHardness = string.IsNullOrWhiteSpace(TB_WaterHardness.Text) ? (decimal?)null : decimal.Parse(TB_WaterHardness.Text),
+                    WaterHardness = string.IsNullOrWhiteSpace(TXB_WaterHardness.Text) ? (decimal?)null : decimal.Parse(TXB_WaterHardness.Text),
                     HardnessCmnt = TXB_WaterHardness_Remarks.Text,
 
-                    WaterTest = TB_WaterTest.Text,
+                    WaterTest = TXB_WaterTest.Text,
 
-                    TDS = string.IsNullOrWhiteSpace(TB_TDS.Text) ? (decimal?)null : decimal.Parse(TB_TDS.Text),
+                    TDS = string.IsNullOrWhiteSpace(TXB_TDS.Text) ? (decimal?)null : decimal.Parse(TXB_TDS.Text),
                     TdsCmnt = TXB_TDS_Remarks.Text,
 
-                    MaidaBrand = TB_MaidaBrand.Text,
-                    MaidaBatchNo = TB_MaidaBatchNo.Text,
+                    MaidaBrand = TXB_MaidaBrand.Text,
+                    MaidaBatchNo = TXB_MaidaBatchNo.Text,
 
                     //MaidaMfgDate = string.IsNullOrWhiteSpace(TB_MaidaMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_MaidaMfg.Text),
-                    MaidaMfgDate = string.IsNullOrEmpty(TB_MaidaMfg.Text)
+                    MaidaMfgDate = string.IsNullOrEmpty(TXB_MaidaMfg.Text)
                     ? new List<DateTime?>()
-                    : TB_MaidaMfg.Text
+                    : TXB_MaidaMfg.Text
                     .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(dateStr =>
                     {
@@ -1043,7 +1553,7 @@ namespace AnmolDristi
                     HvoTaste = Convert.ToInt32(RBL_HvoTaste.SelectedValue),
                     CommentForHvoTaste = TXB_HvoTemp_Remarks.Text,
 
-                    HvoTemp = string.IsNullOrWhiteSpace(TB_HvoTemp.Text) ? (decimal?)null : decimal.Parse(TB_HvoTemp.Text),
+                    HvoTemp = string.IsNullOrWhiteSpace(TXB_HvoTemp.Text) ? (decimal?)null : decimal.Parse(TXB_HvoTemp.Text),
                     HvoCmnt = TXB_HvoTemp_Remarks.Text,
 
                     SmpSmell = Convert.ToInt32(RBL_SMPSmell.SelectedValue),
@@ -1055,13 +1565,13 @@ namespace AnmolDristi
                     SmpColor = Convert.ToInt32(RBL_SMPColor.SelectedValue),
                     CommentForSmpColor = TXB_SMPSmell_Remarks.Text,
 
-                    SyrupTemp = string.IsNullOrWhiteSpace(TB_SyrupTemp.Text) ? (decimal?)null : decimal.Parse(TB_SyrupTemp.Text),
+                    SyrupTemp = string.IsNullOrWhiteSpace(TXB_SyrupTemp.Text) ? (decimal?)null : decimal.Parse(TXB_SyrupTemp.Text),
                     SyrupCmnt = TXB_SyrupTemp_Remarks.Text,
 
                     SyrupColor = Convert.ToInt32(RBL_SyrupColor.SelectedValue),
                     CommentForSyrupColor = TXB_SyrupColor_Remarks.Text,
 
-                    SyrupPH = string.IsNullOrWhiteSpace(TB_SyrupPH.Text) ? (decimal?)null : decimal.Parse(TB_SyrupPH.Text),
+                    SyrupPH = string.IsNullOrWhiteSpace(TXB_SyrupPH.Text) ? (decimal?)null : decimal.Parse(TXB_SyrupPH.Text),
                     SyrupPhCmnt = TXB_SyrupPH_Remarks.Text,
 
                     InvertSyrpBucketFilter = Convert.ToInt32(RBL_InvertSyrupBucket.SelectedValue),
@@ -1086,10 +1596,10 @@ namespace AnmolDristi
                     MilkSpray = Convert.ToInt32(RBL_MilkSpray.SelectedValue),
                     CommentForMilkSpray = TXB_MilkSpray_Remarks.Text,
 
-                    ColdRoomTemp = string.IsNullOrWhiteSpace(TB_ColdRoomTemp.Text) ? (decimal?)null : decimal.Parse(TB_ColdRoomTemp.Text),
+                    ColdRoomTemp = string.IsNullOrWhiteSpace(TXB_ColdRoomTemp.Text) ? (decimal?)null : decimal.Parse(TXB_ColdRoomTemp.Text),
                     ColdRoomCmnt = TXB_ColdRoomTemp_Remarks.Text,
 
-                    DeepFreezeTemp = string.IsNullOrWhiteSpace(TB_DeepFreezeTemp.Text) ? (decimal?)null : decimal.Parse(TB_DeepFreezeTemp.Text),
+                    DeepFreezeTemp = string.IsNullOrWhiteSpace(TXB_DeepFreezeTemp.Text) ? (decimal?)null : decimal.Parse(TXB_DeepFreezeTemp.Text),
                     DeepFreezeCmnt = TXB_DeepFreezeTemp_Remarks.Text,
 
                     MaidaImageUrl = ImgLink1,
@@ -1154,13 +1664,13 @@ namespace AnmolDristi
             DDL_ProductCategory.Enabled = false;
             DDL_ProductBrand.Enabled = false;
             DDL_BrandSKU.Enabled = false;
-            TB_ProcessWaterTemp.ReadOnly = true;
-            TB_WaterHardness.ReadOnly = true;
-            TB_WaterTest.ReadOnly = true;
-            TB_TDS.ReadOnly = true;
-            TB_MaidaBrand.ReadOnly = true;
-            TB_MaidaBatchNo.ReadOnly = true;
-            TB_MaidaMfg.ReadOnly = true;
+            TXB_ProcessWaterTemp.ReadOnly = true;
+            TXB_WaterHardness.ReadOnly = true;
+            TXB_WaterTest.ReadOnly = true;
+            TXB_TDS.ReadOnly = true;
+            TXB_MaidaBrand.ReadOnly = true;
+            TXB_MaidaBatchNo.ReadOnly = true;
+            TXB_MaidaMfg.ReadOnly = true;
             RBL_MaidaColorApp.Enabled = false;
             TXB_MaidaColorApp_Remarks.ReadOnly = true;
             RBL_MaidaFlavorTaste.Enabled = false;
@@ -1177,17 +1687,17 @@ namespace AnmolDristi
             TXB_HvoSmell_Remarks.ReadOnly = true;
             RBL_HvoTaste.Enabled = false;
             TXB_HvoTaste_Remarks.ReadOnly = true;
-            TB_HvoTemp.ReadOnly = true;
+            TXB_HvoTemp.ReadOnly = true;
             RBL_SMPSmell.Enabled = false;
             TXB_SMPSmell_Remarks.ReadOnly = true;
             RBL_SMPTaste.Enabled = false;
             TXB_SMPTaste_Remarks.ReadOnly = true;
             RBL_SMPColor.Enabled = false;
             TXB_SMPColor_Remarks.ReadOnly = true;
-            TB_SyrupTemp.ReadOnly = true;
+            TXB_SyrupTemp.ReadOnly = true;
             RBL_SyrupColor.Enabled = false;
             TXB_SyrupColor_Remarks.ReadOnly = true;
-            TB_SyrupPH.ReadOnly = true;
+            TXB_SyrupPH.ReadOnly = true;
             RBL_InvertSyrupBucket.Enabled = false;
             TXB_InvertSyrupBucket_Remarks.ReadOnly = true;
             RBL_SugarSolBucket.Enabled = false;
@@ -1202,8 +1712,8 @@ namespace AnmolDristi
             TXB_OilSpray_Remarks.ReadOnly = true;
             RBL_MilkSpray.Enabled = false;
             TXB_MilkSpray_Remarks.ReadOnly = true;
-            TB_ColdRoomTemp.ReadOnly = true;
-            TB_DeepFreezeTemp.ReadOnly = true;
+            TXB_ColdRoomTemp.ReadOnly = true;
+            TXB_DeepFreezeTemp.ReadOnly = true;
 
             ImgLink1 = string.Empty;
             ImgLink2 = string.Empty;
@@ -1337,10 +1847,8 @@ namespace AnmolDristi
         //    ScriptManager.RegisterStartupScript(this, this.GetType(), "SwitchTab", "document.getElementById('spongeData-tab').click();", true);
         //}
 
-
         protected void SpongeBtnSubmit_Click(object sender, EventArgs e)
         {
-
             if (string.IsNullOrWhiteSpace(PcrNo))
             {
 
@@ -1348,27 +1856,22 @@ namespace AnmolDristi
             else
             {
                 // Retrieve values from controls
-                decimal roomTemp = Convert.ToDecimal(TB_RoomTemp.Text);
+                decimal roomTemp = Convert.ToDecimal(TXB_SP_RoomTemp.Text);
                 string commentForRoomTemp = TXB_RoomTemp_Remarks.Text;
                 int drumCovered = Convert.ToInt32(RBL_DrumCovered.SelectedValue);
                 string commentForDrumCovered = TXB_DrumCovered_Remarks.Text;
-                int quality = Convert.ToInt32(RBL_Quality.SelectedValue);
+                int quality = Convert.ToInt32(RBL_SP_Quality.SelectedValue);
                 string commentForQuality = TXB_Quality_Remarks.Text;
-                TimeSpan standingTime = TimeSpan.Parse(TB_StandingTime.Text);
+                TimeSpan standingTime = TimeSpan.Parse(TXB_SP_StandingTime.Text);
                 string commentForStandingTime = "";
-                decimal temp = Convert.ToDecimal(TB_Temp.Text);
+                decimal temp = Convert.ToDecimal(TXB_SP_Temp.Text);
                 string commentForTemp = TXB_Temp_Remarks.Text;
 
                 QAProcessCheckingDataAcess dataAccess = new QAProcessCheckingDataAcess();
 
-
                 try
                 {
-                    // Call the InsertSpongeData method with the retrieved values
-                    dataAccess.InsertSpongeData(PcrNo, roomTemp, commentForRoomTemp, drumCovered, commentForDrumCovered, quality,
-                                                    commentForQuality, standingTime, commentForStandingTime, temp, commentForTemp, "Yes");
-
-                    //Make the inputs readonly
+                    dataAccess.InsertSpongeData(PcrNo, roomTemp, commentForRoomTemp, drumCovered, commentForDrumCovered, quality, commentForQuality, standingTime, commentForStandingTime, temp, commentForTemp, "Yes");
                     MakeInputsReadOnly2();
 
                     DoughBtnSubmit.Visible = true;
@@ -1401,14 +1904,14 @@ namespace AnmolDristi
         private void MakeInputsReadOnly2()
         {
             //SpongeData
-            TB_RoomTemp.ReadOnly = true;
+            TXB_SP_RoomTemp.ReadOnly = true;
             TXB_RoomTemp_Remarks.ReadOnly = true;
             RBL_DrumCovered.Enabled = false;
             TXB_DrumCovered_Remarks.ReadOnly = true;
-            RBL_Quality.Enabled = false;
+            RBL_SP_Quality.Enabled = false;
             TXB_Quality_Remarks.ReadOnly = true;
-            TB_StandingTime.ReadOnly = true;
-            TB_Temp.ReadOnly = true;
+            TXB_SP_StandingTime.ReadOnly = true;
+            TXB_SP_Temp.ReadOnly = true;
             TXB_Temp_Remarks.ReadOnly = true;
 
             SpongeBtnSubmit.Enabled = false;
@@ -1434,37 +1937,60 @@ namespace AnmolDristi
 
         protected void DoughBtnSubmit_Click(object sender, EventArgs e)
         {
+            TimeSpan creamingTime, mixingTime, bakingTime, restTime;
+
             // Retrieve values from controls
-            decimal doughTemp = Convert.ToDecimal(TB_DoughTemp.Text);
+            decimal doughTemp = Convert.ToDecimal(TXB_DoughTemp.Text);
             string commentForDoughTemp = TXB_DoughTemp_Remarks.Text;
-            TimeSpan restTime = TimeSpan.Parse(TB_DoughRestTime.Text);
+
+            //TimeSpan restTime = TimeSpan.Parse(TXB_DoughRestTime.Text);
             string commentForRestTime = "";
+
             int metalDetector = Convert.ToInt32(RBL_MetalDectector.SelectedValue);
             string commentForMetalDetector = TXB_MetalDetector_Remarks.Text;
+
             int processSequence = Convert.ToInt32(RBL_ProcessSequence.SelectedValue);
             string commentForProcessSequence = TXB_ProcessSequence_Remarks.Text;
-            TimeSpan creamingTime = TimeSpan.Parse(TB_CreamingTime.Text);
+
+            //TimeSpan creamingTime = TimeSpan.Parse(TXB_DoughCreamingTime.Text);
             string commentForCreamingTime = "";
-            TimeSpan mixingTime = TimeSpan.Parse(TB_MixingTime.Text);
+
+            //TimeSpan mixingTime = TimeSpan.Parse(TXB_DoughMixingTime.Text);
             string commentForMixingTime = "";
-            TimeSpan bakingTime = TimeSpan.Parse(TB_BakingTime.Text);
+
+            //TimeSpan bakingTime = TimeSpan.Parse(TXB_DoughBakingTime.Text);
             string commentForBakingTime = "";
-            decimal diceRmp = Convert.ToDecimal(TB_DiceRpm.Text);
+
+            decimal diceRmp = Convert.ToDecimal(TXB_DiceRpm.Text);
             string commentForDice = "";
+
             int doughCondition = Convert.ToInt32(RBL_DoughCondition.SelectedValue);
             string commentForDoughCondition = TXB_DoughCondition_Remarks.Text;
+
+            //if (!TimeParser.TryParseTimeFromString(this, TXB_DoughCreamingTime.Text, "Creaming Time", out creamingTime)) return;
+            //if (!TimeParser.TryParseTimeFromString(this, TXB_DoughMixingTime.Text, "Mixing Time", out mixingTime)) return;
+            //if (!TimeParser.TryParseTimeFromString(this, TXB_DoughBakingTime.Text, "Baking Time", out bakingTime)) return;
+            //if (!TimeParser.TryParseTimeFromString(this, TXB_DoughRestTime.Text, "Rest Time", out restTime)) return;
+
+            bool isValid = true;
+
+            isValid &= TimeParser.TryParseTimeFromString(this, TXB_DoughCreamingTime.Text, "Creaming Time", out creamingTime);
+            isValid &= TimeParser.TryParseTimeFromString(this, TXB_DoughMixingTime.Text, "Mixing Time", out mixingTime);
+            isValid &= TimeParser.TryParseTimeFromString(this, TXB_DoughBakingTime.Text, "Baking Time", out bakingTime);
+            isValid &= TimeParser.TryParseTimeFromString(this, TXB_DoughRestTime.Text, "Rest Time", out restTime);
+
+            if (!isValid)
+            {
+                // One or more inputs were invalid — errors already shown via PNotify
+                return;
+            }
 
             QAProcessCheckingDataAcess dataAccess = new QAProcessCheckingDataAcess();
 
             try
             {
-                // Call the InsertDoughData method with the retrieved values
-                dataAccess.InsertDoughData(PcrNo, doughTemp, commentForDoughTemp, restTime, commentForRestTime, metalDetector,
-                                            commentForMetalDetector, processSequence, commentForProcessSequence, creamingTime, commentForCreamingTime,
-                                            mixingTime, commentForMixingTime, bakingTime, commentForBakingTime, diceRmp, commentForDice, doughCondition,
-                                                commentForDoughCondition);
+                dataAccess.InsertDoughData(PcrNo, doughTemp, commentForDoughTemp, restTime, commentForRestTime, metalDetector, commentForMetalDetector, processSequence, commentForProcessSequence, creamingTime, commentForCreamingTime, mixingTime, commentForMixingTime, bakingTime, commentForBakingTime, diceRmp, commentForDice, doughCondition,commentForDoughCondition);
 
-                //Make the inputs readonly
                 MakeInputsReadOnly3();
 
                 OvenBtnSubmit.Visible = true;
@@ -1495,17 +2021,17 @@ namespace AnmolDristi
         private void MakeInputsReadOnly3()
         {
             //DoughData
-            TB_DoughTemp.ReadOnly = true;
+            TXB_DoughTemp.ReadOnly = true;
             TXB_DoughTemp_Remarks.ReadOnly = true;
-            TB_DoughRestTime.ReadOnly = true;
+            TXB_DoughRestTime.ReadOnly = true;
             RBL_MetalDectector.Enabled = false;
             TXB_MetalDetector_Remarks.ReadOnly = true;
             RBL_ProcessSequence.Enabled = false;
             TXB_ProcessSequence_Remarks.ReadOnly = true;
-            TB_CreamingTime.ReadOnly = true;
-            TB_MixingTime.ReadOnly = true;
-            TB_BakingTime.ReadOnly = true;
-            TB_DiceRpm.ReadOnly = true;
+            TXB_DoughCreamingTime.ReadOnly = true;
+            TXB_DoughMixingTime.ReadOnly = true;
+            TXB_DoughBakingTime.ReadOnly = true;
+            TXB_DiceRpm.ReadOnly = true;
             RBL_DoughCondition.Enabled = false;
             TXB_DoughCondition_Remarks.ReadOnly = true;
 
@@ -1535,7 +2061,7 @@ namespace AnmolDristi
             // Retrieve values from controls
             int balanceCond = Convert.ToInt32(RBL_BalanceCondition.SelectedValue);
             string commentForBalanceCond = TXB_BalanceCondition_Remarks.Text;
-            string rawBiscuitWgt = TB_RawBiscuitWgt.Text;
+            string rawBiscuitWgt = TXB_RawBiscuitWgt.Text;
             //int submittedById = Convert.ToInt32(null);
             //DateTime submittedDate = DateTime.Now.Date;
             //TimeSpan submittedTime = DateTime.Now.TimeOfDay;
@@ -1614,7 +2140,7 @@ namespace AnmolDristi
             //VerifiedData
             RBL_BalanceCondition.Enabled = false;
             TXB_BalanceCondition_Remarks.ReadOnly = true;
-            TB_RawBiscuitWgt.ReadOnly = true;
+            TXB_RawBiscuitWgt.ReadOnly = true;
 
 
             FinalBtnSubmit.Enabled = false;
@@ -1956,12 +2482,10 @@ namespace AnmolDristi
 
 
         //------- Oven section data ---------
-        private void BindGridView1()             // to show all  6 zone
+        private void BindGridView1()// to show all  6 zone
         {
-            // Sample data for Variety and Standard Weight
             var dataSave1 = new List<ZoneInfo>
             {
-                // Add all 22 varieties here
                 new ZoneInfo {Sl = 1,   Zone = "Zone 1" },
                 new ZoneInfo {Sl = 2,   Zone = "Zone 2" },
                 new ZoneInfo {Sl = 3,   Zone = "Zone 3" },
@@ -1971,11 +2495,224 @@ namespace AnmolDristi
                 new ZoneInfo {Sl = 7,   Zone = "Zone 7" },
                 new ZoneInfo {Sl = 8,   Zone = "Zone 8" },
             };
-
-            // Bind to GridView
             GridView2.DataSource = dataSave1;
             GridView2.DataBind();
         }
+
+        private class ZoneFieldControl
+        {
+            public string FieldName { get; set; }  // e.g. txtOvenTop
+            public string DisplayName { get; set; }
+            public bool IsRequired { get; set; }
+            public string RequiredError { get; set; }
+            public bool IsRegex { get; set; }
+            public string RegexError { get; set; }
+            public string RegexExpression { get; set; }
+            public bool IsRange { get; set; }
+            public string RangeError { get; set; }
+            public string MinValue { get; set; }
+            public string MaxValue { get; set; }
+            public bool IsVisible { get; set; }
+        }
+
+        private Dictionary<string, ZoneFieldControl> LoadZoneFieldControls_OLD()
+        {
+            var controls = new Dictionary<string, ZoneFieldControl>();
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                string query = @"SELECT field_name, DisplayName, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ViewMode
+                         FROM MST_FormFieldControls WHERE FormID = 6 AND Sub_Form = 'OvenData' AND IsLatest = 1 AND IsDeleted = 0";
+
+                SqlCommand cmd = new SqlCommand(query, con);
+                con.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string fieldName = reader["field_name"].ToString();
+
+                        var fieldControl = new ZoneFieldControl
+                        {
+                            FieldName = fieldName,
+                            DisplayName = reader["DisplayName"].ToString(),
+                            IsRequired = Convert.ToBoolean(reader["RFV_YesNo"]),
+                            RequiredError = reader["RFV_ErrorMsg"].ToString(),
+                            IsRegex = Convert.ToBoolean(reader["REV_YesNo"]),
+                            RegexError = reader["REV_ErrorMsg"].ToString(),
+                            RegexExpression = reader["REV_Expression"].ToString(),
+                            IsRange = Convert.ToBoolean(reader["RV_Yesno"]),
+                            RangeError = reader["RV_ErrorMsg"].ToString(),
+                            MinValue = reader["RV_MinValue"].ToString(),
+                            MaxValue = reader["RV_MaxValue"].ToString(),
+                            IsVisible = Convert.ToBoolean(reader["ViewMode"])
+                        };
+
+                        controls[fieldName] = fieldControl;
+                    }
+                }
+            }
+
+            return controls;
+        }
+
+        // Updated method with additional filters for plant, line, category, and material/brand
+        private Dictionary<string, ZoneFieldControl> LoadZoneFieldControls()
+        {
+            int plantId = !string.IsNullOrWhiteSpace(DDL_Plant.SelectedValue) ? Convert.ToInt32(DDL_Plant.SelectedValue) : 0;
+            int lineId = !string.IsNullOrWhiteSpace(DDL_PlantLine.SelectedValue) ? Convert.ToInt32(DDL_PlantLine.SelectedValue) : 0;
+            int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+            int materialId = !string.IsNullOrWhiteSpace(DDL_ProductBrand.SelectedValue) ? Convert.ToInt32(DDL_ProductBrand.SelectedValue) : 0;
+
+            var controls = new Dictionary<string, ZoneFieldControl>();
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                string query = @"
+                SELECT field_name, DisplayName, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, 
+                       REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ViewMode 
+                FROM MST_FormFieldControls 
+                WHERE FormID = 6 AND Sub_Form = 'OvenData' AND IsLatest = 1 AND IsDeleted = 0
+              AND plant_id = @plantId AND lineId = @lineId AND category_id = @categoryId AND material_id = @materialId";
+
+                SqlCommand cmd = new SqlCommand(query, con);
+                cmd.Parameters.AddWithValue("@plantId", plantId);
+                cmd.Parameters.AddWithValue("@lineId", lineId);
+                cmd.Parameters.AddWithValue("@categoryId", categoryId);
+                cmd.Parameters.AddWithValue("@materialId", materialId);
+
+                con.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string fieldName = reader["field_name"].ToString();
+
+                        var fieldControl = new ZoneFieldControl
+                        {
+                            FieldName = fieldName,
+                            DisplayName = reader["DisplayName"].ToString(),
+                            IsRequired = Convert.ToBoolean(reader["RFV_YesNo"]),
+                            RequiredError = reader["RFV_ErrorMsg"].ToString(),
+                            IsRegex = Convert.ToBoolean(reader["REV_YesNo"]),
+                            RegexError = reader["REV_ErrorMsg"].ToString(),
+                            RegexExpression = reader["REV_Expression"].ToString(),
+                            IsRange = Convert.ToBoolean(reader["RV_Yesno"]),
+                            RangeError = reader["RV_ErrorMsg"].ToString(),
+                            MinValue = reader["RV_MinValue"].ToString(),
+                            MaxValue = reader["RV_MaxValue"].ToString(),
+                            IsVisible = Convert.ToBoolean(reader["ViewMode"])
+                        };
+
+                        controls[fieldName] = fieldControl;
+                    }
+                }
+            }
+
+            return controls;
+        }
+
+
+        protected void GridView2_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                if (_zoneFieldControls == null)
+                    _zoneFieldControls = LoadZoneFieldControls();
+
+                ApplyValidation("txtOvenTop", e.Row, _zoneFieldControls);
+                ApplyValidation("txtOvenBottom", e.Row, _zoneFieldControls);
+                ApplyValidation("txtDamperTop", e.Row, _zoneFieldControls);
+                ApplyValidation("txtDamperBottom", e.Row, _zoneFieldControls);
+            }
+        }
+
+        // Fix: Map textboxId (e.g., "txtOvenTop") to DB field_name (e.g., "oven_top")
+        private string MapTextBoxIdToFieldName(string textboxId)
+        {
+            switch (textboxId.ToLower())
+            {
+                case "txtoventop": return "oven_top";
+                case "txtovenbottom": return "oven_bottom";
+                case "txtdampertop": return "damper_top";
+                case "txtdamperbottom": return "damper_bottom";
+                default: return textboxId.ToLower();
+            }
+        }
+
+        // Updated ApplyValidation method
+        private void ApplyValidation(string textboxId, GridViewRow row, Dictionary<string, ZoneFieldControl> controls)
+        {
+            TextBox txt = row.FindControl(textboxId) as TextBox;
+            string mappedFieldName = MapTextBoxIdToFieldName(textboxId);
+
+            // Check if the control exists and a matching validation config is available
+            if (txt != null && controls.ContainsKey(mappedFieldName))
+            {
+                var control = controls[mappedFieldName];
+
+                txt.Visible = control.IsVisible;
+                txt.ToolTip = control.DisplayName;
+                //txt.Attributes["placeholder"] = control.RangeError;
+
+                var container = txt.Parent;
+
+                if (control.IsRequired)
+                {
+                    RequiredFieldValidator rfv = new RequiredFieldValidator
+                    {
+                        ID = "rfv_" + txt.ID + "_" + row.RowIndex,
+                        ControlToValidate = txt.ID,
+                        ErrorMessage = control.RequiredError,
+                        Display = ValidatorDisplay.Dynamic,
+                        CssClass = "text-danger",
+                        EnableClientScript = true,
+                        ValidationGroup = "gv2"
+                    };
+                    container.Controls.Add(rfv);
+                }
+
+                if (control.IsRegex)
+                {
+                    RegularExpressionValidator rev = new RegularExpressionValidator
+                    {
+                        ID = "rev_" + txt.ID + "_" + row.RowIndex,
+                        ControlToValidate = txt.ID,
+                        ErrorMessage = control.RegexError,
+                        ValidationExpression = control.RegexExpression,
+                        Display = ValidatorDisplay.Dynamic,
+                        CssClass = "text-danger",
+                        EnableClientScript = true,
+                        ValidationGroup = "gv2"
+                    };
+                    container.Controls.Add(rev);
+                }
+
+                if (control.IsRange)
+                {
+                    RangeValidator rv = new RangeValidator
+                    {
+                        ID = "rv_" + txt.ID + "_" + row.RowIndex,
+                        ControlToValidate = txt.ID,
+                        ErrorMessage = control.RangeError,
+                        MinimumValue = control.MinValue,
+                        MaximumValue = control.MaxValue,
+                        Type = ValidationDataType.Double,
+                        Display = ValidatorDisplay.Dynamic,
+                        CssClass = "text-danger",
+                        EnableClientScript = true,
+                        ValidationGroup = "gv2"
+                    };
+                    container.Controls.Add(rv);
+                }
+            }
+            else
+            {
+                // Debug if control or config is missing
+                System.Diagnostics.Debug.WriteLine($"Validation not applied. Control found: {txt != null}, Key exists: {controls.ContainsKey(textboxId)}");
+            }
+        }
+
         public class ZoneInfo
         {
             public int Sl { get; set; }
@@ -1986,11 +2723,9 @@ namespace AnmolDristi
             public decimal DamperBottom { get; set; }
         }
 
-
         [WebMethod]
         public static void SaveData1(string jsonData)
         {
-
             // Deserialize JSON data to a list of objects
             var data = JsonConvert.DeserializeObject<List<ZoneInfo>>(jsonData);
 
@@ -2068,12 +2803,8 @@ namespace AnmolDristi
                 DoughBtnSubmit.Enabled = true;
                 DoughBtnSubmit.Visible = true;
 
-                //Make the inputs readonly
                 MakeInputsReadOnly2();
-
                 ScriptManager.RegisterStartupScript(this, GetType(), "activateTab", "activateTab('doughData-tab');", true);
-
-
             }
         }
     }

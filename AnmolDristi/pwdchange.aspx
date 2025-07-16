@@ -1,4 +1,5 @@
 ﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="pwdchange.aspx.cs" Inherits="AnmolDristi.pwdchange" %>
+
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -54,15 +55,6 @@
                                     </div>
                                 </div>
 
-                                <div class="form-group row" id="newpwd_row3" runat="server" visible="false">
-                                    <label class="control-label col-md-3 col-sm-3" for="txt_newpass2">New Password:<span class="text text-danger">*</span></label>
-                                    <div class="col-md-9 col-sm-9" id="newpwd_row4" runat="server" visible="false">
-                                        <asp:TextBox ID="txt_newpass2" runat="server" class="form-control form-control-sm rounded" Text="N/A" ReadOnly="true" TextMode="Password"></asp:TextBox>
-                                        <asp:RequiredFieldValidator ID="RFV_P2" runat="server" ErrorMessage="*" ForeColor="Red" InitialValue="" ControlToValidate="txt_newpass2" ValidationGroup="ChnagePassword" Display="Dynamic" SetFocusOnError="true"></asp:RequiredFieldValidator>
-                                        <asp:CompareValidator ID="CV_P1" runat="server" ErrorMessage="CompareValidator" ControlToCompare="txt_newpass1" ForeColor="Red" ControlToValidate="txt_newpass2"></asp:CompareValidator>
-                                    </div>
-                                </div>
-
                                 <div class="form-group row" id="newpwd_row5" runat="server" visible="false">
                                     <label class="control-label col-md-3 col-sm-3" for="DDL_SQ1">Security Q1:<span class="text text-danger">*</span></label>
                                     <div class="col-md-9 col-sm-9" id="newpwd_row6" runat="server" visible="false">
@@ -95,6 +87,69 @@
                                     </div>
                                 </div>
 
+                                <div class="form-group row" id="emailinput_row1" runat="server" visible="false">
+                                    <label class="control-label col-md-3 col-sm-3" for="txt_Email">Enter Email :<span class="text text-danger">*</span></label>
+                                    <div class="col-md-9 col-sm-9" id="emailinput_row2" runat="server" visible="false">
+                                        <asp:TextBox ID="txt_Email" runat="server" class="form-control form-control-sm rounded" TextMode="Email"></asp:TextBox>
+
+                                        <asp:RequiredFieldValidator
+                                            ID="rfv_Email"
+                                            runat="server"
+                                            ErrorMessage="Email is required"
+                                            ControlToValidate="txt_Email"
+                                            ValidationGroup="ChnagePassword"
+                                            SetFocusOnError="true"
+                                            Display="Dynamic"
+                                            ForeColor="Red" />
+
+                                        <asp:RegularExpressionValidator
+                                            ID="rev_Email"
+                                            runat="server"
+                                            ControlToValidate="txt_Email"
+                                            ValidationGroup="ChnagePassword"
+                                            Display="Dynamic"
+                                            SetFocusOnError="true"
+                                            ErrorMessage="Invalid Email Format"
+                                            ForeColor="Red"
+                                            ValidationExpression="^[^@\s]+@[^@\s]+\.[^@\s]+$" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row" id="DivSendOTP" runat="server" visible="false">
+                                    <label class="control-label col-md-3 col-sm-3" for="txt_Email">Click to receive OTP</label>
+                                    <!-- Offset for label alignment -->
+                                    <div class="col-md-9 col-sm-9">
+                                        <asp:Button
+                                            ID="btn_SendOTP"
+                                            runat="server"
+                                            Text="Send OTP"
+                                            CssClass="btn btn-warning btn-sm rounded"
+                                            OnClick="btn_SendOTP_Click" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row" id="divVerifyOTP" runat="server" visible="false">
+                                    <label class="control-label col-md-3 col-sm-3" for="txt_OTP">Enter OTP :</label>
+                                    <div class="col-md-9 col-sm-9">
+                                        <asp:TextBox ID="txt_OTP" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
+                                        <asp:Button
+                                            ID="btn_VerifyOTP"
+                                            runat="server"
+                                            Text="Verify OTP"
+                                            CssClass="btn btn-success btn-sm mt-2 rounded"
+                                            OnClick="btn_VerifyOTP_Click" />
+                                    </div>
+                                </div>
+
+                                <div class="form-group row" id="newpwd_row3" runat="server" visible="false">
+                                    <label class="control-label col-md-3 col-sm-3" for="txt_newpass2">New Password:<span class="text text-danger">*</span></label>
+                                    <div class="col-md-9 col-sm-9" id="newpwd_row4" runat="server" visible="false">
+                                        <asp:TextBox ID="txt_newpass2" runat="server" class="form-control form-control-sm rounded" Text="N/A" ReadOnly="true" TextMode="Password"></asp:TextBox>
+                                        <asp:RequiredFieldValidator ID="RFV_P2" runat="server" ErrorMessage="*" ForeColor="Red" InitialValue="" ControlToValidate="txt_newpass2" ValidationGroup="ChnagePassword" Display="Dynamic" SetFocusOnError="true"></asp:RequiredFieldValidator>
+                                        <asp:CompareValidator ID="CV_P1" runat="server" ErrorMessage="CompareValidator" ControlToCompare="txt_newpass1" ForeColor="Red" ControlToValidate="txt_newpass2"></asp:CompareValidator>
+                                    </div>
+                                </div>
+
                                 <div class="form-group row">
                                     <asp:Label ID="lbl_msgpass" CssClass="control-label col-lg-6 col-sm-12" runat="server" Text="Your login credentails has expired, Please change to continue visitng." Font-Bold="true" ForeColor="Red"></asp:Label>
                                     <div class="col-lg-6 col-sm-12">
@@ -119,12 +174,8 @@
                                 </div>
                                 <p>You can skip now, by clicking on the [SKIP NOW]</p>
                             </div>
-
-
                             <%--button end--%>
                         </div>
-
-
 
                         <!-- Small modal -->
                         <asp:Button ID="ShowPopup" runat="server" Text="Button" class="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />

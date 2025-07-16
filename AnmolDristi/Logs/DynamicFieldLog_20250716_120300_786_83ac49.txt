@@ -1,0 +1,122 @@
+===================================================
+Log Created At: 2025-07-16 12:03:00.786
+===================================================
+--- 2025-07-16 12:03:00 | Field: DoughTemp (Dough Temp :) ---
+--- Configuring Field: DoughTemp (Dough Temp :) ---
+✔ Container found: DoughTemp, Visible: True
+✔ Container found: DoughTemp, Visible: True
+✔ Input control found: TXB_DoughTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for DoughTemp - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for DoughTemp
+✖ DropDownList not found for DoughTemp
+--- 2025-07-16 12:03:00 | Field: DoughRestTime (Dough Rest Time (HH:MM:SS) :) ---
+--- Configuring Field: DoughRestTime (Dough Rest Time (HH:MM:SS) :) ---
+✔ Container found: DoughRestTime, Visible: True
+✔ Container found: DoughRestTime, Visible: True
+✔ Input control found: TXB_DoughRestTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:00:10, Max=01:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughRestTime
+✖ DropDownList not found for DoughRestTime
+✔ CustomValidator configured for TimeBox
+⮞ Time Range for DoughRestTime: 00:00:10 to 01:00:00
+--- 2025-07-16 12:03:00 | Field: MetalDectector (Metal Detector :) ---
+--- Configuring Field: MetalDectector (Metal Detector :) ---
+✔ Container found: MetalDectector, Visible: True
+✔ Container found: MetalDectector, Visible: True
+✔ Input control found: RBL_MetalDectector, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for MetalDectector
+✔ RadioButtonList configured for MetalDectector, Visible: True
+✖ DropDownList not found for MetalDectector
+--- 2025-07-16 12:03:00 | Field: ProcessSequence (Process Sequence :) ---
+--- Configuring Field: ProcessSequence (Process Sequence :) ---
+✔ Container found: ProcessSequence, Visible: True
+✔ Container found: ProcessSequence, Visible: True
+✔ Input control found: RBL_ProcessSequence, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList default selected: 5 for ProcessSequence
+✔ RadioButtonList configured for ProcessSequence, Visible: True
+✖ DropDownList not found for ProcessSequence
+--- 2025-07-16 12:03:00 | Field: DoughCreamingTime (Dough Creaming Time (HH:MM:SS) :) ---
+--- Configuring Field: DoughCreamingTime (Dough Creaming Time (HH:MM:SS) :) ---
+✔ Container found: DoughCreamingTime, Visible: False
+✔ Container found: DoughCreamingTime, Visible: False
+✔ Input control found: TXB_DoughCreamingTime, Visible: False
+✔ Set data-min and data-max on TextBox: Min=00:10:00, Max=01:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughCreamingTime
+✖ DropDownList not found for DoughCreamingTime
+✔ CustomValidator configured for TimeBox
+⮞ Time Range for DoughCreamingTime: 00:10:00 to 01:00:00
+--- 2025-07-16 12:03:00 | Field: DoughMixingTime (Dough Mixing Time (HH:MM:SS) :) ---
+--- Configuring Field: DoughMixingTime (Dough Mixing Time (HH:MM:SS) :) ---
+✔ Container found: DoughMixingTime, Visible: True
+✔ Container found: DoughMixingTime, Visible: True
+✔ Input control found: TXB_DoughMixingTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:10:00, Max=01:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughMixingTime
+✖ DropDownList not found for DoughMixingTime
+✔ CustomValidator configured for TimeBox
+⮞ Time Range for DoughMixingTime: 00:10:00 to 01:00:00
+--- 2025-07-16 12:03:00 | Field: DoughBakingTime (Dough Baking Time (HH:MM:SS) :) ---
+--- Configuring Field: DoughBakingTime (Dough Baking Time (HH:MM:SS) :) ---
+✔ Container found: DoughBakingTime, Visible: True
+✔ Container found: DoughBakingTime, Visible: True
+✔ Input control found: TXB_DoughBakingTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:10:00, Max=01:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughBakingTime
+✖ DropDownList not found for DoughBakingTime
+✔ CustomValidator configured for TimeBox
+⮞ Time Range for DoughBakingTime: 00:10:00 to 01:00:00
+--- 2025-07-16 12:03:00 | Field: DiceRpm (Dice RPM :) ---
+--- Configuring Field: DiceRpm (Dice RPM :) ---
+✔ Container found: DiceRpm, Visible: True
+✔ Container found: DiceRpm, Visible: True
+✔ Input control found: TXB_DiceRpm, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0, Max=300
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for DiceRpm - Min: 0, Max: 300, Enabled: True
+✖ RadioButtonList not found for DiceRpm
+✖ DropDownList not found for DiceRpm
+--- 2025-07-16 12:03:00 | Field: DoughCondition (Dough Condition :) ---
+--- Configuring Field: DoughCondition (Dough Condition :) ---
+✔ Container found: DoughCondition, Visible: True
+✔ Container found: DoughCondition, Visible: True
+✔ Input control found: RBL_DoughCondition, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for DoughCondition, Visible: True
+✖ DropDownList not found for DoughCondition
+
+

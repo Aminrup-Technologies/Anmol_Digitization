@@ -18,7 +18,7 @@ namespace AnmolDristi.DAL
             shifts = LoadShiftsFromDatabase(connectionString);
         }
 
-        public string GetCurrentShiftType()
+        public string GetCurrentShiftType_OLD()
         {
             TimeSpan currentTime = DateTime.Now.TimeOfDay;
 
@@ -32,6 +32,51 @@ namespace AnmolDristi.DAL
 
             return "No Shift"; // Default if no matching shift is found
         }
+
+        public string GetCurrentShiftType()
+        {
+            TimeSpan currentTime = DateTime.Now.TimeOfDay;
+            DataTable shiftTable = GetShiftDataFromDB();
+
+            foreach (DataRow row in shiftTable.Rows)
+            {
+                string shiftName = row["ShiftName"].ToString();
+                TimeSpan startTime = TimeSpan.Parse(row["StartTime"].ToString());
+                TimeSpan endTime = TimeSpan.Parse(row["EndTime"].ToString());
+
+                if (startTime < endTime)
+                {
+                    if (currentTime >= startTime && currentTime < endTime)
+                        return shiftName;
+                }
+                else
+                {
+                    if (currentTime >= startTime || currentTime < endTime)
+                        return shiftName;
+                }
+            }
+
+            return "Unknown";
+        }
+
+        private DataTable GetShiftDataFromDB()
+        {
+            using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand("SELECT ShiftName, StartTime, EndTime FROM ShiftMasterTable", conn))
+                {
+                    conn.Open();
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        adapter.Fill(dt);
+                        return dt;
+                    }
+                }
+            }
+        }
+
+
 
         private bool IsCurrentTimeInShift(TimeSpan currentTime, TimeSpan startTime, TimeSpan endTime)
         {

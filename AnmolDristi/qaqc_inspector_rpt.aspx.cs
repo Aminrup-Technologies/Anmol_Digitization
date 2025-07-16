@@ -1416,8 +1416,15 @@ namespace AnmolDristi.qaqc
                 lbl_DDL_ProductBrand_Value.Text = selectedProductBrandValue;
                 BrandSKUBinder(selectedProductBrandValue);
 
-                DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
+                DataTable dataTable0 = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
 
+                DataTable dataTable = DatabaseHelper.GetFormFieldControlByFormAndBrand(
+                    1, // FormID: qaqc_inspector_rpt
+                    Convert.ToInt32(DDL_Plant.SelectedValue),
+                    Convert.ToInt32(DDL_PlantLine.SelectedValue),
+                    Convert.ToInt32(DDL_ProductBrand.SelectedValue),
+                    Convert.ToInt32(DDL_ProductCategory.SelectedValue)
+                );
 
                 // Example: Querying the DataTable for a specific field name
                 //string fieldName = "no_of_pcs"; // Specify the field name you want to query
@@ -1426,10 +1433,8 @@ namespace AnmolDristi.qaqc
                 // Iterate through the filtered rows and extract validation criteria
                 foreach (DataRow row in dataTable.Rows)
                 {
-                    // Extract field name from the current row
                     string fieldName = row["field_name"].ToString();
                     string displayName = row["DisplayName"].ToString();
-                    // Extract validation criteria from the DataRow
                     bool rfvEnabled = Convert.ToBoolean(row["RFV_YesNo"]);
                     string rfvErrorMessage = row["RFV_ErrorMsg"].ToString();
                     bool revEnabled = Convert.ToBoolean(row["REV_YesNo"]);

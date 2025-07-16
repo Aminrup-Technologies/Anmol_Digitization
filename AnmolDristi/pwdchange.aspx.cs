@@ -6,6 +6,8 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Data;
 using System.Data.SqlClient;
+using System.Net.Mail;
+using System.Net;
 
 namespace AnmolDristi
 {
@@ -73,6 +75,8 @@ namespace AnmolDristi
                 newpwd_row7.Visible = true; newpwd_row8.Visible = true;
                 newpwd_row9.Visible = true; newpwd_row10.Visible = true;
                 newpwd_row11.Visible = true; newpwd_row12.Visible = true;
+                emailinput_row1.Visible = true; emailinput_row2.Visible = true;
+                DivSendOTP.Visible = true;
 
                 btn_validateoldpassword.Enabled = false;
                 btn_discardsvpass.Enabled = false;
@@ -319,5 +323,68 @@ namespace AnmolDristi
             }
             return flag;
         }
+
+
+        protected void btn_SendOTP_Click(object sender, EventArgs e)
+        {
+            string userEmail = txt_Email.Text.Trim();
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                // Generate a random 6-digit OTP
+                Random rand = new Random();
+                int otp = rand.Next(100000, 999999);
+                Session["OTP"] = otp;
+
+                // Compose email
+                string subject = "Your OTP Code";
+                string body = $"Your OTP code is: {otp}";
+
+                System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12;
+                using (MailMessage mm = new MailMessage("sapsystem@anmolindustries.com", userEmail))
+                {
+                    mm.Subject = subject;
+                    mm.Body = body;
+                    mm.IsBodyHtml = false;
+
+                    using (SmtpClient smtp = new SmtpClient("smtp.office365.com", 587))
+                    {
+                        //smtp.Host = "smtp.office365.com";
+                        smtp.EnableSsl = true;
+                        //smtp.Port = 587;
+                        smtp.UseDefaultCredentials = false;
+                        smtp.Credentials = new NetworkCredential("sapsystem@anmolindustries.com", "Basis@2024");
+                        smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
+                        smtp.Send(mm);
+                    }
+                }
+
+                lbl_msgpass.Text = "OTP has been sent to your email.";
+                lbl_msgpass.ForeColor = System.Drawing.Color.Green;
+                divVerifyOTP.Visible = true; // Show OTP input
+            }
+        }
+
+
+        protected void btn_VerifyOTP_Click(object sender, EventArgs e)
+        {
+            string enteredOTP = txt_OTP.Text.Trim();
+            if (Session["OTP"] != null && enteredOTP == Session["OTP"].ToString())
+            {
+                lbl_msgpass.Text = "Email verified successfully!";
+                lbl_msgpass.ForeColor = System.Drawing.Color.Green;
+                Session.Remove("OTP"); // Clear OTP after use
+
+                btn_svpass.Enabled = true;
+            }
+            else
+            {
+                lbl_msgpass.Text = "Invalid OTP. Please try again.";
+                lbl_msgpass.ForeColor = System.Drawing.Color.Red;
+
+                btn_svpass.Enabled = false;
+            }
+        }
+
+
     }
 }
