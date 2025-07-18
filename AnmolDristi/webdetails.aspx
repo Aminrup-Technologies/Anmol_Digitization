@@ -362,8 +362,7 @@
                             <div class="clearfix"></div>
                         </div>
                         <div class="x_content">
-                            <asp:GridView ID="GridViewCredentials" runat="server" AutoGenerateColumns="false"
-                                CssClass="table table-bordered table-hover table-sm" DataKeyNames="Id" AllowPaging="true" PageSize="20" OnRowCommand="GridViewCredentials_RowCommand" OnRowDeleting="GridViewCredentials_RowDeleting" EmptyDataText="No credentials found.">
+                            <asp:GridView ID="GridViewCredentials" runat="server" AutoGenerateColumns="false" CssClass="table table-bordered table-hover table-sm" DataKeyNames="Id" AllowPaging="true" PageSize="20" OnRowCommand="GridViewCredentials_RowCommand" OnRowDeleting="GridViewCredentials_RowDeleting" OnPageIndexChanging="GridViewCredentials_PageIndexChanging" EmptyDataText="No credentials found.">
 
                                 <Columns>
                                     <asp:BoundField DataField="SiteName" HeaderText="Site Name" />

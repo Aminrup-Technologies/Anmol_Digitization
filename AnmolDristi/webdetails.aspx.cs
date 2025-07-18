@@ -158,11 +158,11 @@ namespace AnmolDristi
             }
         }
 
-        protected void GridViewCredentials_PageIndexChanging(object sender, GridViewPageEventArgs e)
-        {
-            GridViewCredentials.PageIndex = e.NewPageIndex;
-            BindGrid();
-        }
+        //protected void GridViewCredentials_PageIndexChanging(object sender, GridViewPageEventArgs e)
+        //{
+        //    GridViewCredentials.PageIndex = e.NewPageIndex;
+        //    BindGrid();
+        //}
 
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
@@ -549,6 +549,12 @@ namespace AnmolDristi
                 type: 'info',
                 styling: 'bootstrap3'
             });", true);
+        }
+
+        protected void GridViewCredentials_PageIndexChanging(object sender, GridViewPageEventArgs e)
+        {
+            GridViewCredentials.PageIndex = e.NewPageIndex;
+            BindGrid(); // This should re-bind the grid with data from DB or source
         }
 
     }
