@@ -19,11 +19,11 @@
             padding-bottom: 20px;
         }
 
-            .custom-page-title .title_left h3 {
-                font-size: 20px;
-                color: #333333;
-                font-weight: bold;
-            }
+        .custom-page-title .title_left h3 {
+            font-size: 20px;
+            color: #333333;
+            font-weight: bold;
+        }
 
         /*.nav-tabs .nav-link.active {
           background-color: #17a2b8;
@@ -1353,7 +1353,6 @@
         }
     }
 
-
     function toggleRemarksDIVForRadio(radioButtonList) {
         var triggerValue = radioButtonList.getAttribute("data-trigger-value");
         var remarksDivId = radioButtonList.getAttribute("data-remarks-div");
@@ -1378,8 +1377,6 @@
             remarksDiv.style.display = "none";
         }
     }
-
-
     </script>
 
     <asp:HiddenField ID="hdn_img1" runat="server" />
