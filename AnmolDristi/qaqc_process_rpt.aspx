@@ -1,4 +1,4 @@
-﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="qaqc_process_rpt.aspx.cs" Inherits="AnmolDristi.qaqc_ProcessChecking_rpt" %>
+﻿<%@ Page Title="AIL | QaQc - Process Checking Format" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="qaqc_process_rpt.aspx.cs" Inherits="AnmolDristi.qaqc_ProcessChecking_rpt" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
 
@@ -80,15 +80,22 @@
 
         function validateForm() {
             // Ensure Page_ClientValidate exists (avoid JavaScript errors)
-            if (typeof (Page_ClientValidate) == 'function') {
-                if (!Page_ClientValidate('BasicDataSave')) {
+            if (typeof Page_Validators !== "undefined") {
+                Page_Validators.forEach(function (v) {
+                    console.log(v.id, "enabled =", v.enabled, "isValid =", v.isvalid);
+                });
+            }
+
+
+            if (typeof (Page_ClientValidate) === "function") {
+                if (!Page_ClientValidate("BasicDataSave")) {
                     new PNotify({
                         title: 'Missing Input',
-                        text: 'Please complete before submitting.',
+                        text: 'Please fill all mandatory fields including remarks for out-of-range values.',
                         type: 'error',
                         styling: 'bootstrap3'
                     });
-                    return false; // Stop form submission
+                    return false;
                 }
             }
 
@@ -1313,6 +1320,40 @@
         }
     }
 
+    function toggleRemarksDIVGenericNew(input) {
+        var val = parseFloat(input.value);
+        if (isNaN(val)) return;
+
+        var min = parseFloat(input.getAttribute("data-min"));
+        var max = parseFloat(input.getAttribute("data-max"));
+        var remarksDivId = input.getAttribute("data-remarks-div");
+
+        var remarksValidator = document.querySelector('[id$="' + input.id.replace('TXB_', 'RFV_') + '_Remarks"]');
+
+        if (val < min || val > max) {
+            // Show remarks div
+            if (remarksDivId) {
+                document.getElementById(remarksDivId).style.display = "block";
+            }
+
+            // Enable its validator
+            if (remarksValidator && typeof ValidatorEnable === "function") {
+                ValidatorEnable(remarksValidator, true);
+            }
+        } else {
+            // Hide remarks div
+            if (remarksDivId) {
+                document.getElementById(remarksDivId).style.display = "none";
+            }
+
+            // Disable validator
+            if (remarksValidator && typeof ValidatorEnable === "function") {
+                ValidatorEnable(remarksValidator, false);
+            }
+        }
+    }
+
+
     function toggleRemarksDIVForRadio(radioButtonList) {
         var triggerValue = radioButtonList.getAttribute("data-trigger-value");
         var remarksDivId = radioButtonList.getAttribute("data-remarks-div");
@@ -1388,7 +1429,7 @@
                                                 </ul>
 
                                                 <div class="tab-content ml-1" id="myTabContent">
-
+                                                    <%-- Basic Data starts here--%>
                                                     <div class="tab-pane fade show active" id="basicData" role="tabpanel" aria-labelledby="basicData-tab">
                                                         <div class="x-content">
 
@@ -1447,7 +1488,7 @@
                                                                     <asp:Label ID="LBL_TXB_ProcessWaterTemp" runat="server" AssociatedControlID="TXB_ProcessWaterTemp" Text="Process Water Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_TXB_ProcessWaterTemp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TXB_ProcessWaterTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                                                     <asp:RegularExpressionValidator ID="REV_TXB_ProcessWaterTemp" runat="server" ValidationGroup="BasicDataSave" ControlToValidate="TXB_ProcessWaterTemp" ForeColor="Red" ErrorMessage="Decimal only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
-                                                                    <asp:RangeValidator ID="RV_TXB_ProcessWaterTemp" runat="server" ControlToValidate="TXB_ProcessWaterTemp" MinimumValue="0.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between 0 and 100" Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
+                                                                    <asp:RangeValidator ID="RV_TXB_ProcessWaterTemp" runat="server" ControlToValidate="TXB_ProcessWaterTemp" MinimumValue="0.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between 0 and 100" Display="Dynamic" ForeColor="Red" ValidationGroup="OptionalOnly" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_ProcessWaterTemp" runat="server" CssClass="form-control form-control-sm rounded" onchange="toggleRemarksDIVGeneric(this);" data-min="0" data-max="100" data-remarks-div="ProcessWaterTempRemarksDIV" Placeholder="Process Water Temp."></asp:TextBox>
                                                                     </div>
@@ -1458,7 +1499,7 @@
                                                             <div class="col-md-3" id="ProcessWaterTempRemarksDIV" style="display: none;">
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LBL_ProcessWaterTempRemarks" runat="server" AssociatedControlID="TXB_ProcessWaterTemp_Remarks" Text="Process Water Temp. Remarks" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessWaterTemp_Remarks" runat="server" ErrorMessage="Input required" ForeColor="Red" ValidationGroup="BasicDataSaveNOT" ControlToValidate="TXB_ProcessWaterTemp_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
+                                                                    <asp:RequiredFieldValidator ID="RFV_ProcessWaterTemp_Remarks" runat="server" ControlToValidate="TXB_ProcessWaterTemp_Remarks" ValidationGroup="BasicDataSaveNOT" Display="Dynamic" ErrorMessage="Remarks required" Enabled="false" ForeColor="Red" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_ProcessWaterTemp_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
                                                                     </div>
@@ -1576,44 +1617,44 @@
                                                             </div>--%>
 
                                                             <div class="col-md-3" id="MaidaBrand" runat="server">
-    <div class="mb-3">
-        <asp:Label ID="LBL_TXB_MaidaBrand" runat="server" AssociatedControlID="TXB_MaidaBrand"
-            Text="Maida Brand :" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
-        
-        <asp:RequiredFieldValidator ID="RFV_TXB_MaidaBrand" runat="server" ErrorMessage="Input required"
-            ValidationGroup="BasicDataSave" ControlToValidate="TXB_MaidaBrand" Display="Dynamic" ForeColor="Red" />
-        
-        <asp:RegularExpressionValidator ID="REV_TXB_MaidaBrand" runat="server" ControlToValidate="TXB_MaidaBrand"
-            ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationGroup="BasicDataSave" ValidationExpression="^([A-Za-z]+\s*(,\s*[A-Za-z]+\s*)*)?$"
-            Display="Dynamic" />
-        
-        <div class="input-group-sm">
-            <asp:TextBox ID="TXB_MaidaBrand" runat="server" CssClass="form-control form-control-sm rounded"
-                Placeholder="Maida Brand Name" />
-        </div>
-    </div>
-</div>
+                                                                <div class="mb-3">
+                                                                    <asp:Label ID="LBL_TXB_MaidaBrand" runat="server" AssociatedControlID="TXB_MaidaBrand"
+                                                                        Text="Maida Brand :" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
+
+                                                                    <asp:RequiredFieldValidator ID="RFV_TXB_MaidaBrand" runat="server" ErrorMessage="Input required"
+                                                                        ValidationGroup="BasicDataSave" ControlToValidate="TXB_MaidaBrand" Display="Dynamic" ForeColor="Red" />
+
+                                                                    <asp:RegularExpressionValidator ID="REV_TXB_MaidaBrand" runat="server" ControlToValidate="TXB_MaidaBrand"
+                                                                        ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationGroup="BasicDataSave" ValidationExpression="^([A-Za-z]+\s*(,\s*[A-Za-z]+\s*)*)?$"
+                                                                        Display="Dynamic" />
+
+                                                                    <div class="input-group-sm">
+                                                                        <asp:TextBox ID="TXB_MaidaBrand" runat="server" CssClass="form-control form-control-sm rounded"
+                                                                            Placeholder="Maida Brand Name" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
 
 
                                                             <div class="col-md-3" id="MaidaBatchNo" runat="server">
-    <div class="mb-3">
-        <asp:Label ID="LBL_TXB_MaidaBatchNo" runat="server" AssociatedControlID="TXB_MaidaBatchNo"
-            Text="Maida Batch No :" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
-        
-        <asp:RequiredFieldValidator ID="RFV_TXB_MaidaBatchNo" runat="server" ErrorMessage="Input required"
-            ValidationGroup="BasicDataSave" ControlToValidate="TXB_MaidaBatchNo" Display="Dynamic" ForeColor="Red" />
-        
-        <asp:RegularExpressionValidator ID="REV_TXB_MaidaBatchNo" runat="server" ControlToValidate="TXB_MaidaBatchNo"
-            ForeColor="Red" ErrorMessage="Numeric Only"
-            ValidationExpression="^(\d+\s*(,\s*\d+\s*)*)?$" ValidationGroup="BasicDataSave" Display="Dynamic" />
-        
-        <div class="input-group-sm">
-            <asp:TextBox ID="TXB_MaidaBatchNo" runat="server" CssClass="form-control form-control-sm rounded"
-                Placeholder="Maida Batch Number" />
-        </div>
-    </div>
-</div>
+                                                                <div class="mb-3">
+                                                                    <asp:Label ID="LBL_TXB_MaidaBatchNo" runat="server" AssociatedControlID="TXB_MaidaBatchNo"
+                                                                        Text="Maida Batch No :" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
+
+                                                                    <asp:RequiredFieldValidator ID="RFV_TXB_MaidaBatchNo" runat="server" ErrorMessage="Input required"
+                                                                        ValidationGroup="BasicDataSave" ControlToValidate="TXB_MaidaBatchNo" Display="Dynamic" ForeColor="Red" />
+
+                                                                    <asp:RegularExpressionValidator ID="REV_TXB_MaidaBatchNo" runat="server" ControlToValidate="TXB_MaidaBatchNo"
+                                                                        ForeColor="Red" ErrorMessage="Numeric Only"
+                                                                        ValidationExpression="^(\d+\s*(,\s*\d+\s*)*)?$" ValidationGroup="BasicDataSave" Display="Dynamic" />
+
+                                                                    <div class="input-group-sm">
+                                                                        <asp:TextBox ID="TXB_MaidaBatchNo" runat="server" CssClass="form-control form-control-sm rounded"
+                                                                            Placeholder="Maida Batch Number" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
 
 
@@ -1630,22 +1671,22 @@
 
                                                             <%--26 May 2025--%>
                                                             <div class="col-md-3" id="MaidaMfg" runat="server">
-    <div class="mb-3">
-        <asp:Label ID="LBL_TXB_MaidaMfg" runat="server" AssociatedControlID="TXB_MaidaMfg"
-            Text="Maida Mfg Date :" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
+                                                                <div class="mb-3">
+                                                                    <asp:Label ID="LBL_TXB_MaidaMfg" runat="server" AssociatedControlID="TXB_MaidaMfg"
+                                                                        Text="Maida Mfg Date :" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
 
-        <asp:RequiredFieldValidator ID="RFV_TXB_MaidaMfg" runat="server" ErrorMessage="Input required"
-            ValidationGroup="BasicDataSave" ControlToValidate="TXB_MaidaMfg" Display="Dynamic" ForeColor="Red" />
+                                                                    <asp:RequiredFieldValidator ID="RFV_TXB_MaidaMfg" runat="server" ErrorMessage="Input required"
+                                                                        ValidationGroup="BasicDataSave" ControlToValidate="TXB_MaidaMfg" Display="Dynamic" ForeColor="Red" />
 
-        <asp:RegularExpressionValidator ID="REV_TXB_MaidaMfg" runat="server" ControlToValidate="TXB_MaidaMfg"
-            ErrorMessage="Invalid date format (dd-mm-yyyy)" ForeColor="Red" ValidationGroup="BasicDataSave" Display="Dynamic"
-            ValidationExpression="^([0-3][0-9]-[0-1][0-9]-\d{4})(\s*,\s*[0-3][0-9]-[0-1][0-9]-\d{4})*$" />
+                                                                    <asp:RegularExpressionValidator ID="REV_TXB_MaidaMfg" runat="server" ControlToValidate="TXB_MaidaMfg"
+                                                                        ErrorMessage="Invalid date format (dd-mm-yyyy)" ForeColor="Red" ValidationGroup="BasicDataSave" Display="Dynamic"
+                                                                        ValidationExpression="^([0-3][0-9]-[0-1][0-9]-\d{4})(\s*,\s*[0-3][0-9]-[0-1][0-9]-\d{4})*$" />
 
-        <div class="input-group-sm">
-            <asp:TextBox ID="TXB_MaidaMfg" runat="server" CssClass="form-control form-control-sm rounded" />
-        </div>
-    </div>
-</div>
+                                                                    <div class="input-group-sm">
+                                                                        <asp:TextBox ID="TXB_MaidaMfg" runat="server" CssClass="form-control form-control-sm rounded" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
 
 
@@ -2407,6 +2448,7 @@
                                                     </div>
                                                     <%-- Basic Data ends here--%>
 
+                                                    <%-- Weight ends Starts Here--%>
                                                     <div class="tab-pane fade" id="weight" role="tabpanel" aria-labelledby="weight-tab">
                                                         <div class="x-content">
                                                             <asp:GridView ID="GridView1" Width="100%" runat="server" AutoGenerateColumns="False"
@@ -2458,8 +2500,9 @@
                                                             <asp:Button ID="WgtbtnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="WgtbtnReset_Click" />
                                                         </div>
                                                     </div>
-                                                    <%-- Weight ends Starts Here--%>
+                                                    <%-- Weight ends ends Here--%>
 
+                                                    <%-- Sponge Data start Here--%>
                                                     <div class="tab-pane fade" id="spongeData" role="tabpanel" aria-labelledby="spongeData-tab">
                                                         <div class="x-content">
 
@@ -3005,7 +3048,9 @@
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    <%--Dough Data end Here--%>
 
+                                                    <%--Oven Data Start Here--%>
                                                     <div class="tab-pane fade" id="ovenData" role="tabpanel" aria-labelledby="ovenData-tab">
                                                         <div class="x-content">
                                                             <%--<asp:GridView ID="GridView2" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" OnRowDataBound="GridView2_RowDataBound">
@@ -3085,7 +3130,9 @@
                                                         <asp:Button ID="OvenBtnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="OvenBtnReset_Click" />
 
                                                     </div>
+                                                    <%--Oven Data end Here--%>
 
+                                                    <%--Verification Data Start Here--%>
                                                     <div class="tab-pane fade" id="verificationData" role="tabpanel" aria-labelledby="verificationData-tab">
                                                         <div class="x-content">
 
@@ -3177,7 +3224,7 @@
 
                                                         </div>
                                                     </div>
-
+                                                    <%--Verification Data end Here--%>
                                                 </div>
                                             </div>
                                         </div>
