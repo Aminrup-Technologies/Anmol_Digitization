@@ -73,7 +73,7 @@ namespace AnmolDristi
         }
 
         // Fetch dynamic field control data from DB
-        public Dictionary<string, DynamicFieldControl> LoadBasicFieldControls(string SectionName)
+        public Dictionary<string, DynamicFieldControl> LoadBasicFieldControlsOLD(string SectionName)
         {
             var controls = new Dictionary<string, DynamicFieldControl>();
 
@@ -127,6 +127,119 @@ namespace AnmolDristi
             return controls;
         }
 
+        public Dictionary<string, DynamicFieldControl> LoadBasicFieldControls(string SectionName)
+        {
+            var controls = new Dictionary<string, DynamicFieldControl>();
+
+            int formId = 6;
+            int plantId = !string.IsNullOrWhiteSpace(DDL_Plant.SelectedValue) ? Convert.ToInt32(DDL_Plant.SelectedValue) : 0;
+            int lineId = !string.IsNullOrWhiteSpace(DDL_PlantLine.SelectedValue) ? Convert.ToInt32(DDL_PlantLine.SelectedValue) : 0;
+            int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+            int brandId = !string.IsNullOrWhiteSpace(DDL_ProductBrand.SelectedValue) ? Convert.ToInt32(DDL_ProductBrand.SelectedValue) : 0;
+
+            string baseQuery = @"SELECT field_name, DisplayName, ViewMode, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND Sub_Form = @SubForm AND IsLatest = 1 AND IsDeleted = 0 AND plant_id {0} AND lineId {1} AND category_id {2} AND material_id {3}";
+            string logContent = "";
+            bool dataFound = false;
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                con.Open();             
+
+                // Step 1: Try fetching with full filters
+                using (SqlCommand cmd = new SqlCommand(string.Format(baseQuery, "= @PlantID", "= @LineID", "= @CategoryID", "= @BrandID"), con))
+                {
+                    cmd.Parameters.AddWithValue("@FormID", formId);
+                    cmd.Parameters.AddWithValue("@SubForm", SectionName);
+                    cmd.Parameters.AddWithValue("@PlantID", plantId);
+                    cmd.Parameters.AddWithValue("@LineID", lineId);
+                    cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+                    cmd.Parameters.AddWithValue("@BrandID", brandId);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            dataFound = true;
+                            var control = new DynamicFieldControl
+                            {
+                                FieldName = reader["field_name"].ToString(),
+                                DisplayName = reader["DisplayName"].ToString(),
+                                IsVisible = Convert.ToBoolean(reader["ViewMode"]),
+                                IsRequired = Convert.ToBoolean(reader["RFV_YesNo"]),
+                                RequiredError = reader["RFV_ErrorMsg"].ToString(),
+                                IsRegex = Convert.ToBoolean(reader["REV_YesNo"]),
+                                RegexError = reader["REV_ErrorMsg"].ToString(),
+                                RegexExpression = reader["REV_Expression"].ToString(),
+                                IsRange = Convert.ToBoolean(reader["RV_Yesno"]),
+                                RangeError = reader["RV_ErrorMsg"].ToString(),
+                                MinValue = reader["RV_MinValue"].ToString(),
+                                MaxValue = reader["RV_MaxValue"].ToString(),
+                                ControlType = reader["ControlType"].ToString(),
+                                DefaultValue = reader["DefaultValue"].ToString()
+                            };
+                            controls[control.FieldName.ToLower()] = control;
+                        }
+                    }
+                }
+
+                // Step 2: Fallback to global defaults if nothing found
+                if (!dataFound)
+                {
+                    using (SqlCommand cmd = new SqlCommand(string.Format(baseQuery, "IS NULL", "IS NULL", "IS NULL", "IS NULL"), con))
+                    {
+                        cmd.Parameters.AddWithValue("@FormID", formId);
+                        cmd.Parameters.AddWithValue("@SubForm", SectionName);
+
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                var control = new DynamicFieldControl
+                                {
+                                    FieldName = reader["field_name"].ToString(),
+                                    DisplayName = reader["DisplayName"].ToString(),
+                                    IsVisible = Convert.ToBoolean(reader["ViewMode"]),
+                                    IsRequired = Convert.ToBoolean(reader["RFV_YesNo"]),
+                                    RequiredError = reader["RFV_ErrorMsg"].ToString(),
+                                    IsRegex = Convert.ToBoolean(reader["REV_YesNo"]),
+                                    RegexError = reader["REV_ErrorMsg"].ToString(),
+                                    RegexExpression = reader["REV_Expression"].ToString(),
+                                    IsRange = Convert.ToBoolean(reader["RV_Yesno"]),
+                                    RangeError = reader["RV_ErrorMsg"].ToString(),
+                                    MinValue = reader["RV_MinValue"].ToString(),
+                                    MaxValue = reader["RV_MaxValue"].ToString(),
+                                    ControlType = reader["ControlType"].ToString(),
+                                    DefaultValue = reader["DefaultValue"].ToString()
+                                };
+                                controls[control.FieldName.ToLower()] = control;
+                            }
+                        }
+
+                        // Prepare log for fallback scenario
+                        logContent = $@"Fallback field configuration used.
+User: {Session["USERNAME"]} (Code: {Session["WORKMAN"]})
+FormID: {formId}, SubForm: {SectionName}
+No controls found for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}, BrandID={brandId}
+Fallback loaded from: where PlantID IS NULL AND LineID IS NULL AND CategoryID IS NULL AND BrandID IS NULL.";
+                    }
+                }
+                else
+                {
+                    // Prepare log for normal (non-fallback) scenario
+                    logContent = $@"Standard field configuration used.
+User: {Session["USERNAME"]} (Code: {Session["WORKMAN"]})
+FormID: {formId}, SubForm: {SectionName}
+Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}, BrandID={brandId}";
+                }
+            }
+
+            // Write to log
+            WriteLogToFile(logContent,"ControlLoader");
+
+            return controls;
+        }
+
+
         private void ApplyDynamicControls(Dictionary<string, DynamicFieldControl> controls)
         {
             StringBuilder logBuilder = new StringBuilder();
@@ -158,7 +271,9 @@ namespace AnmolDristi
                 Control container = FindControlRecursive(Page, config.FieldName);
                 Control customValCtrl = FindControlRecursive(Page, "CVAL_" + controlId);
 
+                logBuilder.AppendLine($"---------------------------------------------------------------------------------------------");
                 logBuilder.AppendLine($"--- {DateTime.Now:yyyy-MM-dd HH:mm:ss} | Field: {config.FieldName} ({config.DisplayName}) ---");
+                logBuilder.AppendLine($"--- User Details: {Session["USERNAME"]} | ({Session["WORKMAN"]}) ---");
                 logBuilder.AppendLine($"--- Configuring Field: {config.FieldName} ({config.DisplayName}) ---");
                 logBuilder.AppendLine(container != null
                     ? $"✔ Container found: {config.FieldName}, Visible: {config.IsVisible}"
@@ -348,8 +463,10 @@ namespace AnmolDristi
                     customVal.Visible = config.IsVisible;
                     logBuilder.AppendLine("✔ CustomValidator set for time range: " + config.FieldName);
                 }
+
+                logBuilder.AppendLine($"---------------------------------------------------------------------------------------------");
             }
-            WriteLogToFile(logBuilder.ToString());
+            WriteLogToFile(logBuilder.ToString(),"ControlBinder");
         }
 
         private void RegisterTimeRangeScripts(Dictionary<string, DynamicFieldControl> controls)
@@ -382,7 +499,7 @@ namespace AnmolDristi
             ScriptManager.RegisterStartupScript(this, this.GetType(), "TimeRangeValidators", scriptBuilder.ToString(), false);
         }
 
-        private void WriteLogToFile(string logContent)
+        private void WriteLogToFile(string logContent, string caller)
         {
             try
             {
@@ -392,10 +509,9 @@ namespace AnmolDristi
                     Directory.CreateDirectory(folderPath);
                 }
 
-                // Generate a unique log file name using timestamp and a short GUID
                 string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-                string guidPart = Guid.NewGuid().ToString("N").Substring(0, 6); // optional short GUID for uniqueness
-                string logFileName = $"DynamicFieldLog_{timeStamp}_{guidPart}.txt";
+                string guidPart = Guid.NewGuid().ToString("N").Substring(0, 6);
+                string logFileName = $"DynamicField_{caller}_Log_{timeStamp}_{guidPart}.txt";
 
                 string logFilePath = Path.Combine(folderPath, logFileName);
 
@@ -410,7 +526,6 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
-                // Silent fail or debug output
                 System.Diagnostics.Debug.WriteLine("Logging failed: " + ex.Message);
             }
         }
