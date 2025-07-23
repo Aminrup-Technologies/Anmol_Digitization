@@ -29,6 +29,11 @@ namespace AnmolDristi
             }
         }
 
+        protected void Btn_home_Click(object sender, EventArgs e)
+        {
+            Response.Redirect(Request.RawUrl); // reloads the same page
+        }
+
         private void FormBinder()
         {
             // Construct the SQL query with parameters
@@ -498,18 +503,17 @@ namespace AnmolDristi
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
                     using (SqlCommand cmd = new SqlCommand(@"
-                    UPDATE MST_FormFieldControls
-                    SET 
+                    UPDATE MST_FormFieldControls SET 
                         IsDeleted = 1,
                         IsLatest = 0,
                         DeletedOn = GETDATE(),
                         DeletedBy = @User,
-                        DeletedRemarks = 'Deleted from GridView'
+                        ViewMode = 0,
+                        DeletedRemarks = 'Deleted from GridView by the User'
                     WHERE Id = @Id", con))
                     {
                         cmd.Parameters.AddWithValue("@Id", id);
                         cmd.Parameters.AddWithValue("@User", user);
-
                         con.Open();
                         cmd.ExecuteNonQuery();
                     }
@@ -531,9 +535,33 @@ namespace AnmolDristi
 
         protected void GV_Matrix_RowDataBound(object sender, GridViewRowEventArgs e)
         {
-            // Existing logic: setting selected value in dropdown during editing
+            // Highlight fallback records visually
+            //if (e.Row.RowType == DataControlRowType.DataRow)
+            //{
+            //    // Check if fallback (i.e., all foreign keys are 0 or null)
+            //    int plantId = Convert.ToInt32(DataBinder.Eval(e.Row.DataItem, "plant_id") ?? 0);
+            //    int lineId = Convert.ToInt32(DataBinder.Eval(e.Row.DataItem, "lineId") ?? 0);
+            //    int materialId = Convert.ToInt32(DataBinder.Eval(e.Row.DataItem, "material_id") ?? 0);
+            //    int categoryId = Convert.ToInt32(DataBinder.Eval(e.Row.DataItem, "category_id") ?? 0);
+
+            //    bool isFallback = (plantId == 0 && lineId == 0 && materialId == 0 && categoryId == 0);
+
+            //    if (isFallback)
+            //    {
+            //        e.Row.BackColor = System.Drawing.Color.LightGoldenrodYellow; // subtle fallback highlight
+
+            //        // Optional: Add a fallback label in the first column
+            //        if (e.Row.Cells.Count > 0)
+            //        {
+            //            e.Row.Cells[0].Text = "⚠ Fallback - " + e.Row.Cells[0].Text;
+            //        }
+            //    }
+            //}
+
+            // Existing logic for dropdowns in Edit mode
             if (e.Row.RowType == DataControlRowType.DataRow && e.Row.RowIndex == GV_Matrix.EditIndex)
             {
+                // REV_Expression dropdown
                 DropDownList ddl = (DropDownList)e.Row.FindControl("ddl_REV_Expression");
                 string currentValue = DataBinder.Eval(e.Row.DataItem, "REV_Expression")?.ToString();
                 if (ddl != null && !string.IsNullOrEmpty(currentValue))
@@ -543,10 +571,11 @@ namespace AnmolDristi
                         ddl.SelectedValue = currentValue;
                 }
 
+                // ControlType dropdown
                 DropDownList ddlControlType = (DropDownList)e.Row.FindControl("ddl_ControlType");
-                string currentValue1 = DataBinder.Eval(e.Row.DataItem, "ControlType").ToString();
+                string currentValue1 = DataBinder.Eval(e.Row.DataItem, "ControlType")?.ToString();
 
-                if (ddlControlType != null)
+                if (ddlControlType != null && !string.IsNullOrEmpty(currentValue1))
                 {
                     ddlControlType.SelectedValue = currentValue1;
                 }
@@ -777,9 +806,7 @@ namespace AnmolDristi
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
                     using (SqlCommand cmd = new SqlCommand(@"
-                    SELECT COUNT(*) 
-                    FROM MST_FormFieldControls
-                    WHERE FormID = @FormID 
+                    SELECT COUNT(*) FROM MST_FormFieldControls WHERE FormID = @FormID 
                       AND plant_id = @PlantID 
                       AND LineID = @LineID 
                       AND material_id = @MaterialID
@@ -880,7 +907,6 @@ namespace AnmolDristi
             }
         }
 
-
         private void BindFieldControlGrid_OLD()
         {
             try
@@ -933,6 +959,8 @@ namespace AnmolDristi
 
         private void BindFieldControlGrid()
         {
+            lbl_docname.Text = "You are viewing Specific/ Standard Form Field Controler for : " + DDL_FormName.SelectedItem.Text.ToString() + ".";
+
             try
             {
                 int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
@@ -943,18 +971,12 @@ namespace AnmolDristi
 
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand(@"
-                    SELECT * FROM MST_FormFieldControls WHERE FormID = @FormID 
-                      AND plant_id = @PlantID 
-                      AND material_id = @MaterialID
-                      AND category_id = @CategoryID 
-                      AND IsLatest = 1 
-                      AND IsDeleted = 0", con))
+                    using (SqlCommand cmd = new SqlCommand(@"SELECT * FROM MST_FormFieldControls WHERE FormID = @FormID AND plant_id = @PlantID AND material_id = @MaterialID AND category_id = @CategoryID AND IsLatest = 1 AND IsDeleted = 0", con))
                     {
                         cmd.Parameters.AddWithValue("@FormID", formId);
                         cmd.Parameters.AddWithValue("@PlantID", plantId);
                         cmd.Parameters.AddWithValue("@MaterialID", materialId);
-                        cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+                        cmd.Parameters.AddWithValue("@CategoryID", categoryId); 
 
                         using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                         {
@@ -1073,6 +1095,82 @@ namespace AnmolDristi
 
             chk_ViewMode.Checked = false;
             hf_SelectedFieldName.Value = "";
+        }
+
+        protected void Btn_fallback_Click(object sender, EventArgs e)
+        {
+            BindFieldControlGrid(isFallback: true);
+            lbl_docname.Text = "You are viewing Fallback Form Field Controler for : " +DDL_FormName.SelectedItem.Text.ToString()+".";
+        }
+
+        private void BindFieldControlGrid(bool isFallback = false)
+        {
+            try
+            {
+                int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
+
+                //string query = @"SELECT id, field_name, Sub_Form, DisplayName, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ViewMode, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND ISNULL(IsLatest, 1) = 1 AND ISNULL(IsDeleted, 0) = 0";
+
+                string query = @"SELECT id, field_name, Sub_Form, DisplayName, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ViewMode, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND ISNULL(IsLatest, 1) = 1";
+
+                if (!isFallback)
+                {
+                    query += @" AND plant_id = @PlantID AND lineId = @LineID AND material_id = @MaterialID AND category_id = @CategoryID";
+                }
+                else
+                {
+                    query += @" AND ISNULL(plant_id, 0) = 0 
+                        AND ISNULL(lineId, 0) = 0 
+                        AND ISNULL(material_id, 0) = 0 
+                        AND ISNULL(category_id, 0) = 0";
+                }
+
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@FormID", formId);
+                    if (!isFallback)
+                    {
+                        cmd.Parameters.AddWithValue("@PlantID", Convert.ToInt32(DDL_Plant.SelectedValue));
+                        cmd.Parameters.AddWithValue("@LineID", Convert.ToInt32(DDL_PlantLine.SelectedValue));
+                        cmd.Parameters.AddWithValue("@MaterialID", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                        cmd.Parameters.AddWithValue("@CategoryID", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                    }
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
+
+                        if (dt.Rows.Count > 0)
+                        {
+                            GV_Matrix.DataSource = dt;
+                            GV_Matrix.DataBind();
+                        }
+                        else
+                        {
+                            dt.Rows.Add(dt.NewRow());
+                            GV_Matrix.DataSource = dt;
+                            GV_Matrix.DataBind();
+
+                            GV_Matrix.Rows[0].Cells.Clear();
+                            TableCell cell = new TableCell
+                            {
+                                ColumnSpan = GV_Matrix.Columns.Count,
+                                Text = "No field-level controls found.",
+                                HorizontalAlign = HorizontalAlign.Center
+                            };
+                            GV_Matrix.Rows[0].Cells.Add(cell);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                string title = "Notifications :";
+                string body = ex.Message.Replace("'", "\\'");
+                ClientScript.RegisterStartupScript(this.GetType(), "Popup5", $"ShowPopup('{title}', '{body}');", true);
+            }
         }
 
     }

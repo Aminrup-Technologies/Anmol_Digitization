@@ -1416,7 +1416,7 @@ namespace AnmolDristi.qaqc
                 lbl_DDL_ProductBrand_Value.Text = selectedProductBrandValue;
                 BrandSKUBinder(selectedProductBrandValue);
 
-                DataTable dataTable0 = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
+                //DataTable dataTable0 = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
 
                 DataTable dataTable = DatabaseHelper.GetFormFieldControlByFormAndBrand(
                     1, // FormID: qaqc_inspector_rpt

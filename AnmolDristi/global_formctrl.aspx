@@ -1,4 +1,4 @@
-﻿<%@ Page Title="Global Form Controller" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="global_formctrl.aspx.cs" Inherits="AnmolDristi.global_formctrl" %>
+﻿<%@ Page Title="Global Form Controller" Language="C#" MaintainScrollPositionOnPostback="true" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="global_formctrl.aspx.cs" Inherits="AnmolDristi.global_formctrl" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
 </asp:Content>
@@ -77,13 +77,14 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3">
-                                <div class="mb-3">
+                            <div class="col-md-12">
+                                <div class="mb-12">
                                     <asp:Label ID="Lbl_BtnSubmit" runat="server" AssociatedControlID="BtnSubmit" Text="Click to SAVE" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <div class="input-group input-group-sm">
-                                        <asp:Button ID="BtnSubmit" runat="server" Text="Save" CssClass="btn btn-primary btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClick="BtnSubmit_Click" />
-                                        <asp:Button ID="BtnCreate" runat="server" Text="Create" CssClass="btn btn-success btn-sm" CausesValidation="true" ValidationGroup="Submit" OnClick="BtnCreate_Click" />
-                                        <asp:Button ID="Btn_home" runat="server" Text="HOME" CssClass="btn btn-sm btn-danger" CausesValidation="false" PostBackUrl="~/home.aspx" />
+                                        <asp:Button ID="BtnSubmit" runat="server" Text="Fetch Records" CssClass="btn btn-primary btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClick="BtnSubmit_Click" />
+                                        <asp:Button ID="BtnCreate" runat="server" Text="Create New" CssClass="btn btn-success btn-sm" CausesValidation="true" ValidationGroup="Submit" OnClick="BtnCreate_Click" />
+                                        <asp:Button ID="Btn_fallback" runat="server" Text="View Fallback" CssClass="btn btn-sm btn-info" CausesValidation="false" OnClick="Btn_fallback_Click"/>
+                                        <asp:Button ID="Btn_home" runat="server" Text="Reset" CssClass="btn btn-sm btn-danger" CausesValidation="false" OnClick="Btn_home_Click" />
                                     </div>
                                 </div>
                             </div>
@@ -101,19 +102,21 @@
                                 </div>
                                 <div class="x_content">
                                     <div class="row">
-                                        <div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 450px; overflow: scroll;">
+                                        <div class="card-box col-md-12 col-sm-12" style="width: 100%; height:auto; overflow: scroll;">
                                             <asp:UpdatePanel ID="upd_GridOnly" runat="server">
                                                 <ContentTemplate>
-                                                    <asp:GridView ID="GV_Matrix" runat="server" Width="100%"
-                                                        AutoGenerateColumns="False"
-                                                        CssClass="table table-striped table-bordered table-sm"
+                                                    <asp:GridView ID="GV_Matrix" runat="server" Width="100%" AutoGenerateColumns="False" CssClass="table table-striped table-bordered table-sm"
                                                         ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowDataBound="GV_Matrix_RowDataBound"
-                                                        OnRowEditing="GV_Matrix_RowEditing"
-                                                        OnRowUpdating="GV_Matrix_RowUpdating"
-                                                        OnRowCancelingEdit="GV_Matrix_RowCancelingEdit" OnRowDeleting="GV_Matrix_RowDeleting"
+                                                        OnRowEditing="GV_Matrix_RowEditing" OnRowUpdating="GV_Matrix_RowUpdating" OnRowCancelingEdit="GV_Matrix_RowCancelingEdit" OnRowDeleting="GV_Matrix_RowDeleting"
                                                         DataKeyNames="Id">
 
                                                         <Columns>
+                                                            <asp:TemplateField HeaderText="SL No.">
+                                                                <ItemStyle HorizontalAlign="Center" Width="50px" />
+                                                                <ItemTemplate>
+                                                                    <%# Container.DataItemIndex + 1 %>
+                                                                </ItemTemplate>
+                                                            </asp:TemplateField>
 
                                                             <asp:TemplateField HeaderText="Field Name">
                                                                 <ItemTemplate>
@@ -140,8 +143,10 @@
                                                             </asp:TemplateField>
 
                                                             <asp:TemplateField HeaderText="RFV?">
+                                                                <ItemStyle HorizontalAlign="Center"/>
                                                                 <ItemTemplate>
-                                                                    <asp:CheckBox ID="chk_RFV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("RFV_YesNo")) %>' Enabled="false" />
+                                                                    <%--<asp:CheckBox ID="chk_RFV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("RFV_YesNo")) %>' Enabled="false" />--%>
+                                                                    <asp:CheckBox ID="chk_RFV_YesNo" runat="server" Checked='<%# Eval("RFV_YesNo") != DBNull.Value && Convert.ToBoolean(Eval("RFV_YesNo")) %>' />
                                                                 </ItemTemplate>
                                                                 <EditItemTemplate>
                                                                     <asp:CheckBox ID="chk_RFV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("RFV_YesNo")) %>' />
@@ -158,8 +163,10 @@
                                                             </asp:TemplateField>
 
                                                             <asp:TemplateField HeaderText="REV?">
+                                                                <ItemStyle HorizontalAlign="Center"/>
                                                                 <ItemTemplate>
-                                                                    <asp:CheckBox ID="chk_REV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("REV_YesNo")) %>' Enabled="false" />
+                                                                    <%--<asp:CheckBox ID="chk_REV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("REV_YesNo")) %>' Enabled="false" />--%>
+                                                                    <asp:CheckBox ID="chk_REV_YesNo" runat="server" Checked='<%# Eval("REV_YesNo") != DBNull.Value && Convert.ToBoolean(Eval("REV_YesNo")) %>' />
                                                                 </ItemTemplate>
                                                                 <EditItemTemplate>
                                                                     <asp:CheckBox ID="chk_REV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("REV_YesNo")) %>' />
@@ -197,8 +204,10 @@
                                                             </asp:TemplateField>
 
                                                             <asp:TemplateField HeaderText="RV?">
+                                                                <ItemStyle HorizontalAlign="Center"/>
                                                                 <ItemTemplate>
-                                                                    <asp:CheckBox ID="chk_RV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("RV_Yesno")) %>' Enabled="false" />
+                                                                    <%--<asp:CheckBox ID="chk_RV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("RV_Yesno")) %>' Enabled="false" />--%>
+                                                                    <asp:CheckBox ID="chk_RV_YesNo" runat="server" Checked='<%# Eval("RV_Yesno") != DBNull.Value && Convert.ToBoolean(Eval("RV_Yesno")) %>' />
                                                                 </ItemTemplate>
                                                                 <EditItemTemplate>
                                                                     <asp:CheckBox ID="chk_RV_YesNo" runat="server" Checked='<%# Convert.ToBoolean(Eval("RV_Yesno")) %>' />
@@ -233,8 +242,10 @@
                                                             </asp:TemplateField>
 
                                                             <asp:TemplateField HeaderText="View Mode">
+                                                                <ItemStyle HorizontalAlign="Center"/>
                                                                 <ItemTemplate>
-                                                                    <asp:CheckBox ID="chk_ViewMode" runat="server" Checked='<%# Convert.ToBoolean(Eval("ViewMode")) %>' Enabled="false" />
+                                                                    <%--<asp:CheckBox ID="chk_ViewMode" runat="server" Checked='<%# Convert.ToBoolean(Eval("ViewMode")) %>' Enabled="false" />--%>
+                                                                    <asp:CheckBox ID="chk_ViewMode" runat="server" Checked='<%# Eval("ViewMode") != DBNull.Value && Convert.ToBoolean(Eval("ViewMode")) %>' />
                                                                 </ItemTemplate>
                                                                 <EditItemTemplate>
                                                                     <asp:CheckBox ID="chk_ViewMode" runat="server" Checked='<%# Convert.ToBoolean(Eval("ViewMode")) %>' />
