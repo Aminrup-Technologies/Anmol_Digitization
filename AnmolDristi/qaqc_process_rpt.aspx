@@ -1622,7 +1622,7 @@
                                                                         ValidationGroup="BasicDataSave" ControlToValidate="TXB_MaidaBrand" Display="Dynamic" ForeColor="Red" />
 
                                                                     <asp:RegularExpressionValidator ID="REV_TXB_MaidaBrand" runat="server" ControlToValidate="TXB_MaidaBrand"
-                                                                        ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationGroup="BasicDataSave" ValidationExpression="^([A-Za-z]+\s*(,\s*[A-Za-z]+\s*)*)?$"
+                                                                        ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationGroup="BasicDataSave" ValidationExpression="^[A-Za-z\s,\/]+$"
                                                                         Display="Dynamic" />
 
                                                                     <div class="input-group-sm">
@@ -1644,7 +1644,7 @@
 
                                                                     <asp:RegularExpressionValidator ID="REV_TXB_MaidaBatchNo" runat="server" ControlToValidate="TXB_MaidaBatchNo"
                                                                         ForeColor="Red" ErrorMessage="Numeric Only"
-                                                                        ValidationExpression="^(\d+\s*(,\s*\d+\s*)*)?$" ValidationGroup="BasicDataSave" Display="Dynamic" />
+                                                                        ValidationExpression="^([A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*(,\s*[A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*)*)?$" ValidationGroup="BasicDataSave" Display="Dynamic" />
 
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_MaidaBatchNo" runat="server" CssClass="form-control form-control-sm rounded"
@@ -2326,7 +2326,7 @@
                                                                     <asp:RegularExpressionValidator ID="REV_TXB_ColdRoomTemp" runat="server" ControlToValidate="TXB_ColdRoomTemp"
                                                                         ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
                                                                     <asp:RangeValidator ID="RV_TXB_ColdRoomTemp" runat="server" ControlToValidate="TXB_ColdRoomTemp"
-                                                                        MinimumValue="-20.00" MaximumValue="50.00" Type="Double" ErrorMessage="Value must be between -20 and 50"
+                                                                        MinimumValue="-20.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between -20.00 and 100.00"
                                                                         Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_ColdRoomTemp" runat="server" CssClass="form-control form-control-sm rounded"
@@ -2356,7 +2356,7 @@
                                                                     <asp:RegularExpressionValidator ID="REV_TXB_DeepFreezeTemp" runat="server" ControlToValidate="TXB_DeepFreezeTemp"
                                                                         ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
                                                                     <asp:RangeValidator ID="RV_TXB_DeepFreezeTemp" runat="server" ControlToValidate="TXB_DeepFreezeTemp"
-                                                                        MinimumValue="-30.00" MaximumValue="0.00" Type="Double" ErrorMessage="Value must be between -30 and 0"
+                                                                        MinimumValue="-50.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between -50.00 and 100.00"
                                                                         Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DeepFreezeTemp" runat="server" CssClass="form-control form-control-sm rounded"

@@ -200,13 +200,20 @@
                                                                 <EditItemTemplate>
                                                                     <asp:DropDownList ID="ddl_REV_Expression" runat="server" Width="140px">
                                                                         <asp:ListItem Text="--Select Regex--" Value=""></asp:ListItem>
+                                                                        <asp:ListItem Text="Batch Code" Value="^[A-Za-z0-9\-\/]+$" />
+                                                                        <asp:ListItem Text="Sample Code" Value="^[A-Za-z]{1,5}[-\/]?\d{1,10}$" />
+                                                                        <asp:ListItem Text="Percentage" Value="^100(\.0{1,2})?$|^\d{1,2}(\.\d{1,2})?$" />
+                                                                        <asp:ListItem Text="pH Value" Value="^([0-9]|1[0-3])(\.\d{1,2})?$|^14(\.0{1,2})?$" />
+                                                                        <asp:ListItem Text="DateTime" Value="^([0-3][0-9]-[0-1][0-9]-\d{4})\s([01]\d|2[0-3]):[0-5]\d:[0-5]\d$" />
                                                                         <asp:ListItem Text="Numeric" Value="^\d+$" />
                                                                         <asp:ListItem Text="CS Numeric" Value="^(\d+\s*(,\s*\d+\s*)*)?$" />
                                                                         <asp:ListItem Text="Decimal" Value="^\d+(\.\d{1,4})?$" />
                                                                         <asp:ListItem Text="CS Decimal" Value="^(\d+(\.\d+)?)(\s*,\s*\d+(\.\d+)?)*$" />
                                                                         <asp:ListItem Text="Alpha Only" Value="^[A-Za-z]+$" />
+                                                                        <asp:ListItem Text="Spcl Alpha Only" Value="^[A-Za-z\s,\/]+$" />
                                                                         <asp:ListItem Text="CS Alpha Only" Value="^([A-Za-z]+\s*(,\s*[A-Za-z]+\s*)*)?$" />
                                                                         <asp:ListItem Text="Alphanumeric" Value="^[A-Za-z0-9]+$" />
+                                                                        <asp:ListItem Text="Spcl Alphanumeric" Value="^([A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*(,\s*[A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*)*)?$" />
                                                                         <asp:ListItem Text="CS Alphanumeric" Value="^([A-Za-z]+[\s\-]?[0-9]*\s*(,\s*[A-Za-z]+[\s\-]?[0-9]*)*)?$" />
                                                                         <asp:ListItem Text="CS Dates" Value="^([0-3][0-9]-[0-1][0-9]-\d{4})(\s*,\s*[0-3][0-9]-[0-1][0-9]-\d{4})*$" />
                                                                         <asp:ListItem Text="Time Span" Value="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" />
@@ -303,9 +310,6 @@
                                                             </asp:TemplateField>--%>
                                                         </Columns>
                                                     </asp:GridView>
-
-
-
                                                 </ContentTemplate>
                                             </asp:UpdatePanel>
                                         </div>
@@ -392,13 +396,20 @@
                                     <asp:TextBox ID="txt_REVError" runat="server" CssClass="form-control form-control-sm rounded mb-1" placeholder="REV Error Msg" />
                                     <asp:DropDownList ID="ddl_RegexType" runat="server" CssClass="form-control form-control-sm rounded">
                                         <asp:ListItem Text="--Select Regex--" Value=""></asp:ListItem>
+                                        <asp:ListItem Text="Batch Code" Value="^[A-Za-z0-9\-\/]+$" />
+                                        <asp:ListItem Text="Sample Code" Value="^[A-Za-z]{1,5}[-\/]?\d{1,10}$" />
+                                        <asp:ListItem Text="Percentage" Value="^100(\.0{1,2})?$|^\d{1,2}(\.\d{1,2})?$" />
+                                        <asp:ListItem Text="pH Value" Value="^([0-9]|1[0-3])(\.\d{1,2})?$|^14(\.0{1,2})?$" />
+                                        <asp:ListItem Text="DateTime" Value="^([0-3][0-9]-[0-1][0-9]-\d{4})\s([01]\d|2[0-3]):[0-5]\d:[0-5]\d$" />
                                         <asp:ListItem Text="Numeric" Value="^\d+$" />
                                         <asp:ListItem Text="CS Numeric" Value="^(\d+\s*(,\s*\d+\s*)*)?$" />
                                         <asp:ListItem Text="Decimal" Value="^\d+(\.\d{1,4})?$" />
                                         <asp:ListItem Text="CS Decimal" Value="^(\d+(\.\d+)?)(\s*,\s*\d+(\.\d+)?)*$" />
                                         <asp:ListItem Text="Alpha Only" Value="^[A-Za-z]+$" />
+                                        <asp:ListItem Text="Spcl Alpha Only" Value="^[A-Za-z\s,\/]+$" />
                                         <asp:ListItem Text="CS Alpha Only" Value="^([A-Za-z]+\s*(,\s*[A-Za-z]+\s*)*)?$" />
                                         <asp:ListItem Text="Alphanumeric" Value="^[A-Za-z0-9]+$" />
+                                        <asp:ListItem Text="Spcl Alphanumeric" Value="^([A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*(,\s*[A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*)*)?$" />
                                         <asp:ListItem Text="CS Alphanumeric" Value="^([A-Za-z]+[\s\-]?[0-9]*\s*(,\s*[A-Za-z]+[\s\-]?[0-9]*)*)?$" />
                                         <asp:ListItem Text="CS Dates" Value="^([0-3][0-9]-[0-1][0-9]-\d{4})(\s*,\s*[0-3][0-9]-[0-1][0-9]-\d{4})*$" />
                                         <asp:ListItem Text="Time Span" Value="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" />

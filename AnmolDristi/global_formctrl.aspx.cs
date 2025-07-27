@@ -731,28 +731,22 @@ namespace AnmolDristi
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
                     using (SqlCommand cmd = new SqlCommand(@"
-                    SELECT COUNT(*) FROM MST_FormFieldControls WHERE FormID = @FormID 
-                      AND plant_id = @PlantID 
-                      AND LineID = @LineID 
-                      AND material_id = @MaterialID
-                      AND category_id = @CategoryID
+                    SELECT COUNT(*) FROM MST_FormFieldControls 
+                    WHERE FormID = @FormID 
+                      AND (@plant_id IS NULL AND plant_id IS NULL OR plant_id = @plant_id)
+                      AND (@LineId IS NULL AND LineID IS NULL OR LineID = @LineId)
+                      AND (@MaterialID IS NULL AND material_id IS NULL OR material_id = @MaterialID)
+                      AND (@category_id IS NULL AND category_id IS NULL OR category_id = @category_id)
                       AND field_name = @FieldName
                       AND IsDeleted = 0
                       AND IsLatest = 1
                       AND RecordType = @RecordType", con))
                     {
                         cmd.Parameters.AddWithValue("@FormID", formId);
-                        //cmd.Parameters.AddWithValue("@PlantID", plantId);
-                        //cmd.Parameters.AddWithValue("@LineID", lineId);
-                        //cmd.Parameters.AddWithValue("@MaterialID", materialId);
-                        //cmd.Parameters.AddWithValue("@CategoryID", category_id);
                         cmd.Parameters.AddWithValue("@plant_id", plantId == 0 ? DBNull.Value : (object)plantId);
-                        cmd.Parameters.AddWithValue("@plant_name", string.IsNullOrWhiteSpace(plantName) ? DBNull.Value : (object)plantName);
                         cmd.Parameters.AddWithValue("@LineId", lineId == 0 ? DBNull.Value : (object)lineId);
-                        cmd.Parameters.AddWithValue("@material_id", materialId == 0 ? DBNull.Value : (object)materialId);
-                        cmd.Parameters.AddWithValue("@material_name", string.IsNullOrWhiteSpace(materialName) ? DBNull.Value : (object)materialName);
+                        cmd.Parameters.AddWithValue("@MaterialID", materialId == 0 ? DBNull.Value : (object)materialId);
                         cmd.Parameters.AddWithValue("@category_id", category_id == 0 ? DBNull.Value : (object)category_id);
-                        cmd.Parameters.AddWithValue("@category_name", string.IsNullOrWhiteSpace(category_name) ? DBNull.Value : (object)category_name);
                         cmd.Parameters.AddWithValue("@FieldName", fieldName);
                         cmd.Parameters.AddWithValue("@RecordType", recordType);
 
@@ -761,6 +755,7 @@ namespace AnmolDristi
                         isDuplicate = count > 0;
                     }
                 }
+
 
                 if (isDuplicate)
                 {
@@ -774,7 +769,6 @@ namespace AnmolDristi
                     return;
                 }
 
-                // Save to DB via SP
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
                     using (SqlCommand cmd = new SqlCommand("usp_SaveOrUpdate_FormFieldControl", con))
@@ -783,15 +777,7 @@ namespace AnmolDristi
 
                         cmd.Parameters.AddWithValue("@FormID", formId);
                         cmd.Parameters.AddWithValue("@FormName", formName);
-                        cmd.Parameters.AddWithValue("@Sub_Form", (object)subForm ?? DBNull.Value);
-                        //cmd.Parameters.AddWithValue("@material_id", materialId);
-                        //cmd.Parameters.AddWithValue("@material_name", materialName);
-                        //cmd.Parameters.AddWithValue("@plant_id", plantId);
-                        //cmd.Parameters.AddWithValue("@plant_name", plantName);
-                        //cmd.Parameters.AddWithValue("@LineId", lineId);
-
-                        //cmd.Parameters.AddWithValue("@category_id", category_id);
-                        //cmd.Parameters.AddWithValue("@category_name", category_name);
+                        cmd.Parameters.AddWithValue("@Sub_Form", string.IsNullOrWhiteSpace(subForm) ? (object)DBNull.Value : subForm);
 
                         cmd.Parameters.AddWithValue("@plant_id", plantId == 0 ? DBNull.Value : (object)plantId);
                         cmd.Parameters.AddWithValue("@plant_name", string.IsNullOrWhiteSpace(plantName) ? DBNull.Value : (object)plantName);
@@ -820,23 +806,31 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@UserName", user);
                         cmd.Parameters.AddWithValue("@Remarks", "Created/Updated from UI");
                         cmd.Parameters.AddWithValue("@ControlType", controltype);
-                        cmd.Parameters.AddWithValue("@DefaultValue", defaultValue);
+                        cmd.Parameters.AddWithValue("@DefaultValue", string.IsNullOrWhiteSpace(defaultValue) ? DBNull.Value : (object)defaultValue);
                         cmd.Parameters.AddWithValue("@RecordType", recordType);
+
+                        SqlParameter outParam = new SqlParameter("@ResultMessage", SqlDbType.NVarChar, 500)
+                        {
+                            Direction = ParameterDirection.Output
+                        };
+                        cmd.Parameters.Add(outParam);
 
                         con.Open();
                         cmd.ExecuteNonQuery();
+
+                        string resultMessage = outParam.Value == DBNull.Value ? "No response from server." : outParam.Value.ToString();
+
+                        ScriptManager.RegisterStartupScript(this, this.GetType(), "pnotifyResult", $@"
+                        new PNotify({{
+                            title: 'Save Result',
+                            text: '{resultMessage.Replace("'", "\\'")}',
+                            type: 'success',
+                            styling: 'bootstrap3'
+                        }});", true);
                     }
                 }
 
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "success", @"
-                    new PNotify({
-                        title: 'Success',
-                        text: 'Field saved successfully.',
-                        type: 'success',
-                        styling: 'bootstrap3'
-                    });", true);
-
-                //BindFieldControlGrid(); // Rebind with edit row
+                // Rebind grid based on record type
                 if (hf_SelectedRecordType.Value.ToString() == "Specific")
                 {
                     BindFieldControlGrid();
@@ -845,6 +839,7 @@ namespace AnmolDristi
                 {
                     BindFieldControlGrid(isFallback: true);
                 }
+
             }
             catch (Exception ex)
             {
