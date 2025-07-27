@@ -31,6 +31,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField hf_SelectedFieldName;
         
         /// <summary>
+        /// hf_SelectedRecordType control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hf_SelectedRecordType;
+        
+        /// <summary>
         /// lbl_docname control.
         /// </summary>
         /// <remarks>
@@ -256,6 +265,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button Btn_fallback;
         
         /// <summary>
+        /// BTN_CopySpecificToFallback control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button BTN_CopySpecificToFallback;
+        
+        /// <summary>
+        /// BTN_CopyFallbackToSpecific control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button BTN_CopyFallbackToSpecific;
+        
+        /// <summary>
         /// Btn_home control.
         /// </summary>
         /// <remarks>
@@ -452,6 +479,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txt_DefaultValue;
+        
+        /// <summary>
+        /// ddl_RecordType control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList ddl_RecordType;
         
         /// <summary>
         /// btn_CloseFieldPopup control.

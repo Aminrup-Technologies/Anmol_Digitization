@@ -5,6 +5,7 @@
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <asp:ScriptManager ID="ScriptManager1" runat="server" />
     <asp:HiddenField ID="hf_SelectedFieldName" runat="server" />
+    <asp:HiddenField ID="hf_SelectedRecordType" runat="server" />
     <div class="right_col" role="main">
         <div class="container">
             <div class="page-title">
@@ -81,9 +82,19 @@
                                 <div class="mb-12">
                                     <asp:Label ID="Lbl_BtnSubmit" runat="server" AssociatedControlID="BtnSubmit" Text="Click to SAVE" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <div class="input-group input-group-sm">
-                                        <asp:Button ID="BtnSubmit" runat="server" Text="Fetch Records" CssClass="btn btn-primary btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClick="BtnSubmit_Click" />
-                                        <asp:Button ID="BtnCreate" runat="server" Text="Create New" CssClass="btn btn-success btn-sm" CausesValidation="true" ValidationGroup="Submit" OnClick="BtnCreate_Click" />
-                                        <asp:Button ID="Btn_fallback" runat="server" Text="View Fallback" CssClass="btn btn-sm btn-info" CausesValidation="false" OnClick="Btn_fallback_Click"/>
+                                        <asp:Button ID="BtnSubmit" runat="server" Text="Fetch Standard Records" CssClass="btn btn-primary btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClick="BtnSubmit_Click" />
+                                        <asp:Button ID="BtnCreate" runat="server" Text="Create New Standards" CssClass="btn btn-success btn-sm" CausesValidation="true" ValidationGroup="Submit" OnClick="BtnCreate_Click" />
+                                        <asp:Button ID="Btn_fallback" runat="server" Text="Fetch Fallback Records" CssClass="btn btn-sm btn-info" CausesValidation="false" OnClick="Btn_fallback_Click"/>
+                                        <%--<asp:Button ID="btn_CreateFallback" runat="server" Text="Create New Fallback" CssClass="btn btn-success btn-sm" CausesValidation="true" ValidationGroup="NoSubmit" OnClick="btn_CreateFallback_Click" />--%>
+
+                                        &nbsp; &nbsp;|&nbsp; &nbsp;<!-- Copy Specific ➡ Fallback -->
+                                        <asp:Button ID="BTN_CopySpecificToFallback" runat="server" CssClass="btn btn-sm btn-primary" Text="Copy Specific → Fallback" CausesValidation="false"
+                                            OnClientClick="return confirm('Are you sure you want to copy Specific records to Fallback?');" OnClick="BTN_CopySpecificToFallback_Click" />
+
+                                        <!-- Copy Fallback ➡ Specific -->
+                                        <asp:Button ID="BTN_CopyFallbackToSpecific" runat="server" CssClass="btn btn-sm btn-warning" CausesValidation="false"
+                                            Text="Copy Fallback → Specific" OnClientClick="return confirm('Are you sure you want to copy Fallback records to Specific?');" OnClick="BTN_CopyFallbackToSpecific_Click" />
+                                        &nbsp; &nbsp;|&nbsp; &nbsp;
                                         <asp:Button ID="Btn_home" runat="server" Text="Reset" CssClass="btn btn-sm btn-danger" CausesValidation="false" OnClick="Btn_home_Click" />
                                     </div>
                                 </div>
@@ -108,7 +119,7 @@
                                                     <asp:GridView ID="GV_Matrix" runat="server" Width="100%" AutoGenerateColumns="False" CssClass="table table-striped table-bordered table-sm"
                                                         ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowDataBound="GV_Matrix_RowDataBound"
                                                         OnRowEditing="GV_Matrix_RowEditing" OnRowUpdating="GV_Matrix_RowUpdating" OnRowCancelingEdit="GV_Matrix_RowCancelingEdit" OnRowDeleting="GV_Matrix_RowDeleting"
-                                                        DataKeyNames="Id">
+                                                        DataKeyNames="Id,RecordType">
 
                                                         <Columns>
                                                             <asp:TemplateField HeaderText="SL No.">
@@ -278,6 +289,12 @@
                                                                 </EditItemTemplate>
                                                             </asp:TemplateField>
 
+                                                            <asp:TemplateField HeaderText="Field Name" Visible="true">
+                                                                <ItemTemplate>
+                                                                    <asp:Label ID="lbl_RecordType" runat="server" Text='<%# Eval("RecordType") %>'></asp:Label>
+                                                                </ItemTemplate>
+                                                            </asp:TemplateField>
+
                                                             <asp:CommandField ShowEditButton="True" CausesValidation="false" ShowDeleteButton="True" HeaderText="Actions" />
                                                             <%--<asp:TemplateField>
                                                                 <ItemTemplate>
@@ -442,6 +459,19 @@
                                 </div>
                                 <div class="col-md-9">
                                     <asp:TextBox ID="txt_DefaultValue" runat="server" CssClass="form-control form-control-sm rounded" />
+                                </div>
+                            </div>
+
+                            <!-- Record Type Selection -->
+                            <div class="row mb-2">
+                                <div class="col-md-3">
+                                    <label>Record Type:<span class="text-danger">*</span></label>
+                                </div>
+                                <div class="col-md-9">
+                                    <asp:DropDownList ID="ddl_RecordType" runat="server" CssClass="form-control form-control-sm rounded">
+                                        <asp:ListItem Text="Specific" Value="Specific" />
+                                        <asp:ListItem Text="Fallback" Value="Fallback" />
+                                    </asp:DropDownList>
                                 </div>
                             </div>
 

@@ -337,7 +337,7 @@ namespace AnmolDristi
         }
 
 
-        public static DataTable GetFormFieldControlByFormAndBrand(int formId, int plantId, int lineId, int brandId, int categoryId)
+        public static DataTable GetFormFieldControlByFormAndBrand_OLD(int formId, int plantId, int lineId, int brandId, int categoryId)
         {
             using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
             {
@@ -371,8 +371,77 @@ namespace AnmolDristi
             }
         }
 
+        public static DataTable GetFormFieldControlByFormAndBrand(int formId, int plantId, int lineId, int brandId, int categoryId)
+        {
+            using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                conn.Open();
 
+                // Step 1: Try Specific match first
+                using (SqlCommand specificCmd = new SqlCommand(@"
+                SELECT field_name, DisplayName,
+                       RFV_YesNo, RFV_ErrorMsg,
+                       REV_YesNo, REV_ErrorMsg, REV_Expression,
+                       RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue,
+                       ViewMode
+                FROM MST_FormFieldControls
+                WHERE FormID = @FormID 
+                  AND plant_id = @PlantID 
+                  AND LineId = @LineId 
+                  AND material_id = @BrandID
+                  AND category_id = @CategoryID
+                  AND RecordType = 'Specific'
+                  AND IsDeleted = 0 AND IsLatest = 1", conn))
+                {
+                    specificCmd.Parameters.AddWithValue("@FormID", formId);
+                    specificCmd.Parameters.AddWithValue("@PlantID", plantId);
+                    specificCmd.Parameters.AddWithValue("@LineId", lineId);
+                    specificCmd.Parameters.AddWithValue("@BrandID", brandId);
+                    specificCmd.Parameters.AddWithValue("@CategoryID", categoryId);
 
+                    using (SqlDataAdapter da = new SqlDataAdapter(specificCmd))
+                    {
+                        DataTable dtSpecific = new DataTable();
+                        da.Fill(dtSpecific);
+
+                        if (dtSpecific.Rows.Count > 0)
+                            return dtSpecific;
+                    }
+                }
+
+                // Step 2: No specific match, try fallback
+                using (SqlCommand fallbackCmd = new SqlCommand(@"
+                    SELECT field_name, DisplayName,
+                           RFV_YesNo, RFV_ErrorMsg,
+                           REV_YesNo, REV_ErrorMsg, REV_Expression,
+                           RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue,
+                           ViewMode
+                    FROM MST_FormFieldControls
+                    WHERE FormID = @FormID 
+                      AND RecordType = 'Fallback'
+                      AND IsDeleted = 0 AND IsLatest = 1
+                      AND (
+                           (plant_id IS NULL OR plant_id = @PlantID)
+                        OR (LineId IS NULL OR LineId = @LineId)
+                        OR (material_id IS NULL OR material_id = @BrandID)
+                        OR (category_id IS NULL OR category_id = @CategoryID)
+                      )", conn))
+                {
+                    fallbackCmd.Parameters.AddWithValue("@FormID", formId);
+                    fallbackCmd.Parameters.AddWithValue("@PlantID", plantId);
+                    fallbackCmd.Parameters.AddWithValue("@LineId", lineId);
+                    fallbackCmd.Parameters.AddWithValue("@BrandID", brandId);
+                    fallbackCmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(fallbackCmd))
+                    {
+                        DataTable dtFallback = new DataTable();
+                        da.Fill(dtFallback);
+                        return dtFallback;
+                    }
+                }
+            }
+        }
 
 
         public static void BindLiteralControl(string query, Literal span_L, Literal span_W, Literal span_H, Literal span_GSM, SqlParameter parameter, out bool recordsBound)

@@ -1471,7 +1471,7 @@ namespace AnmolDristi.qaqc
 
                 string DDL_ProductBrand_Error_script = @"<script type='text/javascript'>
                             new PNotify({
-                                title: 'Error',
+                                title: 'Error-Field Controller',
                                 text: 'Invalid Selection!',
                                 type: 'error',
                                 styling: 'bootstrap3'
@@ -1496,7 +1496,7 @@ namespace AnmolDristi.qaqc
 
                 string BrandSKUBinder_Error_script = @"<script type='text/javascript'>
                             new PNotify({
-                                title: 'Error',
+                                title: 'Error-SKU Binder',
                                 text: 'An error occurred!',
                                 type: 'error',
                                 styling: 'bootstrap3'

@@ -24,6 +24,8 @@ namespace AnmolDristi
                 {
                     lbl_docname.Text = "Global Form Fields Controller";
                     FormBinder();
+
+                    hf_SelectedRecordType.Value = string.Empty;
                 }
 
             }
@@ -37,8 +39,8 @@ namespace AnmolDristi
         private void FormBinder()
         {
             // Construct the SQL query with parameters
-            string query = "SELECT [DocumentName], [FormID] FROM [MST_FormsMaster] ";
-            string textField = "DocumentName"; // Assuming this is the correct field for displaying in the DropDownList
+            string query = "SELECT FormName, FormID FROM MST_FormsMaster ";
+            string textField = "FormName"; // Assuming this is the correct field for displaying in the DropDownList
             string valueField = "FormID"; // Assuming this is the correct field for storing in the DropDownList
 
 
@@ -297,7 +299,16 @@ namespace AnmolDristi
 
         protected void BtnSubmit_Click(object sender, EventArgs e)
         {
-            BindFieldControlGrid();
+            hf_SelectedRecordType.Value = "Specific";
+            if (hf_SelectedRecordType.Value.ToString() == "Specific")
+            {
+                BindFieldControlGrid();
+            }
+            else
+            {
+                BindFieldControlGrid(isFallback: true);
+            }
+            
         }
 
         protected void GV_Matrix_RowCommand(object sender, GridViewCommandEventArgs e)
@@ -342,20 +353,37 @@ namespace AnmolDristi
         protected void GV_Matrix_RowEditing(object sender, GridViewEditEventArgs e)
         {
             GV_Matrix.EditIndex = e.NewEditIndex;
-            BindFieldControlGrid(); // Rebind with edit row
+            //BindFieldControlGrid(); // Rebind with edit row
+            if (hf_SelectedRecordType.Value.ToString() == "Specific")
+            {
+                BindFieldControlGrid();
+            }
+            else
+            {
+                BindFieldControlGrid(isFallback: true);
+            }
         }
 
         protected void GV_Matrix_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
             GV_Matrix.EditIndex = -1;
-            BindFieldControlGrid();
+            //BindFieldControlGrid(); // Rebind with edit row
+            if (hf_SelectedRecordType.Value.ToString() == "Specific")
+            {
+                BindFieldControlGrid();
+            }
+            else
+            {
+                BindFieldControlGrid(isFallback: true);
+            }
         }
 
         protected void GV_Matrix_RowUpdating(object sender, GridViewUpdateEventArgs e)
         {
             GridViewRow row = GV_Matrix.Rows[e.RowIndex];
 
-            // Extract control values safely
+            string recordType = ((Label)row.FindControl("lbl_RecordType"))?.Text.Trim().ToUpper(); // e.g., "FALLBACK" or "SPECIFIC"
+
             string fieldName = ((Label)row.FindControl("lbl_FieldName"))?.Text.Trim() ?? "";
             string displayName = ((TextBox)row.FindControl("txt_DisplayName"))?.Text.Trim() ?? "";
             string subForm = ((TextBox)row.FindControl("txtSubForm"))?.Text.Trim() ?? "";
@@ -374,60 +402,69 @@ namespace AnmolDristi
 
             int viewMode = ((CheckBox)row.FindControl("chk_ViewMode"))?.Checked == true ? 1 : 0;
 
-            // Selected values from dropdowns outside GridView
             int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
             string formName = DDL_FormName.SelectedItem.Text;
-
-            int plantId = Convert.ToInt32(DDL_Plant.SelectedValue);
-            string plantName = DDL_Plant.SelectedItem.Text;
-
-            int lineId = Convert.ToInt32(DDL_PlantLine.SelectedValue);
-
-            int category_id = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
-            string category_name = DDL_ProductCategory.SelectedItem.Text;
-
-            int materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
-            string materialName = DDL_ProductBrand.SelectedItem.Text;
 
             string user = Session["UserName"]?.ToString() ?? "system";
             string controltype = ((DropDownList)row.FindControl("ddl_ControlType"))?.SelectedValue?.Trim();
             int id = Convert.ToInt32(GV_Matrix.DataKeys[e.RowIndex].Values[0]);
             string defaultvalue = ((TextBox)row.FindControl("txtDefaultValue"))?.Text.Trim() ?? "";
-            //bool isDuplicate = false;
 
-            // Duplicate check using all required unique columns
-            //using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
-            //{
-            //    using (SqlCommand cmd = new SqlCommand(@"
-            //    SELECT COUNT(*) FROM MST_FormFieldControls
-            //    WHERE FormID = @FormID 
-            //      AND field_name = @FieldName 
-            //      AND plant_id = @PlantID 
-            //      AND material_id = @MaterialID 
-            //      AND LineId = @LineId
-            //      AND Id <> @Id 
-            //      AND IsDeleted = 0 
-            //      AND IsLatest = 1", con))
-            //    {
-            //        cmd.Parameters.AddWithValue("@FormID", formId);
-            //        cmd.Parameters.AddWithValue("@FieldName", fieldName);
-            //        cmd.Parameters.AddWithValue("@PlantID", plantId);
-            //        cmd.Parameters.AddWithValue("@MaterialID", materialId);
-            //        cmd.Parameters.AddWithValue("@LineId", lineId);
-            //        cmd.Parameters.AddWithValue("@Id", id);
+            //int? plantId = null, lineId = null, categoryId = null, materialId = null;
+            string plantName = null, categoryName = null, materialName = null;
+            string recordTypeGV = GV_Matrix.DataKeys[e.RowIndex].Values["RecordType"].ToString();
 
-            //        con.Open();
-            //        int count = Convert.ToInt32(cmd.ExecuteScalar());
-            //        isDuplicate = count > 0;
-            //    }
-            //}
+            int plantId = 0, lineId = 0, categoryId = 0, materialId = 0;
 
-            //if (isDuplicate)
-            //{
-            //    ScriptManager.RegisterStartupScript(this, this.GetType(), "dupAlert",
-            //        "alert('A record with the same Form, Field Name, Plant, Line, and Brand already exists.');", true);
-            //    return;
-            //}
+            // Try parsing dropdown values
+            int.TryParse(DDL_Plant.SelectedValue, out plantId);
+            int.TryParse(DDL_PlantLine.SelectedValue, out lineId);
+            int.TryParse(DDL_ProductCategory.SelectedValue, out categoryId);
+            int.TryParse(DDL_ProductBrand.SelectedValue, out materialId);
+
+            // Nullables to hold final values to be saved
+            int? finalPlantId = null;
+            int? finalLineId = null;
+            int? finalCategoryId = null;
+            int? finalMaterialId = null;
+
+            // Check if values are meaningful (not 0 or 1)
+            if (plantId > 0)
+            {
+                finalPlantId = plantId;
+                plantName = DDL_Plant.SelectedItem.Text;
+            }
+
+            if (lineId > 0)
+            {
+                finalLineId = lineId;
+            }
+
+            if (categoryId > 0)
+            {
+                finalCategoryId = categoryId;
+                categoryName = DDL_ProductCategory.SelectedItem.Text;
+            }
+
+            if (materialId > 0)
+            {
+                finalMaterialId = materialId;
+                materialName = DDL_ProductBrand.SelectedItem.Text;
+            }
+
+            if (recordType == "SPECIFIC")
+            {
+                plantId = Convert.ToInt32(DDL_Plant.SelectedValue);
+                plantName = DDL_Plant.SelectedItem.Text;
+
+                lineId = Convert.ToInt32(DDL_PlantLine.SelectedValue);
+
+                categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+                categoryName = DDL_ProductCategory.SelectedItem.Text;
+
+                materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
+                materialName = DDL_ProductBrand.SelectedItem.Text;
+            }
 
             try
             {
@@ -435,46 +472,64 @@ namespace AnmolDristi
                 {
                     using (SqlCommand cmd = new SqlCommand("usp_SaveOrUpdate_FormFieldControl", conn))
                     {
+                        
                         cmd.CommandType = CommandType.StoredProcedure;
 
-                        cmd.Parameters.AddWithValue("@FormID", formId);
-                        cmd.Parameters.AddWithValue("@FormName", formName);
-                        cmd.Parameters.AddWithValue("@Sub_Form", string.IsNullOrWhiteSpace(subForm) ? DBNull.Value : (object)subForm);
-                        cmd.Parameters.AddWithValue("@material_id", materialId);
-                        cmd.Parameters.AddWithValue("@material_name", materialName);
-                        cmd.Parameters.AddWithValue("@plant_id", plantId);
-                        cmd.Parameters.AddWithValue("@plant_name", plantName);
-                        cmd.Parameters.AddWithValue("@LineId", lineId);
+                        cmd.Parameters.AddWithValue("@FormID", formId);//1
+                        cmd.Parameters.AddWithValue("@FormName", formName);//2
+                        cmd.Parameters.AddWithValue("@Sub_Form", string.IsNullOrWhiteSpace(subForm) ? DBNull.Value : (object)subForm);//3
 
-                        cmd.Parameters.AddWithValue("@category_id", category_id);
-                        cmd.Parameters.AddWithValue("@category_name", category_name);
+                        cmd.Parameters.AddWithValue("@plant_id", finalPlantId.HasValue ? (object)plantId : DBNull.Value);//4
+                        cmd.Parameters.AddWithValue("@plant_name", string.IsNullOrWhiteSpace(plantName) ? DBNull.Value : (object)plantName);//5
 
-                        cmd.Parameters.AddWithValue("@field_name", fieldName);
-                        cmd.Parameters.AddWithValue("@DisplayName", displayName);
+                        cmd.Parameters.AddWithValue("@LineId", finalLineId.HasValue ? (object)lineId : DBNull.Value);//6
 
-                        cmd.Parameters.AddWithValue("@RFV_YesNo", rfvYesNo);
-                        cmd.Parameters.AddWithValue("@RFV_ErrorMsg", string.IsNullOrWhiteSpace(rfvError) ? DBNull.Value : (object)rfvError);
+                        cmd.Parameters.AddWithValue("@category_id", finalCategoryId.HasValue ? (object)categoryId : DBNull.Value);//7
+                        cmd.Parameters.AddWithValue("@category_name", string.IsNullOrWhiteSpace(categoryName) ? DBNull.Value : (object)categoryName);//8
 
-                        cmd.Parameters.AddWithValue("@REV_YesNo", revYesNo);
-                        cmd.Parameters.AddWithValue("@REV_ErrorMsg", string.IsNullOrWhiteSpace(revError) ? DBNull.Value : (object)revError);
-                        cmd.Parameters.AddWithValue("@REV_Expression", string.IsNullOrWhiteSpace(revExpression) ? DBNull.Value : (object)revExpression);
+                        cmd.Parameters.AddWithValue("@material_id", finalMaterialId.HasValue ? (object)materialId : DBNull.Value);//9
+                        cmd.Parameters.AddWithValue("@material_name", string.IsNullOrWhiteSpace(materialName) ? DBNull.Value : (object)materialName);//10
 
-                        cmd.Parameters.AddWithValue("@RV_Yesno", rvYesNo);
-                        cmd.Parameters.AddWithValue("@RV_ErrorMsg", string.IsNullOrWhiteSpace(rvError) ? DBNull.Value : (object)rvError);
-                        cmd.Parameters.AddWithValue("@RV_MinValue", string.IsNullOrWhiteSpace(rvMin) ? DBNull.Value : (object)rvMin);
-                        cmd.Parameters.AddWithValue("@RV_MaxValue", string.IsNullOrWhiteSpace(rvMax) ? DBNull.Value : (object)rvMax);
+                        cmd.Parameters.AddWithValue("@field_name", fieldName);//11
+                        cmd.Parameters.AddWithValue("@DisplayName", displayName);//12
 
-                        cmd.Parameters.AddWithValue("@ViewMode", viewMode);
-                        cmd.Parameters.AddWithValue("@UserName", user);
-                        cmd.Parameters.AddWithValue("@Remarks", "Updated inline from GridView");
-                        cmd.Parameters.AddWithValue("@ControlType", controltype);
-                        cmd.Parameters.AddWithValue("@DefaultValue", defaultvalue);
+                        cmd.Parameters.AddWithValue("@RFV_YesNo", rfvYesNo);//13
+                        cmd.Parameters.AddWithValue("@RFV_ErrorMsg", string.IsNullOrWhiteSpace(rfvError) ? DBNull.Value : (object)rfvError);//14
+
+                        cmd.Parameters.AddWithValue("@REV_YesNo", revYesNo);//15
+                        cmd.Parameters.AddWithValue("@REV_ErrorMsg", string.IsNullOrWhiteSpace(revError) ? DBNull.Value : (object)revError);//16
+                        cmd.Parameters.AddWithValue("@REV_Expression", string.IsNullOrWhiteSpace(revExpression) ? DBNull.Value : (object)revExpression);//17
+
+                        cmd.Parameters.AddWithValue("@RV_Yesno", rvYesNo);//18
+                        cmd.Parameters.AddWithValue("@RV_ErrorMsg", string.IsNullOrWhiteSpace(rvError) ? DBNull.Value : (object)rvError);//19
+                        cmd.Parameters.AddWithValue("@RV_MinValue", string.IsNullOrWhiteSpace(rvMin) ? DBNull.Value : (object)rvMin);//20
+                        cmd.Parameters.AddWithValue("@RV_MaxValue", string.IsNullOrWhiteSpace(rvMax) ? DBNull.Value : (object)rvMax);//21
+
+                        cmd.Parameters.AddWithValue("@ViewMode", viewMode);//22
+                        //cmd.Parameters.AddWithValue("@UserName", user);
+                        //cmd.Parameters.AddWithValue("@Remarks", $"Updated from GridView ({recordType})");
+
+                        cmd.Parameters.AddWithValue("@UserName", user);//23
+                        cmd.Parameters.AddWithValue("@Remarks", $"Updated from GridView ({recordType})");//24
+
+                        cmd.Parameters.AddWithValue("@ControlType", controltype);//25
+                        cmd.Parameters.AddWithValue("@DefaultValue", defaultvalue);//26
+                        cmd.Parameters.AddWithValue("@RecordType", recordTypeGV); // Pass SPECIFIC or FALLBACK 27
+
+                        SqlParameter outParam = new SqlParameter("@ResultMessage", SqlDbType.NVarChar, 500); //28
+
+                        outParam.Direction = ParameterDirection.Output;
+                        cmd.Parameters.Add(outParam);
 
                         conn.Open();
                         cmd.ExecuteNonQuery();
 
-                        ScriptManager.RegisterStartupScript(this, this.GetType(), "updateSuccess",
-                            "new PNotify({ title: 'Success', text: 'Field updated successfully.', type: 'success', styling: 'bootstrap3' });", true);
+                        string resultMessage = outParam.Value.ToString();
+
+                        ScriptManager.RegisterStartupScript(this, this.GetType(), "spMessage",
+                            $"alert('{resultMessage.Replace("'", "\\'")}');", true);
+
+                        //ScriptManager.RegisterStartupScript(this, this.GetType(), "updateSuccess", "new PNotify({ title: 'Success', text: 'Field updated successfully.', type: 'success', styling: 'bootstrap3' });", true);
                     }
                 }
             }
@@ -490,7 +545,15 @@ namespace AnmolDristi
             }
 
             GV_Matrix.EditIndex = -1;
-            BindFieldControlGrid();
+            //BindFieldControlGrid(); // Rebind with edit row
+            if (hf_SelectedRecordType.Value.ToString() == "Specific")
+            {
+                BindFieldControlGrid();
+            }
+            else
+            {
+                BindFieldControlGrid(isFallback: true);
+            }
         }
 
         protected void GV_Matrix_RowDeleting(object sender, GridViewDeleteEventArgs e)
@@ -529,9 +592,16 @@ namespace AnmolDristi
             }
 
             GV_Matrix.EditIndex = -1;
-            BindFieldControlGrid(); // Rebind your GridView
+            //BindFieldControlGrid(); // Rebind with edit row
+            if (hf_SelectedRecordType.Value.ToString() == "Specific")
+            {
+                BindFieldControlGrid();
+            }
+            else
+            {
+                BindFieldControlGrid(isFallback: true);
+            }
         }
-
 
         protected void GV_Matrix_RowDataBound(object sender, GridViewRowEventArgs e)
         {
@@ -594,20 +664,20 @@ namespace AnmolDristi
             //}
         }
 
-
         private void ShowFieldControlModal()
         {
             ScriptManager.RegisterStartupScript(this, this.GetType(), "ShowPopup",
                 $"document.getElementById('{btnShowModalFieldControl.ClientID}').click();", true);
         }
 
-
-        protected void btn_SaveFieldPopup_Click1(object sender, EventArgs e)
+        protected void btn_SaveFieldPopup_Click(object sender, EventArgs e)
         {
             try
             {
-                //int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
-                //string formName = DDL_FormName.SelectedItem.Text;
+                string recordType = ddl_RecordType.SelectedValue;
+
+                int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
+                string formName = DDL_FormName.SelectedItem.Text;
 
                 //int plantId = Convert.ToInt32(DDL_Plant.SelectedValue);
                 //string plantName = DDL_Plant.SelectedItem.Text;
@@ -615,169 +685,23 @@ namespace AnmolDristi
                 //int lineId = Convert.ToInt32(DDL_PlantLine.SelectedValue);
                 //string lineName = DDL_PlantLine.SelectedItem.Text;
 
-                //string productCategory = DDL_ProductCategory.SelectedItem.Text;
                 //int materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
                 //string materialName = DDL_ProductBrand.SelectedItem.Text;
 
-                //string subForm = txt_SubForm.Text.Trim();
-                //string fieldName = txt_FieldName.Text.Trim();
-                //string displayName = txt_DisplayName.Text.Trim();
+                //int category_id = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+                //string category_name = DDL_ProductCategory.SelectedItem.Text;
 
-                //int rfvYesNo = chk_RFV.Checked ? 1 : 0;
-                //string rfvError = txt_RFVError.Text.Trim();
+                int plantId = string.IsNullOrEmpty(DDL_Plant.SelectedValue) ? 0 : Convert.ToInt32(DDL_Plant.SelectedValue);
+                string plantName = DDL_Plant.SelectedItem?.Text ?? "";
 
-                //int revYesNo = chk_REV.Checked ? 1 : 0;
-                //string revError = txt_REVError.Text.Trim();
-                //string revExpression = ddl_RegexType.SelectedValue;
+                int lineId = string.IsNullOrEmpty(DDL_PlantLine.SelectedValue) ? 0 : Convert.ToInt32(DDL_PlantLine.SelectedValue);
+                string lineName = DDL_PlantLine.SelectedItem?.Text ?? "";
 
-                //int rvYesNo = chk_RV.Checked ? 1 : 0;
-                //string rvError = txt_RVError.Text.Trim();
-                //string rvMin = txt_RVMin.Text.Trim();
-                //string rvMax = txt_RVMax.Text.Trim();
+                int materialId = string.IsNullOrEmpty(DDL_ProductBrand.SelectedValue) ? 0 : Convert.ToInt32(DDL_ProductBrand.SelectedValue);
+                string materialName = DDL_ProductBrand.SelectedItem?.Text ?? "";
 
-                //int viewMode = chk_ViewMode.Checked ? 1 : 0;
-
-                //string user = Session["UserName"] != null ? Session["UserName"].ToString() : "system";
-
-                int formId = !string.IsNullOrWhiteSpace(DDL_FormName.SelectedValue) ? Convert.ToInt32(DDL_FormName.SelectedValue) : 0;
-                string formName = DDL_FormName.SelectedItem?.Text?.Trim() ?? "";
-
-                int plantId = !string.IsNullOrWhiteSpace(DDL_Plant.SelectedValue) ? Convert.ToInt32(DDL_Plant.SelectedValue) : 0;
-                string plantName = DDL_Plant.SelectedItem?.Text?.Trim() ?? "";
-
-                int lineId = !string.IsNullOrWhiteSpace(DDL_PlantLine.SelectedValue) ? Convert.ToInt32(DDL_PlantLine.SelectedValue) : 0;
-                string lineName = DDL_PlantLine.SelectedItem?.Text?.Trim() ?? "";
-
-                int category_id = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
-                string category_name = DDL_ProductCategory.SelectedItem.Text;
-
-                string productCategory = DDL_ProductCategory.SelectedItem?.Text?.Trim() ?? "";
-
-                int materialId = !string.IsNullOrWhiteSpace(DDL_ProductBrand.SelectedValue) ? Convert.ToInt32(DDL_ProductBrand.SelectedValue) : 0;
-                string materialName = DDL_ProductBrand.SelectedItem?.Text?.Trim() ?? "";
-
-                string subForm = string.IsNullOrWhiteSpace(txt_SubForm.Text) ? null : txt_SubForm.Text.Trim();
-
-                string fieldName = txt_FieldName.Text.Trim();
-                string displayName = txt_DisplayName.Text.Trim();
-
-                // Required Field Validation (RFV)
-                int rfvYesNo = chk_RFV.Checked ? 1 : 0;
-                string rfvError = string.IsNullOrWhiteSpace(txt_RFVError.Text) ? "" : txt_RFVError.Text.Trim();
-
-                // Regular Expression Validation (REV)
-                int revYesNo = chk_REV.Checked ? 1 : 0;
-                string revError = string.IsNullOrWhiteSpace(txt_REVError.Text) ? "" : txt_REVError.Text.Trim();
-                string revExpression = (ddl_RegexType.SelectedValue == "--Select Regex--" || string.IsNullOrWhiteSpace(ddl_RegexType.SelectedValue)) ? null : ddl_RegexType.SelectedValue.Trim();
-
-                // Range Validation (RV)
-                int rvYesNo = chk_RV.Checked ? 1 : 0;
-                string rvError = string.IsNullOrWhiteSpace(txt_RVError.Text) ? "" : txt_RVError.Text.Trim();
-                string rvMin = string.IsNullOrWhiteSpace(txt_RVMin.Text) ? null : txt_RVMin.Text.Trim();
-                string rvMax = string.IsNullOrWhiteSpace(txt_RVMax.Text) ? null : txt_RVMax.Text.Trim();
-
-                // View Mode
-                int viewMode = chk_ViewMode.Checked ? 1 : 0;
-                string controltype = (ddl_ControlType.SelectedValue == "--Select Regex--" || string.IsNullOrWhiteSpace(ddl_ControlType.SelectedValue)) ? null : ddl_ControlType.SelectedValue.Trim();
-
-                string defaultValue = string.IsNullOrWhiteSpace(txt_DefaultValue.Text) ? null : txt_DefaultValue.Text.Trim();
-                // User Identity
-                string user = Session["USERNAME"] != null ? Session["USERNAME"].ToString() : "ADMIN";
-
-
-                // DB insert/update call
-                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
-                {
-                    SqlCommand cmd = new SqlCommand("usp_SaveOrUpdate_FormFieldControl", con);
-                    cmd.CommandType = CommandType.StoredProcedure;
-
-                    cmd.Parameters.AddWithValue("@FormID", formId);
-                    cmd.Parameters.AddWithValue("@FormName", formName);
-                    cmd.Parameters.AddWithValue("@Sub_Form", (object)subForm ?? DBNull.Value);
-
-                    cmd.Parameters.AddWithValue("@plant_id", plantId);
-                    cmd.Parameters.AddWithValue("@plant_name", plantName);
-                    cmd.Parameters.AddWithValue("@LineId", lineId);
-                    //cmd.Parameters.AddWithValue("@LineName", lineName);
-
-                    cmd.Parameters.AddWithValue("@category_id", category_id);
-                    cmd.Parameters.AddWithValue("@category_name", category_name);
-
-                    cmd.Parameters.AddWithValue("@material_id", materialId);
-                    cmd.Parameters.AddWithValue("@material_name", materialName);
-
-                    cmd.Parameters.AddWithValue("@field_name", fieldName);
-                    cmd.Parameters.AddWithValue("@DisplayName", displayName);
-
-                    cmd.Parameters.AddWithValue("@RFV_YesNo", rfvYesNo);
-                    cmd.Parameters.AddWithValue("@RFV_ErrorMsg", rfvError);
-
-                    cmd.Parameters.AddWithValue("@REV_YesNo", revYesNo);
-                    cmd.Parameters.AddWithValue("@REV_ErrorMsg", revError);
-                    //cmd.Parameters.AddWithValue("@REV_Expression", revExpression);
-
-                    cmd.Parameters.AddWithValue("@REV_Expression", (object)revExpression ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@RV_MinValue", (object)rvMin ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@RV_MaxValue", (object)rvMax ?? DBNull.Value);
-
-                    cmd.Parameters.AddWithValue("@RV_Yesno", rvYesNo);
-                    cmd.Parameters.AddWithValue("@RV_ErrorMsg", rvError);
-                    //cmd.Parameters.AddWithValue("@RV_MinValue", rvMin);
-                    //cmd.Parameters.AddWithValue("@RV_MaxValue", rvMax);
-
-                    cmd.Parameters.AddWithValue("@ViewMode", viewMode);
-                    cmd.Parameters.AddWithValue("@UserName", user);
-                    cmd.Parameters.AddWithValue("@Remarks", "Created/Updated from UI");
-                    cmd.Parameters.AddWithValue("@ControlType", controltype);
-                    cmd.Parameters.AddWithValue("@DefaultValue", defaultValue);
-
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
-                }
-
-                // Optional: show success message
-                //ScriptManager.RegisterStartupScript(this, this.GetType(), "Success", "alert('Field control saved successfully.');", true);
-
-                string title = "Notifications :";
-                string body = "Data saved Successfully";
-                ClientScript.RegisterStartupScript(this.GetType(), "Popup2", "ShowPopup('" + title + "', '" + body + "');", true);
-
-                // Refresh your grid
-                BindFieldControlGrid();
-
-                // Close modal
-                //ScriptManager.RegisterStartupScript(this, this.GetType(), "HideModal", "$('#modal_FieldControl').modal('hide');", true);
-            }
-            catch (Exception ex)
-            {
-                // Show error
-                //ScriptManager.RegisterStartupScript(this, this.GetType(), "Error", $"alert('Error: {ex.Message}');", true);
-
-                string title = "Notifications :";
-                string body = ex.Message.ToString();
-                ClientScript.RegisterStartupScript(this.GetType(), "Popup3", "ShowPopup('" + title + "', '" + body + "');", true);
-            }
-        }
-
-        protected void btn_SaveFieldPopup_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
-                string formName = DDL_FormName.SelectedItem.Text;
-
-                int plantId = Convert.ToInt32(DDL_Plant.SelectedValue);
-                string plantName = DDL_Plant.SelectedItem.Text;
-
-                int lineId = Convert.ToInt32(DDL_PlantLine.SelectedValue);
-                string lineName = DDL_PlantLine.SelectedItem.Text;
-
-                int materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
-                string materialName = DDL_ProductBrand.SelectedItem.Text;
-
-                int category_id = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
-                string category_name = DDL_ProductCategory.SelectedItem.Text;
+                int category_id = string.IsNullOrEmpty(DDL_ProductCategory.SelectedValue) ? 0 : Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+                string category_name = DDL_ProductCategory.SelectedItem?.Text ?? "";
 
                 //string productCategory = DDL_ProductCategory.SelectedItem.Text;
                 string subForm = txt_SubForm.Text.Trim(); // optional
@@ -802,6 +726,7 @@ namespace AnmolDristi
                 string user = Session["UserName"]?.ToString() ?? "system";
                 string defaultValue = string.IsNullOrWhiteSpace(txt_DefaultValue.Text) ? null : txt_DefaultValue.Text.Trim();
                 // Check for duplicate record
+
                 bool isDuplicate = false;
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
@@ -813,14 +738,23 @@ namespace AnmolDristi
                       AND category_id = @CategoryID
                       AND field_name = @FieldName
                       AND IsDeleted = 0
-                      AND IsLatest = 1", con))
+                      AND IsLatest = 1
+                      AND RecordType = @RecordType", con))
                     {
                         cmd.Parameters.AddWithValue("@FormID", formId);
-                        cmd.Parameters.AddWithValue("@PlantID", plantId);
-                        cmd.Parameters.AddWithValue("@LineID", lineId);
-                        cmd.Parameters.AddWithValue("@MaterialID", materialId);
-                        cmd.Parameters.AddWithValue("@CategoryID", category_id);
+                        //cmd.Parameters.AddWithValue("@PlantID", plantId);
+                        //cmd.Parameters.AddWithValue("@LineID", lineId);
+                        //cmd.Parameters.AddWithValue("@MaterialID", materialId);
+                        //cmd.Parameters.AddWithValue("@CategoryID", category_id);
+                        cmd.Parameters.AddWithValue("@plant_id", plantId == 0 ? DBNull.Value : (object)plantId);
+                        cmd.Parameters.AddWithValue("@plant_name", string.IsNullOrWhiteSpace(plantName) ? DBNull.Value : (object)plantName);
+                        cmd.Parameters.AddWithValue("@LineId", lineId == 0 ? DBNull.Value : (object)lineId);
+                        cmd.Parameters.AddWithValue("@material_id", materialId == 0 ? DBNull.Value : (object)materialId);
+                        cmd.Parameters.AddWithValue("@material_name", string.IsNullOrWhiteSpace(materialName) ? DBNull.Value : (object)materialName);
+                        cmd.Parameters.AddWithValue("@category_id", category_id == 0 ? DBNull.Value : (object)category_id);
+                        cmd.Parameters.AddWithValue("@category_name", string.IsNullOrWhiteSpace(category_name) ? DBNull.Value : (object)category_name);
                         cmd.Parameters.AddWithValue("@FieldName", fieldName);
+                        cmd.Parameters.AddWithValue("@RecordType", recordType);
 
                         con.Open();
                         int count = Convert.ToInt32(cmd.ExecuteScalar());
@@ -850,14 +784,22 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@FormID", formId);
                         cmd.Parameters.AddWithValue("@FormName", formName);
                         cmd.Parameters.AddWithValue("@Sub_Form", (object)subForm ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@material_id", materialId);
-                        cmd.Parameters.AddWithValue("@material_name", materialName);
-                        cmd.Parameters.AddWithValue("@plant_id", plantId);
-                        cmd.Parameters.AddWithValue("@plant_name", plantName);
-                        cmd.Parameters.AddWithValue("@LineId", lineId);
+                        //cmd.Parameters.AddWithValue("@material_id", materialId);
+                        //cmd.Parameters.AddWithValue("@material_name", materialName);
+                        //cmd.Parameters.AddWithValue("@plant_id", plantId);
+                        //cmd.Parameters.AddWithValue("@plant_name", plantName);
+                        //cmd.Parameters.AddWithValue("@LineId", lineId);
 
-                        cmd.Parameters.AddWithValue("@category_id", category_id);
-                        cmd.Parameters.AddWithValue("@category_name", category_name);
+                        //cmd.Parameters.AddWithValue("@category_id", category_id);
+                        //cmd.Parameters.AddWithValue("@category_name", category_name);
+
+                        cmd.Parameters.AddWithValue("@plant_id", plantId == 0 ? DBNull.Value : (object)plantId);
+                        cmd.Parameters.AddWithValue("@plant_name", string.IsNullOrWhiteSpace(plantName) ? DBNull.Value : (object)plantName);
+                        cmd.Parameters.AddWithValue("@LineId", lineId == 0 ? DBNull.Value : (object)lineId);
+                        cmd.Parameters.AddWithValue("@material_id", materialId == 0 ? DBNull.Value : (object)materialId);
+                        cmd.Parameters.AddWithValue("@material_name", string.IsNullOrWhiteSpace(materialName) ? DBNull.Value : (object)materialName);
+                        cmd.Parameters.AddWithValue("@category_id", category_id == 0 ? DBNull.Value : (object)category_id);
+                        cmd.Parameters.AddWithValue("@category_name", string.IsNullOrWhiteSpace(category_name) ? DBNull.Value : (object)category_name);
 
                         cmd.Parameters.AddWithValue("@field_name", fieldName);
                         cmd.Parameters.AddWithValue("@DisplayName", displayName);
@@ -879,6 +821,7 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@Remarks", "Created/Updated from UI");
                         cmd.Parameters.AddWithValue("@ControlType", controltype);
                         cmd.Parameters.AddWithValue("@DefaultValue", defaultValue);
+                        cmd.Parameters.AddWithValue("@RecordType", recordType);
 
                         con.Open();
                         cmd.ExecuteNonQuery();
@@ -893,7 +836,15 @@ namespace AnmolDristi
                         styling: 'bootstrap3'
                     });", true);
 
-                BindFieldControlGrid();
+                //BindFieldControlGrid(); // Rebind with edit row
+                if (hf_SelectedRecordType.Value.ToString() == "Specific")
+                {
+                    BindFieldControlGrid();
+                }
+                else
+                {
+                    BindFieldControlGrid(isFallback: true);
+                }
             }
             catch (Exception ex)
             {
@@ -968,10 +919,21 @@ namespace AnmolDristi
                 int lineId = Convert.ToInt32(DDL_PlantLine.SelectedValue);
                 int materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
                 int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+                lbl_DDL_ProductBrand_Value.Text = materialId.ToString();
 
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand(@"SELECT * FROM MST_FormFieldControls WHERE FormID = @FormID AND plant_id = @PlantID AND material_id = @MaterialID AND category_id = @CategoryID AND IsLatest = 1 AND IsDeleted = 0", con))
+                    //using (SqlCommand cmd = new SqlCommand(@"SELECT * FROM MST_FormFieldControls WHERE FormID = @FormID AND plant_id = @PlantID AND material_id = @MaterialID AND category_id = @CategoryID AND IsLatest = 1 AND IsDeleted = 0", con))
+                    using (SqlCommand cmd = new SqlCommand(@"
+                            SELECT * FROM MST_FormFieldControls 
+                            WHERE FormID = @FormID 
+                              AND IsLatest = 1 
+                              AND IsDeleted = 0 
+                              AND (
+                                    (RecordType = 'Specific' AND plant_id = @PlantID AND material_id = @MaterialID AND category_id = @CategoryID)
+                                  )
+                        ", con))
+
                     {
                         cmd.Parameters.AddWithValue("@FormID", formId);
                         cmd.Parameters.AddWithValue("@PlantID", plantId);
@@ -1099,43 +1061,156 @@ namespace AnmolDristi
 
         protected void Btn_fallback_Click(object sender, EventArgs e)
         {
-            BindFieldControlGrid(isFallback: true);
+            if (DDL_ProductBrand.SelectedIndex != 0 && DDL_ProductBrand.SelectedIndex != -1)
+            {
+                int materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
+                lbl_DDL_ProductBrand_Value.Text = materialId.ToString();
+            }
+            else
+            {
+                lbl_DDL_ProductBrand_Value.Text = "N/A";
+            }
+            hf_SelectedRecordType.Value = "Fallback";
+            if (hf_SelectedRecordType.Value.ToString() == "Specific")
+            {
+                BindFieldControlGrid();
+            }
+            else
+            {
+                BindFieldControlGrid(isFallback: true);
+            }
+            //BindFieldControlGrid(isFallback: true);
             lbl_docname.Text = "You are viewing Fallback Form Field Controler for : " +DDL_FormName.SelectedItem.Text.ToString()+".";
         }
 
         private void BindFieldControlGrid(bool isFallback = false)
         {
+            //int plantId = Convert.ToInt32(DDL_Plant.SelectedValue);
+            //int lineId = Convert.ToInt32(DDL_PlantLine.SelectedValue);
+            //int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+            //int materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
+
+            int plantId = 0, lineId = 0, categoryId = 0, materialId = 0;
+
+            // Try parsing dropdown values
+            int.TryParse(DDL_Plant.SelectedValue, out plantId);
+            int.TryParse(DDL_PlantLine.SelectedValue, out lineId);
+            int.TryParse(DDL_ProductCategory.SelectedValue, out categoryId);
+            int.TryParse(DDL_ProductBrand.SelectedValue, out materialId);
+
+            // Nullables to hold final values to be saved
+            int? finalPlantId = null;
+            int? finalLineId = null;
+            int? finalCategoryId = null;
+            int? finalMaterialId = null;
+
+            // Check if values are meaningful (not 0 or 1)
+            if (plantId > 1)
+                finalPlantId = plantId;
+
+            if (lineId > 1)
+                finalLineId = lineId;
+
+            if (categoryId > 1)
+                finalCategoryId = categoryId;
+
+            if (materialId > 1)
+                finalMaterialId = materialId;
+
+            // Now use finalPlantId, finalLineId, etc. in your logic or DB update
+
+
             try
             {
                 int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
 
                 //string query = @"SELECT id, field_name, Sub_Form, DisplayName, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ViewMode, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND ISNULL(IsLatest, 1) = 1 AND ISNULL(IsDeleted, 0) = 0";
 
-                string query = @"SELECT id, field_name, Sub_Form, DisplayName, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ViewMode, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND ISNULL(IsLatest, 1) = 1";
+                //string query = @"SELECT id, field_name, Sub_Form, DisplayName, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ViewMode, ControlType, DefaultValue, RecordType FROM MST_FormFieldControls WHERE FormID = @FormID AND ISNULL(IsLatest, 1) = 1";
 
-                if (!isFallback)
+                //if (!isFallback)
+                //{
+                //    //query += @" AND plant_id = @PlantID AND lineId = @LineID AND material_id = @MaterialID AND category_id = @CategoryID";
+                //    //query += @" AND plant_id = @PlantID AND lineId = @LineID AND material_id = @MaterialID AND category_id = @CategoryID";
+                //    // Specific match - all fields must match
+                //    query += @" AND RecordType = 'Specific'
+                //                AND plant_id = @PlantID
+                //                AND lineId = @LineID
+                //                AND material_id = @MaterialID
+                //                AND category_id = @CategoryID";
+                //}
+                //else
+                //{
+                //    //query += @" AND ISNULL(plant_id, 0) = 0 
+                //    //    AND ISNULL(lineId, 0) = 0 
+                //    //    AND ISNULL(material_id, 0) = 0 
+                //    //    AND ISNULL(category_id, 0) = 0";
+
+
+                //    // Fallback match - only one or more fields may match
+                //    query += @" AND RecordType = 'Fallback'
+                //            AND (
+                //                (plant_id IS NULL OR plant_id = @PlantID)
+                //                OR (lineId IS NULL OR lineId = @LineID)
+                //                OR (material_id IS NULL OR material_id = @MaterialID)
+                //                OR (category_id IS NULL OR category_id = @CategoryID)
+                //            )";
+                //}
+
+
+                string query = @"SELECT id, field_name, Sub_Form, DisplayName, RFV_YesNo, RFV_ErrorMsg, 
+                    REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, 
+                    RV_MinValue, RV_MaxValue, ViewMode, ControlType, DefaultValue, RecordType 
+                 FROM MST_FormFieldControls 
+                 WHERE FormID = @FormID AND ISNULL(IsLatest, 1) = 1 AND RecordType = 'Fallback'";
+
+                List<SqlParameter> sqlParams = new List<SqlParameter>();
+                sqlParams.Add(new SqlParameter("@FormID", formId)); // Always mandatory
+
+                if (finalPlantId > 0)
                 {
-                    query += @" AND plant_id = @PlantID AND lineId = @LineID AND material_id = @MaterialID AND category_id = @CategoryID";
+                    query += " AND (plant_id = @PlantID OR plant_id IS NULL)";
+                    sqlParams.Add(new SqlParameter("@PlantID", finalPlantId));
                 }
-                else
+                if (finalLineId > 0)
                 {
-                    query += @" AND ISNULL(plant_id, 0) = 0 
-                        AND ISNULL(lineId, 0) = 0 
-                        AND ISNULL(material_id, 0) = 0 
-                        AND ISNULL(category_id, 0) = 0";
+                    query += " AND (lineId = @LineID OR lineId IS NULL)";
+                    sqlParams.Add(new SqlParameter("@LineID", finalLineId));
                 }
+                if (finalMaterialId > 0)
+                {
+                    query += " AND (material_id = @MaterialID OR material_id IS NULL)";
+                    sqlParams.Add(new SqlParameter("@MaterialID", finalMaterialId));
+                }
+                if (finalCategoryId > 0)
+                {
+                    query += " AND (category_id = @CategoryID OR category_id IS NULL)";
+                    sqlParams.Add(new SqlParameter("@CategoryID", finalCategoryId));
+                }
+
 
                 using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
+                    //cmd.Parameters.AddWithValue("@FormID", formId);
+                    ////cmd.Parameters.AddWithValue("@RecordType", isFallback ? "Fallback" : "Specific");
+                    //if (!isFallback)
+                    //{
+                    //    cmd.Parameters.AddWithValue("@PlantID", Convert.ToInt32(DDL_Plant.SelectedValue));
+                    //    cmd.Parameters.AddWithValue("@LineID", Convert.ToInt32(DDL_PlantLine.SelectedValue));
+                    //    cmd.Parameters.AddWithValue("@MaterialID", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                    //    cmd.Parameters.AddWithValue("@CategoryID", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                    //}
                     cmd.Parameters.AddWithValue("@FormID", formId);
-                    if (!isFallback)
-                    {
-                        cmd.Parameters.AddWithValue("@PlantID", Convert.ToInt32(DDL_Plant.SelectedValue));
-                        cmd.Parameters.AddWithValue("@LineID", Convert.ToInt32(DDL_PlantLine.SelectedValue));
-                        cmd.Parameters.AddWithValue("@MaterialID", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
-                        cmd.Parameters.AddWithValue("@CategoryID", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
-                    }
+                    //cmd.Parameters.AddWithValue("@PlantID", Convert.ToInt32(DDL_Plant.SelectedValue));
+                    //cmd.Parameters.AddWithValue("@LineID", Convert.ToInt32(DDL_PlantLine.SelectedValue));
+                    //cmd.Parameters.AddWithValue("@MaterialID", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                    //cmd.Parameters.AddWithValue("@CategoryID", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                    // Add parameters with DBNull if value is null
+                    cmd.Parameters.AddWithValue("@PlantID", finalPlantId ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@LineID", finalLineId ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@MaterialID", finalMaterialId ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@CategoryID", finalCategoryId ?? (object)DBNull.Value);
 
                     using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                     {
@@ -1172,6 +1247,268 @@ namespace AnmolDristi
                 ClientScript.RegisterStartupScript(this.GetType(), "Popup5", $"ShowPopup('{title}', '{body}');", true);
             }
         }
+
+        protected void btn_CreateFallback_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void BTN_CopySpecificToFallback_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_CopySpecificToFallback", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        // Required Source Filter
+                        cmd.Parameters.AddWithValue("@Source_FormID", Convert.ToInt32(DDL_FormName.SelectedValue));
+
+                        // Optional Source Filters
+                        cmd.Parameters.AddWithValue("@Source_plant_id", GetNullableInt(DDL_Plant));
+                        cmd.Parameters.AddWithValue("@Source_material_id", GetNullableInt(DDL_ProductBrand));
+                        cmd.Parameters.AddWithValue("@Source_category_id", GetNullableInt(DDL_ProductCategory));
+                        cmd.Parameters.AddWithValue("@Source_LineId", GetNullableInt(DDL_PlantLine));
+
+                        // Target
+                        cmd.Parameters.AddWithValue("@Target_plant_id", Convert.ToInt32(DDL_Plant.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_material_id", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_category_id", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_LineId", Convert.ToInt32(DDL_PlantLine.SelectedValue));
+
+                        cmd.Parameters.AddWithValue("@CreatedBy", Session["username"].ToString());
+
+                        con.Open();
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        con.Close();
+
+                        ShowPopupNew("Copy Successful", $"{rowsAffected} record(s) copied to Fallback.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowPopupNew("Error", ex.Message.Replace("'", "\\'"));
+            }
+        }
+
+        private object GetNullableInt(DropDownList ddl)
+        {
+            return string.IsNullOrEmpty(ddl.SelectedValue) || ddl.SelectedValue == "0"
+                ? (object)DBNull.Value
+                : Convert.ToInt32(ddl.SelectedValue);
+        }
+
+
+        protected void BTN_CopySpecificToFallback_Click_OLD2(object sender, EventArgs e)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_CopySpecificToFallback", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("@Source_FormID", Convert.ToInt32(DDL_FormName.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_plant_id", Convert.ToInt32(DDL_Plant.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_material_id", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_category_id", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_LineId", Convert.ToInt32(DDL_PlantLine.SelectedValue));
+                        cmd.Parameters.AddWithValue("@CreatedBy", Session["username"].ToString());
+
+                        con.Open();
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        con.Close();
+
+                        ShowPopupNew("Copy Successful", $"{rowsAffected} Specific record(s) copied to Fallback.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowPopupNew("Error", ex.Message.Replace("'", "\\'"));
+            }
+        }
+
+        protected void BTN_CopySpecificToFallback_Click_OLD1(object sender, EventArgs e)
+        {
+            int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
+            int? plantId = string.IsNullOrEmpty(DDL_Plant.SelectedValue) ? (int?)null : Convert.ToInt32(DDL_Plant.SelectedValue);
+            int? lineId = string.IsNullOrEmpty(DDL_PlantLine.SelectedValue) ? (int?)null : Convert.ToInt32(DDL_PlantLine.SelectedValue);
+            int? materialId = string.IsNullOrEmpty(DDL_ProductBrand.SelectedValue) ? (int?)null : Convert.ToInt32(DDL_ProductBrand.SelectedValue);
+            int? categoryId = string.IsNullOrEmpty(DDL_ProductCategory.SelectedValue) ? (int?)null : Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+
+            try
+            {
+                CopySpecificToFallback(formId, plantId, lineId, materialId, categoryId);
+                //ShowSuccess("Specific controls successfully copied to Fallback!");
+
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "success", @"
+                    new PNotify({
+                        title: 'Success',
+                        text: 'Specific controls successfully copied to Fallback!',
+                        type: 'success',
+                        styling: 'bootstrap3'
+                    });", true);
+
+                BindFieldControlGrid(); // Optional refresh
+            }
+            catch (Exception ex)
+            {
+                string title = "Notifications :";
+                string body = ex.Message.Replace("'", "\\'"); // prevent JS issues
+                ClientScript.RegisterStartupScript(this.GetType(), "Popup55", $"ShowPopup('{title}', '{body}');", true);
+                //ShowError("Error copying to Fallback: " + ex.Message);
+            }
+        }
+
+        public void CopySpecificToFallback(int formId, int? plantId, int? lineId, int? materialId, int? categoryId)
+        {
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand("usp_CopySpecificToFallback", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@FormID", formId);
+                cmd.Parameters.AddWithValue("@PlantID", (object)plantId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@LineID", (object)lineId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@MaterialID", (object)materialId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@CategoryID", (object)categoryId ?? DBNull.Value);
+
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        protected void BTN_CopyFallbackToSpecific_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_CopyFallbackToSpecific", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        // Required Source
+                        cmd.Parameters.AddWithValue("@Source_FormID", Convert.ToInt32(DDL_FormName.SelectedValue));
+
+                        // Optional Source Filters
+                        cmd.Parameters.AddWithValue("@Source_plant_id", GetNullableInt(DDL_Plant));
+                        cmd.Parameters.AddWithValue("@Source_material_id", GetNullableInt(DDL_ProductBrand));
+                        cmd.Parameters.AddWithValue("@Source_category_id", GetNullableInt(DDL_ProductCategory));
+                        cmd.Parameters.AddWithValue("@Source_LineId", GetNullableInt(DDL_PlantLine));
+
+                        // Target
+                        cmd.Parameters.AddWithValue("@Target_plant_id", Convert.ToInt32(DDL_Plant.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_material_id", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_category_id", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_LineId", Convert.ToInt32(DDL_PlantLine.SelectedValue));
+
+                        // Meta
+                        cmd.Parameters.AddWithValue("@CreatedBy", Session["username"].ToString());
+
+                        con.Open();
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        con.Close();
+
+                        ShowPopupNew("Copy Successful", $"{rowsAffected} Fallback record(s) copied to Specific.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowPopupNew("Error", ex.Message.Replace("'", "\\'"));
+            }
+        }
+
+
+        protected void BTN_CopyFallbackToSpecific_Click_OLD2(object sender, EventArgs e)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_CopyFallbackToSpecific", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("@Source_FormID", Convert.ToInt32(DDL_FormName.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_plant_id", Convert.ToInt32(DDL_Plant.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_material_id", Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_category_id", Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                        cmd.Parameters.AddWithValue("@Target_LineId", Convert.ToInt32(DDL_PlantLine.SelectedValue));
+                        cmd.Parameters.AddWithValue("@CreatedBy", Session["username"].ToString());
+
+                        con.Open();
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        con.Close();
+
+                        ShowPopupNew("Copy Successful", $"{rowsAffected} Fallback record(s) copied to Specific.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowPopupNew("Error", ex.Message.Replace("'", "\\'"));
+            }
+        }
+
+        protected void BTN_CopyFallbackToSpecific_Click_OLD1(object sender, EventArgs e)
+        {
+            int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
+            int plantId = Convert.ToInt32(DDL_Plant.SelectedValue);
+            int lineId = Convert.ToInt32(DDL_PlantLine.SelectedValue);
+            int materialId = Convert.ToInt32(DDL_ProductBrand.SelectedValue);
+            int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+
+            try
+            {
+                CopyFallbackToSpecific(formId, plantId, lineId, materialId, categoryId);
+                ShowSuccess("Fallback controls successfully copied to Specific!");
+                BindFieldControlGrid(); // Optional refresh
+            }
+            catch (Exception ex)
+            {
+                ShowError("Error copying to Specific: " + ex.Message);
+            }
+        }
+
+        public void CopyFallbackToSpecific(int formId, int plantId, int lineId, int materialId, int categoryId)
+        {
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand("usp_CopyFallbackToSpecific", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@FormID", formId);
+                cmd.Parameters.AddWithValue("@PlantID", plantId);
+                cmd.Parameters.AddWithValue("@LineID", lineId);
+                cmd.Parameters.AddWithValue("@MaterialID", materialId);
+                cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+
+        private void ShowSuccess(string message)
+        {
+            ClientScript.RegisterStartupScript(this.GetType(), "popup", $"alert('{message}');", true);
+        }
+
+        private void ShowError(string message)
+        {
+            ClientScript.RegisterStartupScript(this.GetType(), "popup", $"alert('{message.Replace("'", "\\'")}');", true);
+        }
+
+        private void ShowPopupNew(string title, string message)
+        {
+            ClientScript.RegisterStartupScript(this.GetType(), "Popup", $"ShowPopup('{title}', '{message}');", true);
+        }
+
 
     }
 }
