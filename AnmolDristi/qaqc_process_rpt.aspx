@@ -1551,7 +1551,7 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LBL_TXB_WaterTest" runat="server" AssociatedControlID="TXB_WaterTest" Text="Water Test :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_TXB_WaterTest" runat="server" ErrorMessage="Input Required" ValidationGroup="BasicDataSave" ControlToValidate="TXB_WaterTest" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_TXB_WaterTest" runat="server" ControlToValidate="TXB_WaterTest" ForeColor="Red" ErrorMessage="Alphabets Only" ValidationExpression="^[a-zA-Z]+$" ValidationGroup="BasicDataSave" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_TXB_WaterTest" runat="server" ControlToValidate="TXB_WaterTest" ForeColor="Red" ErrorMessage="Alphabets Only" ValidationExpression="^[a-zA-Z ]{2,20}$" ValidationGroup="BasicDataSave" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_WaterTest" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Water Test (3-20 characters)" MaxLength="20"></asp:TextBox>
                                                                     </div>
