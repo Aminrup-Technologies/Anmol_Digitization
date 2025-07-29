@@ -1377,6 +1377,9 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
 
                 WaterTest = TXB_WaterTest.Text,
 
+                //WaterTest = Convert.ToInt32(RBL_WaterTest.SelectedValue),
+                //CommentForMaidaColor = TXB_MaidaColorApp_Remarks.Text,
+
                 TDS = string.IsNullOrWhiteSpace(TXB_TDS.Text) ? (decimal?)null : decimal.Parse(TXB_TDS.Text),
                 TdsCmnt = TXB_TDS_Remarks.Text,
 

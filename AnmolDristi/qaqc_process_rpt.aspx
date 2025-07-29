@@ -1551,13 +1551,46 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LBL_TXB_WaterTest" runat="server" AssociatedControlID="TXB_WaterTest" Text="Water Test :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_TXB_WaterTest" runat="server" ErrorMessage="Input Required" ValidationGroup="BasicDataSave" ControlToValidate="TXB_WaterTest" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_TXB_WaterTest" runat="server" ControlToValidate="TXB_WaterTest" ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationExpression="^[a-zA-Z0-9, /]*$" ValidationGroup="BasicDataSave" Display="Dynamic"></asp:RegularExpressionValidator>
-                                                                    <asp:RangeValidator ID="RV_TXB_WaterTest" runat="server" ControlToValidate="TXB_WaterTest" MinimumValue="0.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between 0 and 100" Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
+                                                                    <asp:RegularExpressionValidator ID="REV_TXB_WaterTest" runat="server" ControlToValidate="TXB_WaterTest" ForeColor="Red" ErrorMessage="Alphabets Only" ValidationExpression="^[a-zA-Z]+$" ValidationGroup="BasicDataSave" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_WaterTest" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Water Test (3-20 characters)" MaxLength="20"></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
+
+                                                            <%--<div class="col-md-3" id="WaterTest" runat="server">
+                                                                <div class="mb-3">
+                                                                    <asp:Label ID="LBL_RBL_WaterTest" runat="server" AssociatedControlID="RBL_WaterTest"
+                                                                        Text="Water Test :" ForeColor="Blue" Font-Bold="true" Font-Size="Small" />
+
+                                                                    <asp:RequiredFieldValidator ID="RFV_RBL_WaterTest" runat="server" ControlToValidate="RBL_WaterTest"
+                                                                        ErrorMessage="Selection required" Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
+
+                                                                    <asp:RadioButtonList ID="RBL_WaterTest" runat="server" RepeatDirection="Horizontal"
+                                                                        CssClass="form-check form-check-inline"
+                                                                        data-trigger-value="0" data-remarks-div="WaterTestRemarksDiv" onchange="toggleRemarksDIVForRadio(this);">
+                                                                        <asp:ListItem Text="Yes" Value="1" />
+                                                                        <asp:ListItem Text="No" Value="0" />
+                                                                        <asp:ListItem Text="N/A" Value="5" />
+                                                                    </asp:RadioButtonList>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="col-md-3" id="WaterTestRemarksDiv" style="display: none;">
+                                                                <div class="mb-3">
+                                                                    <asp:Label ID="LBL_TXB_WaterTest_Remarks" runat="server" AssociatedControlID="TXB_WaterTest_Remarks"
+                                                                        Text="Water Test Remarks:" ForeColor="Red" Font-Bold="true" Font-Size="Small" />
+
+                                                                    <asp:RequiredFieldValidator ID="RFV_TBX_WaterTest_Remarks" runat="server" ErrorMessage="Input required"
+                                                                        ForeColor="Red" ControlToValidate="TXB_WaterTest_Remarks" Display="Dynamic" ValidationGroup="BasicDataSaveNOT" />
+
+                                                                    <div class="input-group-sm">
+                                                                        <asp:TextBox ID="TXB_WaterTest_Remarks" runat="server" CssClass="form-control form-control-sm rounded" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>--%>
+
+
 
                                                             <%--<div class="col-md-3" id="TDS" runat="server">
                                                                 <div class="mb-3">

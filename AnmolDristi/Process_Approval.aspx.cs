@@ -95,7 +95,7 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 lbl_DDL_Plant_Value.Text = selectedPlantValue;
                 PlantLinesBinder(selectedPlantValue);
-                FilterData();
+                //FilterData();
             }
             else
             {
@@ -144,7 +144,7 @@ namespace AnmolDristi
                 string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
                 lbl_DDL_PlantLine_Value.Text = selectedPlantLineValue;
                 LineProductsBinder(selectedPlantValue, selectedPlantLineValue);
-                FilterData();
+                //FilterData();
             }
             else
             {
@@ -204,7 +204,7 @@ namespace AnmolDristi
                 string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
                 lbl_DDL_ProductCategory_Value.Text = selectedProductCategoryValue;
                 ProductBrandsBinder(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue);
-                FilterData();
+                //FilterData();
             }
             else
             {
@@ -263,7 +263,7 @@ namespace AnmolDristi
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 lbl_DDL_ProductBrand_Value.Text = selectedProductBrandValue;
                 BrandSKUBinder(selectedProductBrandValue);
-                FilterData();
+                //FilterData();
 
                 System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
 

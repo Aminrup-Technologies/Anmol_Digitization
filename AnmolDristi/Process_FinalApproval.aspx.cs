@@ -433,6 +433,16 @@ namespace AnmolDristi
                                 // Assume the logged-in user's Employee Code is stored in a session variable
                                 string loggedInUserCode = Session["WORKMAN"].ToString(); // Example session variable
                                 // Boolean flag to track if the logged-in user is one of the approvers
+                                // Retrieve approval statuses from the row
+                                App1_Status = row["Approver1_Status"].ToString();
+                                Approver1CodeLabel.Text = row["Approver1EmployeeCode"].ToString();
+
+                                App2_Status = row["Approver2_Status"].ToString();
+                                Approver2CodeLabel.Text = row["Approver2EmployeeCode"].ToString();
+
+                                DottedApp_Status = row["DottedApprover_Status"].ToString();
+                                DottedLineApproverCodeLabel.Text = row["DottedLineApproverEmployeeCode"].ToString();
+
                                 bool isApprover = false;
 
                                 // Approver 1
@@ -547,7 +557,7 @@ namespace AnmolDristi
                             }
                         }
                     }
-                }
+                }                              
             }
             catch (Exception ex)
             {
