@@ -955,11 +955,12 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
                 //System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
                 //dataTable.Clear();
 
-                System.Data.DataTable dataTable = new System.Data.DataTable();
+
                 //string fieldName = "no_of_pcs"; // Specify the field name you want to query
                 //DataRow[] rows = dataTable.Select($"brand_id = {selectedProductBrandValue} AND field_name = '{fieldName}'");
 
                 // Iterate through the filtered rows and extract validation criteria
+                System.Data.DataTable dataTable = new System.Data.DataTable(); // Blank Datatable
                 foreach (DataRow row in dataTable.Rows)
                 {
                     // Extract field name from the current row
@@ -2390,17 +2391,19 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
                 new VarietyInfo {Sl = 9,   sap_IngredientName = "Glucose", BOM_Qnty = 0 },
                 new VarietyInfo {Sl = 10,  sap_IngredientName = "H.V.O", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 11,  sap_IngredientName = "Syrup", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 12,  sap_IngredientName = "Malt", BOM_Qnty = 0  },
+                new VarietyInfo {Sl = 12,  sap_IngredientName = "Malt Extract", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 13,  sap_IngredientName = "Broken Biscuit", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 14,  sap_IngredientName = "A.B.C.", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 15,  sap_IngredientName = "S.B.C.", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 16,  sap_IngredientName = "S.M.B.S.", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 17,  sap_IngredientName = "Whey Powder", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 18,  sap_IngredientName = "Condence Milk", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 19,  sap_IngredientName = "Salt", BOM_Qnty = 0 } ,
+                new VarietyInfo {Sl = 19,  sap_IngredientName = "Iodised Salt", BOM_Qnty = 0 } ,
                 new VarietyInfo {Sl = 20,  sap_IngredientName = "Yeast (Smell & Wt.)", BOM_Qnty = 0  },
                 new VarietyInfo {Sl = 21,  sap_IngredientName = "E1", BOM_Qnty = 0 } ,
                 new VarietyInfo {Sl = 22,  sap_IngredientName = "Caramel", BOM_Qnty = 0 } ,
+                new VarietyInfo {Sl = 23,  sap_IngredientName = "Palmolien", BOM_Qnty = 0 } ,
+                new VarietyInfo {Sl = 24,  sap_IngredientName = "R.B.D.Palmoil", BOM_Qnty = 0 } ,
 
             };
 

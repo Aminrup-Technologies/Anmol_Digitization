@@ -1484,10 +1484,10 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LBL_TXB_ProcessWaterTemp" runat="server" AssociatedControlID="TXB_ProcessWaterTemp" Text="Process Water Temp :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_TXB_ProcessWaterTemp" runat="server" ErrorMessage="Input required" ValidationGroup="BasicDataSave" ControlToValidate="TXB_ProcessWaterTemp" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_TXB_ProcessWaterTemp" runat="server" ValidationGroup="BasicDataSave" ControlToValidate="TXB_ProcessWaterTemp" ForeColor="Red" ErrorMessage="Decimal only" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
-                                                                    <asp:RangeValidator ID="RV_TXB_ProcessWaterTemp" runat="server" ControlToValidate="TXB_ProcessWaterTemp" MinimumValue="0.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between 0 and 100" Display="Dynamic" ForeColor="Red" ValidationGroup="OptionalOnly" />
+                                                                    <asp:RegularExpressionValidator ID="REV_TXB_ProcessWaterTemp" runat="server" ValidationGroup="BasicDataSave" ControlToValidate="TXB_ProcessWaterTemp" ForeColor="Red" ErrorMessage="Decimal only" ValidationExpression="-?\d+(\.\d{1,2})?" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RangeValidator ID="RV_TXB_ProcessWaterTemp" runat="server" ControlToValidate="TXB_ProcessWaterTemp" MinimumValue="-100.00" MaximumValue="100.00" Type="Double" ErrorMessage="-100 to 100" Display="Dynamic" ForeColor="Red" ValidationGroup="OptionalOnly" />
                                                                     <div class="input-group-sm">
-                                                                        <asp:TextBox ID="TXB_ProcessWaterTemp" runat="server" CssClass="form-control form-control-sm rounded" onchange="toggleRemarksDIVGeneric(this);" data-min="0" data-max="100" data-remarks-div="ProcessWaterTempRemarksDIV" Placeholder="Process Water Temp."></asp:TextBox>
+                                                                        <asp:TextBox ID="TXB_ProcessWaterTemp" runat="server" CssClass="form-control form-control-sm rounded" onchange="toggleRemarksDIVGeneric(this);" data-min="-100" data-max="100" data-remarks-div="ProcessWaterTempRemarksDIV" Placeholder="Process Water Temp."></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1551,9 +1551,9 @@
                                                                 <div class="mb-3">
                                                                     <asp:Label ID="LBL_TXB_WaterTest" runat="server" AssociatedControlID="TXB_WaterTest" Text="Water Test :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <asp:RequiredFieldValidator ID="RFV_TXB_WaterTest" runat="server" ErrorMessage="Input Required" ValidationGroup="BasicDataSave" ControlToValidate="TXB_WaterTest" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                                                    <asp:RegularExpressionValidator ID="REV_TXB_WaterTest" runat="server" ControlToValidate="TXB_WaterTest" ForeColor="Red" ErrorMessage="Alphabets Only" ValidationExpression="^[a-zA-Z ]{2,20}$" ValidationGroup="BasicDataSave" Display="Dynamic"></asp:RegularExpressionValidator>
+                                                                    <asp:RegularExpressionValidator ID="REV_TXB_WaterTest" runat="server" ControlToValidate="TXB_WaterTest" ForeColor="Red" ErrorMessage="Alphabets Only" ValidationExpression="^[a-zA-Z ]{2,30}$" ValidationGroup="BasicDataSave" Display="Dynamic"></asp:RegularExpressionValidator>
                                                                     <div class="input-group-sm">
-                                                                        <asp:TextBox ID="TXB_WaterTest" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Water Test (3-20 characters)" MaxLength="20"></asp:TextBox>
+                                                                        <asp:TextBox ID="TXB_WaterTest" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Water Test (2-30 characters)" MaxLength="20"></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1963,13 +1963,13 @@
                                                                     <asp:RequiredFieldValidator ID="RFV_TB_HvoTemp" runat="server" ErrorMessage="Input required"
                                                                         ValidationGroup="BasicDataSave" ControlToValidate="TXB_HvoTemp" Display="Dynamic" ForeColor="Red" />
                                                                     <asp:RegularExpressionValidator ID="REV_TB_HvoTemp" runat="server" ControlToValidate="TXB_HvoTemp"
-                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
+                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="-?\d+(\.\d{1,2})?" Display="Dynamic" />
                                                                     <asp:RangeValidator ID="RV_TXB_HvoTemp" runat="server" ControlToValidate="TXB_HvoTemp"
-                                                                        MinimumValue="0.00" MaximumValue="200.00" Type="Double" ErrorMessage="Value must be between 0 and 200"
+                                                                        MinimumValue="-100.00" MaximumValue="100.00" Type="Double" ErrorMessage="-100 to 100"
                                                                         Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_HvoTemp" runat="server" CssClass="form-control form-control-sm rounded"
-                                                                            Placeholder="HVO Temperature Value" onchange="toggleRemarksDIVGeneric(this);" data-min="0" data-max="100" data-remarks-div="HvoTempRemarksDIV"></asp:TextBox>
+                                                                            Placeholder="HVO Temperature Value" onchange="toggleRemarksDIVGeneric(this);" data-min="-100" data-max="100" data-remarks-div="HvoTempRemarksDIV"></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2075,13 +2075,13 @@
                                                                     <asp:RequiredFieldValidator ID="RFV_TB_SyrupTemp" runat="server" ErrorMessage="Input required"
                                                                         ValidationGroup="BasicDataSave" ControlToValidate="TXB_SyrupTemp" Display="Dynamic" ForeColor="Red" />
                                                                     <asp:RegularExpressionValidator ID="REV_TB_SyrupTemp" runat="server" ControlToValidate="TXB_SyrupTemp"
-                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
+                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="-?\d+(\.\d{1,2})?" Display="Dynamic" />
                                                                     <asp:RangeValidator ID="RV_TXB_SyrupTemp" runat="server" ControlToValidate="TXB_SyrupTemp"
-                                                                        MinimumValue="0.00" MaximumValue="200.00" Type="Double" ErrorMessage="Value must be between 0 and 200"
+                                                                        MinimumValue="-100.00" MaximumValue="100.00" Type="Double" ErrorMessage="-100 and 100"
                                                                         Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_SyrupTemp" runat="server" CssClass="form-control form-control-sm rounded"
-                                                                            Placeholder="Syrup Temperature Value" onchange="toggleRemarksDIVGeneric(this);" data-min="0" data-max="100" data-remarks-div="SyrupTempRemarksDIV"></asp:TextBox>
+                                                                            Placeholder="Syrup Temperature Value" onchange="toggleRemarksDIVGeneric(this);" data-min="-100" data-max="100" data-remarks-div="SyrupTempRemarksDIV"></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2357,13 +2357,13 @@
                                                                     <asp:RequiredFieldValidator ID="RFV_TXB_ColdRoomTemp" runat="server" ErrorMessage="Input required"
                                                                         ValidationGroup="BasicDataSave" ControlToValidate="TXB_ColdRoomTemp" Display="Dynamic" ForeColor="Red" />
                                                                     <asp:RegularExpressionValidator ID="REV_TXB_ColdRoomTemp" runat="server" ControlToValidate="TXB_ColdRoomTemp"
-                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
+                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="-?\d+(\.\d{1,2})?" Display="Dynamic" />
                                                                     <asp:RangeValidator ID="RV_TXB_ColdRoomTemp" runat="server" ControlToValidate="TXB_ColdRoomTemp"
-                                                                        MinimumValue="-20.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between -20.00 and 100.00"
+                                                                        MinimumValue="-100.00" MaximumValue="100.00" Type="Double" ErrorMessage="-100.00 and 100.00"
                                                                         Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_ColdRoomTemp" runat="server" CssClass="form-control form-control-sm rounded"
-                                                                            Placeholder="Cold Room Temp (°C)" onchange="toggleRemarksDIVGeneric(this);" data-min="0" data-max="100" data-remarks-div="ColdRoomTempRemarksDIV"></asp:TextBox>
+                                                                            Placeholder="Cold Room Temp (°C)" onchange="toggleRemarksDIVGeneric(this);" data-min="-100" data-max="100" data-remarks-div="ColdRoomTempRemarksDIV"></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -2387,13 +2387,13 @@
                                                                     <asp:RequiredFieldValidator ID="RFV_TXB_DeepFreezeTemp" runat="server" ErrorMessage="Input required"
                                                                         ValidationGroup="BasicDataSave" ControlToValidate="TXB_DeepFreezeTemp" Display="Dynamic" ForeColor="Red" />
                                                                     <asp:RegularExpressionValidator ID="REV_TXB_DeepFreezeTemp" runat="server" ControlToValidate="TXB_DeepFreezeTemp"
-                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="\d+(\.\d{1,2})?" Display="Dynamic" />
+                                                                        ForeColor="Red" ErrorMessage="Decimal Only" ValidationGroup="BasicDataSave" ValidationExpression="-?\d+(\.\d{1,2})?" Display="Dynamic" />
                                                                     <asp:RangeValidator ID="RV_TXB_DeepFreezeTemp" runat="server" ControlToValidate="TXB_DeepFreezeTemp"
-                                                                        MinimumValue="-50.00" MaximumValue="100.00" Type="Double" ErrorMessage="Value must be between -50.00 and 100.00"
+                                                                        MinimumValue="-100.00" MaximumValue="100.00" Type="Double" ErrorMessage="-100.00 and 100.00"
                                                                         Display="Dynamic" ForeColor="Red" ValidationGroup="BasicDataSave" />
                                                                     <div class="input-group-sm">
                                                                         <asp:TextBox ID="TXB_DeepFreezeTemp" runat="server" CssClass="form-control form-control-sm rounded"
-                                                                            Placeholder="Deep Freeze Temp (°C)" onchange="toggleRemarksDIVGeneric(this);" data-min="0" data-max="100" data-remarks-div="DeepFreezeTempRemarksDIV"></asp:TextBox>
+                                                                            Placeholder="Deep Freeze Temp (°C)" onchange="toggleRemarksDIVGeneric(this);" data-min="-100" data-max="100" data-remarks-div="DeepFreezeTempRemarksDIV"></asp:TextBox>
                                                                     </div>
                                                                 </div>
                                                             </div>

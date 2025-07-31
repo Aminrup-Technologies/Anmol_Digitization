@@ -9,7 +9,7 @@
                 <div class="col-md-12" id="Div1" runat="server" visible="true">
                     <div class="x_panel">
                         <div class="x_title">
-                            <h2>Quality Assurance Online Forms</h2>
+                            <h2>Quality Assurance Online Formats</h2>
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
                                 </li>
@@ -26,7 +26,7 @@
                             <a class="btn btn-app" href="qaqc_inspector_rpt.aspx">
                                 <span class="badge bg-green">Shift-2
                                     <asp:Label ID="lbl_tbttodaycount" runat="server" Text="0" Visible="false"></asp:Label></span>
-                                <i class="fa fa-edit"></i>Inspector Report
+                                <i class="fa fa-edit"></i>QA Reports
                             </a>
                             
                             <a class="btn btn-app" href="qaqc_rotary_line.aspx" >

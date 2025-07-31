@@ -106,13 +106,15 @@
             <%--Button--%>
             <div class="col-md-6 center-margin">
                 <div class="item form-group row">
-                    <div class="col-md-6 col-sm-12">
+                    <div class="col-md-4 col-sm-12">
                         <asp:Label ID="lbl_msg" runat="server" Text="Click SUBMIT to view Data!!"></asp:Label>
+                        <asp:Literal ID="litReport" runat="server" />
                     </div>
-                    <div class="col-md-6 col-sm-12">
+                    <div class="col-md-8 col-sm-12">
                         <asp:Button ID="ReportbtnCancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" CausesValidation="false" PostBackUrl="~/qaqc_qaapprovals.aspx" />
                         <asp:Button ID="ReportbtnSubmit" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" ValidationGroup="Submit" CausesValidation="true" OnClick="ReportbtnSubmit_Click" />
                         <asp:Button ID="ReportbtnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="ReportbtnReset_Click" />
+                        <asp:Button ID="btn_devrpt" runat="server" Text="Summarized Report" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="btn_devrpt_Click"/>
                     </div>
                 </div>
             </div>
