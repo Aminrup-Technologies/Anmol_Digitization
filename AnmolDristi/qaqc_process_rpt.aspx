@@ -1377,6 +1377,43 @@
             remarksDiv.style.display = "none";
         }
     }
+
+    let weightNotifyTimeout;
+
+    function validateActualWeight(input) {
+        clearTimeout(weightNotifyTimeout);
+
+        weightNotifyTimeout = setTimeout(() => {
+            const row = input.closest('tr');
+
+            const minField = row.querySelector("input[id$='hdnMin']");
+            const maxField = row.querySelector("input[id$='hdnMax']");
+
+            if (!minField || !maxField) return;
+
+            const min = parseFloat(minField.value) || 0;
+            const max = parseFloat(maxField.value) || 0;
+            const val = parseFloat(input.value);
+
+            input.style.borderColor = "";
+
+            if (!isNaN(val)) {
+                if (val < min || val > max) {
+                    input.style.borderColor = "red";
+
+                    new PNotify({
+                        title: 'Invalid Weight',
+                        text: `Actual weight must be between ${min} and ${max}.`,
+                        type: 'error',
+                        styling: 'bootstrap3',
+                        delay: 3000
+                    });
+                }
+            }
+        }, 300); // debounce time
+    }
+
+
     </script>
 
     <asp:HiddenField ID="hdn_img1" runat="server" />
@@ -2499,14 +2536,16 @@
 
                                                                     <asp:TemplateField HeaderText="Standard Weight" HeaderStyle-Width="15%">
                                                                         <ItemTemplate>
-                                                                            <asp:TextBox ID="txtStandardWeight" runat="server" CssClass="standard-weight form-control form-control-sm rounded"
-                                                                                ForeColor="DimGray" Text='<%# Eval("BOM_Qnty") %>'></asp:TextBox><%--ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'--%>
+                                                                            <asp:TextBox ID="txtStandardWeight" runat="server" CssClass="standard-weight form-control form-control-sm rounded" ForeColor="DimGray" Text='<%# Eval("BOM_Qnty") %>'></asp:TextBox>
+                                                                            <asp:HiddenField ID="hdnMin" runat="server" Value='<%# Eval("MinValue") %>' />
+                                                                            <asp:HiddenField ID="hdnMax" runat="server" Value='<%# Eval("MaxValue") %>' />
+                                                                            <%--ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'--%>
                                                                         </ItemTemplate>
                                                                     </asp:TemplateField>
 
                                                                     <asp:TemplateField HeaderText="Actual Weight" HeaderStyle-Width="15%">
                                                                         <ItemTemplate>
-                                                                            <asp:TextBox ID="txtActualWeight" runat="server" ClientIDMode="Static" CssClass="form-control form-control-sm rounded actual-weight" onkeyup="calculateDeviation(this)"></asp:TextBox>
+                                                                            <asp:TextBox ID="txtActualWeight" runat="server" ClientIDMode="Static" CssClass="form-control form-control-sm rounded actual-weight" onkeyup="calculateDeviation(this)" oninput="validateActualWeight(this)"></asp:TextBox>
                                                                         </ItemTemplate>
                                                                     </asp:TemplateField>
 

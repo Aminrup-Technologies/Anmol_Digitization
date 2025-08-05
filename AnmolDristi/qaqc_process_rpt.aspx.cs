@@ -2373,8 +2373,18 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
             return int.TryParse(value, out result) ? (int?)result : null;
         }
 
+
+        //public class VarietyInfo
+        //{
+        //    public int Sl { get; set; }
+        //    public string sap_IngredientName { get; set; }
+        //    public decimal BOM_Qnty { get; set; }
+        //    public decimal? RV_MinValue { get; set; }
+        //    public decimal? RV_MaxValue { get; set; }
+        //}
+
         //--------- Weight section data ---------
-        private void BindGridView()             // to show all 22 varieties and standard weight 
+        private void BindGridView_Global()             // to show all 22 varieties and standard weight 
         {
             // Sample data for Variety and Standard Weight
             var dataSave = new List<VarietyInfo>
@@ -2419,6 +2429,79 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
             GridView1.DataSource = dataSave;
             GridView1.DataBind();
         }
+
+
+        private void BindGridView()
+        {
+            int formId = 6;
+            int plantId = !string.IsNullOrWhiteSpace(DDL_Plant.SelectedValue) ? Convert.ToInt32(DDL_Plant.SelectedValue) : 0;
+            int lineId = !string.IsNullOrWhiteSpace(DDL_PlantLine.SelectedValue) ? Convert.ToInt32(DDL_PlantLine.SelectedValue) : 0;
+            int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+            int brandId = !string.IsNullOrWhiteSpace(DDL_ProductBrand.SelectedValue) ? Convert.ToInt32(DDL_ProductBrand.SelectedValue) : 0;
+
+            List<VarietyInfo> dataSave = new List<VarietyInfo>();
+
+            string baseQuery = @"SELECT field_name, DisplayName, ViewMode, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND Sub_Form = 'RawMaterial' AND IsLatest = 1 AND IsDeleted = 0 AND plant_id = @PlantID AND lineId = @LineID AND category_id = @CategoryID AND material_id = @BrandID";
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(baseQuery, con))
+                {
+                    cmd.Parameters.AddWithValue("@FormID", formId);
+                    cmd.Parameters.AddWithValue("@PlantID", plantId);
+                    cmd.Parameters.AddWithValue("@LineID", lineId);
+                    cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+                    cmd.Parameters.AddWithValue("@BrandID", brandId);
+
+                    con.Open();
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        int sl = 1;
+                        bool hasRows = false;
+
+                        while (reader.Read())
+                        {
+                            hasRows = true;
+
+                            dataSave.Add(new VarietyInfo
+                            {
+                                Sl = sl++,
+                                sap_IngredientName = reader["DisplayName"].ToString(),
+                                BOM_Qnty = reader["DefaultValue"] != DBNull.Value ? Convert.ToDecimal(reader["DefaultValue"]) : 0,
+                                MinValue = reader["RV_MinValue"] != DBNull.Value ? Convert.ToDecimal(reader["RV_MinValue"]) : 0,
+                                MaxValue = reader["RV_MaxValue"] != DBNull.Value ? Convert.ToDecimal(reader["RV_MaxValue"]) : 0
+                            });
+                        }
+
+                        if (!hasRows)
+                        {
+                            // Call your fallback method here
+                            BindGridView_Global(); // Replace with your actual function name
+                        }
+                    }
+                }
+            }
+
+            while (dataSave.Count < 30)
+            {
+                dataSave.Add(new VarietyInfo
+                {
+                    Sl = dataSave.Count + 1,
+                    sap_IngredientName = "",
+                    BOM_Qnty = 0,
+                    MinValue = 0,
+                    MaxValue = 0
+                });
+            }
+
+            Session["VarietyData"] = dataSave;
+            GridView1.DataSource = dataSave;
+            GridView1.DataBind();
+        }
+
+
+
 
         protected void GridView1_RowEditing(object sender, GridViewEditEventArgs e)
         {
@@ -2524,7 +2607,6 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
             }
         }
 
-
         public class VarietyInfo
         {
             public int Sl { get; set; }
@@ -2533,7 +2615,25 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
             public decimal ActualWeight { get; set; }
             public decimal DeviationWeight { get; set; }
             public decimal DeviationPercentage { get; set; }
+
+            // Add these new properties
+            public decimal MinValue { get; set; }
+            public decimal MaxValue { get; set; }
+
+            // Optional: Display name from MST_FormFieldControls
+            public string DisplayName { get; set; }
         }
+
+
+        //public class VarietyInfo
+        //{
+        //    public int Sl { get; set; }
+        //    public string sap_IngredientName { get; set; }
+        //    public decimal BOM_Qnty { get; set; }
+        //    public decimal ActualWeight { get; set; }
+        //    public decimal DeviationWeight { get; set; }
+        //    public decimal DeviationPercentage { get; set; }
+        //}
 
 
         [WebMethod]

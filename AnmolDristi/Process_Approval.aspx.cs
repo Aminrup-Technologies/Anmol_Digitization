@@ -773,6 +773,71 @@ namespace AnmolDristi
                         { "BS_TDS", "TDS" },
                         { "BS_WaterHardness", "WaterHardness" },
 
+                        { "RM_A.B.C.", "A.B.C." },
+                        { "RM_S.B.C.", "S.B.C." },
+                        { "RM_S.M.B.S.", "S.M.B.S." },
+                        { "RM_S.M.P.", "S.M.P." },
+                        { "RM_S.M.P", "S.M.P." },
+                        { "RM_R.B.D.", "R.B.D." },
+                        { "RM_H.V.O", "R.B.D. Palm Oil" },
+                        { "RM_H.V.O.", "R.B.D. Palm Oil" },
+
+                        { "RM_Broken Biscuits", "Broken Biscuits" },
+                        { "RM_Broken Biscuit", "Broken Biscuits" },
+                        { "RM_SSL paste/ LS. Powder", "Broken Biscuits" },
+
+                        { "RM_Left Dough Use", "Left Dough Use" },
+                        { "RM_Butter", "Butter" },
+                        { "RM_Caramel", "Caramel" },
+                        { "RM_Condence Milk", "Condence Milk" },
+
+                        { "RM_E1", "SD-035" },
+
+                        { "RM_Glucose", "Liquid Glucose" },
+                        { "RM_Liquid Glucose", "Liquid Glucose" },
+
+                        { "RM_GMS Paste", "GMS Paste" },
+                        { "RM_Lecithin", "Lecithin" },
+                        { "RM_Maida", "Maida" },
+                        { "RM_Malt", "Malt" },
+                        { "RM_Process Water", "Process Water" },
+
+                        { "RM_Salt", "Iodised Salt" },
+                        { "RM_Iodised Salt", "Iodised Salt" },
+
+                        { "RM_Starch", "Starch" },
+                        { "RM_Sugar", "Sugar" },
+
+                        { "RM_SFG Ivert Syrup 600 Kg Anmol", "SFG Ivert Syrup 600 Kg Anmol" },
+                        { "RM_Syrup", "SFG Ivert Syrup 600 Kg Anmol" },
+                        { "RM_SFG Milk Spray 6 Kg Anmol", "SFG Milk Spray 6 Kg Anmol" },
+
+                        { "RM_Whey Powder", "Sweet Whey Powder" },
+                        { "RM_Sweet Whey Powder", "Sweet Whey Powder" },
+
+                        { "RM_Yeast (Smell & Wt.)", "Yeast (Smell & Wt.)" },
+
+                        // Normalized SDs
+                        { "RM_SD4", "SD-004" },
+                        { "RM_SD0004", "SD-004" },
+                        { "RM_SD-0004", "SD-004" },
+
+                        { "RM_SD35", "SD-035" },
+                        { "RM_SD0035", "SD-035" },
+                        { "RM_SD-0035", "SD-035" },
+
+                        { "RM_SD39", "SD-039" },
+                        { "RM_SD0039", "SD-039" },
+                        { "RM_SD-0039", "SD-039" },
+
+                        { "RM_SD33", "SD-033" },
+                        { "RM_SD0033", "SD-033" },
+                        { "RM_SD-0033", "SD-033" },
+
+                        { "RM_SD63", "SD-063" },
+                        { "RM_SD063", "SD-063" },
+                        { "RM_SD-063", "SD-063" },
+
                         // DoughData
                         { "Dough_DoughTemp", "DoughTemp" },
                         { "Dough_DoughRestTime", "DoughRestTime" },
@@ -786,7 +851,6 @@ namespace AnmolDristi
                         { "Sponge_StandingTime", "SP_StandingTime" },
                         { "Sponge_RoomTemp", "SP_RoomTemp" },
 
-                        // OvenData (assuming names are zone-based, map directly)
                         { "Oven_Zone 1_Top", "oven_top" },
                         { "Oven_Zone 1_Bottom", "oven_bottom" },
                         { "Oven_Zone 2_Top", "oven_top" },
@@ -796,24 +860,59 @@ namespace AnmolDristi
                         { "Oven_Zone 4_Top", "oven_top" },
                         { "Oven_Zone 4_Bottom", "oven_bottom" },
                         { "Oven_Zone 5_Top", "oven_top" },
-                        { "Oven_Zone 5_Bottom", "oven_bottom" },
-
-                        // The rest can be left unmapped or handled as display-only without standards:
-                        // These include RM_*, BS_*, and Dough_* that are qualitative, like OK/Not OK
-                        // You can check for null mappings before trying to fetch from DB
+                        { "Oven_Zone 5_Bottom", "oven_bottom" }
                     };
 
+                    var duplicates = parameterFieldMap
+                    .GroupBy(kvp => kvp.Key)
+                    .Where(g => g.Count() > 1)
+                    .ToList();
 
-                    // 2. Fetch standards from DB
-                    Dictionary<string, string> standardMap = new Dictionary<string, string>();
+                    if (duplicates.Any())
+                    {
+                        foreach (var dup in duplicates)
+                            Console.WriteLine($"Duplicate key: {dup.Key}");
+                    }
+
+
+                    //// 2. Fetch standards from DB
+                    //Dictionary<string, string> standardMap = new Dictionary<string, string>();
+                    //using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                    //{
+                    //    con.Open();
+                    //    string query = @"SELECT field_name, RV_MinValue, RV_MaxValue
+                    //             FROM MST_FormFieldControls
+                    //             WHERE FormID = 6 AND RecordType = 'Specific' AND ControlType = 'textbox'
+                    //             AND RV_Yesno = 1 AND ViewMode = 1 AND IsLatest = 1 AND IsDeleted = 0
+                    //             AND plant_id = @plantId AND LineId = @lineId AND category_id = @categoryId AND material_id = @brandId";
+
+                    //    using (SqlCommand cmd = new SqlCommand(query, con))
+                    //    {
+                    //        cmd.Parameters.AddWithValue("@plantId", plantId);
+                    //        cmd.Parameters.AddWithValue("@lineId", lineId);
+                    //        cmd.Parameters.AddWithValue("@categoryId", categoryId);
+                    //        cmd.Parameters.AddWithValue("@brandId", brandId);
+
+                    //        using (SqlDataReader reader = cmd.ExecuteReader())
+                    //        {
+                    //            while (reader.Read())
+                    //            {
+                    //                string fieldName = reader["field_name"].ToString();
+                    //                string min = reader["RV_MinValue"].ToString();
+                    //                string max = reader["RV_MaxValue"].ToString();
+                    //                standardMap[fieldName] = $"{min} ~ {max}";
+                    //            }
+                    //        }
+                    //    }
+                    //}
+
+                    // 2. Fetch standards from DB (including DefaultValue)
+                    Dictionary<string, Tuple<string, string, string>> standardMap = new Dictionary<string, Tuple<string, string, string>>();
+
                     using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                     {
                         con.Open();
-                        string query = @"SELECT field_name, RV_MinValue, RV_MaxValue
-                                 FROM MST_FormFieldControls
-                                 WHERE FormID = 6 AND RecordType = 'Specific' AND ControlType = 'textbox'
-                                 AND RV_Yesno = 1 AND ViewMode = 1 AND IsLatest = 1 AND IsDeleted = 0
-                                 AND plant_id = @plantId AND LineId = @lineId AND category_id = @categoryId AND material_id = @brandId";
+                        string query = @"SELECT field_name, DefaultValue, RV_MinValue, RV_MaxValue FROM MST_FormFieldControls WHERE FormID = 6 AND RecordType = 'Specific' AND ControlType = 'textbox' AND RV_Yesno = 1 AND ViewMode = 1 AND IsLatest = 1 AND IsDeleted = 0 AND plant_id = @plantId AND LineId = @lineId AND category_id = @categoryId AND material_id = @brandId";
 
                         using (SqlCommand cmd = new SqlCommand(query, con))
                         {
@@ -827,52 +926,117 @@ namespace AnmolDristi
                                 while (reader.Read())
                                 {
                                     string fieldName = reader["field_name"].ToString();
-                                    string min = reader["RV_MinValue"].ToString();
-                                    string max = reader["RV_MaxValue"].ToString();
-                                    standardMap[fieldName] = $"{min} ~ {max}";
+                                    string def = reader["DefaultValue"] != DBNull.Value ? reader["DefaultValue"].ToString() : "";
+                                    string min = reader["RV_MinValue"] != DBNull.Value ? reader["RV_MinValue"].ToString() : "";
+                                    string max = reader["RV_MaxValue"] != DBNull.Value ? reader["RV_MaxValue"].ToString() : "";
+                                    standardMap[fieldName] = Tuple.Create(def, min, max);
                                 }
                             }
                         }
                     }
 
                     // 3. Pivot the data
-                    DataTable pivot = BuildPivotTable(dt, dates, standardMap);
+                    //DataTable pivot = BuildPivotTable(dt, dates, standardMap);
+                    //DataTable pivot = BuildPivotTable(dt, dates, new Dictionary<string, string>()); // pass dummy for now
+                    DataTable pivot = BuildPivotTable(dt, dates, new Dictionary<string, Tuple<string, string, string>>());
 
-                    // 4. Inject Standard column before UOM
+                    //// 4. Inject Standard column before UOM
+                    //if (!pivot.Columns.Contains("Standard (Min~Max)"))
+                    //{
+                    //    pivot.Columns.Add("Standard (Min~Max)", typeof(string));
+                    //    int uomIndex = pivot.Columns["UOM"].Ordinal;
+                    //    pivot.Columns["Standard (Min~Max)"].SetOrdinal(uomIndex); // move before UOM
+                    //}
+
+                    // Inject both "Standard" and "Standard (Min~Max)" columns before UOM
+                    if (!pivot.Columns.Contains("Standard"))
+                        pivot.Columns.Add("Standard", typeof(string));
                     if (!pivot.Columns.Contains("Standard (Min~Max)"))
                     {
                         pivot.Columns.Add("Standard (Min~Max)", typeof(string));
-                        int uomIndex = pivot.Columns["UOM"].Ordinal;
-                        pivot.Columns["Standard (Min~Max)"].SetOrdinal(uomIndex); // move before UOM
+                        pivot.Columns["Standard (Min~Max)"].SetOrdinal(pivot.Columns["UOM"].Ordinal); // Before UOM
                     }
+
+                    // Set correct order: Standard → Standard (Min~Max) → UOM
+                    int uomIndex = pivot.Columns["UOM"].Ordinal;
+                    pivot.Columns["Standard (Min~Max)"].SetOrdinal(uomIndex);
+                    pivot.Columns["Standard"].SetOrdinal(uomIndex);
+
+                    //foreach (DataRow row in pivot.Rows)
+                    //{
+                    //    string parameter = row["Parameter"].ToString();
+                    //    string fieldName = "";
+                    //    if (parameterFieldMap.TryGetValue(parameter, out fieldName))
+                    //    {
+                    //        string stdRange = "";
+                    //        if (standardMap.TryGetValue(fieldName, out stdRange))
+                    //            row["Standard (Min~Max)"] = stdRange;
+                    //        else
+                    //            row["Standard (Min~Max)"] = "";
+                    //    }
+                    //    else
+                    //    {
+                    //        row["Standard (Min~Max)"] = "";
+                    //    }
+                    //}
 
                     foreach (DataRow row in pivot.Rows)
                     {
                         string parameter = row["Parameter"].ToString();
                         string fieldName = "";
+
+                        // Apply normalization only to RM_SD parameters
+                        //fieldName = NormalizeMaterialCode(parameter);
                         if (parameterFieldMap.TryGetValue(parameter, out fieldName))
                         {
-                            string stdRange = "";
-                            if (standardMap.TryGetValue(fieldName, out stdRange))
-                                row["Standard (Min~Max)"] = stdRange;
-                            else
-                                row["Standard (Min~Max)"] = "";
-                        }
-                        else
-                        {
-                            row["Standard (Min~Max)"] = "";
+                            Tuple<string, string, string> std;
+                            if (standardMap.TryGetValue(fieldName, out std))
+                            {
+                                row["Standard"] = std.Item1;
+                                row["Standard (Min~Max)"] = std.Item2 + " ~ " + std.Item3;
+                            }
                         }
                     }
+
 
                     // 5. Export the final pivoted report
                     ExportToExcelNew(pivot, "ProcessChecking_SummaryReport", plantId, lineId, categoryId, brandId, startDate, endDate);
                 }
                 else
                 {
-                    // Optional: Alert or feedback
+                    string NoData_Error_script = @"<script type='text/javascript'>
+                            new PNotify({
+                                title: 'Error',
+                                text: 'No Data Found for the Selected Date Range..!',
+                                type: 'error',
+                                styling: 'bootstrap3'
+                            });
+                        </script>";
+                    ClientScript.RegisterStartupScript(this.GetType(), "NoData_ErrorNotification", NoData_Error_script, false);
                 }
             }
         }
+
+
+        string NormalizeMaterialCode(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return input;
+
+            // Only normalize if it starts with RM_SD
+            if (input.StartsWith("RM_SD", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(input, @"RM_SD-?0*(\d{1,3})");
+
+                if (match.Success)
+                {
+                    int number = int.Parse(match.Groups[1].Value);
+                    return $"SD-{number:D3}"; // Canonical format
+                }
+            }
+
+            return input; // Leave as-is if not RM_SD
+        }
+
 
 
         private void ExportToExcelNew(DataTable pivotTable, string fileName, int plantId, int lineId, int categoryId, int brandId, DateTime fromDate, DateTime toDate)
@@ -1190,11 +1354,79 @@ namespace AnmolDristi
             return pivot;
         }
 
-        private DataTable BuildPivotTable(DataTable source, List<string> dates, Dictionary<string, string> standardMap)
+        private DataTable BuildPivotTable(DataTable source, List<string> dates, Dictionary<string, Tuple<string, string, string>> standardMap)
         {
             DataTable pivot = new DataTable();
             pivot.Columns.Add("Section");
             pivot.Columns.Add("Parameter");
+            pivot.Columns.Add("Standard");               // <-- DefaultValue
+            pivot.Columns.Add("Standard (Min~Max)");     // <-- Min ~ Max
+            pivot.Columns.Add("UOM");
+
+            // Add columns per date-shift (e.g., 30-07-2025_A)
+            foreach (var date in dates)
+            {
+                foreach (string shift in new[] { "A", "B", "C" })
+                {
+                    pivot.Columns.Add($"{date}_{shift}");
+                }
+            }
+
+            var grouped = source.AsEnumerable()
+                .GroupBy(r => new
+                {
+                    Section = r.Field<string>("Parameter").Split('_')[0],
+                    Parameter = r.Field<string>("Parameter"),
+                    UOM = r.Field<string>("UOM")
+                });
+
+            foreach (var group in grouped)
+            {
+                var row = pivot.NewRow();
+                row["Section"] = group.Key.Section;
+                row["Parameter"] = group.Key.Parameter;
+                //row["UOM"] = group.Key.UOM;
+                row["UOM"] = string.IsNullOrWhiteSpace(group.Key.UOM) ? "As per STD" : group.Key.UOM.ToUpper();
+
+
+                string fieldName = group.Key.Parameter;
+                if (standardMap.ContainsKey(fieldName))
+                {
+                    var std = standardMap[fieldName];
+                    row["Standard"] = std.Item1;                          // DefaultValue
+                    //row["Standard (Min~Max)"] = std.Item2 + " ~ " + std.Item3; // Min ~ Max
+                }
+                else
+                {
+                    row["Standard"] = "No Data";
+                    //row["Standard (Min~Max)"] = "";
+                }
+
+                foreach (var record in group)
+                {
+                    string date = Convert.ToDateTime(record["SubmittedDate"]).ToString("dd-MM-yyyy");
+
+                    if (record.Table.Columns.Contains("Shift_A"))
+                        row[$"{date}_A"] = record["Shift_A"];
+                    if (record.Table.Columns.Contains("Shift_B"))
+                        row[$"{date}_B"] = record["Shift_B"];
+                    if (record.Table.Columns.Contains("Shift_C"))
+                        row[$"{date}_C"] = record["Shift_C"];
+                }
+
+                pivot.Rows.Add(row);
+            }
+
+            return pivot;
+        }
+
+
+        private DataTable BuildPivotTable_050825(DataTable source, List<string> dates, Dictionary<string, string> standardMap)
+        {
+            DataTable pivot = new DataTable();
+            pivot.Columns.Add("Section");
+            pivot.Columns.Add("Parameter");
+            pivot.Columns.Add("Standard"); // <-- DefaultValue
             pivot.Columns.Add("Standard (Min~Max)"); // Single Standard column
             pivot.Columns.Add("UOM");
 
