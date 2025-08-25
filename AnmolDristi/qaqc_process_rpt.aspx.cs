@@ -2387,43 +2387,74 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
         private void BindGridView_Global()             // to show all 22 varieties and standard weight 
         {
             // Sample data for Variety and Standard Weight
-            var dataSave = new List<VarietyInfo>
-            {
-                // Add all 22 varieties here
-                new VarietyInfo {Sl = 1,   sap_IngredientName = "Maida", BOM_Qnty = 0 } ,
-                new VarietyInfo {Sl = 2,   sap_IngredientName = "Sugar", BOM_Qnty = 0 } ,
-                new VarietyInfo {Sl = 3,   sap_IngredientName = "Butter", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 4,   sap_IngredientName = "S.M.P", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 5,   sap_IngredientName = "Process Water", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 6,   sap_IngredientName = "Lecithin", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 7,   sap_IngredientName = "GMS Paste", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 8,   sap_IngredientName = "SSL paste/ LS. Powder", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 9,   sap_IngredientName = "Glucose", BOM_Qnty = 0 },
-                new VarietyInfo {Sl = 10,  sap_IngredientName = "H.V.O", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 11,  sap_IngredientName = "Syrup", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 12,  sap_IngredientName = "Malt Extract", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 13,  sap_IngredientName = "Broken Biscuit", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 14,  sap_IngredientName = "A.B.C.", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 15,  sap_IngredientName = "S.B.C.", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 16,  sap_IngredientName = "S.M.B.S.", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 17,  sap_IngredientName = "Whey Powder", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 18,  sap_IngredientName = "Condence Milk", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 19,  sap_IngredientName = "Iodised Salt", BOM_Qnty = 0 } ,
-                new VarietyInfo {Sl = 20,  sap_IngredientName = "Yeast (Smell & Wt.)", BOM_Qnty = 0  },
-                new VarietyInfo {Sl = 21,  sap_IngredientName = "E1", BOM_Qnty = 0 } ,
-                new VarietyInfo {Sl = 22,  sap_IngredientName = "Caramel", BOM_Qnty = 0 } ,
-                new VarietyInfo {Sl = 23,  sap_IngredientName = "Palmolien", BOM_Qnty = 0 } ,
-                new VarietyInfo {Sl = 24,  sap_IngredientName = "R.B.D.Palmoil", BOM_Qnty = 0 } ,
+            //var dataSave = new List<VarietyInfoOLD>
+            //{
+            //    // Add all 22 varieties here
+            //    new VarietyInfoOLD {Sl = 1,   sap_IngredientName = "Maida", BOM_Qnty = 0 } ,
+            //    new VarietyInfoOLD {Sl = 2,   sap_IngredientName = "Sugar", BOM_Qnty = 0 } ,
+            //    new VarietyInfoOLD {Sl = 3,   sap_IngredientName = "Butter", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 4,   sap_IngredientName = "S.M.P", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 5,   sap_IngredientName = "Process Water", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 6,   sap_IngredientName = "Lecithin", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 7,   sap_IngredientName = "GMS Paste", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 8,   sap_IngredientName = "SSL paste/ LS. Powder", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 9,   sap_IngredientName = "Glucose", BOM_Qnty = 0 },
+            //    new VarietyInfoOLD {Sl = 10,  sap_IngredientName = "H.V.O", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 11,  sap_IngredientName = "Syrup", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 12,  sap_IngredientName = "Malt Extract", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 13,  sap_IngredientName = "Broken Biscuit", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 14,  sap_IngredientName = "A.B.C.", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 15,  sap_IngredientName = "S.B.C.", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 16,  sap_IngredientName = "S.M.B.S.", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 17,  sap_IngredientName = "Whey Powder", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 18,  sap_IngredientName = "Condence Milk", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 19,  sap_IngredientName = "Iodised Salt", BOM_Qnty = 0 } ,
+            //    new VarietyInfoOLD {Sl = 20,  sap_IngredientName = "Yeast (Smell & Wt.)", BOM_Qnty = 0  },
+            //    new VarietyInfoOLD {Sl = 21,  sap_IngredientName = "E1", BOM_Qnty = 0 } ,
+            //    new VarietyInfoOLD {Sl = 22,  sap_IngredientName = "Caramel", BOM_Qnty = 0 } ,
+            //    new VarietyInfoOLD {Sl = 23,  sap_IngredientName = "Palmolien", BOM_Qnty = 0 } ,
+            //    new VarietyInfoOLD {Sl = 24,  sap_IngredientName = "R.B.D.Palmoil", BOM_Qnty = 0 } ,
 
+            //};
+
+            var dataSave = new List<VarietyInfoOLD>
+            {
+                new VarietyInfoOLD { Sl = 1,  sap_IngredientName = "Maida", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 2,  sap_IngredientName = "Sugar", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 3,  sap_IngredientName = "Butter", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 4,  sap_IngredientName = "S.M.P", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 5,  sap_IngredientName = "Process Water", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 6,  sap_IngredientName = "Lecithin", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 7,  sap_IngredientName = "GMS Paste", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 8,  sap_IngredientName = "SSL paste/ LS. Powder", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 9,  sap_IngredientName = "Glucose", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 10, sap_IngredientName = "H.V.O", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 11, sap_IngredientName = "Syrup", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 12, sap_IngredientName = "Malt Extract", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 13, sap_IngredientName = "Broken Biscuit", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 14, sap_IngredientName = "A.B.C.", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 15, sap_IngredientName = "S.B.C.", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 16, sap_IngredientName = "S.M.B.S.", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 17, sap_IngredientName = "Whey Powder", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 18, sap_IngredientName = "Condence Milk", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 19, sap_IngredientName = "Iodised Salt", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 20, sap_IngredientName = "Yeast (Smell & Wt.)", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 21, sap_IngredientName = "E1", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 22, sap_IngredientName = "Caramel", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 23, sap_IngredientName = "Palmolien", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
+                new VarietyInfoOLD { Sl = 24, sap_IngredientName = "R.B.D.Palmoil", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 },
             };
+
 
             // Add 10 blank rows
             for (int i = 0; i < 10; i++)
             {
-                dataSave.Add(new VarietyInfo { Sl = dataSave.Count + 1, sap_IngredientName = "", BOM_Qnty = 0 });
+                //dataSave.Add(new VarietyInfoOLD { Sl = dataSave.Count + 1, sap_IngredientName = "", BOM_Qnty = 0 });
+                dataSave.Add(new VarietyInfoOLD { Sl = 1, sap_IngredientName = "", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 });
+
             }
             // Store in Session for postback persistence
-            Session["VarietyData"] = dataSave;
+            Session["VarietyDataOLD"] = dataSave;
 
             // Bind to GridView
             GridView1.DataSource = dataSave;
@@ -2478,6 +2509,7 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
                         {
                             // Call your fallback method here
                             BindGridView_Global(); // Replace with your actual function name
+                            return;
                         }
                     }
                 }
@@ -2625,15 +2657,19 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
         }
 
 
-        //public class VarietyInfo
-        //{
-        //    public int Sl { get; set; }
-        //    public string sap_IngredientName { get; set; }
-        //    public decimal BOM_Qnty { get; set; }
-        //    public decimal ActualWeight { get; set; }
-        //    public decimal DeviationWeight { get; set; }
-        //    public decimal DeviationPercentage { get; set; }
-        //}
+        public class VarietyInfoOLD
+        {
+            public int Sl { get; set; }
+            public string sap_IngredientName { get; set; }
+            public decimal BOM_Qnty { get; set; }
+            public decimal ActualWeight { get; set; }
+            public decimal DeviationWeight { get; set; }
+            public decimal DeviationPercentage { get; set; }
+
+            // Add these new properties
+            public decimal MinValue { get; set; }
+            public decimal MaxValue { get; set; }
+        }
 
 
         [WebMethod]

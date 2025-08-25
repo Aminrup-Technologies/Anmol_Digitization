@@ -75,7 +75,12 @@
                             <a class="btn btn-app" href="qaqc_qci_analtics.aspx">
                                 <span class="badge bg-green">
                                     <asp:Label ID="Label2" runat="server" Text="0" Visible="true" Font-Bold="true"></asp:Label></span>
-                                <i class="fa fa-edit"></i>QCI Report
+                                <i class="fa fa-edit"></i>QCI Graph
+                            </a>
+                            <a class="btn btn-app" href="qaqc_pcr_analytics.aspx">
+                                <span class="badge bg-green">
+                                    <asp:Label ID="Label1" runat="server" Text="0" Visible="true" Font-Bold="true"></asp:Label></span>
+                                <i class="fa fa-edit"></i>PCR Graph
                             </a>
                         </div>
                     </div>

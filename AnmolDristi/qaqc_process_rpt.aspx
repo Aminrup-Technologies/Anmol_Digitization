@@ -2530,7 +2530,9 @@
 
                                                                     <asp:TemplateField HeaderText="Variety" HeaderStyle-Width="35%">
                                                                         <ItemTemplate>
-                                                                            <asp:TextBox ID="txtVariety" runat="server" CssClass="variety form-control form-control-sm rounded" Text='<%# Eval("sap_IngredientName") %>' ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'></asp:TextBox>
+                                                                            <%--<asp:TextBox ID="txtVariety" runat="server" CssClass="variety form-control form-control-sm rounded" Text='<%# Eval("sap_IngredientName") %>' ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'></asp:TextBox>--%>
+                                                                            <asp:TextBox ID="txtVariety" runat="server" CssClass="variety form-control form-control-sm rounded" Text='<%# Eval("sap_IngredientName") %>'></asp:TextBox>
+
                                                                         </ItemTemplate>
                                                                     </asp:TemplateField>
 
@@ -2565,6 +2567,7 @@
 
                                                                 </Columns>
                                                             </asp:GridView>
+
                                                             <asp:Button ID="WgtbtnSubmit" runat="server" CssClass="btn btn-primary btn-sm" ValidationGroup="SubmitRM" CausesValidation="false" Enabled="false" Text="Proceed Next" OnClientClick="return validateGridView() && collectAndSendData();" OnClick="WgtbtnSubmit_Click" />
                                                             <asp:Button ID="WgtbtnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="WgtbtnReset_Click" />
                                                         </div>
