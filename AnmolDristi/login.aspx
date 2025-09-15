@@ -20,6 +20,15 @@
     <link href="Resources/animate.css/animate.min.css" rel="stylesheet" />
     <!-- Custom Theme Style -->
     <link href="Resources/custom/custom.min.css" rel="stylesheet" />
+    <script type="text/javascript">
+        try {
+            sessionStorage.removeItem('ActiveLoginToken');
+            sessionStorage.removeItem('ActiveSessionId');
+        } catch (e) {
+            // ignore
+        }
+    </script>
+
 </head>
 <body class="login">
     <form id="form1" runat="server">

@@ -12,7 +12,21 @@ namespace AnmolDristi
 
         protected void Application_Start(object sender, EventArgs e)
         {
+            // Create a timer that calls CleanupStaleSessions every 5 minutes
+            var timer = new System.Threading.Timer(_ =>
+            {
+                try
+                {
+                    SessionHelper.CleanupStaleSessions(20); // expire sessions idle > 20 minutes
+                }
+                catch (Exception ex)
+                {
+                    // optional: log error somewhere (file/db/eventlog)
+                }
+            }, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
 
+            // Store reference so GC doesn’t collect the timer
+            Application["CleanupTimer"] = timer;
         }
 
         protected void Session_Start(object sender, EventArgs e)
@@ -150,7 +164,16 @@ namespace AnmolDristi
 
         protected void Application_End(object sender, EventArgs e)
         {
-
+            // Cleanly dispose timer when app shuts down
+            var timer = Application["CleanupTimer"] as System.Threading.Timer;
+            if (timer != null)
+            {
+                try
+                {
+                    timer.Dispose();
+                }
+                catch { /* ignore errors */ }
+            }
         }
     }
 }

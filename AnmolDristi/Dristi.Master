@@ -86,7 +86,276 @@
             document.addEventListener("mousemove", handleUserActivity);
             document.addEventListener("keypress", handleUserActivity);
         });
+
+        // run this on pages where the user is logged in (master page)
+        //(function () {
+        //    var HEARTBEAT_MINUTES = 5;
+        //    var HEARTBEAT_MS = HEARTBEAT_MINUTES * 60 * 1000;
+
+        //    function sendHeartbeat() {
+        //        try {
+        //            var id = sessionStorage.getItem('ActiveSessionId');
+        //            if (!id) return;
+
+        //            $.ajax({
+        //                type: 'POST',
+        //                url: 'heartbeat.aspx/Heartbeat',
+        //                data: JSON.stringify({ activeSessionId: parseInt(id, 10) }),
+        //                contentType: 'application/json; charset=utf-8',
+        //                dataType: 'json',
+        //                success: function (resp) {
+        //                    // resp.d is the WebMethod return if ASP.NET wraps it; handle both shapes
+        //                    var data = resp && resp.d ? resp.d : resp;
+        //                    if (!data || !data.ok) {
+        //                        // optionally force logout when server says not ok
+        //                        // console.warn('heartbeat not ok', data);
+        //                    }
+        //                },
+        //                error: function (xhr, status, err) {
+        //                    // optional: if status indicates 401/403, force logout
+        //                    if (xhr && (xhr.status === 401 || xhr.status === 403)) {
+        //                        // force client to logout
+        //                        sessionStorage.removeItem('ActiveSessionId');
+        //                        window.location.href = 'login.aspx';
+        //                    }
+        //                    // otherwise, ignore and try again next interval
+        //                }
+        //            });
+        //        } catch (e) {
+        //            // swallow — heartbeat is best-effort
+        //            console.warn('heartbeat error', e);
+        //        }
+        //    }
+
+        //    // initial run and schedule
+        //    $(function () {
+        //        // send one soon after load if active session exists
+        //        setTimeout(sendHeartbeat, 2000);
+        //        // then repeat on interval
+        //        setInterval(sendHeartbeat, HEARTBEAT_MS);
+        //    });
+        //})();
+
+
+        (function () {
+            // CONFIG
+            var HEARTBEAT_URL = '/heartbeat.aspx/Heartbeat';   // accepts { loginToken: "GUID" } and returns { ok: true/false }
+            var LOGOUT_URL = '/logout.aspx/EndSession';       // accepts { loginToken: "GUID" } and returns { ok:true }
+            var CHECK_INTERVAL_MS = 60 * 1000;                // how often to validate token (1 min)
+            var MAX_RETRIES = 2;                              // minor retries on transient network errors
+
+            // Helper: attempt to close window (may fail if not opened by script)
+            function tryCloseWindow() {
+                try {
+                    // If this tab was opened by another window via window.open,
+                    // attempt to close the opener and ourselves.
+                    if (window.opener && !window.opener.closed) {
+                        try { window.opener.close(); } catch (e) { /* ignore */ }
+                    }
+                    // Try to close this window (works only if opened by script in many browsers)
+                    window.close();
+                    // If close didn't work within short time, redirect to login as a fallback
+                    setTimeout(function () {
+                        if (!document.hidden) {
+                            window.location.href = 'login.aspx';
+                        }
+                    }, 300);
+                } catch (e) {
+                    window.location.href = 'login.aspx';
+                }
+            }
+
+            // Perform logout: notify server, clear storage, notify other tabs via localStorage, then close/redirect
+            function doLogout_OLD(reason) {
+                var token = sessionStorage.getItem('ActiveLoginToken');
+
+                // Clear client state immediately
+                try { sessionStorage.removeItem('ActiveLoginToken'); } catch (e) { }
+                try { sessionStorage.removeItem('ActiveSessionId'); } catch (e) { }
+
+                // Notify other tabs: write timestamped value so storage event fires
+                try {
+                    localStorage.setItem('app_logout', JSON.stringify({ ts: Date.now(), reason: reason || null }));
+                } catch (e) { /* ignore storage errors */ }
+
+                // Try to inform server (best-effort)
+                if (token) {
+                    // use fetch if available
+                    try {
+                        fetch(LOGOUT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                            body: JSON.stringify({ loginToken: token })
+                        }).catch(function () { /* ignore */ })
+                          .finally(function () { tryCloseWindow(); });
+                    } catch (e) {
+                        tryCloseWindow();
+                    }
+                } else {
+                    tryCloseWindow();
+                }
+            }
+
+            function doLogout_OLD2(reason) {
+                // Clear client sessionStorage
+                try {
+                    sessionStorage.removeItem('ActiveLoginToken');
+                    sessionStorage.removeItem('ActiveSessionId');
+                } catch (e) { }
+
+                // Broadcast logout to other tabs (they listen for localStorage event)
+                try {
+                    localStorage.setItem('app_logout', JSON.stringify({ ts: Date.now(), reason: reason || null }));
+                } catch (e) { }
+
+                // Redirect this tab to login
+                // Small delay ensures storage event is fired before redirect
+                setTimeout(function () {
+                    window.location.href = 'login.aspx';
+                }, 150);
+            }
+
+            function doLogout(reason) {
+                var token = null;
+                try {
+                    token = sessionStorage.getItem('ActiveLoginToken');
+                } catch (e) { }
+
+                if (token) {
+                    // Best-effort call to server to mark session inactive
+                    fetch('/LogoutHandler.ashx?loginToken=' + encodeURIComponent(token), {
+                        method: 'GET'
+                    }).catch(function () {
+                        // ignore network errors, still proceed
+                    });
+                }
+
+                // Clear client sessionStorage
+                try {
+                    sessionStorage.removeItem('ActiveLoginToken');
+                    sessionStorage.removeItem('ActiveSessionId');
+                } catch (e) { }
+
+                // Notify other tabs
+                try {
+                    localStorage.setItem('app_logout', JSON.stringify({ ts: Date.now(), reason: reason || null }));
+                } catch (e) { }
+
+                // Redirect this tab
+                setTimeout(function () {
+                    window.location.href = 'login.aspx';
+                }, 150);
+            }
+
+
+            // Called when another tab logged out (storage event)
+            function handleRemoteLogout(payload) {
+                // payload is the JSON object set into localStorage
+                try {
+                    // Clear local session storage
+                    sessionStorage.removeItem('ActiveLoginToken');
+                    sessionStorage.removeItem('ActiveSessionId');
+                } catch (e) { /* ignore */ }
+
+                // Try to close window or redirect
+                tryCloseWindow();
+            }
+
+            // Validate token with server via heartbeat endpoint. If invalid -> logout.
+            function validateTokenPing(retryCount) {
+                retryCount = retryCount || 0;
+                var token = sessionStorage.getItem('ActiveLoginToken');
+                if (!token) {
+                    // no token in this tab — treat as logged out
+                    doLogout('no-token');
+                    return;
+                }
+
+                // POST { loginToken: token }
+                try {
+                    fetch(HEARTBEAT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                        body: JSON.stringify({ loginToken: token })
+                    }).then(function (res) {
+                        if (res.status === 401 || res.status === 403) {
+                            // server says no - logout
+                            doLogout('unauthorized');
+                            return;
+                        }
+                        return res.json();
+                    }).then(function (json) {
+                        // some ASP.NET WebMethods wrap return in d; support both shapes
+                        var data = json && json.d ? json.d : json;
+                        if (!data) {
+                            // if nothing returned, treat as transient error
+                            if (retryCount < MAX_RETRIES) {
+                                setTimeout(function () { validateTokenPing(retryCount + 1); }, 1000);
+                            }
+                            return;
+                        }
+                        if (!data.ok) {
+                            // token invalid / inactive -> logout
+                            doLogout('invalid-token');
+                        }
+                        // else ok -> nothing to do
+                    }).catch(function (err) {
+                        // network error — optionally retry once
+                        if (retryCount < MAX_RETRIES) {
+                            setTimeout(function () { validateTokenPing(retryCount + 1); }, 1000);
+                        }
+                    });
+                } catch (e) {
+                    // unexpected error -> redirect as fallback
+                    doLogout('error');
+                }
+            }
+
+            // Start periodic checks
+            var checkTimer = null;
+            function startChecks() {
+                // initial quick validation
+                setTimeout(function () { validateTokenPing(0); }, 2000);
+                // regular check every CHECK_INTERVAL_MS
+                checkTimer = setInterval(function () { validateTokenPing(0); }, CHECK_INTERVAL_MS);
+            }
+
+            function stopChecks() {
+                if (checkTimer) { clearInterval(checkTimer); checkTimer = null; }
+            }
+
+            // Listen for remote logout via storage event
+            window.addEventListener('storage', function (e) {
+                if (!e) return;
+                if (e.key === 'app_logout' && e.newValue) {
+                    // parse payload
+                    try {
+                        var payload = JSON.parse(e.newValue);
+                    } catch (ex) {
+                        payload = { ts: Date.now() };
+                    }
+                    handleRemoteLogout(payload);
+                }
+            }, false);
+
+            // Optional: when page loads, if it has no token we could redirect immediately
+            document.addEventListener('DOMContentLoaded', function () {
+                var token = sessionStorage.getItem('ActiveLoginToken');
+                if (!token) {
+                    // no token -> go to login
+                    // but allow explicit pages that don't require auth to skip (adjust as needed)
+                    // window.location.href = 'login.aspx';
+                    return;
+                }
+                startChecks();
+            });
+
+            // Expose doLogout for manual logout button
+            window.appDoLogout = doLogout;
+
+        })();
     </script>
+
 </head>
 <body class="nav-md footer_fixed">
     <div id="loader">

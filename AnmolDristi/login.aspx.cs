@@ -8,6 +8,7 @@ using System.Threading;
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
+using System.Configuration;
 
 namespace AnmolDristi
 {
@@ -82,6 +83,7 @@ namespace AnmolDristi
                     if (WorkStatus == "Active")
                     {
                         string EmployeeCode = dt.Rows[0]["Id"].ToString();
+                        int userId = Convert.ToInt32(dt.Rows[0]["Id"]);
                         string RegionId = dt.Rows[0]["RegionId"].ToString();
                         string BranchId = dt.Rows[0]["BranchId"].ToString();
                         string PlantId = dt.Rows[0]["PlantId"].ToString();
@@ -150,6 +152,18 @@ namespace AnmolDristi
                         // Notify admin or security team
                         //LoginNotifier.NotifyLogin(User_FullName, ipAddress);
 
+                        UpdateUserLastLogin(userId);                       // update last login
+                        //int activeSessionId = CreateActiveSession(userId, Workman);
+                        //Session["ActiveSessionId"] = activeSessionId;
+
+                        // After validating user credentials...
+                        var result = SessionHelper.CreateActiveSession(userId, Workman);
+                        if (result != null)
+                        {
+                            Session["ActiveSessionId"] = result.Item1;          // DB identity
+                            Session["LoginToken"] = result.Item2.ToString();    // GUID token
+                        }
+
                         Response.Redirect("home.aspx", false);
                     }
                     else
@@ -190,5 +204,56 @@ namespace AnmolDristi
                 return false;
             }
         }
+
+        // helper to get client IP (basic)
+        private string GetClientIP()
+        {
+            string ip = Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
+            if (string.IsNullOrEmpty(ip)) ip = Request.ServerVariables["REMOTE_ADDR"];
+            return ip ?? "Unknown";
+        }
+
+        // Call this after successful credential check (right before redirect)
+        private int CreateActiveSession(int userId, string Workman)
+        {
+            string sessionId = Session.SessionID;
+            string ip = GetClientIP();
+            string browser = Request.Browser.Browser + " " + Request.Browser.Version;
+            string host = Request.UserHostName;
+
+            string sql = @"
+        INSERT INTO ActiveUserSession (UserId, EmployeeCode, SessionId, LoginTime, ClientIP, HostName, BrowserInfo, IsActive)
+        VALUES (@UserId, @EmployeeCode, @SessionId, GETDATE(), @ClientIP, @HostName, @BrowserInfo, 1);
+        SELECT SCOPE_IDENTITY();";
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand(sql, con))
+            {
+                cmd.Parameters.AddWithValue("@UserId", userId);
+                cmd.Parameters.AddWithValue("@EmployeeCode", (object)Workman ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@SessionId", sessionId);
+                cmd.Parameters.AddWithValue("@ClientIP", ip);
+                cmd.Parameters.AddWithValue("@HostName", host ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@BrowserInfo", browser ?? (object)DBNull.Value);
+
+                con.Open();
+                object o = cmd.ExecuteScalar();
+                int activeSessionId = Convert.ToInt32(o);
+                return activeSessionId;
+            }
+        }
+
+        private void UpdateUserLastLogin(int userId)
+        {
+            string sql = "UPDATE MST_UserMaster SET LastLoginDate = GETDATE() WHERE Id = @Id";
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand(sql, con))
+            {
+                cmd.Parameters.AddWithValue("@Id", userId);
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
+
     }
 }

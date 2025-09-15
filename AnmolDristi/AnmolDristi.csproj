@@ -221,6 +221,7 @@
     <Content Include="Form_Master.aspx" />
     <Content Include="Global.asax" />
     <Content Include="global_formctrl.aspx" />
+    <Content Include="heartbeat.aspx" />
     <Content Include="home.aspx" />
     <Content Include="LeakAndSlant_Detailed.aspx" />
     <Content Include="leak_test.aspx" />
@@ -345,6 +346,7 @@
     <Content Include="WebData\webtos.png" />
     <Content Include="webdetails.aspx" />
     <Content Include="WebsiteCredentialsView.aspx" />
+    <Content Include="LogoutHandler.ashx" />
     <None Include="NLog.xsd">
       <SubType>Designer</SubType>
     </None>
@@ -656,6 +658,13 @@
     <Compile Include="global_formctrl.aspx.designer.cs">
       <DependentUpon>global_formctrl.aspx</DependentUpon>
     </Compile>
+    <Compile Include="heartbeat.aspx.cs">
+      <DependentUpon>heartbeat.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="heartbeat.aspx.designer.cs">
+      <DependentUpon>heartbeat.aspx</DependentUpon>
+    </Compile>
     <Compile Include="home.aspx.cs">
       <DependentUpon>home.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -685,6 +694,9 @@
       <DependentUpon>login.aspx</DependentUpon>
     </Compile>
     <Compile Include="LoginNotifier.cs" />
+    <Compile Include="LogoutHandler.ashx.cs">
+      <DependentUpon>LogoutHandler.ashx</DependentUpon>
+    </Compile>
     <Compile Include="New_User.aspx.cs">
       <DependentUpon>New_User.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1184,6 +1196,7 @@
     <Compile Include="RM_Class_5_Submitter.aspx.designer.cs">
       <DependentUpon>RM_Class_5_Submitter.aspx</DependentUpon>
     </Compile>
+    <Compile Include="SessionHelper.cs" />
     <Compile Include="TimeParser.cs" />
     <Compile Include="UploadImageHandler.ashx.cs">
       <DependentUpon>UploadImageHandler.ashx</DependentUpon>
