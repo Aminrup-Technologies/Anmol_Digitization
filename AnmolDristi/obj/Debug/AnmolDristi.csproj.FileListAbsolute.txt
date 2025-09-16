@@ -120,6 +120,7 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\AnmolDristi.dll.c
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\AnmolDristi.pdb
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ClosedXML.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\CsvHelper.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\DocumentFormat.OpenXml.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EntityFramework.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EntityFramework.SqlServer.dll
@@ -134,6 +135,8 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.Web.
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.WindowsServer.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.ApplicationInsights.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.ApplicationInsights.NLogTarget.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.AsyncInterfaces.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.HashCode.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Newtonsoft.Json.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\NLog.dll
@@ -144,8 +147,10 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.IO.Packagi
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Memory.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Numerics.Vectors.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Runtime.CompilerServices.Unsafe.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ClosedXML.pdb
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ClosedXML.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\CsvHelper.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\DocumentFormat.OpenXml.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EntityFramework.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EntityFramework.SqlServer.xml
@@ -160,6 +165,8 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Applica
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.ApplicationInsights.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.ApplicationInsights.NLogTarget.pdb
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.ApplicationInsights.NLogTarget.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.AsyncInterfaces.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.HashCode.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Newtonsoft.Json.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\NLog.xml
@@ -168,6 +175,6 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Diagnostic
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Memory.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Numerics.Vectors.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Runtime.CompilerServices.Unsafe.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.pdb
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csprojResolveAssemblyReference.cache

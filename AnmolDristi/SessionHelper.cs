@@ -352,5 +352,22 @@ namespace AnmolDristi
             }
         }
 
+
+        public static bool IsSessionActive(Guid loginToken)
+        {
+            if (loginToken == Guid.Empty) return false;
+
+            string sql = "SELECT TOP 1 1 FROM ActiveUserSession WHERE LoginToken = @t AND IsActive = 1";
+            using (SqlConnection con = new SqlConnection(ConnStr))
+            using (SqlCommand cmd = new SqlCommand(sql, con))
+            {
+                cmd.Parameters.AddWithValue("@t", loginToken);
+                con.Open();
+                object o = cmd.ExecuteScalar();
+                return o != null;
+            }
+        }
+
+
     }
 }

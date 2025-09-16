@@ -7,17 +7,18 @@ using System.Web.UI.WebControls;
 
 namespace AnmolDristi
 {
-    public partial class home : System.Web.UI.Page
+    public partial class home : BasePage
     {
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
             {
-                if (Session["USERID"] != null || Session["USERNAME"] != null || Session["WORKMAN"] != null || Session["PLANTID"] != null)
-                {
+                //if (Session["USERID"] != null || Session["USERNAME"] != null || Session["WORKMAN"] != null || Session["PLANTID"] != null)
+                //{
 
-                    lbl_username.Text = Session["USERNAME"].ToString();
-                    lbl_empcode.Text = lbl_workmansl.Text = Session["WORKMAN"].ToString();
+                //lbl_username.Text = Session["USERNAME"].ToString();
+                lbl_username.Text = CurrentEmployeeName;
+                lbl_empcode.Text = lbl_workmansl.Text = Session["WORKMAN"].ToString();
 
                     string PN_WelcomeBack_script = @"<script type='text/javascript'>
                             new PNotify({
@@ -30,10 +31,10 @@ namespace AnmolDristi
 
                     // RegisterStartupScript adds the JavaScript code to the page
                     ClientScript.RegisterStartupScript(this.GetType(), "ShowWelcomeNotification", PN_WelcomeBack_script, false);
-                }
-                else
-                {
-                }
+                //}
+                //else
+                //{
+                //}
             }                    
         }
     }
