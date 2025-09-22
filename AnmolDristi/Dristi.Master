@@ -10,7 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="WebData/Anmol_Logo.png" type="image/ico" />
 
-    <title>Anmol</title>
+    <title>Anmol Industries</title>
 
     <link href="Resources/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="Resources/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
@@ -396,66 +396,76 @@
                                 <div class="menu_section">
                                     <h3>General</h3>
                                     <ul class="nav side-menu">
-                                        <li id="HomePage" runat="server" visible="true"><a><i class="fa fa-home"></i>Home <span class="fa fa-chevron-down"></span></a>
+                                        <li id="HomePage" runat="server" visible="false"><a><i class="fa fa-home"></i>Home <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="Home1" runat="server" visible="true"><a href="home.aspx">Dashboard-1<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="Home1" runat="server" visible="false"><a href="home.aspx">Dashboard-1<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 
-                                        <li id="ImputForms" runat="server" visible="true"><a><i class="fa fa-pencil-square-o"></i>Forms<span class="fa fa-chevron-down"></span></a>
+                                        <li id="ImputForms" runat="server" visible="false"><a><i class="fa fa-pencil-square-o"></i>Forms<span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="frms_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                <li id="frms_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="frms_qc" runat="server" class="sub_menu"><a href="qaqc_qahome.aspx">Quality Assurance</a></li>
-                                                        <li id="frms_qa" runat="server"><a href="qaqc_qchome.aspx">Quality Control</a></li>
+                                                        <li id="frms_qc" runat="server" visible="false" class="sub_menu"><a href="qaqc_qahome.aspx">Quality Assurance</a></li>
+                                                        <li id="frms_qa" runat="server" visible="false"><a href="qaqc_qchome.aspx">Quality Control</a></li>
                                                     </ul>
                                                 </li>
-                                                <li id="frms_production" runat="server" visible="true"><a>Production<span class="fa fa-chevron-down"></span></a>
+                                                <li id="frms_production" runat="server" visible="false"><a>Production<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="Li3" runat="server" class="sub_menu"><a href="prod_misc.aspx">No Category</a></li>
-                                                    </ul>
-                                                </li>
-                                            </ul>
-                                        </li>
-
-                                        <li id="FormsApprovals" runat="server" visible="true"><a><i class="fa fa-file-text"></i>Approvals<span class="fa fa-chevron-down"></span></a>
-                                            <ul class="nav child_menu">
-                                                <li id="app_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
-                                                    <ul class="nav child_menu">
-                                                        <li id="app_qa" runat="server" class="sub_menu"><a href="qaqc_qaapprovals.aspx">Quality Assurance</a></li>
-                                                        <li id="app_qc" runat="server"><a href="qaqc_qcapprovals.aspx">Quality Control</a></li>
+                                                        <li id="frms_prod" runat="server" visible="false" class="sub_menu"><a href="prod_misc.aspx">No Category</a></li>
                                                     </ul>
                                                 </li>
                                             </ul>
                                         </li>
 
-                                        <li id="Reports" runat="server" visible="true"><a><i class="fa fa-file-text"></i>Reports<span class="fa fa-chevron-down"></span></a>
+                                        <li id="FormsApprovals" runat="server" visible="false"><a><i class="fa fa-file-text"></i>Approvals<span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="rpts_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                <li id="app_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="rpts_qa" runat="server" class="sub_menu"><a href="qaqc_qahome_rpt.aspx">Quality Assurance</a></li>
-                                                        <li id="rpts_qc" runat="server"><a href="qaqc_qchome_rpt.aspx">Quality Control</a></li>
-                                                    </ul>
-                                                </li>
-                                                <li id="rpts_production" runat="server" visible="true"><a>Production<span class="fa fa-chevron-down"></span></a>
-                                                    <ul class="nav child_menu">
-                                                        <li id="Li2" runat="server" class="sub_menu"><a href="prod_misc_rpts.aspx">No Category</a></li>
+                                                        <li id="app_qa" runat="server" visible="false" class="sub_menu"><a href="qaqc_qaapprovals.aspx">Quality Assurance</a></li>
+                                                        <li id="app_qc" runat="server" visible="false" ><a href="qaqc_qcapprovals.aspx">Quality Control</a></li>
                                                     </ul>
                                                 </li>
                                             </ul>
                                         </li>
 
-                                        <li id="AdminControl" runat="server" visible="true"><a><i class="fa fa-database"></i>ADMIN Control <span class="fa fa-chevron-down"></span></a>
+                                        <li id="Reports" runat="server" visible="false"><a><i class="fa fa-file-text"></i>Reports<span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="DataMST" runat="server" visible="true"><a href="datamastering_home.aspx">Data Mastering<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="rpts_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="rpts_qa" runat="server" visible="false" class="sub_menu"><a href="qaqc_qahome_rpt.aspx">Quality Assurance</a></li>
+                                                        <li id="rpts_qc" runat="server" visible="false"><a href="qaqc_qchome_rpt.aspx">Quality Control</a></li>
+                                                    </ul>
+                                                </li>
+                                                <li id="rpts_production" runat="server" visible="false"><a>Production<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="rpts_prod" runat="server" visible="false" class="sub_menu"><a href="prod_misc_rpts.aspx">No Category</a></li>
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="AdminControl" runat="server" visible="false"><a><i class="fa fa-database"></i>ADMIN Control <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="DataMST" runat="server" visible="false"><a href="datamastering_home.aspx">Data Mastering<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="FormMST" runat="server" visible="false"><a href="#">Forms Mastering<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="AccessMST" runat="server" visible="false"><a href="#">Access Controls<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 
                                         <li id="WebLogins" runat="server" visible="false"><a><i class="fa fa-database"></i>Web Logins <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="WebLogins_Add" runat="server" visible="true"><a href="webdetails.aspx">Add/Modify<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="WebLogins_Add" runat="server" visible="false"><a href="webdetails.aspx">Add/Modify<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="WebLogins_Viewall" runat="server" visible="false"><a href="WebsiteCredentialsView.aspx">View All<span class="label label-success pull-right">Click !!</span></a></li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="SO_TaDa_Module" runat="server" visible="false"><a><i class="fa fa-database"></i>SO - TA/Da <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="SO_TaDa_AdminConfig" runat="server" visible="false"><a href="#">Admin Config.<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_Submit" runat="server" visible="false"><a href="SubmitClaim.aspx">Submit Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_View" runat="server" visible="false"><a href="#">View Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_Approve" runat="server" visible="false"><a href="#">Approve Claims<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 

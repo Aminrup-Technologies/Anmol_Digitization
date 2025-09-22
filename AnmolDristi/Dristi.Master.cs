@@ -125,55 +125,95 @@ namespace AnmolDristi
                 string module = Session["MODULE"] != null ? Session["MODULE"].ToString() : string.Empty;
                 string workman = Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : string.Empty;
 
-                if (module == "Quality")
+
+                // Apply UI permissions to sidebar menu (root of your menu)
+                // If your sidebar markup is inside a server control with ID `sidebar-menu`,
+                // use that control's reference. Example: SidebarMenuControl
+
+                PermissionHelper.RefreshSessionPermissions();
+                PermissionHelper.ApplyUiPermissions(this); // will traverse all controls on the master
+                DumpControls(this); // or pass your sidebar wrapper control
+
+
+                //---- Added on 17-Sep-2025------//
+                //UiPermissionController.Apply(this);// apply to whole master
+                //UiPermissionController.DumpVisible(this);
+
+                // or apply only to sidebar wrapper if you have runat="server" and id="sidebarMenu":
+                // UiPermissionController.Apply(this.sidebarMenu);
+
+                // dev-only: dump visibility for menu controls
+
+                
+
+                // Optionally: ensure top-level menu group visibility policy:
+                // HomePage.Visible = HasPermission("UI.HomePage.View");
+                // ImputForms.Visible = HasPermission("UI.ImputForms.View");
+
+
+                //if (module == "Quality")
+                //{
+                //    if (workman == "AHO445" || workman == "ADMIN")
+                //    {
+                //        AdminControl.Visible = true;
+                //        WebLogins.Visible = true;
+                //        WebLogins_Viewall.Visible = true;
+                //    }
+                //    else if (workman == "S449")
+                //    {
+                //        AdminControl.Visible = true;
+                //        WebLogins.Visible = false;
+                //        WebLogins_Viewall.Visible = false;
+                //    }
+                //    else
+                //    {
+                //        AdminControl.Visible = false;
+                //        WebLogins.Visible = false;
+                //    }
+                //}
+                //else if (module == "Vault")
+                //{
+                //    if (workman == "D006")
+                //    {
+                //        ImputForms.Visible = false;
+                //        Reports.Visible = false;
+                //        AdminControl.Visible = false;
+                //        WebLogins.Visible = true;
+                //        FormsApprovals.Visible = false;
+                //        WebLogins_Viewall.Visible = true;
+                //    }
+                //    else
+                //    {
+                //        ImputForms.Visible = false;
+                //        Reports.Visible = false;
+                //        AdminControl.Visible = false;
+                //        WebLogins.Visible = true;
+                //        FormsApprovals.Visible = false;
+                //        WebLogins_Viewall.Visible = false;
+                //    }
+                //}
+                //else
+                //{
+                //    // default behavior when Module is empty/other
+                //    // hide admin/weblogin controls by default to be safe
+                //    AdminControl.Visible = false;
+                //    WebLogins.Visible = false;
+                //    WebLogins_Viewall.Visible = false;
+                //}
+            }
+        }
+
+        void DumpControls(Control root)
+        {
+            foreach (Control c in root.Controls)
+            {
+                if (!string.IsNullOrEmpty(c.ID))
                 {
-                    if (workman == "AHO445" || workman == "ADMIN")
-                    {
-                        AdminControl.Visible = true;
-                        WebLogins.Visible = true;
-                        WebLogins_Viewall.Visible = true;
-                    }
-                    else if (workman == "S449")
-                    {
-                        AdminControl.Visible = true;
-                        WebLogins.Visible = false;
-                        WebLogins_Viewall.Visible = false;
-                    }
-                    else
-                    {
-                        AdminControl.Visible = false;
-                        WebLogins.Visible = false;
-                    }
+                    var visProp = c.GetType().GetProperty("Visible");
+                    var value = visProp != null ? (visProp.GetValue(c, null) ?? "(null)") : "(no Visible)";
+                    System.Diagnostics.Debug.WriteLine($"ID={c.ID} Visible={value}");
                 }
-                else if (module == "Vault")
-                {
-                    if (workman == "D006")
-                    {
-                        ImputForms.Visible = false;
-                        Reports.Visible = false;
-                        AdminControl.Visible = false;
-                        WebLogins.Visible = true;
-                        FormsApprovals.Visible = false;
-                        WebLogins_Viewall.Visible = true;
-                    }
-                    else
-                    {
-                        ImputForms.Visible = false;
-                        Reports.Visible = false;
-                        AdminControl.Visible = false;
-                        WebLogins.Visible = true;
-                        FormsApprovals.Visible = false;
-                        WebLogins_Viewall.Visible = false;
-                    }
-                }
-                else
-                {
-                    // default behavior when Module is empty/other
-                    // hide admin/weblogin controls by default to be safe
-                    AdminControl.Visible = false;
-                    WebLogins.Visible = false;
-                    WebLogins_Viewall.Visible = false;
-                }
+                if (c.HasControls()) DumpControls(c);
             }
         }
 

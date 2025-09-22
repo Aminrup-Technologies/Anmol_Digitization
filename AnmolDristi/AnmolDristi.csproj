@@ -206,6 +206,7 @@
     <Content Include="Aata_Maida_Form.aspx" />
     <Content Include="aata_maida_frmctrl.aspx" />
     <Content Include="Aata_Maida_Submitter.aspx" />
+    <Content Include="AccessDenied.aspx" />
     <Content Include="add_branch.aspx" />
     <Content Include="add_brandtypes.aspx" />
     <Content Include="add_company.aspx" />
@@ -231,6 +232,7 @@
     <Content Include="Critical_Incident_ViewPage.aspx" />
     <Content Include="critical_quality_report.aspx" />
     <Content Include="datamastering_home.aspx" />
+    <Content Include="DebugPermissions.aspx" />
     <Content Include="EditEmployee.aspx" />
     <Content Include="FinalCbbWtVM.aspx" />
     <Content Include="Final_CBB_Detailed.aspx" />
@@ -247,6 +249,7 @@
     <Content Include="Oven_Report_Detailed.aspx" />
     <Content Include="overwrap_approval.aspx" />
     <Content Include="overwrap_Detailed.aspx" />
+    <Content Include="PermissionList.aspx" />
     <Content Include="PM_LaminateTesting.aspx" />
     <Content Include="PM_Laminate_Approval.aspx" />
     <Content Include="PM_Laminate_FinalApproval.aspx" />
@@ -286,6 +289,7 @@
     <Content Include="qaqc_rotary_line.aspx" />
     <Content Include="qa_qc_FinalCbbWtReport.aspx" />
     <Content Include="redirect.aspx" />
+    <Content Include="ReloadSessionPerms.aspx" />
     <Content Include="RM_Class2.aspx" />
     <Content Include="RM_Class2_Approval.aspx" />
     <Content Include="RM_Class2_Detailed.aspx" />
@@ -312,6 +316,12 @@
     <Content Include="RM_Class_5_Detailed.aspx" />
     <Content Include="rm_class_5_frmctrl.aspx" />
     <Content Include="RM_Class_5_Submitter.aspx" />
+    <Content Include="RoleList.aspx" />
+    <Content Include="RolePermissionAudit.aspx" />
+    <Content Include="RolePermissionManager.aspx" />
+    <Content Include="SubmitClaim.aspx" />
+    <Content Include="UiControlMapper.aspx" />
+    <Content Include="UserRoleManager.aspx" />
     <Content Include="viewusers.aspx" />
     <Content Include="vm_ccp_checklist.aspx" />
     <Content Include="vm_leak_test.aspx" />
@@ -372,6 +382,7 @@
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
+    <Content Include="PermDump.ashx" />
     <None Include="Properties\PublishProfiles\ailqaqc.aminruptechnologies.co.in - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\LIVE_Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\LocalDeploy.pubxml" />
@@ -432,6 +443,13 @@
     </Compile>
     <Compile Include="Aata_Maida_Submitter.aspx.designer.cs">
       <DependentUpon>Aata_Maida_Submitter.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AccessDenied.aspx.cs">
+      <DependentUpon>AccessDenied.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="AccessDenied.aspx.designer.cs">
+      <DependentUpon>AccessDenied.aspx</DependentUpon>
     </Compile>
     <Compile Include="add_branch.aspx.cs">
       <DependentUpon>add_branch.aspx</DependentUpon>
@@ -624,6 +642,13 @@
       <DependentUpon>datamastering_home.aspx</DependentUpon>
     </Compile>
     <Compile Include="DB_Utility_OH4Y.cs" />
+    <Compile Include="DebugPermissions.aspx.cs">
+      <DependentUpon>DebugPermissions.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DebugPermissions.aspx.designer.cs">
+      <DependentUpon>DebugPermissions.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Dristi.Master.cs">
       <DependentUpon>Dristi.Master</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -753,6 +778,19 @@
     <Compile Include="overwrap_Detailed.aspx.designer.cs">
       <DependentUpon>overwrap_Detailed.aspx</DependentUpon>
     </Compile>
+    <Compile Include="PermDump.ashx.cs">
+      <DependentUpon>PermDump.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="PermissionCache.cs" />
+    <Compile Include="PermissionHelper.cs" />
+    <Compile Include="PermissionList.aspx.cs">
+      <DependentUpon>PermissionList.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PermissionList.aspx.designer.cs">
+      <DependentUpon>PermissionList.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PermissionService.cs" />
     <Compile Include="PM_LaminateTesting.aspx.cs">
       <DependentUpon>PM_LaminateTesting.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1042,6 +1080,13 @@
     <Compile Include="redirect.aspx.designer.cs">
       <DependentUpon>redirect.aspx</DependentUpon>
     </Compile>
+    <Compile Include="ReloadSessionPerms.aspx.cs">
+      <DependentUpon>ReloadSessionPerms.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ReloadSessionPerms.aspx.designer.cs">
+      <DependentUpon>ReloadSessionPerms.aspx</DependentUpon>
+    </Compile>
     <Compile Include="RM_Class2.aspx.cs">
       <DependentUpon>RM_Class2.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1224,10 +1269,53 @@
     <Compile Include="RM_Class_5_Submitter.aspx.designer.cs">
       <DependentUpon>RM_Class_5_Submitter.aspx</DependentUpon>
     </Compile>
+    <Compile Include="RoleList.aspx.cs">
+      <DependentUpon>RoleList.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RoleList.aspx.designer.cs">
+      <DependentUpon>RoleList.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RolePermissionAudit.aspx.cs">
+      <DependentUpon>RolePermissionAudit.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RolePermissionAudit.aspx.designer.cs">
+      <DependentUpon>RolePermissionAudit.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RolePermissionManager.aspx.cs">
+      <DependentUpon>RolePermissionManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RolePermissionManager.aspx.designer.cs">
+      <DependentUpon>RolePermissionManager.aspx</DependentUpon>
+    </Compile>
     <Compile Include="SessionHelper.cs" />
+    <Compile Include="SubmitClaim.aspx.cs">
+      <DependentUpon>SubmitClaim.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SubmitClaim.aspx.designer.cs">
+      <DependentUpon>SubmitClaim.aspx</DependentUpon>
+    </Compile>
     <Compile Include="TimeParser.cs" />
+    <Compile Include="UiControlMapper.aspx.cs">
+      <DependentUpon>UiControlMapper.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UiControlMapper.aspx.designer.cs">
+      <DependentUpon>UiControlMapper.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="UiPermissionController.cs" />
     <Compile Include="UploadImageHandler.ashx.cs">
       <DependentUpon>UploadImageHandler.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="UserRoleManager.aspx.cs">
+      <DependentUpon>UserRoleManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UserRoleManager.aspx.designer.cs">
+      <DependentUpon>UserRoleManager.aspx</DependentUpon>
     </Compile>
     <Compile Include="viewusers.aspx.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>

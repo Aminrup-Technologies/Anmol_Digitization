@@ -7,10 +7,18 @@ using System.Web.UI.WebControls;
 
 namespace AnmolDristi
 {
-    public partial class datamastering_home : System.Web.UI.Page
+    public partial class datamastering_home : BasePage
     {
         protected void Page_Load(object sender, EventArgs e)
         {
+            // enforce permission – prevents direct URL access
+            RequirePermission("UI.AdminControl.View");
+            RequirePermission("UI.DataMST.View");
+
+            if (!IsPostBack)
+            {
+                // init page
+            }
 
         }
     }

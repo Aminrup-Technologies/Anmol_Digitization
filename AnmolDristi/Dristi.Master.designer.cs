@@ -121,13 +121,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl frms_production;
         
         /// <summary>
-        /// Li3 control.
+        /// frms_prod control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Li3;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl frms_prod;
         
         /// <summary>
         /// FormsApprovals control.
@@ -211,13 +211,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl rpts_production;
         
         /// <summary>
-        /// Li2 control.
+        /// rpts_prod control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Li2;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl rpts_prod;
         
         /// <summary>
         /// AdminControl control.
@@ -247,6 +247,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl FormMST;
         
         /// <summary>
+        /// AccessMST control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl AccessMST;
+        
+        /// <summary>
         /// WebLogins control.
         /// </summary>
         /// <remarks>
@@ -272,6 +281,51 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl WebLogins_Viewall;
+        
+        /// <summary>
+        /// SO_TaDa_Module control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SO_TaDa_Module;
+        
+        /// <summary>
+        /// SO_TaDa_AdminConfig control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SO_TaDa_AdminConfig;
+        
+        /// <summary>
+        /// SO_TaDa_Submit control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SO_TaDa_Submit;
+        
+        /// <summary>
+        /// SO_TaDa_View control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SO_TaDa_View;
+        
+        /// <summary>
+        /// SO_TaDa_Approve control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SO_TaDa_Approve;
         
         /// <summary>
         /// ProfilePic_2 control.

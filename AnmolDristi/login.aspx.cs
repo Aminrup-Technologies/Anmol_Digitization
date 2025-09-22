@@ -116,6 +116,7 @@ namespace AnmolDristi
                         Session["WORKMAN"] = Workman;
                         Session["USERFNAME"] = User_FirstName;
                         Session["USERNAME"] = User_FullName;
+                        Session["CurrentUserId"] = userId;          // NEW: numeric Id (49 for ADMIN)
                         //Session["USERTYPE"] = User_Type;
                         //Session["PERMISSION"] = User_Permission;
                         Session["REGION"] = RegionId;
