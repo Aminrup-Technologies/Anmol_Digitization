@@ -92,7 +92,7 @@
                             <div class="row">
                                 <div class="col-md-12 col-sm-12">
                                     <div class="card-box table-responsive">
-                                        <asp:GridView ID="gvPreview" runat="server" CssClass="table table-striped table-bordered"
+                                        <asp:GridView ID="gvPreview" runat="server" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed"
                                             AutoGenerateColumns="False" GridLines="None">
                                             <Columns>
                                                 <asp:BoundField DataField="Zone" HeaderText="Zone" />

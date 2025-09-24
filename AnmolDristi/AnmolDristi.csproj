@@ -216,6 +216,7 @@
     <Content Include="add_prod_plants.aspx" />
     <Content Include="add_region.aspx" />
     <Content Include="add_users.aspx" />
+    <Content Include="AdminBatches.aspx" />
     <Content Include="apps.aspx" />
     <Content Include="app_qc_inspectorreport.aspx" />
     <Content Include="bopp_tape.aspx" />
@@ -224,6 +225,7 @@
     <Content Include="bopp_tape_View.aspx" />
     <Content Include="ccp_checklist.aspx" />
     <Content Include="CCP_Checklist_detailed.aspx" />
+    <Content Include="Claims_Config.aspx" />
     <Content Include="CorrugatedBoardBoxReport.aspx" />
     <Content Include="CorrugatedBoardBox_Approval.aspx" />
     <Content Include="CorrugatedBoardBox_Detailed.aspx" />
@@ -514,6 +516,13 @@
     <Compile Include="add_users.aspx.designer.cs">
       <DependentUpon>add_users.aspx</DependentUpon>
     </Compile>
+    <Compile Include="AdminBatches.aspx.cs">
+      <DependentUpon>AdminBatches.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="AdminBatches.aspx.designer.cs">
+      <DependentUpon>AdminBatches.aspx</DependentUpon>
+    </Compile>
     <Compile Include="AesEncryptionHelper.cs" />
     <Compile Include="apps.aspx.cs">
       <DependentUpon>apps.aspx</DependentUpon>
@@ -580,6 +589,13 @@
     </Compile>
     <Compile Include="CCP_Checklist_detailed.aspx.designer.cs">
       <DependentUpon>CCP_Checklist_detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Claims_Config.aspx.cs">
+      <DependentUpon>Claims_Config.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Claims_Config.aspx.designer.cs">
+      <DependentUpon>Claims_Config.aspx</DependentUpon>
     </Compile>
     <Compile Include="CorrugatedBoardBoxReport.aspx.cs">
       <DependentUpon>CorrugatedBoardBoxReport.aspx</DependentUpon>
