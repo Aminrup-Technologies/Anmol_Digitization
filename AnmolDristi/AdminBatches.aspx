@@ -1,4 +1,4 @@
-﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="AdminBatches.aspx.cs" Inherits="AnmolDristi.AdminBatches" %>
+﻿<%@ Page Title="Stagging to Final" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="AdminBatches.aspx.cs" Inherits="AnmolDristi.AdminBatches" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
 </asp:Content>
@@ -65,13 +65,13 @@
                                     <div class="row" style="margin-top: 10px;">
                                         <div class="col-md-12">
                                             <div class="card-box table-responsive">
-                                                <asp:GridView ID="gvBatches" runat="server" CssClass="table table-striped table-bordered"
+                                                <asp:GridView ID="gvBatches" runat="server" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed"
                                                     AutoGenerateColumns="False" GridLines="None">
                                                     <Columns>
                                                         <asp:TemplateField HeaderText="Select">
                                                             <ItemTemplate>
                                                                 <asp:LinkButton ID="lnkSelect" runat="server" Text="Select"
-                                                                    OnClientClick='<%# "onRowSelect(\"" + Eval("ImportBatchId") + "\"); return false;" %>' CssClass="btn btn-info btn-xs" />
+                                                                    OnClientClick='<%# "onRowSelect(\"" + Eval("ImportBatchId") + "\"); return false;" %>' CssClass="btn btn-info btn-sm" />
                                                             </ItemTemplate>
                                                         </asp:TemplateField>
 

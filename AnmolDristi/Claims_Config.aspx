@@ -38,6 +38,18 @@
                                     <asp:Label ID="Label4" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>View & Process Batch
                             </a>
+
+                            <a class="btn btn-app" href="ManageEmployeeTolerance.aspx">
+                                <span class="badge bg-red">
+                                    <asp:Label ID="Label1" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Manage KM Tol.
+                            </a>
+
+                            <a class="btn btn-app" href="ManageExpenseSettings.aspx">
+                                <span class="badge bg-red">
+                                    <asp:Label ID="Label2" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Exp. Settings
+                            </a>
                         </div>
                     </div>
                 </div>

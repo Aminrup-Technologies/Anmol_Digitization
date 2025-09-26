@@ -66,3 +66,11 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Runtime.Co
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\AnmolDristi.pdb
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\AnmolDristi.csprojResolveAssemblyReference.cache
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\CsvHelper.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.AsyncInterfaces.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.HashCode.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\CsvHelper.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.AsyncInterfaces.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.HashCode.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.xml

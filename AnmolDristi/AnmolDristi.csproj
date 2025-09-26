@@ -247,6 +247,8 @@
     <Content Include="ImportCsv.aspx" />
     <Content Include="LeakAndSlant_Detailed.aspx" />
     <Content Include="leak_test.aspx" />
+    <Content Include="ManageEmployeeTolerance.aspx" />
+    <Content Include="ManageExpenseSettings.aspx" />
     <Content Include="New_User.aspx" />
     <Content Include="Oven_Report_Detailed.aspx" />
     <Content Include="overwrap_approval.aspx" />
@@ -321,6 +323,7 @@
     <Content Include="RoleList.aspx" />
     <Content Include="RolePermissionAudit.aspx" />
     <Content Include="RolePermissionManager.aspx" />
+    <Content Include="SalesMonthlyReview.aspx" />
     <Content Include="SubmitClaim.aspx" />
     <Content Include="UiControlMapper.aspx" />
     <Content Include="UserRoleManager.aspx" />
@@ -377,6 +380,7 @@
     <Content Include="webdetails.aspx" />
     <Content Include="WebsiteCredentialsView.aspx" />
     <Content Include="LogoutHandler.ashx" />
+    <Content Include="DownloadExpense.ashx" />
     <None Include="NLog.xsd">
       <SubType>Designer</SubType>
     </None>
@@ -665,6 +669,9 @@
     <Compile Include="DebugPermissions.aspx.designer.cs">
       <DependentUpon>DebugPermissions.aspx</DependentUpon>
     </Compile>
+    <Compile Include="DownloadExpense.ashx.cs">
+      <DependentUpon>DownloadExpense.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Dristi.Master.cs">
       <DependentUpon>Dristi.Master</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -765,6 +772,20 @@
     <Compile Include="LoginNotifier.cs" />
     <Compile Include="LogoutHandler.ashx.cs">
       <DependentUpon>LogoutHandler.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="ManageEmployeeTolerance.aspx.cs">
+      <DependentUpon>ManageEmployeeTolerance.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ManageEmployeeTolerance.aspx.designer.cs">
+      <DependentUpon>ManageEmployeeTolerance.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ManageExpenseSettings.aspx.cs">
+      <DependentUpon>ManageExpenseSettings.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ManageExpenseSettings.aspx.designer.cs">
+      <DependentUpon>ManageExpenseSettings.aspx</DependentUpon>
     </Compile>
     <Compile Include="New_User.aspx.cs">
       <DependentUpon>New_User.aspx</DependentUpon>
@@ -1305,6 +1326,13 @@
     </Compile>
     <Compile Include="RolePermissionManager.aspx.designer.cs">
       <DependentUpon>RolePermissionManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="SalesMonthlyReview.aspx.cs">
+      <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SalesMonthlyReview.aspx.designer.cs">
+      <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
     </Compile>
     <Compile Include="SessionHelper.cs" />
     <Compile Include="SubmitClaim.aspx.cs">
