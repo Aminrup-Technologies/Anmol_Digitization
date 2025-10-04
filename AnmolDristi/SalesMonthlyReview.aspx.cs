@@ -57,9 +57,143 @@ namespace AnmolDristi
                 using (SqlDataAdapter da = new SqlDataAdapter(cmd)) da.Fill(dt);
             }
 
+            // Ensure calculated column exists
+            if (!dt.Columns.Contains("CalculatedClaimAmount"))
+                dt.Columns.Add("CalculatedClaimAmount", typeof(decimal));
+
+            // pick default rate from web.config or fallback
+            decimal defaultRate = 2.75m;
+            var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
+            if (!string.IsNullOrWhiteSpace(cfg))
+            {
+                decimal tmp;
+                if (decimal.TryParse(cfg, out tmp)) defaultRate = tmp;
+            }
+
+            // For each row compute CalculatedClaimAmount = RatePerKm * TotalDistanceKM
+            foreach (DataRow row in dt.Rows)
+            {
+                // TotalDistanceKM safe parse
+                decimal totalKm = 0m;
+                if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
+                {
+                    decimal.TryParse(row["TotalDistanceKM"].ToString(), out totalKm);
+                }
+
+                // get per-row rate (from common column names) or fallback to defaultRate
+                decimal rate = GetRatePerKm(row, defaultRate);
+
+                // compute
+                decimal claim = Math.Round(rate * totalKm, 2, MidpointRounding.AwayFromZero);
+
+                row["CalculatedClaimAmount"] = claim;
+
+                // Optionally put the rate into a visible column for the template small text
+                if (!row.Table.Columns.Contains("RatePerKm"))
+                    row.Table.Columns.Add("RatePerKm", typeof(decimal));
+
+                // set rate column only if not already set (so we don't overwrite if SP returned it)
+                if (row["RatePerKm"] == DBNull.Value || string.IsNullOrWhiteSpace(row["RatePerKm"].ToString()))
+                    row["RatePerKm"] = rate;
+            }
+
             gvActivities.DataSource = dt;
             gvActivities.DataBind();
+
+            // Compute sum across VISIBLE rows (current GridView rows) and set footer label
+            decimal visibleTotal = 0m;
+            foreach (GridViewRow r in gvActivities.Rows)
+            {
+                Label lbl = r.FindControl("lblCalculatedClaim") as Label;
+                if (lbl != null)
+                {
+                    decimal v;
+                    if (decimal.TryParse(lbl.Text, out v))
+                        visibleTotal += v;
+                    else
+                    {
+                        // try removing commas/currency if format varies
+                        var cleaned = lbl.Text.Replace(",", "").Trim();
+                        if (decimal.TryParse(cleaned, out v)) visibleTotal += v;
+                    }
+                }
+            }
+
+            // after gvActivities.DataBind();
+            decimal pageDA = 0m, pageHotel = 0m, pageExpense = 0m;
+            foreach (GridViewRow r in gvActivities.Rows)
+            {
+                // read per-row labels (IDs from TemplateField)
+                Label lDA = r.FindControl("lblDA") as Label;
+                Label lHotel = r.FindControl("lblHotel") as Label;
+                Label lExp = r.FindControl("lblExpenseTotal") as Label;
+
+                decimal tmp;
+                if (lDA != null && decimal.TryParse(lDA.Text, out tmp)) pageDA += tmp;
+                if (lHotel != null && decimal.TryParse(lHotel.Text, out tmp)) pageHotel += tmp;
+                if (lExp != null && decimal.TryParse(lExp.Text, out tmp)) pageExpense += tmp;
+            }
+
+            // set footer labels
+            if (gvActivities.FooterRow != null)
+            {
+                var fDA = gvActivities.FooterRow.FindControl("lblFooterDA") as Label;
+                var fHotel = gvActivities.FooterRow.FindControl("lblFooterHotel") as Label;
+                var fExpense = gvActivities.FooterRow.FindControl("lblFooterExpenseTotal") as Label;
+
+                if (fDA != null) fDA.Text = pageDA.ToString("0.##");
+                if (fHotel != null) fHotel.Text = pageHotel.ToString("0.##");
+                if (fExpense != null) fExpense.Text = pageExpense.ToString("0.##");
+            }
+
+
+            // Set footer label if footer exists
+            if (gvActivities.FooterRow != null)
+            {
+                Label lblFooter = gvActivities.FooterRow.FindControl("lblFooterCalculated") as Label;
+                if (lblFooter != null)
+                {
+                    lblFooter.Text = visibleTotal.ToString("0.00");
+                }
+                else
+                {
+                    // alternative: set cell text directly (fallback)
+                    int calcColIndex = -1;
+                    for (int i = 0; i < gvActivities.Columns.Count; i++)
+                    {
+                        if (gvActivities.Columns[i] is TemplateField && ((TemplateField)gvActivities.Columns[i]).HeaderText == "Calculated Claim")
+                        {
+                            calcColIndex = i;
+                            break;
+                        }
+                    }
+                    if (calcColIndex >= 0 && calcColIndex < gvActivities.FooterRow.Cells.Count)
+                        gvActivities.FooterRow.Cells[calcColIndex].Text = "Total: " + visibleTotal.ToString("0.00");
+                }
+            }
         }
+
+        private decimal GetRatePerKm(DataRow row, decimal fallbackRate)
+        {
+            if (row == null) return fallbackRate;
+
+            // check several common column names your SP might return
+            string[] rateCols = new[] { "RatePerKm", "Rate", "PerKmRate", "RatePerKM", "ClaimRate" };
+
+            foreach (var col in rateCols)
+            {
+                if (row.Table.Columns.Contains(col) && row[col] != DBNull.Value)
+                {
+                    decimal val;
+                    if (decimal.TryParse(row[col].ToString(), out val))
+                        return val;
+                }
+            }
+
+            // optional: if you have per-user or per-role rate logic, call it here instead of fallback
+            return fallbackRate;
+        }
+
 
         protected void gvActivities_RowCommand(object sender, GridViewCommandEventArgs e)
         {
@@ -134,6 +268,7 @@ namespace AnmolDristi
                     {
                         TXT_HotelFromDate.Text = parsed.ToString("yyyy-MM-dd");
                         TXT_HotelToDate.Text = parsed.ToString("yyyy-MM-dd");
+                        lbl_traveldate.Text = parsed.ToString("dd-MM-yyyy");
                     }
                     else
                     {
@@ -219,6 +354,7 @@ namespace AnmolDristi
                     TXT_HotelFromDate.Text = hotelFrom.HasValue ? hotelFrom.Value.ToString("yyyy-MM-dd") : string.Empty;
                     TXT_HotelToDate.Text = hotelTo.HasValue ? hotelTo.Value.ToString("yyyy-MM-dd") : string.Empty;
 
+                    lbl_traveldate.Text = hotelFrom.Value.ToString("dd-MM-yyyy");
                     //TXT_HotelBillNo.Text = hotelBill;
                     //TXT_HotelPurpose.Text = hotelPurpose;
 
@@ -750,7 +886,6 @@ namespace AnmolDristi
             rptExpenses.DataBind();
 
             UpdateExpenseTotals(dt);
-            ScriptManager.RegisterStartupScript(this, this.GetType(), "flashTotals", "$('#lblOverallTotal').fadeOut(100).fadeIn(100);", true);
             return dt;
         }
 

@@ -102,7 +102,7 @@
                                     <div class="card-box table-responsive">
                                         <asp:GridView ID="gvActivities" runat="server" AutoGenerateColumns="false" CssClass="table table-striped table-bordered"
                                             DataKeyNames="ActivityId" OnRowCommand="gvActivities_RowCommand" OnRowEditing="gvActivities_RowEditing" OnRowCancelingEdit="gvActivities_RowCancelingEdit"
-                                            OnRowUpdating="gvActivities_RowUpdating" OnRowDataBound="gvActivities_RowDataBound">
+                                            OnRowUpdating="gvActivities_RowUpdating" OnRowDataBound="gvActivities_RowDataBound" ShowFooter="true">
                                             <Columns>
                                                 <asp:TemplateField HeaderText="Date">
                                                     <ItemTemplate>
@@ -136,7 +136,49 @@
                                                         </small>
                                                         <span class="text-danger km-error" style="display: none;">Value must be within allowed range.</span>
                                                     </EditItemTemplate>
+                                                    <FooterTemplate>
+                                                        <strong>Total:</strong>&nbsp;
+                                                    </FooterTemplate>
                                                 </asp:TemplateField>
+
+                                                <asp:TemplateField HeaderText="Calculated Claim">
+                                                    <ItemTemplate>
+                                                        <asp:Label ID="lblCalculatedClaim" runat="server" Text='<%# Eval("CalculatedClaimAmount", "{0:0.00}") %>' />
+                                                        <br />
+                                                        <small class="text-muted">(<%# Eval("RatePerKm") != DBNull.Value ? Eval("RatePerKm") : "rate" %> / km)</small>
+                                                    </ItemTemplate>
+                                                    <FooterTemplate>
+                                                        <asp:Label ID="lblFooterCalculated" runat="server" CssClass="font-weight-bold" Text="0.00" />
+                                                    </FooterTemplate>
+                                                </asp:TemplateField>
+
+                                                <asp:TemplateField HeaderText="DA">
+                                                    <ItemTemplate>
+                                                        <asp:Label ID="lblDA" runat="server" Text='<%# Eval("DAAmount", "{0:0.00}") %>' />
+                                                    </ItemTemplate>
+                                                    <FooterTemplate>
+                                                        <asp:Label ID="lblFooterDA" runat="server" Text="0.00" CssClass="font-weight-bold" />
+                                                    </FooterTemplate>
+                                                </asp:TemplateField>
+
+                                                <asp:TemplateField HeaderText="Hotel">
+                                                    <ItemTemplate>
+                                                        <asp:Label ID="lblHotel" runat="server" Text='<%# Eval("HotelAmount", "{0:0.00}") %>' />
+                                                    </ItemTemplate>
+                                                    <FooterTemplate>
+                                                        <asp:Label ID="lblFooterHotel" runat="server" Text="0.00" CssClass="font-weight-bold" />
+                                                    </FooterTemplate>
+                                                </asp:TemplateField>
+
+                                                <asp:TemplateField HeaderText="Total">
+                                                    <ItemTemplate>
+                                                        <asp:Label ID="lblExpenseTotal" runat="server" Text='<%# Eval("ExpenseTotal", "{0:0.00}") %>' />
+                                                    </ItemTemplate>
+                                                    <FooterTemplate>
+                                                        <asp:Label ID="lblFooterExpenseTotal" runat="server" Text="0.00" CssClass="font-weight-bold" />
+                                                    </FooterTemplate>
+                                                </asp:TemplateField>
+
 
                                                 <asp:BoundField HeaderText="ClaimStatus" DataField="ClaimStatus" ReadOnly="true" />
 
@@ -167,7 +209,8 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">DA / Hotel Expense</h5>
+                        <h5 class="modal-title">DA / Hotel Expenses for
+                            <asp:Label ID="lbl_traveldate" runat="server" Text="NA"></asp:Label></h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#expenseModal').modal('hide');">
                             <span aria-hidden="true">×</span>
                         </button>
@@ -204,12 +247,12 @@
 
 
                                     <div class="col-md-6 form-group">
-                                        <label>Bill No</label>
+                                        <label>Bill/ Invoice No</label>
                                         <asp:TextBox ID="TXT_HotelBillNo" runat="server" CssClass="form-control form-control-sm" />
                                     </div>
 
                                     <div class="col-md-6 form-group">
-                                        <label>Purpose</label>
+                                        <label>Purpose of Stay</label>
                                         <asp:TextBox ID="TXT_HotelPurpose" runat="server" TextMode="MultiLine" Rows="2" CssClass="form-control form-control-sm" />
                                     </div>
 
@@ -231,25 +274,25 @@
                                         <div class="col-6 col-md-3 border-right">
                                             <div class="small text-muted">DA Total</div>
                                             <div id="dvDA" runat="server" class="h6 mb-0">
-                                                <asp:Label ID="lblTotalDA" runat="server" Text="0.00" />
+                                                <asp:Label ID="lblTotalDA" runat="server" Font-Bold="true" ForeColor="#0099ff" Text="0.00" />
                                             </div>
                                         </div>
                                         <div class="col-6 col-md-3 border-right">
                                             <div class="small text-muted">Hotel Total</div>
                                             <div id="dvHotel" runat="server" class="h6 mb-0">
-                                                <asp:Label ID="lblTotalHotel" runat="server" Text="0.00" />
+                                                <asp:Label ID="lblTotalHotel" runat="server" Font-Bold="true" ForeColor="#0099ff" Text="0.00" />
                                             </div>
                                         </div>
                                         <div class="col-6 col-md-3 border-right">
                                             <div class="small text-muted">Other Total</div>
                                             <div id="dvOther" runat="server" class="h6 mb-0">
-                                                <asp:Label ID="lblTotalOther" runat="server" Text="0.00" />
+                                                <asp:Label ID="lblTotalOther" runat="server" Font-Bold="true" ForeColor="#0099ff" Text="0.00" />
                                             </div>
                                         </div>
                                         <div class="col-6 col-md-3">
                                             <div class="small text-muted">Overall Total</div>
                                             <div id="dvOverall" runat="server" class="h5 mb-0">
-                                                <asp:Label ID="lblOverallTotal" runat="server" Text="0.00" />
+                                                <asp:Label ID="lblOverallTotal" runat="server" Font-Bold="true" ForeColor="#0033cc" Text="0.00" />
                                             </div>
                                         </div>
                                     </div>
