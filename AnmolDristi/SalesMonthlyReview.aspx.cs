@@ -8,12 +8,22 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.IO;
+using System.Globalization;
+using Newtonsoft.Json;
+using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace AnmolDristi
 {
     public partial class SalesMonthlyReview : BasePage
     {
         private string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        // class-level accumulators
+        private decimal _totalCalculated = 0m;
+        private decimal _totalDA = 0m;
+        private decimal _totalHotel = 0m;
+        private decimal _totalExpense = 0m;
+        private decimal _totalKM = 0m;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -38,140 +48,702 @@ namespace AnmolDristi
             DDL_Month.SelectedValue = DateTime.UtcNow.AddMinutes(330).Month.ToString();
         }
 
-        protected void btn_fetch_Click(object sender, EventArgs e) => BindGrid();
+        protected void btn_fetch_Click(object sender, EventArgs e) => BindGrid(true);
 
-        private void BindGrid()
+        private void BindGrid_OLD()
         {
             lbl_msg.Text = "";
             int year = int.Parse(DDL_Year.SelectedValue);
             int month = int.Parse(DDL_Month.SelectedValue);
 
-            DataTable dt = new DataTable();
-            using (SqlConnection con = new SqlConnection(connString))
-            using (SqlCommand cmd = new SqlCommand("dbo.usp_GetSalesDailyActivity_Month", con))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@LoginId", GetCurrentUserLoginId());
-                cmd.Parameters.AddWithValue("@Year", year);
-                cmd.Parameters.AddWithValue("@Month", month);
-                using (SqlDataAdapter da = new SqlDataAdapter(cmd)) da.Fill(dt);
-            }
+            bool isPolicyEnabled = Convert.ToBoolean(ConfigurationManager.AppSettings["EnablePreviousMonthPolicy"]);
+            bool allowExecution = false;  // final flag to control main code execution
 
-            // Ensure calculated column exists
-            if (!dt.Columns.Contains("CalculatedClaimAmount"))
-                dt.Columns.Add("CalculatedClaimAmount", typeof(decimal));
-
-            // pick default rate from web.config or fallback
-            decimal defaultRate = 2.75m;
-            var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
-            if (!string.IsNullOrWhiteSpace(cfg))
+            if (isPolicyEnabled == true)
             {
-                decimal tmp;
-                if (decimal.TryParse(cfg, out tmp)) defaultRate = tmp;
-            }
+                // Current date in IST
+                DateTime currentDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                                    TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"));
+                int currentYear = currentDate.Year;
+                int currentMonth = currentDate.Month;
 
-            // For each row compute CalculatedClaimAmount = RatePerKm * TotalDistanceKM
-            foreach (DataRow row in dt.Rows)
-            {
-                // TotalDistanceKM safe parse
-                decimal totalKm = 0m;
-                if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
+                // Allow only 1st–15th of current month for previous month data
+                bool isAllowedWindow = currentDate.Day >= 1 && currentDate.Day <= 15;
+                bool isPreviousMonthSelected =
+                    (year == currentYear && month == currentMonth - 1) ||
+                    (currentMonth == 1 && month == 12 && year == currentYear - 1); // handles Jan → Dec case
+
+                if (isAllowedWindow && isPreviousMonthSelected)
                 {
-                    decimal.TryParse(row["TotalDistanceKM"].ToString(), out totalKm);
-                }
-
-                // get per-row rate (from common column names) or fallback to defaultRate
-                decimal rate = GetRatePerKm(row, defaultRate);
-
-                // compute
-                decimal claim = Math.Round(rate * totalKm, 2, MidpointRounding.AwayFromZero);
-
-                row["CalculatedClaimAmount"] = claim;
-
-                // Optionally put the rate into a visible column for the template small text
-                if (!row.Table.Columns.Contains("RatePerKm"))
-                    row.Table.Columns.Add("RatePerKm", typeof(decimal));
-
-                // set rate column only if not already set (so we don't overwrite if SP returned it)
-                if (row["RatePerKm"] == DBNull.Value || string.IsNullOrWhiteSpace(row["RatePerKm"].ToString()))
-                    row["RatePerKm"] = rate;
-            }
-
-            gvActivities.DataSource = dt;
-            gvActivities.DataBind();
-
-            // Compute sum across VISIBLE rows (current GridView rows) and set footer label
-            decimal visibleTotal = 0m;
-            foreach (GridViewRow r in gvActivities.Rows)
-            {
-                Label lbl = r.FindControl("lblCalculatedClaim") as Label;
-                if (lbl != null)
-                {
-                    decimal v;
-                    if (decimal.TryParse(lbl.Text, out v))
-                        visibleTotal += v;
-                    else
-                    {
-                        // try removing commas/currency if format varies
-                        var cleaned = lbl.Text.Replace(",", "").Trim();
-                        if (decimal.TryParse(cleaned, out v)) visibleTotal += v;
-                    }
-                }
-            }
-
-            // after gvActivities.DataBind();
-            decimal pageDA = 0m, pageHotel = 0m, pageExpense = 0m;
-            foreach (GridViewRow r in gvActivities.Rows)
-            {
-                // read per-row labels (IDs from TemplateField)
-                Label lDA = r.FindControl("lblDA") as Label;
-                Label lHotel = r.FindControl("lblHotel") as Label;
-                Label lExp = r.FindControl("lblExpenseTotal") as Label;
-
-                decimal tmp;
-                if (lDA != null && decimal.TryParse(lDA.Text, out tmp)) pageDA += tmp;
-                if (lHotel != null && decimal.TryParse(lHotel.Text, out tmp)) pageHotel += tmp;
-                if (lExp != null && decimal.TryParse(lExp.Text, out tmp)) pageExpense += tmp;
-            }
-
-            // set footer labels
-            if (gvActivities.FooterRow != null)
-            {
-                var fDA = gvActivities.FooterRow.FindControl("lblFooterDA") as Label;
-                var fHotel = gvActivities.FooterRow.FindControl("lblFooterHotel") as Label;
-                var fExpense = gvActivities.FooterRow.FindControl("lblFooterExpenseTotal") as Label;
-
-                if (fDA != null) fDA.Text = pageDA.ToString("0.##");
-                if (fHotel != null) fHotel.Text = pageHotel.ToString("0.##");
-                if (fExpense != null) fExpense.Text = pageExpense.ToString("0.##");
-            }
-
-
-            // Set footer label if footer exists
-            if (gvActivities.FooterRow != null)
-            {
-                Label lblFooter = gvActivities.FooterRow.FindControl("lblFooterCalculated") as Label;
-                if (lblFooter != null)
-                {
-                    lblFooter.Text = visibleTotal.ToString("0.00");
+                    allowExecution = true;
                 }
                 else
                 {
-                    // alternative: set cell text directly (fallback)
-                    int calcColIndex = -1;
-                    for (int i = 0; i < gvActivities.Columns.Count; i++)
-                    {
-                        if (gvActivities.Columns[i] is TemplateField && ((TemplateField)gvActivities.Columns[i]).HeaderText == "Calculated Claim")
-                        {
-                            calcColIndex = i;
-                            break;
-                        }
-                    }
-                    if (calcColIndex >= 0 && calcColIndex < gvActivities.FooterRow.Cells.Count)
-                        gvActivities.FooterRow.Cells[calcColIndex].Text = "Total: " + visibleTotal.ToString("0.00");
+                    // ❌ Block execution and show message
+                    lbl_msg.Text = "You can process previous month data only between 1st and 15th of the current month.";
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+
+                    // Show PNotify alert
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyPolicyBlock",
+                        "showPNotify('Policy Restriction', 'Processing is allowed only between 1st and 15th for the previous month.', 'error');", true);
+                    //return;
                 }
             }
+            else
+            {
+                // 🚀 Policy disabled → always allow
+                allowExecution = true;
+                //// Trigger PNotify (client-side)
+                //ScriptManager.RegisterStartupScript(this, GetType(), "policyBypassNotice", "showPolicyBypassNotice();", true);
+
+                // Show bypass PNotify
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyBypass", "showPNotify('Policy Disabled', 'Monthly processing policy is disabled. Validation skipped.', 'info');", true);
+            }
+
+            if (allowExecution)
+            {
+                try
+                {
+                    // ✅ Proceed with your normal code here
+                    DataTable dt = new DataTable();
+                    using (SqlConnection con = new SqlConnection(connString))
+                    using (SqlCommand cmd = new SqlCommand("dbo.usp_GetSalesDailyActivity_Month", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@LoginId", GetCurrentUserLoginId());
+                        cmd.Parameters.AddWithValue("@Year", year);
+                        cmd.Parameters.AddWithValue("@Month", month);
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd)) da.Fill(dt);
+                    }
+
+                    // Ensure calculated column exists
+                    if (!dt.Columns.Contains("CalculatedClaimAmount"))
+                        dt.Columns.Add("CalculatedClaimAmount", typeof(decimal));
+
+                    // pick default rate from web.config or fallback
+                    decimal defaultRate = 2.75m;
+                    var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
+                    if (!string.IsNullOrWhiteSpace(cfg))
+                    {
+                        decimal tmp;
+                        if (decimal.TryParse(cfg, out tmp)) defaultRate = tmp;
+                    }
+
+                    // For each row compute CalculatedClaimAmount = RatePerKm * TotalDistanceKM
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        // TotalDistanceKM safe parse
+                        decimal totalKm = 0m;
+                        if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
+                        {
+                            decimal.TryParse(row["TotalDistanceKM"].ToString(), out totalKm);
+                        }
+
+                        // get per-row rate (from common column names) or fallback to defaultRate
+                        decimal rate = GetRatePerKm(row, defaultRate);
+
+                        // compute
+                        decimal claim = Math.Round(rate * totalKm, 2, MidpointRounding.AwayFromZero);
+
+                        row["CalculatedClaimAmount"] = claim;
+
+                        // Optionally put the rate into a visible column for the template small text
+                        if (!row.Table.Columns.Contains("RatePerKm"))
+                            row.Table.Columns.Add("RatePerKm", typeof(decimal));
+
+                        // set rate column only if not already set (so we don't overwrite if SP returned it)
+                        if (row["RatePerKm"] == DBNull.Value || string.IsNullOrWhiteSpace(row["RatePerKm"].ToString()))
+                            row["RatePerKm"] = rate;
+                    }
+
+                    gvActivities.DataSource = dt;
+                    gvActivities.DataBind();
+
+                    // Compute sum across VISIBLE rows (current GridView rows) and set footer label
+                    decimal visibleTotal = 0m;
+                    foreach (GridViewRow r in gvActivities.Rows)
+                    {
+                        Label lbl = r.FindControl("lblCalculatedClaim") as Label;
+                        if (lbl != null)
+                        {
+                            decimal v;
+                            if (decimal.TryParse(lbl.Text, out v))
+                                visibleTotal += v;
+                            else
+                            {
+                                // try removing commas/currency if format varies
+                                var cleaned = lbl.Text.Replace(",", "").Trim();
+                                if (decimal.TryParse(cleaned, out v)) visibleTotal += v;
+                            }
+                        }
+                    }
+
+                    // after gvActivities.DataBind();
+                    decimal pageDA = 0m, pageHotel = 0m, pageExpense = 0m;
+                    foreach (GridViewRow r in gvActivities.Rows)
+                    {
+                        // read per-row labels (IDs from TemplateField)
+                        Label lDA = r.FindControl("lblDA") as Label;
+                        Label lHotel = r.FindControl("lblHotel") as Label;
+                        Label lExp = r.FindControl("lblExpenseTotal") as Label;
+
+                        decimal tmp;
+                        if (lDA != null && decimal.TryParse(lDA.Text, out tmp)) pageDA += tmp;
+                        if (lHotel != null && decimal.TryParse(lHotel.Text, out tmp)) pageHotel += tmp;
+                        if (lExp != null && decimal.TryParse(lExp.Text, out tmp)) pageExpense += tmp;
+                    }
+
+                    // set footer labels
+                    if (gvActivities.FooterRow != null)
+                    {
+                        var fDA = gvActivities.FooterRow.FindControl("lblFooterDA") as Label;
+                        var fHotel = gvActivities.FooterRow.FindControl("lblFooterHotel") as Label;
+                        var fExpense = gvActivities.FooterRow.FindControl("lblFooterExpenseTotal") as Label;
+
+                        if (fDA != null) fDA.Text = pageDA.ToString("0.##");
+                        if (fHotel != null) fHotel.Text = pageHotel.ToString("0.##");
+                        if (fExpense != null) fExpense.Text = pageExpense.ToString("0.##");
+                    }
+
+
+                    // Set footer label if footer exists
+                    if (gvActivities.FooterRow != null)
+                    {
+                        Label lblFooter = gvActivities.FooterRow.FindControl("lblFooterCalculated") as Label;
+                        if (lblFooter != null)
+                        {
+                            lblFooter.Text = visibleTotal.ToString("0.00");
+                        }
+                        else
+                        {
+                            // alternative: set cell text directly (fallback)
+                            int calcColIndex = -1;
+                            for (int i = 0; i < gvActivities.Columns.Count; i++)
+                            {
+                                if (gvActivities.Columns[i] is TemplateField && ((TemplateField)gvActivities.Columns[i]).HeaderText == "Calculated Claim")
+                                {
+                                    calcColIndex = i;
+                                    break;
+                                }
+                            }
+                            if (calcColIndex >= 0 && calcColIndex < gvActivities.FooterRow.Cells.Count)
+                                gvActivities.FooterRow.Cells[calcColIndex].Text = "Total: " + visibleTotal.ToString("0.00");
+                        }
+                    }
+
+                    Actionable.Visible = true;
+                    lbl_msg.Text = "Action executed successfully.";
+                    lbl_msg.ForeColor = System.Drawing.Color.Green;
+
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySuccess", "showPNotify('Success', 'Process executed successfully.', 'success');", true);
+                }
+                catch (Exception ex)
+                {
+
+                    lbl_msg.Text = "An error occurred: " + ex.Message;
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", $"showPNotify('Error', '{ex.Message.Replace("'", "\\'")}', 'error');", true);
+                }
+            }
+
         }
+
+        private void BindGrid(Boolean policybinder)
+        {
+            lbl_msg.Text = "";
+            int year = int.Parse(DDL_Year.SelectedValue);
+            int month = int.Parse(DDL_Month.SelectedValue);
+
+            bool isPolicyEnabled = Convert.ToBoolean(ConfigurationManager.AppSettings["EnablePreviousMonthPolicy"]);
+            bool allowExecution = false;
+
+            if (isPolicyEnabled)
+            {
+                DateTime currentDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                                          TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"));
+                int currentYear = currentDate.Year;
+                int currentMonth = currentDate.Month;
+
+                bool isAllowedWindow = currentDate.Day >= 1 && currentDate.Day <= 15;
+                bool isPreviousMonthSelected =
+                    (year == currentYear && month == currentMonth - 1) ||
+                    (currentMonth == 1 && month == 12 && year == currentYear - 1);
+
+                if (isAllowedWindow && isPreviousMonthSelected)
+                    allowExecution = true;
+                else
+                {
+                    lbl_msg.Text = "You can process previous month data only between 1st and 15th of the current month.";
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyPolicyBlock",
+                        "showPNotify('Policy Restriction', 'Processing is allowed only between 1st and 15th for the previous month.', 'error');", true);
+                }
+            }
+            else
+            {
+                allowExecution = true;
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyBypass", "showPNotify('Policy Disabled', 'Monthly processing policy is disabled. Validation skipped.', 'info');", true);
+            }
+
+            if (!allowExecution) return;
+
+            try
+            {
+                if (policybinder == true)
+                {
+                    string employeeCode = GetLoggedInEmployeeCode(); // implement as per your auth
+                    int? regionId = GetLoggedInRegionId();
+                    int? branchId = GetLoggedInBranchId();
+                    int? gradeId = GetLoggedInGradeId();
+                    int? designationId = GetLoggedInDesignationId();
+                    var policy = GetResolvedPolicy(employeeCode, regionId, branchId, gradeId, designationId);
+                    if (policy != null)
+                    {
+                        // Use the policy values in UI or server-side validation
+                        BindPolicyToModal(policy);
+                        ShowPolicyNotification(policy);
+                    }
+                    else
+                    {
+                        // optional: show message when no policy found
+                        string msg = "No resolved policy found for the selected context.";
+                        RegisterClientNotification(msg, "warning");
+                    }
+                }
+
+
+                //----------Once Policy is Loaded, Bind the Sales Activity Records
+
+                //TXT_DAAmount.Text = lblResolvedDA.Text.ToString();
+
+                DataTable dt = new DataTable();
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_GetSalesDailyActivity_Month", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@LoginId", GetCurrentUserLoginId());
+                    cmd.Parameters.AddWithValue("@Year", year);
+                    cmd.Parameters.AddWithValue("@Month", month);
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                        da.Fill(dt);
+                }
+
+                // Ensure required columns exist before processing
+                if (!dt.Columns.Contains("CalculatedClaimAmount"))
+                    dt.Columns.Add("CalculatedClaimAmount", typeof(decimal));
+
+                if (!dt.Columns.Contains("RatePerKm"))
+                    dt.Columns.Add("RatePerKm", typeof(decimal));
+
+                // pick default rate from web.config or fallback
+                decimal defaultRate = 2.75m;
+                var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
+                decimal tmpCfg;
+                if (!string.IsNullOrWhiteSpace(cfg) && decimal.TryParse(cfg, out tmpCfg))
+                    defaultRate = tmpCfg;
+
+                // Compute per-row CalculatedClaimAmount and ensure RatePerKm set
+                foreach (DataRow row in dt.Rows)
+                {
+                    decimal totalKm = 0m;
+                    if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
+                        decimal.TryParse(row["TotalDistanceKM"].ToString(), out totalKm);
+
+                    decimal rate = GetRatePerKm(row, defaultRate);
+                    decimal claim = Math.Round(rate * totalKm, 2, MidpointRounding.AwayFromZero);
+
+                    row["CalculatedClaimAmount"] = claim;
+
+                    if (row.Table.Columns.Contains("RatePerKm"))
+                    {
+                        if (row["RatePerKm"] == DBNull.Value || string.IsNullOrWhiteSpace(row["RatePerKm"].ToString()))
+                            row["RatePerKm"] = rate;
+                    }
+                }
+
+                // --- Compute GRAND totals (entire DataTable) using DataTable.Compute
+                // This is the recommended approach for Finance views when paging is enabled.
+                decimal grandCalc = 0m, grandDA = 0m, grandHotel = 0m, grandExpense = 0m, grandKM = 0m;
+                CultureInfo ci = CultureInfo.GetCultureInfo("en-IN");
+
+                if (dt.Rows.Count > 0)
+                {
+                    // Use Compute for numeric columns (handles DBNull)
+                    object o;
+                    o = dt.Compute("SUM(CalculatedClaimAmount)", "");
+                    grandCalc = o != DBNull.Value ? Convert.ToDecimal(o) : 0m;
+
+                    if (dt.Columns.Contains("DAAmount")) { o = dt.Compute("SUM(DAAmount)", ""); grandDA = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("HotelAmount")) { o = dt.Compute("SUM(HotelAmount)", ""); grandHotel = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("ExpenseTotal")) { o = dt.Compute("SUM(ExpenseTotal)", ""); grandExpense = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("TotalDistanceKM")) { o = dt.Compute("SUM(TotalDistanceKM)", ""); grandKM = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                }
+
+                // Bind and then compute page (visible) totals for footer
+                gvActivities.DataSource = dt;
+                gvActivities.DataBind();
+
+                gvActivities.UseAccessibleHeader = true;
+                if (gvActivities.HeaderRow != null)
+                    gvActivities.HeaderRow.TableSection = TableRowSection.TableHeader;
+
+                // PAGE (visible) totals: parse label text from rows (safe sanitized parsing)
+                decimal pageCalc = 0m, pageDA = 0m, pageHotel = 0m, pageExpense = 0m, pageKM = 0m;
+                foreach (GridViewRow r in gvActivities.Rows)
+                {
+                    Label lCalc = r.FindControl("lblCalculatedClaim") as Label;
+                    Label lDA = r.FindControl("lblDA") as Label;
+                    Label lHotel = r.FindControl("lblHotel") as Label;
+                    Label lExp = r.FindControl("lblExpenseTotal") as Label;
+                    Label lKM = r.FindControl("lblTolRawMin") as Label; // if you display KM elsewhere, adjust accordingly
+
+                    //if (lCalc != null) { if (SanitizeDecimal(lCalc.Text, ci, out decimal v)) pageCalc += v; }
+                    //if (lDA != null) { if (SanitizeDecimal(lDA.Text, ci, out decimal v)) pageDA += v; }
+                    //if (lHotel != null) { if (SanitizeDecimal(lHotel.Text, ci, out decimal v)) pageHotel += v; }
+                    //if (lExp != null) { if (SanitizeDecimal(lExp.Text, ci, out decimal v)) pageExpense += v; }
+
+                    decimal v = 0m;
+
+                    if (lCalc != null)
+                    {
+                        if (SanitizeDecimal(lCalc.Text, ci, out v))
+                            pageCalc += v;
+                    }
+
+                    if (lDA != null)
+                    {
+                        if (SanitizeDecimal(lDA.Text, ci, out v))
+                            pageDA += v;
+                    }
+
+                    if (lHotel != null)
+                    {
+                        if (SanitizeDecimal(lHotel.Text, ci, out v))
+                            pageHotel += v;
+                    }
+
+                    if (lExp != null)
+                    {
+                        if (SanitizeDecimal(lExp.Text, ci, out v))
+                            pageExpense += v;
+                    }
+
+                }
+
+                // Set footer labels (show page totals but also optionally display grand totals via tooltip or small text)
+                //if (gvActivities.FooterRow != null)
+                //{
+                //    var fCalc = gvActivities.FooterRow.FindControl("lblFooterCalculated") as Label;
+                //    var fDA = gvActivities.FooterRow.FindControl("lblFooterDA") as Label;
+                //    var fHotel = gvActivities.FooterRow.FindControl("lblFooterHotel") as Label;
+                //    var fExpense = gvActivities.FooterRow.FindControl("lblFooterExpenseTotal") as Label;
+                //    var fKM = gvActivities.FooterRow.FindControl("lblFooterTotalKM") as Label;
+
+                //    if (fCalc != null) fCalc.Text = string.Format(ci, "₹ {0:N2}", pageCalc);
+                //    if (fDA != null) fDA.Text = string.Format(ci, "₹ {0:N2}", pageDA);
+                //    if (fHotel != null) fHotel.Text = string.Format(ci, "₹ {0:N2}", pageHotel);
+                //    if (fExpense != null) fExpense.Text = string.Format(ci, "₹ {0:N2}", pageExpense);
+                //    if (fKM != null) fKM.Text = string.Format(ci, "{0:N2} km", pageKM);
+
+                //    // Optionally add small tooltip with grand total (entire dataset) for accounting accuracy
+                //    if (fCalc != null) fCalc.ToolTip = $"Grand total (all rows): {string.Format(ci, "₹ {0:N2}", grandCalc)}";
+                //    if (fDA != null) fDA.ToolTip = $"Grand total (all rows): {string.Format(ci, "₹ {0:N2}", grandDA)}";
+                //    if (fHotel != null) fHotel.ToolTip = $"Grand total (all rows): {string.Format(ci, "₹ {0:N2}", grandHotel)}";
+                //    if (fExpense != null) fExpense.ToolTip = $"Grand total (all rows): {string.Format(ci, "₹ {0:N2}", grandExpense)}";
+                //}
+
+                // ✅ Append this block after gvActivities.DataBind(); and before any closing braces
+                if (gvActivities.FooterRow != null && dt != null && dt.Rows.Count > 0)
+                {
+                    // --- Compute grand totals using DataTable.Compute() ---
+                    //decimal grandCalc = 0m, grandDA = 0m, grandHotel = 0m, grandExpense = 0m;
+
+                    object obj;
+                    if (dt.Columns.Contains("CalculatedClaimAmount"))
+                    {
+                        obj = dt.Compute("SUM(CalculatedClaimAmount)", "");
+                        if (obj != DBNull.Value) grandCalc = Convert.ToDecimal(obj);
+                    }
+                    if (dt.Columns.Contains("DAAmount"))
+                    {
+                        obj = dt.Compute("SUM(DAAmount)", "");
+                        if (obj != DBNull.Value) grandDA = Convert.ToDecimal(obj);
+                    }
+                    if (dt.Columns.Contains("HotelAmount"))
+                    {
+                        obj = dt.Compute("SUM(HotelAmount)", "");
+                        if (obj != DBNull.Value) grandHotel = Convert.ToDecimal(obj);
+                    }
+                    if (dt.Columns.Contains("ExpenseTotal"))
+                    {
+                        obj = dt.Compute("SUM(ExpenseTotal)", "");
+                        if (obj != DBNull.Value) grandExpense = Convert.ToDecimal(obj);
+                    }
+
+                    // --- Find footer labels and assign grand totals ---
+                    Label fCalc = gvActivities.FooterRow.FindControl("lblFooterCalculated") as Label;
+                    Label fDA = gvActivities.FooterRow.FindControl("lblFooterDA") as Label;
+                    Label fHotel = gvActivities.FooterRow.FindControl("lblFooterHotel") as Label;
+                    Label fExpense = gvActivities.FooterRow.FindControl("lblFooterExpenseTotal") as Label;
+
+                    if (fCalc != null) fCalc.Text = "₹ " + grandCalc.ToString("N2");
+                    if (fDA != null) fDA.Text = "₹ " + grandDA.ToString("N2");
+                    if (fHotel != null) fHotel.Text = "₹ " + grandHotel.ToString("N2");
+                    if (fExpense != null) fExpense.Text = "₹ " + grandExpense.ToString("N2");
+
+                    // Compute grand total of TotalDistanceKM from the DataTable
+                    decimal grandTotalKM = 0m;
+                    if (dt != null && dt.Rows.Count > 0 && dt.Columns.Contains("TotalDistanceKM"))
+                    {
+                        object objTotalKM = dt.Compute("SUM(TotalDistanceKM)", "");
+                        if (objTotalKM != DBNull.Value)
+                            grandTotalKM = Convert.ToDecimal(objTotalKM);
+                    }
+
+                    // Find footer label for KM and update it
+                    Label lblFooterTotalKM = gvActivities.FooterRow.FindControl("lblFooterTotalKM") as Label;
+                    if (lblFooterTotalKM != null)
+                        lblFooterTotalKM.Text = string.Format("{0:N2} km", grandTotalKM); // or "{0:N2} km" if you don't want ₹
+
+                    // Optional: Tooltip for confirmation
+                    if (lblFooterTotalKM != null)
+                        lblFooterTotalKM.ToolTip = "Grand Total KM (all rows): " + grandTotalKM.ToString("N2");
+
+                    // Optional: tooltips for confirmation
+                    if (fCalc != null) fCalc.ToolTip = "Grand Total Claim: ₹ " + grandCalc.ToString("N2");
+                    if (fDA != null) fDA.ToolTip = "Grand Total DA: ₹ " + grandDA.ToString("N2");
+                    if (fHotel != null) fHotel.ToolTip = "Grand Total Hotel: ₹ " + grandHotel.ToString("N2");
+                    if (fExpense != null) fExpense.ToolTip = "Grand Total Day Expense: ₹ " + grandExpense.ToString("N2");
+
+                    // ✅ After computing grandCalc, grandDA, grandHotel, grandExpense
+
+                    // Compute overall (combined) grand total
+                    decimal grandOverall = grandCalc + grandDA + grandHotel + grandExpense;
+
+                    // Find the last footer cell (the yellow one in your grid)
+                    if (gvActivities.FooterRow != null)
+                    {
+                        int lastCellIndex = gvActivities.FooterRow.Cells.Count - 2;
+
+                        gvActivities.FooterRow.Cells[lastCellIndex].Text = "₹ " + grandOverall.ToString("N2");
+                        gvActivities.FooterRow.Cells[lastCellIndex].HorizontalAlign = HorizontalAlign.Center;
+                        gvActivities.FooterRow.Cells[lastCellIndex].Font.Bold = true;
+                        gvActivities.FooterRow.Cells[lastCellIndex].ForeColor = System.Drawing.Color.DarkBlue;
+                        gvActivities.FooterRow.Cells[lastCellIndex].ToolTip = "Grand Total of Claim + DA + Hotel + Day Total";
+                    }
+
+                }
+
+
+                Actionable.Visible = dt.Rows.Count > 0;
+                lbl_msg.Text = "Action executed successfully.";
+                lbl_msg.ForeColor = System.Drawing.Color.Green;
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySuccess", "showPNotify('Success', 'Process executed successfully.', 'success');", true);
+
+                
+            }
+            catch (Exception ex)
+            {
+                lbl_msg.Text = "An error occurred: " + ex.Message;
+                lbl_msg.ForeColor = System.Drawing.Color.Red;
+
+                ScriptManager.RegisterStartupScript(
+                    this,
+                    GetType(),
+                    "pnotifyError",
+                    "showPNotify('Error', '" + ex.Message.Replace("'", "\\'") + "', 'error');",
+                    true
+                );
+            }
+        }
+
+
+        /// <summary>
+        /// Safely parse a string that may contain currency symbol, commas, spaces.
+        /// Returns true & parsed decimal if parse succeeds.
+        /// </summary>
+        private bool SanitizeDecimal(string input, CultureInfo ci, out decimal result)
+        {
+            result = 0m;
+            if (string.IsNullOrWhiteSpace(input)) return false;
+
+            // Remove common non-numeric characters (₹ and other currency glyphs)
+            // Keep digits, minus, dot and comma (commas handled by TryParse with culture)
+            var cleaned = input.Replace("₹", "").Replace("Rs.", "").Replace("INR", "").Trim();
+
+            // Remove any non-digit except '.' and ',' and '-' (defensive)
+            // Note: Keep commas so TryParse with culture understands thousands separators
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in cleaned)
+            {
+                if (char.IsDigit(c) || c == '.' || c == ',' || c == '-') sb.Append(c);
+            }
+            cleaned = sb.ToString();
+
+            // Try parse with the provided culture (en-IN)
+            return decimal.TryParse(cleaned, NumberStyles.Number | NumberStyles.AllowLeadingSign, ci, out result);
+        }
+
+        private void BindPolicyToModal(PolicyResolved policy)
+        {
+            if (policy == null)
+                return;
+
+            // Basic meta
+            lblPolicyEmployeeCode.Text = HttpUtility.HtmlEncode(!string.IsNullOrEmpty(policy.EmployeeCode) ? policy.EmployeeCode : GetLoggedInEmployeeCode());
+            lblPolicySource.Text = HttpUtility.HtmlEncode(!string.IsNullOrEmpty(policy.Source) ? policy.Source : "HR-SOP");
+            lblPolicyRowId.Text = policy.RowId.HasValue ? policy.RowId.Value.ToString() : "—";
+            lblPolicyPriority.Text = policy.Priority.HasValue ? policy.Priority.Value.ToString() : "—";
+            //lblPolicySpecificity.Text = policy.Specificity.HasValue ? policy.Specificity.Value.ToString() : "No Data";
+
+            // Build Specificity Description using Region / Branch / Grade / Designation
+            //string regionText = policy.RegionId.HasValue ? $"R{policy.RegionId}" : "All Regions";
+            //string branchText = policy.BranchId.HasValue ? $"B{policy.BranchId}" : "All Branches";
+            //string gradeText = policy.GradeId.HasValue ? $"G{policy.GradeId}" : "All Grades";
+            //string desigText = policy.DesignationId.HasValue ? $"D{policy.DesignationId}" : "All Designations";
+            //// Combine into a readable string
+            //string specificityCombo = $"{regionText} / {branchText} / {gradeText} / {desigText}";
+            //// If your policy.Specificity numeric value still matters, you can append it
+            //if (policy.Specificity.HasValue)
+            //    specificityCombo += $"  (Spec: {policy.Specificity.Value})";
+            //lblPolicySpecificity.Text = HttpUtility.HtmlEncode(specificityCombo);
+
+            // --- Resolve textual specificity (Region / Branch / Grade / Designation) ---
+            string regionName = GetNameFromMaster("MST_Region", "Id", "Region_Description", policy.RegionId);
+            string branchName = GetNameFromMaster("MST_Branch", "Id", "Branch_Description", policy.BranchId);
+            string gradeName = GetNameFromMaster("MST_Grade", "Id", "Grade_Description", policy.GradeId);
+            string desigName = GetNameFromMaster("MST_Designation", "Id", "Designation_Description", policy.DesignationId);
+
+            // Fallback defaults if null
+            regionName = !string.IsNullOrEmpty(regionName) ? regionName : "All Regions";
+            branchName = !string.IsNullOrEmpty(branchName) ? branchName : "All Branches";
+            gradeName = !string.IsNullOrEmpty(gradeName) ? gradeName : "All Grades";
+            desigName = !string.IsNullOrEmpty(desigName) ? desigName : "All Designations";
+
+            // Build clean textual combination
+            lblPolicySpecificity.Text = $"{regionName} / {branchName} / {gradeName} / {desigName}";
+
+            // Effective / active
+            var effFrom = policy.EffectiveFrom.HasValue ? policy.EffectiveFrom.Value.ToString("yyyy-MM-dd") : "—";
+            var effTo = policy.EffectiveTo.HasValue ? policy.EffectiveTo.Value.ToString("yyyy-MM-dd") : "—";
+            lblPolicyEffective.Text = $"{effFrom} to {effTo}";
+            lblPolicyIsActive.Text = policy.IsActive.HasValue ? (policy.IsActive.Value ? "Yes" : "No") : "—";
+
+            // Designation / Grade display (combine if available)
+            string desig = policy.DesignationId.HasValue ? policy.DesignationId.Value.ToString() : null;
+            string grade = policy.GradeId.HasValue ? policy.GradeId.Value.ToString() : null;
+            lblPolicyDesigGrade.Text = !string.IsNullOrEmpty(desig) || !string.IsNullOrEmpty(grade) ?
+                                        $"{(string.IsNullOrEmpty(desig) ? "—" : desig)} / {(string.IsNullOrEmpty(grade) ? "—" : grade)}" : "—";
+
+            // Resolved numeric values (format to 2 decimals)
+            lblResolvedMaxKM.Text = policy.Resolved_MaxKM.HasValue ? policy.Resolved_MaxKM.Value.ToString("N2") : "—";
+            lblResolvedRatePerKm.Text = policy.Resolved_RatePerKm.HasValue ? policy.Resolved_RatePerKm.Value.ToString("N2") : "—";
+            lblResolvedDA.Text = policy.Resolved_DA.HasValue ? policy.Resolved_DA.Value.ToString("N2") : "—";
+            lblResolvedHotelCap.Text = policy.Resolved_HotelCap.HasValue ? policy.Resolved_HotelCap.Value.ToString("N2") : "—";
+
+            // Remarks & RAW JSON
+            lblResolvedRemarks.Text = HttpUtility.HtmlEncode(!string.IsNullOrEmpty(policy.Resolved_Remarks) ? policy.Resolved_Remarks : "Per Day Capping is Displayed");
+
+            // Put raw JSON into the textbox but keep it hidden by default (toggle button shows it)
+            policyJsonRaw.Text = policy.PolicyJson ?? "";
+            policyJsonRaw.Visible = false;
+
+            // Hidden fields (for possible future use)
+            HF_Policy_RegionId.Value = policy.RegionId.HasValue ? policy.RegionId.Value.ToString() : string.Empty;
+            HF_Policy_BranchId.Value = policy.BranchId.HasValue ? policy.BranchId.Value.ToString() : string.Empty;
+            HF_Policy_GradeId.Value = policy.GradeId.HasValue ? policy.GradeId.Value.ToString() : string.Empty;
+            HF_Policy_DesignationId.Value = policy.DesignationId.HasValue ? policy.DesignationId.Value.ToString() : string.Empty;
+
+            // Clear page-level message label if you use it
+            LBL_ExpenseMsg.Text = string.Empty;
+
+            // Show modal (works with or without UpdatePanel)
+            ShowPolicyModal();
+        }
+
+        /// <summary>
+        /// Registers a small client-side notification. Tries PNotify -> toastr -> alert
+        /// </summary>
+        private void ShowPolicyNotificationNew(PolicyResolved policy)
+        {
+            string source = !string.IsNullOrEmpty(policy.Source) ? policy.Source : "—";
+            string priority = policy.Priority.HasValue ? policy.Priority.Value.ToString() : "—";
+            string msg = $"Resolved policy loaded. Source: {source}, Priority: {priority}";
+
+            RegisterClientNotification(msg, "info");
+        }
+
+        private string GetNameFromMaster(string tableName, string idColumn, string textColumn, int? id)
+        {
+            if (!id.HasValue)
+                return null;
+
+            string name = null;
+            string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            using (var con = new SqlConnection(connStr))
+            using (var cmd = new SqlCommand($"SELECT TOP 1 {textColumn} FROM {tableName} WHERE {idColumn} = @Id", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", id.Value);
+                con.Open();
+                var result = cmd.ExecuteScalar();
+                if (result != null && result != DBNull.Value)
+                    name = Convert.ToString(result);
+            }
+
+            return name;
+        }
+
+
+        private void RegisterClientNotification(string message, string severity = "info")
+        {
+            // Escape for JS string literal
+            string jsMessage = HttpUtility.JavaScriptStringEncode(message);
+
+            // Simple script: prefer PNotify or toastr if present, else alert()
+            string script = $@"
+        (function() {{
+            var msg = '{jsMessage}';
+            try {{
+                if (window.PNotify) {{
+                    // PNotify 3 usage pattern (adjust if you use v4)
+                    new PNotify({{ text: msg, type: '{severity}', delay: 2500 }});
+                }} else if (window.toastr) {{
+                    toastr['{severity}'](msg);
+                }} else {{
+                    alert(msg);
+                }}
+            }} catch(e) {{
+                try {{ alert(msg); }} catch(e){{}}
+            }}
+        }})();";
+
+            if (ScriptManager.GetCurrent(Page) != null)
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "policyNotify_" + Guid.NewGuid().ToString("N"), script, true);
+            }
+            else
+            {
+                ClientScript.RegisterStartupScript(this.GetType(), "policyNotify_" + Guid.NewGuid().ToString("N"), script, true);
+            }
+        }
+
+        private void ShowPolicyModal()
+        {
+            string script = "$('#policyModal').modal('show');";
+
+            if (ScriptManager.GetCurrent(Page) != null)
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showPolicyModal", script, true);
+            }
+            else
+            {
+                ClientScript.RegisterStartupScript(this.GetType(), "showPolicyModal", script, true);
+            }
+        }
+
+
 
         private decimal GetRatePerKm(DataRow row, decimal fallbackRate)
         {
@@ -257,7 +829,8 @@ namespace AnmolDristi
                 // If no expense rows exist for this activity, CLEAR the modal inputs so user can enter new ones
                 if (dt == null || dt.Rows.Count == 0)
                 {
-                    TXT_DAAmount.Text = string.Empty;
+                    //TXT_DAAmount.Text = string.Empty;
+                    TXT_DAAmount.Text = lblResolvedDA.Text.ToString();
                     TXT_HotelAmount.Text = string.Empty;
                     TXT_HotelBillNo.Text = string.Empty;
                     TXT_HotelPurpose.Text = string.Empty;
@@ -268,6 +841,7 @@ namespace AnmolDristi
                     {
                         TXT_HotelFromDate.Text = parsed.ToString("yyyy-MM-dd");
                         TXT_HotelToDate.Text = parsed.ToString("yyyy-MM-dd");
+                        TXT_TravelDate.Text = parsed.ToString("yyyy-MM-dd");
                         lbl_traveldate.Text = parsed.ToString("dd-MM-yyyy");
                     }
                     else
@@ -275,7 +849,7 @@ namespace AnmolDristi
                         var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
                         var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist);
                         TXT_HotelFromDate.Text = nowIst.ToString("yyyy-MM-dd");
-                        TXT_HotelToDate.Text = nowIst.ToString("yyyy-MM-dd");
+                        TXT_TravelDate.Text = nowIst.ToString("yyyy-MM-dd");
                     }
 
                     // Clear any prior messages
@@ -301,6 +875,7 @@ namespace AnmolDristi
 
                         if (string.Equals(type, "DA", StringComparison.OrdinalIgnoreCase))
                         {
+                            TXT_DAAmount.Text = amt.ToString();
                             daSum += amt;
                         }
                         else if (string.Equals(type, "Hotel", StringComparison.OrdinalIgnoreCase))
@@ -353,6 +928,7 @@ namespace AnmolDristi
 
                     TXT_HotelFromDate.Text = hotelFrom.HasValue ? hotelFrom.Value.ToString("yyyy-MM-dd") : string.Empty;
                     TXT_HotelToDate.Text = hotelTo.HasValue ? hotelTo.Value.ToString("yyyy-MM-dd") : string.Empty;
+                    TXT_TravelDate.Text = hotelTo.HasValue ? hotelTo.Value.ToString("yyyy-MM-dd") : string.Empty;
 
                     lbl_traveldate.Text = hotelFrom.Value.ToString("dd-MM-yyyy");
                     //TXT_HotelBillNo.Text = hotelBill;
@@ -378,7 +954,7 @@ namespace AnmolDristi
                     if (rowIndex >= 0)
                     {
                         gvActivities.EditIndex = rowIndex;
-                        BindGrid();
+                        BindGrid(false);
                     }
                 }
             }
@@ -410,7 +986,7 @@ namespace AnmolDristi
                         cmd.ExecuteNonQuery();
                     }
                     gvActivities.EditIndex = -1;
-                    BindGrid();
+                    BindGrid(false);
                     lbl_msg.ForeColor = System.Drawing.Color.Green;
                     lbl_msg.Text = "KM updated.";
                 }
@@ -423,7 +999,7 @@ namespace AnmolDristi
 
         }
 
-        protected void gvActivities_RowDataBound(object sender, GridViewRowEventArgs e)
+        protected void gvActivities_RowDataBound_OLD(object sender, GridViewRowEventArgs e)
         {
             if (e.Row.RowType != DataControlRowType.DataRow) return;
 
@@ -472,6 +1048,77 @@ namespace AnmolDristi
             if (lblTolUpper_Edit != null) lblTolUpper_Edit.Text = F(allowedUpper);
         }
 
+        protected void gvActivities_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow) return;
+
+            var drv = e.Row.DataItem as System.Data.DataRowView;
+            if (drv == null) return;
+
+            decimal totalKm = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]) : 0m;
+            //decimal? minTol = drv.Table.Columns.Contains("MinAllowedKM") && drv["MinAllowedKM"] != DBNull.Value ?
+            //                  (decimal?)Convert.ToDecimal(drv["MinAllowedKM"]) : null;
+            //decimal? maxTol = drv.Table.Columns.Contains("MaxAllowedKM") && drv["MaxAllowedKM"] != DBNull.Value ?
+            //                  (decimal?)Convert.ToDecimal(drv["MaxAllowedKM"]) : null;
+
+            decimal? minTol = null;
+            decimal? maxTol = null;
+
+            if (drv != null && drv.Row != null && drv.Row.Table != null)
+            {
+                if (drv.Row.Table.Columns.Contains("MinAllowedKM") && drv["MinAllowedKM"] != DBNull.Value)
+                    minTol = Convert.ToDecimal(drv["MinAllowedKM"]);
+
+                if (drv.Row.Table.Columns.Contains("MaxAllowedKM") && drv["MaxAllowedKM"] != DBNull.Value)
+                    maxTol = Convert.ToDecimal(drv["MaxAllowedKM"]);
+            }
+
+            // Interpretation note:
+            // - If MinAllowedKM / MaxAllowedKM are **absolute bounds** then display them directly.
+            // - If they are **tolerances** (i.e., +/- tolerance around current TotalDistanceKM),
+            //   then allowedLower = TotalDistanceKM - MinAllowedKM ; allowedUpper = TotalDistanceKM + MaxAllowedKM.
+            //
+            // I implement a safe heuristic: if MinAllowedKM/MaxAllowedKM look small (<= totalKm), we assume tolerance.
+            // If they look like absolute minimums (e.g., > totalKm), we display as absolute.
+            decimal? allowedLower = null, allowedUpper = null;
+            if (minTol.HasValue && maxTol.HasValue)
+            {
+                // heuristic: if minTol <= totalKm -> treat as tolerance; else treat as absolute bound
+                if (minTol.Value <= totalKm)
+                    allowedLower = Math.Max(0, totalKm - minTol.Value); // tolerance interpretation
+                else
+                    allowedLower = minTol.Value; // absolute interpretation
+
+                if (maxTol.Value <= (totalKm * 5)) // arbitrary heuristic to avoid crazy upper bound
+                    allowedUpper = totalKm + maxTol.Value; // tolerance interpretation
+                else
+                    allowedUpper = maxTol.Value; // absolute interpretation
+            }
+            else
+            {
+                // fallback when only one is present
+                if (minTol.HasValue)
+                {
+                    allowedLower = Math.Max(0, totalKm - minTol.Value);
+                }
+                if (maxTol.HasValue)
+                {
+                    allowedUpper = totalKm + maxTol.Value;
+                }
+            }
+
+            Label lblTolLower = e.Row.FindControl("lblTolLower") as Label;
+            Label lblTolUpper = e.Row.FindControl("lblTolUpper") as Label;
+            Label lblTolLower_Edit = e.Row.FindControl("lblTolLower_Edit") as Label;
+            Label lblTolUpper_Edit = e.Row.FindControl("lblTolUpper_Edit") as Label;
+
+            Func<decimal?, string> F = d => d.HasValue ? d.Value.ToString("0.00") : "—";
+
+            if (lblTolLower != null) lblTolLower.Text = F(allowedLower);
+            if (lblTolUpper != null) lblTolUpper.Text = F(allowedUpper);
+            if (lblTolLower_Edit != null) lblTolLower_Edit.Text = F(allowedLower);
+            if (lblTolUpper_Edit != null) lblTolUpper_Edit.Text = F(allowedUpper);
+        }
 
 
         private int FindRowIndexByActivityId(int activityId)
@@ -487,13 +1134,13 @@ namespace AnmolDristi
         protected void gvActivities_RowEditing(object sender, GridViewEditEventArgs e)
         {
             gvActivities.EditIndex = e.NewEditIndex;
-            BindGrid();
+            BindGrid(false);
         }
 
         protected void gvActivities_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
             gvActivities.EditIndex = -1;
-            BindGrid();
+            BindGrid(false);
         }
 
         protected void gvActivities_RowUpdating(object sender, GridViewUpdateEventArgs e)
@@ -518,7 +1165,7 @@ namespace AnmolDristi
                     cmd.ExecuteNonQuery();
                 }
                 gvActivities.EditIndex = -1;
-                BindGrid();
+                BindGrid(false);
             }
             catch (SqlException sqx)
             {
@@ -632,7 +1279,7 @@ namespace AnmolDristi
 
                 LoadExpenseForActivity(activityId.ToString());
                 ClientScript.RegisterStartupScript(this.GetType(), "showExpense", "showExpenseModal();", true);
-                BindGrid();
+                BindGrid(false);
                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
                 LBL_ExpenseMsg.Text = "Expense saved.";
             }
@@ -647,10 +1294,12 @@ namespace AnmolDristi
                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
                 LBL_ExpenseMsg.Text = ex.Message;
                 ClientScript.RegisterStartupScript(this.GetType(), "showExpense", "showExpenseModal();", true);
+
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError1", $"showPNotify('Error', '{ex.Message.Replace("'", "\\'")}', 'error');", true);
             }
         }
 
-        protected void BTN_SaveExpense_Click(object sender, EventArgs e)
+        protected void BTN_SaveExpense_Click_OLD2(object sender, EventArgs e)
         {
             LBL_ExpenseMsg.Text = "";
             LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
@@ -785,13 +1434,9 @@ namespace AnmolDristi
                             cmd.Parameters.AddWithValue("@Amount", daAmt);
                             cmd.Parameters.AddWithValue("@Purpose", DBNull.Value);
                             cmd.Parameters.AddWithValue("@BillNo", DBNull.Value);
-                            //cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
-                            //cmd.Parameters.AddWithValue("@AttachmentContent", DBNull.Value);
-                            // AttachmentFileName gets the relative path string (or NULL)
-                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
-
-                            // AttachmentContent must be VARBINARY; set to NULL explicitly
-                            //cmd.Parameters.AddWithValue("@AttachmentContent", savedFileName);
+                            cmd.Parameters.AddWithValue("@AttachmentContent", DBNull.Value);
+                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName);
+                            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
                             cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = new byte[0];
                             cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
                             cmd.ExecuteNonQuery();
@@ -813,12 +1458,17 @@ namespace AnmolDristi
                             //cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
                             //cmd.Parameters.AddWithValue("@AttachmentContent", DBNull.Value);
                             // AttachmentFileName gets the relative path string (or NULL)
-                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
+                            //cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
                             // AttachmentContent must be VARBINARY; set to NULL explicitly
                             //cmd.Parameters.AddWithValue("@AttachmentContent", savedFileName);
                             //byte[] fileBytes = FU_Attachment.FileBytes;
                             //cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = fileBytes;
-                            cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = new byte[0];
+                            //cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = new byte[0];
+
+                            cmd.Parameters.AddWithValue("@AttachmentContent", DBNull.Value);
+                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName);
+                            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
+
                             cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
                             cmd.ExecuteNonQuery();
                         }
@@ -829,7 +1479,7 @@ namespace AnmolDristi
                 //LoadExpenseForActivity(activityId.ToString());
 
                 DataTable dtAfter = LoadExpenseForActivity(activityId.ToString());
-                BindGrid();
+                BindGrid(false);
 
                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
                 LBL_ExpenseMsg.Text = "Expense saved.";
@@ -846,6 +1496,347 @@ namespace AnmolDristi
                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
                 LBL_ExpenseMsg.Text = ex.Message;
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+            }
+        }
+
+        protected void BTN_SaveExpense_Click(object sender, EventArgs e)
+        {
+            LBL_ExpenseMsg.Text = "";
+            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+
+            int activityId;
+            if (!int.TryParse(HF_ActivityId.Value, out activityId))
+            {
+                LBL_ExpenseMsg.Text = "Invalid activity.";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                return;
+            }
+
+            // Expense type selector: must exist on UI (DDL_ExpenseType)
+            string expenseType = "DA";
+            if (DDL_ExpenseType != null && !string.IsNullOrWhiteSpace(DDL_ExpenseType.SelectedValue))
+                expenseType = DDL_ExpenseType.SelectedValue.Trim();
+
+            // Common validations & parse amounts
+            decimal daAmt = 0m;
+            decimal.TryParse(TXT_DAAmount.Text.Trim(), out daAmt);
+
+            decimal hotelAmt = 0m;
+            decimal.TryParse(TXT_HotelAmount.Text.Trim(), out hotelAmt);
+
+            // Travel specific amount and date
+            decimal travelAmt = 0m;
+            DateTime travelDate = DateTime.MinValue;
+            DateTime? travelDateNullable = null;
+            if (!string.IsNullOrWhiteSpace(TXT_TravelAmount?.Text))
+                decimal.TryParse(TXT_TravelAmount.Text.Trim(), out travelAmt);
+
+            if (!string.IsNullOrWhiteSpace(TXT_TravelDate?.Text))
+            {
+                DateTime tmp;
+                if (DateTime.TryParse(TXT_TravelDate.Text.Trim(), out tmp))
+                {
+                    travelDate = tmp.Date;
+                    travelDateNullable = travelDate;
+                }
+                else
+                {
+                    // if user selected Travel type and entered invalid date -> error
+                    if (expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase))
+                    {
+                        LBL_ExpenseMsg.Text = "Invalid Travel Date.";
+                        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                        return;
+                    }
+                }
+            }
+
+            // Hotel From/To parsing (only used for hotel)
+            DateTime? fromDate = null;
+            DateTime? toDate = null;
+            if (!string.IsNullOrWhiteSpace(TXT_HotelFromDate.Text))
+            {
+                DateTime tmp;
+                if (DateTime.TryParse(TXT_HotelFromDate.Text.Trim(), out tmp))
+                    fromDate = tmp.Date;
+                else
+                {
+                    LBL_ExpenseMsg.Text = "Invalid Hotel From Date.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(TXT_HotelToDate.Text))
+            {
+                DateTime tmp;
+                if (DateTime.TryParse(TXT_HotelToDate.Text.Trim(), out tmp))
+                    toDate = tmp.Date;
+                else
+                {
+                    LBL_ExpenseMsg.Text = "Invalid Hotel To Date.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+            }
+
+            // If hotel amount specified, require FromDate and ToDate
+            if (expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase) && hotelAmt > 0m)
+            {
+                if (!fromDate.HasValue || !toDate.HasValue)
+                {
+                    LBL_ExpenseMsg.Text = "Please provide From Date and To Date for Hotel expense.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+                if (toDate.Value < fromDate.Value)
+                {
+                    LBL_ExpenseMsg.Text = "Hotel To Date cannot be earlier than From Date.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+            }
+
+            // If travel selected, require travel date and amount > 0
+            if (expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase))
+            {
+                if (travelAmt <= 0m)
+                {
+                    LBL_ExpenseMsg.Text = "Please enter Travel Amount.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+                if (!travelDateNullable.HasValue)
+                {
+                    LBL_ExpenseMsg.Text = "Please enter Travel Date.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+            }
+
+            // If nothing to save
+            bool anyFile = FU_Attachment != null && FU_Attachment.HasFile;
+            if (expenseType.Equals("DA", StringComparison.OrdinalIgnoreCase) && daAmt <= 0m && !anyFile)
+            {
+                LBL_ExpenseMsg.Text = "Nothing to save. Enter DA amount or attach a file.";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                return;
+            }
+
+            // For Hotel branch, check hotelAmt or file or bill no etc.
+            if (expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase) && hotelAmt <= 0m && !anyFile)
+            {
+                LBL_ExpenseMsg.Text = "Nothing to save. Enter Hotel amount or attach a file.";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                return;
+            }
+
+            // For Travel branch we already validated travelAmt and travelDate.
+
+            // handle file save (shared for both DA, Hotel, Travel)
+            string savedRelativePath = null;
+            string savedFileName = null;
+
+            try
+            {
+                if (FU_Attachment != null && FU_Attachment.HasFile)
+                {
+                    if (FU_Attachment.PostedFile.ContentLength > 5 * 1024 * 1024)
+                    {
+                        LBL_ExpenseMsg.Text = "Attachment too large (max 5MB).";
+                        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                        return;
+                    }
+
+                    string ext = Path.GetExtension(FU_Attachment.FileName).ToLower();
+                    var allowed = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+                    if (Array.IndexOf(allowed, ext) < 0)
+                    {
+                        LBL_ExpenseMsg.Text = "Invalid file type. Allowed: JPG, PNG, PDF.";
+                        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                        return;
+                    }
+
+                    string baseFolder = Server.MapPath("~/UploadedFiles/ClaimsAttachment/");
+                    string year = DateTime.UtcNow.AddMinutes(330).ToString("yyyy");
+                    string month = DateTime.UtcNow.AddMinutes(330).ToString("MM");
+                    string uploadsFolder = Path.Combine(baseFolder, year, month);
+                    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                    string safeLogin = (GetCurrentUserLoginId(false) ?? "anon").Replace(" ", "_");
+                    string uniquePart = DateTime.UtcNow.AddMinutes(330).ToString("yyyyMMddHHmmss") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    savedFileName = $"{safeLogin}_{activityId}_{uniquePart}{ext}";
+                    string savedFullPath = Path.Combine(uploadsFolder, savedFileName);
+                    FU_Attachment.SaveAs(savedFullPath);
+                    savedRelativePath = Path.Combine("UploadedFiles/ClaimsAttachment", year, month, savedFileName).Replace("\\", "/");
+                }
+
+                using (SqlConnection con = new SqlConnection(connString))
+                {
+                    con.Open();
+
+                    // DA branch - use usp_SaveDailyExpense if amount > 0
+                    if (expenseType.Equals("DA", StringComparison.OrdinalIgnoreCase) && daAmt > 0m)
+                    {
+                        using (SqlCommand cmd = new SqlCommand("usp_SaveDailyExpense", con))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                            cmd.Parameters.AddWithValue("@ExpenseType", "DA");
+
+                            DateTime? expDate = null;
+                            if (!string.IsNullOrWhiteSpace(HF_ActivityDate.Value))
+                            {
+                                DateTime tmp;
+                                if (DateTime.TryParse(HF_ActivityDate.Value, out tmp)) expDate = tmp.Date;
+                            }
+                            cmd.Parameters.AddWithValue("@ExpenseDate", expDate.HasValue ? (object)expDate.Value : DBNull.Value);
+                            cmd.Parameters.AddWithValue("@Amount", daAmt);
+                            cmd.Parameters.AddWithValue("@Purpose", DBNull.Value);
+                            cmd.Parameters.AddWithValue("@BillNo", DBNull.Value);
+                            //cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
+                            // pass NULL for AttachmentContent when file saved to disk
+                            //cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = savedFileName != null ? (object)DBNull.Value : (object)DBNull.Value;
+
+                            //cmd.Parameters.AddWithValue("@AttachmentContent", DBNull.Value);
+                            cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = savedFileName != null ? (object)DBNull.Value : (object)DBNull.Value;
+                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName);
+                            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
+
+                            cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    // Hotel branch - use usp_SaveHotelExpense if amount > 0
+                    if (expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase) && hotelAmt > 0m)
+                    {
+                        using (SqlCommand cmd = new SqlCommand("usp_SaveHotelExpense", con))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                            cmd.Parameters.AddWithValue("@FromDate", fromDate.Value);
+                            cmd.Parameters.AddWithValue("@ToDate", toDate.Value);
+                            cmd.Parameters.AddWithValue("@BillNo", string.IsNullOrWhiteSpace(TXT_HotelBillNo.Text) ? (object)DBNull.Value : TXT_HotelBillNo.Text.Trim());
+                            cmd.Parameters.AddWithValue("@Amount", hotelAmt);
+                            cmd.Parameters.AddWithValue("@Purpose", string.IsNullOrWhiteSpace(TXT_HotelPurpose.Text) ? (object)DBNull.Value : TXT_HotelPurpose.Text.Trim());
+                            //cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
+                            //cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = savedFileName != null ? (object)DBNull.Value : (object)DBNull.Value;
+
+                            cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = savedFileName != null ? (object)DBNull.Value : (object)DBNull.Value;
+                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName);
+                            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
+
+                            cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+
+                    // --- Travel branch: use structured columns (Option B) ---
+                    if (expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase) && travelAmt > 0m)
+                    {
+                        string travelType = DDL_TravelType != null ? DDL_TravelType.SelectedValue : "";
+                        string fromPlace = TXT_FromPlace != null ? TXT_FromPlace.Text.Trim() : "";
+                        string toPlace = TXT_ToPlace != null ? TXT_ToPlace.Text.Trim() : "";
+                        string invoiceNo = (CHK_TravelInvoice != null && CHK_TravelInvoice.Checked) ? (TXT_TravelInvoiceNo != null ? TXT_TravelInvoiceNo.Text.Trim() : "") : null;
+                        string travelPurpose = TXT_TravelPurpose != null ? TXT_TravelPurpose.Text.Trim() : "";
+
+                        using (SqlCommand cmd = new SqlCommand(@"
+                                INSERT INTO dbo.SalesDailyExpense
+                                  (ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentContent, CreatedBy,
+                                   TravelType, FromPlace, ToPlace, TravelDate)
+                                VALUES
+                                  (@ActivityId, @ExpenseType, @ExpenseDate, NULL, NULL, @BillNo, @Amount, @Currency, @Purpose, @AttachmentFileName, @AttachmentContent, @CreatedBy,
+                                   @TravelType, @FromPlace, @ToPlace, @TravelDate)
+                            ", con))
+                        {
+                            cmd.CommandType = CommandType.Text;
+                            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                            cmd.Parameters.AddWithValue("@ExpenseType", "Travel");
+                            cmd.Parameters.AddWithValue("@ExpenseDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : DBNull.Value);
+                            cmd.Parameters.AddWithValue("@BillNo", string.IsNullOrWhiteSpace(invoiceNo) ? (object)DBNull.Value : invoiceNo);
+                            cmd.Parameters.AddWithValue("@Amount", travelAmt);
+                            cmd.Parameters.AddWithValue("@Currency", DBNull.Value); // or pass textbox if you have currency field
+                            cmd.Parameters.AddWithValue("@Purpose", string.IsNullOrWhiteSpace(travelPurpose) ? (object)DBNull.Value : travelPurpose);
+                            //cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
+
+                            // AttachmentContent: we store NULL (file on disk). If you want to store bytes, change this to file bytes.
+                            cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = DBNull.Value;
+
+                            //cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = savedFileName != null ? (object)DBNull.Value : (object)DBNull.Value;
+                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName);
+                            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
+
+                            // New travel fields
+                            cmd.Parameters.AddWithValue("@TravelType", string.IsNullOrWhiteSpace(travelType) ? (object)DBNull.Value : travelType);
+                            cmd.Parameters.AddWithValue("@FromPlace", string.IsNullOrWhiteSpace(fromPlace) ? (object)DBNull.Value : fromPlace);
+                            cmd.Parameters.AddWithValue("@ToPlace", string.IsNullOrWhiteSpace(toPlace) ? (object)DBNull.Value : toPlace);
+                            cmd.Parameters.AddWithValue("@TravelDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : DBNull.Value);
+
+                            cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+
+
+                    //// Travel branch - route through usp_SaveDailyExpense, storing travel fields in Purpose (structured string)
+                    //if (expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase) && travelAmt > 0m)
+                    //{
+                    //    string travelType = DDL_TravelType != null ? DDL_TravelType.SelectedValue : "";
+                    //    string fromPlace = TXT_FromPlace != null ? TXT_FromPlace.Text.Trim() : "";
+                    //    string toPlace = TXT_ToPlace != null ? TXT_ToPlace.Text.Trim() : "";
+                    //    string invoiceNo = (CHK_TravelInvoice != null && CHK_TravelInvoice.Checked) ? (TXT_TravelInvoiceNo != null ? TXT_TravelInvoiceNo.Text.Trim() : "") : null;
+                    //    string travelPurpose = TXT_TravelPurpose != null ? TXT_TravelPurpose.Text.Trim() : "";
+
+                    //    // Build structured purpose:
+                    //    // "[Train] Mumbai -> Pune | TravelDate=2025-10-10 | Invoice=INV123 | Meeting with client"
+                    //    var parts = new List<string>();
+                    //    if (!string.IsNullOrWhiteSpace(travelType)) parts.Add($"[{travelType}]");
+                    //    if (!string.IsNullOrWhiteSpace(fromPlace) || !string.IsNullOrWhiteSpace(toPlace)) parts.Add($"{fromPlace} -> {toPlace}");
+                    //    if (travelDateNullable.HasValue) parts.Add($"TravelDate={travelDateNullable.Value:yyyy-MM-dd}");
+                    //    if (!string.IsNullOrWhiteSpace(invoiceNo)) parts.Add($"Invoice={invoiceNo}");
+                    //    string structuredPrefix = string.Join(" | ", parts);
+                    //    string finalPurpose = string.IsNullOrWhiteSpace(travelPurpose) ? structuredPrefix : $"{structuredPrefix} | {travelPurpose}";
+
+                    //    using (SqlCommand cmd = new SqlCommand("usp_SaveDailyExpense", con))
+                    //    {
+                    //        cmd.CommandType = CommandType.StoredProcedure;
+                    //        cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    //        cmd.Parameters.AddWithValue("@ExpenseType", "Travel");
+                    //        // use travelDate as ExpenseDate
+                    //        cmd.Parameters.AddWithValue("@ExpenseDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : DBNull.Value);
+                    //        cmd.Parameters.AddWithValue("@Amount", travelAmt);
+                    //        cmd.Parameters.AddWithValue("@Purpose", string.IsNullOrWhiteSpace(finalPurpose) ? (object)DBNull.Value : finalPurpose);
+                    //        cmd.Parameters.AddWithValue("@BillNo", string.IsNullOrWhiteSpace(invoiceNo) ? (object)DBNull.Value : invoiceNo);
+                    //        cmd.Parameters.AddWithValue("@AttachmentFileName", savedRelativePath ?? (object)DBNull.Value);
+                    //        cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = savedFileName != null ? (object)DBNull.Value : (object)DBNull.Value;
+                    //        cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
+                    //        cmd.ExecuteNonQuery();
+                    //    }
+                    //}
+                } // using con
+
+                // reload list and UI
+                DataTable dtAfter = LoadExpenseForActivity(activityId.ToString());
+                BindGrid(false);
+
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
+                LBL_ExpenseMsg.Text = "Expense saved.";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+            }
+            catch (SqlException sqx)
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                LBL_ExpenseMsg.Text = sqx.Message;
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+            }
+            catch (Exception ex)
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                LBL_ExpenseMsg.Text = ex.Message;
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError2", $"showPNotify('Error', '{ex.Message.Replace("'", "\\'")}', 'error');", true);
             }
         }
 
@@ -866,14 +1857,15 @@ namespace AnmolDristi
             rptExpenses.DataBind();
         }
 
-        private DataTable LoadExpenseForActivity(string activityId)
+        private DataTable LoadExpenseForActivity_OLD2(string activityId)
         {
             DataTable dt = new DataTable();
             using (SqlConnection con = new SqlConnection(connString))
-            using (SqlCommand cmd = new SqlCommand(@"SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate,Purpose, FromDate, ToDate, BillNo, Amount, AttachmentFileName
-                                            FROM dbo.SalesDailyExpense 
-                                            WHERE ActivityId = @ActivityId 
-                                            ORDER BY ExpenseDate, ExpenseId", con))
+            using (SqlCommand cmd = new SqlCommand(@"SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose,
+                       AttachmentFileName, TravelType, FromPlace, ToPlace, TravelDate
+                FROM dbo.SalesDailyExpense
+                WHERE ActivityId = @ActivityId
+                ORDER BY ExpenseDate DESC, ExpenseId DESC;", con))
             {
                 cmd.Parameters.AddWithValue("@ActivityId", activityId);
                 using (SqlDataAdapter da = new SqlDataAdapter(cmd))
@@ -888,6 +1880,48 @@ namespace AnmolDristi
             UpdateExpenseTotals(dt);
             return dt;
         }
+
+        protected DataTable LoadExpenseForActivity(string activityIdStr)
+        {
+            int activityId = 0;
+            int.TryParse(activityIdStr, out activityId);
+
+            DataTable dt = new DataTable();
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"
+                SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose,
+                       AttachmentFileName, TravelType, FromPlace, ToPlace, TravelDate
+                FROM dbo.SalesDailyExpense
+                WHERE ActivityId = @ActivityId
+                ORDER BY ExpenseDate DESC, ExpenseId DESC
+            ", con))
+            using (var da = new SqlDataAdapter(cmd))
+            {
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                da.Fill(dt);
+            }
+
+            rptExpenses.DataSource = dt;
+            rptExpenses.DataBind();
+
+            UpdateExpenseTotals(dt);
+
+            // reset modal inputs for add
+            HF_ActivityId.Value = activityId.ToString();
+            HF_ActivityDate.Value = HF_ActivityDate.Value; // keep existing
+            DDL_ExpenseType.SelectedValue = "DA";
+            // Clear travel fields
+            DDL_TravelType.SelectedIndex = 0;
+            TXT_FromPlace.Text = TXT_ToPlace.Text = TXT_TravelDate.Text = TXT_TravelPurpose.Text = TXT_TravelInvoiceNo.Text = "";
+            CHK_TravelInvoice.Checked = false;
+            TXT_DAAmount.Text = TXT_HotelAmount.Text = TXT_HotelBillNo.Text = TXT_HotelPurpose.Text = "";
+
+            // show modal if caller expects it
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+
+            return dt;
+        }
+
 
         private void UpdateExpenseTotals(DataTable dt)
         {
@@ -925,7 +1959,7 @@ namespace AnmolDristi
 
         protected void btn_save_draft_Click(object sender, EventArgs e)
         {
-            BindGrid();
+            BindGrid(false);
             lbl_msg.ForeColor = System.Drawing.Color.Green;
             lbl_msg.Text = "Draft saved.";
         }
@@ -977,12 +2011,14 @@ namespace AnmolDristi
                     lbl_msg.Text = "Submitted for approval.";
                 }
 
-                BindGrid();
+                BindGrid(false);
             }
             catch (SqlException sqx)
             {
                 lbl_msg.ForeColor = System.Drawing.Color.Red;
                 lbl_msg.Text = sqx.Message; // SP RAISERROR/THROW message bubbled here
+
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError3", $"showPNotify('Error', '{sqx.Message.Replace("'", "\\'")}', 'error');", true);
             }
         }
 
@@ -1008,8 +2044,9 @@ namespace AnmolDristi
                     HttpContext.Current.Response.Redirect(loginUrl + "?ReturnUrl=" + HttpUtility.UrlEncode(returnUrl), true);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError6", $"showPNotify('Error', '{ex.Message.Replace("'", "\\'")}', 'error');", true);
                 // swallow and return null
             }
 
@@ -1018,7 +2055,7 @@ namespace AnmolDristi
 
         #endregion
 
-        protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
+        protected void rptExpenses_ItemCommand_OLD(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName != "DeleteExpense") return;
 
@@ -1048,11 +2085,7 @@ namespace AnmolDristi
 
                     // 1) Check business rule: allow delete only when parent activity is Draft (adjust as needed)
                     string claimStatus = null;
-                    using (SqlCommand chk = new SqlCommand(
-                        @"SELECT a.ClaimStatus
-                          FROM dbo.SalesDailyExpense e
-                          INNER JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId
-                          WHERE e.ExpenseId = @ExpenseId", con))
+                    using (SqlCommand chk = new SqlCommand(@"SELECT a.ClaimStatus FROM dbo.SalesDailyExpense e INNER JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId WHERE e.ExpenseId = @ExpenseId", con))
                     {
                         chk.Parameters.AddWithValue("@ExpenseId", expenseId);
                         object o = chk.ExecuteScalar();
@@ -1128,7 +2161,7 @@ namespace AnmolDristi
                 }
 
                 LoadExpenseForActivity(activityId.ToString()); // rebind the repeater
-                BindGrid(); // refresh grid totals/statuses
+                BindGrid(false); // refresh grid totals/statuses
                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
                 LBL_ExpenseMsg.Text = "Expense deleted.";
             }
@@ -1146,6 +2179,441 @@ namespace AnmolDristi
             // show modal again so user sees updated list & message
             ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
         }
+
+
+        protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
+        {
+            if (e.CommandName != "DeleteExpense") return;
+
+            // CommandArgument (optional): "ExpenseId|AttachmentFileName|ActivityId"
+            var arg = (e.CommandArgument ?? "").ToString();
+            var parts = arg.Split(new[] { '|' }, 3);
+
+            int expenseId;
+            if (parts.Length < 1 || !int.TryParse(parts[0], out expenseId))
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                LBL_ExpenseMsg.Text = "Invalid expense id.";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                return;
+            }
+
+            // Try get attachmentPath and activityId from Repeater CommandArgument if provided.
+            string attachmentPath = parts.Length > 1 ? (string.IsNullOrWhiteSpace(parts[1]) ? null : parts[1]) : null;
+            int activityId = 0;
+            if (parts.Length > 2) int.TryParse(parts[2], out activityId);
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(connString))
+                {
+                    con.Open();
+
+                    // If we don't have activityId or attachmentPath, fetch the current values from DB before delete
+                    using (var lookup = new SqlCommand(@"
+                SELECT e.ActivityId, a.ClaimStatus, e.AttachmentFileName
+                FROM dbo.SalesDailyExpense e
+                LEFT JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId
+                WHERE e.ExpenseId = @ExpenseId", con))
+                    {
+                        lookup.Parameters.AddWithValue("@ExpenseId", expenseId);
+                        using (var rdr = lookup.ExecuteReader())
+                        {
+                            if (rdr.Read())
+                            {
+                                if (activityId == 0 && rdr["ActivityId"] != DBNull.Value)
+                                    activityId = Convert.ToInt32(rdr["ActivityId"]);
+
+                                if (string.IsNullOrWhiteSpace(attachmentPath) && rdr["AttachmentFileName"] != DBNull.Value)
+                                    attachmentPath = Convert.ToString(rdr["AttachmentFileName"]);
+
+                                // claimStatus may be null
+                                string claimStatus = rdr["ClaimStatus"] != DBNull.Value ? Convert.ToString(rdr["ClaimStatus"]) : null;
+
+                                // Business rule: prevent delete if parent activity is not Draft
+                                if (!string.IsNullOrEmpty(claimStatus) && !string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                                    LBL_ExpenseMsg.Text = "Cannot delete expense once activity is submitted/approved.";
+                                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                // expense not found
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                LBL_ExpenseMsg.Text = "Expense not found.";
+                                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                return;
+                            }
+                        } // rdr
+                    } // lookup
+
+                    // Delete inside a transaction for DB integrity
+                    using (SqlTransaction tx = con.BeginTransaction())
+                    using (SqlCommand del = new SqlCommand("DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId = @ExpenseId", con, tx))
+                    {
+                        del.Parameters.AddWithValue("@ExpenseId", expenseId);
+                        int rows = 0;
+                        try
+                        {
+                            rows = del.ExecuteNonQuery();
+                            if (rows <= 0)
+                            {
+                                tx.Rollback();
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                LBL_ExpenseMsg.Text = "Expense not found or already removed.";
+                                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                return;
+                            }
+
+                            tx.Commit();
+                        }
+                        catch
+                        {
+                            try { tx.Rollback(); } catch { /* ignore */ }
+                            throw;
+                        }
+                    } // transaction
+
+                    // After DB delete, delete the file from disk if path is known
+                    if (!string.IsNullOrWhiteSpace(attachmentPath))
+                    {
+                        try
+                        {
+                            // normalize to virtual path (attachmentPath likely "UploadedFiles/ClaimsAttachment/..." or with leading '/')
+                            string cleaned = attachmentPath.TrimStart('~', '/', '\\');
+                            string virtualPath = "~/" + cleaned;
+                            string fullPath = Server.MapPath(virtualPath);
+
+                            if (System.IO.File.Exists(fullPath))
+                                System.IO.File.Delete(fullPath);
+                        }
+                        catch (Exception ex)
+                        {
+                            // non-fatal - log and continue
+                            System.Diagnostics.Trace.TraceWarning("Failed to delete expense attachment file: " + ex.Message);
+                        }
+                    }
+                } // connection closed
+
+                // Refresh UI: prefer to use the activityId we found; if still zero fallback to HF_ActivityId
+                if (activityId == 0)
+                {
+                    int tmpAct = 0;
+                    if (int.TryParse(HF_ActivityId.Value, out tmpAct)) activityId = tmpAct;
+                }
+
+                LoadExpenseForActivity(activityId.ToString());
+                BindGrid(false);
+
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
+                LBL_ExpenseMsg.Text = "Expense deleted.";
+            }
+            catch (SqlException sqx)
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                LBL_ExpenseMsg.Text = sqx.Message;
+
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError5", $"showPNotify('Error', '{sqx.Message.Replace("'", "\\'")}', 'error');", true);
+            }
+            catch (Exception ex)
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                LBL_ExpenseMsg.Text = ex.Message;
+
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError4", $"showPNotify('Error', '{ex.Message.Replace("'", "\\'")}', 'error');", true);
+            }
+
+            // show modal again so user sees updated list & message
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+        }
+
+
+        //--------------------Polcy in Runtime--------------//
+
+        public class PolicyResolved
+        {
+            public string Source { get; set; }            // 'EX' or 'MX'
+            public int? RowId { get; set; }
+            public string EmployeeCode { get; set; }
+            public int? RegionId { get; set; }
+            public int? BranchId { get; set; }
+            public int? GradeId { get; set; }
+            public int? DesignationId { get; set; }
+            public string PolicyJson { get; set; }
+            public int? Priority { get; set; }
+            public DateTime? EffectiveFrom { get; set; }
+            public DateTime? EffectiveTo { get; set; }
+            public bool? IsActive { get; set; }
+            public int? Specificity { get; set; }
+
+            // Resolved numeric fields (from stored proc)
+            public decimal? Resolved_MaxKM { get; set; }
+            public decimal? Resolved_RatePerKm { get; set; }
+            public decimal? Resolved_DA { get; set; }
+            public decimal? Resolved_HotelCap { get; set; }
+            public string Resolved_Remarks { get; set; }
+        }
+
+        // Example: call this from Page_Load or wherever you need policy
+        //protected void Page_Load(object sender, EventArgs e)
+        //{
+        //    if (!IsPostBack)
+        //    {
+        //        // Example values — replace with actual logged-in user's context
+        //        string employeeCode = GetLoggedInEmployeeCode(); // implement as per your auth
+        //        int? regionId = GetLoggedInRegionId();
+        //        int? branchId = GetLoggedInBranchId();
+        //        int? gradeId = GetLoggedInGradeId();
+        //        int? designationId = GetLoggedInDesignationId();
+
+        //        var policy = GetResolvedPolicy(employeeCode, regionId, branchId, gradeId, designationId);
+        //        if (policy != null)
+        //        {
+        //            // Use the policy values in UI or server-side validation
+        //            // Example: display notification
+        //            ShowPolicyNotification(policy);
+        //        }
+        //    }
+        //}
+
+        // ADO.NET call to usp_GetResolvedPolicy
+        private PolicyResolved GetResolvedPolicy_OLD(string employeeCode, int? regionId, int? branchId, int? gradeId, int? designationId)
+        {
+            var dto = (PolicyResolved)null;
+
+            string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            using (var con = new SqlConnection(connStr))
+            using (var cmd = new SqlCommand("dbo.usp_GetResolvedPolicy", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.AddWithValue("@EmployeeCode", (object)employeeCode ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@RegionId", (object)regionId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BranchId", (object)branchId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@GradeId", (object)gradeId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@DesignationId", (object)designationId ?? DBNull.Value);
+
+                // AsOfDate: Use server UTC -> IST conversion to provide consistent business date
+                DateTime istDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "India Standard Time").Date;
+                cmd.Parameters.AddWithValue("@AsOfDate", istDate);
+
+                con.Open();
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult))
+                {
+                    if (reader.Read())
+                    {
+                        dto = new PolicyResolved();
+                        dto.Source = reader["Source"] as string;
+                        dto.RowId = reader["RowId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["RowId"]) : null;
+                        dto.EmployeeCode = reader["EmployeeCode"] != DBNull.Value ? reader["EmployeeCode"].ToString() : null;
+                        dto.RegionId = reader["RegionId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["RegionId"]) : null;
+                        dto.BranchId = reader["BranchId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["BranchId"]) : null;
+                        dto.GradeId = reader["GradeId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["GradeId"]) : null;
+                        dto.DesignationId = reader["DesignationId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["DesignationId"]) : null;
+                        dto.PolicyJson = reader["PolicyJson"] != DBNull.Value ? reader["PolicyJson"].ToString() : null;
+                        dto.Priority = reader["Priority"] != DBNull.Value ? (int?)Convert.ToInt32(reader["Priority"]) : null;
+                        dto.EffectiveFrom = reader["EffectiveFrom"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["EffectiveFrom"]) : null;
+                        dto.EffectiveTo = reader["EffectiveTo"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["EffectiveTo"]) : null;
+                        dto.IsActive = reader["IsActive"] != DBNull.Value ? (bool?)Convert.ToBoolean(reader["IsActive"]) : null;
+                        dto.Specificity = reader["Specificity"] != DBNull.Value ? (int?)Convert.ToInt32(reader["Specificity"]) : null;
+
+                        // parsed columns from the proc (try reading typed columns first)
+                        dto.Resolved_MaxKM = reader["Resolved_MaxKM"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_MaxKM"]) : null;
+                        dto.Resolved_RatePerKm = reader["Resolved_RatePerKm"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_RatePerKm"]) : null;
+                        dto.Resolved_DA = reader["Resolved_DA"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_DA"]) : null;
+                        dto.Resolved_HotelCap = reader["Resolved_HotelCap"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_HotelCap"]) : null;
+                        dto.Resolved_Remarks = reader["Resolved_Remarks"] != DBNull.Value ? reader["Resolved_Remarks"].ToString() : null;
+
+                        // If the proc didn't return parsed columns or they are null, optionally parse PolicyJson
+                        if ((dto.Resolved_MaxKM == null && dto.Resolved_RatePerKm == null && dto.Resolved_DA == null) && !string.IsNullOrEmpty(dto.PolicyJson))
+                        {
+                            TryParseJsonFallback(dto);
+                        }
+                    }
+                }
+            }
+
+            return dto;
+        }
+
+        private PolicyResolved GetResolvedPolicy(string employeeCode, int? regionId, int? branchId, int? gradeId, int? designationId)
+        {
+            PolicyResolved dto = null;
+
+            string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            using (var con = new SqlConnection(connStr))
+            using (var cmd = new SqlCommand("dbo.usp_GetResolvedPolicy", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                // optional: increase timeout if proc may take longer
+                // cmd.CommandTimeout = 60;
+
+                // Required param
+                cmd.Parameters.Add("@EmployeeCode", SqlDbType.VarChar, 50).Value = (object)employeeCode ?? DBNull.Value;
+
+                // IMPORTANT: stored proc expects VARCHAR inputs (can be PK or custom-code). Convert ints to strings.
+                cmd.Parameters.Add("@RegionIdParam", SqlDbType.VarChar, 200).Value = regionId.HasValue ? (object)regionId.Value.ToString() : DBNull.Value;
+                cmd.Parameters.Add("@BranchIdParam", SqlDbType.VarChar, 200).Value = branchId.HasValue ? (object)branchId.Value.ToString() : DBNull.Value;
+                cmd.Parameters.Add("@GradeIdParam", SqlDbType.VarChar, 200).Value = gradeId.HasValue ? (object)gradeId.Value.ToString() : DBNull.Value;
+                cmd.Parameters.Add("@DesignationIdParam", SqlDbType.VarChar, 200).Value = designationId.HasValue ? (object)designationId.Value.ToString() : DBNull.Value;
+
+                // NOTE: if you later add an @AsOfDate (or similar) parameter to the stored proc, add it here:
+                // DateTime istDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "India Standard Time").Date;
+                // cmd.Parameters.Add("@AsOfDate", SqlDbType.Date).Value = istDate;
+
+                con.Open();
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult))
+                {
+                    if (reader.Read())
+                    {
+                        dto = new PolicyResolved();
+
+                        // helper to safely check column existence
+                        Func<IDataRecord, string, bool> ColExists = (rec, colName) =>
+                        {
+                            try
+                            {
+                                return rec.GetOrdinal(colName) >= 0;
+                            }
+                            catch (IndexOutOfRangeException)
+                            {
+                                return false;
+                            }
+                        };
+
+                        // Safe reads: only read if column exists
+                        if (ColExists(reader, "Source")) dto.Source = reader["Source"] as string;
+                        if (ColExists(reader, "PolicyId")) dto.RowId = reader["PolicyId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["PolicyId"]) : null;
+                        if (ColExists(reader, "EmployeeCode")) dto.EmployeeCode = reader["EmployeeCode"] != DBNull.Value ? reader["EmployeeCode"].ToString() : null;
+                        if (ColExists(reader, "RegionId")) dto.RegionId = reader["RegionId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["RegionId"]) : null;
+                        if (ColExists(reader, "BranchId")) dto.BranchId = reader["BranchId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["BranchId"]) : null;
+                        if (ColExists(reader, "GradeId")) dto.GradeId = reader["GradeId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["GradeId"]) : null;
+                        if (ColExists(reader, "DesignationId")) dto.DesignationId = reader["DesignationId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["DesignationId"]) : null;
+                        if (ColExists(reader, "PolicyJson")) dto.PolicyJson = reader["PolicyJson"] != DBNull.Value ? reader["PolicyJson"].ToString() : null;
+                        if (ColExists(reader, "Priority")) dto.Priority = reader["Priority"] != DBNull.Value ? (int?)Convert.ToInt32(reader["Priority"]) : null;
+                        if (ColExists(reader, "EffectiveFrom")) dto.EffectiveFrom = reader["EffectiveFrom"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["EffectiveFrom"]) : null;
+                        if (ColExists(reader, "EffectiveTo")) dto.EffectiveTo = reader["EffectiveTo"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["EffectiveTo"]) : null;
+                        if (ColExists(reader, "IsActive")) dto.IsActive = reader["IsActive"] != DBNull.Value ? (bool?)Convert.ToBoolean(reader["IsActive"]) : null;
+                        if (ColExists(reader, "Specificity")) dto.Specificity = reader["Specificity"] != DBNull.Value ? (int?)Convert.ToInt32(reader["Specificity"]) : null;
+
+                        // Resolved typed columns (optional — the proc may or may not return these)
+                        if (ColExists(reader, "Resolved_MaxKM")) dto.Resolved_MaxKM = reader["Resolved_MaxKM"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_MaxKM"]) : null;
+                        if (ColExists(reader, "Resolved_RatePerKm")) dto.Resolved_RatePerKm = reader["Resolved_RatePerKm"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_RatePerKm"]) : null;
+                        if (ColExists(reader, "Resolved_DA")) dto.Resolved_DA = reader["Resolved_DA"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_DA"]) : null;
+                        if (ColExists(reader, "Resolved_HotelCap")) dto.Resolved_HotelCap = reader["Resolved_HotelCap"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_HotelCap"]) : null;
+                        if (ColExists(reader, "Resolved_Remarks")) dto.Resolved_Remarks = reader["Resolved_Remarks"] != DBNull.Value ? reader["Resolved_Remarks"].ToString() : null;
+
+                        // If the proc didn't return parsed columns or they are null, optionally parse PolicyJson
+                        if ((dto.Resolved_MaxKM == null && dto.Resolved_RatePerKm == null && dto.Resolved_DA == null) && !string.IsNullOrEmpty(dto.PolicyJson))
+                        {
+                            TryParseJsonFallback(dto);
+                        }
+                    }
+                }
+            }
+
+            return dto;
+        }
+
+
+        // Fallback JSON parse using Newtonsoft.Json
+
+        private void TryParseJsonFallback(PolicyResolved dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.PolicyJson))
+                return;
+
+            try
+            {
+                JObject json = JObject.Parse(dto.PolicyJson);
+
+                dto.Resolved_MaxKM = TryGetDecimal(json, "MaxKM");
+                dto.Resolved_RatePerKm = TryGetDecimal(json, "RatePerKm");
+                dto.Resolved_DA = TryGetDecimal(json, "DA");
+                dto.Resolved_HotelCap = TryGetDecimal(json, "HotelCap");
+                dto.Resolved_Remarks = json["Remarks"] != null ? Convert.ToString(json["Remarks"]) : null;
+            }
+            catch (Exception ex)
+            {
+                // Optional: log the error
+                System.Diagnostics.Debug.WriteLine("TryParseJsonFallback error: " + ex.Message);
+            }
+        }
+
+        private decimal? TryGetDecimal(JObject json, string key)
+        {
+            if (json[key] == null || json[key].Type == JTokenType.Null)
+                return null;
+
+            decimal value;
+            if (decimal.TryParse(Convert.ToString(json[key]), out value))
+                return value;
+
+            return null;
+        }
+
+
+        // Compose and register a PNotify alert on the page
+        private void ShowPolicyNotification(PolicyResolved policy)
+        {
+            if (policy == null) return;
+
+            // Build the message content
+            var sb = new StringBuilder();
+            sb.AppendFormat("<strong>Policy applied:</strong> {0}<br/>", policy.Source == "EX" ? "Employee Exception" : "Policy Matrix");
+            sb.AppendFormat("<strong>Specificity:</strong> {0}<br/>", policy.Specificity ?? 0);
+            if (policy.Resolved_RatePerKm != null) sb.AppendFormat("<strong>Rate/km:</strong> ₹{0:N2}<br/>", policy.Resolved_RatePerKm);
+            if (policy.Resolved_MaxKM != null) sb.AppendFormat("<strong>Max KM (month):</strong> {0:N0}<br/>", policy.Resolved_MaxKM);
+            if (policy.Resolved_DA != null) sb.AppendFormat("<strong>DA:</strong> ₹{0:N0}<br/>", policy.Resolved_DA);
+            if (policy.Resolved_HotelCap != null) sb.AppendFormat("<strong>Hotel Cap:</strong> ₹{0:N0}<br/>", policy.Resolved_HotelCap);
+            if (!string.IsNullOrEmpty(policy.Resolved_Remarks)) sb.AppendFormat("<strong>Remarks:</strong> {0}<br/>", HttpUtility.JavaScriptStringEncode(policy.Resolved_Remarks));
+
+            // Title and type selection
+            string title = policy.Source == "EX" ? "Employee exception applied" : "Policy applied";
+            string type = policy.Source == "EX" ? "info" : "notice"; // customize per PNotify version
+
+            // Build JS to show PNotify (this code assumes your PNotify exposes a global PNotify function)
+            // Adjust JS to match your PNotify version; below is a generic example.
+            string safeTitle = HttpUtility.JavaScriptStringEncode(title);
+            string safeText = HttpUtility.JavaScriptStringEncode(sb.ToString());
+            string safeAlert = HttpUtility.JavaScriptStringEncode(title + "\\n" + sb.ToString());
+
+            string js = @"
+                (function() {
+                    if (typeof PNotify !== 'undefined' && typeof PNotify.alert === 'function') {
+                        PNotify.alert({
+                            title: '" + safeTitle + @"',
+                            text: '" + safeText + @"',
+                            styling: 'brighttheme',
+                            delay: 6000
+                        });
+                    } else if (typeof PNotify !== 'undefined') {
+                        console.log('PNotify available but version mismatch.');
+                    } else {
+                        alert('" + safeAlert + @"');
+                    }
+                })();";
+
+            // Register startup script to execute after page loads
+            ScriptManager.RegisterStartupScript(this.Page, this.Page.GetType(), "policyNotify_" + Guid.NewGuid().ToString("N"), js, true);
+        }
+
+        // Stub helper methods - implement according to your project auth/session
+        private string GetLoggedInEmployeeCode()
+        {
+            // Example: from Session or User.Identity
+            return Session["WORKMAN"] as string;
+            // return HttpContext.Current.User?.Identity?.Name ?? "EMP001";
+        }
+
+        private int? GetLoggedInRegionId() { return Session["REGION"] != null ? (int?)Convert.ToInt32(Session["REGION"]) : null; }
+        private int? GetLoggedInBranchId() { return Session["BRANCH"] != null ? (int?)Convert.ToInt32(Session["BRANCH"]) : null; }
+        private int? GetLoggedInGradeId() { return Session["GRADE"] != null ? (int?)Convert.ToInt32(Session["GRADE"]) : null; }
+        private int? GetLoggedInDesignationId() { return Session["DESG"] != null ? (int?)Convert.ToInt32(Session["DESG"]) : null; }
 
     }
 }

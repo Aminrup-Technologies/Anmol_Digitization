@@ -40,6 +40,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button btn_fetch;
         
         /// <summary>
+        /// Actionable control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Actionable;
+        
+        /// <summary>
         /// btn_save_draft control.
         /// </summary>
         /// <remarks>
@@ -121,6 +130,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField HF_ActivityDate;
         
         /// <summary>
+        /// DDL_ExpenseType control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList DDL_ExpenseType;
+        
+        /// <summary>
+        /// divDASection control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divDASection;
+        
+        /// <summary>
         /// TXT_DAAmount control.
         /// </summary>
         /// <remarks>
@@ -130,13 +157,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox TXT_DAAmount;
         
         /// <summary>
-        /// TXT_HotelAmount control.
+        /// divHotelSection control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox TXT_HotelAmount;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divHotelSection;
         
         /// <summary>
         /// TXT_HotelFromDate control.
@@ -166,6 +193,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox TXT_HotelBillNo;
         
         /// <summary>
+        /// TXT_HotelAmount control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_HotelAmount;
+        
+        /// <summary>
         /// TXT_HotelPurpose control.
         /// </summary>
         /// <remarks>
@@ -173,6 +209,105 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox TXT_HotelPurpose;
+        
+        /// <summary>
+        /// divTravelSection control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divTravelSection;
+        
+        /// <summary>
+        /// DDL_TravelType control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList DDL_TravelType;
+        
+        /// <summary>
+        /// TXT_TravelDate control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_TravelDate;
+        
+        /// <summary>
+        /// TXT_FromPlace control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_FromPlace;
+        
+        /// <summary>
+        /// TXT_ToPlace control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_ToPlace;
+        
+        /// <summary>
+        /// TXT_TravelAmount control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_TravelAmount;
+        
+        /// <summary>
+        /// TXT_TravelPurpose control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_TravelPurpose;
+        
+        /// <summary>
+        /// CHK_TravelInvoice control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.CheckBox CHK_TravelInvoice;
+        
+        /// <summary>
+        /// divTravelInvoiceNo control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divTravelInvoiceNo;
+        
+        /// <summary>
+        /// TXT_TravelInvoiceNo control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_TravelInvoiceNo;
+        
+        /// <summary>
+        /// divFUContainer control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divFUContainer;
         
         /// <summary>
         /// FU_Attachment control.
@@ -281,5 +416,194 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button BTN_SaveExpense;
+        
+        /// <summary>
+        /// lblPolicyEmployeeCode control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyEmployeeCode;
+        
+        /// <summary>
+        /// lblPolicySource control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicySource;
+        
+        /// <summary>
+        /// lblPolicyRowId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyRowId;
+        
+        /// <summary>
+        /// lblPolicyPriority control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyPriority;
+        
+        /// <summary>
+        /// lblPolicySpecificity control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicySpecificity;
+        
+        /// <summary>
+        /// lblPolicyEffective control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyEffective;
+        
+        /// <summary>
+        /// lblPolicyIsActive control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyIsActive;
+        
+        /// <summary>
+        /// lblPolicyDesigGrade control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyDesigGrade;
+        
+        /// <summary>
+        /// lblResolvedMaxKM control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblResolvedMaxKM;
+        
+        /// <summary>
+        /// lblResolvedRatePerKm control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblResolvedRatePerKm;
+        
+        /// <summary>
+        /// lblResolvedDA control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblResolvedDA;
+        
+        /// <summary>
+        /// lblResolvedHotelCap control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblResolvedHotelCap;
+        
+        /// <summary>
+        /// lblResolvedRemarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblResolvedRemarks;
+        
+        /// <summary>
+        /// Toggler control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Toggler;
+        
+        /// <summary>
+        /// btnToggleRawJson control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnToggleRawJson;
+        
+        /// <summary>
+        /// policyJsonRaw control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox policyJsonRaw;
+        
+        /// <summary>
+        /// HF_Policy_RegionId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_RegionId;
+        
+        /// <summary>
+        /// HF_Policy_BranchId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_BranchId;
+        
+        /// <summary>
+        /// HF_Policy_GradeId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_GradeId;
+        
+        /// <summary>
+        /// HF_Policy_DesignationId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_DesignationId;
+        
+        /// <summary>
+        /// lnkCopyJson control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.LinkButton lnkCopyJson;
     }
 }

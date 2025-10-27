@@ -105,8 +105,8 @@ namespace AnmolDristi
 
                         string User_Worksite = dt.Rows[0]["DepartmentId"].ToString();
                         string User_WRKSTCode = dt.Rows[0]["SubDepartmentId"].ToString();
-                        //string User_Skill = dt.Rows[0]["SkillCategory"].ToString();
-                        //string User_Desg = dt.Rows[0]["SkillDesignation"].ToString();
+                        string User_Grade = dt.Rows[0]["GradeId"].ToString();
+                        string User_Desg = dt.Rows[0]["CategoryId"].ToString();
 
                         //User_Photo = dt.Rows[0]["PrfPicFile"].ToString();
                         //string User_PhotoPath = dt.Rows[0]["PrfPicPath"].ToString();
@@ -120,14 +120,14 @@ namespace AnmolDristi
                         //Session["USERTYPE"] = User_Type;
                         //Session["PERMISSION"] = User_Permission;
                         Session["REGION"] = RegionId;
-                        Session["STATE"] = BranchId;
+                        Session["BRANCH"] = BranchId;
                         Session["MODULE"] = Module;
                         Session["PLANTID"] = PlantId;
                         Session["U_SITE"] = User_Worksite;
                         Session["U_SITECODE"] = User_WRKSTCode;
 
-                        //Session["U_DESG"] = User_Desg;
-                        //Session["U_SKILL"] = User_Skill;
+                        Session["DESG"] = User_Desg;
+                        Session["GRADE"] = User_Grade;
                         //if (User_Photo == null || User_Photo == "")
                         //{
                         //    Session["User_Photo"] = "No_Image.jpg";
@@ -223,9 +223,9 @@ namespace AnmolDristi
             string host = Request.UserHostName;
 
             string sql = @"
-        INSERT INTO ActiveUserSession (UserId, EmployeeCode, SessionId, LoginTime, ClientIP, HostName, BrowserInfo, IsActive)
-        VALUES (@UserId, @EmployeeCode, @SessionId, GETDATE(), @ClientIP, @HostName, @BrowserInfo, 1);
-        SELECT SCOPE_IDENTITY();";
+            INSERT INTO ActiveUserSession (UserId, EmployeeCode, SessionId, LoginTime, ClientIP, HostName, BrowserInfo, IsActive)
+            VALUES (@UserId, @EmployeeCode, @SessionId, GETDATE(), @ClientIP, @HostName, @BrowserInfo, 1);
+            SELECT SCOPE_IDENTITY();";
 
             using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
             using (SqlCommand cmd = new SqlCommand(sql, con))

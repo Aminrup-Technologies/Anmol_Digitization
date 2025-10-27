@@ -256,6 +256,81 @@
                     </div>
                 </div>
 
+                <div class="col-md-6" id="Div1" runat="server" visible="true">
+                    <div class="x_panel">
+                        <div class="x_title">
+                            <h2>Roles & Permissions</h2>
+                            <ul class="nav navbar-right panel_toolbox">
+                                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                                </li>
+                            </ul>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <a class="btn btn-app" href="RoleList.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label29" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Roles
+                            </a>
+                            <a class="btn btn-app" href="PermissionList.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label30" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Permisisons
+                            </a>
+                            <a class="btn btn-app" href="RolePermissionManager.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label34" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Roles - Permissions
+                            </a>
+                            <a class="btn btn-app" href="UserRoleManager.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label35" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>User Role Map
+                            </a>
+                            <a class="btn btn-app" href="UiControlMapper.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label37" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>UI Tag Mapper
+                            </a>
+                            <a class="btn btn-app" href="RolePermissionAudit.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label36" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Audit Trails
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6" id="Div2" runat="server" visible="true">
+                    <div class="x_panel">
+                        <div class="x_title">
+                            <h2>User Sessions</h2>
+                            <ul class="nav navbar-right panel_toolbox">
+                                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a>
+                                </li>
+                            </ul>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <a class="btn btn-app" href="DebugPermissions.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label31" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Permissions
+                            </a>
+                            <a class="btn btn-app" href="PermDump.ashx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label32" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Permissions JSON
+                            </a>
+                            <a class="btn btn-app" href="ReloadSessionPerms.aspx">
+                                <span class="badge bg-green">OK
+                                    <asp:Label ID="Label33" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Refresh Sessions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>

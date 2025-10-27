@@ -8,6 +8,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Text;
+using System.Globalization;
 
 namespace AnmolDristi
 {
@@ -156,7 +157,7 @@ namespace AnmolDristi
         }
 
 
-        private void loadAlldata()
+        private void loadAlldata_OLD()
         {
             try
             {
@@ -216,7 +217,65 @@ namespace AnmolDristi
             }
         }
 
-        private void DataLoader()
+        private void loadAlldata()
+        {
+            try
+            {
+                string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                string query = @"
+SELECT TOP (30)
+    c.ID AS DBID,
+    c.FormID AS FormID,
+    'NA' AS RecordID,
+    m.Material_Name AS MaterialName,
+    p.plant_name AS PlantName,
+    c.SubmittedByEmployeeCode AS EmpCode,
+    u.EmployeeName AS EmpName,
+    c.SubmittedDate AS SDate,
+    c.SubmittedTime AS STime,
+    c.Approver1EmployeeCode AS L1,
+    c.Approver1_Status,
+    c.Approver1_TimeStamp,
+    c.Approver2EmployeeCode AS L2,
+    c.Approver2_Status,
+    c.Approver2_TimeStamp,
+    c.DottedLineApproverEmployeeCode AS L3,
+    c.DottedApprover_Status,
+    c.DottedApprover_TimeStamp
+FROM TRN_RM_CLASS_5 AS c WITH (NOLOCK)
+LEFT JOIN RM_MATERIAL AS m WITH (NOLOCK) ON c.MaterialName = m.Material_Id
+LEFT JOIN MST_PlantDetails AS p WITH (NOLOCK) ON c.PlantName = p.plant_id
+LEFT JOIN MST_UserMaster AS u WITH (NOLOCK) ON c.SubmittedByEmployeeCode = u.EmployeeCode
+WHERE 1 = 1
+ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC;";
+
+                using (var con = new SqlConnection(connectionString))
+                using (var cmd = new SqlCommand(query, con))
+                using (var sda = new SqlDataAdapter(cmd))
+                {
+                    cmd.CommandType = CommandType.Text;
+                    cmd.CommandTimeout = 60;
+
+                    var dt = new DataTable();
+                    sda.Fill(dt);
+
+                    GridView1.DataSource = dt;
+                    GridView1.DataBind();
+                }
+            }
+            catch (Exception ex)
+            {
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                EmailNotifier.Notify(
+                    "Application Error",
+                    "<p>Error: " + (ex.Message ?? "Unknown error") + "</p><p>Stack Trace: " + (ex.StackTrace ?? "") + "</p>",
+                    recipients
+                );
+            }
+        }
+
+        private void DataLoader_OLD()
         {
             DateTime? dateFrom = string.IsNullOrEmpty(TB_Date_From.Text) ? (DateTime?)null : DateTime.ParseExact(TB_Date_From.Text, "yyyy-MM-dd", null);
             DateTime? dateTo = string.IsNullOrEmpty(TB_Date_To.Text) ? (DateTime?)null : DateTime.ParseExact(TB_Date_To.Text, "yyyy-MM-dd", null);
@@ -308,7 +367,137 @@ namespace AnmolDristi
             }
         }
 
-        private DataTable GetDataFromTable(string query, SqlParameter[] parameters)
+        private void DataLoader()
+        {
+            // Parse dates safely (yyyy-MM-dd)
+            DateTime? dateFrom = null;
+            DateTime? dateTo = null;
+
+            DateTime dFrom;
+            if (!string.IsNullOrWhiteSpace(TB_Date_From.Text) &&
+                DateTime.TryParseExact(TB_Date_From.Text.Trim(), "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out dFrom))
+            {
+                dateFrom = dFrom.Date; // SubmittedDate is DATE (no time)
+            }
+
+            DateTime dTo;
+            if (!string.IsNullOrWhiteSpace(TB_Date_To.Text) &&
+                DateTime.TryParseExact(TB_Date_To.Text.Trim(), "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out dTo))
+            {
+                dateTo = dTo.Date;
+            }
+
+            // If user inverted the range, swap
+            if (dateFrom.HasValue && dateTo.HasValue && dateFrom.Value > dateTo.Value)
+            {
+                DateTime? tmp = dateFrom;
+                dateFrom = dateTo;
+                dateTo = tmp;
+            }
+
+            var sb = new StringBuilder();
+            sb.Append(@"
+SELECT 
+    c.ID AS DBID,
+    c.FormID AS FormID,
+    m.Material_Name AS MaterialName,
+    p.plant_name AS PlantName,
+    c.SubmittedByEmployeeCode AS EmpCode,
+    u.EmployeeName AS EmpName,
+    c.SubmittedDate AS SDate,
+    c.SubmittedTime AS STime,
+    'No Comment' AS Remarks,
+    c.Approver1EmployeeCode AS L1,
+    c.Approver1_Status,
+    c.Approver1_TimeStamp,
+    c.Approver2EmployeeCode AS L2,
+    c.Approver2_Status,
+    c.Approver2_TimeStamp,
+    c.DottedLineApproverEmployeeCode AS L3,
+    c.DottedApprover_Status,
+    c.DottedApprover_TimeStamp
+FROM TRN_RM_CLASS_5 AS c WITH (NOLOCK)
+LEFT JOIN RM_MATERIAL AS m WITH (NOLOCK) ON c.MaterialName = m.Material_Id
+LEFT JOIN MST_PlantDetails AS p WITH (NOLOCK) ON c.PlantName = p.plant_id
+LEFT JOIN MST_UserMaster AS u WITH (NOLOCK) ON c.SubmittedByEmployeeCode = u.EmployeeCode
+WHERE 1 = 1");
+
+            var parameters = new List<SqlParameter>();
+
+            // Date filters — single date when equal, else range; otherwise >= or <= when one side present
+            if (dateFrom.HasValue && dateTo.HasValue)
+            {
+                if (dateFrom.Value == dateTo.Value)
+                {
+                    sb.Append(" AND c.SubmittedDate = @DateExact");
+                    parameters.Add(new SqlParameter("@DateExact", SqlDbType.Date) { Value = dateFrom.Value });
+                }
+                else
+                {
+                    sb.Append(" AND c.SubmittedDate BETWEEN @DateFrom AND @DateTo");
+                    parameters.Add(new SqlParameter("@DateFrom", SqlDbType.Date) { Value = dateFrom.Value });
+                    parameters.Add(new SqlParameter("@DateTo", SqlDbType.Date) { Value = dateTo.Value });
+                }
+            }
+            else if (dateFrom.HasValue)
+            {
+                sb.Append(" AND c.SubmittedDate >= @DateFrom");
+                parameters.Add(new SqlParameter("@DateFrom", SqlDbType.Date) { Value = dateFrom.Value });
+            }
+            else if (dateTo.HasValue)
+            {
+                sb.Append(" AND c.SubmittedDate <= @DateTo");
+                parameters.Add(new SqlParameter("@DateTo", SqlDbType.Date) { Value = dateTo.Value });
+            }
+
+            // Material filter
+            if (!string.IsNullOrEmpty(DDL_Material.SelectedValue) && DDL_Material.SelectedValue != "0")
+            {
+                int materialId;
+                if (int.TryParse(DDL_Material.SelectedValue, out materialId))
+                {
+                    sb.Append(" AND c.MaterialName = @Material_Id");
+                    parameters.Add(new SqlParameter("@Material_Id", SqlDbType.Int) { Value = materialId });
+                }
+            }
+
+            // Plant filter
+            if (!string.IsNullOrEmpty(DDL_Plant.SelectedValue) && DDL_Plant.SelectedValue != "0")
+            {
+                int plantId;
+                if (int.TryParse(DDL_Plant.SelectedValue, out plantId))
+                {
+                    sb.Append(" AND c.PlantName = @PlantId");
+                    parameters.Add(new SqlParameter("@PlantId", SqlDbType.Int) { Value = plantId });
+                }
+            }
+
+            sb.Append(" ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC");
+
+            try
+            {
+                DataTable filteredData = GetDataFromTable(sb.ToString(), parameters.ToArray());
+                GridView1.DataSource = filteredData;
+                GridView1.DataBind();
+
+                // Optional: show a friendly toast when no rows
+                if (filteredData.Rows.Count == 0)
+                {
+                    string script = "new PNotify({ title: 'No Records', text: 'No matching records found.', type: 'info', styling: 'bootstrap3' });";
+                    ClientScript.RegisterStartupScript(this.GetType(), "NoRecordsInfo", script, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                string safeMsg = HttpUtility.JavaScriptStringEncode(ex.Message ?? "Unknown error");
+                string script = "new PNotify({ title: 'Error', text: '" + safeMsg + "', type: 'error', styling: 'bootstrap3' });";
+                ClientScript.RegisterStartupScript(this.GetType(), "FilteredDataerror", script, true);
+            }
+        }
+
+        private DataTable GetDataFromTable_OLD(string query, SqlParameter[] parameters)
         {
             DataTable dt = new DataTable();
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -326,6 +515,56 @@ namespace AnmolDristi
                     }
                 }
             }
+            return dt;
+        }
+
+        private DataTable GetDataFromTable(string query, SqlParameter[] parameters)
+        {
+            DataTable dt = new DataTable();
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(connectionString))
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    if (parameters != null && parameters.Length > 0)
+                    {
+                        cmd.Parameters.AddRange(parameters);
+                    }
+
+                    cmd.CommandType = CommandType.Text;
+
+                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                    {
+                        sda.Fill(dt);
+                    }
+                }
+
+                // ✅ Handle no records
+                if (dt.Rows.Count == 0)
+                {
+                    // Option 1: Add a dummy row (so GridView header still shows)
+                    //dt.Rows.Add(dt.NewRow());
+
+                    // Option 2: Just return empty table (recommended if you handle "No records" message in UI)
+                    return dt;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error (to file, db, or email)
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                EmailNotifier.Notify(
+                    "DB Error",
+                    "<p>Error in GetDataFromTable:</p><p>" + ex.Message + "</p><p>Stack Trace:</p><p>" + ex.StackTrace + "</p>",
+                    recipients
+                );
+
+                // Return empty table to avoid crashing page
+                return new DataTable();
+            }
+
             return dt;
         }
 

@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Data;
 using System.Data.SqlClient;
@@ -10,6 +7,8 @@ using System.Configuration;
 using System.Text;
 using ClosedXML.Excel;
 using System.IO;
+using System.Web;
+using System.Globalization;
 
 namespace AnmolDristi
 {
@@ -157,8 +156,127 @@ namespace AnmolDristi
             DataLoader();
         }
 
-
         private void loadAlldata()
+        {
+            try
+            {
+                string connectionString = System.Configuration.ConfigurationManager
+                    .ConnectionStrings["DbConn"].ConnectionString;
+
+                // NOTE: Remove WITH (NOLOCK) if you require fully consistent reads.
+                string query = @"
+                    SELECT TOP (30)
+                        c.ID AS DBID,
+                        c.FormID AS FormID,
+                        c.AMFID AS RecordID,
+                        m.Material_Name AS MaterialName,
+                        p.plant_name AS PlantName,
+                        c.SubmittedByEmployeeCode AS EmpCode,
+                        u.EmployeeName AS EmpName,
+                        c.SubmittedDate AS SDate,
+                        c.SubmittedTime AS STime,
+                        c.ProductBrand,
+                        c.Quantity,
+                        c.Supplier_Name,
+                        c.Size,
+                        c.Size_Remarks,
+                        c.Challan_No,
+                        c.Challan_Dates,
+                        c.Mfg_Dates,
+                        c.BatchNo,
+                        c.LotNo,
+                        c.VehicleNo,
+                        CASE WHEN c.MfgYesNo = 1 THEN 'Ok' WHEN c.MfgYesNo = 0 THEN 'Not Ok' END AS MfgYesNo,
+                        c.MfgYesNoRemarks,
+                        c.MfgName,
+                        CASE WHEN c.BBDateYesNo = 1 THEN 'Ok' WHEN c.BBDateYesNo = 0 THEN 'Not Ok' END AS BBDateYesNo,
+                        c.BBDateYesNoRemarks,
+                        c.BB_Dates,
+                        CASE WHEN c.fssaiYesNo = 1 THEN 'Ok' WHEN c.fssaiYesNo = 0 THEN 'Not Ok' END AS fssaiYesNo,
+                        c.fssaiYesNoRemarks,
+                        c.FssaiNo,
+                        CASE WHEN c.Fssai_Logo = 1 THEN 'Present' WHEN c.Fssai_Logo = 0 THEN 'Absent' END AS Fssai_Logo,
+                        CASE WHEN c.Veg_Logo = 1 THEN 'Present' WHEN c.Veg_Logo = 0 THEN 'Absent' END AS Veg_Logo,
+                        CASE WHEN c.Packing_Condition = 1 THEN 'Ok' WHEN c.Packing_Condition = 0 THEN 'Not Ok' END AS Packing_Condition,
+                        c.PackingCondition_Remarks,
+                        CASE WHEN c.ColorApp = 1 THEN 'Ok' WHEN c.ColorApp = 0 THEN 'Not Ok' END AS ColorApp,
+                        c.ColorApp_Remarks,
+                        CASE WHEN c.Odour = 1 THEN 'Ok' WHEN c.Odour = 0 THEN 'Not Ok' END AS Odour,
+                        c.Odour_Remarks,
+                        CASE WHEN c.TasteFlavor = 1 THEN 'Ok' WHEN c.TasteFlavor = 0 THEN 'Not Ok' END AS TasteFlavor,
+                        c.TasteFlavor_Remarks,
+                        CASE WHEN c.Impurities = 1 THEN 'Ok' WHEN c.Impurities = 0 THEN 'Not Ok' END AS Impurities,
+                        c.Impurities_Remarks,
+                        c.Moisture,
+                        c.Moisture_Remarks,
+                        c.TotalAsh,
+                        c.Ash_Remarks,
+                        c.InsolubleAsh,
+                        c.InsolubleAsh_Remarks,
+                        c.GlutentContent,
+                        c.GlutentContent_Remarks,
+                        c.AlcoholicAcidity,
+                        c.AlcoholicAcidity_Remarks,
+                        c.Absorption,
+                        c.Absorption_Remarks,
+                        c.Sedimentation,
+                        c.Sedimentation_Remarks,
+                        CASE WHEN c.Grittiness = 1 THEN 'Positive' WHEN c.Grittiness = 0 THEN 'Negative' END AS Grittiness,
+                        ISNULL(NULLIF(c.Grittiness_Remarks, ''), 'No Remarks') AS Grittiness_Remarks,
+                        c.Acidity,
+                        c.Acidity_Remarks,
+                        c.Granularity,
+                        c.Granularity_Remarks,
+                        c.GranularityRetention,
+                        c.GranularityRetention_Remarks,
+                        c.Retention,
+                        c.Retention_Remarks,
+                        c.Bromate,
+                        c.Material_Image,
+                        c.Remarks AS Remarks,
+                        c.Approver1EmployeeCode AS L1,
+                        c.Approver1_Status,
+                        c.Approver1_TimeStamp,
+                        c.Approver2EmployeeCode AS L2,
+                        c.Approver2_Status,
+                        c.Approver2_TimeStamp,
+                        c.DottedLineApproverEmployeeCode AS L3,
+                        c.DottedApprover_Status,
+                        c.DottedApprover_TimeStamp
+                    FROM TRN_Aata_Maida AS c WITH (NOLOCK)
+                    LEFT JOIN RM_MATERIAL AS m WITH (NOLOCK) ON c.MaterialName = m.Material_Id
+                    LEFT JOIN MST_PlantDetails AS p WITH (NOLOCK) ON c.PlantName = p.plant_id
+                    LEFT JOIN MST_UserMaster AS u WITH (NOLOCK) ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                    WHERE 1 = 1
+                    ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC;";
+
+                using (var con = new SqlConnection(connectionString))
+                using (var cmd = new SqlCommand(query, con))
+                using (var sda = new SqlDataAdapter(cmd))
+                {
+                    cmd.CommandType = CommandType.Text;
+                    cmd.CommandTimeout = 60; // seconds
+
+                    var dt = new DataTable();
+                    sda.Fill(dt);
+
+                    GridView1.DataSource = dt;
+                    ViewState["ExportData"] = dt;
+                    GridView1.DataBind();
+                }
+            }
+            catch (Exception ex)
+            {
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                EmailNotifier.Notify(
+                    "Application Error",
+                    "<p>Error: " + (ex.Message ?? "Unknown error") + "</p><p>Stack Trace: " + (ex.StackTrace ?? "") + "</p>",
+                    recipients
+                );
+            }
+        }
+
+        private void loadAlldata_OLD()
         {
             try
             {
@@ -168,7 +286,7 @@ namespace AnmolDristi
                     SELECT TOP(30)
                     c.ID AS DBID,
                     c.FormID AS FormID,
-                    AMFID AS RecordID,
+                    c.AMFID AS RecordID,
                     m.Material_Name AS MaterialName,
                     p.plant_name AS PlantName,
                     c.SubmittedByEmployeeCode AS EmpCode,
@@ -255,10 +373,7 @@ namespace AnmolDristi
                         WHEN c.Grittiness = 1 THEN 'Positive'
                         WHEN c.Grittiness = 0 THEN 'Negative'
                     END AS Grittiness,
-                    CASE 
-                        WHEN c.Grittiness_Remarks IS NULL OR c.Grittiness_Remarks = '' THEN 'No Remarks'
-                        ELSE c.Grittiness_Remarks
-                    END AS Grittiness_Remarks,
+                    ISNULL(NULLIF(c.Grittiness_Remarks, ''), 'No Remarks') AS Grittiness_Remarks,
                     c.Acidity,
                     c.Acidity_Remarks,
                     c.Granularity,
@@ -269,7 +384,7 @@ namespace AnmolDristi
                     c.Retention_Remarks,
                     c.Bromate,
                     c.Material_Image,
-                    c.Remarks,
+                    c.Remarks AS Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
                     c.Approver1_TimeStamp,
@@ -279,16 +394,11 @@ namespace AnmolDristi
                     c.DottedLineApproverEmployeeCode AS L3,
                     c.DottedApprover_Status,
                     c.DottedApprover_TimeStamp
-                FROM 
-                    TRN_Aata_Maida c
-                LEFT JOIN
-                    RM_MATERIAL m ON c.MaterialName = m.Material_Id
-                LEFT JOIN 
-                    MST_PlantDetails p ON c.PlantName = p.plant_id
-                LEFT JOIN
-                    MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                WHERE 
-                    1 = 1
+                FROM TRN_Aata_Maida AS c
+                LEFT JOIN RM_MATERIAL AS m ON c.MaterialName = m.Material_Id
+                LEFT JOIN MST_PlantDetails AS p ON c.PlantName = p.plant_id
+                LEFT JOIN MST_UserMaster AS u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                WHERE 1 = 1
                 ORDER BY 
                     c.SubmittedDate DESC, 
                     c.SubmittedTime DESC;";
@@ -313,132 +423,128 @@ namespace AnmolDristi
             }
         }
 
-        private void DataLoader()
+        private void DataLoader_OLD()
         {
             DateTime? dateFrom = string.IsNullOrEmpty(TB_Date_From.Text) ? (DateTime?)null : DateTime.ParseExact(TB_Date_From.Text, "yyyy-MM-dd", null);
             DateTime? dateTo = string.IsNullOrEmpty(TB_Date_To.Text) ? (DateTime?)null : DateTime.ParseExact(TB_Date_To.Text, "yyyy-MM-dd", null);
 
             StringBuilder queryBuilder = new StringBuilder(@"
                 SELECT 
-                    c.ID AS DBID,
-                    c.FormID AS FormID,
-                    AMFID as RecordID,
-	                m.Material_Name AS MaterialName,
-                    p.plant_name AS PlantName,
-                    c.SubmittedByEmployeeCode AS EmpCode,
-                    u.EmployeeName AS EmpName,
-                    c.SubmittedDate AS SDate,
-                    c.SubmittedTime AS STime,
-                    c.ProductBrand,
-                    c.Quantity,
-                    c.Supplier_Name,
-                    c.Size,
-                    c.Size_Remarks,
-                    c.Challan_No,
-                    c.Challan_Dates,
-                    c.Mfg_Dates,
-                    c.BatchNo,
-                    c.LotNo,
-                    c.VehicleNo,
-                    c.VehicleNo,
-                    CASE 
-		                WHEN c.MfgYesNo = 1 THEN 'Ok'
-		                WHEN c.MfgYesNo = 0 THEN 'Not Ok'
-	                END AS MfgYesNo,
-	                c.MfgYesNoRemarks
-                    c.MfgName,
-                    CASE 
-		                WHEN c.BBDateYesNo = 1 THEN 'Ok'
-		                WHEN c.BBDateYesNo = 0 THEN 'Not Ok'
-	                END AS BBDateYesNo,
-	                c.BBDateYesNoRemarks
-                    c.BB_Dates,
-	                CASE 
-		                WHEN c.fssaiYesNo = 1 THEN 'Ok'
-		                WHEN c.fssaiYesNo = 0 THEN 'Not Ok'
-	                END AS fssaiYesNo,
-	                c.fssaiYesNoRemarks
-                    c.FssaiNo,
-	                CASE 
-		                WHEN c.Fssai_Logo = 1 THEN 'Present'
-		                WHEN c.Fssai_Logo = 0 THEN 'Absent'
-	                END AS Fssai_Logo,
-	                CASE 
-		                WHEN c.Veg_Logo = 1 THEN 'Present'
-		                WHEN c.Veg_Logo = 0 THEN 'Absent'
-	                END AS Veg_Logo,
-	                CASE 
-		                WHEN c.Packing_Condition = 1 THEN 'Ok'
-		                WHEN c.Packing_Condition = 0 THEN 'Not Ok'
-	                END AS Packing_Condition,
-	                c.PackingCondition_Remarks
-	                CASE 
-		                WHEN c.ColorApp = 1 THEN 'Ok'
-		                WHEN c.ColorApp = 0 THEN 'Not Ok'
-	                END AS ColorApp,
-	                c.ColorApp_Remarks
-	                CASE 
-		                WHEN c.Odour = 1 THEN 'Ok'
-		                WHEN c.Odour = 0 THEN 'Not Ok'
-	                END AS Odour,
-	                c.Odour_Remarks
-	                CASE 
-		                WHEN c.TasteFlavor = 1 THEN 'Ok'
-		                WHEN c.TasteFlavor = 0 THEN 'Not Ok'
-	                END AS TasteFlavor,
-	                c.TasteFlavor_Remarks
-	                CASE 
-		                WHEN c.Impurities = 1 THEN 'Ok'
-		                WHEN c.Impurities = 0 THEN 'Not Ok'
-	                END AS Impurities,
-	                c.Impurities_Remarks
-                    c.Moisture,
-                    c.Moisture_Remarks,
-                    c.TotalAsh,
-                    c.Ash_Remarks,
-                    c.InsolubleAsh,
-                    c.InsolubleAsh_Remarks,
-                    c.GlutentContent,
-                    c.GlutentContent_Remarks,
-                    c.AlcoholicAcidity,
-                    c.AlcoholicAcidity_Remarks,
-                    c.Absorption,
-                    c.Absorption_Remarks,
-                    c.Sedimentation,
-                    c.Sedimentation_Remarks,
-	                CASE 
-		                WHEN c.Grittiness = 1 THEN 'Positive'
-		                WHEN c.Grittiness = 0 THEN 'Negative'
-	                END AS Grittiness,
-	                CASE 
-		                WHEN c.Grittiness_Remarks IS NULL OR c.Grittiness_Remarks = '' THEN 'No Remarks'
-		                ELSE c.Grittiness_Remarks
-	                END AS Grittiness_Remarks,
-                    c.Acidity,
-                    c.Acidity_Remarks,
-                    c.Granularity,
-                    c.Granularity_Remarks,
-                    c.GranularityRetention,
-                    c.GranularityRetention_Remarks,
-                    c.Retention,
-                    c.Retention_Remarks,
-                    c.Bromate,
-                    c.Material_Image,
-                    c.Remarks AS Remarks,
-                    c.Approver1EmployeeCode AS L1,
-                    c.Approver1_Status,
-                    c.Approver1_TimeStamp,
-                    c.Approver2EmployeeCode AS L2,
-                    c.Approver2_Status,
-                    c.Approver2_TimeStamp,
-                    c.DottedLineApproverEmployeeCode AS L3,
-                    c.DottedApprover_Status,
-                    c.DottedApprover_TimeStamp
-                FROM TRN_Aata_Maida c
-                LEFT JOIN RM_MATERIAL m ON c.MaterialName = m.Material_Id
-                LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
-                LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                WHERE 1 = 1");
+                c.ID AS DBID,
+                c.FormID AS FormID,
+                c.AMFID AS RecordID,
+                m.Material_Name AS MaterialName,
+                p.plant_name AS PlantName,
+                c.SubmittedByEmployeeCode AS EmpCode,
+                u.EmployeeName AS EmpName,
+                c.SubmittedDate AS SDate,
+                c.SubmittedTime AS STime,
+                c.ProductBrand,
+                c.Quantity,
+                c.Supplier_Name,
+                c.Size,
+                c.Size_Remarks,
+                c.Challan_No,
+                c.Challan_Dates,
+                c.Mfg_Dates,
+                c.BatchNo,
+                c.LotNo,
+                c.VehicleNo,
+                CASE 
+                    WHEN c.MfgYesNo = 1 THEN 'Ok'
+                    WHEN c.MfgYesNo = 0 THEN 'Not Ok'
+                END AS MfgYesNo,
+                c.MfgYesNoRemarks,
+                c.MfgName,
+                CASE 
+                    WHEN c.BBDateYesNo = 1 THEN 'Ok'
+                    WHEN c.BBDateYesNo = 0 THEN 'Not Ok'
+                END AS BBDateYesNo,
+                c.BBDateYesNoRemarks,
+                c.BB_Dates,
+                CASE 
+                    WHEN c.fssaiYesNo = 1 THEN 'Ok'
+                    WHEN c.fssaiYesNo = 0 THEN 'Not Ok'
+                END AS fssaiYesNo,
+                c.fssaiYesNoRemarks,
+                c.FssaiNo,
+                CASE 
+                    WHEN c.Fssai_Logo = 1 THEN 'Present'
+                    WHEN c.Fssai_Logo = 0 THEN 'Absent'
+                END AS Fssai_Logo,
+                CASE 
+                    WHEN c.Veg_Logo = 1 THEN 'Present'
+                    WHEN c.Veg_Logo = 0 THEN 'Absent'
+                END AS Veg_Logo,
+                CASE 
+                    WHEN c.Packing_Condition = 1 THEN 'Ok'
+                    WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+                END AS Packing_Condition,
+                c.PackingCondition_Remarks,
+                CASE 
+                    WHEN c.ColorApp = 1 THEN 'Ok'
+                    WHEN c.ColorApp = 0 THEN 'Not Ok'
+                END AS ColorApp,
+                c.ColorApp_Remarks,
+                CASE 
+                    WHEN c.Odour = 1 THEN 'Ok'
+                    WHEN c.Odour = 0 THEN 'Not Ok'
+                END AS Odour,
+                c.Odour_Remarks,
+                CASE 
+                    WHEN c.TasteFlavor = 1 THEN 'Ok'
+                    WHEN c.TasteFlavor = 0 THEN 'Not Ok'
+                END AS TasteFlavor,
+                c.TasteFlavor_Remarks,
+                CASE 
+                    WHEN c.Impurities = 1 THEN 'Ok'
+                    WHEN c.Impurities = 0 THEN 'Not Ok'
+                END AS Impurities,
+                c.Impurities_Remarks,
+                c.Moisture,
+                c.Moisture_Remarks,
+                c.TotalAsh,
+                c.Ash_Remarks,
+                c.InsolubleAsh,
+                c.InsolubleAsh_Remarks,
+                c.GlutentContent,
+                c.GlutentContent_Remarks,
+                c.AlcoholicAcidity,
+                c.AlcoholicAcidity_Remarks,
+                c.Absorption,
+                c.Absorption_Remarks,
+                c.Sedimentation,
+                c.Sedimentation_Remarks,
+                CASE 
+                    WHEN c.Grittiness = 1 THEN 'Positive'
+                    WHEN c.Grittiness = 0 THEN 'Negative'
+                END AS Grittiness,
+                ISNULL(NULLIF(c.Grittiness_Remarks, ''), 'No Remarks') AS Grittiness_Remarks,
+                c.Acidity,
+                c.Acidity_Remarks,
+                c.Granularity,
+                c.Granularity_Remarks,
+                c.GranularityRetention,
+                c.GranularityRetention_Remarks,
+                c.Retention,
+                c.Retention_Remarks,
+                c.Bromate,
+                c.Material_Image,
+                c.Remarks AS Remarks,
+                c.Approver1EmployeeCode AS L1,
+                c.Approver1_Status,
+                c.Approver1_TimeStamp,
+                c.Approver2EmployeeCode AS L2,
+                c.Approver2_Status,
+                c.Approver2_TimeStamp,
+                c.DottedLineApproverEmployeeCode AS L3,
+                c.DottedApprover_Status,
+                c.DottedApprover_TimeStamp
+            FROM TRN_Aata_Maida AS c
+            LEFT JOIN RM_MATERIAL AS m ON c.MaterialName = m.Material_Id
+            LEFT JOIN MST_PlantDetails AS p ON c.PlantName = p.plant_id
+            LEFT JOIN MST_UserMaster AS u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+            WHERE 1 = 1");
 
             var parameters = new List<SqlParameter>();
 
@@ -502,7 +608,217 @@ namespace AnmolDristi
             }
         }
 
-        private DataTable GetDataFromTable(string query, SqlParameter[] parameters)
+        private void DataLoader()
+        {
+            DateTime? dateFrom = null;
+            DateTime? dateTo = null;
+
+            if (!string.IsNullOrWhiteSpace(TB_Date_From.Text))
+            {
+                DateTime dFrom;
+                if (DateTime.TryParseExact(
+                    TB_Date_From.Text.Trim(),
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out dFrom))
+                {
+                    dateFrom = dFrom.Date;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(TB_Date_To.Text))
+            {
+                DateTime dTo;
+                if (DateTime.TryParseExact(
+                    TB_Date_To.Text.Trim(),
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out dTo))
+                {
+                    dateTo = dTo.Date;
+                }
+            }
+
+            // Swap if user inverted the range (older C#—no tuple deconstruction)
+            if (dateFrom.HasValue && dateTo.HasValue && dateFrom.Value > dateTo.Value)
+            {
+                DateTime? temp = dateFrom;
+                dateFrom = dateTo;
+                dateTo = temp;
+            }
+
+            var sb = new StringBuilder();
+            sb.Append(@"
+                SELECT 
+                    c.ID AS DBID,
+                    c.FormID AS FormID,
+                    c.AMFID AS RecordID,
+                    m.Material_Name AS MaterialName,
+                    p.plant_name AS PlantName,
+                    c.SubmittedByEmployeeCode AS EmpCode,
+                    u.EmployeeName AS EmpName,
+                    c.SubmittedDate AS SDate,
+                    c.SubmittedTime AS STime,
+                    c.ProductBrand,
+                    c.Quantity,
+                    c.Supplier_Name,
+                    c.Size,
+                    c.Size_Remarks,
+                    c.Challan_No,
+                    c.Challan_Dates,
+                    c.Mfg_Dates,
+                    c.BatchNo,
+                    c.LotNo,
+                    c.VehicleNo,
+                    CASE WHEN c.MfgYesNo = 1 THEN 'Ok' WHEN c.MfgYesNo = 0 THEN 'Not Ok' END AS MfgYesNo,
+                    c.MfgYesNoRemarks,
+                    c.MfgName,
+                    CASE WHEN c.BBDateYesNo = 1 THEN 'Ok' WHEN c.BBDateYesNo = 0 THEN 'Not Ok' END AS BBDateYesNo,
+                    c.BBDateYesNoRemarks,
+                    c.BB_Dates,
+                    CASE WHEN c.fssaiYesNo = 1 THEN 'Ok' WHEN c.fssaiYesNo = 0 THEN 'Not Ok' END AS fssaiYesNo,
+                    c.fssaiYesNoRemarks,
+                    c.FssaiNo,
+                    CASE WHEN c.Fssai_Logo = 1 THEN 'Present' WHEN c.Fssai_Logo = 0 THEN 'Absent' END AS Fssai_Logo,
+                    CASE WHEN c.Veg_Logo = 1 THEN 'Present' WHEN c.Veg_Logo = 0 THEN 'Absent' END AS Veg_Logo,
+                    CASE WHEN c.Packing_Condition = 1 THEN 'Ok' WHEN c.Packing_Condition = 0 THEN 'Not Ok' END AS Packing_Condition,
+                    c.PackingCondition_Remarks,
+                    CASE WHEN c.ColorApp = 1 THEN 'Ok' WHEN c.ColorApp = 0 THEN 'Not Ok' END AS ColorApp,
+                    c.ColorApp_Remarks,
+                    CASE WHEN c.Odour = 1 THEN 'Ok' WHEN c.Odour = 0 THEN 'Not Ok' END AS Odour,
+                    c.Odour_Remarks,
+                    CASE WHEN c.TasteFlavor = 1 THEN 'Ok' WHEN c.TasteFlavor = 0 THEN 'Not Ok' END AS TasteFlavor,
+                    c.TasteFlavor_Remarks,
+                    CASE WHEN c.Impurities = 1 THEN 'Ok' WHEN c.Impurities = 0 THEN 'Not Ok' END AS Impurities,
+                    c.Impurities_Remarks,
+                    c.Moisture,
+                    c.Moisture_Remarks,
+                    c.TotalAsh,
+                    c.Ash_Remarks,
+                    c.InsolubleAsh,
+                    c.InsolubleAsh_Remarks,
+                    c.GlutentContent,
+                    c.GlutentContent_Remarks,
+                    c.AlcoholicAcidity,
+                    c.AlcoholicAcidity_Remarks,
+                    c.Absorption,
+                    c.Absorption_Remarks,
+                    c.Sedimentation,
+                    c.Sedimentation_Remarks,
+                    CASE WHEN c.Grittiness = 1 THEN 'Positive' WHEN c.Grittiness = 0 THEN 'Negative' END AS Grittiness,
+                    ISNULL(NULLIF(c.Grittiness_Remarks, ''), 'No Remarks') AS Grittiness_Remarks,
+                    c.Acidity,
+                    c.Acidity_Remarks,
+                    c.Granularity,
+                    c.Granularity_Remarks,
+                    c.GranularityRetention,
+                    c.GranularityRetention_Remarks,
+                    c.Retention,
+                    c.Retention_Remarks,
+                    c.Bromate,
+                    c.Material_Image,
+                    c.Remarks AS Remarks,
+                    c.Approver1EmployeeCode AS L1,
+                    c.Approver1_Status,
+                    c.Approver1_TimeStamp,
+                    c.Approver2EmployeeCode AS L2,
+                    c.Approver2_Status,
+                    c.Approver2_TimeStamp,
+                    c.DottedLineApproverEmployeeCode AS L3,
+                    c.DottedApprover_Status,
+                    c.DottedApprover_TimeStamp
+                FROM TRN_Aata_Maida AS c
+                LEFT JOIN RM_MATERIAL AS m ON c.MaterialName = m.Material_Id
+                LEFT JOIN MST_PlantDetails AS p ON c.PlantName = p.plant_id
+                LEFT JOIN MST_UserMaster AS u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                WHERE 1 = 1");
+
+            var parameters = new List<SqlParameter>();
+
+            //if (dateFrom.HasValue)
+            //{
+            //    sb.Append(" AND c.SubmittedDate >= @DateFrom");
+            //    parameters.Add(new SqlParameter("@DateFrom", SqlDbType.Date) { Value = dateFrom.Value });
+            //}
+
+            //if (dateTo.HasValue)
+            //{
+            //    sb.Append(" AND c.SubmittedDate <= @DateTo");
+            //    parameters.Add(new SqlParameter("@DateTo", SqlDbType.Date) { Value = dateTo.Value });
+            //    // If c.SubmittedDate is DATETIME and you want inclusive end-of-day:
+            //    // parameters[parameters.Count - 1] = new SqlParameter("@DateTo", SqlDbType.DateTime) { Value = dateTo.Value.Date.AddDays(1).AddTicks(-1) };
+            //}
+
+            if (dateFrom.HasValue && dateTo.HasValue)
+            {
+                if (dateFrom.Value.Date == dateTo.Value.Date)
+                {
+                    // Same date → exact match
+                    sb.Append(" AND c.SubmittedDate = @DateExact");
+                    parameters.Add(new SqlParameter("@DateExact", SqlDbType.Date) { Value = dateFrom.Value.Date });
+                }
+                else
+                {
+                    // Range → BETWEEN
+                    sb.Append(" AND c.SubmittedDate BETWEEN @DateFrom AND @DateTo");
+                    parameters.Add(new SqlParameter("@DateFrom", SqlDbType.Date) { Value = dateFrom.Value.Date });
+                    parameters.Add(new SqlParameter("@DateTo", SqlDbType.Date) { Value = dateTo.Value.Date });
+                }
+            }
+            else if (dateFrom.HasValue)
+            {
+                // Only from date
+                sb.Append(" AND c.SubmittedDate >= @DateFrom");
+                parameters.Add(new SqlParameter("@DateFrom", SqlDbType.Date) { Value = dateFrom.Value.Date });
+            }
+            else if (dateTo.HasValue)
+            {
+                // Only to date
+                sb.Append(" AND c.SubmittedDate <= @DateTo");
+                parameters.Add(new SqlParameter("@DateTo", SqlDbType.Date) { Value = dateTo.Value.Date });
+            }
+
+            if (!string.IsNullOrEmpty(DDL_Material.SelectedValue) && DDL_Material.SelectedValue != "0")
+            {
+                int materialId;
+                if (int.TryParse(DDL_Material.SelectedValue, out materialId))
+                {
+                    sb.Append(" AND c.MaterialName = @Material_Id");
+                    parameters.Add(new SqlParameter("@Material_Id", SqlDbType.Int) { Value = materialId });
+                }
+            }
+
+            if (!string.IsNullOrEmpty(DDL_Plant.SelectedValue) && DDL_Plant.SelectedValue != "0")
+            {
+                int plantId;
+                if (int.TryParse(DDL_Plant.SelectedValue, out plantId))
+                {
+                    sb.Append(" AND c.PlantName = @PlantId");
+                    parameters.Add(new SqlParameter("@PlantId", SqlDbType.Int) { Value = plantId });
+                }
+            }
+
+            sb.Append(" ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC");
+
+            try
+            {
+                DataTable filteredData = GetDataFromTable(sb.ToString(), parameters.ToArray());
+                GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
+                GridView1.DataBind();
+            }
+            catch (Exception ex)
+            {
+                // Encode to avoid breaking JS/PNotify in older frameworks too
+                string safeMsg = HttpUtility.JavaScriptStringEncode(ex.Message ?? "Unknown error");
+                string script = "new PNotify({ title: 'Error', text: '" + safeMsg + "', type: 'error', styling: 'bootstrap3' });";
+                ClientScript.RegisterStartupScript(this.GetType(), "FilteredDataerror", script, true);
+            }
+        }
+
+        private DataTable GetDataFromTable_OLD(string query, SqlParameter[] parameters)
         {
             DataTable dt = new DataTable();
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -522,6 +838,58 @@ namespace AnmolDristi
             }
             return dt;
         }
+
+
+        private DataTable GetDataFromTable(string query, SqlParameter[] parameters)
+        {
+            DataTable dt = new DataTable();
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(connectionString))
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    if (parameters != null && parameters.Length > 0)
+                    {
+                        cmd.Parameters.AddRange(parameters);
+                    }
+
+                    cmd.CommandType = CommandType.Text;
+
+                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                    {
+                        sda.Fill(dt);
+                    }
+                }
+
+                // ✅ Handle no records
+                if (dt.Rows.Count == 0)
+                {
+                    // Option 1: Add a dummy row (so GridView header still shows)
+                    //dt.Rows.Add(dt.NewRow());
+
+                    // Option 2: Just return empty table (recommended if you handle "No records" message in UI)
+                    return dt;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error (to file, db, or email)
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                EmailNotifier.Notify(
+                    "DB Error",
+                    "<p>Error in GetDataFromTable:</p><p>" + ex.Message + "</p><p>Stack Trace:</p><p>" + ex.StackTrace + "</p>",
+                    recipients
+                );
+
+                // Return empty table to avoid crashing page
+                return new DataTable();
+            }
+
+            return dt;
+        }
+
 
         protected void GridView1_RowCommand(object sender, GridViewCommandEventArgs e)
         {

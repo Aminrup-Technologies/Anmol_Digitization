@@ -145,18 +145,14 @@
                                     </ItemTemplate>
                                 </asp:TemplateField>
                             </Columns>
+
+                            <EmptyDataTemplate>
+                                <div class="alert alert-info">No records found.</div>
+                            </EmptyDataTemplate>
                         </asp:GridView>
-
-
-
                     </div>
                 </div>
             </div>
-
-
         </div>
     </div>
-
-
-
 </asp:Content>

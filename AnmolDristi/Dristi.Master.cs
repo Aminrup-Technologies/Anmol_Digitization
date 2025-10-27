@@ -77,16 +77,12 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-
-
                 //// Basic auth/session check
                 //if (Session["USERID"] == null || Session["USERNAME"] == null || Session["WORKMAN"] == null)
                 //{
                 //    Response.Redirect("login.aspx");
                 //    return;
                 //}
-
-
 
                 //// Set browser sessionStorage ActiveSessionId (if present in server session)
                 //if (Session["ActiveSessionId"] != null)

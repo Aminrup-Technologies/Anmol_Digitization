@@ -258,6 +258,7 @@
     <Content Include="PM_Laminate_Approval.aspx" />
     <Content Include="PM_Laminate_FinalApproval.aspx" />
     <Content Include="PM_Laminate_Report.aspx" />
+    <Content Include="PolicyMatrixAdmin.aspx" />
     <Content Include="preDispatchVM.aspx" />
     <Content Include="Pre_Dispatch_Detailed.aspx" />
     <Content Include="Process_Approval.aspx" />
@@ -855,6 +856,13 @@
     </Compile>
     <Compile Include="PM_Laminate_Report.aspx.designer.cs">
       <DependentUpon>PM_Laminate_Report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PolicyMatrixAdmin.aspx.cs">
+      <DependentUpon>PolicyMatrixAdmin.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PolicyMatrixAdmin.aspx.designer.cs">
+      <DependentUpon>PolicyMatrixAdmin.aspx</DependentUpon>
     </Compile>
     <Compile Include="preDispatchVM.aspx.cs">
       <DependentUpon>preDispatchVM.aspx</DependentUpon>
