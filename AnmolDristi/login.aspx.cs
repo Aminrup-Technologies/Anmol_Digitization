@@ -25,7 +25,7 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                Img_CpLogo.ImageUrl = "WebData/Anmol_Logo.png";
+                Img_CpLogo.ImageUrl = "WebData/anmol_logo_GPTW.jpg";
                 lbl_companyname.Text = "Anmol Industries Limited";
                 lbl_currentyr.Text = DateTime.Now.Year.ToString();
                 lbl_compfooter.Text = "Anmol Industries Limited";

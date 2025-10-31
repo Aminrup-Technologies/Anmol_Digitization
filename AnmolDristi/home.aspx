@@ -36,10 +36,10 @@
 								<asp:Label ID="lbl_state" runat="server" Text="N/A"></asp:Label>.
                             </p>
 
-                            <p>
+                            <%--<p>
                                 <strong>Deputed Site :</strong>
                                 <asp:Label ID="lbl_wrksite" runat="server" Text="N/A"></asp:Label>
-                            </p>
+                            </p>--%>
 
                             <ul class="list-unstyled">
                                 <li><i class="fa fa-calendar">&nbsp;</i><strong>DOJ :</strong> :

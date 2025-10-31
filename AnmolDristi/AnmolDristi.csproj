@@ -333,12 +333,19 @@
     <Content Include="vm_leak_test.aspx" />
     <Content Include="vm_overwrap.aspx" />
     <Content Include="vw_app_qcireport.aspx" />
+    <Content Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ApplicationInsights.config" />
+    <Content Include=".bowerrc" />
     <Content Include="WebData\anmolaing.png" />
     <Content Include="WebData\anmolgurukul.png" />
     <Content Include="WebData\Anmol_Logo.png" />
+    <Content Include="WebData\anmol_logo_GPTW.jpg" />
     <Content Include="WebData\approval.jpg" />
     <Content Include="WebData\confbook.png" />
     <Content Include="WebData\crm.jpg" />
+    <Content Include="WebData\crm.png" />
     <Content Include="WebData\crossgif.gif" />
     <Content Include="WebData\Internal\bank.jpg" />
     <Content Include="WebData\Internal\crossgif.gif" />
@@ -370,11 +377,6 @@
     <Content Include="WebData\SingleTick.gif" />
     <Content Include="WebData\success_gif.gif" />
     <Content Include="WebData\TertiarySales.png" />
-    <Content Include="NLog.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="ApplicationInsights.config" />
-    <Content Include=".bowerrc" />
     <Content Include="WebData\vault.jpg" />
     <Content Include="WebData\webdatacapture.jpg" />
     <Content Include="WebData\webtos.png" />

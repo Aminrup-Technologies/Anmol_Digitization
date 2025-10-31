@@ -130,6 +130,105 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField HF_ActivityDate;
         
         /// <summary>
+        /// HF_Policy_RegionId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_RegionId;
+        
+        /// <summary>
+        /// HF_Policy_BranchId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_BranchId;
+        
+        /// <summary>
+        /// HF_Policy_GradeId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_GradeId;
+        
+        /// <summary>
+        /// HF_Policy_DesignationId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_DesignationId;
+        
+        /// <summary>
+        /// HF_ResolvedHotelCap control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedHotelCap;
+        
+        /// <summary>
+        /// HF_ResolvedDA control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedDA;
+        
+        /// <summary>
+        /// HF_ResolvedMaxKM control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedMaxKM;
+        
+        /// <summary>
+        /// HF_ResolvedRatePerKm control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedRatePerKm;
+        
+        /// <summary>
+        /// HF_ResolvedPolicyMode control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedPolicyMode;
+        
+        /// <summary>
+        /// HF_OutstationDA control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_OutstationDA;
+        
+        /// <summary>
+        /// HF_OwnArrangementDA control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_OwnArrangementDA;
+        
+        /// <summary>
         /// DDL_ExpenseType control.
         /// </summary>
         /// <remarks>
@@ -560,42 +659,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox policyJsonRaw;
-        
-        /// <summary>
-        /// HF_Policy_RegionId control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_RegionId;
-        
-        /// <summary>
-        /// HF_Policy_BranchId control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_BranchId;
-        
-        /// <summary>
-        /// HF_Policy_GradeId control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_GradeId;
-        
-        /// <summary>
-        /// HF_Policy_DesignationId control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField HF_Policy_DesignationId;
         
         /// <summary>
         /// lnkCopyJson control.

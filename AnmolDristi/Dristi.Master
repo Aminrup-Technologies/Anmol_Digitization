@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="WebData/Anmol_Logo.png" type="image/ico" />
+    <link rel="icon" href="WebData/anmol_logo_GPTW.jpg" type="image/ico" />
 
     <title>Anmol Industries</title>
 
@@ -371,7 +371,7 @@
                         <div class="left_col scroll-view">
                             <div class="navbar nav_title" style="border: 0;">
                                 <a href="#" class="site_title">
-                                    <asp:Image ID="Image1" runat="server" ImageUrl="~/WebData/Anmol_Logo.png" Height="40" Width="50" /><span>&nbsp;&nbsp;ANMOL</span>
+                                    <asp:Image ID="Image1" runat="server" ImageUrl="~/WebData/anmol_logo_GPTW.jpg" Height="40" Width="50" /><span>&nbsp;&nbsp;ANMOL</span>
                                 </a>
                             </div>
 
@@ -460,10 +460,10 @@
                                             </ul>
                                         </li>
 
-                                        <li id="SO_TaDa_Module" runat="server" visible="false"><a><i class="fa fa-database"></i>SO - TA/Da <span class="fa fa-chevron-down"></span></a>
+                                        <li id="SO_TaDa_Module" runat="server" visible="false"><a><i class="fa fa-database"></i>TA/Da <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
                                                 <li id="SO_TaDa_AdminConfig" runat="server" visible="false"><a href="Claims_Config.aspx">Admin Config.<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="SO_TaDa_Submit" runat="server" visible="false"><a href="SalesMonthlyReview.aspx">Submit Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_Submit" runat="server" visible="false"><a href="SalesMonthlyReview.aspx">Apply Claims<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="SO_TaDa_View" runat="server" visible="false"><a href="#">View Claims<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="SO_TaDa_Approve" runat="server" visible="false"><a href="#">Approve Claims<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
