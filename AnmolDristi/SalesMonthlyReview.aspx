@@ -252,6 +252,7 @@
                                             OnRowCancelingEdit="gvActivities_RowCancelingEdit" OnRowUpdating="gvActivities_RowUpdating"
                                             OnRowDataBound="gvActivities_RowDataBound" ShowFooter="true">
                                             <Columns>
+                                                
                                                 <asp:TemplateField HeaderText="Date" ItemStyle-Width="10%">
                                                     <ItemTemplate>
                                                         <%# Eval("ActivityDate", "{0:dd-MM-yyyy}") %><br />
@@ -289,17 +290,76 @@
                                                 </asp:TemplateField>
 
                                                 <asp:TemplateField HeaderText="TA (₹)" SortExpression="CalculatedClaimAmount">
-                                                    <ItemStyle HorizontalAlign="Right" Width="10%" />
+                                                    <ItemStyle HorizontalAlign="Right" Width="8%" />
                                                     <FooterStyle HorizontalAlign="Right" />
                                                     <ItemTemplate>
                                                         <asp:Label ID="lblCalculatedClaim" runat="server"
                                                             Text='<%# Eval("CalculatedClaimAmount", "₹ {0:N2}") %>' CssClass="currency" />
                                                         <br />
-                                                        <small class="text-muted" runat="server" visible="true">(<%# Eval("RatePerKm", "{0:N2}") %> / km)</small>
+                                                        <small class="text-muted" runat="server" visible="true">(<%# Eval("RatePerKm", "{0:N2}") %>/ km)</small>
                                                     </ItemTemplate>
                                                     <FooterTemplate>
                                                         <asp:Label ID="lblFooterCalculated" runat="server" CssClass="font-weight-bold currency" Text="₹ 0.00" />
                                                     </FooterTemplate>
+                                                </asp:TemplateField>
+
+                                                <asp:TemplateField HeaderText="Status" ItemStyle-Width="5%" ItemStyle-HorizontalAlign="Center">
+                                                    <ItemTemplate>
+                                                        <span data-toggle="tooltip"
+                                                            title='<%# 
+                                                                Eval("ClaimStatus").ToString() == "Draft" ? "Draft – not submitted yet" :
+                                                                Eval("ClaimStatus").ToString() == "Submitted" ? "Submitted – awaiting approval" :
+                                                                Eval("ClaimStatus").ToString() == "Approved" ? "Approved by manager" :
+                                                                Eval("ClaimStatus").ToString() == "Rejected" ? "Rejected – please review" :
+                                                                Eval("ClaimStatus").ToString() == "Processed" ? "Processed in accounts" :
+                                                                "Unknown status" %>'
+                                                                                                            class='<%# 
+                                                                Eval("ClaimStatus").ToString() == "Draft" ? "badge badge-warning" :
+                                                                Eval("ClaimStatus").ToString() == "Submitted" ? "badge badge-info" :
+                                                                Eval("ClaimStatus").ToString() == "Approved" ? "badge badge-success" :
+                                                                Eval("ClaimStatus").ToString() == "Rejected" ? "badge badge-danger" :
+                                                                Eval("ClaimStatus").ToString() == "Processed" ? "badge badge-primary" :
+                                                                "badge badge-secondary" %>'>
+
+                                                                                                            <i class='<%# 
+                                                                Eval("ClaimStatus").ToString() == "Draft" ? "fa fa-pencil-square-o" :
+                                                                Eval("ClaimStatus").ToString() == "Submitted" ? "fa fa-paper-plane" :
+                                                                Eval("ClaimStatus").ToString() == "Approved" ? "fa fa-check-circle" :
+                                                                Eval("ClaimStatus").ToString() == "Rejected" ? "fa fa-times-circle" :
+                                                                Eval("ClaimStatus").ToString() == "Processed" ? "fa fa-cogs" :
+                                                                "fa fa-clock-o" %>'></i>
+                                                        </span>
+                                                    </ItemTemplate>
+                                                </asp:TemplateField>
+
+
+
+                                                <asp:TemplateField HeaderText="Actions" ItemStyle-Width="10%">
+                                                    <ItemStyle HorizontalAlign="Center"/>
+                                                    <ItemTemplate>
+                                                        <asp:LinkButton ID="lnkEdit" runat="server"
+                                                            CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" Visible='<%# Eval("ClaimStatus").ToString() == "Draft" %>' ToolTip="Edit Kilometers">
+                                                            <i class="fa fa-pencil"></i>
+                                                        </asp:LinkButton>
+
+                                                        <asp:LinkButton ID="lnkExpenses" runat="server"
+                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-info" ToolTip="View / Add Expenses">
+                                                            <i class="fa fa-briefcase"></i>
+                                                        </asp:LinkButton>
+                                                    </ItemTemplate>
+
+                                                    <EditItemTemplate>
+                                                        <asp:LinkButton ID="lnkUpdate" runat="server"
+                                                            CommandName="UpdateRow" CommandArgument='<%# Eval("ActivityId") %>' OnClientClick="return validateGridBeforeSubmit();" CssClass="btn btn-sm btn-success" ToolTip="Save Changes">
+                                                            <i class="fa fa-check"></i>
+                                                        </asp:LinkButton>
+
+                                                        <asp:LinkButton ID="lnkCancel" runat="server"
+                                                            CommandName="Cancel" CssClass="btn btn-sm btn-default"
+                                                            ToolTip="Cancel Edit">
+                                                            <i class="fa fa-times"></i>
+                                                        </asp:LinkButton>
+                                                    </EditItemTemplate>
                                                 </asp:TemplateField>
 
                                                 <asp:TemplateField HeaderText="DA (₹)">
@@ -345,66 +405,6 @@
                                                         <asp:Label ID="lblFooterExpenseTotal" runat="server" CssClass="font-weight-bold currency" Text="₹ 0.00" />
                                                     </FooterTemplate>
                                                 </asp:TemplateField>
-
-                                                <asp:TemplateField HeaderText="Status" ItemStyle-Width="10%" ItemStyle-HorizontalAlign="Center">
-                                                    <ItemTemplate>
-                                                        <span data-toggle="tooltip"
-                                                            title='<%# 
-                                                            Eval("ClaimStatus").ToString() == "Draft" ? "Draft – not submitted yet" :
-                                                            Eval("ClaimStatus").ToString() == "Submitted" ? "Submitted – awaiting approval" :
-                                                            Eval("ClaimStatus").ToString() == "Approved" ? "Approved by manager" :
-                                                            Eval("ClaimStatus").ToString() == "Rejected" ? "Rejected – please review" :
-                                                            Eval("ClaimStatus").ToString() == "Processed" ? "Processed in accounts" :
-                                                            "Unknown status" %>'
-                                                            class='<%# 
-                                                            Eval("ClaimStatus").ToString() == "Draft" ? "badge badge-warning" :
-                                                            Eval("ClaimStatus").ToString() == "Submitted" ? "badge badge-info" :
-                                                            Eval("ClaimStatus").ToString() == "Approved" ? "badge badge-success" :
-                                                            Eval("ClaimStatus").ToString() == "Rejected" ? "badge badge-danger" :
-                                                            Eval("ClaimStatus").ToString() == "Processed" ? "badge badge-primary" :
-                                                            "badge badge-secondary" %>'>
-
-                                                            <i class='<%# 
-                                                            Eval("ClaimStatus").ToString() == "Draft" ? "fa fa-pencil-square-o" :
-                                                            Eval("ClaimStatus").ToString() == "Submitted" ? "fa fa-paper-plane" :
-                                                            Eval("ClaimStatus").ToString() == "Approved" ? "fa fa-check-circle" :
-                                                            Eval("ClaimStatus").ToString() == "Rejected" ? "fa fa-times-circle" :
-                                                            Eval("ClaimStatus").ToString() == "Processed" ? "fa fa-cogs" :
-                                                            "fa fa-clock-o" %>'></i>
-
-                                                            <%# Eval("ClaimStatus") %>
-                                                        </span>
-                                                    </ItemTemplate>
-                                                </asp:TemplateField>
-
-
-                                                <asp:TemplateField HeaderText="Actions" ItemStyle-Width="10%">
-                                                    <ItemTemplate>
-                                                        <asp:LinkButton ID="lnkEdit" runat="server"
-                                                            CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" Visible='<%# Eval("ClaimStatus").ToString() == "Draft" %>' ToolTip="Edit Kilometers">
-                                                            <i class="fa fa-pencil"></i>
-                                                        </asp:LinkButton>
-
-                                                        <asp:LinkButton ID="lnkExpenses" runat="server"
-                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-info" ToolTip="View / Add Expenses">
-                                                            <i class="fa fa-briefcase"></i>
-                                                        </asp:LinkButton>
-                                                    </ItemTemplate>
-
-                                                    <EditItemTemplate>
-                                                        <asp:LinkButton ID="lnkUpdate" runat="server"
-                                                            CommandName="UpdateRow" CommandArgument='<%# Eval("ActivityId") %>' OnClientClick="return validateGridBeforeSubmit();" CssClass="btn btn-sm btn-success" ToolTip="Save Changes">
-                                                            <i class="fa fa-check"></i>
-                                                        </asp:LinkButton>
-
-                                                        <asp:LinkButton ID="lnkCancel" runat="server"
-                                                            CommandName="Cancel" CssClass="btn btn-sm btn-default"
-                                                            ToolTip="Cancel Edit">
-                                                            <i class="fa fa-times"></i>
-                                                        </asp:LinkButton>
-                                                    </EditItemTemplate>
-                                                </asp:TemplateField>
-
 
                                             </Columns>
                                         </asp:GridView>

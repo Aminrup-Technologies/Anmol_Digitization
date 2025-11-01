@@ -752,7 +752,7 @@ namespace AnmolDristi
 
                     // combined grand overall
                     decimal grandOverall = grandCalc + grandDA + grandHotel + grandTravel;
-                    int lastCellIndex = Math.Max(0, gvActivities.FooterRow.Cells.Count - 2);
+                    int lastCellIndex = Math.Max(0, gvActivities.FooterRow.Cells.Count - 5);
                     if (lastCellIndex < gvActivities.FooterRow.Cells.Count)
                     {
                         gvActivities.FooterRow.Cells[lastCellIndex].Text = "₹ " + grandOverall.ToString("N2");

@@ -225,6 +225,7 @@
     <Content Include="bopp_tape_View.aspx" />
     <Content Include="ccp_checklist.aspx" />
     <Content Include="CCP_Checklist_detailed.aspx" />
+    <Content Include="ClaimsApproval.aspx" />
     <Content Include="Claims_Config.aspx" />
     <Content Include="CorrugatedBoardBoxReport.aspx" />
     <Content Include="CorrugatedBoardBox_Approval.aspx" />
@@ -596,6 +597,13 @@
     </Compile>
     <Compile Include="CCP_Checklist_detailed.aspx.designer.cs">
       <DependentUpon>CCP_Checklist_detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ClaimsApproval.aspx.cs">
+      <DependentUpon>ClaimsApproval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ClaimsApproval.aspx.designer.cs">
+      <DependentUpon>ClaimsApproval.aspx</DependentUpon>
     </Compile>
     <Compile Include="Claims_Config.aspx.cs">
       <DependentUpon>Claims_Config.aspx</DependentUpon>
