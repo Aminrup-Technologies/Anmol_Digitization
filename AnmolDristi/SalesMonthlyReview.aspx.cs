@@ -1590,8 +1590,47 @@ namespace AnmolDristi
             // Handle file save to filesystem
             try
             {
+                //if (FU_Attachment.HasFile)
+                //{
+                //    if (FU_Attachment.PostedFile.ContentLength > 5 * 1024 * 1024)
+                //    {
+                //        LBL_ExpenseMsg.Text = "Attachment too large (max 5MB).";
+                //        ClientScript.RegisterStartupScript(this.GetType(), "showExpense", "showExpenseModal();", true);
+                //        return;
+                //    }
+
+                //    string ext = Path.GetExtension(FU_Attachment.FileName).ToLower();
+                //    var allowed = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+                //    if (Array.IndexOf(allowed, ext) < 0)
+                //    {
+                //        LBL_ExpenseMsg.Text = "Invalid file type. Allowed: JPG, PNG, PDF.";
+                //        ClientScript.RegisterStartupScript(this.GetType(), "showExpense", "showExpenseModal();", true);
+                //        return;
+                //    }
+
+                //    // Build folder: UploadedFiles/ClaimsAttachment/{yyyy}/{MM}/
+                //    string baseFolder = Server.MapPath("~/UploadedFiles/ClaimsAttachment/");
+                //    string year = DateTime.UtcNow.AddMinutes(330).ToString("yyyy");
+                //    string month = DateTime.UtcNow.AddMinutes(330).ToString("MM");
+                //    string uploadsFolder = Path.Combine(baseFolder, year, month);
+                //    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                //    string safeLogin = GetCurrentUserLoginId().Replace(" ", "_");
+                //    string uniquePart = DateTime.UtcNow.AddMinutes(330).ToString("yyyyMMddHHmmss") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                //    savedFileName = $"{safeLogin}_{activityId}_{uniquePart}{ext}";
+                //    string savedFullPath = Path.Combine(uploadsFolder, savedFileName);
+                //    FU_Attachment.SaveAs(savedFullPath);
+
+                //    // Save relative path (recommended) so downloads can map correctly
+                //    savedRelativePath = Path.Combine("UploadedFiles/ClaimsAttachment", year, month, savedFileName).Replace("\\", "/");
+                //}
+
+                // --- BEFORE using this block ensure you have activityId available in this scope ---
+                // int activityId = ...; // obtain from page context or method parameter
+
                 if (FU_Attachment.HasFile)
                 {
+                    // Max 5 MB
                     if (FU_Attachment.PostedFile.ContentLength > 5 * 1024 * 1024)
                     {
                         LBL_ExpenseMsg.Text = "Attachment too large (max 5MB).";
@@ -1599,7 +1638,8 @@ namespace AnmolDristi
                         return;
                     }
 
-                    string ext = Path.GetExtension(FU_Attachment.FileName).ToLower();
+                    // sanitize & validate extension
+                    string ext = Path.GetExtension(Path.GetFileName(FU_Attachment.FileName)).ToLowerInvariant();
                     var allowed = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
                     if (Array.IndexOf(allowed, ext) < 0)
                     {
@@ -1608,22 +1648,50 @@ namespace AnmolDristi
                         return;
                     }
 
+                    // Determine IST now — prefer TimeZoneInfo but fall back to UTC+5:30
+                    DateTime istNow;
+                    try
+                    {
+                        var tz = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"); // Windows ID
+                        istNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+                    }
+                    catch
+                    {
+                        // fallback (UTC + 5:30)
+                        istNow = DateTime.UtcNow.AddMinutes(330);
+                    }
+
                     // Build folder: UploadedFiles/ClaimsAttachment/{yyyy}/{MM}/
                     string baseFolder = Server.MapPath("~/UploadedFiles/ClaimsAttachment/");
-                    string year = DateTime.UtcNow.AddMinutes(330).ToString("yyyy");
-                    string month = DateTime.UtcNow.AddMinutes(330).ToString("MM");
+                    string year = istNow.ToString("yyyy");
+                    string month = istNow.ToString("MM");
                     string uploadsFolder = Path.Combine(baseFolder, year, month);
                     if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-                    string safeLogin = GetCurrentUserLoginId().Replace(" ", "_");
-                    string uniquePart = DateTime.UtcNow.AddMinutes(330).ToString("yyyyMMddHHmmss") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                    savedFileName = $"{safeLogin}_{activityId}_{uniquePart}{ext}";
+                    // sanitize login id and activityId presence
+                    string safeLogin = (GetCurrentUserLoginId() ?? "unknown").Replace(" ", "_");
+                    // ensure activityId is available as string
+                    string activityPart = activityId > 0 ? activityId.ToString() : "0";
+
+                    string uniquePart = istNow.ToString("yyyyMMddHHmmss") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                    savedFileName = $"{safeLogin}_{activityPart}_{uniquePart}{ext}";
+
                     string savedFullPath = Path.Combine(uploadsFolder, savedFileName);
+
+                    // Save to disk
                     FU_Attachment.SaveAs(savedFullPath);
 
-                    // Save relative path (recommended) so downloads can map correctly
-                    savedRelativePath = Path.Combine("UploadedFiles/ClaimsAttachment", year, month, savedFileName).Replace("\\", "/");
+                    // Save relative path (use forward slashes) — DO NOT store server absolute path in DB
+                    // e.g.: UploadedFiles/ClaimsAttachment/2025/09/username_1234_202509... .pdf
+                    savedRelativePath = Path.Combine("UploadedFiles", "ClaimsAttachment", year, month, savedFileName)
+                                                       .Replace("\\", "/"); // normalize to forward slashes
+
+                    // Persist 'savedRelativePath' to your DB column (AttachmentFileName or AttachmentPath)
+                    // e.g. UPDATE dbo.SalesDailyExpense SET AttachmentFileName = @savedRelativePath WHERE ExpenseId = @ExpenseId
+                    //
+                    // IMPORTANT: store exactly savedRelativePath (no leading "~/" and no server absolute path)
                 }
+
 
                 using (SqlConnection con = new SqlConnection(connString))
                 {

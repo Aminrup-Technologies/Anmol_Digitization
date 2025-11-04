@@ -132,6 +132,289 @@
         button.btn i.fa-spinner {
             margin-right: 6px;
         }
+
+        /* Expense modal visual polish */
+        #expenseModal .modal-content {
+            border-radius: 0.6rem;
+            box-shadow: 0 6px 28px rgba(0,0,0,0.12);
+            overflow: hidden;
+        }
+
+        #expenseModal .modal-header {
+            background: linear-gradient(90deg,#f7fbff,#eef7ff);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding: 1rem 1.25rem;
+        }
+
+            #expenseModal .modal-header .modal-title {
+                font-weight: 700;
+                font-size: 1rem;
+                color: #1a3b6b;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+        #expenseModal .modal-body {
+            padding: 1rem 1.25rem;
+            background: #fff;
+        }
+
+        /* Policy summary box */
+        #expenseModal .policy-summary {
+            border: 2px solid #dbe9ff;
+            background: linear-gradient(180deg,#f7fbff 0%, #ffffff 100%);
+            box-shadow: 0 4px 14px rgba(11,73,163,0.06);
+            border-radius: .5rem;
+            padding: .65rem .75rem;
+            display: flex;
+            gap: .8rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+            /* emphasized selected policy mode label */
+            #expenseModal .policy-summary .policy-mode {
+                background: rgba(13,110,253,0.08);
+                border: 1px solid rgba(13,110,253,0.12);
+                color: #083e8a;
+                padding: .28rem .6rem;
+                border-radius: .35rem;
+                font-weight: 700;
+                display: inline-flex;
+                align-items: center;
+                gap: .4rem;
+                box-shadow: inset 0 -1px 0 rgba(13,110,253,0.02);
+            }
+            /* small chips */
+            #expenseModal .policy-summary .chip {
+                font-size: .9rem;
+                padding: .25rem .5rem;
+                border-radius: .35rem;
+                background: rgba(13,110,253,0.06);
+                color: #0d6efd;
+                font-weight: 600;
+            }
+
+        /* Auto DA info */
+        #divAutoDAInfo .card-like {
+            border-radius: .35rem;
+            padding: .45rem;
+            border: 1px solid #eef6ff;
+            background: #ffffff;
+        }
+
+        /* Inputs & card body spacing */
+        #expenseModal .form-control {
+            height: calc(1.9rem + .6rem);
+            padding: .35rem .6rem;
+        }
+
+        /* Totals card */
+        #expenseModal .card.totals-card {
+            border-radius: .4rem;
+            box-shadow: none;
+            border: 1px solid #eef3ff;
+        }
+
+            #expenseModal .card.totals-card .small {
+                color: #6b7280;
+            }
+
+        /* Repeater table */
+        #expenseModal table.table {
+            margin-bottom: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+            #expenseModal table.table thead th {
+                background: #fbfdff;
+                font-weight: 700;
+                font-size: .9rem;
+                color: #1b2b45;
+                border-bottom: 2px solid #e6eefc;
+            }
+
+            #expenseModal table.table tbody tr td {
+                vertical-align: middle;
+                font-size: .92rem;
+            }
+
+            #expenseModal table.table tbody tr:nth-child(odd) {
+                background: #ffffff;
+            }
+
+            #expenseModal table.table tbody tr:nth-child(even) {
+                background: #fbfcff;
+            }
+
+        /* Small badges for type */
+        .expense-type-badge {
+            font-weight: 600;
+            font-size: .78rem;
+            padding: .25rem .45rem;
+            border-radius: .35rem;
+        }
+
+        /* details truncation */
+        .text-truncate-ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+            max-width: 24rem;
+        }
+
+        /* Buttons */
+        #expenseModal .btn-sm {
+            padding: .3rem .55rem;
+            border-radius: .35rem;
+        }
+
+        /* Make file input slimmer */
+        #expenseModal .form-control-file {
+            font-size: .85rem;
+        }
+
+        /* small debug log */
+        #expenseDebugLog {
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            color: #333;
+            background: #fbfbfb;
+            border-radius: .3rem;
+        }
+
+        /* Auto DA card - prominent */
+        #expenseModal #divAutoDAInfo {
+            display: block;
+        }
+
+            #expenseModal #divAutoDAInfo .auto-da-card {
+                background: linear-gradient(90deg,#fff8e6,#fffef9);
+                border: 1px solid #ffe9a8;
+                padding: .6rem .8rem;
+                border-radius: .45rem;
+                box-shadow: 0 5px 18px rgba(255,193,7,0.06);
+                min-width: 220px;
+                font-weight: 700;
+            }
+
+        #expenseModal #spAutoDAAmount {
+            color: #b45f00;
+            font-size: 1.05rem;
+        }
+
+        /* subtle label under auto-da */
+        #expenseModal #spAutoDAType {
+            font-size: .8rem;
+            color: #6b4d00;
+            font-weight: 600;
+        }
+
+        /* ---------- Compact input sizing ---------- */
+        #expenseModal .form-control,
+        #expenseModal .form-control-sm {
+            padding: .28rem .46rem;
+            font-size: .88rem;
+            height: calc(1.7rem + .6rem);
+            border-radius: .33rem;
+        }
+
+        /* shrink date inputs slightly */
+        #expenseModal input[type="date"] {
+            padding: .2rem .4rem;
+        }
+
+        /* Reduce FileUpload height */
+        #expenseModal .form-control-file {
+            font-size: .83rem;
+            padding: .18rem 0;
+        }
+
+        /* ---------- Repeater table header centered & compact rows ---------- */
+        #expenseModal table.table thead th {
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 700;
+            font-size: .9rem;
+            background: #f8fbff;
+            border-bottom: 1px solid #e9f1ff;
+            padding: .5rem .6rem;
+        }
+
+        #expenseModal table.table tbody td {
+            padding: .42rem .55rem;
+            font-size: .88rem;
+            vertical-align: middle;
+        }
+
+        #expenseModal table.table tbody tr {
+            transition: background .12s;
+        }
+
+            #expenseModal table.table tbody tr:hover {
+                background: #f4f7ff;
+            }
+
+        /* Amount right align for better readability */
+        #expenseModal table.table tbody td:nth-child(4) {
+            text-align: right;
+            font-weight: 700;
+        }
+
+        /* small pill-style badges for type */
+        .expense-type-badge {
+            font-size: .75rem;
+            padding: .18rem .38rem;
+            border-radius: .32rem;
+            background: #eef6ff;
+            color: #0b66d0;
+            font-weight: 700;
+        }
+
+        /* action buttons consistent small size */
+        #expenseModal .btn-sm {
+            padding: .28rem .5rem;
+            border-radius: .33rem;
+            font-size: .85rem;
+        }
+
+        /* overall totals card smaller and cleaner */
+        #expenseModal .card.totals-card {
+            padding: .45rem .5rem;
+            border-radius: .35rem;
+        }
+
+            #expenseModal .card.totals-card .h6 {
+                font-size: 1rem;
+            }
+
+        /* make details column truncated in narrow layouts */
+        .text-truncate-ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+            max-width: 26rem;
+        }
+
+        /* responsive tweak: make table font tighter on small screens */
+        @media (max-width: 576px) {
+            #expenseModal table.table thead th {
+                font-size: .82rem;
+                padding: .32rem .35rem;
+            }
+
+            #expenseModal table.table tbody td {
+                font-size: .82rem;
+                padding: .28rem .35rem;
+            }
+
+            .text-truncate-ellipsis {
+                max-width: 12rem;
+            }
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -252,7 +535,7 @@
                                             OnRowCancelingEdit="gvActivities_RowCancelingEdit" OnRowUpdating="gvActivities_RowUpdating"
                                             OnRowDataBound="gvActivities_RowDataBound" ShowFooter="true">
                                             <Columns>
-                                                
+
                                                 <asp:TemplateField HeaderText="Date" ItemStyle-Width="10%">
                                                     <ItemTemplate>
                                                         <%# Eval("ActivityDate", "{0:dd-MM-yyyy}") %><br />
@@ -274,7 +557,7 @@
                                                     </ItemTemplate>
                                                     <EditItemTemplate>
                                                         <asp:TextBox ID="txtKM" runat="server" Text='<%# Bind("TotalDistanceKM") %>'
-                                                            CssClass="form-control form-control-sm km-input" />
+                                                            CssClass="form-control form-control-sm km-input" Width="100%" />
                                                         <small class="form-text text-muted"><%--Allowed:--%>
                                                             <asp:Label ID="lblTolLower_Edit" runat="server" Text="-" CssClass="tol-lower" />
                                                             &nbsp; - &nbsp;
@@ -313,7 +596,7 @@
                                                                 Eval("ClaimStatus").ToString() == "Rejected" ? "Rejected – please review" :
                                                                 Eval("ClaimStatus").ToString() == "Processed" ? "Processed in accounts" :
                                                                 "Unknown status" %>'
-                                                                                                            class='<%# 
+                                                            class='<%# 
                                                                 Eval("ClaimStatus").ToString() == "Draft" ? "badge badge-warning" :
                                                                 Eval("ClaimStatus").ToString() == "Submitted" ? "badge badge-info" :
                                                                 Eval("ClaimStatus").ToString() == "Approved" ? "badge badge-success" :
@@ -321,7 +604,7 @@
                                                                 Eval("ClaimStatus").ToString() == "Processed" ? "badge badge-primary" :
                                                                 "badge badge-secondary" %>'>
 
-                                                                                                            <i class='<%# 
+                                                            <i class='<%# 
                                                                 Eval("ClaimStatus").ToString() == "Draft" ? "fa fa-pencil-square-o" :
                                                                 Eval("ClaimStatus").ToString() == "Submitted" ? "fa fa-paper-plane" :
                                                                 Eval("ClaimStatus").ToString() == "Approved" ? "fa fa-check-circle" :
@@ -335,7 +618,7 @@
 
 
                                                 <asp:TemplateField HeaderText="Actions" ItemStyle-Width="10%">
-                                                    <ItemStyle HorizontalAlign="Center"/>
+                                                    <ItemStyle HorizontalAlign="Center" />
                                                     <ItemTemplate>
                                                         <asp:LinkButton ID="lnkEdit" runat="server"
                                                             CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" Visible='<%# Eval("ClaimStatus").ToString() == "Draft" %>' ToolTip="Edit Kilometers">
@@ -355,7 +638,7 @@
                                                         </asp:LinkButton>
 
                                                         <asp:LinkButton ID="lnkCancel" runat="server"
-                                                            CommandName="Cancel" CssClass="btn btn-sm btn-default"
+                                                            CommandName="Cancel" CssClass="btn btn-sm btn-default btn-outline-danger"
                                                             ToolTip="Cancel Edit">
                                                             <i class="fa fa-times"></i>
                                                         </asp:LinkButton>
@@ -445,7 +728,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">DA / Hotel / Travel Expenses for
-                            <asp:Label ID="lbl_traveldate" runat="server" Text="NA"></asp:Label></h5>
+                            <asp:Label ID="lbl_traveldate" runat="server" Text="NA" Font-Bold="true" ForeColor="#009933"></asp:Label></h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#expenseModal').modal('hide');">
                             <span aria-hidden="true">×</span>
                         </button>
@@ -468,10 +751,10 @@
                             <asp:HiddenField ID="HF_OwnArrangementDA" runat="server" />
 
                             <!-- Policy-driven summary (inside expenseModal .modal-body, top) -->
-                            <div class="row mb-2 align-items-center">
-                                <div class="col-md-8">
-                                    <label class="small mb-1">Policy Mode & Summary</label>
-                                    <div class="d-flex flex-wrap align-items-center bg-light border rounded p-2 small">
+                            <div class="row mb-2 align-items-center policy-summary">
+                                <div class="col-md-12">
+                                    <label class="mb-1">Policy Mode & Summary</label>
+                                    <div id="policyValues" class="d-flex flex-wrap align-items-center bg-light border rounded p-2">
                                         <span class="mr-3">DA: <strong id="spDAValue">—</strong></span>
                                         <span class="mr-3">Hotel cap/night: <strong id="spHotelCap">—</strong></span>
                                         <span class="mr-3" id="spAllowedTypes">Allowed: —</span>
@@ -479,27 +762,30 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4 text-right">
-                                    <!-- Optional quick action: copy policy values to form (JS handles default apply automatically when modal opens) -->
+                                <div class="col-md-4 text-right" id="btn_rfpolicy" runat="server" visible="false">
                                     <button type="button" id="btnRefreshPolicy" class="btn btn-sm btn-outline-primary">Refresh policy</button>
                                 </div>
                             </div>
 
-                            <!-- Auto DA info — paste inside policy summary area (e.g. inside the .d-flex policy summary container) -->
-                            <div id="divAutoDAInfo" style="display: none; margin-left: 10px;">
+                            <%--<div id="divAutoDAInfo" style="display: none; margin-left: 10px;">
                                 <div class="p-2 border rounded bg-light" style="min-width: 200px;">
                                     <div><strong>Auto DA Amount:</strong> <span id="spAutoDAAmount">—</span></div>
                                     <div id="spAutoDAType" class="text-muted text-primary small">—</div>
                                 </div>
+                            </div>--%>
+                            <div id="divAutoDAInfo" style="display: none;">
+                                <div class="auto-da-card">
+                                    <div>Auto DA Amount: <span id="spAutoDAAmount">—</span></div>
+                                    <div id="spAutoDAType" class="small">—</div>
+                                </div>
                             </div>
 
-                            <div>&nbsp;</div>
                             <br />
 
                             <!-- START: Expense Type selector (NEW) -->
                             <div class="row mb-2">
                                 <div class="col-md-12 form-group">
-                                    <label>Expense Type</label>
+                                    <label style="font-weight: bold; color: darkblue;">Expense Type</label>
                                     <asp:DropDownList ID="DDL_ExpenseType" runat="server" ClientIDMode="Static" CssClass="form-control form-control-sm">
                                         <asp:ListItem Value="DA">DA</asp:ListItem>
                                         <asp:ListItem Value="Hotel">Hotel</asp:ListItem>
@@ -551,7 +837,7 @@
 
                             <div id="divTravelSection" runat="server" class="form-row">
                                 <div class="form-row">
-                                    <div class="col-md-3 form-group">
+                                    <div class="col-md-2 form-group">
                                         <label>Travel Type</label>
                                         <asp:DropDownList ID="DDL_TravelType" runat="server" CssClass="form-control form-control-sm">
                                             <asp:ListItem Value="Train">Train</asp:ListItem>
@@ -562,7 +848,7 @@
                                         </asp:DropDownList>
                                     </div>
 
-                                    <div class="col-md-3 form-group">
+                                    <div class="col-md-2 form-group">
                                         <label>Travel Date</label>
                                         <asp:TextBox ID="TXT_TravelDate" runat="server" CssClass="form-control form-control-sm" Enabled="false" TextMode="Date" />
                                     </div>
@@ -577,12 +863,12 @@
                                         <asp:TextBox ID="TXT_ToPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="200" />
                                     </div>
 
-                                    <div class="col-md-4 form-group">
+                                    <div class="col-md-2 form-group">
                                         <label>Amount</label>
                                         <asp:TextBox ID="TXT_TravelAmount" runat="server" CssClass="form-control form-control-sm" />
                                     </div>
 
-                                    <div class="col-md-8 form-group">
+                                    <div class="col-md-12 form-group">
                                         <label>Purpose of Travel</label>
                                         <asp:TextBox ID="TXT_TravelPurpose" runat="server" TextMode="MultiLine" Rows="1" CssClass="form-control form-control-sm" />
                                     </div>
@@ -607,8 +893,6 @@
                                 <asp:FileUpload ID="FU_Attachment" runat="server" CssClass="form-control-file" />
                                 <small class="form-text text-muted">JPG, PNG, PDF. Max 5MB. Saves to UploadedFiles/ClaimsAttachment by default.</small>
                             </div>
-
-                            <div>&nbsp;</div>
                             <br />
 
                             <!-- Expense Totals Card -->
@@ -634,7 +918,7 @@
                                             </div>
                                         </div>
                                         <div class="col-6 col-md-3">
-                                            <div class="small text-muted">Overall Total</div>
+                                            <div class="small text-muted">Day Total</div>
                                             <div id="dvOverall" runat="server" class="h5 mb-0">
                                                 <asp:Label ID="lblOverallTotal" runat="server" Font-Bold="true" ForeColor="#0033cc" Text="0.00" />
                                             </div>
@@ -645,7 +929,7 @@
 
                             <hr />
 
-                            <h6>Existing Expenses</h6>
+                            <h6>Existing Day Expenses</h6>
 
                             <asp:Repeater ID="rptExpenses" runat="server" OnItemCommand="rptExpenses_ItemCommand">
                                 <HeaderTemplate>
@@ -657,7 +941,7 @@
                                                 <th>Details</th>
                                                 <th>Amount</th>
                                                 <th>BillNo</th>
-                                                <th>Attachment</th>
+                                                <th>Uploads</th>
                                                 <th style="width: 110px;">Actions</th>
                                             </tr>
                                         </thead>
@@ -666,64 +950,74 @@
 
                                 <ItemTemplate>
                                     <tr>
-                                        <td><%# Eval("ExpenseType") %></td>
+                                        <td>
+                                            <%# Eval("ExpenseType") %>
+                                            <span class="ml-2 expense-type-badge badge badge-light">
+                                                <%# Eval("ExpenseType") %>
+                                            </span>
+                                        </td>
 
-                                        <%-- Date: prefer TravelDate for Travel, else ExpenseDate --%>
                                         <td>
                                             <%# (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
                                                 ? (Eval("TravelDate") == DBNull.Value ? "—" : Eval("TravelDate", "{0:yyyy-MM-dd}"))
                                                 : (Eval("ExpenseDate") == DBNull.Value ? "—" : Eval("ExpenseDate", "{0:yyyy-MM-dd}")) %>
-                                        </td>
+                                                                            </td>
 
-                                        <%-- Details: Travel -> TravelType + From->To + Purpose; Hotel -> FromDate - ToDate + Purpose; DA/Other -> Purpose --%>
-                                        <td>
-                                            <%# 
-                                            (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
-                                            ? String.Format("{0} {1} -> {2} {3}",
-                                                Eval("TravelType") ?? "",
-                                                Eval("FromPlace") ?? "",
-                                                Eval("ToPlace") ?? "",
-                                                (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-                                              )
-                                            : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
+                                                                            <td style="max-width: 280px;">
+                                                                                <span class="text-truncate-ellipsis" title='<%# HttpUtility.HtmlEncode(
+                                             (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
+                                              ? String.Format("{0} {1} -> {2} {3}",
+                                                  Eval("TravelType") ?? "",
+                                                  Eval("FromPlace") ?? "",
+                                                  Eval("ToPlace") ?? "",
+                                                  (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                )
+                                              : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
                                                 ? String.Format("{0} - {1} {2}",
                                                     (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("FromDate"))),
                                                     (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("ToDate"))),
                                                     (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
                                                   )
                                                 : (Eval("Purpose") ?? "—")
-                                            %>
+                                            ) %>'>
+                                                                                    <%# 
+                                              (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
+                                                ? String.Format("{0} {1} -> {2} {3}",
+                                                    Eval("TravelType") ?? "",
+                                                    Eval("FromPlace") ?? "",
+                                                    Eval("ToPlace") ?? "",
+                                                    (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                  )
+                                                : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
+                                                  ? String.Format("{0} - {1} {2}",
+                                                      (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("FromDate"))),
+                                                      (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("ToDate"))),
+                                                      (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                    )
+                                                  : (Eval("Purpose") ?? "—")
+                                                %>
+                                            </span>
                                         </td>
 
-                                        <td><%# Eval("Amount", "{0:N2}") %></td>
+                                        <td class="text-right font-weight-bold"><%# Eval("Amount", "{0:N2}") %></td>
+
                                         <td><%# Eval("BillNo") ?? "—" %></td>
 
                                         <td>
                                             <%# Eval("AttachmentFileName") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("AttachmentFileName")))
-                                            ? String.Format("<a href=\"DownloadExpense.ashx?expenseId={0}\" class=\"btn btn-sm btn-outline-secondary\" title=\"Download\"><i class=\"fa fa-download\"></i></a>", Eval("ExpenseId"))
-                                            : "—" %>
+                                              ? String.Format("<a href=\"DownloadExpense.ashx?expenseId={0}\" class=\"btn btn-outline-secondary btn-sm\" title=\"Download\"><i class=\"fa fa-download\"></i></a>", Eval("ExpenseId"))
+                                              : "—" %>
                                         </td>
 
-                                        <td>
-                                            <asp:LinkButton ID="lnkEditExpense" runat="server"
-                                                CssClass="btn btn-sm btn-outline-primary mr-1"
-                                                CommandName="EditExpense"
-                                                CommandArgument='<%# Eval("ExpenseId") %>'
-                                                ToolTip="Edit" Visible="false" CausesValidation="false">
-                                                <i class="fa fa-edit"></i>
-                                            </asp:LinkButton>
+                                        <td class="text-center">
+                                            <%-- keep actions as you have; show/hide edit based on permission on server side --%>
+                                            <asp:LinkButton ID="lnkEditExpense" runat="server" CssClass="btn btn-outline-primary mr-1" CommandName="EditExpense" CommandArgument='<%# Eval("ExpenseId") %>' OnClientClick="return false;" Visible="false"><i class="fa fa-edit"></i></asp:LinkButton>
 
-                                            <asp:LinkButton ID="lnkDeleteExpense" runat="server"
-                                                CssClass="btn btn-sm btn-outline-danger"
-                                                CommandName="DeleteExpense"
-                                                CommandArgument='<%# Eval("ExpenseId") + "|" + (Eval("AttachmentFileName") ?? "") + "|" + (Eval("ActivityId") ?? "") %>'
-                                                OnClientClick="return confirm('Delete this expense? This action cannot be undone.');"
-                                                ToolTip="Delete">
-                                                <i class="fa fa-trash"></i>
-                                            </asp:LinkButton>
+                                            <asp:LinkButton ID="lnkDeleteExpense" runat="server" CssClass="btn btn-outline-danger" CommandName="DeleteExpense" CommandArgument='<%# Eval("ExpenseId") + "|" + (Eval("AttachmentFileName") ?? "") + "|" + (Eval("ActivityId") ?? "") %>' OnClientClick="return confirm('Delete this expense? This action cannot be undone.');"><i class="fa fa-trash"></i></asp:LinkButton>
                                         </td>
                                     </tr>
                                 </ItemTemplate>
+
 
                                 <FooterTemplate>
                                     </tbody>
@@ -922,7 +1216,7 @@
 
             if (isNaN(val)) {
                 $txt.addClass("is-invalid");
-                $err.text("Please enter a valid number.").show();
+                $err.text("Invalid").show();
                 return;
             }
 
@@ -932,7 +1226,7 @@
 
             if (!inRange) {
                 $txt.addClass("is-invalid");
-                $err.text("Value must be between " + lower + " and " + upper + ".").show();
+                $err.text("[" + lower + " to " + upper + "]").show();
             } else {
                 $txt.removeClass("is-invalid");
                 $err.hide();
@@ -973,9 +1267,7 @@
         //$(document).on('hidden.bs.modal', '#policyModal', function () {
         //    $('#btnViewPolicyAgain').fadeOut(200);
         //});
-    </script>
 
-    <script type="text/javascript">
         (function () {
             'use strict';
 
@@ -1767,9 +2059,7 @@
             });
 
         })();
-    </script>
 
-    <script type="text/javascript">
         // Show the modal — use this in the button OnClientClick
         function showSubmitModal() {
             // show bootstrap modal
@@ -1888,4 +2178,171 @@
             if (el) el.style.display = "none";
         }
     </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            // central initializer — id selectors use the static ids in your markup
+            function pageInitExpenseModal() {
+                // tooltips (Bootstrap)
+                if (typeof bootstrap !== 'undefined' && $('[data-toggle="tooltip"]').length) {
+                    // re-init bootstrap tooltips
+                    $('[data-toggle="tooltip"]').tooltip({ trigger: 'hover' });
+                }
+
+                // ExpenseType switch: show/hide sections
+                var $ddlType = $('#DDL_ExpenseType');
+                function applyExpenseTypeVisibility() {
+                    var v = $ddlType.val();
+                    $('#divDASection').toggle(v === 'DA');
+                    $('#divHotelSection').toggle(v === 'Hotel');
+                    $('#divTravelSection').toggle(v === 'Travel' || v === 'Other');
+                    // adjust readonlys or enabled states if necessary
+                    if (v === 'DA') {
+                        $('#TXT_DAAmount').prop('readonly', true);
+                    } else {
+                        $('#TXT_DAAmount').prop('readonly', true); // keep readonly by default
+                    }
+                }
+                $ddlType.off('change.expense').on('change.expense', applyExpenseTypeVisibility);
+                applyExpenseTypeVisibility();
+
+                // Make existing expense details truncated but still show full text on hover
+                $('#expenseModal table tbody td').each(function () {
+                    var $cell = $(this);
+                    if ($cell.find('.text-truncate-ellipsis').length) return;
+                    var txt = $cell.text().trim();
+                    if (txt.length > 40) {
+                        $cell.html('<span class="text-truncate-ellipsis" title="' + $('<div>').text(txt).html() + '">' + $('<div>').text(txt).html() + '</span>');
+                    }
+                });
+
+                // Small UX: align action buttons & add consistent spacing icons already in markup.
+                $('#expenseModal .btn').each(function () { $(this).addClass('btn-sm'); });
+
+                // Recalculate totals from repeater after any postback or once on open
+                function recalcTotals() {
+                    var daTotal = 0, hotelTotal = 0, otherTotal = 0;
+                    $('#rptExpenses tbody tr').each(function () {
+                        var typ = $(this).find('td').eq(0).text().trim();
+                        var amountText = $(this).find('td').eq(3).text().replace(/,/g, '').trim();
+                        var amt = parseFloat(amountText) || 0;
+                        if (typ === 'DA') daTotal += amt;
+                        else if (typ === 'Hotel') hotelTotal += amt;
+                        else otherTotal += amt;
+                    });
+                    function fmt(n) { return n.toFixed(2); }
+                    $('#<%= lblTotalDA.ClientID %>').text(fmt(daTotal));     // server label ids, safer to use ClientID
+                    $('#<%= lblTotalHotel.ClientID %>').text(fmt(hotelTotal));
+                    $('#<%= lblTotalOther.ClientID %>').text(fmt(otherTotal));
+                    $('#<%= lblOverallTotal.ClientID %>').text(fmt(daTotal + hotelTotal + otherTotal));
+                }
+
+                // If server-side labels are not accessible by ClientID in child scenario, fallback to id selectors:
+                try { recalcTotals(); } catch (e) {
+                    // fallback: select by container div content
+                    var da = $('#dvDA').text().trim() || '0.00';
+                    if (isNaN(parseFloat(da))) { /* ignore */ }
+                }
+
+                // FileUpload small styling: add placeholder text if no file chosen (helps UX)
+                $('.form-control-file').each(function () {
+                    var $f = $(this);
+                    if (!$f.next('.file-chosen').length) {
+                        $f.after('<div class="file-chosen small text-muted mt-1">No file chosen</div>');
+                        $f.on('change', function () {
+                            var name = $(this)[0].files && $(this)[0].files.length ? $(this)[0].files[0].name : 'No file chosen';
+                            $(this).next('.file-chosen').text(name);
+                        });
+                    }
+                });
+
+            } // end pageInitExpenseModal
+
+            // run on initial load
+            $(function () { pageInitExpenseModal(); });
+
+            // for ASP.NET WebForms partial postbacks (UpdatePanel / child page)
+            if (typeof (Sys) !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+                var prm = Sys.WebForms.PageRequestManager.getInstance();
+                if (prm) {
+                    prm.add_endRequest(function () {
+                        pageInitExpenseModal();
+                    });
+                }
+            }
+
+            // also attach on manual modal show (in case you open dynamically)
+            $('#expenseModal').on('shown.bs.modal', function () { pageInitExpenseModal(); });
+
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            function highlightPolicyArea() {
+                try {
+                    // read hidden fields (IDs are static from your markup)
+                    var policyMode = ($('#HF_ResolvedPolicyMode').length ? $('#HF_ResolvedPolicyMode').val() : '') || '';
+                    var ownArr = ($('#HF_OwnArrangementDA').length ? $('#HF_OwnArrangementDA').val() : '') || '';
+                    var outst = ($('#HF_OutstationDA').length ? $('#HF_OutstationDA').val() : '') || '';
+
+                    var $ps = $('#expenseModal .policy-summary');
+                    // clear previous mode chips
+                    $ps.find('.policy-mode').remove();
+
+                    // create a visible chip for mode
+                    if (policyMode) {
+                        var modeText = $('<span>').addClass('policy-mode').text(policyMode);
+                        $ps.prepend(modeText);
+                    }
+
+                    // show prominent auto-da card if ownArr has value or if resolvedDA exists
+                    if (ownArr && parseFloat(ownArr) > 0) {
+                        $('#divAutoDAInfo').show();
+                        $('#spAutoDAAmount').text('₹ ' + parseFloat(ownArr).toFixed(2));
+                        $('#spAutoDAType').text('Own Arrangement DA (auto)');
+                    } else if (outst && parseFloat(outst) > 0) {
+                        $('#divAutoDAInfo').show();
+                        $('#spAutoDAAmount').text('₹ ' + parseFloat(outst).toFixed(2));
+                        $('#spAutoDAType').text('Outstation DA (auto)');
+                    } else {
+                        // hide if no auto DA
+                        $('#divAutoDAInfo').hide();
+                    }
+
+                    // visually emphasize policy summary block for a moment (subtle pulse)
+                    $ps.addClass('pulse-highlight');
+                    setTimeout(function () { $ps.removeClass('pulse-highlight'); }, 900);
+
+                } catch (e) { console && console.log && console.log('highlightPolicyArea error', e); }
+            }
+
+            // run on load
+            $(function () {
+                highlightPolicyArea();
+            });
+
+            // button to refresh/apply policy (existing button #btnRefreshPolicy)
+            $('#btnRefreshPolicy').off('click.policy').on('click.policy', function (e) {
+                // you likely call server to refresh; do visual toggle now
+                highlightPolicyArea();
+            });
+
+            // ensure the function runs after partial postbacks (UpdatePanel)
+            if (typeof (Sys) !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+                Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () { highlightPolicyArea(); });
+            }
+
+            // small helper: make details hovering show full content on mobile if truncated
+            $('#expenseModal').on('mouseenter', '.text-truncate-ellipsis', function () {
+                var $t = $(this);
+                if ($t[0].offsetWidth < $t[0].scrollWidth) {
+                    // only show tooltip when actually truncated
+                    $t.attr('title', $t.text());
+                } else $t.removeAttr('title');
+            });
+
+        })(jQuery);
+    </script>
+
 </asp:Content>

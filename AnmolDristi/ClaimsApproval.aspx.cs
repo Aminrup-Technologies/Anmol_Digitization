@@ -30,13 +30,7 @@ namespace AnmolDristi
         // ------------- BIND HEADER GRID ----------------
         protected void BindRequestsGrid()
         {
-            string sql = @"
-            SELECT ApprovalRequestId, RequesterLoginId, RequestDate, YearNo, MonthNo, Status,
-                   TotalKM, TotalClaimAmount, TotalDAAmount, TotalHotelAmount, TotalTravelAmount, TotalExpenseAmount,
-                   RequestRemarks, CreatedOn, CreatedBy, ModifiedOn, ModifiedBy
-            FROM dbo.SalesApprovalRequest
-            WHERE Status = 'Pending'
-            ORDER BY RequestDate DESC;";
+            string sql = @"SELECT A.ApprovalRequestId, A.RequesterLoginId, UM.EmployeeName, A.RequestDate, A.YearNo, A.MonthNo, DATENAME(MONTH, DATEFROMPARTS(A.YearNo, A.MonthNo, 1)) AS MonthName, A.Status, A.TotalKM, A.TotalClaimAmount, A.TotalDAAmount, A.TotalHotelAmount, A.TotalTravelAmount, A.TotalExpenseAmount, A.RequestRemarks, A.CreatedOn, A.CreatedBy, A.ModifiedOn, A.ModifiedBy FROM dbo.SalesApprovalRequest A INNER JOIN [AnmolDristi].[dbo].[MST_UserMaster] UM ON A.RequesterLoginId = UM.EmployeeCode WHERE A.Status = 'Pending' ORDER BY A.RequestDate DESC;";
 
             DataTable dt = new DataTable();
             using (var con = new SqlConnection(connString))
@@ -200,6 +194,7 @@ namespace AnmolDristi
             lblModalMessage.CssClass = "text-success";
             lblModalMessage.Text = (newStatus == "Approved") ? "Selected rows approved." : "Selected rows rejected.";
         }
+
         // helper to fill footer totals by finding the column index by header text
         private void FillFooterTotals(GridViewRow footer)
         {
@@ -261,7 +256,7 @@ namespace AnmolDristi
             }
         }
 
-        protected void gvDetails_RowCommand(object sender, GridViewCommandEventArgs e)
+        protected void gvDetails_RowCommand_OLD2(object sender, GridViewCommandEventArgs e)
         {
             if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
             {
@@ -333,7 +328,6 @@ namespace AnmolDristi
             }
         }
 
-
         protected void gvDetails_RowCommand_OLD3(object sender, GridViewCommandEventArgs e)
         {
             if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
@@ -380,6 +374,93 @@ namespace AnmolDristi
 
                 lblModalMessage.CssClass = "text-success";
                 lblModalMessage.Text = (newStatus == "Approved") ? "Detail approved." : "Detail rejected.";
+            }
+        }
+
+        protected void gvDetails_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName != "ApproveRow" && e.CommandName != "RejectRow")
+                return;
+
+            // Identify the row and get the ID
+            var source = (Control)e.CommandSource;
+            var row = source.NamingContainer as GridViewRow;
+            if (row == null) return;
+
+            int detailId = 0;
+            if (!int.TryParse(Convert.ToString(e.CommandArgument), out detailId))
+            {
+                // fallback via DataKeys
+                if (gvDetails.DataKeys != null && row.RowIndex >= 0 && row.RowIndex < gvDetails.DataKeys.Count)
+                {
+                    int.TryParse(Convert.ToString(gvDetails.DataKeys[row.RowIndex].Value), out detailId);
+                }
+            }
+            if (detailId <= 0) return;
+
+            // Get manager remark from the row textbox
+            var txtRowRemark = row.FindControl("txtRowRemark") as TextBox;
+            string mgrRemark = txtRowRemark != null ? txtRowRemark.Text.Trim() : string.Empty;
+
+            // Reject requires remark
+            if (e.CommandName == "RejectRow" && string.IsNullOrWhiteSpace(mgrRemark))
+            {
+                lblModalMessage.CssClass = "text-danger";
+                lblModalMessage.Text = "Manager Remark is required to reject.";
+                upDetails.Update();
+                return;
+            }
+
+            string newStatus = (e.CommandName == "ApproveRow") ? "Approved" : "Rejected";
+
+            int requestId = 0;
+            int.TryParse(lblModalRequestId.Text, out requestId);
+
+            string processedBy = GetLoggedInEmployeeCode();
+
+            // Get current IST time
+            DateTime processedOn;
+            try
+            {
+                processedOn = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTime.UtcNow, "India Standard Time");
+            }
+            catch
+            {
+                processedOn = DateTime.Now;
+            }
+
+            try
+            {
+                using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand("dbo.usp_UpdateApprovalRequestDetailStatus_AndMaybeActivity", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                    cmd.Parameters.AddWithValue("@NewStatus", newStatus);
+                    cmd.Parameters.AddWithValue("@ManagerRemark", string.IsNullOrEmpty(mgrRemark) ? (object)DBNull.Value : mgrRemark);
+                    cmd.Parameters.AddWithValue("@ProcessedBy", processedBy);
+                    cmd.Parameters.AddWithValue("@ProcessedOn", processedOn);
+                    cmd.Parameters.AddWithValue("@ForceSetActivityClaim", 1); // 🔸 Always set to 1 as required
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                // Rebind and keep modal open
+                BindDetailsGrid(requestId);
+                upDetails.Update();
+                ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "openDetailsModal();", true);
+
+                lblModalMessage.CssClass = "text-success";
+                lblModalMessage.Text = (newStatus == "Approved") ? "Detail approved." : "Detail rejected.";
+                upDetails.Update();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error updating detail status: " + ex);
+                lblModalMessage.CssClass = "text-danger";
+                lblModalMessage.Text = "Error updating status. See server logs.";
+                upDetails.Update();
             }
         }
 

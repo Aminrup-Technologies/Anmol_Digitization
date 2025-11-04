@@ -2,6 +2,10 @@
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style type="text/css">
+        .btn-group .btn i {
+            margin-right: 4px;
+        }
+
         .btn-outline-success:hover i {
             color: #28a745 !important;
             text-shadow: 0 0 6px rgba(40, 167, 69, 0.5);
@@ -47,55 +51,365 @@
             .row-disabled input[type="checkbox"] {
                 cursor: not-allowed;
             }
+
+
+        /* Gentilia-friendly tweaks — tweak colors to match your theme variables */
+        .gentilia-table {
+            font-size: 0.92rem;
+        }
+
+        .gentilia-table-header {
+            background: #37474F;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .gentilia-row {
+            background: #ffffff;
+        }
+
+        .gentilia-row-alt {
+            background: #f8fafb;
+        }
+
+        /* Status badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            vertical-align: middle;
+            text-transform: capitalize;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+        }
+
+        .status-pending {
+            background: #FFF4E5;
+            color: #B26A00;
+            border: 1px solid #F3D6A0;
+        }
+
+        .status-approved {
+            background: #E6F4EA;
+            color: #1B7A3A;
+            border: 1px solid #B9E1C0;
+        }
+
+        .status-rejected {
+            background: #FDECEA;
+            color: #A61B1B;
+            border: 1px solid #F7C6C6;
+        }
+
+        .status-draft {
+            background: #EEF2FF;
+            color: #274093;
+            border: 1px solid #D0D8FF;
+        }
+
+        .status-other {
+            background: #F3F6F8;
+            color: #4B5563;
+            border: 1px solid #E2E8F0;
+        }
+
+        /* Currency formatting */
+        .total-claim-cell {
+            font-weight: 700;
+        }
+
+        /* small icon spacing */
+        .action-buttons .btn i {
+            margin-right: 6px;
+        }
+
+        .gentilia-table tbody tr:hover {
+            background: #f1f6f9;
+        }
+
+        /* hover highlight row */
+        .gentilia-table tbody tr:hover {
+            background: #f1f6f9;
+        }
+
+        /* Responsive tweaks */
+        @media (max-width: 767px) {
+            .gentilia-table thead {
+                display: none;
+            }
+
+            .gentilia-table tr {
+                display: block;
+                margin-bottom: 10px;
+            }
+
+            .gentilia-table td {
+                display: flex;
+                justify-content: space-between;
+                padding: 6px 8px;
+            }
+        }
     </style>
+
+    <!-- ====== Modal / Details Grid - Gentilia-friendly styling ====== -->
+    <style>
+        /* Container & modal sizing */
+        #detailsModal .modal-dialog {
+            max-width: 1200px;
+        }
+
+        #detailsModal .modal-content {
+            border-radius: 8px;
+            box-shadow: 0 6px 24px rgba(45,55,72,0.25);
+            border: 0;
+        }
+
+        /* Header */
+        #detailsModal .modal-header {
+            background: linear-gradient(90deg, rgba(55,75,85,0.06), rgba(255,255,255,0));
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            align-items: center;
+        }
+
+        #detailsModal .modal-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #2f4050; /* neutral Gentilia tone */
+            margin-right: 12px;
+        }
+
+        #detailsModal .modal-header small.text-muted {
+            font-size: 0.86rem;
+            color: #6b7280;
+        }
+
+        /* Close button */
+        #detailsModal .modal-header .close {
+            background: transparent;
+            border: 0;
+            font-size: 1.25rem;
+            opacity: .85;
+        }
+
+        /* Make modal body scrollable (keeps header/footer visible) */
+        #detailsModal .modal-body {
+            max-height: calc(100vh - 240px);
+            overflow: auto;
+            padding: 16px 18px;
+            background: #ffffff;
+        }
+
+        /* Table - compact & neat */
+        #detailsModal .table {
+            margin-bottom: 0;
+            font-size: 0.92rem;
+            white-space: nowrap;
+        }
+
+        #detailsModal .table-sm th,
+        #detailsModal .table-sm td {
+            padding: 10px 8px;
+            vertical-align: middle;
+        }
+
+        /* Table header: muted and sticky */
+        #detailsModal .table thead th {
+            background: #f7fafc; /* light gentilia header */
+            color: #475569;
+            font-weight: 700;
+            text-transform: none;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+            /* Disable hover effect on header (explicit) */
+            #detailsModal .table thead tr:hover,
+            #detailsModal .table thead th:hover {
+                background-color: inherit !important;
+                cursor: default !important;
+            }
+
+        /* Body rows: subtle alternating and selected state */
+        #detailsModal .table tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
+
+        #detailsModal .table tbody tr:nth-child(even) {
+            background: #fbfdff;
+        }
+
+        #detailsModal .table tbody tr.selected-row {
+            background: rgba(220,38,38,0.08) !important;
+        }
+
+        /* Small inputs inside grid */
+        #detailsModal .row-remark {
+            height: 32px;
+            padding: 6px 8px;
+            font-size: 0.9rem;
+        }
+
+        /* Checkbox column narrow */
+        #detailsModal .table td:first-child,
+        #detailsModal .table th:first-child {
+            text-align: center;
+            width: 48px;
+        }
+
+        /* Action buttons styling (keep icons visible) */
+        #detailsModal .btn-outline-success,
+        #detailsModal .btn-outline-danger {
+            min-width: 40px;
+            height: 34px;
+            padding: 0 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        #detailsModal .btn-outline-success {
+            color: #12703a;
+            border-color: rgba(18,112,58,0.15);
+        }
+
+        #detailsModal .btn-outline-danger {
+            color: #a11b1b;
+            border-color: rgba(161,27,27,0.12);
+        }
+
+        /* Footer layout */
+        #detailsModal .modal-footer {
+            border-top: 1px solid rgba(0,0,0,0.04);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #fbfcfd;
+        }
+
+            /* Footer label (error / status) push to left */
+            #detailsModal .modal-footer .text-danger {
+                margin-right: auto;
+                font-size: 0.92rem;
+            }
+
+        /* Utility: make inline badges inside the table compact */
+        #detailsModal .badge {
+            font-size: 0.78rem;
+            padding: 6px 8px;
+            border-radius: 12px;
+        }
+
+        /* Responsive: ensure modal fits on small screens */
+        @media (max-width: 991px) {
+            #detailsModal .modal-dialog {
+                max-width: 92%;
+                margin: 12px auto;
+            }
+
+            #detailsModal .table thead th {
+                font-size: 0.78rem;
+            }
+
+            #detailsModal .table td {
+                font-size: 0.84rem;
+                padding: 8px 6px;
+            }
+        }
+    </style>
+
+
+
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <asp:HiddenField ID="hfActionRequestId" runat="server" />
     <div class="right_col" role="main">
-        <div class="container">
+        <div class="container-fluid mt-3">
             <div class="row">
-                <div class="col-md-12 col-sm-12">
-                    <div class="x_panel">
-                        <div class="x_title">
-                            <h2>SO Claims Approval</h2>
-                            <ul class="nav navbar-right panel_toolbox">
-                                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                <div class="col-md-12">
+                    <div class="x_panel shadow-sm rounded-2">
+                        <div class="x_title d-flex justify-content-between align-items-center bg-primary text-white p-2 rounded-top">
+                            <h4 class="mb-0">
+                                <i class="fa fa-check-circle">&nbsp;</i>Monthly Claims Approval
+                            </h4>
+                            <ul class="nav navbar-right panel_toolbox mb-0">
+                                <li>
+                                    <a class="text-white collapse-link">
+                                        <i class="fa fa-chevron-up"></i>
+                                    </a>
+                                </li>
                             </ul>
-                            <div class="clearfix"></div>
                         </div>
-                        <div class="x_content">
-                            <div class="row">
-                                <div class="col-md-12 col-sm-12">
-                                    <div class="card-box table-responsive">
-                                        <!-- Header grid: Pending Requests -->
-                                        <asp:Panel ID="pnlRequests" runat="server">
-                                            <asp:GridView ID="gvRequests" runat="server"
-                                                CssClass="table table-sm table-striped" AutoGenerateColumns="false"
-                                                AllowPaging="true" PageSize="20" OnPageIndexChanging="gvRequests_PageIndexChanging"
-                                                OnRowCommand="gvRequests_RowCommand"
-                                                DataKeyNames="ApprovalRequestId">
-                                                <Columns>
-                                                    <asp:BoundField DataField="ApprovalRequestId" HeaderText="ID" HeaderStyle-Width="60px" />
-                                                    <asp:BoundField DataField="RequesterLoginId" HeaderText="Requester" />
-                                                    <asp:BoundField DataField="RequestDate" HeaderText="Request Date" DataFormatString="{0:dd-MMM-yyyy HH:mm}" />
-                                                    <asp:BoundField DataField="YearNo" HeaderText="Year" HeaderStyle-Width="60px" />
-                                                    <asp:BoundField DataField="MonthNo" HeaderText="Month" HeaderStyle-Width="60px" />
-                                                    <asp:BoundField DataField="TotalClaimAmount" HeaderText="Total Claim" DataFormatString="{0:N2}" />
-                                                    <asp:BoundField DataField="Status" HeaderText="Status" />
-                                                    <asp:TemplateField HeaderText="Actions" HeaderStyle-Width="160px">
-                                                        <ItemTemplate>
-                                                            <asp:LinkButton ID="lnkView" runat="server" CommandName="View" CommandArgument='<%# Eval("ApprovalRequestId") %>'
-                                                                CssClass="btn btn-sm btn-primary">View & Approve</asp:LinkButton>
-                                                            &nbsp;
-                                                              <asp:LinkButton ID="lnkApproveQuick" runat="server" Visible="false" CommandName="ApproveQuick" CommandArgument='<%# Eval("ApprovalRequestId") %>'
-                                                                  CssClass="btn btn-sm btn-success">Approve</asp:LinkButton>
-                                                        </ItemTemplate>
-                                                    </asp:TemplateField>
-                                                </Columns>
-                                            </asp:GridView>
-                                        </asp:Panel>
-                                    </div>
-                                </div>
+
+                        <div class="x_content bg-light p-3 rounded-bottom">
+                            <div class="card-box table-responsive">
+                                <asp:Panel ID="pnlRequests" runat="server">
+                                    <asp:GridView ID="gvRequests" runat="server"
+                                        CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
+                                        AutoGenerateColumns="false"
+                                        AllowPaging="true" PageSize="20" OnPageIndexChanging="gvRequests_PageIndexChanging"
+                                        OnRowCommand="gvRequests_RowCommand"
+                                        DataKeyNames="ApprovalRequestId"
+                                        GridLines="None">
+                                        <HeaderStyle CssClass="gentilia-table-header" />
+                                        <RowStyle CssClass="gentilia-row" />
+                                        <AlternatingRowStyle CssClass="gentilia-row-alt" />
+
+                                        <Columns>
+                                            <asp:BoundField DataField="ApprovalRequestId" HeaderText="SL" HeaderStyle-Width="60px" />
+                                            <asp:TemplateField HeaderText="Employee Name " HeaderStyle-Width="220px">
+                                                <ItemTemplate>
+                                                    <%# Eval("EmployeeName") %> (<%# Eval("RequesterLoginId") %>)
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:BoundField DataField="RequestDate" HeaderText="Requested Date" DataFormatString="{0:dd-MMM-yyyy hh:mm tt}" />
+                                            <asp:TemplateField HeaderText="Claimed for Month" HeaderStyle-Width="150px">
+                                                <ItemTemplate>
+                                                    <span class="month-cell" data-month='<%# Eval("MonthNo") %>'><%# Eval("MonthNo") %></span>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+
+                                            <asp:TemplateField HeaderText="Total Claim" HeaderStyle-Width="140px">
+                                                <ItemTemplate>
+                                                    <span class="total-claim-cell" data-amount='<%# Eval("TotalExpenseAmount") %>'><%# Eval("TotalExpenseAmount") %></span>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+
+                                            <asp:TemplateField HeaderText="Status" HeaderStyle-Width="120px">
+                                                <ItemTemplate>
+                                                    <span class="status-cell" data-status='<%# Eval("Status") %>'><%# Eval("Status") %></span>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+
+                                            <asp:TemplateField HeaderText="Actions" HeaderStyle-Width="100px">
+                                                <ItemTemplate>
+                                                    <div class="action-buttons btn-group" role="group" aria-label="Actions">
+                                                        <asp:LinkButton ID="lnkView" runat="server"
+                                                            CommandName="View"
+                                                            CommandArgument='<%# Eval("ApprovalRequestId") %>'
+                                                            CssClass="btn btn-sm gentilia-btn-primary">
+                                                            <i class="fa fa-eye"></i> View
+                                                        </asp:LinkButton>
+
+                                                        <asp:LinkButton ID="lnkApproveQuick" runat="server"
+                                                            Visible="false"
+                                                            CommandName="ApproveQuick"
+                                                            CommandArgument='<%# Eval("ApprovalRequestId") %>'
+                                                            CssClass="btn btn-sm gentilia-btn-success">
+                                                            <i class="fa fa-check"></i> Approve
+                                                        </asp:LinkButton>
+                                                    </div>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+                                        </Columns>
+                                    </asp:GridView>
+                                </asp:Panel>
+
                             </div>
                         </div>
                     </div>
@@ -123,13 +437,13 @@
                     <div class="modal-body">
                         <asp:UpdatePanel ID="upDetails" runat="server" UpdateMode="Conditional">
                             <ContentTemplate>
-                                <div class="table-responsive">
-                                    <asp:GridView ID="gvDetails" runat="server" AutoGenerateColumns="false" CssClass="table table-sm table-hover table-bordered"
+                                <div class="table-responsive small">
+                                    <asp:GridView ID="gvDetails" runat="server" AutoGenerateColumns="false" CssClass="table table-sm table-hover table-bordered small"
                                         DataKeyNames="ApprovalRequestDetailId" OnRowDataBound="gvDetails_RowDataBound" OnRowCommand="gvDetails_RowCommand" ShowFooter="true" GridLines="None">
                                         <Columns>
                                             <asp:TemplateField HeaderText="" ItemStyle-Width="36px" HeaderStyle-HorizontalAlign="Center">
                                                 <HeaderTemplate>
-                                                    All<asp:CheckBox ID="chkSelect1" runat="server" CssClass="row-header-select" onclick="toggleHeaderCheckbox(this);"/>
+                                                    All<asp:CheckBox ID="chkSelect1" runat="server" CssClass="row-header-select" onclick="toggleHeaderCheckbox(this);" />
                                                 </HeaderTemplate>
                                                 <ItemTemplate>
                                                     <asp:CheckBox ID="chkSelect" runat="server" CssClass="row-select-checkbox" />
@@ -148,14 +462,23 @@
                                                 <FooterTemplate><strong>Total :</strong>&nbsp;</FooterTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:BoundField DataField="User_Name" HeaderText="Salesperson" ItemStyle-Width="16%" />
-                                            <asp:BoundField DataField="Snapshot_TotalDistanceKM" HeaderText="Distance (KM)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="9%" FooterStyle-HorizontalAlign="Right" />
-                                            <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="TA Claim (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="9%" FooterStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="User_Name" HeaderText="Salesperson" Visible="false" ItemStyle-Width="16%" />
+                                            <asp:TemplateField HeaderText="Distance (KM)" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="9%" FooterStyle-HorizontalAlign="Right">
+                                                <ItemTemplate>
+                                                    <%# string.Format("{0:N2} Km", Eval("Snapshot_TotalDistanceKM")) %>
+                                                </ItemTemplate>
+                                                <FooterTemplate>
+                                                    <strong>
+                                                        <%# string.Format("{0:N2} Km", Eval("TotalDistanceKM")) %>
+                                                    </strong>
+                                                </FooterTemplate>
+                                            </asp:TemplateField>
+                                            <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="9%" FooterStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
-                                            <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Snapshot Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="10%" FooterStyle-HorizontalAlign="Right" />
-                                            <asp:TemplateField HeaderText="Claim Status" ItemStyle-Width="5%">
+                                            <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
+                                            <asp:TemplateField HeaderText="Status" ItemStyle-Width="5%">
                                                 <ItemTemplate>
                                                     <span data-toggle="tooltip"
                                                         title='<%# 
@@ -167,7 +490,7 @@
                                                             "Unknown status" %>'
                                                         class='<%# 
                                                             Eval("ClaimStatus").ToString() == "Draft" ? "badge badge-warning" :
-                                                            Eval("ClaimStatus").ToString() == "Submitted" ? "badge badge-info" :
+                                                            Eval("ClaimStatus").ToString() == "Submitted" ? "badge badge-warning" :
                                                             Eval("ClaimStatus").ToString() == "Approved" ? "badge badge-success" :
                                                             Eval("ClaimStatus").ToString() == "Rejected" ? "badge badge-danger" :
                                                             Eval("ClaimStatus").ToString() == "Processed" ? "badge badge-primary" :
@@ -175,20 +498,19 @@
 
                                                         <i class='<%# 
                                                             Eval("ClaimStatus").ToString() == "Draft" ? "fa fa-pencil-square-o" :
-                                                            Eval("ClaimStatus").ToString() == "Submitted" ? "fa fa-paper-plane" :
+                                                            Eval("ClaimStatus").ToString() == "Submitted" ? "fa fa-hourglass-half" :
                                                             Eval("ClaimStatus").ToString() == "Approved" ? "fa fa-check-circle" :
                                                             Eval("ClaimStatus").ToString() == "Rejected" ? "fa fa-times-circle" :
                                                             Eval("ClaimStatus").ToString() == "Processed" ? "fa fa-cogs" :
                                                             "fa fa-clock-o" %>'></i>
                                                     </span>
-                                                    <%# Eval("ClaimStatus") %>
                                                 </ItemTemplate>
                                                 <FooterTemplate></FooterTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:BoundField DataField="DetailStatus" Visible="true" HeaderText="Detail Status" ItemStyle-Width="8%" />
+                                            <asp:BoundField DataField="DetailStatus" Visible="false" HeaderText="Detail Status" ItemStyle-Width="8%" />
 
-                                            <asp:TemplateField HeaderText="Manager Remarks" HeaderStyle-Width="15%">
+                                            <asp:TemplateField HeaderText="Manager Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
                                                     <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' CssClass="form-control form-control-sm row-remark" />
                                                 </ItemTemplate>
@@ -197,14 +519,14 @@
                                                 </FooterTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Activity Remarks" Visible="true">
+                                            <asp:TemplateField HeaderText="Activity Remarks" Visible="false">
                                                 <ItemTemplate>
                                                     <asp:Label ID="lblActivityRemarks" runat="server" Text='<%# Eval("ActivityRemarks") %>' CssClass="text-muted small" />
                                                 </ItemTemplate>
                                                 <FooterTemplate></FooterTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Action" ItemStyle-Width="110px">
+                                            <asp:TemplateField HeaderText="Aprrove/ Reject" ItemStyle-Width="8%">
                                                 <ItemTemplate>
                                                     <div class="btn-group" role="group">
                                                         <asp:Button ID="btnApproveRow" runat="server" UseSubmitBehavior="false" CssClass="btn btn-sm btn-outline-success" Text="✔" CommandName="ApproveRow" CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
@@ -253,13 +575,13 @@
             </div>
         </div>
 
-
     </div>
 
     <script type="text/javascript">
         $(function () {
             $('[data-toggle="tooltip"]').tooltip();
         });
+
         // Open and close helpers (used by codebehind script registration too)
         function openDetailsModal() {
             $('#detailsModal').modal('show');
@@ -267,7 +589,6 @@
         function closeDetailsModal() {
             $('#detailsModal').modal('hide');
         }
-
         function validateSingleReject(btn) {
             var row = btn.closest('tr');
             if (!row) return true;
@@ -291,8 +612,6 @@
             }
             return true; // allow postback
         }
-
-
 
         // Called before Reject postback to ensure at least one selected and remarks provided
         function validateReject() {
@@ -422,8 +741,6 @@
                 initDetailsUI();
             });
         }
-
-        //-------
 
         // Allow only these statuses to be selectable
         var ALLOWED_STATUSES = new Set(["Submitted"]); // add more as needed
@@ -569,7 +886,114 @@
             initDetailsUI();
         }
 
+        $(function () {
+            var monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+            // Map status -> css class + optional icon
+            var statusMap = {
+                "Pending": { cls: "status-pending", icon: "fa-hourglass-half" },
+                "Approved": { cls: "status-approved", icon: "fa-check-circle" },
+                "Rejected": { cls: "status-rejected", icon: "fa-times-circle" },
+                "Draft": { cls: "status-draft", icon: "fa-pencil-alt" }
+                // any other statuses will use status-other
+            };
+
+            // Utility: format number to Indian currency style with ₹ (basic approach)
+            function formatCurrencyINR(value) {
+                if (value === null || value === undefined || value === "") return "";
+                var num = parseFloat(value);
+                if (isNaN(num)) return value;
+                // Use toLocaleString for grouping — this uses user's locale; for forced 'en-IN' you can pass that but older browsers may not support
+                try {
+                    return "₹ " + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } catch (e) {
+                    return "₹ " + num.toFixed(2);
+                }
+            }
+
+            // Transform each row: month, status, amount
+            $("#<%= gvRequests.ClientID %> tbody tr").each(function () {
+                var $tr = $(this);
+
+                // Month: element with class month-cell
+                var $monthCell = $tr.find(".month-cell");
+                if ($monthCell.length) {
+                    var monthNo = parseInt($monthCell.data("month"), 10);
+                    if (!isNaN(monthNo) && monthNo >= 1 && monthNo <= 12) {
+                        $monthCell.text(monthNames[monthNo]);
+                    } else {
+                        $monthCell.text(""); // blank invalid
+                    }
+                }
+
+                // Status -> badge
+                var $statusCell = $tr.find(".status-cell");
+                if ($statusCell.length) {
+                    var rawStatus = ($statusCell.data("status") || "").toString().trim();
+                    var mapping = statusMap[rawStatus] || { cls: "status-other", icon: "fa-info-circle" };
+                    var iconHtml = '<i class="fa ' + mapping.icon + '" aria-hidden="true" style="margin-right:6px"></i>';
+                    var badge = $('<span class="status-badge ' + mapping.cls + '" title="' + rawStatus + '"></span>');
+                    badge.html(iconHtml + rawStatus);
+                    $statusCell.empty().append(badge);
+                }
+
+                // Total Claim -> formatted currency
+                var $amtCell = $tr.find(".total-claim-cell");
+                if ($amtCell.length) {
+                    var amt = $amtCell.data("amount");
+                    var formatted = formatCurrencyINR(amt);
+                    $amtCell.text(formatted);
+                }
+            });
+
+            // Optional: add tooltip for headers or badges (if theme includes bootstrap tooltip)
+            if ($.fn.tooltip) {
+                $("#<%= gvRequests.ClientID %> .status-badge").tooltip({ container: 'body' });
+            }
+        });
     </script>
 
+    <script>
+        /* small enhancements: tooltips, row selection highlight, sticky header support (requires jQuery + bootstrap tooltip) */
+        (function ($) {
+            $(function () {
+
+                // init bootstrap tooltips if present
+                if ($.fn.tooltip) {
+                    $('#detailsModal [data-toggle="tooltip"]').tooltip({ container: 'body' });
+                }
+
+                // highlight selected row when its checkbox checked (keeps server behavior unchanged)
+                $('#detailsModal').on('change', '.row-select-checkbox', function () {
+                    var $tr = $(this).closest('tr');
+                    if (this.checked) $tr.addClass('selected-row'); else $tr.removeClass('selected-row');
+                });
+
+                // if header checkbox toggles all rows, respect selected styling
+                window.toggleHeaderCheckbox = window.toggleHeaderCheckbox || function (headerChk) {
+                    var $tbl = $(headerChk).closest('table');
+                    var isChecked = headerChk.checked;
+                    $tbl.find('.row-select-checkbox').each(function () {
+                        this.checked = isChecked;
+                        $(this).trigger('change');
+                    });
+                };
+
+                // optional helpers used by existing buttons (keeps names used in markup)
+                window.selectAllRows = window.selectAllRows || function () {
+                    $('#detailsModal .row-select-checkbox').each(function () { this.checked = true; $(this).trigger('change'); });
+                };
+                window.clearAllRows = window.clearAllRows || function () {
+                    $('#detailsModal .row-select-checkbox').each(function () { this.checked = false; $(this).trigger('change'); });
+                };
+
+                // On modal show, ensure any pre-checked boxes are highlighted
+                $('#detailsModal').on('shown.bs.modal', function () {
+                    $(this).find('.row-select-checkbox').each(function () {
+                        if (this.checked) $(this).closest('tr').addClass('selected-row');
+                    });
+                });
+            });
+        })(jQuery);
+    </script>
 </asp:Content>
