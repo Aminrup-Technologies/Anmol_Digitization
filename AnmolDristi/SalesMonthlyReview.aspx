@@ -415,6 +415,19 @@
                 max-width: 12rem;
             }
         }
+
+        .row-rejected {
+            border-left: 3px solid #d9534f;
+            background-color: #fffaf9;
+        }
+
+        .row-locked-nofade {
+            background-color: #fafafa;
+        }
+
+        .btn-light .fa {
+            font-size: 14px;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -452,29 +465,12 @@
                                 </div>
 
                                 <div id="Actionable" runat="server" visible="false" class="col-md-3 text-right align-self-end">
-                                    <!-- Reopen Policy Button -->
-                                    <button type="button" id="btnViewPolicyAgain"
-                                        class="btn btn-info btn-sm"
-                                        onclick="$('#policyModal').modal('show');">
-                                        <i class="fa fa-info-circle"></i>View Policy
-                                    </button>
-
-
+                                    <button type="button" id="btnViewPolicyAgain" class="btn btn-info btn-sm" onclick="$('#policyModal').modal('show');"><i class="fa fa-info-circle"></i>View Policy</button>
                                     <asp:Button ID="btn_save_draft" runat="server" CssClass="btn btn-secondary btn-sm" Text="Save as Draft" OnClick="btn_save_draft_Click" />
-                                    <%--<asp:Button ID="btn_save_draft"
-                                        runat="server"
-                                        Text="Save as Draft"
-                                        CssClass="btn btn-success"
-                                        UseSubmitBehavior="false"
-                                        OnClick="btn_save_draft_Click"
-                                        OnClientClick="return handleSaveDraftClick(this);" />--%>
-
-
-                                    <%--<asp:Button ID="btn_save_draft" runat="server" CssClass="btn btn-secondary btn-sm" Text="Save as Draft"
-                                        OnClick="btn_save_draft_Click" OnClientClick="this.disabled=true; this.style.opacity='0.6';" />--%>
+                                    <%--<asp:Button ID="btn_save_draft" runat="server" Text="Save as Draft" CssClass="btn btn-success" UseSubmitBehavior="false" OnClick="btn_save_draft_Click" OnClientClick="return handleSaveDraftClick(this);" />--%>
+                                    <%--<asp:Button ID="btn_save_draft" runat="server" CssClass="btn btn-secondary btn-sm" Text="Save as Draft" OnClick="btn_save_draft_Click" OnClientClick="this.disabled=true; this.style.opacity='0.6';" />--%>
                                     <%--<asp:Button ID="btn_submit" runat="server" CssClass="btn btn-success btn-sm" Text="Submit for Approval" OnClick="btn_submit_Click" />--%>
-                                    <asp:Button ID="btn_submit" runat="server"
-                                        CssClass="btn btn-success btn-sm" Text="Submit for Approval" OnClick="btn_submit_Click" OnClientClick="return showSubmitModal();" />
+                                    <asp:Button ID="btn_submit" runat="server" CssClass="btn btn-success btn-sm" Text="Submit for Approval" OnClick="btn_submit_Click" OnClientClick="return showSubmitModal();" />
                                 </div>
                             </div>
 
@@ -510,12 +506,11 @@
                                 </div>
                             </div>
 
-
                         </div>
                     </div>
-                </div>
+                </div>           
 
-                <div class="col-md-12 col-sm-12">
+                <div class="col-md-12 col-sm-12" id="Activities" runat="server" visible="false">
                     <div class="x_panel">
                         <%--<div class="x_title">
                             <h2>Daily Sales Activity</h2>
@@ -620,10 +615,12 @@
                                                 <asp:TemplateField HeaderText="Actions" ItemStyle-Width="10%">
                                                     <ItemStyle HorizontalAlign="Center" />
                                                     <ItemTemplate>
-                                                        <asp:LinkButton ID="lnkEdit" runat="server"
+                                                        <%--<asp:LinkButton ID="lnkEdit" runat="server"
                                                             CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" Visible='<%# Eval("ClaimStatus").ToString() == "Draft" %>' ToolTip="Edit Kilometers">
                                                             <i class="fa fa-pencil"></i>
-                                                        </asp:LinkButton>
+                                                        </asp:LinkButton>--%>
+
+                                                        <asp:LinkButton ID="lnkEdit" runat="server" CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" ToolTip="Edit Kilometers"><i class="fa fa-pencil"></i></asp:LinkButton>
 
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
                                                             CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-info" ToolTip="View / Add Expenses">
@@ -691,6 +688,129 @@
 
                                             </Columns>
                                         </asp:GridView>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12 col-sm-12" id="Summary" runat="server" visible="false">
+                    <div class="x_panel collapsed">
+                        <div class="x_title">
+                            <h2>Summary by status</h2>
+                            <ul class="nav navbar-right panel_toolbox">
+                                <li><a class="collapse-link"><i class="fa fa-chevron-down"></i></a></li>
+                            </ul>
+                            <div class="clearfix"></div>
+                        </div>
+
+                        <div class="x_content" style="display:none;">
+                            <div class="row">
+                                <div class="col-md-12 col-sm-12">
+                                    <div class="mb-3">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered" style="max-width: 1000px;">
+                                                <thead class="thead-light">
+                                                    <tr>
+                                                        <th>Status</th>
+                                                        <th class="text-right">Total KM</th>
+                                                        <th class="text-right">TA (₹)</th>
+                                                        <th class="text-right">DA (₹)</th>
+                                                        <th class="text-right">Hotel (₹)</th>
+                                                        <th class="text-right">Travel (₹)</th>
+                                                        <th class="text-right">Expense (₹)</th>
+
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><span class="badge badge-warning">Draft</span></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblDraft_KM" runat="server" Text="0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblDraft_TA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblDraft_DA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblDraft_Hotel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblDraft_Travel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblDraft_Expense" runat="server" Text="₹ 0.00" /></td>
+
+                                                    </tr>
+
+                                                    <tr>
+                                                        <td><span class="badge badge-info">Submitted</span></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblSubmitted_KM" runat="server" Text="0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblSubmitted_TA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblSubmitted_DA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblSubmitted_Hotel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblSubmitted_Travel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblSubmitted_Expense" runat="server" Text="₹ 0.00" /></td>
+
+                                                    </tr>
+
+                                                    <tr>
+                                                        <td><span class="badge badge-success">Approved</span></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblApproved_KM" runat="server" Text="0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblApproved_TA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblApproved_DA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblApproved_Hotel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblApproved_Travel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblApproved_Expense" runat="server" Text="₹ 0.00" /></td>
+
+                                                    </tr>
+
+                                                    <tr>
+                                                        <td><span class="badge badge-danger">Editable</span> <small>(reopened)</small></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblEditable_KM" runat="server" Text="0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblEditable_TA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblEditable_DA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblEditable_Hotel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblEditable_Travel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblEditable_Expense" runat="server" Text="₹ 0.00" /></td>
+
+                                                    </tr>
+
+                                                    <tr>
+                                                        <td><span class="badge badge-secondary">Other</span></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblOther_KM" runat="server" Text="0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblOther_TA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblOther_DA" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblOther_Hotel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblOther_Travel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblOther_Expense" runat="server" Text="₹ 0.00" /></td>
+
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -961,10 +1081,10 @@
                                             <%# (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
                                                 ? (Eval("TravelDate") == DBNull.Value ? "—" : Eval("TravelDate", "{0:yyyy-MM-dd}"))
                                                 : (Eval("ExpenseDate") == DBNull.Value ? "—" : Eval("ExpenseDate", "{0:yyyy-MM-dd}")) %>
-                                                                            </td>
+                                        </td>
 
-                                                                            <td style="max-width: 280px;">
-                                                                                <span class="text-truncate-ellipsis" title='<%# HttpUtility.HtmlEncode(
+                                        <td style="max-width: 280px;">
+                                            <span class="text-truncate-ellipsis" title='<%# HttpUtility.HtmlEncode(
                                              (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
                                               ? String.Format("{0} {1} -> {2} {3}",
                                                   Eval("TravelType") ?? "",
@@ -980,7 +1100,7 @@
                                                   )
                                                 : (Eval("Purpose") ?? "—")
                                             ) %>'>
-                                                                                    <%# 
+                                                <%# 
                                               (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
                                                 ? String.Format("{0} {1} -> {2} {3}",
                                                     Eval("TravelType") ?? "",
@@ -1168,6 +1288,25 @@
     </div>
 
     <script type="text/javascript">
+        $(document).ready(function () {
+            $('.collapse-link').on('click', function () {
+                var $BOX_PANEL = $(this).closest('.x_panel');
+                var $ICON = $(this).find('i');
+                var $BOX_CONTENT = $BOX_PANEL.find('.x_content');
+
+                // Toggle content visibility
+                if ($BOX_PANEL.hasClass('collapsed')) {
+                    $BOX_CONTENT.slideDown(200);
+                    $BOX_PANEL.removeClass('collapsed');
+                    $ICON.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                } else {
+                    $BOX_CONTENT.slideUp(200);
+                    $BOX_PANEL.addClass('collapsed');
+                    $ICON.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                }
+            });
+        });
+
         $(document).ready(function () {
             $('[data-toggle="tooltip"]').tooltip();
         });

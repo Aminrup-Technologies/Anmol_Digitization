@@ -253,7 +253,6 @@ namespace AnmolDristi
             }
 
         }
-
         private void BindGrid_OLD1(Boolean policybinder, bool showNotification = true)
         {
             lbl_msg.Text = "";
@@ -583,9 +582,7 @@ namespace AnmolDristi
                 );
             }
         }
-
-
-        private void BindGrid(Boolean policybinder, bool showNotification = true)
+        private void BindGrid_Old_05Nov25(Boolean policybinder, bool showNotification = true)
         {
             lbl_msg.Text = "";
             int year = int.Parse(DDL_Year.SelectedValue);
@@ -637,7 +634,7 @@ namespace AnmolDristi
                     if (policy != null)
                     {
                         BindPolicyToModal(policy);
-                        ShowPolicyNotification(policy);
+                        //ShowPolicyNotification(policy);
                     }
                     else
                     {
@@ -787,6 +784,342 @@ namespace AnmolDristi
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", "showPNotify('Error', '" + ex.Message.Replace("'", "\\'") + "', 'error');", true);
             }
         }
+
+        private void BindGrid(Boolean policybinder, bool showNotification = true)
+        {
+            lbl_msg.Text = "";
+            int year = int.Parse(DDL_Year.SelectedValue);
+            int month = int.Parse(DDL_Month.SelectedValue);
+
+            bool isPolicyEnabled = Convert.ToBoolean(ConfigurationManager.AppSettings["EnablePreviousMonthPolicy"]);
+            bool allowExecution = false;
+
+            if (isPolicyEnabled)
+            {
+                DateTime currentDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                                          TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"));
+                int currentYear = currentDate.Year;
+                int currentMonth = currentDate.Month;
+
+                bool isAllowedWindow = currentDate.Day >= 1 && currentDate.Day <= 15;
+                bool isPreviousMonthSelected =
+                    (year == currentYear && month == currentMonth - 1) ||
+                    (currentMonth == 1 && month == 12 && year == currentYear - 1);
+
+                if (isAllowedWindow && isPreviousMonthSelected)
+                    allowExecution = true;
+                else
+                {
+                    lbl_msg.Text = "You can process previous month data only between 1st and 15th of the current month.";
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyPolicyBlock",
+                        "showPNotify('Policy Restriction', 'Processing is allowed only between 1st and 15th for the previous month.', 'error');", true);
+                }
+            }
+            else
+            {
+                allowExecution = true;
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyBypass", "showPNotify('Policy Disabled', 'Monthly processing policy is disabled. Validation skipped.', 'info');", true);
+            }
+
+            if (!allowExecution) return;
+
+            try
+            {
+                if (policybinder == true)
+                {
+                    string employeeCode = GetLoggedInEmployeeCode();
+                    int? regionId = GetLoggedInRegionId();
+                    int? branchId = GetLoggedInBranchId();
+                    int? gradeId = GetLoggedInGradeId();
+                    int? designationId = GetLoggedInDesignationId();
+                    var policy = GetResolvedPolicy(employeeCode, regionId, branchId, gradeId, designationId);
+                    if (policy != null)
+                    {
+                        BindPolicyToModal(policy);
+                        //ShowPolicyNotification(policy);
+                    }
+                    else
+                    {
+                        RegisterClientNotification("No resolved policy found for the selected context.", "warning");
+                    }
+                }
+
+                // --- Attempt to use cached session DataTable first ---
+                DataTable dt = Session[SESSION_KEY_GV_ACTIVITIES] as DataTable;
+
+                // If session copy not present, fetch from DB and cache it
+                if (dt == null)
+                {
+                    dt = new DataTable();
+                    using (SqlConnection con = new SqlConnection(connString))
+                    using (SqlCommand cmd = new SqlCommand("dbo.usp_GetSalesDailyActivity_Month", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@LoginId", GetCurrentUserLoginId());
+                        cmd.Parameters.AddWithValue("@Year", year);
+                        cmd.Parameters.AddWithValue("@Month", month);
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                            da.Fill(dt);
+                    }
+
+                    // Ensure required columns exist
+                    if (!dt.Columns.Contains("CalculatedClaimAmount"))
+                        dt.Columns.Add("CalculatedClaimAmount", typeof(decimal));
+                    if (!dt.Columns.Contains("RatePerKm"))
+                        dt.Columns.Add("RatePerKm", typeof(decimal));
+
+                    // compute derived columns
+                    decimal defaultRate = 2.75m;
+                    var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
+                    decimal tmpCfg;
+                    if (!string.IsNullOrWhiteSpace(cfg) && decimal.TryParse(cfg, out tmpCfg))
+                        defaultRate = tmpCfg;
+
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        decimal totalKm = 0m;
+                        if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
+                            decimal.TryParse(row["TotalDistanceKM"].ToString(), out totalKm);
+
+                        decimal rate = GetRatePerKm(row, defaultRate);
+                        decimal claim = Math.Round(rate * totalKm, 2, MidpointRounding.AwayFromZero);
+
+                        row["CalculatedClaimAmount"] = claim;
+
+                        if (row.Table.Columns.Contains("RatePerKm"))
+                        {
+                            if (row["RatePerKm"] == DBNull.Value || string.IsNullOrWhiteSpace(row["RatePerKm"].ToString()))
+                                row["RatePerKm"] = rate;
+                        }
+                    }
+
+                    // Set primary key for quick lookup
+                    if (dt.Columns.Contains("ActivityId"))
+                    {
+                        try
+                        {
+                            dt.PrimaryKey = new DataColumn[] { dt.Columns["ActivityId"] };
+                        }
+                        catch { /* ignore if already set or invalid */ }
+                    }
+
+                    // cache it
+                    Session[SESSION_KEY_GV_ACTIVITIES] = dt;
+                }
+
+                // --- START: Approval lock logic ---
+                // --- START: Approval lock logic (replace the prior block handling approvalRequest) ---
+                if (!dt.Columns.Contains("IsEditable"))
+                    dt.Columns.Add("IsEditable", typeof(bool));
+
+                bool monthLocked = false;       // true => month-level edits blocked (except rejected lines)
+                bool allowSubmission = false;   // true => allow user to submit/reshubmit the month
+                int? approvalRequestId = null;
+                string approvalStatus = null;
+                string loginId = GetCurrentUserLoginId();
+
+                using (SqlConnection con = new SqlConnection(connString))
+                {
+                    con.Open();
+
+                    // get latest request if any
+                    using (SqlCommand cmd = new SqlCommand(
+                        "SELECT TOP 1 ApprovalRequestId, Status FROM dbo.SalesApprovalRequest " +
+                        "WHERE RequesterLoginId = @LoginId AND YearNo = @Year AND MonthNo = @Month " +
+                        "ORDER BY RequestDate DESC", con))
+                    {
+                        cmd.Parameters.AddWithValue("@LoginId", loginId);
+                        cmd.Parameters.AddWithValue("@Year", year);
+                        cmd.Parameters.AddWithValue("@Month", month);
+
+                        using (SqlDataReader rdr = cmd.ExecuteReader())
+                        {
+                            if (rdr.Read())
+                            {
+                                approvalRequestId = rdr["ApprovalRequestId"] != DBNull.Value ? (int?)Convert.ToInt32(rdr["ApprovalRequestId"]) : null;
+                                approvalStatus = rdr["Status"] != DBNull.Value ? rdr["Status"].ToString() : null;
+                            }
+                        }
+                    }
+
+                    // Decide behaviour based on overall status
+                    if (!approvalRequestId.HasValue)
+                    {
+                        // no request -> draft-like behavior: allow edits and submission
+                        monthLocked = false;
+                        allowSubmission = true;
+                        foreach (DataRow row in dt.Rows) row["IsEditable"] = true;
+                    }
+                    else
+                    {
+                        // There is a request. Normalize status string for comparison:
+                        string s = (approvalStatus ?? "").Trim();
+                        if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // allow edits and (re)submit
+                            monthLocked = false;
+                            allowSubmission = true;
+                            foreach (DataRow row in dt.Rows) row["IsEditable"] = true;
+                        }
+                        else
+                        {
+                            // Submitted / Pending / Approved or other -> lock month-level editing
+                            monthLocked = true;
+                            allowSubmission = false;
+
+                            // find per-row Rejected detail statuses so they remain editable
+                            var editableActivityIds = new HashSet<int>();
+                            using (SqlCommand cmd2 = new SqlCommand(
+                                "SELECT ActivityId, DetailStatus FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id", con))
+                            {
+                                cmd2.Parameters.AddWithValue("@Id", approvalRequestId.Value);
+                                using (SqlDataReader rdr = cmd2.ExecuteReader())
+                                {
+                                    while (rdr.Read())
+                                    {
+                                        int aid = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
+                                        string detail = rdr["DetailStatus"] != DBNull.Value ? rdr["DetailStatus"].ToString() : null;
+                                        if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase))
+                                            editableActivityIds.Add(aid);
+                                    }
+                                }
+                            }
+
+                            // Mark only rejected lines as editable
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                int actId = row["ActivityId"] != DBNull.Value ? Convert.ToInt32(row["ActivityId"]) : 0;
+                                row["IsEditable"] = editableActivityIds.Contains(actId);
+                            }
+                        }
+                    }
+                } // connection closed
+
+                // Expose these flags to UI usage afterwards
+                ViewState["MonthLocked"] = monthLocked;
+                ViewState["AllowSubmission"] = allowSubmission;
+                // --- END: Approval lock logic ---
+
+                // after dt is prepared and cached:
+                PopulateStatusSummary(dt);
+
+                Summary.Visible = true;
+                Activities.Visible = true;
+                gvActivities.DataSource = dt;
+                gvActivities.DataBind();
+
+                gvActivities.UseAccessibleHeader = true;
+                if (gvActivities.HeaderRow != null)
+                    gvActivities.HeaderRow.TableSection = TableRowSection.TableHeader;
+
+                // Compute grand totals from DataTable (the canonical source)
+                decimal grandCalc = 0m, grandDA = 0m, grandHotel = 0m, grandTravel = 0m, grandExpense = 0m, grandKM = 0m;
+                CultureInfo ci = CultureInfo.GetCultureInfo("en-IN");
+
+                if (dt.Rows.Count > 0)
+                {
+                    object o;
+                    o = dt.Compute("SUM(CalculatedClaimAmount)", "");
+                    grandCalc = o != DBNull.Value ? Convert.ToDecimal(o) : 0m;
+
+                    if (dt.Columns.Contains("DAAmount")) { o = dt.Compute("SUM(DAAmount)", ""); grandDA = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("HotelAmount")) { o = dt.Compute("SUM(HotelAmount)", ""); grandHotel = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("TravelAmount")) { o = dt.Compute("SUM(TravelAmount)", ""); grandTravel = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("ExpenseTotal")) { o = dt.Compute("SUM(ExpenseTotal)", ""); grandExpense = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("TotalDistanceKM")) { o = dt.Compute("SUM(TotalDistanceKM)", ""); grandKM = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                }
+
+                // Update footer labels (grand totals)
+                if (gvActivities.FooterRow != null)
+                {
+                    Label fCalc = gvActivities.FooterRow.FindControl("lblFooterCalculated") as Label;
+                    Label fDA = gvActivities.FooterRow.FindControl("lblFooterDA") as Label;
+                    Label fHotel = gvActivities.FooterRow.FindControl("lblFooterHotel") as Label;
+                    Label fTravel = gvActivities.FooterRow.FindControl("lblFooterTravel") as Label;
+                    Label fExpense = gvActivities.FooterRow.FindControl("lblFooterExpenseTotal") as Label;
+                    Label lblFooterTotalKM = gvActivities.FooterRow.FindControl("lblFooterTotalKM") as Label;
+
+                    if (fCalc != null) fCalc.Text = "₹ " + grandCalc.ToString("N2");
+                    if (fDA != null) fDA.Text = "₹ " + grandDA.ToString("N2");
+                    if (fHotel != null) fHotel.Text = "₹ " + grandHotel.ToString("N2");
+                    if (fTravel != null) fTravel.Text = "₹ " + grandTravel.ToString("N2");
+                    if (fExpense != null) fExpense.Text = "₹ " + grandExpense.ToString("N2");
+                    if (lblFooterTotalKM != null) lblFooterTotalKM.Text = string.Format("{0:N2} km", grandKM);
+
+                    // combined grand overall
+                    decimal grandOverall = grandCalc + grandDA + grandHotel + grandTravel;
+                    int lastCellIndex = Math.Max(0, gvActivities.FooterRow.Cells.Count - 5);
+                    if (lastCellIndex < gvActivities.FooterRow.Cells.Count)
+                    {
+                        gvActivities.FooterRow.Cells[lastCellIndex].Text = "₹ " + grandOverall.ToString("N2");
+                        gvActivities.FooterRow.Cells[lastCellIndex].HorizontalAlign = HorizontalAlign.Center;
+                        gvActivities.FooterRow.Cells[lastCellIndex].Font.Bold = true;
+                        gvActivities.FooterRow.Cells[lastCellIndex].ForeColor = System.Drawing.Color.DarkBlue;
+                        gvActivities.FooterRow.Cells[lastCellIndex].ToolTip = "Grand Total of Claim + DA + Hotel + Travel";
+                    }
+                    else
+                    {
+                        System.Diagnostics.Trace.TraceWarning($"Footer cell index out of range. Cells.Count={gvActivities.FooterRow.Cells.Count}, computedIndex={lastCellIndex}");
+                    }
+                }
+
+                // If the month is locked (there was a submission and it's not Rejected), hide/disable Actionable area
+                Actionable.Visible = dt.Rows.Count > 0 && !monthLocked; // if monthLocked true => hide bulk actions
+
+                // Also show a message to inform the user why editing is blocked
+                if (monthLocked)
+                {
+                    lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for rows that were rejected by approver.";
+                    lbl_msg.ForeColor = System.Drawing.Color.Orange;
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLocked", "showPNotify('Submitted for Approval', 'Monthly claims are submitted. Editing disabled except rejected rows.', 'info');", true);
+                }
+                else
+                {
+                    if (showNotification)
+                    {
+                        lbl_msg.Text = "Action executed successfully.";
+                        lbl_msg.ForeColor = System.Drawing.Color.Green;
+                        ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySuccess", "showPNotify('Success', 'Process executed successfully.', 'success');", true);
+                    }
+                    else
+                    {
+                        lbl_msg.Text = "";
+                    }
+                }
+
+                //bool allowSubmissionFlag = ViewState["AllowSubmission"] != null && (bool)ViewState["AllowSubmission"];
+                //bool monthLockedFlag = ViewState["MonthLocked"] != null && (bool)ViewState["MonthLocked"];
+
+                //// Show/hide / enable actionable panel/buttons
+                //Actionable.Visible = dt.Rows.Count > 0 && !monthLockedFlag; // if locked, hide panel (you can also show but disable)
+                //btn_fetch.Enabled = allowSubmissionFlag;  // assuming button ID is btnSubmitAll
+                ////btnSaveSelected.Enabled = !monthLockedFlag;  // you may want to allow saving selected only when not locked
+
+                // After gvActivities.DataBind() in BindGrid (or at the end of BindGrid)
+                bool monthLockedFlag = ViewState["MonthLocked"] != null && (bool)ViewState["MonthLocked"];
+                bool allowSubmissionFlag = ViewState["AllowSubmission"] != null && (bool)ViewState["AllowSubmission"];
+
+                // Show/hide actionable panel and enable submission button appropriately
+                Actionable.Visible = gvActivities.Rows.Count > 0 && !monthLockedFlag; // hide bulk actions when month locked
+                btn_save_draft.Enabled = !monthLockedFlag;   // saving as draft allowed when month isn't locked
+                btn_submit.Enabled = allowSubmissionFlag;    // submission allowed per allowSubmission flag
+
+                // If you prefer to show the panel but disable buttons instead of hiding:
+                // Actionable.Visible = gvActivities.Rows.Count > 0;
+                // btn_save_draft.Enabled = !monthLockedFlag;
+                // btn_submit.Enabled = allowSubmissionFlag;
+
+            }
+            catch (Exception ex)
+            {
+                lbl_msg.Text = "An error occurred: " + ex.Message;
+                lbl_msg.ForeColor = System.Drawing.Color.Red;
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", "showPNotify('Error', '" + ex.Message.Replace("'", "\\'") + "', 'error');", true);
+            }
+        }
+
 
         private bool SanitizeDecimal(string input, CultureInfo ci, out decimal result)
         {
@@ -1352,7 +1685,7 @@ namespace AnmolDristi
             if (lblTolLower_Edit != null) lblTolLower_Edit.Text = F(allowedLower);
             if (lblTolUpper_Edit != null) lblTolUpper_Edit.Text = F(allowedUpper);
         }
-        protected void gvActivities_RowDataBound(object sender, GridViewRowEventArgs e)
+        protected void gvActivities_RowDataBound_OLD_05Nov25(object sender, GridViewRowEventArgs e)
         {
             if (e.Row.RowType != DataControlRowType.DataRow) return;
 
@@ -1423,6 +1756,203 @@ namespace AnmolDristi
             if (lblTolLower_Edit != null) lblTolLower_Edit.Text = F(allowedLower);
             if (lblTolUpper_Edit != null) lblTolUpper_Edit.Text = F(allowedUpper);
         }
+
+        protected void gvActivities_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow) return;
+
+            var drv = e.Row.DataItem as System.Data.DataRowView;
+            if (drv == null) return;
+
+            // 1) existing tolerance logic (unchanged)
+            PopulateKmTolerance(drv, e.Row);
+
+            // 2) new editability / approval enforcement
+            ApplyApprovalEditability(drv, e.Row);
+        }
+
+        private void PopulateKmTolerance(System.Data.DataRowView drv, GridViewRow row)
+        {
+            decimal totalKm = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]) : 0m;
+
+            decimal? minTol = null;
+            decimal? maxTol = null;
+
+            if (drv.Row.Table.Columns.Contains("MinAllowedKM") && drv["MinAllowedKM"] != DBNull.Value)
+                minTol = Convert.ToDecimal(drv["MinAllowedKM"]);
+
+            if (drv.Row.Table.Columns.Contains("MaxAllowedKM") && drv["MaxAllowedKM"] != DBNull.Value)
+                maxTol = Convert.ToDecimal(drv["MaxAllowedKM"]);
+
+            decimal? allowedLower = null, allowedUpper = null;
+            if (minTol.HasValue && maxTol.HasValue)
+            {
+                if (minTol.Value <= totalKm)
+                    allowedLower = Math.Max(0, totalKm - minTol.Value);
+                else
+                    allowedLower = minTol.Value;
+
+                if (maxTol.Value <= (totalKm * 5))
+                    allowedUpper = totalKm + maxTol.Value;
+                else
+                    allowedUpper = maxTol.Value;
+            }
+            else
+            {
+                if (minTol.HasValue) allowedLower = Math.Max(0, totalKm - minTol.Value);
+                if (maxTol.HasValue) allowedUpper = totalKm + maxTol.Value;
+            }
+
+            Label lblTolLower = row.FindControl("lblTolLower") as Label;
+            Label lblTolUpper = row.FindControl("lblTolUpper") as Label;
+            Label lblTolLower_Edit = row.FindControl("lblTolLower_Edit") as Label;
+            Label lblTolUpper_Edit = row.FindControl("lblTolUpper_Edit") as Label;
+
+            Func<decimal?, string> F = d => d.HasValue ? d.Value.ToString("0.00") : "—";
+
+            if (lblTolLower != null) lblTolLower.Text = F(allowedLower);
+            if (lblTolUpper != null) lblTolUpper.Text = F(allowedUpper);
+            if (lblTolLower_Edit != null) lblTolLower_Edit.Text = F(allowedLower);
+            if (lblTolUpper_Edit != null) lblTolUpper_Edit.Text = F(allowedUpper);
+        }
+
+        private void ApplyApprovalEditability(System.Data.DataRowView drv, GridViewRow row)
+        {
+            // determine row-level editability (IsEditable set by BindGrid)
+            bool isEditable = true;
+            if (drv.Row.Table.Columns.Contains("IsEditable") && drv["IsEditable"] != DBNull.Value)
+            {
+                bool parsed;
+                if (bool.TryParse(drv["IsEditable"].ToString(), out parsed))
+                    isEditable = parsed;
+            }
+
+            // controls from your ASPX
+            LinkButton lnkEdit = row.FindControl("lnkEdit") as LinkButton;
+            LinkButton lnkExpenses = row.FindControl("lnkExpenses") as LinkButton;
+            TextBox txtKM = row.FindControl("txtKM") as TextBox;
+            Label lblKM = row.FindControl("lblKM") as Label;
+            LinkButton lnkUpdate = row.FindControl("lnkUpdate") as LinkButton;
+            LinkButton lnkCancel = row.FindControl("lnkCancel") as LinkButton;
+
+            // claim status
+            string claimStatus = drv.Row.Table.Columns.Contains("ClaimStatus") && drv["ClaimStatus"] != DBNull.Value
+                                 ? drv["ClaimStatus"].ToString().Trim()
+                                 : string.Empty;
+
+            // Determine effective visual status
+            string effectiveVisualStatus;
+            if (string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+            {
+                effectiveVisualStatus = "Draft";
+            }
+            else if (isEditable)
+            {
+                effectiveVisualStatus = "Rejected"; // visually show editable rows as rejected
+            }
+            else
+            {
+                effectiveVisualStatus = !string.IsNullOrEmpty(claimStatus) ? claimStatus : "Unknown";
+            }
+
+            // helper to produce icon HTML (renamed parameter to avoid conflict)
+            Func<string, string, string> IconHtml = delegate (string iconClass, string clrClass)
+            {
+                return string.Format("<i class='{0} {1}' aria-hidden='true'></i>", iconClass, clrClass);
+            };
+
+            // map status -> icon + color
+            string editIconHtml;
+            string expenseIconHtml;
+            string colorClass;
+
+            switch (effectiveVisualStatus.ToLowerInvariant())
+            {
+                case "rejected":
+                    colorClass = "text-danger";
+                    editIconHtml = IconHtml("fa fa-pencil", colorClass);
+                    expenseIconHtml = IconHtml("fa fa-exclamation-triangle", colorClass);
+                    break;
+                case "draft":
+                    colorClass = "text-primary";
+                    editIconHtml = IconHtml("fa fa-pencil", colorClass);
+                    expenseIconHtml = IconHtml("fa fa-briefcase", colorClass);
+                    break;
+                case "submitted":
+                    colorClass = "text-warning";
+                    editIconHtml = IconHtml("fa fa-paper-plane", colorClass);
+                    expenseIconHtml = IconHtml("fa fa-briefcase", colorClass);
+                    break;
+                case "approved":
+                    colorClass = "text-success";
+                    editIconHtml = IconHtml("fa fa-check-circle", colorClass);
+                    expenseIconHtml = IconHtml("fa fa-briefcase", colorClass);
+                    break;
+                default:
+                    colorClass = "text-muted";
+                    editIconHtml = IconHtml("fa fa-clock-o", colorClass);
+                    expenseIconHtml = IconHtml("fa fa-briefcase", colorClass);
+                    break;
+            }
+
+            // neutral button background
+            const string neutralBtnClass = "btn btn-sm btn-light";
+
+            // ---------- Edit button ----------
+            if (lnkEdit != null)
+            {
+                bool showEdit = isEditable || string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase);
+
+                lnkEdit.Visible = showEdit;
+                lnkEdit.Enabled = showEdit;
+                lnkEdit.CssClass = neutralBtnClass;
+                lnkEdit.Text = editIconHtml;
+                lnkEdit.ToolTip = showEdit ? "Edit" : "Edit (disabled)";
+            }
+
+            // ---------- Expenses button ----------
+            if (lnkExpenses != null)
+            {
+                lnkExpenses.Visible = true;
+                lnkExpenses.Enabled = true;
+                lnkExpenses.CssClass = neutralBtnClass;
+                lnkExpenses.Text = expenseIconHtml;
+                lnkExpenses.ToolTip = "View / Add Expenses";
+            }
+
+            // ---------- Edit-mode controls ----------
+            if (txtKM != null)
+            {
+                txtKM.ReadOnly = !isEditable;
+                txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly");
+            }
+            if (lnkUpdate != null) lnkUpdate.Enabled = isEditable;
+            if (lnkCancel != null) lnkCancel.Enabled = true;
+
+            // ---------- Display label ----------
+            if (lblKM != null)
+            {
+                lblKM.Text = drv["TotalDistanceKM"] != DBNull.Value
+                    ? Convert.ToDecimal(drv["TotalDistanceKM"]).ToString("N2") + " km"
+                    : "—";
+                lblKM.Visible = true;
+            }
+
+            // ---------- Visual cues ----------
+            if (string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                row.CssClass = (row.CssClass + " row-rejected").Trim();
+                row.ToolTip = (row.ToolTip ?? "") + " Editable (reopened by approver).";
+            }
+
+            bool monthLocked = ViewState["MonthLocked"] != null && (bool)ViewState["MonthLocked"];
+            if (monthLocked && !isEditable)
+            {
+                row.CssClass = (row.CssClass + " row-locked-nofade").Trim();
+                row.ToolTip = (row.ToolTip ?? "") + " Row locked due to month submitted for approval.";
+            }
+        }
+
 
         private int FindRowIndexByActivityId(int activityId)
         {
@@ -4975,5 +5505,164 @@ namespace AnmolDristi
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitErr2", $"showPNotify('Error','{ex.Message.Replace("'", "\\'")}','error');", true);
             }
         }
+
+        private void PopulateStatusSummary(DataTable dt)
+        {
+            // safe guard
+            if (dt == null)
+                return;
+
+            // statuses we show
+            string[] statuses = new string[] { "Draft", "Submitted", "Approved", "Editable", "Other" };
+
+            // helper: sum a column for rows matching a predicate - keep robust to missing columns
+            Func<string, Func<DataRow, bool>, decimal> SumMoney = (colName, predicate) =>
+            {
+                decimal sum = 0m;
+                if (!dt.Columns.Contains(colName)) return 0m;
+                foreach (DataRow r in dt.Rows)
+                {
+                    if (!predicate(r)) continue;
+                    if (r[colName] != DBNull.Value)
+                    {
+                        decimal val;
+                        if (decimal.TryParse(r[colName].ToString(), out val))
+                            sum += val;
+                    }
+                }
+                return sum;
+            };
+
+            Func<Func<DataRow, bool>, decimal> SumKM = (predicate) =>
+            {
+                decimal sum = 0m;
+                if (!dt.Columns.Contains("TotalDistanceKM")) return 0m;
+                foreach (DataRow r in dt.Rows)
+                {
+                    if (!predicate(r)) continue;
+                    if (r["TotalDistanceKM"] != DBNull.Value)
+                    {
+                        decimal km;
+                        if (decimal.TryParse(r["TotalDistanceKM"].ToString(), out km))
+                            sum += km;
+                    }
+                }
+                return sum;
+            };
+
+            // predicate builders
+            Func<string, Func<DataRow, bool>> byClaimStatus = (status) =>
+            {
+                return (r) =>
+                {
+                    string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value
+                                   ? r["ClaimStatus"].ToString() : string.Empty;
+
+                    if (string.Equals(status, "Submitted", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // treat "Submitted" and "Pending" as submitted bucket
+                        return string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    if (string.Equals(status, "Other", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // other = not Draft/Submitted/Approved and not editable
+                        bool isDraft = string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
+                        bool isSubmitted = string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
+                        bool isApproved = string.Equals(claim, "Approved", StringComparison.OrdinalIgnoreCase);
+                        bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
+                        return !(isDraft || isSubmitted || isApproved || isEditable);
+                    }
+
+                    // normal equality
+                    return string.Equals(claim, status, StringComparison.OrdinalIgnoreCase);
+                };
+            };
+
+            Func<DataRow, bool> isEditablePredicate = (r) =>
+            {
+                // Editable: IsEditable==true but ClaimStatus != Draft
+                bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
+                string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : string.Empty;
+                return isEditable && !string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
+            };
+
+            // fill Draft
+            decimal d_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Draft"));
+            decimal d_da = SumMoney("DAAmount", byClaimStatus("Draft"));
+            decimal d_hotel = SumMoney("HotelAmount", byClaimStatus("Draft"));
+            decimal d_travel = SumMoney("TravelAmount", byClaimStatus("Draft"));
+            decimal d_exp = SumMoney("ExpenseTotal", byClaimStatus("Draft"));
+            decimal d_km = SumKM(byClaimStatus("Draft"));
+
+            lblDraft_TA.Text = "₹ " + d_ta.ToString("N2");
+            lblDraft_DA.Text = "₹ " + d_da.ToString("N2");
+            lblDraft_Hotel.Text = "₹ " + d_hotel.ToString("N2");
+            lblDraft_Travel.Text = "₹ " + d_travel.ToString("N2");
+            lblDraft_Expense.Text = "₹ " + d_exp.ToString("N2");
+            lblDraft_KM.Text = d_km.ToString("N2");
+
+            // fill Submitted
+            decimal s_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Submitted"));
+            decimal s_da = SumMoney("DAAmount", byClaimStatus("Submitted"));
+            decimal s_hotel = SumMoney("HotelAmount", byClaimStatus("Submitted"));
+            decimal s_travel = SumMoney("TravelAmount", byClaimStatus("Submitted"));
+            decimal s_exp = SumMoney("ExpenseTotal", byClaimStatus("Submitted"));
+            decimal s_km = SumKM(byClaimStatus("Submitted"));
+
+            lblSubmitted_TA.Text = "₹ " + s_ta.ToString("N2");
+            lblSubmitted_DA.Text = "₹ " + s_da.ToString("N2");
+            lblSubmitted_Hotel.Text = "₹ " + s_hotel.ToString("N2");
+            lblSubmitted_Travel.Text = "₹ " + s_travel.ToString("N2");
+            lblSubmitted_Expense.Text = "₹ " + s_exp.ToString("N2");
+            lblSubmitted_KM.Text = s_km.ToString("N2");
+
+            // fill Approved
+            decimal a_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Approved"));
+            decimal a_da = SumMoney("DAAmount", byClaimStatus("Approved"));
+            decimal a_hotel = SumMoney("HotelAmount", byClaimStatus("Approved"));
+            decimal a_travel = SumMoney("TravelAmount", byClaimStatus("Approved"));
+            decimal a_exp = SumMoney("ExpenseTotal", byClaimStatus("Approved"));
+            decimal a_km = SumKM(byClaimStatus("Approved"));
+
+            lblApproved_TA.Text = "₹ " + a_ta.ToString("N2");
+            lblApproved_DA.Text = "₹ " + a_da.ToString("N2");
+            lblApproved_Hotel.Text = "₹ " + a_hotel.ToString("N2");
+            lblApproved_Travel.Text = "₹ " + a_travel.ToString("N2");
+            lblApproved_Expense.Text = "₹ " + a_exp.ToString("N2");
+            lblApproved_KM.Text = a_km.ToString("N2");
+
+            // fill Editable (IsEditable==true but not Draft)
+            decimal e_ta = SumMoney("CalculatedClaimAmount", isEditablePredicate);
+            decimal e_da = SumMoney("DAAmount", isEditablePredicate);
+            decimal e_hotel = SumMoney("HotelAmount", isEditablePredicate);
+            decimal e_travel = SumMoney("TravelAmount", isEditablePredicate);
+            decimal e_exp = SumMoney("ExpenseTotal", isEditablePredicate);
+            decimal e_km = SumKM(isEditablePredicate);
+
+            lblEditable_TA.Text = "₹ " + e_ta.ToString("N2");
+            lblEditable_DA.Text = "₹ " + e_da.ToString("N2");
+            lblEditable_Hotel.Text = "₹ " + e_hotel.ToString("N2");
+            lblEditable_Travel.Text = "₹ " + e_travel.ToString("N2");
+            lblEditable_Expense.Text = "₹ " + e_exp.ToString("N2");
+            lblEditable_KM.Text = e_km.ToString("N2");
+
+            // fill Other
+            decimal o_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Other"));
+            decimal o_da = SumMoney("DAAmount", byClaimStatus("Other"));
+            decimal o_hotel = SumMoney("HotelAmount", byClaimStatus("Other"));
+            decimal o_travel = SumMoney("TravelAmount", byClaimStatus("Other"));
+            decimal o_exp = SumMoney("ExpenseTotal", byClaimStatus("Other"));
+            decimal o_km = SumKM(byClaimStatus("Other"));
+
+            lblOther_TA.Text = "₹ " + o_ta.ToString("N2");
+            lblOther_DA.Text = "₹ " + o_da.ToString("N2");
+            lblOther_Hotel.Text = "₹ " + o_hotel.ToString("N2");
+            lblOther_Travel.Text = "₹ " + o_travel.ToString("N2");
+            lblOther_Expense.Text = "₹ " + o_exp.ToString("N2");
+            lblOther_KM.Text = o_km.ToString("N2");
+        }
+
     }
 }
