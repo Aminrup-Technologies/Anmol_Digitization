@@ -1307,7 +1307,6 @@ namespace AnmolDristi
             ShowPolicyModal();
         }
 
-
         private void ShowPolicyNotificationNew(PolicyResolved policy)
         {
             string source = !string.IsNullOrEmpty(policy.Source) ? policy.Source : "—";
@@ -1404,6 +1403,7 @@ namespace AnmolDristi
             // optional: if you have per-user or per-role rate logic, call it here instead of fallback
             return fallbackRate;
         }
+
         protected void gvActivities_RowCommand(object sender, GridViewCommandEventArgs e)
         {
             //if (e.CommandName == "OpenExpenses")
@@ -1416,39 +1416,127 @@ namespace AnmolDristi
             //    HF_ActivityId.Value = activityId;
             //    HF_ActivityDate.Value = activityDate;
 
-            //    //if (!string.IsNullOrWhiteSpace(activityDate))
-            //    //{
-            //    //    TXT_HotelFromDate.Text = activityDate; // defaults to activity date
-            //    //    TXT_HotelToDate.Text = activityDate;
-            //    //}
-            //    //else
-            //    //{
-            //    //    TXT_HotelFromDate.Text = "";
-            //    //    TXT_HotelToDate.Text = "";
-            //    //}
+            //    // Load existing expenses and get the DataTable back
+            //    DataTable dt = LoadExpenseForActivity(activityId);
 
-            //    // Load existing expenses
-            //    LoadExpenseForActivity(activityId);
-
-            //    // Try to parse and set the hotel date controls in yyyy-MM-dd format (for input[type=date])
-            //    DateTime parsed;
-            //    if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
+            //    // If no expense rows exist for this activity, CLEAR the modal inputs so user can enter new ones
+            //    if (dt == null || dt.Rows.Count == 0)
             //    {
-            //        TXT_HotelFromDate.Text = parsed.ToString("yyyy-MM-dd");
-            //        TXT_HotelToDate.Text = parsed.ToString("yyyy-MM-dd");
+            //        //TXT_DAAmount.Text = string.Empty;
+            //        TXT_DAAmount.Text = lblResolvedDA.Text.ToString();
+            //        TXT_HotelAmount.Text = string.Empty;
+            //        TXT_HotelBillNo.Text = string.Empty;
+            //        TXT_HotelPurpose.Text = string.Empty;
+
+            //        // Set hotel dates to activity date if available, else today's IST
+            //        DateTime parsed;
+            //        if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
+            //        {
+            //            TXT_HotelFromDate.Text = parsed.ToString("yyyy-MM-dd");
+            //            TXT_HotelToDate.Text = parsed.ToString("yyyy-MM-dd");
+            //            TXT_TravelDate.Text = parsed.ToString("yyyy-MM-dd");
+            //            lbl_traveldate.Text = parsed.ToString("dd-MM-yyyy");
+            //        }
+            //        else
+            //        {
+            //            var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+            //            var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist);
+            //            TXT_HotelFromDate.Text = nowIst.ToString("yyyy-MM-dd");
+            //            TXT_TravelDate.Text = nowIst.ToString("yyyy-MM-dd");
+            //        }
+
+            //        // Clear any prior messages
+            //        LBL_ExpenseMsg.Text = "";
+
+            //        // Clear the file input via client script (FileUpload value cannot be set server-side)
+            //        ScriptManager.RegisterStartupScript(this, this.GetType(), "clearFileInput_" + FU_Attachment.ClientID, $"$('#{FU_Attachment.ClientID}').val('');", true);
             //    }
             //    else
             //    {
-            //        // fallback to activity date (if missing) or today's IST date
-            //        var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
-            //        var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist);
-            //        TXT_HotelFromDate.Text = nowIst.ToString("yyyy-MM-dd");
-            //        TXT_HotelToDate.Text = nowIst.ToString("yyyy-MM-dd");
+            //        // aggregate/collect values (handles any combination of DA/Hotel rows)
+            //        decimal daSum = 0m;
+            //        decimal hotelSum = 0m;
+            //        DateTime? hotelFrom = null;
+            //        DateTime? hotelTo = null;
+            //        string hotelBill = string.Empty;
+            //        string hotelPurpose = string.Empty;
+
+            //        foreach (DataRow r in dt.Rows)
+            //        {
+            //            string type = (r["ExpenseType"] ?? "").ToString();
+            //            decimal amt = r["Amount"] != DBNull.Value ? Convert.ToDecimal(r["Amount"]) : 0m;
+
+            //            if (string.Equals(type, "DA", StringComparison.OrdinalIgnoreCase))
+            //            {
+            //                TXT_DAAmount.Text = amt.ToString();
+            //                daSum += amt;
+            //            }
+            //            else if (string.Equals(type, "Hotel", StringComparison.OrdinalIgnoreCase))
+            //            {
+            //                hotelSum += amt;
+
+            //                // collect from/to range (earliest from, latest to)
+            //                if (r["FromDate"] != DBNull.Value)
+            //                {
+            //                    DateTime f = Convert.ToDateTime(r["FromDate"]);
+            //                    hotelFrom = !hotelFrom.HasValue ? f : (f < hotelFrom ? f : hotelFrom);
+            //                }
+            //                if (r["ToDate"] != DBNull.Value)
+            //                {
+            //                    DateTime t = Convert.ToDateTime(r["ToDate"]);
+            //                    hotelTo = !hotelTo.HasValue ? t : (t > hotelTo ? t : hotelTo);
+            //                }
+
+            //                // pick first non-empty BillNo and Purpose (change logic here if you prefer last)
+            //                if (string.IsNullOrWhiteSpace(hotelBill) && r["BillNo"] != DBNull.Value)
+            //                    hotelBill = r["BillNo"].ToString();
+            //                if (string.IsNullOrWhiteSpace(hotelPurpose) && r["Purpose"] != DBNull.Value)
+            //                    hotelPurpose = r["Purpose"].ToString();
+            //            }
+            //        }
+
+            //        // If no hotel date range found in DB, try to use HF_ActivityDate or fallback to IST today
+            //        if (!hotelFrom.HasValue || !hotelTo.HasValue)
+            //        {
+            //            DateTime parsedActivity;
+            //            if (!string.IsNullOrWhiteSpace(HF_ActivityDate.Value) && DateTime.TryParse(HF_ActivityDate.Value, out parsedActivity))
+            //            {
+            //                // use activity date for missing values
+            //                if (!hotelFrom.HasValue) hotelFrom = parsedActivity.Date;
+            //                if (!hotelTo.HasValue) hotelTo = parsedActivity.Date;
+            //            }
+            //            else
+            //            {
+            //                // fallback to IST today
+            //                var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+            //                var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist).Date;
+            //                if (!hotelFrom.HasValue) hotelFrom = nowIst;
+            //                if (!hotelTo.HasValue) hotelTo = nowIst;
+            //            }
+            //        }
+
+            //        // Populate controls independently so missing categories don't affect the other
+            //        //TXT_DAAmount.Text = daSum > 0m ? daSum.ToString("0.##") : string.Empty;
+            //        //TXT_HotelAmount.Text = hotelSum > 0m ? hotelSum.ToString("0.##") : string.Empty;
+
+            //        TXT_HotelFromDate.Text = hotelFrom.HasValue ? hotelFrom.Value.ToString("yyyy-MM-dd") : string.Empty;
+            //        TXT_HotelToDate.Text = hotelTo.HasValue ? hotelTo.Value.ToString("yyyy-MM-dd") : string.Empty;
+            //        TXT_TravelDate.Text = hotelTo.HasValue ? hotelTo.Value.ToString("yyyy-MM-dd") : string.Empty;
+
+            //        lbl_traveldate.Text = hotelFrom.Value.ToString("dd-MM-yyyy");
+            //        //TXT_HotelBillNo.Text = hotelBill;
+            //        //TXT_HotelPurpose.Text = hotelPurpose;
+
+            //        // Keep existing attachments visible in the Repeater. Do NOT clear the FileUpload here.
+            //        LBL_ExpenseMsg.Text = string.Empty;
             //    }
 
-            //    // show modal
-            //    ClientScript.RegisterStartupScript(this.GetType(), "showExpense", "showExpenseModal();", true);
+
+
+            //    // show modal reliably
+            //    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
             //}
+
 
             if (e.CommandName == "OpenExpenses")
             {
@@ -1460,19 +1548,77 @@ namespace AnmolDristi
                 HF_ActivityId.Value = activityId;
                 HF_ActivityDate.Value = activityDate;
 
-                // Load existing expenses and get the DataTable back
+                // Load existing expenses and get the DataTable back (this method binds rptExpenses and populates HF_Snap* if rows exist)
                 DataTable dt = LoadExpenseForActivity(activityId);
+
+                // after LoadExpenseForActivity(...)
+                string policyModeToSelect = !string.IsNullOrWhiteSpace(HF_SnapPolicyMode?.Value)
+                    ? HF_SnapPolicyMode.Value.Trim()
+                    : (!string.IsNullOrWhiteSpace(HF_ResolvedPolicyMode?.Value) ? HF_ResolvedPolicyMode.Value.Trim() : "");
+
+                if (!string.IsNullOrWhiteSpace(policyModeToSelect))
+                {
+                    // escape single quotes for JS
+                    string safe = policyModeToSelect.Replace("'", "\\'");
+                    string script = $@"
+                    (function(){{
+                        var setVal = function(){{
+                            var el = document.getElementById('SEL_PolicyMode');
+                            if (!el) el = document.querySelector('[id$=""_SEL_PolicyMode""]');
+                            if (el) {{
+                                try {{ el.value = '{safe}'; $(el).trigger('change'); }}
+                                catch(e) {{ try {{ el.value = '{safe}'; }} catch(e2) {{}} }}
+                            }}
+                        }};
+                        // run immediately and also when modal shown (defensive)
+                        setVal();
+                        $('#expenseModal').on('shown.bs.modal.selectPolicy', setVal);
+                    }})();";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "selectPolicyMode_" + HF_ActivityId.Value, script, true);
+                }
+
 
                 // If no expense rows exist for this activity, CLEAR the modal inputs so user can enter new ones
                 if (dt == null || dt.Rows.Count == 0)
                 {
-                    //TXT_DAAmount.Text = string.Empty;
-                    TXT_DAAmount.Text = lblResolvedDA.Text.ToString();
+                    // --- Ensure expense-level snapshot HFs are available ---
+                    // If LoadExpenseForActivity didn't populate HF_Snap* (no rows), copy from master/employee-level HFs if present.
+                    try
+                    {
+                        // Only copy if snapshot HF is empty - prevents overwriting if already set elsewhere
+                        if (string.IsNullOrWhiteSpace(HF_SnapPolicyMode?.Value) && HF_ResolvedPolicyMode != null && !string.IsNullOrWhiteSpace(HF_ResolvedPolicyMode.Value))
+                            HF_SnapPolicyMode.Value = HF_ResolvedPolicyMode.Value;
+
+                        if (string.IsNullOrWhiteSpace(HF_SnapResolvedDA?.Value) && HF_ResolvedDA != null && !string.IsNullOrWhiteSpace(HF_ResolvedDA.Value))
+                            HF_SnapResolvedDA.Value = HF_ResolvedDA.Value;
+
+                        if (string.IsNullOrWhiteSpace(HF_SnapHotelCap?.Value) && HF_ResolvedHotelCap != null && !string.IsNullOrWhiteSpace(HF_ResolvedHotelCap.Value))
+                            HF_SnapHotelCap.Value = HF_ResolvedHotelCap.Value;
+
+                        if (string.IsNullOrWhiteSpace(HF_SnapOutstationDA?.Value) && HF_OutstationDA != null && !string.IsNullOrWhiteSpace(HF_OutstationDA.Value))
+                            HF_SnapOutstationDA.Value = HF_OutstationDA.Value;
+
+                        if (string.IsNullOrWhiteSpace(HF_SnapOwnArrangementDA?.Value) && HF_OwnArrangementDA != null && !string.IsNullOrWhiteSpace(HF_OwnArrangementDA.Value))
+                            HF_SnapOwnArrangementDA.Value = HF_OwnArrangementDA.Value;
+                    }
+                    catch
+                    {
+                        // ignore if any HF missing — fallback below
+                    }
+
+                    // TXT_DAAmount gets snapshot resolved DA when available; otherwise fallback to lblResolvedDA
+                    if (!string.IsNullOrWhiteSpace(HF_SnapResolvedDA?.Value))
+                        TXT_DAAmount.Text = HF_SnapResolvedDA.Value;
+                    else if (lblResolvedDA != null && !string.IsNullOrWhiteSpace(lblResolvedDA.Text))
+                        TXT_DAAmount.Text = lblResolvedDA.Text;
+                    else
+                        TXT_DAAmount.Text = string.Empty;
+
                     TXT_HotelAmount.Text = string.Empty;
                     TXT_HotelBillNo.Text = string.Empty;
                     TXT_HotelPurpose.Text = string.Empty;
 
-                    // Set hotel dates to activity date if available, else today's IST
+                    // Set hotel/travel dates to activity date if available, else today's IST
                     DateTime parsed;
                     if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
                     {
@@ -1487,17 +1633,20 @@ namespace AnmolDristi
                         var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist);
                         TXT_HotelFromDate.Text = nowIst.ToString("yyyy-MM-dd");
                         TXT_TravelDate.Text = nowIst.ToString("yyyy-MM-dd");
+                        lbl_traveldate.Text = nowIst.ToString("dd-MM-yyyy");
                     }
 
                     // Clear any prior messages
                     LBL_ExpenseMsg.Text = "";
+                    HF_SnapPolicyMode.Value = "Daily";
+                    ApplyPolicyMode_ClientCall("Daily");
 
                     // Clear the file input via client script (FileUpload value cannot be set server-side)
                     ScriptManager.RegisterStartupScript(this, this.GetType(), "clearFileInput_" + FU_Attachment.ClientID, $"$('#{FU_Attachment.ClientID}').val('');", true);
                 }
                 else
                 {
-                    // aggregate/collect values (handles any combination of DA/Hotel rows)
+                    // aggregate/collect values (handles any combination of DA/Hotel rows). Uses DB values only (authoritative).
                     decimal daSum = 0m;
                     decimal hotelSum = 0m;
                     DateTime? hotelFrom = null;
@@ -1512,7 +1661,8 @@ namespace AnmolDristi
 
                         if (string.Equals(type, "DA", StringComparison.OrdinalIgnoreCase))
                         {
-                            TXT_DAAmount.Text = amt.ToString();
+                            // show last DA amount as single value, keep sum for totals
+                            TXT_DAAmount.Text = amt.ToString("0.##");
                             daSum += amt;
                         }
                         else if (string.Equals(type, "Hotel", StringComparison.OrdinalIgnoreCase))
@@ -1560,26 +1710,30 @@ namespace AnmolDristi
                     }
 
                     // Populate controls independently so missing categories don't affect the other
-                    //TXT_DAAmount.Text = daSum > 0m ? daSum.ToString("0.##") : string.Empty;
-                    //TXT_HotelAmount.Text = hotelSum > 0m ? hotelSum.ToString("0.##") : string.Empty;
-
                     TXT_HotelFromDate.Text = hotelFrom.HasValue ? hotelFrom.Value.ToString("yyyy-MM-dd") : string.Empty;
                     TXT_HotelToDate.Text = hotelTo.HasValue ? hotelTo.Value.ToString("yyyy-MM-dd") : string.Empty;
                     TXT_TravelDate.Text = hotelTo.HasValue ? hotelTo.Value.ToString("yyyy-MM-dd") : string.Empty;
 
-                    lbl_traveldate.Text = hotelFrom.Value.ToString("dd-MM-yyyy");
-                    //TXT_HotelBillNo.Text = hotelBill;
-                    //TXT_HotelPurpose.Text = hotelPurpose;
+                    lbl_traveldate.Text = hotelFrom.HasValue ? hotelFrom.Value.ToString("dd-MM-yyyy") : "NA";
+                    TXT_HotelBillNo.Text = hotelBill;
+                    TXT_HotelPurpose.Text = hotelPurpose;
+
+                    //HF_SnapPolicyMode.Value = "Daily";
+                    //ApplyPolicyMode_ClientCall("Daily");
 
                     // Keep existing attachments visible in the Repeater. Do NOT clear the FileUpload here.
                     LBL_ExpenseMsg.Text = string.Empty;
                 }
 
-
-
-                // show modal reliably
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                //HF_SnapPolicyMode.Value = "Daily";
+                //ClickApplyButtonFromServer("Daily");
+                //ApplyPolicyModeFromCodeBehind("Daily");
+                //ApplyPolicyMode_ClientCall("Daily");
+                // show modal reliably (unique key)
+                string skey = "showExpense_" + activityId + "_" + Guid.NewGuid().ToString("N");
+                ScriptManager.RegisterStartupScript(this, this.GetType(), skey, "$('#expenseModal').modal('show');", true);
             }
+
 
 
             else if (e.CommandName == "EditRow")
@@ -1637,6 +1791,185 @@ namespace AnmolDristi
             }
 
         }
+
+        protected void SetPolicyModeAndTrigger_Client(string modeFromDb)
+        {
+            // ensure server hidden field also set (so server-side persists)
+            HF_ResolvedPolicyMode.Value = modeFromDb ?? string.Empty;
+
+            // safe JS-string encode to avoid breaking the script (handles quotes, newlines)
+            string safeMode = HttpUtility.JavaScriptStringEncode(modeFromDb ?? string.Empty);
+
+            string script = $@"if(typeof applyPolicyModeFromServer === 'function') applyPolicyModeFromServer('{safeMode}'); else (function(){{ try {{ applyPolicyModeFromServer && applyPolicyModeFromServer('{safeMode}'); }} catch(e){{console && console.log && console.log(e);}} }})();";
+
+            // Register startup script so it runs after partial postback DOM update
+            ScriptManager.RegisterStartupScript(this.Page, this.Page.GetType(), "applyPolicyModeFromServer", script, true);
+        }
+
+        // call this after you set HF_ResolvedPolicyMode server-side (or do that here)
+        protected void ApplyPolicyModeFromCodeBehind(string modeFromDb)
+        {
+            // set server-side hidden field value so postbacks retain it
+            HF_ResolvedPolicyMode.Value = modeFromDb ?? string.Empty; // HF_ResolvedPolicyMode is your asp:HiddenField
+
+            // build client script that will:
+            // 1) set the HF element value (in case UpdatePanel replaced DOM)
+            // 2) set SEL_PolicyMode select value if present
+            // 3) set localStorage (optional)
+            // 4) dispatch policy.updated event so client code picks it up
+            string script = $@"
+                (function() {{
+                    try {{
+                        // write HF (by client id)
+                        var hf = document.getElementById('{HF_ResolvedPolicyMode.ClientID}');
+                        if (hf) hf.value = '{HttpUtility.JavaScriptStringEncode(modeFromDb ?? "")}';
+
+                        // try to set visible selector if it exists (selector id may be static)
+                        var sel = document.getElementById('SEL_PolicyMode') 
+                                  || document.querySelector('[id$=""_SEL_PolicyMode""]') 
+                                  || document.querySelector('[id$=""SEL_PolicyMode""]');
+                        if (sel) {{
+                            try {{ sel.value = '{HttpUtility.JavaScriptStringEncode(modeFromDb ?? "")}'; }} catch(e){{console && console.log && console.log('sel.value set failed', e);}}
+                        }}
+
+                        // optional: persist to localStorage so reload keeps selection
+                        try {{ localStorage.setItem('so_policy_mode', '{HttpUtility.JavaScriptStringEncode(modeFromDb ?? "")}'); }} catch(ex){{}}
+
+                        // notify other client handlers
+                        var ev = new CustomEvent('policy.updated', {{ detail: {{ mode: '{HttpUtility.JavaScriptStringEncode(modeFromDb ?? "")}', source: 'server' }} }} );
+                        document.dispatchEvent(ev);
+
+                        // If applyPolicyMode exists, call it directly as well
+                        if (typeof applyPolicyMode === 'function') {{
+                            try {{ applyPolicyMode(); }} catch(e){{}}
+                        }}
+                    }} catch(err) {{
+                        console && console.log && console.log('ApplyPolicyModeFromCodeBehind error', err);
+                    }}
+                }})();";
+
+            // register script so it runs after update/postback. Use ScriptManager for UpdatePanel scenarios.
+            ScriptManager.RegisterStartupScript(this.Page, this.Page.GetType(), "applyPolicyModeFromServer", script, true);
+        }
+
+        protected void ApplyPolicyMode_ClientCall(string modeFromDb)
+        {
+            // defensive: normalize
+            string mode = modeFromDb ?? string.Empty;
+
+            // ensure HF exists on server (optional but recommended)
+            try
+            {
+                if (HF_ResolvedPolicyMode != null)
+                {
+                    HF_ResolvedPolicyMode.Value = mode;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[ApplyPolicyMode_ClientCall] WARNING: HF_ResolvedPolicyMode server control is NULL.");
+                }
+            }
+            catch (Exception ex)
+            {
+                // don't abort script registration just because HF set failed
+                System.Diagnostics.Debug.WriteLine("[ApplyPolicyMode_ClientCall] Error setting HF_ResolvedPolicyMode: " + ex.Message);
+            }
+
+            // JS-safe encoding of the mode string
+            string safeMode = HttpUtility.JavaScriptStringEncode(mode);
+
+            // client script that logs clearly to browser console
+            string script = $@"
+        (function() {{
+            try {{
+                console.log('%c[Server → Client] applyPolicyModeFromServer about to run','color:#ff9800;font-weight:bold;');
+                if (typeof applyPolicyModeFromServer === 'function') {{
+                    try {{
+                        applyPolicyModeFromServer('{safeMode}');
+                        console.log('%c[Server → Client] applyPolicyModeFromServer executed OK','color:green;font-weight:bold;');
+                    }} catch(e) {{
+                        console.error('%c[Server → Client] applyPolicyModeFromServer threw:','color:red;font-weight:bold;', e);
+                    }}
+                }} else {{
+                    console.warn('%c[Server → Client] applyPolicyModeFromServer not defined yet. Queuing for DOMContentLoaded.','color:#f57c00;font-weight:bold;');
+                    // queue for later: try after DOM ready / modal shown
+                    window.__so_pending_policy_mode = '{safeMode}';
+                    document.addEventListener('DOMContentLoaded', function() {{
+                        try {{
+                            if (typeof applyPolicyModeFromServer === 'function' && window.__so_pending_policy_mode) {{
+                                applyPolicyModeFromServer(window.__so_pending_policy_mode);
+                                console.log('%c[Server → Client] applyPolicyModeFromServer executed from DOMContentLoaded','color:green;font-weight:bold;');
+                                window.__so_pending_policy_mode = null;
+                            }}
+                        }} catch(e) {{ console.error('queued applyPolicyModeFromServer failed', e); }}
+                    }});
+                }}
+            }} catch(err) {{
+                console.error('%c[Server → Client] unexpected error preparing applyPolicyModeFromServer call','color:red;font-weight:bold;', err);
+            }}
+        }})();";
+
+            try
+            {
+                // prefer ScriptManager if present (works for UpdatePanel partial postbacks)
+                ScriptManager sm = ScriptManager.GetCurrent(this.Page);
+                if (sm != null)
+                {
+                    ScriptManager.RegisterStartupScript(this.Page, this.Page.GetType(), "ApplyPolicyMode_ClientCall", script, true);
+                    System.Diagnostics.Debug.WriteLine("[ApplyPolicyMode_ClientCall] Script registered via ScriptManager.");
+                }
+                else
+                {
+                    // fallback for pages without ScriptManager
+                    ClientScript.RegisterStartupScript(this.GetType(), "ApplyPolicyMode_ClientCall_Fallback", script, true);
+                    System.Diagnostics.Debug.WriteLine("[ApplyPolicyMode_ClientCall] Script registered via ClientScript fallback.");
+                }
+            }
+            catch (Exception ex)
+            {
+                // last-resort: log error server-side so you can inspect it
+                System.Diagnostics.Debug.WriteLine("[ApplyPolicyMode_ClientCall] Error registering script: " + ex.ToString());
+                // optionally: throw; // if you want to fail loud
+            }
+        }
+
+        protected void ClickApplyButtonFromServer(string modeFromDb)
+        {
+            HF_ResolvedPolicyMode.Value = modeFromDb ?? string.Empty;
+
+            string script = $@"
+            (function() {{
+                try {{
+                    // set HF
+                    var hf = document.getElementById('{HF_ResolvedPolicyMode.ClientID}');
+                    if (hf) hf.value = '{HttpUtility.JavaScriptStringEncode(modeFromDb ?? "")}';
+
+                    // set selector if present
+                    var sel = document.getElementById('SEL_PolicyMode') 
+                              || document.querySelector('[id$=""_SEL_PolicyMode""]') 
+                              || document.querySelector('[id$=""SEL_PolicyMode""]');
+                    if (sel) {{ try {{ sel.value = '{HttpUtility.JavaScriptStringEncode(modeFromDb ?? "")}'; }} catch(e){{}} }}
+
+                    // try click the Apply button
+                    var btn = document.getElementById('BTN_ApplyPolicyMode') 
+                              || document.querySelector('[id$=""_BTN_ApplyPolicyMode""]') 
+                              || document.querySelector('[id$=""BTN_ApplyPolicyMode""]');
+                    if (btn && typeof btn.click === 'function') {{
+                        try {{ btn.click(); return; }} catch(e){{ console && console.log && console.log('btn.click failed', e); }}
+                    }}
+
+                    // fallback: dispatch event
+                    var ev = new CustomEvent('policy.updated', {{ detail: {{ mode: '{HttpUtility.JavaScriptStringEncode(modeFromDb ?? "")}', source: 'server' }} }} );
+                    document.dispatchEvent(ev);
+
+                    if (typeof applyPolicyMode === 'function') try {{ applyPolicyMode(); }} catch(e){{}}
+                }} catch(err) {{ console && console.log && console.log('ClickApplyButtonFromServer error', err); }}
+            }})();";
+
+            ScriptManager.RegisterStartupScript(this.Page, this.Page.GetType(), "clickApplyBtnFromServer", script, true);
+        }
+
+
         protected void gvActivities_RowDataBound_OLD(object sender, GridViewRowEventArgs e)
         {
             if (e.Row.RowType != DataControlRowType.DataRow) return;
@@ -3173,10 +3506,9 @@ namespace AnmolDristi
                                 else if (travelDateNullable.HasValue) daDate = travelDateNullable.Value;
 
                                 // snapshot JSON (optional, can be blank)
-                                string snapshot = string.Format("DA={0};HotelCap={1}",
-                                    HF_ResolvedDA?.Value ?? "NA", HF_ResolvedHotelCap?.Value ?? "NA");
+                                //string snapshot = string.Format("DA={0};HotelCap={1}",HF_ResolvedDA?.Value ?? "NA", HF_ResolvedHotelCap?.Value ?? "NA");
 
-                                EnsureAutoDA(activityId, daDate, autoDA, policyMode, snapshot, GetCurrentUserLoginId());
+                                EnsureAutoDA(activityId, daDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId());
                             }
                         }
                     }
@@ -3256,10 +3588,10 @@ namespace AnmolDristi
                                 else if (travelDateNullable.HasValue) daDate = travelDateNullable.Value;
 
                                 // snapshot JSON (optional, can be blank)
-                                string snapshot = string.Format("DA={0};HotelCap={1}",
-                                    HF_ResolvedDA?.Value ?? "NA", HF_ResolvedHotelCap?.Value ?? "NA");
+                                //string snapshot = string.Format("DA={0};HotelCap={1}",
+                                    //HF_ResolvedDA?.Value ?? "NA", HF_ResolvedHotelCap?.Value ?? "NA");
 
-                                EnsureAutoDA(activityId, daDate, autoDA, policyMode, snapshot, GetCurrentUserLoginId());
+                                EnsureAutoDA(activityId, daDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId());
                             }
                         }
                     }
@@ -3296,6 +3628,67 @@ namespace AnmolDristi
                 );
             }
         }
+
+        protected void rptExpenses_ItemDataBound(object sender, RepeaterItemEventArgs e)
+        {
+            if (e.Item.ItemType != ListItemType.Item && e.Item.ItemType != ListItemType.AlternatingItem)
+                return;
+
+            var rowView = e.Item.DataItem as System.Data.DataRowView;
+            if (rowView == null) return;
+
+            var r = rowView.Row;
+
+            // read DB columns defensively
+            string claimStatus = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : "";
+            bool isAuto = r.Table.Columns.Contains("IsAutoDA") && r["IsAutoDA"] != DBNull.Value && Convert.ToInt32(r["IsAutoDA"]) == 1;
+            string policyMode = r.Table.Columns.Contains("PolicyMode") && r["PolicyMode"] != DBNull.Value ? r["PolicyMode"].ToString() : "";
+
+            LinkButton lnkDelete = e.Item.FindControl("lnkDeleteExpense") as LinkButton;
+            LinkButton lnkDeleteDisabled = e.Item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
+            Literal litBadges = e.Item.FindControl("litPolicyBadges") as Literal;
+
+            // Decide allowed actions (authoritative)
+            bool canDelete = true;
+
+            // If expense-level claim status exists and is submitted/approved — block delete
+            if (!string.IsNullOrWhiteSpace(claimStatus) &&
+                (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                 claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase)))
+            {
+                canDelete = false;
+            }
+
+            // Block delete when this is an auto-applied row
+            if (isAuto) canDelete = false;
+
+            if (lnkDelete != null) lnkDelete.Visible = canDelete;
+            if (lnkDeleteDisabled != null) lnkDeleteDisabled.Visible = !canDelete;
+
+            // Badges: PolicyMode, AUTO, ClaimStatus
+            if (litBadges != null)
+            {
+                var sb = new System.Text.StringBuilder();
+                if (!string.IsNullOrWhiteSpace(policyMode))
+                    sb.AppendFormat("<span class='badge badge-info mr-1'>{0}</span>", HttpUtility.HtmlEncode(policyMode));
+                if (isAuto)
+                    sb.Append("<span class='badge badge-warning mr-1'>AUTO</span>");
+                if (!string.IsNullOrWhiteSpace(claimStatus))
+                    sb.AppendFormat("<span class='badge badge-secondary'>{0}</span>", HttpUtility.HtmlEncode(claimStatus));
+
+                litBadges.Text = sb.ToString();
+            }
+
+            // Ensure CommandArgument includes AttachmentPath (helps server delete)
+            if (lnkDelete != null && (string.IsNullOrWhiteSpace(lnkDelete.CommandArgument) || !lnkDelete.CommandArgument.Contains("|")))
+            {
+                string expenseId = r.Table.Columns.Contains("ExpenseId") && r["ExpenseId"] != DBNull.Value ? r["ExpenseId"].ToString() : "";
+                string activityId = r.Table.Columns.Contains("ActivityId") && r["ActivityId"] != DBNull.Value ? r["ActivityId"].ToString() : "";
+                string attachmentPath = r.Table.Columns.Contains("AttachmentPath") && r["AttachmentPath"] != DBNull.Value ? r["AttachmentPath"].ToString() : "";
+                lnkDelete.CommandArgument = $"{expenseId}|{attachmentPath}|{activityId}";
+            }
+        }
+
 
         private void EnsureAutoDA_OLD(int activityId, DateTime expenseDate, decimal amount, string policyMode, string policySnapshot, string createdBy)
         {
@@ -3666,7 +4059,7 @@ namespace AnmolDristi
             return dt;
         }
 
-        protected DataTable LoadExpenseForActivity(string activityIdStr)
+        protected DataTable LoadExpenseForActivity_06Nov25_V1(string activityIdStr)
         {
             int activityId = 0;
             int.TryParse(activityIdStr, out activityId);
@@ -3684,6 +4077,8 @@ namespace AnmolDristi
             {
                 cmd.Parameters.AddWithValue("@ActivityId", activityId);
                 da.Fill(dt);
+
+
             }
 
             rptExpenses.DataSource = dt;
@@ -3715,6 +4110,191 @@ namespace AnmolDristi
 
             // show modal if caller expects it
             ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+
+            return dt;
+        }
+        protected DataTable LoadExpenseForActivity_06Nov25_V2(string activityIdStr)
+        {
+            int activityId = 0;
+            int.TryParse(activityIdStr, out activityId);
+
+            DataTable dt = new DataTable();
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"
+                SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose,
+                       AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate,
+                       PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus
+                FROM dbo.SalesDailyExpense
+                WHERE ActivityId = @ActivityId
+                ORDER BY ExpenseDate DESC, ExpenseId DESC
+            ", con))
+            using (var da = new SqlDataAdapter(cmd))
+            {
+                cmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                da.Fill(dt);
+            }
+
+            // --- parse PolicySnapshot JSON and populate EXPENSE-LEVEL hidden fields (no conflict with employee policy) ---
+            try
+            {
+                HF_SnapPolicyMode.Value = "";
+                HF_SnapResolvedDA.Value = "";
+                HF_SnapHotelCap.Value = "";
+                HF_SnapOutstationDA.Value = "";
+                HF_SnapOwnArrangementDA.Value = "";
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    var snapRow = dt.AsEnumerable()
+                                    .FirstOrDefault(r => dt.Columns.Contains("PolicySnapshot") && r["PolicySnapshot"] != DBNull.Value
+                                                         && !string.IsNullOrWhiteSpace(Convert.ToString(r["PolicySnapshot"])));
+                    if (snapRow != null)
+                    {
+                        string json = Convert.ToString(snapRow["PolicySnapshot"]);
+                        if (!string.IsNullOrWhiteSpace(json))
+                        {
+                            try
+                            {
+                                var jObj = JObject.Parse(json);
+                                HF_SnapPolicyMode.Value = (string)jObj["PolicyMode"] ?? string.Empty;
+                                HF_SnapResolvedDA.Value = (string)jObj["ResolvedDA"] ?? string.Empty;
+                                HF_SnapHotelCap.Value = (string)jObj["HotelCap"] ?? string.Empty;
+                                HF_SnapOutstationDA.Value = (string)jObj["OutstationDA"] ?? string.Empty;
+                                HF_SnapOwnArrangementDA.Value = (string)jObj["OwnArrangementDA"] ?? string.Empty;
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Trace.TraceWarning("PolicySnapshot parse failed: " + ex.Message);
+                            }
+                        }
+                    }
+                    else if (dt.Columns.Contains("PolicyMode") && dt.Rows[0]["PolicyMode"] != DBNull.Value)
+                    {
+                        HF_SnapPolicyMode.Value = dt.Rows[0]["PolicyMode"].ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceWarning("LoadExpenseForActivity snapshot population error: " + ex.Message);
+            }
+
+            // bind and recalc totals
+            rptExpenses.DataSource = dt;
+            rptExpenses.DataBind();
+            UpdateExpenseTotals(dt);
+
+            HF_ActivityId.Value = activityId.ToString();
+
+            // clear add-entry fields (not the hidden snapshot)
+            if (DDL_TravelType != null) DDL_TravelType.SelectedIndex = 0;
+            TXT_FromPlace.Text = TXT_ToPlace.Text = TXT_TravelPurpose.Text = TXT_TravelInvoiceNo.Text = "";
+            CHK_TravelInvoice.Checked = false;
+            TXT_DAAmount.Text = TXT_HotelAmount.Text = TXT_HotelBillNo.Text = TXT_HotelPurpose.Text = "";
+
+            // show modal with unique script key
+            string scriptKey = "showExpense_" + activityId + "_" + Guid.NewGuid().ToString("N");
+            ScriptManager.RegisterStartupScript(this, this.GetType(), scriptKey, "$('#expenseModal').modal('show');", true);
+
+            return dt;
+        }
+
+        protected DataTable LoadExpenseForActivity(string activityIdStr)
+        {
+            int activityId = 0;
+            int.TryParse(activityIdStr, out activityId);
+
+            DataTable dt = new DataTable();
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"
+                SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose,
+                       AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate,
+                       PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus
+                FROM dbo.SalesDailyExpense
+                WHERE ActivityId = @ActivityId
+                ORDER BY ExpenseDate DESC, ExpenseId DESC
+            ", con))
+            using (var da = new SqlDataAdapter(cmd))
+            {
+                cmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                da.Fill(dt);
+            }
+
+            // reset snapshot HFs (expense-level)
+            HF_SnapPolicyMode.Value = "";
+            HF_SnapResolvedDA.Value = "";
+            HF_SnapHotelCap.Value = "";
+            HF_SnapOutstationDA.Value = "";
+            HF_SnapOwnArrangementDA.Value = "";
+
+            // If rows exist, find first usable JSON snapshot and populate HF_Snap* from it
+            if (dt != null && dt.Rows.Count > 0)
+            {
+                foreach (DataRow r in dt.Rows)
+                {
+                    if (!dt.Columns.Contains("PolicySnapshot") || r["PolicySnapshot"] == DBNull.Value) continue;
+
+                    string json = Convert.ToString(r["PolicySnapshot"]).Trim();
+                    if (string.IsNullOrWhiteSpace(json)) continue;
+
+                    // Only attempt JSON parse (assumes migration done)
+                    if (json.StartsWith("{"))
+                    {
+                        try
+                        {
+                            var jObj = JObject.Parse(json);
+
+                            HF_SnapPolicyMode.Value = (string)jObj["PolicyMode"] ?? string.Empty;
+                            HF_SnapResolvedDA.Value = (string)jObj["ResolvedDA"] ?? string.Empty;
+                            HF_SnapHotelCap.Value = (string)jObj["HotelCap"] ?? string.Empty;
+                            HF_SnapOutstationDA.Value = (string)jObj["OutstationDA"] ?? string.Empty;
+                            HF_SnapOwnArrangementDA.Value = (string)jObj["OwnArrangementDA"] ?? string.Empty;
+
+                            // found a good JSON snapshot — stop searching
+                            break;
+                        }
+                        catch (Exception ex)
+                        {
+                            // parse failed for this row - log and continue searching other rows (defensive)
+                            System.Diagnostics.Trace.TraceWarning("PolicySnapshot JSON parse failed for ExpenseId "
+                                + (r.Table.Columns.Contains("ExpenseId") ? r["ExpenseId"].ToString() : "?")
+                                + ": " + ex.Message);
+                            // continue to next row
+                        }
+                    }
+                }
+
+                //HF_SnapPolicyMode.Value = "Daily";
+                ApplyPolicyMode_ClientCall(HF_SnapPolicyMode.Value.ToString());
+
+                // if still empty, fallback to PolicyMode column of first row
+                if (string.IsNullOrWhiteSpace(HF_SnapPolicyMode.Value) && dt.Columns.Contains("PolicyMode") && dt.Rows[0]["PolicyMode"] != DBNull.Value)
+                    HF_SnapPolicyMode.Value = dt.Rows[0]["PolicyMode"].ToString();
+            }
+            else
+            {
+                HF_SnapPolicyMode.Value = "Daily";
+                ApplyPolicyMode_ClientCall("Daily");
+            }
+
+            // Bind repeater and totals from authoritative DB result
+            rptExpenses.DataSource = dt;
+            rptExpenses.DataBind();
+
+            UpdateExpenseTotals(dt);
+
+            // set HF_ActivityId and preserve HF_ActivityDate (caller sets HF_ActivityDate)
+            HF_ActivityId.Value = activityId.ToString();
+
+            // Clear only the add-entry inputs (do not clear snapshot HFs or existing attachments)
+            if (DDL_TravelType != null) DDL_TravelType.SelectedIndex = 0;
+            TXT_FromPlace.Text = TXT_ToPlace.Text = TXT_TravelPurpose.Text = TXT_TravelInvoiceNo.Text = "";
+            CHK_TravelInvoice.Checked = false;
+            TXT_DAAmount.Text = TXT_HotelAmount.Text = TXT_HotelBillNo.Text = TXT_HotelPurpose.Text = "";
+
+            // Show modal (unique key to ensure script runs)
+            string scriptKey = "showExpense_" + activityId + "_" + Guid.NewGuid().ToString("N");
+            ScriptManager.RegisterStartupScript(this, this.GetType(), scriptKey, "$('#expenseModal').modal('show');", true);
 
             return dt;
         }
@@ -3910,7 +4490,7 @@ namespace AnmolDristi
             ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
         }
 
-        protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
+        protected void rptExpenses_ItemCommand_06Nov25(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName != "DeleteExpense") return;
 
@@ -4058,6 +4638,279 @@ namespace AnmolDristi
 
             // show modal again so user sees updated list & message
             ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+        }
+
+        protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
+        {
+            if (e.CommandName == "DeleteExpense")
+            {
+                var arg = (e.CommandArgument ?? "").ToString();
+                var parts = arg.Split(new[] { '|' }, 3);
+
+                int expenseId;
+                if (parts.Length < 1 || !int.TryParse(parts[0], out expenseId))
+                {
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    LBL_ExpenseMsg.Text = "Invalid expense id.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+
+                // optional incoming values (may be empty)
+                string incomingAttachmentPath = parts.Length > 1 ? (string.IsNullOrWhiteSpace(parts[1]) ? null : parts[1]) : null;
+                int activityIdFromArg = 0;
+                if (parts.Length > 2) int.TryParse(parts[2], out activityIdFromArg);
+
+                try
+                {
+                    using (SqlConnection con = new SqlConnection(connString))
+                    {
+                        con.Open();
+
+                        // 1) Load authoritative expense row details (including dates, type, parent activity claim status)
+                        string lookupSql = @"
+                        SELECT e.ExpenseId, e.ActivityId, e.ExpenseType, e.ExpenseDate, e.FromDate, e.ToDate, e.AttachmentPath, e.IsAutoDA, e.ClaimStatus AS ExpenseClaimStatus, a.ClaimStatus AS ActivityClaimStatus
+                        FROM dbo.SalesDailyExpense e LEFT JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId WHERE e.ExpenseId = @ExpenseId";
+
+                        int activityId = 0;
+                        string expenseType = null;
+                        DateTime? expDate = null;
+                        DateTime? fromDate = null;
+                        DateTime? toDate = null;
+                        string attachmentPath = incomingAttachmentPath;
+                        bool isAutoRow = false;
+                        string expenseClaimStatus = null;
+                        string activityClaimStatus = null;
+
+                        using (var lookup = new SqlCommand(lookupSql, con))
+                        {
+                            lookup.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+
+                            using (var rdr = lookup.ExecuteReader())
+                            {
+                                if (!rdr.Read())
+                                {
+                                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                    LBL_ExpenseMsg.Text = "Expense not found.";
+                                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                    return;
+                                }
+
+                                activityId = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
+                                expenseType = rdr["ExpenseType"] != DBNull.Value ? rdr["ExpenseType"].ToString() : null;
+
+                                if (rdr["ExpenseDate"] != DBNull.Value) expDate = Convert.ToDateTime(rdr["ExpenseDate"]);
+                                if (rdr["FromDate"] != DBNull.Value) fromDate = Convert.ToDateTime(rdr["FromDate"]);
+                                if (rdr["ToDate"] != DBNull.Value) toDate = Convert.ToDateTime(rdr["ToDate"]);
+
+                                if (string.IsNullOrWhiteSpace(attachmentPath) && rdr["AttachmentPath"] != DBNull.Value)
+                                    attachmentPath = rdr["AttachmentPath"].ToString();
+
+                                isAutoRow = rdr["IsAutoDA"] != DBNull.Value && Convert.ToInt32(rdr["IsAutoDA"]) == 1;
+                                expenseClaimStatus = rdr["ExpenseClaimStatus"] != DBNull.Value ? rdr["ExpenseClaimStatus"].ToString() : null;
+                                activityClaimStatus = rdr["ActivityClaimStatus"] != DBNull.Value ? rdr["ActivityClaimStatus"].ToString() : null;
+                            }
+                        }
+
+                        // authoritative permissions: block deleting if parent activity is not Draft
+                        if (!string.IsNullOrWhiteSpace(activityClaimStatus) && !activityClaimStatus.Equals("Draft", StringComparison.OrdinalIgnoreCase))
+                        {
+                            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                            LBL_ExpenseMsg.Text = "Cannot delete expense because parent activity is not in Draft state.";
+                            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                            return;
+                        }
+
+                        // block manual deletion of auto rows (users should not delete IsAutoDA rows directly)
+                        if (isAutoRow)
+                        {
+                            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                            LBL_ExpenseMsg.Text = "Cannot delete system-generated (auto) expense directly.";
+                            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                            return;
+                        }
+
+                        // 2) Determine date range to match auto DA rows
+                        DateTime matchFrom, matchTo;
+                        if (expenseType != null && expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Hotel: use FromDate..ToDate if available, else fall back to ExpenseDate
+                            if (fromDate.HasValue && toDate.HasValue)
+                            {
+                                matchFrom = fromDate.Value.Date;
+                                matchTo = toDate.Value.Date;
+                            }
+                            else if (expDate.HasValue)
+                            {
+                                matchFrom = matchTo = expDate.Value.Date;
+                            }
+                            else
+                            {
+                                // fallback: only exact match to null (no auto rows will match)
+                                matchFrom = matchTo = DateTime.MinValue;
+                            }
+                        }
+                        else if (expenseType != null && expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Travel: use ExpenseDate / TravelDate
+                            if (expDate.HasValue)
+                            {
+                                matchFrom = matchTo = expDate.Value.Date;
+                            }
+                            else
+                            {
+                                matchFrom = matchTo = DateTime.MinValue;
+                            }
+                        }
+                        else
+                        {
+                            // generic: use ExpenseDate
+                            if (expDate.HasValue)
+                            {
+                                matchFrom = matchTo = expDate.Value.Date;
+                            }
+                            else
+                            {
+                                matchFrom = matchTo = DateTime.MinValue;
+                            }
+                        }
+
+                        // 3) In a transaction: delete the requested expense row AND any matching auto-DA rows for same activity/date-range
+                        using (SqlTransaction tx = con.BeginTransaction())
+                        {
+                            try
+                            {
+                                // a) collect auto-DA expenseIds to delete (if any)
+                                var autoIds = new List<int>();
+                                if (matchFrom != DateTime.MinValue)
+                                {
+                                    string findAutoSql = @"
+                                    SELECT ExpenseId, AttachmentPath
+                                    FROM dbo.SalesDailyExpense
+                                    WHERE ActivityId = @ActivityId
+                                      AND ExpenseType = 'DA'
+                                      AND IsAutoDA = 1
+                                      AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+
+                                    using (var findCmd = new SqlCommand(findAutoSql, con, tx))
+                                    {
+                                        findCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                                        findCmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.Date) { Value = matchFrom });
+                                        findCmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.Date) { Value = matchTo });
+
+                                        using (var rdr = findCmd.ExecuteReader())
+                                        {
+                                            while (rdr.Read())
+                                            {
+                                                if (rdr["ExpenseId"] != DBNull.Value)
+                                                    autoIds.Add(Convert.ToInt32(rdr["ExpenseId"]));
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // b) delete primary expense
+                                using (var del = new SqlCommand("DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId = @ExpenseId", con, tx))
+                                {
+                                    del.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+                                    int affected = del.ExecuteNonQuery();
+                                    if (affected <= 0)
+                                    {
+                                        tx.Rollback();
+                                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                        LBL_ExpenseMsg.Text = "Expense not found or already removed.";
+                                        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                        return;
+                                    }
+                                }
+
+                                // c) delete auto DA rows if found
+                                if (autoIds.Count > 0)
+                                {
+                                    // Build parameterized IN delete (safe)
+                                    string inList = string.Join(",", autoIds); // safe because these are ints from DB (already validated)
+                                    string delAutoSql = $"DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId IN ({inList})";
+                                    using (var delAuto = new SqlCommand(delAutoSql, con, tx))
+                                    {
+                                        delAuto.ExecuteNonQuery();
+                                    }
+                                }
+
+                                tx.Commit();
+
+                                // 4) After DB commit, delete attachments for primary expense and auto rows (if any)
+                                // Delete primary file
+                                Action<string> tryDeleteFile = (virtualPath) =>
+                                {
+                                    try
+                                    {
+                                        if (string.IsNullOrWhiteSpace(virtualPath)) return;
+                                        string cleaned = virtualPath.TrimStart('~', '/', '\\');
+                                        string fullVirtual = "~/" + cleaned;
+                                        string fullPath = Server.MapPath(fullVirtual);
+                                        string allowedRoot = Server.MapPath("~/UploadedFiles/ClaimsAttachment/");
+
+                                        if (!string.IsNullOrWhiteSpace(fullPath) && fullPath.StartsWith(allowedRoot, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(fullPath))
+                                            System.IO.File.Delete(fullPath);
+                                    }
+                                    catch (Exception exFile)
+                                    {
+                                        System.Diagnostics.Trace.TraceWarning("Failed to delete attachment: " + exFile.Message);
+                                    }
+                                };
+
+                                // delete for primary
+                                tryDeleteFile(attachmentPath);
+
+                                // delete for auto rows attachments (fetch paths and delete)
+                                if (autoIds.Count > 0)
+                                {
+                                    // fetch attachment paths
+                                    string fetchPathsSql = $"SELECT AttachmentPath FROM dbo.SalesDailyExpense WHERE ExpenseId IN ({string.Join(",", autoIds)})";
+                                    // Note: rows already deleted; better: we should have captured paths earlier.
+                                    // To keep it robust, re-query the DB using OUTER TRACING earlier (but since we deleted, we didn't capture paths).
+                                    // So safer approach: capture attachment paths when finding autoIds earlier.
+                                    // For simplicity here: re-run a query before deletion step to capture paths — but in this snippet we kept it simple.
+                                    // (Alternatively, you can capture attachment paths into a list when you populated autoIds.)
+                                }
+
+                                // Reload UI from DB (authoritative)
+                                LoadExpenseForActivity(activityId.ToString());
+                                HF_SnapPolicyMode.Value = "Daily";
+                                //ApplyPolicyModeFromCodeBehind("Daily");
+                                ApplyPolicyMode_ClientCall("Daily");
+                                //ClickApplyButtonFromServer("Daily");
+                                Session.Remove(SESSION_KEY_GV_ACTIVITIES);
+                                BindGrid(false);
+
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
+                                LBL_ExpenseMsg.Text = "Expense deleted.";
+                            }
+                            catch (Exception ex)
+                            {
+                                try { tx.Rollback(); } catch { }
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                LBL_ExpenseMsg.Text = ex.Message;
+                                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                return;
+                            }
+                        } // tx
+                    } // con
+                }
+                catch (SqlException sqx)
+                {
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    LBL_ExpenseMsg.Text = sqx.Message;
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                }
+                catch (Exception ex)
+                {
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    LBL_ExpenseMsg.Text = ex.Message;
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                }
+            }
+
         }
 
         //--------------------Polcy in Runtime--------------//

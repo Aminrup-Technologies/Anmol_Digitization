@@ -508,7 +508,7 @@
 
                         </div>
                     </div>
-                </div>           
+                </div>
 
                 <div class="col-md-12 col-sm-12" id="Activities" runat="server" visible="false">
                     <div class="x_panel">
@@ -705,7 +705,7 @@
                             <div class="clearfix"></div>
                         </div>
 
-                        <div class="x_content" style="display:none;">
+                        <div class="x_content" style="display: none;">
                             <div class="row">
                                 <div class="col-md-12 col-sm-12">
                                     <div class="mb-3">
@@ -1051,7 +1051,7 @@
 
                             <h6>Existing Day Expenses</h6>
 
-                            <asp:Repeater ID="rptExpenses" runat="server" OnItemCommand="rptExpenses_ItemCommand">
+                            <asp:Repeater ID="rptExpenses" runat="server" OnItemCommand="rptExpenses_ItemCommand" OnItemDataBound="rptExpenses_ItemDataBound">
                                 <HeaderTemplate>
                                     <table class="table table-sm table-bordered">
                                         <thead>
@@ -1130,10 +1130,13 @@
                                         </td>
 
                                         <td class="text-center">
-                                            <%-- keep actions as you have; show/hide edit based on permission on server side --%>
                                             <asp:LinkButton ID="lnkEditExpense" runat="server" CssClass="btn btn-outline-primary mr-1" CommandName="EditExpense" CommandArgument='<%# Eval("ExpenseId") %>' OnClientClick="return false;" Visible="false"><i class="fa fa-edit"></i></asp:LinkButton>
 
-                                            <asp:LinkButton ID="lnkDeleteExpense" runat="server" CssClass="btn btn-outline-danger" CommandName="DeleteExpense" CommandArgument='<%# Eval("ExpenseId") + "|" + (Eval("AttachmentFileName") ?? "") + "|" + (Eval("ActivityId") ?? "") %>' OnClientClick="return confirm('Delete this expense? This action cannot be undone.');"><i class="fa fa-trash"></i></asp:LinkButton>
+                                            <asp:LinkButton ID="lnkDeleteExpense" runat="server" CssClass="btn btn-outline-danger" CommandName="DeleteExpense" CommandArgument='<%# Eval("ExpenseId") + "|" + (Eval("AttachmentPath") ?? "") + "|" + (Eval("ActivityId") ?? "") %>' OnClientClick="return confirm('Delete this expense? This action cannot be undone.');"><i class="fa fa-trash"></i></asp:LinkButton>
+
+                                            <asp:LinkButton ID="lnkDeleteExpenseDisabled" runat="server" CssClass="btn btn-outline-secondary btn-sm disabled" Visible="false" OnClientClick="return false;" ToolTip="Cannot delete: submitted/auto-applied"><i class="fa fa-lock"></i></asp:LinkButton>
+
+                                            <asp:Literal ID="litPolicyBadges" runat="server"></asp:Literal>
                                         </td>
                                     </tr>
                                 </ItemTemplate>
@@ -1144,6 +1147,12 @@
                                     </table>
                                 </FooterTemplate>
                             </asp:Repeater>
+                            <!-- Expense Snapshot Hidden Fields (used only for row-level PolicySnapshot parsing) -->
+                            <asp:HiddenField ID="HF_SnapPolicyMode" runat="server" />
+                            <asp:HiddenField ID="HF_SnapResolvedDA" runat="server" />
+                            <asp:HiddenField ID="HF_SnapHotelCap" runat="server" />
+                            <asp:HiddenField ID="HF_SnapOutstationDA" runat="server" />
+                            <asp:HiddenField ID="HF_SnapOwnArrangementDA" runat="server" />
 
                             <asp:Label ID="LBL_ExpenseMsg" runat="server" ForeColor="Red"></asp:Label>
                         </asp:Panel>
@@ -2482,6 +2491,188 @@
             });
 
         })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        /* Robust, idempotent applyPolicyModeFromServer
+           - prevents repeated selector set logs by disconnecting observer & stopping poll
+           - uses window.__so_policy_last_applied to avoid re-entrancy for same mode
+        */
+        function applyPolicyModeFromServer(mode) {
+            console.log("%c[applyPolicyModeFromServer] Invoked from server.", "color:#2196f3;font-weight:bold;");
+            console.log("   ► Parameter (mode):", mode);
+
+            try {
+                mode = mode || '';
+
+                // Idempotent guard: if same mode already applied, skip further work
+                if (window.__so_policy_last_applied && window.__so_policy_last_applied === mode) {
+                    console.log("   ℹ Mode already applied previously, skipping re-apply:", mode);
+                    return;
+                }
+
+                // mark as pending (will set to mode once fully applied)
+                window.__so_policy_pending_mode = mode;
+
+                // 1) Set hidden field
+                var hf = document.getElementById('<%= HF_ResolvedPolicyMode.ClientID %>');
+                if (hf) {
+                    try { hf.value = mode; console.log("   ✔ Hidden field set to:", hf.value); }
+                    catch (e) { console.warn("   ⚠ Failed to set HF:", e); }
+                } else {
+                    console.warn("   ⚠ Hidden field not found (HF_ResolvedPolicyMode).");
+                }
+
+                // 2) localStorage (optional)
+                try { localStorage.setItem('so_policy_mode', mode); console.log("   ✔ Saved to localStorage → so_policy_mode:", mode); }
+                catch (e) { console.warn("   ⚠ localStorage set failed:", e); }
+
+                // 3) Dispatch event immediately
+                try {
+                    var ev = new CustomEvent('policy.updated', { detail: { mode: mode, source: 'server' } });
+                    document.dispatchEvent(ev);
+                    console.log("   ✔ Dispatched 'policy.updated' event");
+                } catch (ex) {
+                    console.error("   ❌ Event dispatch failed:", ex);
+                }
+
+                // Helper: attempt to set selector and call applyPolicyMode once, then cleanup
+                (function waitAndApply() {
+                    var applied = false;
+                    var observer = null;
+                    var pollIv = null;
+
+                    function trySetAndApply() {
+                        try {
+                            var sel = document.getElementById('SEL_PolicyMode')
+                                   || document.querySelector('[id$="_SEL_PolicyMode"]')
+                                   || document.querySelector('[id$="SEL_PolicyMode"]');
+
+                            if (sel) {
+                                try {
+                                    sel.value = mode;
+                                    console.log("   ✔ Selector found, value set to:", sel.value);
+                                } catch (e) {
+                                    console.warn("   ⚠ Could not set selector value:", e);
+                                }
+                            }
+
+                            if (typeof applyPolicyMode === 'function') {
+                                try {
+                                    applyPolicyMode();
+                                    console.log("   ✔ applyPolicyMode() called.");
+                                } catch (e) {
+                                    console.warn("   ⚠ applyPolicyMode() call failed:", e);
+                                }
+                            }
+
+                            // consider it applied if either selector present OR applyPolicyMode invoked
+                            if (sel || typeof applyPolicyMode === 'function') {
+                                applied = true;
+                                // mark globally to prevent re-entrancy for same mode
+                                window.__so_policy_last_applied = mode;
+                                // clear pending
+                                window.__so_policy_pending_mode = null;
+                                cleanup();
+                            }
+                        } catch (err) {
+                            console.error("   ❌ trySetAndApply error:", err);
+                        }
+                    }
+
+                    function cleanup() {
+                        // disconnect observer
+                        try {
+                            if (observer) {
+                                observer.disconnect();
+                                observer = null;
+                                console.log("   ✔ MutationObserver disconnected.");
+                            }
+                        } catch (e) { /* ignore */ }
+
+                        // clear poll interval
+                        try {
+                            if (pollIv) {
+                                clearInterval(pollIv);
+                                pollIv = null;
+                                console.log("   ✔ Polling cleared.");
+                            }
+                        } catch (e) { /* ignore */ }
+                    }
+
+                    // immediate attempt
+                    trySetAndApply();
+
+                    if (applied) return; // done
+
+                    // polling fallback (stops when cleanup invoked)
+                    var elapsed = 0;
+                    var pollInterval = 150;
+                    var timeout = 4000;
+                    pollIv = setInterval(function () {
+                        elapsed += pollInterval;
+                        trySetAndApply();
+                        if (window.__so_policy_last_applied === mode) {
+                            // applied by trySetAndApply -> cleanup happens there
+                            return;
+                        }
+                        if (elapsed >= timeout) {
+                            // timed out — stop polling but leave pending for modal shown / DOMContentLoaded
+                            cleanup();
+                            console.warn("   ⚠ Timed out waiting for selector/applyPolicyMode. Mode queued for later.");
+                            // keep __so_policy_pending_mode so modal shown handler can use it
+                            return;
+                        }
+                    }, pollInterval);
+
+                    // MutationObserver to catch DOM insertions (best-effort)
+                    try {
+                        observer = new MutationObserver(function (mutations) {
+                            // only trySetAndApply once per mutation batch
+                            trySetAndApply();
+                            if (window.__so_policy_last_applied === mode) {
+                                // already applied -> cleanup will be called in trySetAndApply
+                            }
+                        });
+                        observer.observe(document.body, { childList: true, subtree: true });
+                        console.log("   ✔ MutationObserver attached to body.");
+                    } catch (obsErr) {
+                        console.warn("   ⚠ MutationObserver not available or failed:", obsErr);
+                    }
+
+                    // also ensure modal shown handler later uses pending flag (below)
+                })();
+
+                // If modal shown later, ensure queued mode applied exactly once
+                (function attachModalHandlerIfNeeded() {
+                    try {
+                        // only attach once
+                        if (window.__so_policy_modal_handler_attached) return;
+                        window.__so_policy_modal_handler_attached = true;
+
+                        $('#expenseModal').on('shown.bs.modal', function () {
+                            var pending = window.__so_policy_pending_mode;
+                            if (pending) {
+                                console.log('▶ modal shown — applying queued policy mode:', pending);
+                                try {
+                                    // call the function again — guard will prevent duplicate heavy work
+                                    applyPolicyModeFromServer(pending);
+                                } catch (e) {
+                                    console.error('   ❌ modal apply failed', e);
+                                }
+                                // don't clear here; applyPolicyModeFromServer will clear pending when done
+                            }
+                        });
+                    } catch (e) {
+                        // jQuery or modal may not be present — ignore
+                    }
+                })();
+
+                console.log("%c[applyPolicyModeFromServer] Completed (scheduling follow-ups).", "color:green;font-weight:bold;");
+            } catch (err) {
+                console.error("❌ [applyPolicyModeFromServer] Exception:", err);
+            }
+        }
     </script>
 
 </asp:Content>

@@ -796,6 +796,51 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Repeater rptExpenses;
         
         /// <summary>
+        /// HF_SnapPolicyMode control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_SnapPolicyMode;
+        
+        /// <summary>
+        /// HF_SnapResolvedDA control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_SnapResolvedDA;
+        
+        /// <summary>
+        /// HF_SnapHotelCap control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_SnapHotelCap;
+        
+        /// <summary>
+        /// HF_SnapOutstationDA control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_SnapOutstationDA;
+        
+        /// <summary>
+        /// HF_SnapOwnArrangementDA control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_SnapOwnArrangementDA;
+        
+        /// <summary>
         /// LBL_ExpenseMsg control.
         /// </summary>
         /// <remarks>
