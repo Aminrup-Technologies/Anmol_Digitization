@@ -585,7 +585,7 @@
                         <div id="expensesModalBody">Loading…</div>
                     </div>
                     <div class="modal-footer">
-                        <small class="text-muted mr-auto">Tip: hover the receipt icon for a quick view.</small>
+                        <small class="text-muted mr-auto">Tip: Click on Bill No to view the attachment</small>
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                     </div>
                 </div>

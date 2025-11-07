@@ -722,7 +722,7 @@ namespace AnmolDristi
                 // 5) open modal (call helper openDetailsModal which uses $('#detailsModal').modal('show'))
                 ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "openDetailsModal();", true);
 
-                //ShowDetailsModal(approvalId);
+                ShowDetailsModal(approvalRequestId);
                 // Put this after DataBind() of gvDetails or just for debugging in Page_Load (when !IsPostBack you can skip)
                 //ScriptManager.RegisterStartupScript(this, GetType(), "logGVId", $"console.log('gvDetails client id = {gvDetails.ClientID}');", true);
 
@@ -747,7 +747,7 @@ namespace AnmolDristi
             BindDetailsGrid(approvalRequestId);
 
             // fetch header totals & status (optional display)
-            string headerSql = "SELECT TotalClaimAmount, Status FROM dbo.SalesApprovalRequest WHERE ApprovalRequestId = @ApprovalRequestId";
+            string headerSql = "SELECT TotalExpenseAmount, Status FROM dbo.SalesApprovalRequest WHERE ApprovalRequestId = @ApprovalRequestId";
             using (var con = new SqlConnection(connString))
             using (var cmd = new SqlCommand(headerSql, con))
             {
@@ -757,7 +757,7 @@ namespace AnmolDristi
                 {
                     if (rdr.Read())
                     {
-                        lblHeaderTotalClaim.Text = rdr["TotalClaimAmount"] == DBNull.Value ? "0.00" : Convert.ToDecimal(rdr["TotalClaimAmount"]).ToString("N2");
+                        lblHeaderTotalClaim.Text = rdr["TotalExpenseAmount"] == DBNull.Value ? "0.00" : Convert.ToDecimal(rdr["TotalExpenseAmount"]).ToString("N2");
                         lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? "Pending";
                     }
                 }
@@ -957,6 +957,7 @@ namespace AnmolDristi
 
             // refresh UI
             BindDetailsGrid(approvalRequestId);
+            ShowDetailsModal(approvalRequestId);
             BindRequestsGrid();
 
             // keep modal open and show success
@@ -1017,7 +1018,7 @@ namespace AnmolDristi
             }
 
             // reload details and header grid
-            ShowDetailsModal(approvalRequestId);
+            //ShowDetailsModal(approvalRequestId);
             BindRequestsGrid();
         }
 
@@ -1061,7 +1062,7 @@ namespace AnmolDristi
                 cmd.ExecuteNonQuery();
             }
 
-            ShowDetailsModal(approvalRequestId);
+            //ShowDetailsModal(approvalRequestId);
             BindRequestsGrid();
         }
 
@@ -1118,7 +1119,7 @@ namespace AnmolDristi
             }
 
             // refresh UI
-            ShowDetailsModal(approvalRequestId);
+            //ShowDetailsModal(approvalRequestId);
             BindRequestsGrid();
         }
 
