@@ -1106,21 +1106,34 @@
                 '<th>Bill No</th>' +
                 '</tr></thead><tbody>';
 
-            for (var i = 0; i < arr.length; i++) {
-                var ex = arr[i] || {};
+            // --- build rows and accumulate total (replace your old for/total code) ---
+            var totalAmt = 0;
+            for (var idx = 0; idx < arr.length; idx++) {
+                var ex = arr[idx] || {};
+
+                // date formatting
                 var dateStr = ex.ExpenseDate ? ex.ExpenseDate : '';
                 try {
                     var d = new Date(ex.ExpenseDate);
                     if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
-                } catch (e) { }
+                } catch (e) { /* ignore */ }
 
-                var amt = (ex.Amount != null && !isNaN(ex.Amount)) ? Number(ex.Amount).toFixed(2) : (ex.Amount || '');
+                // amount display and numeric value for totaling
+                var amtVal = parseFloat(ex.Amount);
+                var amtDisplay = '';
+                if (!isNaN(amtVal)) {
+                    totalAmt += amtVal;
+                    amtDisplay = amtVal.toFixed(2);
+                } else {
+                    amtDisplay = (ex.Amount != null ? htmlEncode(ex.Amount) : '');
+                }
+
+                // bill column behavior (clickable when attachment exists)
                 var billHtml = '';
                 if (ex.BillNo) {
                     if (ex.AttachmentPath) {
-                        var href = ex.AttachmentPath.replace(/"/g, '&quot;');
-                        billHtml = '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' +
-                                   htmlEncode(ex.BillNo) + '</a>';
+                        var href = (ex.AttachmentPath || '#').replace(/"/g, '&quot;');
+                        billHtml = '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + htmlEncode(ex.BillNo) + '</a>';
                     } else {
                         billHtml = '<span class="text-muted">' + htmlEncode(ex.BillNo) + '</span>';
                     }
@@ -1128,42 +1141,36 @@
                     billHtml = '<span class="text-muted">—</span>';
                 }
 
-                var totalAmt = 0;
-                for (var i = 0; i < arr.length; i++) {
-                    var a = parseFloat(arr[i].Amount);
-                    if (!isNaN(a)) totalAmt += a;
-                }
-
+                // policy snapshot snippet (unchanged)
                 var ps = maybeParsePolicySnapshot(ex.PolicySnapshot);
                 var psHtml = '';
                 if (ps) {
-                    if (ps.PolicyMode)
+                    if (ps.PolicyMode) {
                         psHtml = '<small class="text-muted">Mode: <strong>' + htmlEncode(ps.PolicyMode) + '</strong></small>';
-                    else if (typeof ps === 'object') {
+                    } else if (typeof ps === 'object') {
                         var keys = Object.keys(ps).slice(0, 3);
                         var parts = [];
-                        for (var k = 0; k < keys.length; k++)
-                            parts.push(keys[k] + '=' + htmlEncode(ps[keys[k]]));
+                        for (var k = 0; k < keys.length; k++) parts.push(keys[k] + '=' + htmlEncode(ps[keys[k]]));
                         psHtml = '<small class="text-muted">' + parts.join('; ') + '</small>';
                     }
                 }
 
                 html += '<tr>' +
-                    '<td>' + (i + 1) + '</td>' +
+                    '<td>' + (idx + 1) + '</td>' +
                     '<td>' + htmlEncode(ex.ExpenseType || '') + '</td>' +
                     '<td>' + htmlEncode(dateStr) + '</td>' +
                     '<td>' + htmlEncode(ex.Purpose || '') + (psHtml ? '<br/>' + psHtml : '') + '</td>' +
-                    '<td class="text-right">' + htmlEncode(amt) + (ex.Currency ? ' ' + htmlEncode(ex.Currency) : '') + '</td>' +
+                    '<td class="text-right">' + htmlEncode(amtDisplay) + (ex.Currency ? ' ' + htmlEncode(ex.Currency) : '') + '</td>' +
                     '<td>' + billHtml + '</td>' +
                     '</tr>';
-
-                // --- append total row ---
-                html += '<tr class="font-weight-bold bg-light">' +
-                        '<td colspan="4" class="text-right">Total</td>' +
-                        '<td class="text-right">' + totalAmt.toFixed(2) + '</td>' +
-                        '<td></td>' +
-                        '</tr>';
             }
+
+            // --- append total row (after loop) ---
+            html += '<tr class="font-weight-bold bg-light">' +
+                    '<td colspan="4" class="text-right">Total</td>' +
+                    '<td class="text-right">' + totalAmt.toFixed(2) + '</td>' +
+                    '<td></td>' +
+                    '</tr>';
 
             html += '</tbody></table></div>';
             $body.html(html);
