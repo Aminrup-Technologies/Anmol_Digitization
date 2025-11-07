@@ -7,6 +7,7 @@ using System.Web.UI.WebControls;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Web.UI.HtmlControls;
 
 namespace AnmolDristi
 {
@@ -54,7 +55,7 @@ namespace AnmolDristi
         {
             return (value == null || value == DBNull.Value) ? 0m : Convert.ToDecimal(value);
         }
-        protected void gvDetails_RowDataBound(object sender, GridViewRowEventArgs e)
+        protected void gvDetails_RowDataBound_07Nov25(object sender, GridViewRowEventArgs e)
         {
             if (e.Row.RowType == DataControlRowType.DataRow)
             {
@@ -137,6 +138,215 @@ namespace AnmolDristi
             }
         }
 
+        protected void gvDetails_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                DataRowView drv = e.Row.DataItem as DataRowView;
+                if (drv == null) return;
+
+                // accumulate totals (your original logic)
+                _totalDistance += SafeDec(drv["Snapshot_TotalDistanceKM"]);
+                _totalTAClaim += SafeDec(drv["Snapshot_CalculatedClaimAmount"]);
+                _totalDA += SafeDec(drv["Snapshot_DAAmount"]);
+                _totalHotel += SafeDec(drv["Snapshot_HotelAmount"]);
+                _totalTravel += SafeDec(drv["Snapshot_TravelAmount"]);
+                _totalSnapshot += SafeDec(drv["Snapshot_ExpenseTotal"]);
+
+                // centralized per-row setup
+                PopulateRowControls(e.Row, drv);
+            }
+            else if (e.Row.RowType == DataControlRowType.Footer)
+            {
+                FillFooterTotals(e.Row);
+            }
+        }
+
+        /// <summary>
+        /// Sets styling, enables/disables buttons, and attaches Expenses JSON to the row's button.
+        /// </summary>
+        private void PopulateRowControls(GridViewRow row, DataRowView drv)
+        {
+            if (row == null || drv == null) return;
+
+            string detailStatus = drv["DetailStatus"] == DBNull.Value ? String.Empty : drv["DetailStatus"].ToString();
+            string claimStatus = drv["ClaimStatus"] == DBNull.Value ? String.Empty : drv["ClaimStatus"].ToString();
+
+            // Row styling
+            if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                AddCssClass(row, "table-danger");
+            else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                AddCssClass(row, "table-success");
+            else
+                RemoveCssClass(row, "table-danger table-success");
+
+            // Enable/disable buttons
+            var btnApprove = FindControlRecursive(row, "btnApproveRow") as Button;
+            var btnReject = FindControlRecursive(row, "btnRejectRow") as Button;
+            if (btnApprove != null)
+                btnApprove.Enabled = !detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+            if (btnReject != null)
+                btnReject.Enabled = !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase);
+
+            // Expenses JSON
+            string expensesJson = "[]";
+            if (drv.DataView.Table.Columns.Contains("ExpensesJson"))
+                expensesJson = drv["ExpensesJson"] == DBNull.Value ? "[]" : drv["ExpensesJson"].ToString();
+
+            // Find control by CSS class
+            Control btnExpensesCtrl = FindControlRecursiveByCssClass(row, "btn-expenses");
+            if (btnExpensesCtrl != null)
+            {
+                // use 'as' casts for compatibility
+                var wc = btnExpensesCtrl as WebControl;
+                if (wc != null)
+                {
+                    wc.Attributes["data-expenses"] = HttpUtility.HtmlAttributeEncode(expensesJson);
+                    if (drv.DataView.Table.Columns.Contains("ExpenseCount"))
+                        wc.Attributes["data-expensecount"] = Convert.ToString(drv["ExpenseCount"]);
+                }
+                else
+                {
+                    var hc = btnExpensesCtrl as HtmlControl;
+                    if (hc != null)
+                    {
+                        hc.Attributes["data-expenses"] = HttpUtility.HtmlAttributeEncode(expensesJson);
+                        if (drv.DataView.Table.Columns.Contains("ExpenseCount"))
+                            hc.Attributes["data-expensecount"] = Convert.ToString(drv["ExpenseCount"]);
+                    }
+                    else
+                    {
+                        // last-resort via reflection (keeps previous behaviour)
+                        try
+                        {
+                            var pi = btnExpensesCtrl.GetType().GetProperty("Attributes");
+                            if (pi != null)
+                            {
+                                var attrs = pi.GetValue(btnExpensesCtrl, null) as AttributeCollection;
+                                if (attrs != null)
+                                    attrs["data-expenses"] = HttpUtility.HtmlAttributeEncode(expensesJson);
+                            }
+                        }
+                        catch
+                        {
+                            // ignore
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // fallback hidden field
+                var hf = FindControlRecursive(row, "hfExpensesJson") as HiddenField;
+                if (hf != null) hf.Value = expensesJson;
+            }
+
+            // Status tooltip
+            Control statusCtrl = FindControlRecursiveByCssClass(row, "badge");
+            if (statusCtrl != null)
+            {
+                string tooltip = "Unknown status";
+                switch (claimStatus)
+                {
+                    case "Draft": tooltip = "Draft – not submitted yet"; break;
+                    case "Submitted": tooltip = "Submitted – awaiting approval"; break;
+                    case "Approved": tooltip = "Approved by manager"; break;
+                    case "Rejected": tooltip = "Rejected – please review"; break;
+                    case "Processed": tooltip = "Processed in accounts"; break;
+                }
+
+                var swc = statusCtrl as WebControl;
+                if (swc != null) swc.Attributes["title"] = tooltip;
+                else
+                {
+                    var shc = statusCtrl as HtmlControl;
+                    if (shc != null) shc.Attributes["title"] = tooltip;
+                }
+            }
+        }
+
+
+        /// <summary>Recursively find control by ID.</summary>
+        private Control FindControlRecursive(Control root, string id)
+        {
+            if (root == null) return null;
+            if (!string.IsNullOrEmpty(root.ID) && root.ID.Equals(id, StringComparison.OrdinalIgnoreCase))
+                return root;
+
+            foreach (Control c in root.Controls)
+            {
+                var found = FindControlRecursive(c, id);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
+        /// <summary>Recursively find first control that contains the given CSS class token.</summary>
+        private Control FindControlRecursiveByCssClass(Control root, string cssClass)
+        {
+            if (root == null) return null;
+
+            // check WebControl
+            var wc = root as WebControl;
+            if (wc != null)
+            {
+                if (HasCssToken(wc.CssClass, cssClass)) return root;
+            }
+            else
+            {
+                // check HtmlControl
+                var hc = root as HtmlControl;
+                if (hc != null)
+                {
+                    string cls = hc.Attributes["class"] ?? string.Empty;
+                    if (HasCssToken(cls, cssClass)) return root;
+                }
+            }
+
+            foreach (Control c in root.Controls)
+            {
+                var f = FindControlRecursiveByCssClass(c, cssClass);
+                if (f != null) return f;
+            }
+            return null;
+        }
+
+
+        private bool HasCssToken(string classAttr, string token)
+        {
+            if (string.IsNullOrWhiteSpace(classAttr) || string.IsNullOrWhiteSpace(token)) return false;
+            var tokens = classAttr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var t in tokens)
+                if (t.Equals(token, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+
+        /// <summary>Safely add a CSS class to a GridViewRow without removing existing classes.</summary>
+        private void AddCssClass(GridViewRow row, string cssClass)
+        {
+            if (row == null) return;
+            string current = row.CssClass ?? String.Empty;
+            if (!HasCssToken(current, cssClass))
+                row.CssClass = (current + " " + cssClass).Trim();
+        }
+
+        /// <summary>Remove given css tokens from row.CssClass.</summary>
+        private void RemoveCssClass(GridViewRow row, string cssClasses)
+        {
+            if (row == null) return;
+            if (string.IsNullOrWhiteSpace(row.CssClass)) return;
+
+            var remove = cssClasses.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var keepList = new System.Collections.Generic.List<string>();
+            foreach (var t in row.CssClass.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                bool rem = false;
+                foreach (var r in remove) if (t.Equals(r, StringComparison.OrdinalIgnoreCase)) { rem = true; break; }
+                if (!rem) keepList.Add(t);
+            }
+            row.CssClass = string.Join(" ", keepList);
+        }
 
         private void BulkUpdateSelectedDetails(string newStatus)
         {

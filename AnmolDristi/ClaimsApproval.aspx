@@ -322,9 +322,6 @@
             }
         }
     </style>
-
-
-
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <asp:HiddenField ID="hfActionRequestId" runat="server" />
@@ -349,13 +346,8 @@
                         <div class="x_content bg-light p-3 rounded-bottom">
                             <div class="card-box table-responsive">
                                 <asp:Panel ID="pnlRequests" runat="server">
-                                    <asp:GridView ID="gvRequests" runat="server"
-                                        CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
-                                        AutoGenerateColumns="false"
-                                        AllowPaging="true" PageSize="20" OnPageIndexChanging="gvRequests_PageIndexChanging"
-                                        OnRowCommand="gvRequests_RowCommand"
-                                        DataKeyNames="ApprovalRequestId"
-                                        GridLines="None">
+                                    <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
+                                        AutoGenerateColumns="false" AllowPaging="true" PageSize="20" OnPageIndexChanging="gvRequests_PageIndexChanging" OnRowCommand="gvRequests_RowCommand" DataKeyNames="ApprovalRequestId" GridLines="None">
                                         <HeaderStyle CssClass="gentilia-table-header" />
                                         <RowStyle CssClass="gentilia-row" />
                                         <AlternatingRowStyle CssClass="gentilia-row-alt" />
@@ -389,18 +381,11 @@
                                             <asp:TemplateField HeaderText="Actions" HeaderStyle-Width="100px">
                                                 <ItemTemplate>
                                                     <div class="action-buttons btn-group" role="group" aria-label="Actions">
-                                                        <asp:LinkButton ID="lnkView" runat="server"
-                                                            CommandName="View"
-                                                            CommandArgument='<%# Eval("ApprovalRequestId") %>'
-                                                            CssClass="btn btn-sm gentilia-btn-primary">
+                                                        <asp:LinkButton ID="lnkView" runat="server" CommandName="View" CommandArgument='<%# Eval("ApprovalRequestId") %>' CssClass="btn btn-sm gentilia-btn-primary">
                                                             <i class="fa fa-eye"></i> View
                                                         </asp:LinkButton>
 
-                                                        <asp:LinkButton ID="lnkApproveQuick" runat="server"
-                                                            Visible="false"
-                                                            CommandName="ApproveQuick"
-                                                            CommandArgument='<%# Eval("ApprovalRequestId") %>'
-                                                            CssClass="btn btn-sm gentilia-btn-success">
+                                                        <asp:LinkButton ID="lnkApproveQuick" runat="server" Visible="false" CommandName="ApproveQuick" CommandArgument='<%# Eval("ApprovalRequestId") %>' CssClass="btn btn-sm gentilia-btn-success">
                                                             <i class="fa fa-check"></i> Approve
                                                         </asp:LinkButton>
                                                     </div>
@@ -478,6 +463,17 @@
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
+                                            <asp:TemplateField HeaderText="View Details" ItemStyle-Width="7%" HeaderStyle-HorizontalAlign="Center">
+                                                <ItemTemplate>
+                                                    <asp:Button ID="btnExp" runat="server" CssClass="btn btn-sm btn-outline-info btn-expenses" Text="Receipts" />
+                                                    <asp:HiddenField ID="hfExpensesJson" runat="server" Value='<%# Eval("ExpensesJson") %>' />
+                                                    <a href="javascript:void(0);" class="open-expenses-modal small" title="Open expense details">
+                                                        <i class="fa fa-eye"></i>
+                                                    </a>
+                                                </ItemTemplate>
+                                                <FooterTemplate></FooterTemplate>
+                                            </asp:TemplateField>
+
                                             <asp:TemplateField HeaderText="Status" ItemStyle-Width="5%">
                                                 <ItemTemplate>
                                                     <span data-toggle="tooltip"
@@ -570,6 +566,27 @@
                     <div class="modal-footer">
                         <asp:Label ID="lblModalMessage" runat="server" CssClass="text-danger mr-auto" />
                         <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#detailsModal').modal('hide');">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal HTML (place once on the page, e.g. below the GridView) -->
+        <div class="modal fade" id="expensesModal" tabindex="-1" role="dialog" aria-labelledby="expensesModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fa fa-receipt"></i>Expense Details</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="expensesModalBody">Loading…</div>
+                    </div>
+                    <div class="modal-footer">
+                        <small class="text-muted mr-auto">Tip: hover the receipt icon for a quick view.</small>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>
@@ -953,7 +970,7 @@
         });
     </script>
 
-    <script>
+    <script type="text/javascript">
         /* small enhancements: tooltips, row selection highlight, sticky header support (requires jQuery + bootstrap tooltip) */
         (function ($) {
             $(function () {
@@ -996,4 +1013,329 @@
             });
         })(jQuery);
     </script>
+
+    <script type="text/javascript">
+        /* --- helpers (kept, lightly cleaned) ------------------------------------- */
+        function htmlDecode(encoded) {
+            if (!encoded) return encoded;
+            var e = document.createElement('textarea');
+            e.innerHTML = encoded;
+            return e.value;
+        }
+
+        function htmlEncode(s) {
+            if (s === null || s === undefined) return '';
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function parseExpensesJson(jsonStr) {
+            if (!jsonStr) return null;
+            var trimmed = String(jsonStr).trim();
+            try {
+                if (trimmed.charAt(0) === '[' || trimmed.charAt(0) === '{') {
+                    return JSON.parse(trimmed);
+                }
+            } catch (e) { /* fallthrough */ }
+
+            try {
+                var decoded = htmlDecode(jsonStr).trim();
+
+                // Wrap if SQL missed [] or objects are concatenated
+                if (decoded.indexOf('},{') !== -1 && decoded.charAt(0) === '{') {
+                    decoded = '[' + decoded + ']';
+                }
+                if (decoded.indexOf('}{') !== -1 && decoded.indexOf('},{') === -1) {
+                    decoded = decoded.replace(/}\s*{/g, '},{');
+                    decoded = '[' + decoded + ']';
+                }
+
+                return JSON.parse(decoded);
+            } catch (ex) {
+                console.error("Failed to parse expenses JSON:", ex, jsonStr);
+                return null;
+            }
+        }
+
+        function maybeParsePolicySnapshot(policySnapshot) {
+            if (!policySnapshot) return null;
+            if (typeof policySnapshot === 'object') return policySnapshot;
+
+            try {
+                var text = htmlDecode(policySnapshot).trim();
+                if (text.charAt(0) === '{' || text.charAt(0) === '[')
+                    return JSON.parse(text);
+
+                var obj = {};
+                if (text.indexOf('=') !== -1 && text.indexOf(';') !== -1) {
+                    var parts = text.split(';');
+                    for (var i = 0; i < parts.length; i++) {
+                        var kv = parts[i].split('=');
+                        if (kv.length >= 2) obj[kv[0]] = kv.slice(1).join('=');
+                    }
+                    return obj;
+                }
+            } catch (e) {
+                console.warn("PolicySnapshot parse failed:", e);
+            }
+            return null;
+        }
+
+        /* --- modal renderer ----------------------------------------------------- */
+        function openExpensesModal(jsonStr) {
+            var arr = parseExpensesJson(jsonStr);
+            var $body = $('#expensesModalBody').empty();
+
+            if (!arr || arr.length === 0) {
+                $body.html('<p class="text-muted">No expenses for this activity.</p>');
+                $('#expensesModal').modal('show');
+                return;
+            }
+
+            var html = '<div class="table-responsive"><table class="table table-sm table-striped table-bordered mb-0">' +
+                '<thead><tr>' +
+                '<th style="width:40px">#</th>' +
+                '<th>Type</th>' +
+                '<th>Date</th>' +
+                '<th>Purpose / Policy</th>' +
+                '<th class="text-right">Amount</th>' +
+                '<th>Bill No</th>' +
+                '</tr></thead><tbody>';
+
+            for (var i = 0; i < arr.length; i++) {
+                var ex = arr[i] || {};
+                var dateStr = ex.ExpenseDate ? ex.ExpenseDate : '';
+                try {
+                    var d = new Date(ex.ExpenseDate);
+                    if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
+                } catch (e) { }
+
+                var amt = (ex.Amount != null && !isNaN(ex.Amount)) ? Number(ex.Amount).toFixed(2) : (ex.Amount || '');
+                var billHtml = '';
+                if (ex.BillNo) {
+                    if (ex.AttachmentPath) {
+                        var href = ex.AttachmentPath.replace(/"/g, '&quot;');
+                        billHtml = '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' +
+                                   htmlEncode(ex.BillNo) + '</a>';
+                    } else {
+                        billHtml = '<span class="text-muted">' + htmlEncode(ex.BillNo) + '</span>';
+                    }
+                } else {
+                    billHtml = '<span class="text-muted">—</span>';
+                }
+
+                var totalAmt = 0;
+                for (var i = 0; i < arr.length; i++) {
+                    var a = parseFloat(arr[i].Amount);
+                    if (!isNaN(a)) totalAmt += a;
+                }
+
+                var ps = maybeParsePolicySnapshot(ex.PolicySnapshot);
+                var psHtml = '';
+                if (ps) {
+                    if (ps.PolicyMode)
+                        psHtml = '<small class="text-muted">Mode: <strong>' + htmlEncode(ps.PolicyMode) + '</strong></small>';
+                    else if (typeof ps === 'object') {
+                        var keys = Object.keys(ps).slice(0, 3);
+                        var parts = [];
+                        for (var k = 0; k < keys.length; k++)
+                            parts.push(keys[k] + '=' + htmlEncode(ps[keys[k]]));
+                        psHtml = '<small class="text-muted">' + parts.join('; ') + '</small>';
+                    }
+                }
+
+                html += '<tr>' +
+                    '<td>' + (i + 1) + '</td>' +
+                    '<td>' + htmlEncode(ex.ExpenseType || '') + '</td>' +
+                    '<td>' + htmlEncode(dateStr) + '</td>' +
+                    '<td>' + htmlEncode(ex.Purpose || '') + (psHtml ? '<br/>' + psHtml : '') + '</td>' +
+                    '<td class="text-right">' + htmlEncode(amt) + (ex.Currency ? ' ' + htmlEncode(ex.Currency) : '') + '</td>' +
+                    '<td>' + billHtml + '</td>' +
+                    '</tr>';
+
+                // --- append total row ---
+                html += '<tr class="font-weight-bold bg-light">' +
+                        '<td colspan="4" class="text-right">Total</td>' +
+                        '<td class="text-right">' + totalAmt.toFixed(2) + '</td>' +
+                        '<td></td>' +
+                        '</tr>';
+            }
+
+            html += '</tbody></table></div>';
+            $body.html(html);
+            $('#expensesModal').modal('show');
+        }
+
+        /* --- popover summary renderer ------------------------------------------ */
+        function makePopoverContentFromJson(jsonStr) {
+            var arr = parseExpensesJson(jsonStr);
+            if (!arr) return '<small class="text-danger">Invalid data</small>';
+            if (!arr.length) return '<small class="text-muted">No expenses</small>';
+
+            var html = '<div class="small"><table class="table table-sm mb-0"><tbody>';
+            for (var i = 0; i < Math.min(arr.length, 5) ; i++) {
+                var ex = arr[i] || {};
+                html += '<tr><td style="white-space:nowrap;">' + htmlEncode(ex.ExpenseType || '') +
+                    '</td><td class="text-right" style="white-space:nowrap;">' +
+                    (ex.Amount != null && !isNaN(ex.Amount) ? Number(ex.Amount).toFixed(2) : '') + ' ' +
+                    (ex.Currency || '') + '</td></tr>';
+            }
+            if (arr.length > 5)
+                html += '<tr><td colspan="2" class="text-muted">+' + (arr.length - 5) + ' more</td></tr>';
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        /* --- Event wiring and robust manual popover handling -------------------- */
+        (function ($) {
+            if (typeof $ === 'undefined') {
+                console.error('jQuery not found — event wiring aborted.');
+                return;
+            }
+
+            // utility: read payload trying multiple places
+            function readExpensesPayloadInternal($btn) {
+                if (!$btn || !$btn.length) return null;
+                // 1) data-expenses attribute
+                var attr = $btn.attr('data-expenses');
+                if (attr !== undefined && attr !== null && $.trim(attr) !== '') {
+                    return attr;
+                }
+                // 2) dataset (older browsers may not have this)
+                try {
+                    if ($btn[0] && $btn[0].dataset && $btn[0].dataset.expenses) {
+                        return $btn[0].dataset.expenses;
+                    }
+                } catch (ignore) { }
+
+                // 3) hidden field in same row/cell
+                var $row = $btn.closest('tr');
+                if ($row && $row.length) {
+                    var $hf = $row.find('input[type=hidden][id$=hfExpensesJson]').first();
+                    if ($hf && $hf.length && $.trim($hf.val()) !== '') {
+                        return $hf.val();
+                    }
+                    $hf = $row.find('input[type=hidden].hfExpensesJson').first();
+                    if ($hf && $hf.length && $.trim($hf.val()) !== '') {
+                        return $hf.val();
+                    }
+                }
+
+                // 4) jQuery data
+                var jdata = $btn.data('expenses');
+                if (jdata) {
+                    return jdata;
+                }
+
+                return null;
+            }
+
+            // expose a safe global wrapper in case other pages call this
+            window.readExpensesPayloadFromBtn = function (elOrJq) {
+                try {
+                    return readExpensesPayloadInternal($(elOrJq));
+                } catch (ex) {
+                    return null;
+                }
+            };
+
+            // delegate click to open modal (keeps same behaviour)
+            $(document).on('click', '.open-expenses-modal, .btn-expenses', function (e) {
+                e.preventDefault();
+                var $t = $(this);
+                var payload = null;
+
+                if ($t.hasClass('btn-expenses')) {
+                    payload = readExpensesPayloadInternal($t);
+                } else {
+                    var $row = $t.closest('tr');
+                    var $btnInRow = $row.find('.btn-expenses').first();
+                    if ($btnInRow && $btnInRow.length) payload = readExpensesPayloadInternal($btnInRow);
+                    else {
+                        var hf = $row.find('input[type=hidden][id$=hfExpensesJson], input[type=hidden].hfExpensesJson').first();
+                        if (hf && hf.length) payload = hf.val();
+                    }
+                }
+
+                openExpensesModal(payload);
+            });
+
+            // Manual popover: show on enter, hide on leave (works reliably with delegated elements
+            // and prevents immediate hide when moving pointer to popover content)
+            var hideTimer = null;
+            function clearHideTimer() { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } }
+
+            $(document).on('mouseenter', '.btn-expenses', function (e) {
+                var $btn = $(this);
+                clearHideTimer();
+
+                // build fresh content
+                var payload = readExpensesPayloadInternal($btn);
+                var contentHtml = makePopoverContentFromJson(payload);
+
+                // if already has a popover instance, update by disposing & reinit
+                try {
+                    $btn.popover && $btn.popover('dispose');
+                } catch (ignore) { }
+
+                $btn.popover({
+                    html: true,
+                    content: contentHtml,
+                    trigger: 'manual',    // manual trigger — we show/hide explicitly
+                    placement: $btn.data('placement') || 'left',
+                    container: 'body'
+                });
+
+                // show it
+                $btn.popover('show');
+
+                // handle leaving the button — start a short timer to hide, but cancel if we enter popover
+                var pid = $btn.data('popover-id') || null;
+                var $pop = null;
+                try {
+                    // find the actual popover in DOM (Bootstrap uses .popover)
+                    $pop = $('body').find('.popover').last();
+                } catch (ignore) { $pop = null; }
+
+                // when mouse enters popover, cancel hide
+                if ($pop && $pop.length) {
+                    $pop.on('mouseenter.expensePopover', function () {
+                        clearHideTimer();
+                    }).on('mouseleave.expensePopover', function () {
+                        hideTimer = setTimeout(function () {
+                            try { $btn.popover && $btn.popover('dispose'); } catch (ignore) { }
+                        }, 150);
+                    });
+                }
+            });
+
+            // mouseleave on button: schedule hide (short delay to allow moving into popover)
+            $(document).on('mouseleave', '.btn-expenses', function (e) {
+                var $btn = $(this);
+                clearHideTimer();
+                hideTimer = setTimeout(function () {
+                    try { $btn.popover && $btn.popover('dispose'); } catch (ignore) { }
+                }, 150);
+            });
+
+            // clean up on unload
+            $(window).on('beforeunload', function () {
+                try { $('.btn-expenses').popover && $('.btn-expenses').popover('dispose'); } catch (ignore) { }
+            });
+
+            // optional: debug context menu to inspect element attributes
+            $(document).on('contextmenu', '.btn-expenses, .open-expenses-modal', function (e) {
+                var $el = $(this);
+                console.log('DEBUG element:', $el.get(0), 'attrs:', $el.prop('attributes'));
+            });
+
+            console.info('Expenses event wiring active — hover .btn-expenses or click .open-expenses-modal');
+        })(jQuery);
+    </script>
+
+
 </asp:Content>
