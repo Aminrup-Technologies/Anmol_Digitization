@@ -12,7 +12,7 @@ using System.Web.UI.HtmlControls;
 namespace AnmolDristi
 {
     
-    public partial class ClaimsApproval : System.Web.UI.Page
+    public partial class ClaimsApproval : BasePage
     {
         private string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         // class-level accumulators (page-level)
