@@ -620,10 +620,10 @@
                                                             <i class="fa fa-pencil"></i>
                                                         </asp:LinkButton>--%>
 
-                                                        <asp:LinkButton ID="lnkEdit" runat="server" CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" ToolTip="Edit Kilometers"><i class="fa fa-pencil"></i></asp:LinkButton>
+                                                        <asp:LinkButton ID="lnkEdit" runat="server" CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" ToolTip="Edit Kms"><i class="fa fa-pencil"></i></asp:LinkButton>
 
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
-                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-info" ToolTip="View / Add Expenses">
+                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
                                                             <i class="fa fa-briefcase"></i>
                                                         </asp:LinkButton>
                                                     </ItemTemplate>
@@ -1177,8 +1177,6 @@
         <div class="modal fade" id="policyModal" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
                 <div class="modal-content shadow-lg border-0 rounded-lg overflow-hidden">
-
-                    <!-- Header -->
                     <div class="modal-header bg-primary text-white py-2">
                         <h5 class="modal-title mb-0">
                             <i class="fa fa-file-alt mr-2"></i>Resolved Policy
@@ -1190,11 +1188,7 @@
                             <span aria-hidden="true">×</span>
                         </button>
                     </div>
-
-                    <!-- Body -->
                     <div class="modal-body bg-light px-4 pt-3 pb-1">
-
-                        <!-- Top Metadata -->
                         <div class="row mb-3">
                             <div class="col-md-4 col-sm-6 mb-2">
                                 <label class="small text-secondary mb-0">Source</label>
@@ -1213,8 +1207,6 @@
                                 <asp:Label ID="lblPolicySpecificity" runat="server" CssClass="d-block text-primary font-weight-semibold">—</asp:Label>
                             </div>
                         </div>
-
-                        <!-- Effective Dates & Active -->
                         <div class="row mb-3">
                             <div class="col-md-6 col-sm-6 mb-2">
                                 <label class="small text-secondary mb-0">Effective</label>
@@ -1229,8 +1221,6 @@
                                 <asp:Label ID="lblPolicyDesigGrade" runat="server" CssClass="d-block text-dark font-weight-semibold">—</asp:Label>
                             </div>
                         </div>
-
-                        <!-- Resolved Numeric Values -->
                         <div class="card shadow-sm border-0 mb-3">
                             <div class="card-header bg-gradient-primary text-black py-1 px-3">
                                 <strong><i class="fa fa-calculator mr-1"></i>Resolved Capping Limits</strong>
@@ -1264,14 +1254,10 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Remarks -->
                         <div class="form-group mb-3">
                             <label class="small text-secondary mb-1">Remarks</label>
                             <asp:Label ID="lblResolvedRemarks" runat="server" CssClass="d-block text-dark bg-white border rounded p-2">—</asp:Label>
                         </div>
-
-                        <!-- Raw JSON Toggle -->
                         <div class="form-group" id="Toggler" runat="server" visible="false">
                             <asp:Button ID="btnToggleRawJson" runat="server" CssClass="btn btn-sm btn-outline-dark mb-2"
                                 OnClientClick="$('#policyJsonRaw').toggle(); return false;" Text="Toggle Raw JSON" />
@@ -1280,13 +1266,9 @@
                                 Visible="false"></asp:TextBox>
                         </div>
                     </div>
-
-                    <!-- Footer -->
                     <div class="modal-footer bg-light border-top">
-                        <asp:LinkButton ID="lnkCopyJson" runat="server" CssClass="btn btn-sm btn-outline-primary" Visible="false"
-                            OnClientClick="copyPolicyJson(); return false;">Copy JSON</asp:LinkButton>
-                        <button type="button" class="btn btn-danger btn-sm" data-dismiss="modal"
-                            onclick="$('#policyModal').modal('hide');">
+                        <asp:LinkButton ID="lnkCopyJson" runat="server" CssClass="btn btn-sm btn-outline-primary" Visible="false" OnClientClick="copyPolicyJson(); return false;">Copy JSON</asp:LinkButton>
+                        <button type="button" class="btn btn-danger btn-sm" data-dismiss="modal" onclick="$('#policyModal').modal('hide');">
                             <i class="fa fa-times mr-1"></i>Close
                         </button>
                     </div>

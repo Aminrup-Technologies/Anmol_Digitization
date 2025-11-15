@@ -1304,7 +1304,7 @@ namespace AnmolDristi
             LBL_ExpenseMsg.Text = string.Empty;
 
             // show policy modal
-            ShowPolicyModal();
+            //ShowPolicyModal();
         }
 
         private void ShowPolicyNotificationNew(PolicyResolved policy)
@@ -1344,21 +1344,21 @@ namespace AnmolDristi
 
             // Simple script: prefer PNotify or toastr if present, else alert()
             string script = $@"
-        (function() {{
-            var msg = '{jsMessage}';
-            try {{
-                if (window.PNotify) {{
-                    // PNotify 3 usage pattern (adjust if you use v4)
-                    new PNotify({{ text: msg, type: '{severity}', delay: 2500 }});
-                }} else if (window.toastr) {{
-                    toastr['{severity}'](msg);
-                }} else {{
-                    alert(msg);
-                }}
-            }} catch(e) {{
-                try {{ alert(msg); }} catch(e){{}}
-            }}
-        }})();";
+                (function() {{
+                    var msg = '{jsMessage}';
+                    try {{
+                        if (window.PNotify) {{
+                            // PNotify 3 usage pattern (adjust if you use v4)
+                            new PNotify({{ text: msg, type: '{severity}', delay: 2500 }});
+                        }} else if (window.toastr) {{
+                            toastr['{severity}'](msg);
+                        }} else {{
+                            alert(msg);
+                        }}
+                    }} catch(e) {{
+                        try {{ alert(msg); }} catch(e){{}}
+                    }}
+                }})();";
 
             if (ScriptManager.GetCurrent(Page) != null)
             {
