@@ -2,8 +2,6 @@
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style type="text/css">
-        /* ===== Finance Grid Styling (ASP.NET 4.5.2 compatible) ===== */
-        /* scroll container for sticky header */
         .grid-container {
             max-height: 480px;
             overflow-y: auto;
@@ -14,7 +12,6 @@
             background: #fff;
         }
 
-        /* base table setup */
         .table-finance {
             width: 100%;
             border-collapse: collapse;
@@ -23,7 +20,6 @@
             border: 1px solid #d3d9e3;
         }
 
-            /* HEADER - polished gradient, shadow & subtle glow */
             .table-finance thead th {
                 position: sticky;
                 top: 0;
@@ -48,14 +44,12 @@
                     border-top-right-radius: 6px;
                 }
 
-                /* header hover and transition */
                 .table-finance thead th:hover {
                     background: linear-gradient(180deg,#496a91 0%,#3c5674 100%);
                     transition: background 0.25s ease-in-out;
                     cursor: default;
                 }
 
-            /* DATA ROWS */
             .table-finance td {
                 border: 1px solid #e1e1e1;
                 padding: 6px 8px;
@@ -64,12 +58,10 @@
                 background-color: #fff;
             }
 
-            /* ZEBRA STRIPING */
             .table-finance tr:nth-child(even) td {
                 background-color: #fafbfc;
             }
 
-            /* FOOTER ROW */
             .table-finance tfoot td, .table-finance .grid-footer {
                 background-color: #eef3fa;
                 font-weight: 600;
@@ -77,14 +69,12 @@
                 border-top: 2px solid #b7c5da;
             }
 
-            /* TOTAL HIGHLIGHT */
             .table-finance .grand-total-cell {
                 background-color: #e2e8f6 !important;
                 color: #002b59;
                 font-weight: 700;
             }
 
-            /* ALIGNMENT HELPERS */
             .table-finance .currency {
                 text-align: right;
                 white-space: nowrap;
@@ -111,7 +101,6 @@
             margin-right: 4px;
         }
 
-        /* RESPONSIVE */
         @media (max-width:768px) {
             .table-finance th, .table-finance td {
                 font-size: 12px;
@@ -133,7 +122,6 @@
             margin-right: 6px;
         }
 
-        /* Expense modal visual polish */
         #expenseModal .modal-content {
             border-radius: 0.6rem;
             box-shadow: 0 6px 28px rgba(0,0,0,0.12);
@@ -160,7 +148,6 @@
             background: #fff;
         }
 
-        /* Policy summary box */
         #expenseModal .policy-summary {
             border: 2px solid #dbe9ff;
             background: linear-gradient(180deg,#f7fbff 0%, #ffffff 100%);
@@ -172,7 +159,7 @@
             align-items: center;
             flex-wrap: wrap;
         }
-            /* emphasized selected policy mode label */
+
             #expenseModal .policy-summary .policy-mode {
                 background: rgba(13,110,253,0.08);
                 border: 1px solid rgba(13,110,253,0.12);
@@ -523,6 +510,7 @@
                         <div class="x_content">
                             <div class="row">
                                 <div class="col-md-12 col-sm-12">
+
                                     <div class="card-box table-responsive grid-container">
                                         <asp:GridView ID="gvActivities" runat="server" AutoGenerateColumns="false"
                                             CssClass="table table-bordered table-finance table-responsive" HeaderStyle-CssClass="grid-header" FooterStyle-CssClass="grid-footer"
@@ -620,7 +608,7 @@
                                                             <i class="fa fa-pencil"></i>
                                                         </asp:LinkButton>--%>
 
-                                                        <asp:LinkButton ID="lnkEdit" runat="server" CommandName="EditRow" CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-primary" ToolTip="Edit Kms"><i class="fa fa-pencil"></i></asp:LinkButton>
+                                                        <asp:LinkButton ID="lnkEdit" runat="server" CommandName="OpenEditModal" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("TotalDistanceKM") + "|" + Eval("MinAllowedKM") + "|" + Eval("MaxAllowedKM") + "|" + Eval("ActivityDate")%>' CssClass="btn btn-sm btn-primary" ToolTip="Edit Kms"><i class="fa fa-pencil"></i></asp:LinkButton>
 
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
                                                             CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
@@ -689,6 +677,9 @@
                                             </Columns>
                                         </asp:GridView>
                                     </div>
+
+
+
                                 </div>
                             </div>
                         </div>
@@ -819,6 +810,71 @@
                 </div>
             </div>
         </div>
+
+
+        <div class="modal fade" id="editKmModal" tabindex="-1" role="dialog" aria-labelledby="editKmModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editKmModalLabel">Modify Travelled Distance (in KM) for
+                            <asp:Label ID="lbl_kmmodal_date" runat="server" Text="NA" Font-Bold="true" ForeColor="#009933"></asp:Label></h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <asp:HiddenField ID="hdnActivityId" runat="server" />
+                        <asp:HiddenField ID="hdnOriginalKm" runat="server" />
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="txtModalKM">Distance Travelled (in KM)</label><span style="color:red;">*</span>
+                                    <asp:TextBox ID="txtModalKM" runat="server" CssClass="form-control" />
+                                    <span id="spClientKmError" class="text-danger" style="display: none;"></span>
+                                </div>
+
+                                <div class="form-group">
+                                    <small>Allowed range: <span id="spMinKm">—</span> to <span id="spMaxKm">—</span> km</small>
+                                </div>
+
+                                <asp:Label ID="lblModalCurrentKm" runat="server" CssClass="text-muted"></asp:Label>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Change for Reason (Mandatory)</label><span style="color:red;">*</span>
+                                    <asp:TextBox ID="txtKmReason" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <h6 style="color:darkblue;">KM Change History</h6>
+                        <div class="table-responsive">
+                            <asp:GridView ID="gvKmHistory" runat="server" AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" CssClass="table table-sm table-bordered table-finance table-responsive"
+                                EmptyDataText="No history available">
+                                <Columns>
+                                    <asp:BoundField DataField="HistoryId" HeaderText="ID" ItemStyle-Width="5%" />
+                                    <asp:BoundField DataField="ModifiedDateTime" HeaderText="Changed On" DataFormatString="{0:dd-MM-yyyy HH:mm:ss tt}" />
+                                    <asp:BoundField DataField="ModifiedBy" HeaderText="By" />
+                                    <asp:BoundField DataField="OldKM" HeaderText="Old KM" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                    <asp:BoundField DataField="NewKM" HeaderText="New KM" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                    <asp:BoundField DataField="Reason" HeaderText="Reason" />
+                                </Columns>
+                            </asp:GridView>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <asp:Button ID="btnSaveKm" runat="server" CssClass="btn btn-success" Text="Save changes" OnClick="btnSaveKm_Click" />
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         <!-- Submit Confirmation Modal -->
         <div class="modal fade" id="submitConfirmModal" tabindex="-1" role="dialog" aria-labelledby="submitConfirmModalLabel" aria-hidden="true">
@@ -1060,7 +1116,7 @@
                                                 <th>Date</th>
                                                 <th>Details</th>
                                                 <th>Amount</th>
-                                                <th>BillNo</th>
+                                                <th>Bill No</th>
                                                 <th>Uploads</th>
                                                 <th style="width: 110px;">Actions</th>
                                             </tr>
@@ -1079,8 +1135,8 @@
 
                                         <td>
                                             <%# (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
-                                                ? (Eval("TravelDate") == DBNull.Value ? "—" : Eval("TravelDate", "{0:yyyy-MM-dd}"))
-                                                : (Eval("ExpenseDate") == DBNull.Value ? "—" : Eval("ExpenseDate", "{0:yyyy-MM-dd}")) %>
+                                                ? (Eval("TravelDate") == DBNull.Value ? "—" : Eval("TravelDate", "{0:dd-MM-yyyy}"))
+                                                : (Eval("ExpenseDate") == DBNull.Value ? "—" : Eval("ExpenseDate", "{0:dd-MM-yyyy}")) %>
                                         </td>
 
                                         <td style="max-width: 280px;">
@@ -1094,8 +1150,8 @@
                                                 )
                                               : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
                                                 ? String.Format("{0} - {1} {2}",
-                                                    (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("FromDate"))),
-                                                    (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("ToDate"))),
+                                                    (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
+                                                    (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
                                                     (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
                                                   )
                                                 : (Eval("Purpose") ?? "—")
@@ -1110,8 +1166,8 @@
                                                   )
                                                 : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
                                                   ? String.Format("{0} - {1} {2}",
-                                                      (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("FromDate"))),
-                                                      (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:yyyy-MM-dd}", Eval("ToDate"))),
+                                                      (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
+                                                      (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
                                                       (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
                                                     )
                                                   : (Eval("Purpose") ?? "—")
@@ -2655,6 +2711,170 @@
                 console.error("❌ [applyPolicyModeFromServer] Exception:", err);
             }
         }
+
+        // Called from server (ScriptManager.RegisterStartupScript) OR we can open via JS directly
+        function openEditKmModal(activityId, currentKm, minKm, maxKm) {
+            // set hidden field and textbox values (IDs may be different because of ClientIDMode)
+            var hdn = document.getElementById('<%= hdnActivityId.ClientID %>');
+            var txt = document.getElementById('<%= txtModalKM.ClientID %>');
+            var spMin = document.getElementById('spMinKm');
+            var spMax = document.getElementById('spMaxKm');
+            var lblCurrent = document.getElementById('<%= lblModalCurrentKm.ClientID %>');
+
+            hdn.value = activityId;
+            txt.value = currentKm;
+            spMin.innerText = (minKm === '' || minKm === 'null') ? '—' : minKm;
+            spMax.innerText = (maxKm === '' || maxKm === 'null') ? '—' : maxKm;
+            lblCurrent.innerText = 'Current: ' + currentKm + ' km';
+
+            // hide previous errors
+            document.getElementById('spClientKmError').style.display = 'none';
+
+            // show modal (Bootstrap)
+            $('#editKmModal').modal('show');
+        }
+
+        // simple client validation before submit (optional)
+        function validateModalKm() {
+            var txt = document.getElementById('<%= txtModalKM.ClientID %>');
+            var min = parseFloat(document.getElementById('spMinKm').innerText || NaN);
+            var max = parseFloat(document.getElementById('spMaxKm').innerText || NaN);
+            var val = parseFloat(txt.value);
+
+            if (!isNaN(min) && val < min) {
+                document.getElementById('spClientKmError').style.display = '';
+                document.getElementById('spClientKmError').innerText = 'Value cannot be less than ' + min;
+                return false;
+            }
+            if (!isNaN(max) && val > max) {
+                document.getElementById('spClientKmError').style.display = '';
+                document.getElementById('spClientKmError').innerText = 'Value cannot exceed ' + max;
+                return false;
+            }
+            document.getElementById('spClientKmError').style.display = 'none';
+            return true;
+        }
+
+        // hook client validation to Save button to avoid server trip if invalid
+        $(function () {
+            $('#<%= btnSaveKm.ClientID %>').on('click', function (e) {
+                if (!validateModalKm()) {
+                    // prevent postback if invalid (in case of client-side)
+                    e.preventDefault();
+                    return false;
+                }
+                // let server handle saving
+            });
+        });
+
+            $(document).on('hidden.bs.modal', '#editKmModal', function () {
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open');
+            });
+
+            // clear client validation message when modal shown
+            $(document).on('shown.bs.modal', '#editKmModal', function () {
+                $('#spClientKmError').hide();
+            });
+    </script>
+    <script>
+        (function () {
+            // helper: get element by server control client id
+            var btnSaveId = '<%= btnSaveKm.ClientID %>';
+            var txtKmId = '<%= txtModalKM.ClientID %>';
+            var hdnOrigKmId = '<%= hdnOriginalKm.ClientID %>';
+            var txtReasonId = '<%= txtKmReason.ClientID %>';
+            var spErrId = 'spClientKmError';
+
+            function showError(msg) {
+                var el = document.getElementById(spErrId);
+                if (el) {
+                    el.style.display = '';
+                    el.innerText = msg;
+                } else {
+                    alert(msg);
+                }
+            }
+
+            function clearError() {
+                var el = document.getElementById(spErrId);
+                if (el) {
+                    el.style.display = 'none';
+                    el.innerText = '';
+                }
+            }
+
+            function parseDecimal(n) {
+                if (n === null || n === undefined) return NaN;
+                // remove commas and trim
+                n = String(n).replace(/,/g, '').trim();
+                return parseFloat(n);
+            }
+
+            function validateBeforeSave() {
+                clearError();
+
+                var txt = document.getElementById(txtKmId);
+                var orig = document.getElementById(hdnOrigKmId);
+                var reason = document.getElementById(txtReasonId);
+
+                if (!txt) { showError('KM input not found.'); return false; }
+
+                var newKm = parseDecimal(txt.value);
+                if (isNaN(newKm)) {
+                    showError('Please enter a valid numeric KM value.');
+                    txt.focus();
+                    return false;
+                }
+
+                var origKm = orig ? parseDecimal(orig.value) : NaN;
+                if (!isNaN(origKm) && newKm === origKm) {
+                    showError('KM value has not changed. Please modify the KM before saving.');
+                    txt.focus();
+                    return false;
+                }
+
+                // Reason required when KM changed
+                if (!reason) {
+                    showError('Reason control not found.');
+                    return false;
+                }
+                var reasonVal = String(reason.value || '').trim();
+                if (reasonVal.length === 0) {
+                    showError('Please provide a reason for changing the KM.');
+                    reason.focus();
+                    return false;
+                }
+
+                // Optional: additional client-side min/max check could be placed here using spMinKm/spMaxKm text.
+
+                // all good
+                clearError();
+                return true;
+            }
+
+            // Attach handler on page load
+            document.addEventListener('DOMContentLoaded', function () {
+                var btn = document.getElementById(btnSaveId);
+                if (!btn) return;
+
+                // Use click handler to block postback if invalid
+                btn.addEventListener('click', function (ev) {
+                    if (!validateBeforeSave()) {
+                        // prevent the ASP.NET postback
+                        ev.preventDefault();
+                        return false;
+                    }
+                    // allow postback to continue
+                });
+
+                // Clear error when user edits fields
+                var txt = document.getElementById(txtKmId);
+                var reason = document.getElementById(txtReasonId);
+                if (txt) txt.addEventListener('input', clearError);
+                if (reason) reason.addEventListener('input', clearError);
+            });
+        })();
     </script>
 
 </asp:Content>

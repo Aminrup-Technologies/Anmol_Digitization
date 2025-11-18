@@ -1734,7 +1734,73 @@ namespace AnmolDristi
                 ScriptManager.RegisterStartupScript(this, this.GetType(), skey, "$('#expenseModal').modal('show');", true);
             }
 
+            else if (e.CommandName == "OpenEditModal")
+            {
+                //// CommandArgument: ActivityId|TotalDistanceKM|MinAllowedKM|MaxAllowedKM
+                //string arg = e.CommandArgument as string;
+                //if (string.IsNullOrEmpty(arg)) return;
 
+                //string[] parts = arg.Split('|');
+                //string activityId = parts.Length > 0 ? parts[0] : "";
+                //string currentKm = parts.Length > 1 ? parts[1] : "0";
+                //string minKm = parts.Length > 2 ? parts[2] : "";
+                //string maxKm = parts.Length > 3 ? parts[3] : "";
+
+                //// set server controls (HiddenField, TextBox, labels)
+                //hdnActivityId.Value = activityId;
+                //txtModalKM.Text = currentKm;
+                //lblModalCurrentKm.Text = "Current: " + currentKm + " km";
+
+                //// call client function to open modal and pass min/max (use RegisterStartupScript)
+                //string script = string.Format("openEditKmModal('{0}', '{1}', '{2}', '{3}');",
+                //    activityId.Replace("'", "\\'"),
+                //    currentKm.Replace("'", "\\'"),
+                //    minKm.Replace("'", "\\'"),
+                //    maxKm.Replace("'", "\\'")
+                //);
+
+                //ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModalScript", script, true);
+
+                // CommandArgument expected to be: ActivityId|TotalDistanceKM|MinAllowedKM|MaxAllowedKM
+                string arg = Convert.ToString(e.CommandArgument);
+                string[] parts = arg.Split('|');
+
+                int activityId = 0;
+                int.TryParse(parts[0], out activityId);
+                string currentKm = parts.Length > 1 ? parts[1] : "0";
+                string minKm = parts.Length > 2 ? parts[2] : "";
+                string maxKm = parts.Length > 3 ? parts[3] : "";
+                string activityDate = parts.Length > 4 ? parts[4] : "";
+
+                DateTime parsed;
+                if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
+                {
+                    lbl_kmmodal_date.Text = parsed.ToString("dd-MM-yyyy");
+                }
+                // set modal controls
+                //hdnActivityId.Value = activityId.ToString();
+                //txtModalKM.Text = currentKm;
+                //lblModalCurrentKm.Text = "Current: " + currentKm + " km";
+
+                hdnActivityId.Value = activityId.ToString();
+                txtModalKM.Text = currentKm;
+                hdnOriginalKm.Value = currentKm;               // <--- set original KM
+                lblModalCurrentKm.Text = "Current: " + currentKm + " km";
+
+                // set JS-visible min/max - we will pass them to the modal UI via RegisterStartupScript
+                string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
+                string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
+
+                // bind history
+                BindKmHistory(activityId);
+
+                // ensure modal opens after server processing
+                string modalId = "editKmModal"; // plain id (we used static id in markup)
+                string script = string.Format("setTimeout(function(){{ $('#{0}').modal('show'); $('#spMinKm').text('{1}'); $('#spMaxKm').text('{2}'); }}, 50);",
+                    modalId, minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
+
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+            }
 
             else if (e.CommandName == "EditRow")
             {
@@ -1789,8 +1855,212 @@ namespace AnmolDristi
                     lbl_msg.Text = sqx.Message;
                 }
             }
-
         }
+
+        private void BindKmHistory(int activityId)
+        {
+            string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            DataTable dt = new DataTable();
+            using (SqlConnection con = new SqlConnection(connStr))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason
+        FROM dbo.SalesDailyActivityKMHistory
+        WHERE ActivityId = @ActivityId
+        ORDER BY HistoryId DESC", con))
+            {
+                cmd.CommandType = CommandType.Text;
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(dt);
+                }
+            }
+
+            gvKmHistory.DataSource = dt;
+            gvKmHistory.DataBind();
+        }
+
+
+        protected void btnSaveKm_Click_OLD17Nov25(object sender, EventArgs e)
+        {
+            decimal newKm;
+            // validate format
+            if (!decimal.TryParse(txtModalKM.Text.Trim(), out newKm))
+            {
+                // show modal error (client side label)
+                ScriptManager.RegisterStartupScript(
+                    this, this.GetType(), "kmInvalidNumber", "document.getElementById('spClientKmError').style.display='';" +
+                    "document.getElementById('spClientKmError').innerText='Please enter a valid number.';", true);
+                return;
+            }
+
+            string activityId = hdnActivityId.Value;
+            if (string.IsNullOrEmpty(activityId))
+            {
+                // silently do nothing
+                return;
+            }
+
+            // ----- OPTIONAL: server-side Min/Max validation -----
+            // If you want stronger rule enforcement:
+            // decimal min = decimal.Parse(hdnMin.Value);
+            // decimal max = decimal.Parse(hdnMax.Value);
+            // if(newKm < min || newKm > max) { ... }
+            // -----------------------------------------------------
+
+            try
+            {
+                string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                using (SqlConnection con = new SqlConnection(connStr))
+                using (SqlCommand cmd = new SqlCommand("usp_UpdateActivityKM", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    cmd.Parameters.AddWithValue("@NewKM", newKm);
+                    cmd.Parameters.AddWithValue("@ModifiedBy", GetCurrentUserLoginId());   // your method
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                // Refresh grid
+                Session.Remove(SESSION_KEY_GV_ACTIVITIES);
+                BindGrid(false);
+
+                // Close modal
+                ScriptManager.RegisterStartupScript(
+                    this, this.GetType(),
+                    "closeKmModal",
+                    "$('#editKmModal').modal('hide');",
+                    true);
+            }
+            catch (Exception ex)
+            {
+                // Show error & reopen modal with same values to avoid losing user data
+                ScriptManager.RegisterStartupScript(
+                    this, this.GetType(),
+                    "kmSaveError",
+                    "alert('Error saving KM: " + ex.Message.Replace("'", "") + "');" +
+                    "$('#editKmModal').modal('show');",
+                    true);
+            }
+        }
+
+        protected void btnSaveKm_Click(object sender, EventArgs e)
+        {
+            decimal newKm;
+            // validate numeric
+            if (!decimal.TryParse(txtModalKM.Text.Trim(), out newKm))
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "kmInvalidNumber",
+                    "document.getElementById('spClientKmError').style.display=''; document.getElementById('spClientKmError').innerText='Please enter a valid number.';", true);
+                return;
+            }
+
+            decimal origKm = 0;
+            if (!decimal.TryParse(hdnOriginalKm.Value, out origKm))
+            {
+                // missing original KM: re-open modal and error
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "kmOrigMissing",
+                    "document.getElementById('spClientKmError').style.display=''; document.getElementById('spClientKmError').innerText='Original KM not found, cannot validate.'; $('#editKmModal').modal('show');", true);
+                return;
+            }
+
+            if (newKm == origKm)
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "kmNotChanged",
+                    "document.getElementById('spClientKmError').style.display=''; document.getElementById('spClientKmError').innerText='KM value has not changed. Please modify before saving.'; $('#editKmModal').modal('show');", true);
+                return;
+            }
+
+            string reason = txtKmReason.Text.Trim();
+            if (string.IsNullOrEmpty(reason))
+            {
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "kmReasonReq",
+                    "document.getElementById('spClientKmError').style.display=''; document.getElementById('spClientKmError').innerText='Please provide a reason for changing the KM.'; $('#editKmModal').modal('show');", true);
+                return;
+            }
+
+            int activityId;
+            if (!int.TryParse(hdnActivityId.Value, out activityId))
+            {
+                // invalid activity id
+                return;
+            }
+
+            string modifiedBy = GetCurrentUserLoginId();
+            //string reason = txtKmReason.Text.Trim();
+
+            try
+            {
+                string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                using (SqlConnection con = new SqlConnection(connStr))
+                {
+                    con.Open();
+                    using (SqlCommand cmd = new SqlCommand("usp_UpdateActivityKM", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                        cmd.Parameters.AddWithValue("@NewKM", newKm);
+                        cmd.Parameters.AddWithValue("@ModifiedBy", modifiedBy);
+                        cmd.Parameters.AddWithValue("@Reason", txtKmReason.Text.Trim()); // pass reason or DBNull.Value
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // 2) OPTIONAL: If you want the Reason saved AND your SP can't be changed,
+                    //    insert the Reason into history by updating the most recent history row for this ActivityId.
+                    //    We will update the latest History row's Reason where ModifiedBy = modifiedBy and NewKM = newKm.
+                    //if (!string.IsNullOrEmpty(reason))
+                    //{
+                    //    using (SqlCommand cmdUpdateReason = new SqlCommand(@"
+                    //        UPDATE TOP (1) dbo.SalesDailyActivityKMHistory
+                    //        SET Reason = @Reason
+                    //        WHERE ActivityId = @ActivityId
+                    //          AND NewKM = @NewKM
+                    //        ORDER BY HistoryId DESC;
+                    //    ", con))
+                    //    {
+                    //        cmdUpdateReason.Parameters.AddWithValue("@Reason", reason);
+                    //        cmdUpdateReason.Parameters.AddWithValue("@ActivityId", activityId);
+                    //        cmdUpdateReason.Parameters.AddWithValue("@NewKM", newKm);
+                    //        cmdUpdateReason.ExecuteNonQuery();
+                    //    }
+                    //}
+                }
+
+                // Refresh grid (main grid) - so updated KM is visible in list
+                // Refresh grid
+                Session.Remove(SESSION_KEY_GV_ACTIVITIES);
+                BindGrid(false);
+
+                // Re-bind history so user can see the change just created
+                BindKmHistory(activityId);
+
+                // Clear reason text so it doesn't persist
+                txtKmReason.Text = string.Empty;
+
+                // Re-open modal (optional) OR close it. Here I close modal and rely on user to re-open to view history,
+                // but since we have freshly bound history, we can show it if needed. I'll re-open and keep it open to show the history update.
+                string modalScript = $"setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('—'); $('#spMaxKm').text('—'); }}, 50);";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "reopenEditKmModal_" + activityId, modalScript, true);
+            }
+            catch (SqlException sqlEx)
+            {
+                // surface DB error
+                string msg = sqlEx.Message.Replace("'", "");
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "kmSaveSqlError", $"alert('Database error: {msg}'); $('#editKmModal').modal('show');", true);
+            }
+            catch (Exception ex)
+            {
+                string msg = ex.Message.Replace("'", "");
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "kmSaveError", $"alert('Error saving KM: {msg}'); $('#editKmModal').modal('show');", true);
+            }
+        }
+
 
         protected void SetPolicyModeAndTrigger_Client(string modeFromDb)
         {
@@ -1880,34 +2150,34 @@ namespace AnmolDristi
 
             // client script that logs clearly to browser console
             string script = $@"
-        (function() {{
-            try {{
-                console.log('%c[Server → Client] applyPolicyModeFromServer about to run','color:#ff9800;font-weight:bold;');
-                if (typeof applyPolicyModeFromServer === 'function') {{
-                    try {{
-                        applyPolicyModeFromServer('{safeMode}');
-                        console.log('%c[Server → Client] applyPolicyModeFromServer executed OK','color:green;font-weight:bold;');
-                    }} catch(e) {{
-                        console.error('%c[Server → Client] applyPolicyModeFromServer threw:','color:red;font-weight:bold;', e);
-                    }}
-                }} else {{
-                    console.warn('%c[Server → Client] applyPolicyModeFromServer not defined yet. Queuing for DOMContentLoaded.','color:#f57c00;font-weight:bold;');
-                    // queue for later: try after DOM ready / modal shown
-                    window.__so_pending_policy_mode = '{safeMode}';
-                    document.addEventListener('DOMContentLoaded', function() {{
+            (function() {{
+                try {{
+                    console.log('%c[Server → Client] applyPolicyModeFromServer about to run','color:#ff9800;font-weight:bold;');
+                    if (typeof applyPolicyModeFromServer === 'function') {{
                         try {{
-                            if (typeof applyPolicyModeFromServer === 'function' && window.__so_pending_policy_mode) {{
-                                applyPolicyModeFromServer(window.__so_pending_policy_mode);
-                                console.log('%c[Server → Client] applyPolicyModeFromServer executed from DOMContentLoaded','color:green;font-weight:bold;');
-                                window.__so_pending_policy_mode = null;
-                            }}
-                        }} catch(e) {{ console.error('queued applyPolicyModeFromServer failed', e); }}
-                    }});
+                            applyPolicyModeFromServer('{safeMode}');
+                            console.log('%c[Server → Client] applyPolicyModeFromServer executed OK','color:green;font-weight:bold;');
+                        }} catch(e) {{
+                            console.error('%c[Server → Client] applyPolicyModeFromServer threw:','color:red;font-weight:bold;', e);
+                        }}
+                    }} else {{
+                        console.warn('%c[Server → Client] applyPolicyModeFromServer not defined yet. Queuing for DOMContentLoaded.','color:#f57c00;font-weight:bold;');
+                        // queue for later: try after DOM ready / modal shown
+                        window.__so_pending_policy_mode = '{safeMode}';
+                        document.addEventListener('DOMContentLoaded', function() {{
+                            try {{
+                                if (typeof applyPolicyModeFromServer === 'function' && window.__so_pending_policy_mode) {{
+                                    applyPolicyModeFromServer(window.__so_pending_policy_mode);
+                                    console.log('%c[Server → Client] applyPolicyModeFromServer executed from DOMContentLoaded','color:green;font-weight:bold;');
+                                    window.__so_pending_policy_mode = null;
+                                }}
+                            }} catch(e) {{ console.error('queued applyPolicyModeFromServer failed', e); }}
+                        }});
+                    }}
+                }} catch(err) {{
+                    console.error('%c[Server → Client] unexpected error preparing applyPolicyModeFromServer call','color:red;font-weight:bold;', err);
                 }}
-            }} catch(err) {{
-                console.error('%c[Server → Client] unexpected error preparing applyPolicyModeFromServer call','color:red;font-weight:bold;', err);
-            }}
-        }})();";
+            }})();";
 
             try
             {
@@ -3406,14 +3676,12 @@ namespace AnmolDristi
                             cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = DBNull.Value;
                             cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
 
-                            // policy params
                             cmd.Parameters.AddWithValue("@PolicyMode", string.IsNullOrWhiteSpace(policyMode) ? (object)DBNull.Value : policyMode);
                             cmd.Parameters.AddWithValue("@PolicySnapshot", string.IsNullOrWhiteSpace(policySnapshot) ? (object)DBNull.Value : policySnapshot);
                             cmd.Parameters.AddWithValue("@IsAutoDA", 0); // if your logic determines auto-DA set 1
                             cmd.Parameters.AddWithValue("@CreatedByIP", string.IsNullOrWhiteSpace(createdByIp) ? (object)DBNull.Value : createdByIp);
                             cmd.Parameters.AddWithValue("@Source", "UI");
 
-                            // additional resolved numeric params (some SP variants accept these)
                             cmd.Parameters.AddWithValue("@ResolvedDA", resolvedDA.HasValue ? (object)resolvedDA.Value : (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@ResolvedOutstationDA", resolvedOutstationDA.HasValue ? (object)resolvedOutstationDA.Value : (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@ResolvedOwnArrangementDA", resolvedOwnDA.HasValue ? (object)resolvedOwnDA.Value : (object)DBNull.Value);
@@ -3522,80 +3790,146 @@ namespace AnmolDristi
                         string invoiceNo = (CHK_TravelInvoice != null && CHK_TravelInvoice.Checked) ? (TXT_TravelInvoiceNo != null ? TXT_TravelInvoiceNo.Text.Trim() : null) : null;
                         string travelPurpose = TXT_TravelPurpose != null ? TXT_TravelPurpose.Text.Trim() : null;
 
-                        using (SqlCommand cmd = new SqlCommand(@"
-                    INSERT INTO dbo.SalesDailyExpense
-                      (ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentContent, CreatedBy,
-                       CreatedDateTime, TravelType, FromPlace, ToPlace, TravelDate,
-                       PolicyMode, PolicySnapshot, IsAutoDA, CreatedByIP, Source, AttachmentPath)
-                    VALUES
-                      (@ActivityId, @ExpenseType, @ExpenseDate, NULL, NULL, @BillNo, @Amount, @Currency, @Purpose, @AttachmentFileName, @AttachmentContent, @CreatedBy,
-                       GETUTCDATE(), @TravelType, @FromPlace, @ToPlace, @TravelDate,
-                       @PolicyMode, @PolicySnapshot, @IsAutoDA, @CreatedByIP, @Source, @AttachmentPath)
-                ", con))
-                        {
-                            cmd.CommandType = CommandType.Text;
-                            cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                            cmd.Parameters.AddWithValue("@ExpenseType", "Travel");
-                            cmd.Parameters.AddWithValue("@ExpenseDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : (object)DBNull.Value);
-                            cmd.Parameters.AddWithValue("@BillNo", string.IsNullOrWhiteSpace(invoiceNo) ? (object)DBNull.Value : invoiceNo);
-                            cmd.Parameters.AddWithValue("@Amount", travelAmt);
-                            cmd.Parameters.AddWithValue("@Currency", DBNull.Value);
-                            cmd.Parameters.AddWithValue("@Purpose", string.IsNullOrWhiteSpace(travelPurpose) ? (object)DBNull.Value : travelPurpose);
-                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName ?? (object)DBNull.Value);
-                            //cmd.Parameters.AddWithValue("@AttachmentContent", DBNull.Value);
-                            cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = DBNull.Value;
-                            cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
+                        //        using (SqlCommand cmd = new SqlCommand(@"
+                        //    INSERT INTO dbo.SalesDailyExpense
+                        //      (ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentContent, CreatedBy,
+                        //       CreatedDateTime, TravelType, FromPlace, ToPlace, TravelDate,
+                        //       PolicyMode, PolicySnapshot, IsAutoDA, CreatedByIP, Source, AttachmentPath)
+                        //    VALUES
+                        //      (@ActivityId, @ExpenseType, @ExpenseDate, NULL, NULL, @BillNo, @Amount, @Currency, @Purpose, @AttachmentFileName, @AttachmentContent, @CreatedBy,
+                        //       GETUTCDATE(), @TravelType, @FromPlace, @ToPlace, @TravelDate,
+                        //       @PolicyMode, @PolicySnapshot, @IsAutoDA, @CreatedByIP, @Source, @AttachmentPath)
+                        //", con))
+                        //        {
+                        //            cmd.CommandType = CommandType.Text;
+                        //            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                        //            cmd.Parameters.AddWithValue("@ExpenseType", "Travel");
+                        //            cmd.Parameters.AddWithValue("@ExpenseDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : (object)DBNull.Value);
+                        //            cmd.Parameters.AddWithValue("@BillNo", string.IsNullOrWhiteSpace(invoiceNo) ? (object)DBNull.Value : invoiceNo);
+                        //            cmd.Parameters.AddWithValue("@Amount", travelAmt);
+                        //            cmd.Parameters.AddWithValue("@Currency", DBNull.Value);
+                        //            cmd.Parameters.AddWithValue("@Purpose", string.IsNullOrWhiteSpace(travelPurpose) ? (object)DBNull.Value : travelPurpose);
+                        //            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName ?? (object)DBNull.Value);
+                        //            //cmd.Parameters.AddWithValue("@AttachmentContent", DBNull.Value);
+                        //            cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = DBNull.Value;
+                        //            cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
 
+                        //            cmd.Parameters.AddWithValue("@TravelType", string.IsNullOrWhiteSpace(travelType) ? (object)DBNull.Value : travelType);
+                        //            cmd.Parameters.AddWithValue("@FromPlace", string.IsNullOrWhiteSpace(fromPlace) ? (object)DBNull.Value : fromPlace);
+                        //            cmd.Parameters.AddWithValue("@ToPlace", string.IsNullOrWhiteSpace(toPlace) ? (object)DBNull.Value : toPlace);
+                        //            cmd.Parameters.AddWithValue("@TravelDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : (object)DBNull.Value);
+
+                        //            // policy metadata
+                        //            cmd.Parameters.AddWithValue("@PolicyMode", string.IsNullOrWhiteSpace(policyMode) ? (object)DBNull.Value : policyMode);
+                        //            cmd.Parameters.AddWithValue("@PolicySnapshot", string.IsNullOrWhiteSpace(policySnapshot) ? (object)DBNull.Value : policySnapshot);
+                        //            cmd.Parameters.AddWithValue("@IsAutoDA", 0);
+                        //            cmd.Parameters.AddWithValue("@CreatedByIP", string.IsNullOrWhiteSpace(createdByIp) ? (object)DBNull.Value : createdByIp);
+                        //            cmd.Parameters.AddWithValue("@Source", "UI");
+                        //            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
+
+                        //            cmd.CommandTimeout = 90;
+                        //            cmd.ExecuteNonQuery();
+                        //        }
+
+                        //        // --- Auto-DA trigger for Outstation / OwnArrangement ---
+                        //        //string policyMode = HF_ResolvedPolicyMode?.Value ?? "";
+                        //        if (!string.IsNullOrWhiteSpace(policyMode) &&
+                        //            (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase) ||
+                        //             policyMode.Equals("OwnArrangement", StringComparison.OrdinalIgnoreCase)))
+                        //        {
+                        //            // pick policy DA value (OutstationDA or OwnArrangementDA)
+                        //            decimal autoDA = 0m;
+                        //            if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase))
+                        //                decimal.TryParse(HF_OutstationDA?.Value, out autoDA);
+                        //            else
+                        //                decimal.TryParse(HF_OwnArrangementDA?.Value, out autoDA);
+
+                        //            if (autoDA > 0m)
+                        //            {
+                        //                // Determine which date to stamp (activity / travel / hotel)
+                        //                DateTime daDate = DateTime.Now;
+                        //                if (!string.IsNullOrWhiteSpace(HF_ActivityDate?.Value))
+                        //                {
+                        //                    DateTime.TryParse(HF_ActivityDate.Value, out daDate);
+                        //                }
+                        //                else if (fromDate.HasValue) daDate = fromDate.Value;
+                        //                else if (travelDateNullable.HasValue) daDate = travelDateNullable.Value;
+
+                        //                // snapshot JSON (optional, can be blank)
+                        //                //string snapshot = string.Format("DA={0};HotelCap={1}",
+                        //                    //HF_ResolvedDA?.Value ?? "NA", HF_ResolvedHotelCap?.Value ?? "NA");
+
+                        //                EnsureAutoDA(activityId, daDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId());
+                        //            }
+                        //        }
+
+                        using (SqlCommand cmd = new SqlCommand("dbo.usp_InsertTravel_WithLock", con))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                            cmd.Parameters.AddWithValue("@ExpenseDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : DBNull.Value);
+                            cmd.Parameters.AddWithValue("@Amount", travelAmt);
                             cmd.Parameters.AddWithValue("@TravelType", string.IsNullOrWhiteSpace(travelType) ? (object)DBNull.Value : travelType);
                             cmd.Parameters.AddWithValue("@FromPlace", string.IsNullOrWhiteSpace(fromPlace) ? (object)DBNull.Value : fromPlace);
                             cmd.Parameters.AddWithValue("@ToPlace", string.IsNullOrWhiteSpace(toPlace) ? (object)DBNull.Value : toPlace);
-                            cmd.Parameters.AddWithValue("@TravelDate", travelDateNullable.HasValue ? (object)travelDateNullable.Value : (object)DBNull.Value);
-
-                            // policy metadata
+                            cmd.Parameters.AddWithValue("@BillNo", string.IsNullOrWhiteSpace(invoiceNo) ? (object)DBNull.Value : invoiceNo);
+                            cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@Purpose", string.IsNullOrWhiteSpace(travelPurpose) ? (object)DBNull.Value : travelPurpose);
                             cmd.Parameters.AddWithValue("@PolicyMode", string.IsNullOrWhiteSpace(policyMode) ? (object)DBNull.Value : policyMode);
                             cmd.Parameters.AddWithValue("@PolicySnapshot", string.IsNullOrWhiteSpace(policySnapshot) ? (object)DBNull.Value : policySnapshot);
-                            cmd.Parameters.AddWithValue("@IsAutoDA", 0);
+                            cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId() ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@CreatedByIP", string.IsNullOrWhiteSpace(createdByIp) ? (object)DBNull.Value : createdByIp);
-                            cmd.Parameters.AddWithValue("@Source", "UI");
-                            cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
 
-                            cmd.CommandTimeout = 90;
+                            var pIsFirst = new SqlParameter("@IsFirst", SqlDbType.Bit) { Direction = ParameterDirection.Output };
+                            var pErr = new SqlParameter("@ErrCode", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                            var pMsg = new SqlParameter("@ErrMessage", SqlDbType.NVarChar, 400) { Direction = ParameterDirection.Output };
+                            var pInsertedId = new SqlParameter("@InsertedExpenseId", SqlDbType.Int) { Direction = ParameterDirection.Output };
+
+                            cmd.Parameters.Add(pIsFirst);
+                            cmd.Parameters.Add(pInsertedId);
+                            cmd.Parameters.Add(pErr);
+                            cmd.Parameters.Add(pMsg);
+
+                            //con.Open();
                             cmd.ExecuteNonQuery();
-                        }
 
-                        // --- Auto-DA trigger for Outstation / OwnArrangement ---
-                        //string policyMode = HF_ResolvedPolicyMode?.Value ?? "";
-                        if (!string.IsNullOrWhiteSpace(policyMode) &&
-                            (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase) ||
-                             policyMode.Equals("OwnArrangement", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            // pick policy DA value (OutstationDA or OwnArrangementDA)
-                            decimal autoDA = 0m;
-                            if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase))
-                                decimal.TryParse(HF_OutstationDA?.Value, out autoDA);
-                            else
-                                decimal.TryParse(HF_OwnArrangementDA?.Value, out autoDA);
-
-                            if (autoDA > 0m)
+                            int err = pErr.Value != DBNull.Value ? (int)pErr.Value : 0;
+                            if (err != 0)
                             {
-                                // Determine which date to stamp (activity / travel / hotel)
-                                DateTime daDate = DateTime.Now;
-                                if (!string.IsNullOrWhiteSpace(HF_ActivityDate?.Value))
-                                {
-                                    DateTime.TryParse(HF_ActivityDate.Value, out daDate);
-                                }
-                                else if (fromDate.HasValue) daDate = fromDate.Value;
-                                else if (travelDateNullable.HasValue) daDate = travelDateNullable.Value;
-
-                                // snapshot JSON (optional, can be blank)
-                                //string snapshot = string.Format("DA={0};HotelCap={1}",
-                                    //HF_ResolvedDA?.Value ?? "NA", HF_ResolvedHotelCap?.Value ?? "NA");
-
-                                EnsureAutoDA(activityId, daDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId());
+                                // handle error - show message
+                                throw new InvalidOperationException(pMsg.Value?.ToString() ?? "DB error");
                             }
+
+                            bool isFirst = (pIsFirst.Value != DBNull.Value && (bool)pIsFirst.Value);
+                            int insertedExpenseId = pInsertedId.Value != DBNull.Value ? (int)pInsertedId.Value : 0;
+
+                            if (!string.IsNullOrWhiteSpace(policyMode) &&
+                                    (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase) ||
+                                     policyMode.Equals("OwnArrangement", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                // pick policy DA value (OutstationDA or OwnArrangementDA)
+                                decimal autoDA = 0m;
+                                if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase))
+                                    decimal.TryParse(HF_OutstationDA?.Value, out autoDA);
+                                else
+                                    decimal.TryParse(HF_OwnArrangementDA?.Value, out autoDA);
+
+                                // Only trigger Auto-DA if this was the first travel for this activity+date
+                                if (isFirst)
+                                {
+                                    // compute autoDA as before (from policy)
+                                    EnsureAutoDA(activityId, travelDateNullable ?? DateTime.Now, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId());
+                                }
+                                else
+                                {
+                                    // skip autoDA for 2nd+ travel rows
+                                }
+                            }
+
                         }
                     }
-                } // using con
+                }
 
                 // reload UI
                 DataTable dtAfter = LoadExpenseForActivity(activityId.ToString());
@@ -4640,7 +4974,7 @@ namespace AnmolDristi
             ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
         }
 
-        protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
+        protected void rptExpenses_ItemCommand_OLD17Nov25(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName == "DeleteExpense")
             {
@@ -4912,6 +5246,326 @@ namespace AnmolDristi
             }
 
         }
+
+        protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
+        {
+            if (e.CommandName == "DeleteExpense")
+            {
+                var arg = (e.CommandArgument ?? "").ToString();
+                var parts = arg.Split(new[] { '|' }, 3);
+
+                int expenseId;
+                if (parts.Length < 1 || !int.TryParse(parts[0], out expenseId))
+                {
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    LBL_ExpenseMsg.Text = "Invalid expense id.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+
+                // optional incoming values (may be empty)
+                string incomingAttachmentPath = parts.Length > 1 ? (string.IsNullOrWhiteSpace(parts[1]) ? null : parts[1]) : null;
+                int activityIdFromArg = 0;
+                if (parts.Length > 2) int.TryParse(parts[2], out activityIdFromArg);
+
+                try
+                {
+                    using (SqlConnection con = new SqlConnection(connString))
+                    {
+                        con.Open();
+
+                        // 1) Load authoritative expense row details (including dates, type, parent activity claim status)
+                        string lookupSql = @"
+                    SELECT e.ExpenseId, e.ActivityId, e.ExpenseType, e.ExpenseDate, e.FromDate, e.ToDate, e.AttachmentPath,
+                           e.IsAutoDA, e.ClaimStatus AS ExpenseClaimStatus, a.ClaimStatus AS ActivityClaimStatus,
+                           e.ExpenseSeq, e.CreatedDateTime
+                    FROM dbo.SalesDailyExpense e
+                    LEFT JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId
+                    WHERE e.ExpenseId = @ExpenseId";
+
+                        int activityId = 0;
+                        string expenseType = null;
+                        DateTime? expDate = null;
+                        DateTime? fromDate = null;
+                        DateTime? toDate = null;
+                        string attachmentPath = incomingAttachmentPath;
+                        bool isAutoRow = false;
+                        string expenseClaimStatus = null;
+                        string activityClaimStatus = null;
+                        int? expenseSeq = null;
+                        DateTime? expenseCreatedDate = null;
+
+                        using (var lookup = new SqlCommand(lookupSql, con))
+                        {
+                            lookup.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+
+                            using (var rdr = lookup.ExecuteReader())
+                            {
+                                if (!rdr.Read())
+                                {
+                                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                    LBL_ExpenseMsg.Text = "Expense not found.";
+                                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                    return;
+                                }
+
+                                activityId = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
+                                expenseType = rdr["ExpenseType"] != DBNull.Value ? rdr["ExpenseType"].ToString() : null;
+
+                                if (rdr["ExpenseDate"] != DBNull.Value) expDate = Convert.ToDateTime(rdr["ExpenseDate"]);
+                                if (rdr["FromDate"] != DBNull.Value) fromDate = Convert.ToDateTime(rdr["FromDate"]);
+                                if (rdr["ToDate"] != DBNull.Value) toDate = Convert.ToDateTime(rdr["ToDate"]);
+
+                                if (string.IsNullOrWhiteSpace(attachmentPath) && rdr["AttachmentPath"] != DBNull.Value)
+                                    attachmentPath = rdr["AttachmentPath"].ToString();
+
+                                isAutoRow = rdr["IsAutoDA"] != DBNull.Value && Convert.ToInt32(rdr["IsAutoDA"]) == 1;
+                                expenseClaimStatus = rdr["ExpenseClaimStatus"] != DBNull.Value ? rdr["ExpenseClaimStatus"].ToString() : null;
+                                activityClaimStatus = rdr["ActivityClaimStatus"] != DBNull.Value ? rdr["ActivityClaimStatus"].ToString() : null;
+
+                                if (rdr["ExpenseSeq"] != DBNull.Value)
+                                    expenseSeq = Convert.ToInt32(rdr["ExpenseSeq"]);
+
+                                if (rdr["CreatedDateTime"] != DBNull.Value)
+                                    expenseCreatedDate = Convert.ToDateTime(rdr["CreatedDateTime"]);
+                            }
+                        }
+
+                        // authoritative permissions: block deleting if parent activity is not Draft
+                        if (!string.IsNullOrWhiteSpace(activityClaimStatus) && !activityClaimStatus.Equals("Draft", StringComparison.OrdinalIgnoreCase))
+                        {
+                            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                            LBL_ExpenseMsg.Text = "Cannot delete expense because parent activity is not in Draft state.";
+                            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                            return;
+                        }
+
+                        // block manual deletion of auto rows (users should not delete IsAutoDA rows directly)
+                        if (isAutoRow)
+                        {
+                            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                            LBL_ExpenseMsg.Text = "Cannot delete system-generated (auto) expense directly.";
+                            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                            return;
+                        }
+
+                        // 2) Determine date range to match auto DA rows
+                        DateTime matchFrom, matchTo;
+                        if (expenseType != null && expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Hotel: use FromDate..ToDate if available, else fall back to ExpenseDate
+                            if (fromDate.HasValue && toDate.HasValue)
+                            {
+                                matchFrom = fromDate.Value.Date;
+                                matchTo = toDate.Value.Date;
+                            }
+                            else if (expDate.HasValue)
+                            {
+                                matchFrom = matchTo = expDate.Value.Date;
+                            }
+                            else
+                            {
+                                // fallback: only exact match to null (no auto rows will match)
+                                matchFrom = matchTo = DateTime.MinValue;
+                            }
+                        }
+                        else if (expenseType != null && expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Travel: use ExpenseDate / TravelDate
+                            if (expDate.HasValue)
+                            {
+                                matchFrom = matchTo = expDate.Value.Date;
+                            }
+                            else
+                            {
+                                matchFrom = matchTo = DateTime.MinValue;
+                            }
+                        }
+                        else
+                        {
+                            // generic: use ExpenseDate
+                            if (expDate.HasValue)
+                            {
+                                matchFrom = matchTo = expDate.Value.Date;
+                            }
+                            else
+                            {
+                                matchFrom = matchTo = DateTime.MinValue;
+                            }
+                        }
+
+                        // 3) In a transaction: determine whether this expense is the FIRST for that activity+date+type,
+                        //    collect auto-DA ids & attachment paths (if we will delete them), then delete.
+                        using (SqlTransaction tx = con.BeginTransaction())
+                        {
+                            try
+                            {
+                                bool isFirstForType = false;
+
+                                if (matchFrom != DateTime.MinValue)
+                                {
+                                    // Determine the earliest expense for this activity/date/type using ExpenseSeq (if present) then CreatedDateTime then ExpenseId
+                                    string firstSql = @"
+                                SELECT TOP 1 ExpenseId
+                                FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
+                                WHERE ActivityId = @ActivityId
+                                  AND LOWER(ISNULL(ExpenseType,'')) = LOWER(ISNULL(@ExpenseType,''))
+                                  AND CAST(ISNULL(ExpenseDate, GETDATE()) AS DATE) = @MatchDate
+                                ORDER BY 
+                                  CASE WHEN ExpenseSeq IS NULL THEN 2147483647 ELSE ExpenseSeq END ASC,
+                                  ISNULL(CreatedDateTime, '1900-01-01') ASC,
+                                  ExpenseId ASC";
+
+                                    using (var firstCmd = new SqlCommand(firstSql, con, tx))
+                                    {
+                                        firstCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                                        firstCmd.Parameters.Add(new SqlParameter("@ExpenseType", SqlDbType.NVarChar, 50) { Value = expenseType ?? (object)DBNull.Value });
+                                        firstCmd.Parameters.Add(new SqlParameter("@MatchDate", SqlDbType.Date) { Value = matchFrom });
+
+                                        object firstObj = firstCmd.ExecuteScalar();
+                                        if (firstObj != null && firstObj != DBNull.Value)
+                                        {
+                                            int firstExpenseId = Convert.ToInt32(firstObj);
+                                            isFirstForType = (firstExpenseId == expenseId);
+                                        }
+                                        else
+                                        {
+                                            // no other rows found; if this row exists then treat it as first
+                                            isFirstForType = true;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // no valid match date -> cannot reliably find related Auto-DA rows; conservative approach: treat as not-first
+                                    isFirstForType = false;
+                                }
+
+                                // collect auto-DA rows (only if we will delete them)
+                                var autoIds = new List<int>();
+                                var autoPaths = new List<string>();
+
+                                if (isFirstForType && matchFrom != DateTime.MinValue)
+                                {
+                                    string findAutoSql = @"
+                                SELECT ExpenseId, AttachmentPath
+                                FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
+                                WHERE ActivityId = @ActivityId
+                                  AND ExpenseType = 'DA'
+                                  AND IsAutoDA = 1
+                                  AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+
+                                    using (var findCmd = new SqlCommand(findAutoSql, con, tx))
+                                    {
+                                        findCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                                        findCmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.Date) { Value = matchFrom });
+                                        findCmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.Date) { Value = matchTo });
+
+                                        using (var rdr = findCmd.ExecuteReader())
+                                        {
+                                            while (rdr.Read())
+                                            {
+                                                if (rdr["ExpenseId"] != DBNull.Value)
+                                                    autoIds.Add(Convert.ToInt32(rdr["ExpenseId"]));
+                                                if (rdr["AttachmentPath"] != DBNull.Value)
+                                                    autoPaths.Add(rdr["AttachmentPath"].ToString());
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // delete primary expense
+                                using (var del = new SqlCommand("DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId = @ExpenseId", con, tx))
+                                {
+                                    del.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+                                    int affected = del.ExecuteNonQuery();
+                                    if (affected <= 0)
+                                    {
+                                        tx.Rollback();
+                                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                        LBL_ExpenseMsg.Text = "Expense not found or already removed.";
+                                        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                        return;
+                                    }
+                                }
+
+                                // delete auto DA rows if found and if this was the first expense
+                                if (autoIds.Count > 0)
+                                {
+                                    // build parameterized IN list safely
+                                    string inList = string.Join(",", autoIds); // safe because values are from DB
+                                    string delAutoSql = $"DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId IN ({inList})";
+                                    using (var delAuto = new SqlCommand(delAutoSql, con, tx))
+                                    {
+                                        delAuto.ExecuteNonQuery();
+                                    }
+                                }
+
+                                tx.Commit();
+
+                                // 4) After DB commit, delete attachments for primary expense and auto rows (if any)
+                                Action<string> tryDeleteFile = (virtualPath) =>
+                                {
+                                    try
+                                    {
+                                        if (string.IsNullOrWhiteSpace(virtualPath)) return;
+                                        string cleaned = virtualPath.TrimStart('~', '/', '\\');
+                                        string fullVirtual = "~/" + cleaned;
+                                        string fullPath = Server.MapPath(fullVirtual);
+                                        string allowedRoot = Server.MapPath("~/UploadedFiles/ClaimsAttachment/");
+
+                                        if (!string.IsNullOrWhiteSpace(fullPath) && fullPath.StartsWith(allowedRoot, StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(fullPath))
+                                            System.IO.File.Delete(fullPath);
+                                    }
+                                    catch (Exception exFile)
+                                    {
+                                        System.Diagnostics.Trace.TraceWarning("Failed to delete attachment: " + exFile.Message);
+                                    }
+                                };
+
+                                // delete for primary
+                                tryDeleteFile(attachmentPath);
+
+                                // delete for auto rows attachments collected earlier
+                                foreach (var pth in autoPaths)
+                                    tryDeleteFile(pth);
+
+                                // Reload UI from DB (authoritative)
+                                LoadExpenseForActivity(activityId.ToString());
+                                HF_SnapPolicyMode.Value = "Daily";
+                                ApplyPolicyMode_ClientCall("Daily");
+                                Session.Remove(SESSION_KEY_GV_ACTIVITIES);
+                                BindGrid(false);
+
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
+                                LBL_ExpenseMsg.Text = "Expense deleted.";
+                            }
+                            catch (Exception ex)
+                            {
+                                try { tx.Rollback(); } catch { }
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                LBL_ExpenseMsg.Text = ex.Message;
+                                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                return;
+                            }
+                        } // tx
+                    } // con
+                }
+                catch (SqlException sqx)
+                {
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    LBL_ExpenseMsg.Text = sqx.Message;
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                }
+                catch (Exception ex)
+                {
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    LBL_ExpenseMsg.Text = ex.Message;
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                }
+            }
+        }
+
 
         //--------------------Polcy in Runtime--------------//
         public class PolicyResolved
