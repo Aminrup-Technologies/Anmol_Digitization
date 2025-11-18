@@ -1256,8 +1256,8 @@ namespace AnmolDristi
 
             lblPolicySpecificity.Text = $"{regionName} / {branchName} / {gradeName} / {desigName}";
 
-            var effFrom = policy.EffectiveFrom.HasValue ? policy.EffectiveFrom.Value.ToString("yyyy-MM-dd") : "—";
-            var effTo = policy.EffectiveTo.HasValue ? policy.EffectiveTo.Value.ToString("yyyy-MM-dd") : "—";
+            var effFrom = policy.EffectiveFrom.HasValue ? policy.EffectiveFrom.Value.ToString("dd-MM-yyyy") : "—";
+            var effTo = policy.EffectiveTo.HasValue ? policy.EffectiveTo.Value.ToString("dd-MM-yyyy") : "—";
             lblPolicyEffective.Text = $"{effFrom} to {effTo}";
             lblPolicyIsActive.Text = policy.IsActive.HasValue ? (policy.IsActive.Value ? "Yes" : "No") : "—";
             lblPolicyDesigGrade.Text = (policy.DesignationId.HasValue || policy.GradeId.HasValue) ? $"{(policy.DesignationId.HasValue ? policy.DesignationId.Value.ToString() : "—")} / {(policy.GradeId.HasValue ? policy.GradeId.Value.ToString() : "—")}" : "—";
@@ -3499,6 +3499,70 @@ namespace AnmolDristi
                 }
             }
 
+            if (expenseType.Equals("DA", StringComparison.OrdinalIgnoreCase))
+            {
+                // Parse DA amount (assumes TXT_DAAmount.Text contains numeric or formatted value)
+                //decimal daAmt = 0m;
+                //decimal.TryParse(System.Text.RegularExpressions.Regex.Replace(TXT_DAAmount.Text ?? "", @"[^\d\.\-]", ""), out daAmt);
+
+                //if (daAmt <= 0m)
+                //{
+                //    LBL_ExpenseMsg.Text = "Please enter DA Amount.";
+                //    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                //    return;
+                //}
+
+                // From Place
+                if (string.IsNullOrWhiteSpace(TXT_DAFromPlace?.Text))
+                {
+                    LBL_ExpenseMsg.Text = "Please enter From Place for DA.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+                if (TXT_DAFromPlace.Text.Trim().Length > 100)
+                {
+                    LBL_ExpenseMsg.Text = "From Place cannot exceed 100 characters.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+
+                // To Place
+                if (string.IsNullOrWhiteSpace(TXT_DAToPlace?.Text))
+                {
+                    LBL_ExpenseMsg.Text = "Please enter To Place for DA.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+                if (TXT_DAToPlace.Text.Trim().Length > 100)
+                {
+                    LBL_ExpenseMsg.Text = "To Place cannot exceed 100 characters.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+
+                // Optional business rule: From != To
+                if (string.Equals(TXT_DAFromPlace.Text.Trim(), TXT_DAToPlace.Text.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    LBL_ExpenseMsg.Text = "From Place and To Place cannot be the same for DA.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+
+                // Travel Description
+                if (string.IsNullOrWhiteSpace(TXT_TravelDescription?.Text))
+                {
+                    LBL_ExpenseMsg.Text = "Travel Description is required for DA.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+                if (TXT_TravelDescription.Text.Trim().Length < 5)
+                {
+                    LBL_ExpenseMsg.Text = "Travel Description must be at least 5 characters.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+            }
+
             // Per-branch validations (mirror client-side)
             if (expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase))
             {
@@ -3656,6 +3720,9 @@ namespace AnmolDristi
                     // Use updated stored procedures for DA and Hotel (they accept policy params & output ErrCode/ErrMessage)
                     if (expenseType.Equals("DA", StringComparison.OrdinalIgnoreCase) && (daAmt > 0m || savedFileName != null))
                     {
+                        string fromPlace = TXT_DAFromPlace != null ? TXT_DAFromPlace.Text.Trim() : null;
+                        string toPlace = TXT_DAToPlace != null ? TXT_DAToPlace.Text.Trim() : null;
+
                         using (SqlCommand cmd = new SqlCommand("usp_SaveDailyExpense", con))
                         {
                             cmd.CommandType = CommandType.StoredProcedure;
@@ -3668,7 +3735,9 @@ namespace AnmolDristi
                                 expDateNullable = expDate.Date;
                             cmd.Parameters.AddWithValue("@ExpenseDate", expDateNullable.HasValue ? (object)expDateNullable.Value : (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@Amount", daAmt);
-                            cmd.Parameters.AddWithValue("@Purpose", DBNull.Value);
+                            cmd.Parameters.AddWithValue("@FromPlace", string.IsNullOrWhiteSpace(fromPlace) ? (object)DBNull.Value : fromPlace);
+                            cmd.Parameters.AddWithValue("@ToPlace", string.IsNullOrWhiteSpace(toPlace) ? (object)DBNull.Value : toPlace);
+                            cmd.Parameters.AddWithValue("@Purpose", string.IsNullOrWhiteSpace(TXT_TravelDescription?.Text) ? (object)DBNull.Value : TXT_TravelDescription.Text.Trim());
                             cmd.Parameters.AddWithValue("@BillNo", DBNull.Value);
                             cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
@@ -3704,6 +3773,20 @@ namespace AnmolDristi
                                 ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                                 return;
                             }
+
+                            // SUCCESS → Make controls readonly
+                            TXT_DAFromPlace.ReadOnly = true;
+                            TXT_DAToPlace.ReadOnly = true;
+                            TXT_TravelDescription.ReadOnly = true;
+
+                            if (FU_Attachment != null)
+                                FU_Attachment.Enabled = false;
+
+                            if (TXT_DAAmount != null)
+                                TXT_DAAmount.ReadOnly = true;
+
+                            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
+                            LBL_ExpenseMsg.Text = "DA saved successfully.";
                         }
                     }
 
@@ -4668,7 +4751,7 @@ namespace AnmolDristi
         }
 
 
-        
+
         private string GetCurrentUserLoginId(bool redirectIfMissing = true)
         {
             try

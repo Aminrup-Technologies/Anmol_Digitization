@@ -625,6 +625,33 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox TXT_DAAmount;
         
         /// <summary>
+        /// TXT_DAFromPlace control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_DAFromPlace;
+        
+        /// <summary>
+        /// TXT_DAToPlace control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_DAToPlace;
+        
+        /// <summary>
+        /// TXT_TravelDescription control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_TravelDescription;
+        
+        /// <summary>
         /// divHotelSection control.
         /// </summary>
         /// <remarks>
@@ -1003,6 +1030,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblPolicyDesigGrade;
         
         /// <summary>
+        /// MaxKM control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl MaxKM;
+        
+        /// <summary>
         /// lblResolvedMaxKM control.
         /// </summary>
         /// <remarks>
@@ -1028,6 +1064,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblResolvedDA;
+        
+        /// <summary>
+        /// HotelCap control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl HotelCap;
         
         /// <summary>
         /// lblResolvedHotelCap control.

@@ -829,7 +829,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="txtModalKM">Distance Travelled (in KM)</label><span style="color:red;">*</span>
+                                    <label for="txtModalKM">Distance Travelled (in KM)</label><span style="color: red;">*</span>
                                     <asp:TextBox ID="txtModalKM" runat="server" CssClass="form-control" />
                                     <span id="spClientKmError" class="text-danger" style="display: none;"></span>
                                 </div>
@@ -843,7 +843,7 @@
 
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label>Change for Reason (Mandatory)</label><span style="color:red;">*</span>
+                                    <label>Change for Reason (Mandatory)</label><span style="color: red;">*</span>
                                     <asp:TextBox ID="txtKmReason" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3" />
                                 </div>
                             </div>
@@ -851,7 +851,7 @@
 
                         <hr />
 
-                        <h6 style="color:darkblue;">KM Change History</h6>
+                        <h6 style="color: darkblue;">KM Change History</h6>
                         <div class="table-responsive">
                             <asp:GridView ID="gvKmHistory" runat="server" AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" CssClass="table table-sm table-bordered table-finance table-responsive"
                                 EmptyDataText="No history available">
@@ -977,6 +977,20 @@
                                 <div class="col-md-4 form-group">
                                     <label>DA Amount</label>
                                     <asp:TextBox ID="TXT_DAAmount" runat="server" CssClass="form-control form-control-sm" ReadOnly="true"></asp:TextBox>
+                                </div>
+
+                                <div class="col-md-4 form-group">
+                                    <label>From Place</label>
+                                    <asp:TextBox ID="TXT_DAFromPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="100" />
+                                </div>
+
+                                <div class="col-md-4 form-group">
+                                    <label>To Place</label>
+                                    <asp:TextBox ID="TXT_DAToPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="100" />
+                                </div>
+                                <div class="col-md-12 form-group">
+                                    <label>Travel Description</label>
+                                    <asp:TextBox ID="TXT_TravelDescription" runat="server" TextMode="MultiLine" Rows="1" CssClass="form-control form-control-sm" />
                                 </div>
                             </div>
 
@@ -1141,39 +1155,53 @@
 
                                         <td style="max-width: 280px;">
                                             <span class="text-truncate-ellipsis" title='<%# HttpUtility.HtmlEncode(
-                                             (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
-                                              ? String.Format("{0} {1} -> {2} {3}",
-                                                  Eval("TravelType") ?? "",
-                                                  Eval("FromPlace") ?? "",
-                                                  Eval("ToPlace") ?? "",
-                                                  (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-                                                )
-                                              : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
-                                                ? String.Format("{0} - {1} {2}",
-                                                    (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
-                                                    (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
-                                                    (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-                                                  )
-                                                : (Eval("Purpose") ?? "—")
-                                            ) %>'>
-                                                <%# 
-                                              (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
-                                                ? String.Format("{0} {1} -> {2} {3}",
-                                                    Eval("TravelType") ?? "",
-                                                    Eval("FromPlace") ?? "",
-                                                    Eval("ToPlace") ?? "",
-                                                    (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-                                                  )
-                                                : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
-                                                  ? String.Format("{0} - {1} {2}",
-                                                      (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
-                                                      (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
-                                                      (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-                                                    )
-                                                  : (Eval("Purpose") ?? "—")
+         (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
+            ? String.Format("{0} {1} -> {2} {3}",
+                Eval("TravelType") ?? "",
+                Eval("FromPlace") ?? "",
+                Eval("ToPlace") ?? "",
+                (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+              )
+         : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
+            ? String.Format("{0} - {1} {2}",
+                (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
+                (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
+                (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+              )
+         : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "DA")
+            ? String.Format("{0} -> {1} {2}",
+                Eval("FromPlace") ?? "—",
+                Eval("ToPlace") ?? "—",
+                
+                 (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+              )
+         : (Eval("Purpose") ?? "—")
+    ) %>'>
+                                                <%#
+            (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
+            ? String.Format("{0} {1} -> {2} {3}",
+                Eval("TravelType") ?? "",
+                Eval("FromPlace") ?? "",
+                Eval("ToPlace") ?? "",
+                (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+              )
+            : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
+              ? String.Format("{0} - {1} {2}",
+                  (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
+                  (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
+                  (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                )
+              : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "DA")
+                ? String.Format("{0} -> {1} {2}",
+                    Eval("FromPlace") ?? "—",
+                    Eval("ToPlace") ?? "—",
+                     (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                  )
+                : (Eval("Purpose") ?? "—")
                                                 %>
                                             </span>
                                         </td>
+
 
                                         <td class="text-right font-weight-bold"><%# Eval("Amount", "{0:N2}") %></td>
 
@@ -1217,7 +1245,7 @@
                     <div id="expenseDebugLog" style="max-height: 260px; overflow: auto; font-size: 12px; padding: 6px; border: 1px solid #eee; background: #fafafa;"></div>
 
                     <div class="modal-footer">
-                        <asp:Button ID="BTN_SaveExpense" runat="server" CssClass="btn btn-primary btn-sm" Text="Save Expense" OnClick="BTN_SaveExpense_Click" />
+                        <asp:Button ID="BTN_SaveExpense" runat="server" CssClass="btn btn-primary btn-sm" ClientIDMode="Static" Text="Save Expense" OnClick="BTN_SaveExpense_Click" />
                         <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" onclick="$('#expenseModal').modal('hide');">Close</button>
                     </div>
                 </div>
@@ -1283,7 +1311,7 @@
                             </div>
                             <div class="card-body bg-white p-3">
                                 <div class="row text-center">
-                                    <div class="col-6 col-md-3 mb-3 mb-md-0 border-md-right">
+                                    <div class="col-6 col-md-3 mb-3 mb-md-0 border-md-right" id="MaxKM" runat="server" visible="false">
                                         <div class="small text-muted">Max KM</div>
                                         <div class="h6 font-weight-bold text-primary mb-0">
                                             <asp:Label ID="lblResolvedMaxKM" runat="server" Text="—"></asp:Label>
@@ -1301,7 +1329,7 @@
                                             <asp:Label ID="lblResolvedDA" runat="server" Text="—"></asp:Label>
                                         </div>
                                     </div>
-                                    <div class="col-6 col-md-3">
+                                    <div class="col-6 col-md-3" id="HotelCap" runat="server" visible="false">
                                         <div class="small text-muted">Hotel Cap.</div>
                                         <div class="h6 font-weight-bold text-danger mb-0">
                                             <asp:Label ID="lblResolvedHotelCap" runat="server" Text="—"></asp:Label>
@@ -1704,12 +1732,58 @@
                     // common helpers
                     function fail(msg) { notify('Validation error', msg, 'error'); dbg('validation fail: ' + msg); return false; }
 
+                    //if (type === 'DA') {
+                    //    // DA amount must be present and numeric > 0
+                    //    var da = parseNumber(($txtDA && $txtDA.length) ? $txtDA.val() : '');
+                    //    if (isNaN(da) || da <= 0) return fail('DA amount is required and must be greater than 0.');
+                    //    return true;
+                    //}
+
                     if (type === 'DA') {
-                        // DA amount must be present and numeric > 0
-                        var da = parseNumber(($txtDA && $txtDA.length) ? $txtDA.val() : '');
-                        if (isNaN(da) || da <= 0) return fail('DA amount is required and must be greater than 0.');
+
+                        var $txtDAAmount = $resolve('TXT_DAAmount');
+                        var $txtDAFromPlace = $resolve('TXT_DAFromPlace');
+                        var $txtDAToPlace = $resolve('TXT_DAToPlace');
+                        var $txtTravelDesc = $resolve('TXT_TravelDescription');
+
+                        var daAmt = parseNumber($txtDAAmount.val().trim());
+                        var fromPlace = $txtDAFromPlace.val().trim();
+                        var toPlace = $txtDAToPlace.val().trim();
+                        var travelDesc = $txtTravelDesc.val().trim();
+
+                        // --- DA Amount ---
+                        if (isNaN(daAmt) || daAmt <= 0)
+                            return fail('DA Amount is required and must be greater than 0.', $txtDAAmount);
+
+                        // --- From Place ---
+                        if (!fromPlace)
+                            return fail('Travel From Place is required for DA.', $txtDAFromPlace);
+
+                        if (fromPlace.length > 100)
+                            return fail('From Place cannot exceed 100 characters.', $txtDAFromPlace);
+
+                        // --- To Place ---
+                        if (!toPlace)
+                            return fail('Travel To Place is required for DA.', $txtDAToPlace);
+
+                        if (toPlace.length > 100)
+                            return fail('To Place cannot exceed 100 characters.', $txtDAToPlace);
+
+                        // Optional rule
+                        if (fromPlace.toLowerCase() === toPlace.toLowerCase())
+                            return fail('From Place and To Place cannot be the same.', $txtDAToPlace);
+
+                        // --- Travel Description ---
+                        if (!travelDesc)
+                            return fail('Travel Description is required for DA.', $txtTravelDesc);
+
+                        if (travelDesc.length < 5)
+                            return fail('Travel Description must be at least 5 characters.', $txtTravelDesc);
+
                         return true;
                     }
+
+
 
                     if (type === 'Hotel') {
                         // --- Required fields validation for Hotel ---
@@ -2246,7 +2320,6 @@
 
         })();
 
-        // Show the modal — use this in the button OnClientClick
         function showSubmitModal() {
             // show bootstrap modal
             var modal = $('#submitConfirmModal');
@@ -2777,6 +2850,7 @@
                 $('#spClientKmError').hide();
             });
     </script>
+
     <script>
         (function () {
             // helper: get element by server control client id
