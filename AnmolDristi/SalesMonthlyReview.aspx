@@ -20,66 +20,66 @@
             border: 1px solid #d3d9e3;
         }
 
-            .table-finance thead th {
-                position: sticky;
-                top: 0;
-                z-index: 50;
-                background: linear-gradient(180deg,#415a77 0%,#2c3e55 100%);
-                color: #f8f9fa;
-                text-align: center;
-                font-weight: 600;
-                letter-spacing: 0.3px;
-                text-transform: none;
-                padding: 9px 8px;
-                border: 1px solid #2a4468;
-                white-space: nowrap;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.15) inset;
-            }
+        .table-finance thead th {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: linear-gradient(180deg,#415a77 0%,#2c3e55 100%);
+            color: #f8f9fa;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: none;
+            padding: 9px 8px;
+            border: 1px solid #2a4468;
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15) inset;
+        }
 
-                .table-finance thead th:first-child {
-                    border-top-left-radius: 6px;
-                }
+        .table-finance thead th:first-child {
+            border-top-left-radius: 6px;
+        }
 
-                .table-finance thead th:last-child {
-                    border-top-right-radius: 6px;
-                }
+        .table-finance thead th:last-child {
+            border-top-right-radius: 6px;
+        }
 
-                .table-finance thead th:hover {
-                    background: linear-gradient(180deg,#496a91 0%,#3c5674 100%);
-                    transition: background 0.25s ease-in-out;
-                    cursor: default;
-                }
+        .table-finance thead th:hover {
+            background: linear-gradient(180deg,#496a91 0%,#3c5674 100%);
+            transition: background 0.25s ease-in-out;
+            cursor: default;
+        }
 
-            .table-finance td {
-                border: 1px solid #e1e1e1;
-                padding: 6px 8px;
-                vertical-align: middle;
-                color: #333;
-                background-color: #fff;
-            }
+        .table-finance td {
+            border: 1px solid #e1e1e1;
+            padding: 6px 8px;
+            vertical-align: middle;
+            color: #333;
+            background-color: #fff;
+        }
 
-            .table-finance tr:nth-child(even) td {
-                background-color: #fafbfc;
-            }
+        .table-finance tr:nth-child(even) td {
+            background-color: #fafbfc;
+        }
 
-            .table-finance tfoot td, .table-finance .grid-footer {
-                background-color: #eef3fa;
-                font-weight: 600;
-                color: #1a355e;
-                border-top: 2px solid #b7c5da;
-            }
+        .table-finance tfoot td, .table-finance .grid-footer {
+            background-color: #eef3fa;
+            font-weight: 600;
+            color: #1a355e;
+            border-top: 2px solid #b7c5da;
+        }
 
-            .table-finance .grand-total-cell {
-                background-color: #e2e8f6 !important;
-                color: #002b59;
-                font-weight: 700;
-            }
+        .table-finance .grand-total-cell {
+            background-color: #e2e8f6 !important;
+            color: #002b59;
+            font-weight: 700;
+        }
 
-            .table-finance .currency {
-                text-align: right;
-                white-space: nowrap;
-                padding-right: 10px;
-            }
+        .table-finance .currency {
+            text-align: right;
+            white-space: nowrap;
+            padding-right: 10px;
+        }
 
         .km-input {
             width: 110px;
@@ -134,14 +134,14 @@
             padding: 1rem 1.25rem;
         }
 
-            #expenseModal .modal-header .modal-title {
-                font-weight: 700;
-                font-size: 1rem;
-                color: #1a3b6b;
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-            }
+        #expenseModal .modal-header .modal-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1a3b6b;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
         #expenseModal .modal-body {
             padding: 1rem 1.25rem;
@@ -160,29 +160,28 @@
             flex-wrap: wrap;
         }
 
-            #expenseModal .policy-summary .policy-mode {
-                background: rgba(13,110,253,0.08);
-                border: 1px solid rgba(13,110,253,0.12);
-                color: #083e8a;
-                padding: .28rem .6rem;
-                border-radius: .35rem;
-                font-weight: 700;
-                display: inline-flex;
-                align-items: center;
-                gap: .4rem;
-                box-shadow: inset 0 -1px 0 rgba(13,110,253,0.02);
-            }
-            /* small chips */
-            #expenseModal .policy-summary .chip {
-                font-size: .9rem;
-                padding: .25rem .5rem;
-                border-radius: .35rem;
-                background: rgba(13,110,253,0.06);
-                color: #0d6efd;
-                font-weight: 600;
-            }
+        #expenseModal .policy-summary .policy-mode {
+            background: rgba(13,110,253,0.08);
+            border: 1px solid rgba(13,110,253,0.12);
+            color: #083e8a;
+            padding: .28rem .6rem;
+            border-radius: .35rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            box-shadow: inset 0 -1px 0 rgba(13,110,253,0.02);
+        }
 
-        /* Auto DA info */
+        #expenseModal .policy-summary .chip {
+            font-size: .9rem;
+            padding: .25rem .5rem;
+            border-radius: .35rem;
+            background: rgba(13,110,253,0.06);
+            color: #0d6efd;
+            font-weight: 600;
+        }
+
         #divAutoDAInfo .card-like {
             border-radius: .35rem;
             padding: .45rem;
@@ -190,50 +189,47 @@
             background: #ffffff;
         }
 
-        /* Inputs & card body spacing */
         #expenseModal .form-control {
             height: calc(1.9rem + .6rem);
             padding: .35rem .6rem;
         }
 
-        /* Totals card */
         #expenseModal .card.totals-card {
             border-radius: .4rem;
             box-shadow: none;
             border: 1px solid #eef3ff;
         }
 
-            #expenseModal .card.totals-card .small {
-                color: #6b7280;
-            }
+        #expenseModal .card.totals-card .small {
+            color: #6b7280;
+        }
 
-        /* Repeater table */
         #expenseModal table.table {
             margin-bottom: 0;
             border-collapse: separate;
             border-spacing: 0;
         }
 
-            #expenseModal table.table thead th {
-                background: #fbfdff;
-                font-weight: 700;
-                font-size: .9rem;
-                color: #1b2b45;
-                border-bottom: 2px solid #e6eefc;
-            }
+        #expenseModal table.table thead th {
+            background: #fbfdff;
+            font-weight: 700;
+            font-size: .9rem;
+            color: #1b2b45;
+            border-bottom: 2px solid #e6eefc;
+        }
 
-            #expenseModal table.table tbody tr td {
-                vertical-align: middle;
-                font-size: .92rem;
-            }
+        #expenseModal table.table tbody tr td {
+            vertical-align: middle;
+            font-size: .92rem;
+        }
 
-            #expenseModal table.table tbody tr:nth-child(odd) {
-                background: #ffffff;
-            }
+        #expenseModal table.table tbody tr:nth-child(odd) {
+            background: #ffffff;
+        }
 
-            #expenseModal table.table tbody tr:nth-child(even) {
-                background: #fbfcff;
-            }
+        #expenseModal table.table tbody tr:nth-child(even) {
+            background: #fbfcff;
+        }
 
         /* Small badges for type */
         .expense-type-badge {
@@ -277,15 +273,15 @@
             display: block;
         }
 
-            #expenseModal #divAutoDAInfo .auto-da-card {
-                background: linear-gradient(90deg,#fff8e6,#fffef9);
-                border: 1px solid #ffe9a8;
-                padding: .6rem .8rem;
-                border-radius: .45rem;
-                box-shadow: 0 5px 18px rgba(255,193,7,0.06);
-                min-width: 220px;
-                font-weight: 700;
-            }
+        #expenseModal #divAutoDAInfo .auto-da-card {
+            background: linear-gradient(90deg,#fff8e6,#fffef9);
+            border: 1px solid #ffe9a8;
+            padding: .6rem .8rem;
+            border-radius: .45rem;
+            box-shadow: 0 5px 18px rgba(255,193,7,0.06);
+            min-width: 220px;
+            font-weight: 700;
+        }
 
         #expenseModal #spAutoDAAmount {
             color: #b45f00;
@@ -415,6 +411,48 @@
         .btn-light .fa {
             font-size: 14px;
         }
+
+        .status-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 14px;
+            border-radius: 50%;
+            margin-left: 8px;
+            vertical-align: middle;
+            cursor: default;
+            user-select: none;
+        }
+
+            /* colors for statuses */
+            .status-icon.present {
+                background: #e6f6ea;
+                color: #118a32;
+            }
+            /* light green bg, green glyph */
+            .status-icon.absent {
+                background: #fdecea;
+                color: #c92121;
+            }
+            /* light red bg, red glyph */
+            .status-icon.leave {
+                background: #fff7e6;
+                color: #b86a00;
+            }
+            /* light orange bg */
+            .status-icon.wfh {
+                background: #e9f3ff;
+                color: #0b63c9;
+            }
+            /* light blue */
+            .status-icon.unknown {
+                background: #f1f1f1;
+                color: #666;
+            }
+        /* neutral */
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -519,10 +557,12 @@
                                             OnRowDataBound="gvActivities_RowDataBound" ShowFooter="true">
                                             <Columns>
 
-                                                <asp:TemplateField HeaderText="Date" ItemStyle-Width="10%">
+                                                <asp:TemplateField HeaderText="Date & Day (Status)" ItemStyle-Width="10%">
                                                     <ItemTemplate>
-                                                        <%# Eval("ActivityDate", "{0:dd-MM-yyyy}") %><br />
-                                                        <small class="text-muted"><%# Eval("Day") %></small>
+                                                        <span class="activity-date"><%# Eval("ActivityDate", "{0:dd-MM-yyyy}") %></span>
+                                                        <br />
+                                                        <small style="font-weight:bold;" class="text-muted day-text"><%# Eval("Day") %></small>
+                                                        <span class="status-icon" data-status='<%# Eval("Attendance_Status") %>' title='<%# Eval("Attendance_Status") %>' role="img" aria-label='<%# Eval("Attendance_Status") %>'></span>
                                                     </ItemTemplate>
                                                     <FooterTemplate><strong>Total :</strong>&nbsp;</FooterTemplate>
                                                 </asp:TemplateField>
@@ -1155,49 +1195,49 @@
 
                                         <td style="max-width: 280px;">
                                             <span class="text-truncate-ellipsis" title='<%# HttpUtility.HtmlEncode(
-         (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
-            ? String.Format("{0} {1} -> {2} {3}",
-                Eval("TravelType") ?? "",
-                Eval("FromPlace") ?? "",
-                Eval("ToPlace") ?? "",
-                (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-              )
-         : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
-            ? String.Format("{0} - {1} {2}",
-                (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
-                (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
-                (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-              )
-         : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "DA")
-            ? String.Format("{0} -> {1} {2}",
-                Eval("FromPlace") ?? "—",
-                Eval("ToPlace") ?? "—",
+                                             (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
+                                                ? String.Format("{0} {1} -> {2} {3}",
+                                                    Eval("TravelType") ?? "",
+                                                    Eval("FromPlace") ?? "",
+                                                    Eval("ToPlace") ?? "",
+                                                    (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                  )
+                                             : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
+                                                ? String.Format("{0} - {1} {2}",
+                                                    (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
+                                                    (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
+                                                    (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                  )
+                                             : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "DA")
+                                                ? String.Format("{0} -> {1} {2}",
+                                                    Eval("FromPlace") ?? "—",
+                                                    Eval("ToPlace") ?? "—",
                 
-                 (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-              )
-         : (Eval("Purpose") ?? "—")
-    ) %>'>
+                                                     (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                  )
+                                             : (Eval("Purpose") ?? "—")
+                                        ) %>'>
                                                 <%#
-            (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
-            ? String.Format("{0} {1} -> {2} {3}",
-                Eval("TravelType") ?? "",
-                Eval("FromPlace") ?? "",
-                Eval("ToPlace") ?? "",
-                (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-              )
-            : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
-              ? String.Format("{0} - {1} {2}",
-                  (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
-                  (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
-                  (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-                )
-              : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "DA")
-                ? String.Format("{0} -> {1} {2}",
-                    Eval("FromPlace") ?? "—",
-                    Eval("ToPlace") ?? "—",
-                     (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
-                  )
-                : (Eval("Purpose") ?? "—")
+                                                (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
+                                                ? String.Format("{0} {1} -> {2} {3}",
+                                                    Eval("TravelType") ?? "",
+                                                    Eval("FromPlace") ?? "",
+                                                    Eval("ToPlace") ?? "",
+                                                    (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                  )
+                                                : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Hotel")
+                                                  ? String.Format("{0} - {1} {2}",
+                                                      (Eval("FromDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("FromDate"))),
+                                                      (Eval("ToDate") == DBNull.Value ? "—" : String.Format("{0:dd-MM-yyyy}", Eval("ToDate"))),
+                                                      (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                    )
+                                                  : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "DA")
+                                                    ? String.Format("{0} -> {1} {2}",
+                                                        Eval("FromPlace") ?? "—",
+                                                        Eval("ToPlace") ?? "—",
+                                                         (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : "")
+                                                      )
+                                                    : (Eval("Purpose") ?? "—")
                                                 %>
                                             </span>
                                         </td>
@@ -2949,6 +2989,40 @@
                 if (reason) reason.addEventListener('input', clearError);
             });
         })();
-    </script>
+    </script>  
 
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var map = {
+                present: { glyph: '✓', cls: 'present', label: 'Present' },
+                absent: { glyph: '✖', cls: 'absent', label: 'Absent' },
+                leave: { glyph: '⛱', cls: 'leave', label: 'Leave' },
+                wfh: { glyph: '🏠', cls: 'wfh', label: 'WFH' }
+            };
+
+            var icons = document.querySelectorAll('.status-icon');
+
+            icons.forEach(function (el) {
+                var raw = (el.dataset.status || '').trim();
+                var key = raw.toLowerCase();
+                if (key === 'working from home') key = 'wfh';
+                if (key === 'work from home') key = 'wfh';
+                if (key === 'on leave') key = 'leave';
+
+                var cfg = map[key];
+                if (!cfg) {
+                    el.textContent = '•';
+                    el.classList.add('unknown');
+                    el.title = raw || 'Unknown';
+                    el.setAttribute('aria-label', raw || 'Unknown');
+                    return;
+                }
+
+                el.textContent = cfg.glyph;
+                el.classList.add(cfg.cls);
+                el.title = raw || cfg.label;
+                el.setAttribute('aria-label', raw || cfg.label);
+            });
+        });
+    </script>
 </asp:Content>
