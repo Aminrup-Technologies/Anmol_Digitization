@@ -717,9 +717,6 @@
                                             </Columns>
                                         </asp:GridView>
                                     </div>
-
-
-
                                 </div>
                             </div>
                         </div>
@@ -964,7 +961,7 @@
                             <asp:HiddenField ID="HF_ResolvedRatePerKm" runat="server" />
                             <asp:HiddenField ID="HF_ResolvedPolicyMode" runat="server" />
                             <asp:HiddenField ID="HF_OutstationDA" runat="server" />
-                            <asp:HiddenField ID="HF_OwnArrangementDA" runat="server" />
+                            <asp:HiddenField ID="HF_OwnArrangementDA" runat="server" />                           
 
                             <!-- Policy-driven summary (inside expenseModal .modal-body, top) -->
                             <div class="row mb-2 align-items-center policy-summary">
@@ -1028,9 +1025,13 @@
                                     <label>To Place</label>
                                     <asp:TextBox ID="TXT_DAToPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="100" />
                                 </div>
-                                <div class="col-md-12 form-group">
+                                <div class="col-md-8 form-group">
                                     <label>Travel Description</label>
                                     <asp:TextBox ID="TXT_TravelDescription" runat="server" TextMode="MultiLine" Rows="1" CssClass="form-control form-control-sm" />
+                                </div>
+                                <div class="col-md-4 form-group">
+                                    <label>Modify HQ Travel Kms</label>
+                                    <asp:Button ID="btnOpenEditKmFromExpense" runat="server" CssClass="btn btn-sm btn-primary" Text="Edit KM" OnClick="btnOpenEditKmFromExpense_Click" />
                                 </div>
                             </div>
 

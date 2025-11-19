@@ -1857,6 +1857,127 @@ namespace AnmolDristi
             }
         }
 
+        protected void btnOpenEditKmFromExpense_Click(object sender, EventArgs e)
+        {
+            int activityId = 0;
+            if (!int.TryParse(HF_ActivityId?.Value, out activityId) || activityId <= 0)
+            {
+                RegisterClientNotification("Invalid activity selected for KM edit.", "error");
+                return;
+            }
+
+            // Try Session cache first (fast)
+            DataTable dt = Session[SESSION_KEY_GV_ACTIVITIES] as DataTable;
+            DataRow row = null;
+            if (dt != null)
+            {
+                try
+                {
+                    if (dt.PrimaryKey != null && dt.PrimaryKey.Length > 0)
+                        row = dt.Rows.Find(activityId);
+                    else
+                    {
+                        foreach (DataRow r in dt.Rows)
+                        {
+                            if (r["ActivityId"] != DBNull.Value && Convert.ToInt32(r["ActivityId"]) == activityId) { row = r; break; }
+                        }
+                    }
+                }
+                catch { row = null; }
+            }
+
+            if (row != null)
+                PopulateEditKmModalFromRow(row);
+            else
+                PopulateEditKmModalFromDb(activityId);
+
+            // Optionally hide expense modal immediately so inner modal appears on top
+            // Register client script to hide expenseModal just before edit modal shows
+            string hideOuter = "$('#expenseModal').modal('hide');";
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "hideExpenseBeforeOpenInner_" + activityId, hideOuter, true);
+        }
+
+        private void PopulateEditKmModalFromRow(DataRow row)
+        {
+            int activityId = row["ActivityId"] != DBNull.Value ? Convert.ToInt32(row["ActivityId"]) : 0;
+            decimal totalKm = 0m;
+            if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
+                totalKm = Convert.ToDecimal(row["TotalDistanceKM"]);
+
+            string currentKm = totalKm.ToString("0.##", CultureInfo.GetCultureInfo("en-IN"));
+
+            string minKm = row.Table.Columns.Contains("MinAllowedKM") && row["MinAllowedKM"] != DBNull.Value
+                           ? row["MinAllowedKM"].ToString() : "";
+            string maxKm = row.Table.Columns.Contains("MaxAllowedKM") && row["MaxAllowedKM"] != DBNull.Value
+                           ? row["MaxAllowedKM"].ToString() : "";
+            string activityDate = row.Table.Columns.Contains("ActivityDate") && row["ActivityDate"] != DBNull.Value
+                                  ? Convert.ToDateTime(row["ActivityDate"]).ToString("dd-MM-yyyy") : "";
+
+            // set controls
+            hdnActivityId.Value = activityId.ToString();
+            txtModalKM.Text = currentKm;
+            hdnOriginalKm.Value = currentKm;
+            lblModalCurrentKm.Text = "Current: " + currentKm + " km";
+            if (!string.IsNullOrEmpty(activityDate)) lbl_kmmodal_date.Text = activityDate;
+
+            string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
+            string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
+
+            // bind history (your existing method)
+            BindKmHistory(activityId);
+
+            // hide outer and show inner modal (small timeout to ensure hide completes)
+            string script = string.Format("setTimeout(function(){{ $('#{0}').modal('show'); $('#spMinKm').text('{1}'); $('#spMaxKm').text('{2}'); }}, 150);",
+                "editKmModal", minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+
+            // ⭐ Paste this RIGHT BELOW the above:
+            string reopen = "$('#editKmModal').one('hidden.bs.modal', function(){ $('#expenseModal').modal('show'); });";
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "reopenExpenseModal_" + activityId, reopen, true);
+        }
+
+        private void PopulateEditKmModalFromDb(int activityId)
+        {
+            if (activityId <= 0) { RegisterClientNotification("Activity not found.", "warning"); return; }
+
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT TOP 1 ActivityId, TotalDistanceKM, MinAllowedKM, MaxAllowedKM, ActivityDate FROM dbo.SalesDailyActivity WHERE ActivityId = @ActivityId", con))
+            {
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                con.Open();
+                using (SqlDataReader rdr = cmd.ExecuteReader())
+                {
+                    if (rdr.Read())
+                    {
+                        string currentKm = rdr["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(rdr["TotalDistanceKM"]).ToString("0.##", CultureInfo.GetCultureInfo("en-IN")) : "0";
+                        string minKm = rdr["MinAllowedKM"] != DBNull.Value ? rdr["MinAllowedKM"].ToString() : "";
+                        string maxKm = rdr["MaxAllowedKM"] != DBNull.Value ? rdr["MaxAllowedKM"].ToString() : "";
+                        DateTime? aDate = rdr["ActivityDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rdr["ActivityDate"]) : null;
+
+                        hdnActivityId.Value = activityId.ToString();
+                        txtModalKM.Text = currentKm;
+                        hdnOriginalKm.Value = currentKm;
+                        lblModalCurrentKm.Text = "Current: " + currentKm + " km";
+                        if (aDate.HasValue) lbl_kmmodal_date.Text = aDate.Value.ToString("dd-MM-yyyy");
+
+                        string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
+                        string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
+
+                        BindKmHistory(activityId);
+
+                        string script = string.Format("setTimeout(function(){{ $('#{0}').modal('show'); $('#spMinKm').text('{1}'); $('#spMaxKm').text('{2}'); }}, 150);",
+                            "editKmModal", minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
+                        ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+                        return;
+                    }
+                }
+            }
+
+            RegisterClientNotification("Activity not found.", "warning");
+        }
+
+
         private void BindKmHistory(int activityId)
         {
             string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
