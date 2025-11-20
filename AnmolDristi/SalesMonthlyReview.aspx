@@ -1027,7 +1027,7 @@
                                     </div>
 
                                     <div class="kv-item">
-                                        <div class="kv-key">HQ Travel Distance</div>
+                                        <div class="kv-key">Travel Distance</div>
                                         <div id="spHQTravelDistance" class="kv-value">
                                             <asp:Label ID="lbl_HQTravelDistance" runat="server" Text="43"></asp:Label>&nbsp;Kms&nbsp;&nbsp;<asp:Button ID="btnOpenEditKmFromExpense" runat="server" CssClass="btn btn-sm btn-primary" Text="Modify Km." OnClick="btnOpenEditKmFromExpense_Click" />
                                         </div>
@@ -2038,13 +2038,13 @@
                 dbg('Applying visibility for ' + type);
 
                 if (type === 'DA') {
-                    safeShow(els.$divDA); safeHide(els.$divHotel); safeHide(els.$divTravel); safeHide(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo);
+                    safeShow(els.$divDA); safeHide(els.$divHotel); safeHide(els.$divTravel); safeHide(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo); 
                 } else if (type === 'Hotel') {
-                    safeHide(els.$divDA); safeShow(els.$divHotel); safeHide(els.$divTravel); safeShow(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo);
+                    safeHide(els.$divDA); safeShow(els.$divHotel); safeHide(els.$divTravel); safeShow(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo); enableAttachmentInput();
                 } else if (type === 'Travel') {
                     safeHide(els.$divDA); safeHide(els.$divHotel); safeShow(els.$divTravel);
                     if (els.$chkTravelInvoice && els.$chkTravelInvoice.length && els.$chkTravelInvoice.prop('checked')) {
-                        safeShow(els.$divFUContainer); safeShow(els.$divTravelInvoiceNo);
+                        safeShow(els.$divFUContainer); safeShow(els.$divTravelInvoiceNo); enableAttachmentInput();
                     } else {
                         safeHide(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo);
                     }
@@ -2059,9 +2059,12 @@
                 var els = resolveElements();
                 if (!els.$chkTravelInvoice || !els.$chkTravelInvoice.length) return;
                 if (els.$chkTravelInvoice.prop('checked')) {
-                    safeShow(els.$divFUContainer); safeShow(els.$divTravelInvoiceNo);
+                    safeShow(els.$divFUContainer); safeShow(els.$divTravelInvoiceNo); enableAttachmentInput();
                 } else {
                     safeHide(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo);
+                    // Optionally clear selection when hidden:
+                    var $fu = $resolve('FU_Attachment');
+                    if ($fu && $fu.length) { try { $fu.val(null); $fu.next('.file-chosen').text('No file chosen'); } catch (e) { } }
                 }
             }
 
@@ -2087,6 +2090,23 @@
                         updateVisibility();
                     });
                 }
+            }
+
+            function enableAttachmentInput() {
+                try {
+                    var $fu = $resolve('FU_Attachment');
+                    if ($fu && $fu.length) {
+                        // remove disabled attribute (server may set it); also ensure input is not readonly
+                        $fu.prop('disabled', false);
+                        $fu.removeAttr('disabled');
+                        try { $fu.prop('readonly', false); $fu.removeAttr('readonly'); } catch (e) { }
+                        // If a custom "file-chosen" placeholder was added, ensure it updates on change
+                        $fu.off('change.ensure').on('change.ensure', function () {
+                            var name = this.files && this.files.length ? this.files[0].name : 'No file chosen';
+                            $(this).next('.file-chosen').text(name);
+                        });
+                    }
+                } catch (e) { console && console.log && console.log('enableAttachmentInput error', e); }
             }
 
             // attach client-side validation to Save button to prevent server trip when invalid
@@ -2154,6 +2174,7 @@
                 bindHandlers();
                 applyPolicyMode(); // apply policy defaults to UI
                 updateVisibility();
+                enableAttachmentInput();
                 attachSaveHook();
                 updateAutoDADisplay();
             }
