@@ -589,6 +589,42 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField HF_OwnArrangementDA;
         
         /// <summary>
+        /// lbl_BeatTravelled control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_BeatTravelled;
+        
+        /// <summary>
+        /// lbl_DistributorName control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_DistributorName;
+        
+        /// <summary>
+        /// lbl_HQTravelDistance control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_HQTravelDistance;
+        
+        /// <summary>
+        /// btnOpenEditKmFromExpense control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnOpenEditKmFromExpense;
+        
+        /// <summary>
         /// btn_rfpolicy control.
         /// </summary>
         /// <remarks>
@@ -650,15 +686,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox TXT_TravelDescription;
-        
-        /// <summary>
-        /// btnOpenEditKmFromExpense control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnOpenEditKmFromExpense;
         
         /// <summary>
         /// divHotelSection control.

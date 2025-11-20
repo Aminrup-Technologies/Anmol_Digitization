@@ -1638,8 +1638,8 @@ namespace AnmolDristi
 
                     // Clear any prior messages
                     LBL_ExpenseMsg.Text = "";
-                    HF_SnapPolicyMode.Value = "Daily";
-                    ApplyPolicyMode_ClientCall("Daily");
+                    HF_SnapPolicyMode.Value = "HQ";
+                    ApplyPolicyMode_ClientCall("HQ");
 
                     // Clear the file input via client script (FileUpload value cannot be set server-side)
                     ScriptManager.RegisterStartupScript(this, this.GetType(), "clearFileInput_" + FU_Attachment.ClientID, $"$('#{FU_Attachment.ClientID}').val('');", true);
@@ -4811,8 +4811,8 @@ namespace AnmolDristi
             }
             else
             {
-                HF_SnapPolicyMode.Value = "Daily";
-                ApplyPolicyMode_ClientCall("Daily");
+                HF_SnapPolicyMode.Value = "HQ";
+                ApplyPolicyMode_ClientCall("HQ");
             }
 
             // Bind repeater and totals from authoritative DB result
@@ -5414,9 +5414,9 @@ namespace AnmolDristi
 
                                 // Reload UI from DB (authoritative)
                                 LoadExpenseForActivity(activityId.ToString());
-                                HF_SnapPolicyMode.Value = "Daily";
+                                HF_SnapPolicyMode.Value = "HQ";
                                 //ApplyPolicyModeFromCodeBehind("Daily");
-                                ApplyPolicyMode_ClientCall("Daily");
+                                ApplyPolicyMode_ClientCall("HQ");
                                 //ClickApplyButtonFromServer("Daily");
                                 Session.Remove(SESSION_KEY_GV_ACTIVITIES);
                                 BindGrid(false);
@@ -5736,8 +5736,8 @@ namespace AnmolDristi
 
                                 // Reload UI from DB (authoritative)
                                 LoadExpenseForActivity(activityId.ToString());
-                                HF_SnapPolicyMode.Value = "Daily";
-                                ApplyPolicyMode_ClientCall("Daily");
+                                HF_SnapPolicyMode.Value = "HQ";
+                                ApplyPolicyMode_ClientCall("HQ");
                                 Session.Remove(SESSION_KEY_GV_ACTIVITIES);
                                 BindGrid(false);
 
