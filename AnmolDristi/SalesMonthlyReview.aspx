@@ -697,7 +697,7 @@
                                                             <i class="fa fa-pencil"></i>
                                                         </asp:LinkButton>--%>
 
-                                                        <asp:LinkButton ID="lnkEdit" runat="server" CommandName="OpenEditModal" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("TotalDistanceKM") + "|" + Eval("MinAllowedKM") + "|" + Eval("MaxAllowedKM") + "|" + Eval("ActivityDate")%>' CssClass="btn btn-sm btn-primary" Visible="false" ToolTip="Edit Kms"><i class="fa fa-pencil"></i></asp:LinkButton>
+                                                        <%--<asp:LinkButton ID="lnkEdit" runat="server" CommandName="OpenEditModal" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("TotalDistanceKM") + "|" + Eval("MinAllowedKM") + "|" + Eval("MaxAllowedKM") + "|" + Eval("ActivityDate")%>' CssClass="btn btn-sm btn-primary" Visible="false" ToolTip="Edit Kms"><i class="fa fa-pencil"></i></asp:LinkButton>--%>
 
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
                                                             CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
@@ -1095,7 +1095,7 @@
                                     <asp:TextBox ID="TXT_DAToPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="100" />
                                 </div>
                                 <div class="col-md-8 form-group">
-                                    <label>Travel Description</label>
+                                    <label>Remarks </label>
                                     <asp:TextBox ID="TXT_TravelDescription" runat="server" TextMode="MultiLine" Rows="1" CssClass="form-control form-control-sm" />
                                 </div>
                             </div>

@@ -346,7 +346,7 @@
                         <div class="x_content bg-light p-3 rounded-bottom">
                             <div class="card-box table-responsive">
                                 <asp:Panel ID="pnlRequests" runat="server">
-                                    <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
+                                    <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table" ShowHeaderWhenEmpty="true"
                                         AutoGenerateColumns="false" AllowPaging="true" PageSize="20" OnPageIndexChanging="gvRequests_PageIndexChanging" OnRowCommand="gvRequests_RowCommand" DataKeyNames="ApprovalRequestId" GridLines="None">
                                         <HeaderStyle CssClass="gentilia-table-header" />
                                         <RowStyle CssClass="gentilia-row" />
@@ -374,7 +374,7 @@
 
                                             <asp:TemplateField HeaderText="Status" HeaderStyle-Width="120px">
                                                 <ItemTemplate>
-                                                    <span class="status-cell" data-status='<%# Eval("Status") %>'><%# Eval("Status") %></span>
+                                                    <span class="status-cell" data-status='<%# Eval("ApproverStatus") %>'><%# Eval("ApproverStatus") %></span>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 

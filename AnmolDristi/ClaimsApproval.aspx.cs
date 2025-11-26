@@ -29,9 +29,9 @@ namespace AnmolDristi
         }
 
         // ------------- BIND HEADER GRID ----------------
-        protected void BindRequestsGrid()
+        protected void BindRequestsGrid_OLD()
         {
-            string sql = @"SELECT A.ApprovalRequestId, A.RequesterLoginId, UM.EmployeeName, A.RequestDate, A.YearNo, A.MonthNo, DATENAME(MONTH, DATEFROMPARTS(A.YearNo, A.MonthNo, 1)) AS MonthName, A.Status, A.TotalKM, A.TotalClaimAmount, A.TotalDAAmount, A.TotalHotelAmount, A.TotalTravelAmount, A.TotalExpenseAmount, A.RequestRemarks, A.CreatedOn, A.CreatedBy, A.ModifiedOn, A.ModifiedBy FROM dbo.SalesApprovalRequest A INNER JOIN [AnmolDristi].[dbo].[MST_UserMaster] UM ON A.RequesterLoginId = UM.EmployeeCode WHERE A.Status = 'Pending' ORDER BY A.RequestDate DESC;";
+            string sql = @"SELECT A.ApprovalRequestId, A.RequesterLoginId, UM.EmployeeName, A.RequestDate, A.YearNo, A.MonthNo, DATENAME(MONTH, DATEFROMPARTS(A.YearNo, A.MonthNo, 1)) AS MonthName, A.Status, A.TotalKM, A.TotalClaimAmount, A.TotalDAAmount, A.TotalHotelAmount, A.TotalTravelAmount, A.TotalExpenseAmount, A.RequestRemarks, A.CreatedOn, A.CreatedBy, A.ModifiedOn, A.ModifiedBy FROM dbo.SalesApprovalRequest A INNER JOIN MST_UserMaster UM ON A.RequesterLoginId = UM.EmployeeCode WHERE A.Status = 'Pending' ORDER BY A.RequestDate DESC;";
 
             DataTable dt = new DataTable();
             using (var con = new SqlConnection(connString))
@@ -44,6 +44,43 @@ namespace AnmolDristi
             gvRequests.DataSource = dt;
             gvRequests.DataBind();
         }
+
+        protected void BindRequestsGrid()
+        {
+            // current approver's employee code (adjust if you store elsewhere)
+            var approverCode = GetLoggedInEmployeeCode();
+            if (string.IsNullOrWhiteSpace(approverCode))
+            {
+                gvRequests.DataSource = null;
+                gvRequests.DataBind();
+                return;
+            }
+
+            DataTable dt = new DataTable();
+            try
+            {
+                using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand("dbo.usp_GetPendingApprovalsForUser_Fast", con))
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ApproverLoginId", approverCode);
+                    da.Fill(dt);
+                }
+
+                gvRequests.DataSource = dt;
+                gvRequests.DataBind();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("BindRequestsGrid failed: " + ex);
+                gvRequests.DataSource = null;
+                gvRequests.DataBind();
+                // Optionally set an admin-visible error label here
+            }
+        }
+
+
 
         protected void Page_Init(object sender, EventArgs e)
         {
@@ -917,7 +954,7 @@ namespace AnmolDristi
             ProcessSelectedDetails("Reject");
         }
 
-        private void ProcessSelectedDetails(string action)
+        private void ProcessSelectedDetails_OLD(string action)
         {
             lblModalMessage.Text = string.Empty;
             int approvalRequestId = int.Parse(hfActionRequestId.Value);
@@ -965,6 +1002,139 @@ namespace AnmolDristi
             lblModalMessage.Text = $"Selected items {action}ed successfully.";
             ScriptManager.RegisterStartupScript(this, GetType(), "openModalAgain", "$('#detailsModal').modal('show');", true);
         }
+
+        private void ProcessSelectedDetails(string action)
+        {
+            lblModalMessage.Text = string.Empty;
+            int approvalRequestId = int.Parse(hfActionRequestId.Value);
+            string manager = GetLoggedInEmployeeCode();
+            string bulkRemarks = string.IsNullOrWhiteSpace(txtBulkRemarks.Text) ? null : txtBulkRemarks.Text.Trim();
+
+            var dtIds = BuildSelectedIdsTVP();
+            if (dtIds.Rows.Count == 0)
+            {
+                lblModalMessage.Text = "Please select at least one row.";
+                return;
+            }
+            var dtRemarks = BuildDetailRemarksTVP();
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var infoMessages = new System.Text.StringBuilder();
+            int approverRowsUpdated = -1;
+            string nextApprover = null;
+            var approverQueue = new DataTable();
+
+            try
+            {
+                using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand("usp_ProcessApprovalRequestDetails_WithRemarks", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.CommandTimeout = 120;
+
+                    con.InfoMessage += (s, e) =>
+                    {
+                        infoMessages.AppendLine(e.Message);
+                    };
+                    con.FireInfoMessageEventOnUserErrors = true;
+
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+                    var pIds = cmd.Parameters.AddWithValue("@DetailIds", dtIds);
+                    pIds.SqlDbType = SqlDbType.Structured;
+                    pIds.TypeName = "dbo.TVP_IntIds";
+
+                    var pRemarks = cmd.Parameters.AddWithValue("@DetailRemarks", dtRemarks);
+                    pRemarks.SqlDbType = SqlDbType.Structured;
+                    pRemarks.TypeName = "dbo.TVP_DetailRemarks";
+
+                    cmd.Parameters.AddWithValue("@Action", action);
+                    cmd.Parameters.AddWithValue("@ChangedBy", manager);
+                    cmd.Parameters.AddWithValue("@BulkRemarks", (object)bulkRemarks ?? DBNull.Value);
+
+                    // OUTPUT params
+                    var pRowsUpdated = new SqlParameter("@ApproverRowsUpdated", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                    cmd.Parameters.Add(pRowsUpdated);
+
+                    var pNextApprover = new SqlParameter("@NextApproverLoginId", SqlDbType.NVarChar, 100) { Direction = ParameterDirection.Output };
+                    cmd.Parameters.Add(pNextApprover);
+
+                    con.Open();
+
+                    // Use ExecuteReader to read the returned approver queue resultset (if SP returns it)
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        approverQueue.Load(reader);
+                        // If SP returns additional resultsets, call reader.NextResult() and load as needed
+                    }
+
+                    // read outputs (after reader closed)
+                    approverRowsUpdated = pRowsUpdated.Value != DBNull.Value ? (int)pRowsUpdated.Value : 0;
+                    nextApprover = pNextApprover.Value != DBNull.Value ? (string)pNextApprover.Value : null;
+
+                    sw.Stop();
+                }
+
+                // Log/trace results
+                System.Diagnostics.Trace.TraceInformation(
+                    $"Approval proc succeeded. Request={approvalRequestId}, Action={action}, By={manager}, ApproverRowsUpdated={approverRowsUpdated}, NextApprover={nextApprover}, DurationMs={sw.ElapsedMilliseconds}. Info: {infoMessages}");
+
+                // Sanity check: if approverRowsUpdated=0, show warning
+                if (approverRowsUpdated == 0)
+                {
+                    lblModalMessage.CssClass = "text-warning";
+                    lblModalMessage.Text = "Request processed, but no approver row was updated. Please refresh the page and check the approval queue.";
+                }
+                else
+                {
+                    lblModalMessage.CssClass = "text-success";
+                    lblModalMessage.Text = $"Selected items {action}ed successfully. Next approver: {(nextApprover ?? "none")}";
+                }
+
+                // Optionally show the approver queue in a debug panel or log it
+                // e.g., store approverQueue in ViewState for admin view, or trace it
+                System.Diagnostics.Trace.TraceInformation("Approver queue snapshot:\n" + DataTableToString(approverQueue));
+
+                // refresh UI
+                BindDetailsGrid(approvalRequestId);
+                ShowDetailsModal(approvalRequestId);
+                BindRequestsGrid();
+
+                ScriptManager.RegisterStartupScript(this, GetType(), "openModalAgain", "$('#detailsModal').modal('show');", true);
+            }
+            catch (SqlException sqlex)
+            {
+                sw.Stop();
+                var err = $"SQL error: {sqlex.Message} (Number={sqlex.Number})";
+                System.Diagnostics.Trace.TraceError(err + "\n" + sqlex);
+                lblModalMessage.CssClass = "text-danger";
+                lblModalMessage.Text = "Error while processing approval. Contact support. Ref: " + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+                ScriptManager.RegisterStartupScript(this, GetType(), "openModalOnError", "$('#detailsModal').modal('show');", true);
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                System.Diagnostics.Trace.TraceError("Error in ProcessSelectedDetails: " + ex);
+                lblModalMessage.CssClass = "text-danger";
+                lblModalMessage.Text = "Unexpected error. Contact support. Ref: " + DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+                ScriptManager.RegisterStartupScript(this, GetType(), "openModalOnError2", "$('#detailsModal').modal('show');", true);
+            }
+        }
+
+        // helper to pretty-print a DataTable for trace (simple)
+        private string DataTableToString(DataTable dt)
+        {
+            if (dt == null) return "(null)";
+            var sb = new System.Text.StringBuilder();
+            foreach (DataColumn c in dt.Columns) sb.Append(c.ColumnName).Append('\t');
+            sb.AppendLine();
+            foreach (DataRow r in dt.Rows)
+            {
+                foreach (var cell in r.ItemArray) sb.Append(cell?.ToString()).Append('\t');
+                sb.AppendLine();
+            }
+            return sb.ToString();
+        }
+
 
         // Gather selected detail ids from grid
         private DataTable BuildSelectedDetailsTVP()
