@@ -322,6 +322,34 @@
             }
         }
     </style>
+
+    <style>
+
+    #kmEditModal .modal-header {
+        border-bottom: 2px solid #004085;
+    }
+
+    #kmEditModal .modal-footer {
+        border-top: 1px solid #ddd;
+    }
+
+    #km_history_tbl thead th {
+        background: #343a40 !important;
+        color: white;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    #km_history_tbl tbody tr:hover {
+        background-color: #f1f1f1;
+    }
+
+    #km_history_tbl td, #km_history_tbl th {
+        white-space: nowrap;
+    }
+</style>
+
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <asp:HiddenField ID="hfActionRequestId" runat="server" />
@@ -448,15 +476,22 @@
                                             </asp:TemplateField>
 
                                             <asp:BoundField DataField="User_Name" HeaderText="Salesperson" Visible="false" ItemStyle-Width="16%" />
-                                            <asp:TemplateField HeaderText="Distance (KM)" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="9%" FooterStyle-HorizontalAlign="Right">
-                                                <ItemTemplate>
-                                                    <%# string.Format("{0:N2} Km", Eval("Snapshot_TotalDistanceKM")) %>
-                                                </ItemTemplate>
-                                                <FooterTemplate>
-                                                    <strong>
-                                                        <%# string.Format("{0:N2} Km", Eval("TotalDistanceKM")) %>
-                                                    </strong>
-                                                </FooterTemplate>
+
+                                            <asp:TemplateField HeaderText="Distance (KM)">
+                                              <ItemTemplate>
+                                                <span class="km-value"
+                                                      data-activityid='<%# Eval("ActivityId") %>'
+                                                      data-currentkm='<%# Eval("Snapshot_TotalDistanceKM") %>'
+                                                      data-claimstatus='<%# Eval("ClaimStatus") %>'
+                                                      id="spn_km_<%# Eval("ActivityId") %>">
+                                                  <%# Eval("Snapshot_TotalDistanceKM", "{0:N2}") %>
+                                                </span>
+                                                &nbsp;
+                                                <asp:LinkButton ID="lnkEditKM" runat="server" CommandName="EditKM"
+                                                    CommandArgument='<%# Eval("ActivityId") %>' CssClass="btn btn-sm btn-outline-primary lnk-edit-km">
+                                                    Edit
+                                                </asp:LinkButton>
+                                              </ItemTemplate>
                                             </asp:TemplateField>
                                             <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="9%" FooterStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" ItemStyle-Width="8%" FooterStyle-HorizontalAlign="Right" />
@@ -570,6 +605,89 @@
                 </div>
             </div>
         </div>
+
+        <div id="kmEditModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <!-- widened -->
+                <div class="modal-content">
+
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">Edit Distance (KM)</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                    </div>
+
+                    <div class="modal-body">
+
+                        <!-- top section -->
+                        <div class="row">
+                            <!-- Current KM -->
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Current KM</label>
+                                    <input type="text" id="km_modal_current" class="form-control bg-light" readonly />
+                                </div>
+                            </div>
+
+                            <!-- New KM -->
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">New KM</label>
+                                    <input type="number" step="0.01" id="km_modal_new" class="form-control" />
+                                </div>
+                            </div>
+
+                            <!-- Reason -->
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="font-weight-bold">Reason (when KM changes)</label>
+                                    <textarea id="km_modal_reason" class="form-control" rows="2" placeholder="Enter reason"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <!-- History Title -->
+                        <h5 class="text-secondary mb-3">
+                            <i class="fa fa-history"></i>KM Change History
+                        </h5>
+
+                        <!-- History Table Container -->
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px;">
+                            <table class="table table-striped table-hover table-sm" id="km_history_tbl">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th>Date (IST)</th>
+                                        <th>Old KM</th>
+                                        <th>New KM</th>
+                                        <th>Changed By</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- dynamic rows -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div id="km_modal_message" class="mt-3"></div>
+
+                    </div>
+
+                    <div class="modal-footer bg-light">
+                        <button type="button" id="km_modal_save" class="btn btn-success">
+                            <i class="fa fa-save"></i>Save
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                            <i class="fa fa-times"></i>Cancel
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+
 
         <!-- Modal HTML (place once on the page, e.g. below the GridView) -->
         <div class="modal fade" id="expensesModal" tabindex="-1" role="dialog" aria-labelledby="expensesModalLabel" aria-hidden="true">
@@ -1271,20 +1389,14 @@
                 openExpensesModal(payload);
             });
 
-            // Manual popover: show on enter, hide on leave (works reliably with delegated elements
-            // and prevents immediate hide when moving pointer to popover content)
             var hideTimer = null;
             function clearHideTimer() { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } }
 
             $(document).on('mouseenter', '.btn-expenses', function (e) {
                 var $btn = $(this);
                 clearHideTimer();
-
-                // build fresh content
                 var payload = readExpensesPayloadInternal($btn);
                 var contentHtml = makePopoverContentFromJson(payload);
-
-                // if already has a popover instance, update by disposing & reinit
                 try {
                     $btn.popover && $btn.popover('dispose');
                 } catch (ignore) { }
@@ -1292,23 +1404,19 @@
                 $btn.popover({
                     html: true,
                     content: contentHtml,
-                    trigger: 'manual',    // manual trigger — we show/hide explicitly
+                    trigger: 'manual',
                     placement: $btn.data('placement') || 'left',
                     container: 'body'
                 });
 
-                // show it
                 $btn.popover('show');
 
-                // handle leaving the button — start a short timer to hide, but cancel if we enter popover
                 var pid = $btn.data('popover-id') || null;
                 var $pop = null;
                 try {
-                    // find the actual popover in DOM (Bootstrap uses .popover)
                     $pop = $('body').find('.popover').last();
                 } catch (ignore) { $pop = null; }
 
-                // when mouse enters popover, cancel hide
                 if ($pop && $pop.length) {
                     $pop.on('mouseenter.expensePopover', function () {
                         clearHideTimer();
@@ -1320,7 +1428,6 @@
                 }
             });
 
-            // mouseleave on button: schedule hide (short delay to allow moving into popover)
             $(document).on('mouseleave', '.btn-expenses', function (e) {
                 var $btn = $(this);
                 clearHideTimer();
@@ -1329,12 +1436,10 @@
                 }, 150);
             });
 
-            // clean up on unload
             $(window).on('beforeunload', function () {
                 try { $('.btn-expenses').popover && $('.btn-expenses').popover('dispose'); } catch (ignore) { }
             });
 
-            // optional: debug context menu to inspect element attributes
             $(document).on('contextmenu', '.btn-expenses, .open-expenses-modal', function (e) {
                 var $el = $(this);
                 console.log('DEBUG element:', $el.get(0), 'attrs:', $el.prop('attributes'));
@@ -1344,5 +1449,133 @@
         })(jQuery);
     </script>
 
+    <script type="text/javascript">
+  (function(){
+    $(document).on('click', '.btn-edit-km', function(e){
+      e.preventDefault();
+      var row = $(this).closest('tr');
+      var span = row.find('.km-value').first();
+      var activityId = span.data('activityid');
+      var currentKm = span.data('currentkm');
+
+      $('#km_modal_activityid').val(activityId);
+      $('#km_modal_current').val(parseFloat(currentKm).toFixed(2));
+      $('#km_modal_new').val(parseFloat(currentKm).toFixed(2));
+      $('#km_modal_reason').val('');
+      $('#km_modal_message').empty();
+
+      loadKmHistory(activityId);
+
+      $('#kmEditModal').modal('show');
+    });
+
+    function loadKmHistory(activityId) {
+      $('#km_history_tbl tbody').empty().append('<tr><td colspan="5">Loading...</td></tr>');
+      Sys.WebForms.PageRequestManager.getInstance(); // if you use ASP.NET AJAX
+
+      $.ajax({
+        type: 'POST',
+        url: 'ClaimsApproval.aspx/GetKMHistory',
+        data: JSON.stringify({ activityId: activityId }),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json'
+      }).done(function(resp) {
+        var data = resp.d || [];
+        var tbody = $('#km_history_tbl tbody').empty();
+        if (!data || data.length === 0) {
+          tbody.append('<tr><td colspan="5">No history</td></tr>');
+          return;
+        }
+        data.forEach(function(r){
+          var whenLocal = r.ModifiedDateTimeIST || r.ModifiedDateTime;
+          tbody.append('<tr><td>' + whenLocal + '</td><td>' + parseFloat(r.OldKM).toFixed(2) + '</td><td>' + parseFloat(r.NewKM).toFixed(2) + '</td><td>' + (r.ModifiedBy || '') + '</td><td>' + (r.Reason || '') + '</td></tr>');
+        });
+      }).fail(function(xhr) {
+        $('#km_history_tbl tbody').empty().append('<tr><td colspan="5">Error loading history</td></tr>');
+      });
+    }
+
+    $('#km_modal_save').on('click', function(){
+      var activityId = parseInt($('#km_modal_activityid').val(), 10);
+      var newKm = parseFloat($('#km_modal_new').val() || 0);
+      var curKm = parseFloat($('#km_modal_current').val() || 0);
+      var reason = $('#km_modal_reason').val().trim();
+
+      if (isNaN(newKm)) {
+        $('#km_modal_message').html('<div class="text-danger">Enter a valid new KM.</div>');
+        return;
+      }
+
+      if (Math.abs(newKm - curKm) > 0.001 && reason.length === 0) {
+        $('#km_modal_message').html('<div class="text-danger">Reason is required when KM is changed.</div>');
+        return;
+      }
+
+      $('#km_modal_save').prop('disabled', true);
+
+      $.ajax({
+        type: 'POST',
+        url: 'ClaimsApproval.aspx/UpdateActivityKM',
+        data: JSON.stringify({ activityId: activityId, newKm: newKm, reason: reason }),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json'
+      }).done(function(resp){
+        var r = resp.d;
+        if (r && r.success) {
+          var span = $('#spn_km_' + activityId);
+          if (span.length) {
+            span.text(parseFloat(newKm).toFixed(2));
+            span.data('currentkm', newKm);
+          } else {
+            $('.km-value[data-activityid="'+activityId+'"]').text(parseFloat(newKm).toFixed(2)).data('currentkm', newKm);
+          }
+          $('#km_modal_message').html('<div class="text-success">Saved.</div>');
+          loadKmHistory(activityId);
+          __doPostBack('<%= upDetails.ClientID %>', '');
+        } else {
+          var msg = r && r.message ? r.message : 'Error saving.';
+          $('#km_modal_message').html('<div class="text-danger">' + msg + '</div>');
+        }
+      }).fail(function(xhr){
+        $('#km_modal_message').html('<div class="text-danger">Error saving KM.</div>');
+      }).always(function(){
+        $('#km_modal_save').prop('disabled', false);
+      });
+    });
+
+  })();
+
+
+        $(document).on('click', '.btn-edit-km', function (e) {
+            e.preventDefault();
+
+            // find claim status from nearest row span or data attribute
+            var row = $(this).closest('tr');
+            var span = row.find('.km-value').first();
+            var claimStatus = (span.length && span.data('claimstatus')) ? span.data('claimstatus').toString().trim() : '';
+
+            // allowed statuses
+            var allowed = ["Draft", "Submitted"];
+            if (allowed.indexOf(claimStatus) === -1) {
+                // show a toast / small message
+                $('#km_modal_message').html('<div class="text-warning">KM cannot be edited for status: ' + (claimStatus || 'Unknown') + '.</div>');
+                return false;
+            }
+
+            // Continue with existing open modal flow...
+            var activityId = span.data('activityid');
+            var currentKm = span.data('currentkm');
+
+            $('#km_modal_activityid').val(activityId);
+            $('#km_modal_current').val(parseFloat(currentKm).toFixed(2));
+            $('#km_modal_new').val(parseFloat(currentKm).toFixed(2));
+            $('#km_modal_reason').val('');
+            $('#km_modal_message').empty();
+
+            loadKmHistory(activityId);
+            $('#kmEditModal').modal('show');
+        });
+
+    </script>
 
 </asp:Content>

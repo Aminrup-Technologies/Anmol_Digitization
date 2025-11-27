@@ -8,10 +8,12 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Web.UI.HtmlControls;
+using System.Web.Services;
+using System.Web.Script.Services;
 
 namespace AnmolDristi
 {
-    
+
     public partial class ClaimsApproval : BasePage
     {
         private string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -190,6 +192,7 @@ namespace AnmolDristi
                 _totalTravel += SafeDec(drv["Snapshot_TravelAmount"]);
                 _totalSnapshot += SafeDec(drv["Snapshot_ExpenseTotal"]);
 
+
                 // centralized per-row setup
                 PopulateRowControls(e.Row, drv);
             }
@@ -204,10 +207,47 @@ namespace AnmolDristi
         /// </summary>
         private void PopulateRowControls(GridViewRow row, DataRowView drv)
         {
+            // ====== INSERT THIS AT THE TOP OF PopulateRowControls(...) ======
+            // Defensive: if drv or row null, bail (keeps old logic safe)
+            if (drv == null || row == null) return;
+
+            // Get claim status for the current row (safe null handling)
+            string claimStatus = drv["ClaimStatus"] == DBNull.Value ? string.Empty : drv["ClaimStatus"].ToString().Trim();
+
+            // Allowed statuses that can edit KM
+            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+
+            // Find edit control by ID (matches TemplateField LinkButton ID: lnkEditKM)
+            var lnkEdit = row.FindControl("lnkEditKM") as LinkButton;
+            if (lnkEdit != null)
+            {
+                if (allowed.Contains(claimStatus))
+                {
+                    lnkEdit.Visible = true;
+                    lnkEdit.Enabled = true;
+                    // ensure client-side class for JS
+                    if (!lnkEdit.CssClass.Contains("btn-edit-km")) lnkEdit.CssClass = (lnkEdit.CssClass + " btn-edit-km").Trim();
+                }
+                else
+                {
+                    // hide the edit action for non-editable statuses (keeps UI clean)
+                    lnkEdit.Visible = false;
+
+                    // If you prefer a disabled button instead of hiding, comment the previous line and uncomment below:
+                    // lnkEdit.Visible = true;
+                    // lnkEdit.Enabled = false;
+                    // lnkEdit.CssClass = (lnkEdit.CssClass + " disabled").Trim();
+                    // lnkEdit.ToolTip = "KM cannot be edited once Approved/Rejected/Processed";
+                    // lnkEdit.Attributes["onclick"] = "return false;";
+                }
+            }
+            // ====== END INSERT ======
+
+
             if (row == null || drv == null) return;
 
             string detailStatus = drv["DetailStatus"] == DBNull.Value ? String.Empty : drv["DetailStatus"].ToString();
-            string claimStatus = drv["ClaimStatus"] == DBNull.Value ? String.Empty : drv["ClaimStatus"].ToString();
+            //string claimStatus = drv["ClaimStatus"] == DBNull.Value ? String.Empty : drv["ClaimStatus"].ToString();
 
             // Row styling
             if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
@@ -725,6 +765,141 @@ namespace AnmolDristi
             }
         }
 
+        // --- returns history rows for display ---
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static object GetKMHistory(int activityId)
+        {
+            var results = new List<object>();
+            string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            using (var con = new System.Data.SqlClient.SqlConnection(connString))
+            using (var cmd = new System.Data.SqlClient.SqlCommand(
+                "SELECT HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = @ActivityId ORDER BY ModifiedDateTime DESC", con))
+            {
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                con.Open();
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
+                    {
+                        DateTime utc = rdr.GetDateTime(rdr.GetOrdinal("ModifiedDateTime"));
+                        // convert to IST string for display
+                        DateTime ist;
+                        try
+                        {
+                            ist = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(utc, "UTC", "India Standard Time");
+                        }
+                        catch
+                        {
+                            ist = utc.AddHours(5).AddMinutes(30);
+                        }
+                        results.Add(new
+                        {
+                            HistoryId = rdr["HistoryId"],
+                            ActivityId = rdr["ActivityId"],
+                            OldKM = rdr["OldKM"],
+                            NewKM = rdr["NewKM"],
+                            ModifiedBy = rdr["ModifiedBy"] as string,
+                            ModifiedDateTime = utc.ToString("dd-MM-yyyy HH:mm:ss tt"),
+                            ModifiedDateTimeIST = ist.ToString("dd-MM-yyyy HH:mm:ss tt"),
+                            Reason = rdr["Reason"] as string
+                        });
+                    }
+                }
+            }
+            return results;
+        }
+
+        //[WebMethod(EnableSession = true)]
+        //[ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        //public static object UpdateActivityKM(int activityId, decimal newKm, string reason)
+        //{
+        //    try
+        //    {
+        //        string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        //        // get changed by from session (match GetLoggedInEmployeeCode)
+        //        string changedBy = (HttpContext.Current.Session["WORKMAN"] as string) ?? (HttpContext.Current.User?.Identity?.Name ?? "system");
+
+        //        using (var con = new System.Data.SqlClient.SqlConnection(connString))
+        //        using (var cmd = new System.Data.SqlClient.SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
+        //        {
+        //            cmd.CommandType = System.Data.CommandType.StoredProcedure;
+        //            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+        //            cmd.Parameters.AddWithValue("@NewKM", newKm);
+        //            cmd.Parameters.AddWithValue("@ChangedBy", changedBy);
+        //            cmd.Parameters.AddWithValue("@Reason", (object)reason ?? DBNull.Value);
+
+        //            con.Open();
+        //            cmd.CommandTimeout = 60;
+        //            cmd.ExecuteNonQuery();
+        //        }
+
+        //        return new { success = true };
+        //    }
+        //    catch (System.Data.SqlClient.SqlException sqlex)
+        //    {
+        //        return new { success = false, message = sqlex.Message };
+        //    }
+        //    catch (System.Exception ex)
+        //    {
+        //        return new { success = false, message = ex.Message };
+        //    }
+        //}
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static object UpdateActivityKM(int activityId, decimal newKm, string reason)
+        {
+            try
+            {
+                string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                // 1) check ClaimStatus
+                string claimStatus = null;
+                using (var con = new System.Data.SqlClient.SqlConnection(connString))
+                using (var cmd = new System.Data.SqlClient.SqlCommand(
+                    "SELECT TOP 1 ClaimStatus FROM dbo.SalesApprovalRequestDetail WHERE ActivityId = @ActivityId", con))
+                {
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    con.Open();
+                    var obj = cmd.ExecuteScalar();
+                    claimStatus = obj == DBNull.Value || obj == null ? null : obj.ToString();
+                }
+
+                var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+                if (!allowed.Contains(claimStatus ?? string.Empty))
+                {
+                    return new { success = false, message = $"KM cannot be edited when ClaimStatus = '{claimStatus ?? "Unknown"}'." };
+                }
+
+                // 2) proceed with stored proc
+                string changedBy = (HttpContext.Current.Session["WORKMAN"] as string) ?? (HttpContext.Current.User?.Identity?.Name ?? "system");
+
+                using (var con = new System.Data.SqlClient.SqlConnection(connString))
+                using (var cmd = new System.Data.SqlClient.SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    cmd.Parameters.AddWithValue("@NewKM", newKm);
+                    cmd.Parameters.AddWithValue("@ChangedBy", changedBy);
+                    cmd.Parameters.AddWithValue("@Reason", (object)reason ?? DBNull.Value);
+
+                    con.Open();
+                    cmd.CommandTimeout = 60;
+                    cmd.ExecuteNonQuery();
+                }
+
+                return new { success = true };
+            }
+            catch (System.Data.SqlClient.SqlException sqlex)
+            {
+                return new { success = false, message = sqlex.Message };
+            }
+            catch (System.Exception ex)
+            {
+                return new { success = false, message = ex.Message };
+            }
+        }
 
 
 
