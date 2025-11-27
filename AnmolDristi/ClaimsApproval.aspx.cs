@@ -810,6 +810,67 @@ namespace AnmolDristi
             return results;
         }
 
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static object UpdateActivityKM(int activityId, decimal? newKm, string reason)
+        {
+            try
+            {
+                if (!newKm.HasValue)
+                    return new { success = false, message = "New KM value is required." };
+
+                decimal nm = newKm.Value;
+                string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                // Check ClaimStatus
+                string Status = null;
+                using (var con = new System.Data.SqlClient.SqlConnection(connString))
+                using (var cmd = new System.Data.SqlClient.SqlCommand(
+                    "SELECT TOP 1 DetailStatus FROM dbo.SalesApprovalRequestDetail WHERE ActivityId = @ActivityId", con))
+                {
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    con.Open();
+                    var obj = cmd.ExecuteScalar();
+                    Status = obj == DBNull.Value || obj == null ? null : obj.ToString();
+                }
+
+                var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+                if (!allowed.Contains(Status ?? string.Empty))
+                {
+                    return new { success = false, message = $"KM cannot be edited when Status = '{Status ?? "Unknown"}'." };
+                }
+
+                // call stored procedure
+                string changedBy = (HttpContext.Current.Session["WORKMAN"] as string) ?? (HttpContext.Current.User?.Identity?.Name ?? "system");
+
+                using (var con = new System.Data.SqlClient.SqlConnection(connString))
+                using (var cmd = new System.Data.SqlClient.SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    cmd.Parameters.AddWithValue("@NewKM", nm);
+                    cmd.Parameters.AddWithValue("@ChangedBy", changedBy);
+                    cmd.Parameters.AddWithValue("@Reason", (object)reason ?? DBNull.Value);
+
+                    con.Open();
+                    cmd.CommandTimeout = 60;
+                    cmd.ExecuteNonQuery();
+                }
+
+                return new { success = true };
+            }
+            catch (System.Data.SqlClient.SqlException sqlex)
+            {
+                return new { success = false, message = sqlex.Message };
+            }
+            catch (System.Exception ex)
+            {
+                return new { success = false, message = ex.Message };
+            }
+        }
+
+
+
         //[WebMethod(EnableSession = true)]
         //[ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         //public static object UpdateActivityKM(int activityId, decimal newKm, string reason)
@@ -817,7 +878,23 @@ namespace AnmolDristi
         //    try
         //    {
         //        string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-        //        // get changed by from session (match GetLoggedInEmployeeCode)
+        //        string claimStatus = null;
+        //        using (var con = new System.Data.SqlClient.SqlConnection(connString))
+        //        using (var cmd = new System.Data.SqlClient.SqlCommand(
+        //            "SELECT TOP 1 ClaimStatus FROM dbo.SalesApprovalRequestDetail WHERE ActivityId = @ActivityId", con))
+        //        {
+        //            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+        //            con.Open();
+        //            var obj = cmd.ExecuteScalar();
+        //            claimStatus = obj == DBNull.Value || obj == null ? null : obj.ToString();
+        //        }
+
+        //        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+        //        if (!allowed.Contains(claimStatus ?? string.Empty))
+        //        {
+        //            return new { success = false, message = $"KM cannot be edited when ClaimStatus = '{claimStatus ?? "Unknown"}'." };
+        //        }
+
         //        string changedBy = (HttpContext.Current.Session["WORKMAN"] as string) ?? (HttpContext.Current.User?.Identity?.Name ?? "system");
 
         //        using (var con = new System.Data.SqlClient.SqlConnection(connString))
@@ -846,71 +923,12 @@ namespace AnmolDristi
         //    }
         //}
 
-        [WebMethod(EnableSession = true)]
-        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static object UpdateActivityKM(int activityId, decimal newKm, string reason)
-        {
-            try
-            {
-                string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-
-                // 1) check ClaimStatus
-                string claimStatus = null;
-                using (var con = new System.Data.SqlClient.SqlConnection(connString))
-                using (var cmd = new System.Data.SqlClient.SqlCommand(
-                    "SELECT TOP 1 ClaimStatus FROM dbo.SalesApprovalRequestDetail WHERE ActivityId = @ActivityId", con))
-                {
-                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                    con.Open();
-                    var obj = cmd.ExecuteScalar();
-                    claimStatus = obj == DBNull.Value || obj == null ? null : obj.ToString();
-                }
-
-                var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
-                if (!allowed.Contains(claimStatus ?? string.Empty))
-                {
-                    return new { success = false, message = $"KM cannot be edited when ClaimStatus = '{claimStatus ?? "Unknown"}'." };
-                }
-
-                // 2) proceed with stored proc
-                string changedBy = (HttpContext.Current.Session["WORKMAN"] as string) ?? (HttpContext.Current.User?.Identity?.Name ?? "system");
-
-                using (var con = new System.Data.SqlClient.SqlConnection(connString))
-                using (var cmd = new System.Data.SqlClient.SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
-                {
-                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                    cmd.Parameters.AddWithValue("@NewKM", newKm);
-                    cmd.Parameters.AddWithValue("@ChangedBy", changedBy);
-                    cmd.Parameters.AddWithValue("@Reason", (object)reason ?? DBNull.Value);
-
-                    con.Open();
-                    cmd.CommandTimeout = 60;
-                    cmd.ExecuteNonQuery();
-                }
-
-                return new { success = true };
-            }
-            catch (System.Data.SqlClient.SqlException sqlex)
-            {
-                return new { success = false, message = sqlex.Message };
-            }
-            catch (System.Exception ex)
-            {
-                return new { success = false, message = ex.Message };
-            }
-        }
-
-
-
-        // paging for header grid
         protected void gvRequests_PageIndexChanging(object sender, GridViewPageEventArgs e)
         {
             gvRequests.PageIndex = e.NewPageIndex;
             BindRequestsGrid();
         }
 
-        // ------------- HANDLE ACTIONS FROM HEADER GRID --------------
         protected void gvRequests_RowCommand(object sender, GridViewCommandEventArgs e)
         {
             if (e.CommandName == "View")
@@ -918,20 +936,16 @@ namespace AnmolDristi
                 int approvalId = Convert.ToInt32(e.CommandArgument);
                 int approvalRequestId;
                 if (!int.TryParse(e.CommandArgument?.ToString(), out approvalRequestId)) return;
-                // 1) set labels and hidden field
+
                 lblModalRequestId.Text = approvalRequestId.ToString();
                 hfActionRequestId.Value = approvalRequestId.ToString();
 
-                // 2) bind grid (this should fill gvDetails)
                 BindDetailsGrid(approvalRequestId);
-                // 3) update the UpdatePanel that holds the grid
-                upDetails.Update(); // ensure upDetails is accessible (ID matches)
+                upDetails.Update();
 
-                // 4) log grid client id to console for debug (optional)
                 ScriptManager.RegisterStartupScript(this, GetType(), "logGV",
                     $"console.log('After bind - gvDetails client id = {gvDetails.ClientID}');", true);
 
-                // 5) open modal (call helper openDetailsModal which uses $('#detailsModal').modal('show'))
                 ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "openDetailsModal();", true);
 
                 ShowDetailsModal(approvalRequestId);
@@ -942,14 +956,10 @@ namespace AnmolDristi
             else if (e.CommandName == "ApproveQuick")
             {
                 int approvalId = Convert.ToInt32(e.CommandArgument);
-                // quick approve header-level (optional) or open modal first - implement as per your flow
-                // Example: open modal for safety
                 ShowDetailsModal(approvalId);
-                // Or call a stored proc to approve all details directly (not included here)
             }
         }
 
-        // ------------- BIND DETAILS GRID (JOIN) and OPEN MODAL --------------
         protected void ShowDetailsModal(int approvalRequestId)
         {
             // store id in hidden field for later actions
