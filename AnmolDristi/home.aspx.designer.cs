@@ -85,30 +85,12 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lbl_region;
         
         /// <summary>
-        /// lbl_state control.
+        /// lbl_branch control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lbl_state;
-        
-        /// <summary>
-        /// lbl_doj control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lbl_doj;
-        
-        /// <summary>
-        /// lbl_workage control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lbl_workage;
+        protected global::System.Web.UI.WebControls.Label lbl_branch;
     }
 }

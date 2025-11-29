@@ -70,7 +70,7 @@ namespace AnmolDristi
                 string id = txt_loginid.Text;
                 string pass = txt_password.Text;
 
-                string query = "SELECT Id, EmployeeCode, EmployeeName, BranchId, PlantId, EmployeeStatus, CompanyId, DepartmentId, GradeId, SubDepartmentId, DOJ, CategoryId, Email, Mobile, Gender, RegionId, DivisionId, CreatedDate, CreatedBy, CreationMode, Password, LastLoginDate, LastLogoutDate, Module from MST_UserMaster where EmployeeCode=@EmployeeCode and Password=@Password";
+                string query = "SELECT * from MST_UserMaster where EmployeeCode=@EmployeeCode and Password=@Password";
                 SqlParameter[] pram = {
                                           new SqlParameter("@EmployeeCode",id),
                                           new SqlParameter("@Password",pass),
@@ -106,7 +106,7 @@ namespace AnmolDristi
                         string User_Worksite = dt.Rows[0]["DepartmentId"].ToString();
                         string User_WRKSTCode = dt.Rows[0]["SubDepartmentId"].ToString();
                         string User_Grade = dt.Rows[0]["GradeId"].ToString();
-                        string User_Desg = dt.Rows[0]["CategoryId"].ToString();
+                        string User_Desg = dt.Rows[0]["Designation_ID"].ToString();
 
                         //User_Photo = dt.Rows[0]["PrfPicFile"].ToString();
                         //string User_PhotoPath = dt.Rows[0]["PrfPicPath"].ToString();

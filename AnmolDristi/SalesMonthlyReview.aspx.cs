@@ -5027,7 +5027,6 @@ namespace AnmolDristi
             // show modal again so user sees updated list & message
             ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
         }
-
         protected void rptExpenses_ItemCommand_06Nov25(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName != "DeleteExpense") return;
@@ -5177,7 +5176,6 @@ namespace AnmolDristi
             // show modal again so user sees updated list & message
             ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
         }
-
         protected void rptExpenses_ItemCommand_OLD17Nov25(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName == "DeleteExpense")
@@ -5877,7 +5875,6 @@ namespace AnmolDristi
 
             return dto;
         }
-
         private PolicyResolved GetResolvedPolicy_OLD2(string employeeCode, int? regionId, int? branchId, int? gradeId, int? designationId)
         {
             PolicyResolved dto = null;
@@ -5957,7 +5954,6 @@ namespace AnmolDristi
 
             return dto;
         }
-
         private PolicyResolved GetResolvedPolicy_OLD3(string employeeCode, int? regionId, int? branchId, int? gradeId, int? designationId)
         {
             PolicyResolved dto = null;
