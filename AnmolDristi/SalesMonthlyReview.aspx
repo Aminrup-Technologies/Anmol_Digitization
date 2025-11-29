@@ -700,7 +700,7 @@
                                                         <%--<asp:LinkButton ID="lnkEdit" runat="server" CommandName="OpenEditModal" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("TotalDistanceKM") + "|" + Eval("MinAllowedKM") + "|" + Eval("MaxAllowedKM") + "|" + Eval("ActivityDate")%>' CssClass="btn btn-sm btn-primary" Visible="false" ToolTip="Edit Kms"><i class="fa fa-pencil"></i></asp:LinkButton>--%>
 
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
-                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
+                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") + "|" + Eval("Planned_Beat") + "|" + Eval("Order_Distributor_Name") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
                                                             <i class="fa fa-briefcase"></i>
                                                         </asp:LinkButton>
                                                     </ItemTemplate>

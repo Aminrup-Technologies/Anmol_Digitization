@@ -1545,6 +1545,11 @@ namespace AnmolDristi
                 string activityId = parts[0];
                 string activityDate = parts.Length > 1 ? parts[1] : "";
 
+                string PlannedBeat = (parts.Length > 2 && !string.IsNullOrWhiteSpace(parts[2])) ? parts[2] : "-";
+                string OrderDistributorName = (parts.Length > 3 && !string.IsNullOrWhiteSpace(parts[3])) ? parts[3] : "-";
+                lbl_BeatTravelled.Text = PlannedBeat;
+                lbl_DistributorName.Text = OrderDistributorName;
+
                 HF_ActivityId.Value = activityId;
                 HF_ActivityDate.Value = activityDate;
 
