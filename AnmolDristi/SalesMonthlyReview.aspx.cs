@@ -31,8 +31,17 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                PopulateYearMonth();
-                lbl_msg.Text = "";
+                // require USERID and USERNAME as minimum for a logged-in user
+                if (Session["USERID"] != null && Session["USERNAME"] != null)
+                {
+                    PopulateYearMonth();
+                    lbl_msg.Text = "";
+                }
+                else
+                {
+                    // no session - redirect to login or handle as per your app flow
+                    Response.Redirect("~/Login.aspx");
+                }
             }
         }
 

@@ -49,7 +49,7 @@ namespace AnmolDristi
                 else
                 {
                     // no session - redirect to login or handle as per your app flow
-                    // Response.Redirect("~/Login.aspx");
+                    Response.Redirect("~/Login.aspx");
                 }
             }
         }

@@ -16,7 +16,11 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                BindRequests();
+                // require USERID and USERNAME as minimum for a logged-in user
+                if (Session["USERID"] != null && Session["USERNAME"] != null)
+                {
+                    BindRequests();
+                }
             }
         }
 

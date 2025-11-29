@@ -27,7 +27,14 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            BindRequestsGrid();
+            if (!IsPostBack)
+            {
+                // require USERID and USERNAME as minimum for a logged-in user
+                if (Session["USERID"] != null && Session["USERNAME"] != null)
+                {
+                    BindRequestsGrid();
+                }
+            }
         }
 
         // ------------- BIND HEADER GRID ----------------
