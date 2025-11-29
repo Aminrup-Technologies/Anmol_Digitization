@@ -25,7 +25,6 @@
                         </div>
                         <div class="x_content">
                             <div class="row">
-                                <!-- First set of dropdown list -->
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="label-align">Select & Upload .csv File <span class="text text-danger">*</span></label>
@@ -34,9 +33,6 @@
                                 </div>
                             </div>
 
-
-
-                            <%--button start--%>
                             <div class="col-md-6 center-margin">
                                 <div class="ln_solid"></div>
                                 <div class="item form-group row">
@@ -50,9 +46,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <%--button end--%>
 
-                            <!-- Small modal -->
                             <asp:Button ID="ShowPopup" runat="server" Text="Button" class="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />
                             <div id="MyPopup" class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-hidden="true">
                                 <div class="modal-dialog modal-sm">
@@ -73,7 +67,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <!-- Small Modal - END---->
                         </div>
 
                     </div>

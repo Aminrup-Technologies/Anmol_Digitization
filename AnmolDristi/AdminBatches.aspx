@@ -15,7 +15,6 @@
             <div class="clearfix"></div>
 
             <div class="row">
-                <!-- Panel: Filters + Batch list -->
                 <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <div class="x_title">
@@ -88,7 +87,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Execute area -->
                                     <div class="row" style="margin-top: 12px;">
                                         <div class="col-md-12">
                                             <div class="ln_solid"></div>
@@ -133,7 +131,6 @@
                                 </Triggers>
                             </asp:UpdatePanel>
 
-                            <!-- small modal kept as in your layout -->
                             <asp:Button ID="ShowPopup" runat="server" Text="Button" CssClass="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />
                             <div id="MyPopup" class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-hidden="true">
                                 <div class="modal-dialog modal-sm">
@@ -152,7 +149,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <!-- modal end -->
 
                         </div>
                     </div>
@@ -165,7 +161,6 @@
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
-                            <%--<div class="clearfix"></div>--%>
                         </div>
                         <div class="x_content">
                             <div class="row">
@@ -183,7 +178,6 @@
         </div>
     </div>
 
-    <!-- client scripts -->
     <script type="text/javascript">
         function confirmRun() {
             var sel = document.getElementById('<%= hfSelectedBatch.ClientID %>').value;
@@ -201,7 +195,6 @@
             document.getElementById('<%= hfSelectedBatch.ClientID %>').value = batchId;
             var lbl = document.getElementById('<%= lblSelectedBatch.ClientID %>');
             if (lbl) lbl.innerText = batchId;
-            // basic row highlighting (optional)
             var rows = document.querySelectorAll('#<%= gvBatches.ClientID %> tr');
             for (var i = 0; i < rows.length; i++) rows[i].style.backgroundColor = '';
             var r = document.getElementById('row_' + batchId);
