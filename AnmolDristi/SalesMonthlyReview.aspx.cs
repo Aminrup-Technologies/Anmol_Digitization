@@ -854,10 +854,7 @@ namespace AnmolDristi
                     }
                 }
 
-                // --- Attempt to use cached session DataTable first ---
                 DataTable dt = Session[SESSION_KEY_GV_ACTIVITIES] as DataTable;
-
-                // If session copy not present, fetch from DB and cache it
                 if (dt == null)
                 {
                     dt = new DataTable();
@@ -872,13 +869,11 @@ namespace AnmolDristi
                             da.Fill(dt);
                     }
 
-                    // Ensure required columns exist
                     if (!dt.Columns.Contains("CalculatedClaimAmount"))
                         dt.Columns.Add("CalculatedClaimAmount", typeof(decimal));
                     if (!dt.Columns.Contains("RatePerKm"))
                         dt.Columns.Add("RatePerKm", typeof(decimal));
 
-                    // compute derived columns
                     decimal defaultRate = 2.75m;
                     var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
                     decimal tmpCfg;
@@ -903,7 +898,6 @@ namespace AnmolDristi
                         }
                     }
 
-                    // Set primary key for quick lookup
                     if (dt.Columns.Contains("ActivityId"))
                     {
                         try
@@ -912,13 +906,10 @@ namespace AnmolDristi
                         }
                         catch { /* ignore if already set or invalid */ }
                     }
-
-                    // cache it
                     Session[SESSION_KEY_GV_ACTIVITIES] = dt;
                 }
 
                 // --- START: Approval lock logic ---
-                // --- START: Approval lock logic (replace the prior block handling approvalRequest) ---
                 if (!dt.Columns.Contains("IsEditable"))
                     dt.Columns.Add("IsEditable", typeof(bool));
 

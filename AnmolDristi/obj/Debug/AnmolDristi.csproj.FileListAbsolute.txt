@@ -178,3 +178,4 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Runtime.Co
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.pdb
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csprojResolveAssemblyReference.cache
