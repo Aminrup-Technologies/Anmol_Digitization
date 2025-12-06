@@ -700,7 +700,7 @@
                                                         <%--<asp:LinkButton ID="lnkEdit" runat="server" CommandName="OpenEditModal" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("TotalDistanceKM") + "|" + Eval("MinAllowedKM") + "|" + Eval("MaxAllowedKM") + "|" + Eval("ActivityDate")%>' CssClass="btn btn-sm btn-primary" Visible="false" ToolTip="Edit Kms"><i class="fa fa-pencil"></i></asp:LinkButton>--%>
 
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
-                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") + "|" + Eval("Planned_Beat") + "|" + Eval("Order_Distributor_Name") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
+                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") + "|" + Eval("Planned_Beat") + "|" + Eval("Order_Distributor_Name") + "|" + Eval("TotalDistanceKM") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
                                                             <i class="fa fa-briefcase"></i>
                                                         </asp:LinkButton>
                                                     </ItemTemplate>
@@ -1029,7 +1029,7 @@
                                     <div class="kv-item">
                                         <div class="kv-key">Travel Distance</div>
                                         <div id="spHQTravelDistance" class="kv-value">
-                                            <asp:Label ID="lbl_HQTravelDistance" runat="server" Text="43"></asp:Label>&nbsp;Kms&nbsp;&nbsp;<asp:Button ID="btnOpenEditKmFromExpense" runat="server" CssClass="btn btn-sm btn-primary" Text="Modify Km." OnClick="btnOpenEditKmFromExpense_Click" />
+                                            <asp:Label ID="lbl_HQTravelDistance" runat="server" Text="0.00"></asp:Label>&nbsp;Kms&nbsp;&nbsp;<asp:Button ID="btnOpenEditKmFromExpense" runat="server" CssClass="btn btn-sm btn-primary" Text="Modify Km." OnClick="btnOpenEditKmFromExpense_Click" />
                                         </div>
                                     </div>
                                 </div>
@@ -2038,7 +2038,7 @@
                 dbg('Applying visibility for ' + type);
 
                 if (type === 'DA') {
-                    safeShow(els.$divDA); safeHide(els.$divHotel); safeHide(els.$divTravel); safeHide(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo); 
+                    safeShow(els.$divDA); safeHide(els.$divHotel); safeHide(els.$divTravel); safeHide(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo);
                 } else if (type === 'Hotel') {
                     safeHide(els.$divDA); safeShow(els.$divHotel); safeHide(els.$divTravel); safeShow(els.$divFUContainer); safeHide(els.$divTravelInvoiceNo); enableAttachmentInput();
                 } else if (type === 'Travel') {
@@ -2628,46 +2628,46 @@
                 var spMax = document.getElementById('spMaxKm');
                 var lblCurrent = document.getElementById('<%= lblModalCurrentKm.ClientID %>');
 
-        hdn.value = activityId;
-        txt.value = currentKm;
-        spMin.innerText = (minKm === '' || minKm === 'null') ? '—' : minKm;
-        spMax.innerText = (maxKm === '' || maxKm === 'null') ? '—' : maxKm;
-        lblCurrent.innerText = 'Current: ' + currentKm + ' km';
+                hdn.value = activityId;
+                txt.value = currentKm;
+                spMin.innerText = (minKm === '' || minKm === 'null') ? '—' : minKm;
+                spMax.innerText = (maxKm === '' || maxKm === 'null') ? '—' : maxKm;
+                lblCurrent.innerText = 'Current: ' + currentKm + ' km';
 
-        document.getElementById('spClientKmError').style.display = 'none';
-        $('#editKmModal').modal('show');
+                document.getElementById('spClientKmError').style.display = 'none';
+                $('#editKmModal').modal('show');
             };
 
             window.validateModalKm = function () {
                 var txt = document.getElementById('<%= txtModalKM.ClientID %>');
-        var min = parseFloat(document.getElementById('spMinKm').innerText || NaN);
-        var max = parseFloat(document.getElementById('spMaxKm').innerText || NaN);
-        var val = parseFloat(txt.value);
+                var min = parseFloat(document.getElementById('spMinKm').innerText || NaN);
+                var max = parseFloat(document.getElementById('spMaxKm').innerText || NaN);
+                var val = parseFloat(txt.value);
 
-        if (!isNaN(min) && val < min) {
-            document.getElementById('spClientKmError').style.display = '';
-            document.getElementById('spClientKmError').innerText = 'Value cannot be less than ' + min;
-            return false;
-        }
-        if (!isNaN(max) && val > max) {
-            document.getElementById('spClientKmError').style.display = '';
-            document.getElementById('spClientKmError').innerText = 'Value cannot exceed ' + max;
-            return false;
-        }
-        document.getElementById('spClientKmError').style.display = 'none';
-        return true;
-    };
+                if (!isNaN(min) && val < min) {
+                    document.getElementById('spClientKmError').style.display = '';
+                    document.getElementById('spClientKmError').innerText = 'Value cannot be less than ' + min;
+                    return false;
+                }
+                if (!isNaN(max) && val > max) {
+                    document.getElementById('spClientKmError').style.display = '';
+                    document.getElementById('spClientKmError').innerText = 'Value cannot exceed ' + max;
+                    return false;
+                }
+                document.getElementById('spClientKmError').style.display = 'none';
+                return true;
+            };
 
             // Hook Save button to validate client-side before postback
             $(function () {
                 $('#<%= btnSaveKm.ClientID %>').on('click', function (e) {
-            if (!validateModalKm()) {
-                e.preventDefault();
-                return false;
-            }
-            // else let server handle it
-        });
-    });
+                    if (!validateModalKm()) {
+                        e.preventDefault();
+                        return false;
+                    }
+                    // else let server handle it
+                });
+            });
 
             $(document).on('hidden.bs.modal', '#editKmModal', function () {
                 $('.modal-backdrop').remove();
@@ -2680,31 +2680,31 @@
 
         })();
 
-/* ===========================
-   13. Submit modal / perform submit helpers
-   - showSubmitModal (shows confirm modal or fallback confirm)
-   - performSubmitFromModal triggers __doPostBack with btn_submit control UniqueID
-   - enableButtonsAfterModalClose resets UI on cancel
-   =========================== */
-(function () {
-    'use strict';
+        /* ===========================
+           13. Submit modal / perform submit helpers
+           - showSubmitModal (shows confirm modal or fallback confirm)
+           - performSubmitFromModal triggers __doPostBack with btn_submit control UniqueID
+           - enableButtonsAfterModalClose resets UI on cancel
+           =========================== */
+        (function () {
+            'use strict';
 
-    window.showSubmitModal = function () {
-        var modal = $('#submitConfirmModal');
-        if (!modal || modal.length === 0) {
-            return confirm('Are you sure you want to submit all listed activities for approval?');
-        }
-        modal.modal({ backdrop: 'static', keyboard: false });
-        return false; // prevent original postback
-    };
+            window.showSubmitModal = function () {
+                var modal = $('#submitConfirmModal');
+                if (!modal || modal.length === 0) {
+                    return confirm('Are you sure you want to submit all listed activities for approval?');
+                }
+                modal.modal({ backdrop: 'static', keyboard: false });
+                return false; // prevent original postback
+            };
 
-    window.performSubmitFromModal = function () {
-        var confirmBtn = document.getElementById('submitModalConfirm');
-        var cancelBtn = document.getElementById('submitModalCancel');
-        if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '0.6'; }
-        if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.style.opacity = '0.6'; }
+            window.performSubmitFromModal = function () {
+                var confirmBtn = document.getElementById('submitModalConfirm');
+                var cancelBtn = document.getElementById('submitModalCancel');
+                if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '0.6'; }
+                if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.style.opacity = '0.6'; }
 
-        var btnSubmit = document.getElementById('<%= btn_submit.ClientID %>');
+                var btnSubmit = document.getElementById('<%= btn_submit.ClientID %>');
         var btnDraft = document.getElementById('<%= btn_save_draft.ClientID %>');
         if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.style.opacity = '0.6'; btnSubmit.style.cursor = 'not-allowed'; }
         if (btnDraft) { btnDraft.disabled = true; btnDraft.style.opacity = '0.6'; btnDraft.style.cursor = 'not-allowed'; }

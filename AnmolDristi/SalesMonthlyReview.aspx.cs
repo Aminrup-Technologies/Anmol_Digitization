@@ -1547,8 +1547,10 @@ namespace AnmolDristi
 
                 string PlannedBeat = (parts.Length > 2 && !string.IsNullOrWhiteSpace(parts[2])) ? parts[2] : "-";
                 string OrderDistributorName = (parts.Length > 3 && !string.IsNullOrWhiteSpace(parts[3])) ? parts[3] : "-";
+                string TotalDistance = (parts.Length > 4 && !string.IsNullOrWhiteSpace(parts[4])) ? parts[4] : "-";
                 lbl_BeatTravelled.Text = PlannedBeat;
                 lbl_DistributorName.Text = OrderDistributorName;
+                lbl_HQTravelDistance.Text = TotalDistance;
 
                 HF_ActivityId.Value = activityId;
                 HF_ActivityDate.Value = activityDate;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Configuration;
+using System.Data;
 using System.Data.SqlClient;
 using System.Web;
 
@@ -44,41 +45,76 @@ namespace AnmolDristi
             }
             return null;
         }
+        private static string GetConnectionString()
+        {
+            return ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        }
 
-
-        // Create ActiveUserSession row on login
         public static Tuple<int, Guid> CreateActiveSession(int userId, string employeeCode)
         {
+            if (HttpContext.Current == null)
+                throw new InvalidOperationException("HttpContext.Current is null. This method must be called in a web request context.");
+
+            // Collect client info from HttpContext.Current.Request
+            var request = HttpContext.Current.Request;
+            string sessionId = HttpContext.Current.Session != null ? HttpContext.Current.Session.SessionID : String.Empty;
+            string clientIp = request.UserHostAddress ?? String.Empty;
+            string browserInfo = (request.Browser != null) ? (request.Browser.Browser + " " + request.Browser.Version) : String.Empty;
+            string hostName = request.UserHostName ?? String.Empty;
+            Guid loginToken = Guid.NewGuid();
+
+            // SQL: parameterized insert with SCOPE_IDENTITY()
             string sql = @"
             INSERT INTO ActiveUserSession 
-                (UserId, EmployeeCode, SessionId, LoginTime, LastHeartbeat, ClientIP, HostName, BrowserInfo, IsActive, CreatedAt, LoginToken)
-            OUTPUT inserted.ActiveSessionId, inserted.LoginToken
+                (UserId, EmployeeCode, SessionId, LoginTime, ClientIP, HostName, BrowserInfo, IsActive, LoginToken)
             VALUES 
-                (@UserId, @EmployeeCode, @SessionId, GETDATE(), GETDATE(), @ClientIP, @HostName, @BrowserInfo, 1, GETDATE(), NEWID());";
+                (@UserId, @EmployeeCode, @SessionId, GETDATE(), @ClientIP, @HostName, @BrowserInfo, 1, @LoginToken);
+            SELECT SCOPE_IDENTITY();";
 
-            using (SqlConnection con = new SqlConnection(ConnStr))
-            using (SqlCommand cmd = new SqlCommand(sql, con))
+            object inserted;
+            using (var con = new SqlConnection(GetConnectionString()))
+            using (var cmd = new SqlCommand(sql, con))
             {
+                cmd.CommandType = CommandType.Text;
                 cmd.Parameters.AddWithValue("@UserId", userId);
                 cmd.Parameters.AddWithValue("@EmployeeCode", (object)employeeCode ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@SessionId", HttpContext.Current.Session.SessionID);
-                cmd.Parameters.AddWithValue("@ClientIP", GetClientIP());
-                cmd.Parameters.AddWithValue("@HostName", HttpContext.Current.Request.UserHostName ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@BrowserInfo", HttpContext.Current.Request.Browser.Browser + " " + HttpContext.Current.Request.Browser.Version);
+                cmd.Parameters.AddWithValue("@SessionId", (object)sessionId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ClientIP", (object)clientIp ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@HostName", (object)hostName ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BrowserInfo", (object)browserInfo ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@LoginToken", loginToken.ToString());
 
                 con.Open();
-                using (SqlDataReader rdr = cmd.ExecuteReader())
+                inserted = cmd.ExecuteScalar();
+            }
+
+            // Convert returned identity to int
+            int activeSessionId = 0;
+            if (inserted != null && inserted != DBNull.Value)
+            {
+                // SCOPE_IDENTITY() returns decimal in SQL Server; convert safely
+                try
                 {
-                    if (rdr.Read())
+                    activeSessionId = Convert.ToInt32(inserted);
+                }
+                catch
+                {
+                    // fallback: try decimal -> int
+                    try
                     {
-                        int activeSessionId = rdr.GetInt32(0);
-                        Guid loginToken = rdr.GetGuid(1);
-                        return Tuple.Create(activeSessionId, loginToken);
+                        activeSessionId = Decimal.ToInt32((decimal)inserted);
+                    }
+                    catch
+                    {
+                        activeSessionId = 0;
                     }
                 }
             }
-            return null;
+
+            // Return the tuple to caller; caller can set session variables if desired.
+            return Tuple.Create(activeSessionId, loginToken);
         }
+
 
         private static string GetClientIP()
         {

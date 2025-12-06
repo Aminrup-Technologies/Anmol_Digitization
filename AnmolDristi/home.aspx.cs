@@ -17,7 +17,7 @@ namespace AnmolDristi
             if (!IsPostBack)
             {
                 // require USERID and USERNAME as minimum for a logged-in user
-                if (Session["USERID"] != null && Session["USERNAME"] != null)
+                if (Session["USERID"] != null && Session["WORKMAN"] != null)
                 {
                     lbl_username.Text = CurrentEmployeeName ?? string.Empty;
                     lbl_empcode.Text = lbl_workmansl.Text = CurrentEmployeeCode ?? string.Empty;
@@ -80,15 +80,6 @@ namespace AnmolDristi
             return null;
         }
 
-        
-        /// <summary>
-        /// Read an ID from Session (sessionKey), look up the allowed master table/column,
-        /// and return the description text. Uses a whitelist for safety and caches results.
-        /// </summary>
-        /// <param name="sessionKey">Session key that holds the integer ID, e.g. "REGION"</param>
-        /// <param name="tableName">Master table name, e.g. "MST_Region"</param>
-        /// <param name="textColumn">Column to read, e.g. "Region_Description"</param>
-        /// <returns>the lookup text or null if not found</returns>
         private string GetDescriptionFromSession(string sessionKey, string tableName, string textColumn)
         {
             // get id from session

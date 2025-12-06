@@ -834,6 +834,7 @@
     <Compile Include="overwrap_Detailed.aspx.designer.cs">
       <DependentUpon>overwrap_Detailed.aspx</DependentUpon>
     </Compile>
+    <Compile Include="PasswordHasher.cs" />
     <Compile Include="PermDump.ashx.cs">
       <DependentUpon>PermDump.ashx</DependentUpon>
     </Compile>
@@ -1380,6 +1381,7 @@
     <Compile Include="UploadImageHandler.ashx.cs">
       <DependentUpon>UploadImageHandler.ashx</DependentUpon>
     </Compile>
+    <Compile Include="UserAuthService.cs" />
     <Compile Include="UserRoleManager.aspx.cs">
       <DependentUpon>UserRoleManager.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
