@@ -69,7 +69,7 @@ namespace AnmolDristi
             }
             else
             {
-                var legacy = row["LegacyPassword"] == DBNull.Value ? null : row["LegacyPassword"].ToString();
+                var legacy = row["Password"] == DBNull.Value ? null : row["Password"].ToString();
                 if (!string.IsNullOrEmpty(legacy) && legacy == password)
                 {
                     // Migrate to hash+salt

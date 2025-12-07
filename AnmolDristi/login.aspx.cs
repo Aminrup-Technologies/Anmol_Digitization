@@ -122,6 +122,15 @@ namespace AnmolDristi
                 Session["DESG"] = row["Designation_ID"] == DBNull.Value ? "" : row["Designation_ID"].ToString();
                 Session["GRADE"] = row["GradeId"] == DBNull.Value ? "" : row["GradeId"].ToString();
 
+                Session["RONE_NAME"] = row["ReportingManager"] == DBNull.Value ? "" : row["ReportingManager"].ToString();
+                Session["RONE_CODE"] = row["ReportingManagerCode"] == DBNull.Value ? "" : row["ReportingManagerCode"].ToString();
+                Session["RTWO_NAME"] = row["ReportingManagersManagerName"] == DBNull.Value ? "" : row["ReportingManagersManagerName"].ToString();
+                Session["RTWO_CODE"] = row["ReportingManagersManagerCode"] == DBNull.Value ? "" : row["ReportingManagersManagerCode"].ToString();
+
+                //Session["AUDITOR_NAME"] = row["AuditorName"] == DBNull.Value ? "" : row["AuditorName"].ToString();
+                //Session["AUDITOR_CODE"] = row["AuditorCode"] == DBNull.Value ? "" : row["AuditorCode"].ToString();
+
+
                 // --- Begin: Hash-on-login / migration logic ---
                 bool migrated = false;
                 try

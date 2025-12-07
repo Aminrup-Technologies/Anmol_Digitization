@@ -1449,7 +1449,42 @@
                                 CssClass="form-control form-control-sm font-monospace text-dark bg-light border border-secondary"
                                 Visible="false"></asp:TextBox>
                         </div>
+
+                        <!-- Approvers row: add this inside the modal-body where you'd like -->
+                        <div class="card shadow-sm border-0 mb-3">
+                            <div class="card-header bg-gradient-secondary text-black py-1 px-3">
+                                <strong><i class="fa fa-user-check mr-1"></i>Approvers</strong>
+                            </div>
+                            <div class="card-body bg-white p-3">
+                                <div class="row text-center">
+                                    <!-- Level 1 -->
+                                    <div class="col-12 col-md-4 mb-2" id="approverL1Container" runat="server" visible="false">
+                                        <div class="small text-muted">Approver - Level 1</div>
+                                        <div class="h6 font-weight-bold text-dark mb-0">
+                                            <asp:Label ID="lblApproverL1" runat="server" Text="—"></asp:Label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Level 2 -->
+                                    <div class="col-12 col-md-4 mb-2" id="approverL2Container" runat="server" visible="false">
+                                        <div class="small text-muted">Approver - Level 2</div>
+                                        <div class="h6 font-weight-bold text-dark mb-0">
+                                            <asp:Label ID="lblApproverL2" runat="server" Text="—"></asp:Label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Auditor / Final Approver -->
+                                    <div class="col-12 col-md-4 mb-2" id="approverAuditorContainer" runat="server" visible="false">
+                                        <div class="small text-muted">Auditor / Final</div>
+                                        <div class="h6 font-weight-bold text-dark mb-0">
+                                            <asp:Label ID="lblApproverAuditor" runat="server" Text="—"></asp:Label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="modal-footer bg-light border-top">
                         <asp:LinkButton ID="lnkCopyJson" runat="server" CssClass="btn btn-sm btn-outline-primary" Visible="false" OnClientClick="copyPolicyJson(); return false;">Copy JSON</asp:LinkButton>
                         <button type="button" class="btn btn-danger btn-sm" data-dismiss="modal" onclick="$('#policyModal').modal('hide');">
@@ -2705,21 +2740,21 @@
                 if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.style.opacity = '0.6'; }
 
                 var btnSubmit = document.getElementById('<%= btn_submit.ClientID %>');
-        var btnDraft = document.getElementById('<%= btn_save_draft.ClientID %>');
-        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.style.opacity = '0.6'; btnSubmit.style.cursor = 'not-allowed'; }
-        if (btnDraft) { btnDraft.disabled = true; btnDraft.style.opacity = '0.6'; btnDraft.style.cursor = 'not-allowed'; }
+                var btnDraft = document.getElementById('<%= btn_save_draft.ClientID %>');
+                if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.style.opacity = '0.6'; btnSubmit.style.cursor = 'not-allowed'; }
+                if (btnDraft) { btnDraft.disabled = true; btnDraft.style.opacity = '0.6'; btnDraft.style.cursor = 'not-allowed'; }
 
-        if (typeof showPNotify === 'function') {
-            showPNotify('Submitting...', 'Please wait while your activities are submitted for approval.', 'info');
-        }
+                if (typeof showPNotify === 'function') {
+                    showPNotify('Submitting...', 'Please wait while your activities are submitted for approval.', 'info');
+                }
 
-        $('#submitConfirmModal').modal('hide');
+                $('#submitConfirmModal').modal('hide');
 
-        __doPostBack('<%= btn_submit.UniqueID.Replace("$", "$") %>', '');
-    };
+                __doPostBack('<%= btn_submit.UniqueID.Replace("$", "$") %>', '');
+            };
 
-    window.enableButtonsAfterModalClose = function () {
-        var btnSubmit = document.getElementById('<%= btn_submit.ClientID %>');
+            window.enableButtonsAfterModalClose = function () {
+                var btnSubmit = document.getElementById('<%= btn_submit.ClientID %>');
         var btnDraft = document.getElementById('<%= btn_save_draft.ClientID %>');
         if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.style.opacity = '1'; btnSubmit.style.cursor = 'pointer'; }
         if (btnDraft) { btnDraft.disabled = false; btnDraft.style.opacity = '1'; btnDraft.style.cursor = 'pointer'; }
@@ -2730,10 +2765,10 @@
         if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.style.opacity = '1'; }
     };
 
-    // Fallback __doPostBack if not provided by ASP.NET
-    if (typeof __doPostBack === 'undefined') {
-        window.__doPostBack = function (eventTarget, eventArgument) {
-            var btn = document.getElementById('<%= btn_submit.ClientID %>');
+            // Fallback __doPostBack if not provided by ASP.NET
+            if (typeof __doPostBack === 'undefined') {
+                window.__doPostBack = function (eventTarget, eventArgument) {
+                    var btn = document.getElementById('<%= btn_submit.ClientID %>');
             if (btn) {
                 var onClick = btn.getAttribute('onclick');
                 if (onClick) btn.removeAttribute('onclick');
@@ -2742,7 +2777,7 @@
             }
         };
         }
-})();
+        })();
 
     /* ===========================
        14. Save Draft helpers (button UX + page loader)

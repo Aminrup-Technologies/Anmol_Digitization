@@ -429,56 +429,75 @@ namespace AnmolDristi
                             if (string.IsNullOrWhiteSpace(dateStr)) dateStr = SafeGet(normalized, "User_Created_Date");
                             if (string.IsNullOrWhiteSpace(dateStr)) dateStr = SafeGet(normalized, "ActivityDate");
 
-                            // attempt combined-field detection (unchanged from previous logic)...
-                            // (you can keep your existing scan-through-normalized block here if needed)
+                            // final fallback: any header containing "date"
+                            if (string.IsNullOrWhiteSpace(dateStr))
+                            {
+                                // SafeGet already tries contains(key) but be explicit:
+                                foreach (var k in normalized.Keys)
+                                {
+                                    if (!string.IsNullOrWhiteSpace(k) && k.IndexOf("date", StringComparison.OrdinalIgnoreCase) >= 0)
+                                    {
+                                        var candidate = normalized[k];
+                                        if (!string.IsNullOrWhiteSpace(candidate))
+                                        {
+                                            dateStr = CleanString(candidate);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
 
-                            // New parsing: prefer exact dd-MM-yyyy formats
-                            System.DateTime parsedDate = System.DateTime.MinValue;
+                            DateTime parsedDate = DateTime.MinValue;
                             bool haveDate = false;
+
                             if (!string.IsNullOrWhiteSpace(dateStr))
                             {
+                                var cleaned = NormalizeDateString(dateStr);
+
+                                // list of common formats seen in CSV exports; keep ISO and dd-MM first (IST expected)
                                 string[] formats = new[] {
                                     "dd-MM-yyyy", "d-M-yyyy", "dd/MM/yyyy", "d/M/yyyy",
-                                    "MM/dd/yyyy", "yyyy-MM-dd", "yyyyMMdd"
+                                    "yyyy-MM-dd", "yyyyMMdd", "MM/dd/yyyy", "M/d/yyyy",
+                                    "dd-MM-yy", "dd/MM/yy"
                                 };
 
-                                // Try exact parse with invariant (explicit formats)
-                                if (System.DateTime.TryParseExact(dateStr, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out parsedDate))
+                                // Try exact formats using en-GB (favours day-month-year)
+                                var enGb = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+                                if (!string.IsNullOrWhiteSpace(cleaned))
                                 {
-                                    haveDate = true;
+                                    if (DateTime.TryParseExact(cleaned, formats, enGb, System.Globalization.DateTimeStyles.None, out parsedDate)
+                                        || DateTime.TryParseExact(cleaned, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out parsedDate))
+                                    {
+                                        haveDate = true;
+                                    }
+                                    else if (DateTime.TryParse(cleaned, enGb, System.Globalization.DateTimeStyles.None, out parsedDate))
+                                    {
+                                        haveDate = true;
+                                    }
+                                    else if (DateTime.TryParse(cleaned, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out parsedDate))
+                                    {
+                                        haveDate = true;
+                                    }
                                 }
-                                else
-                                {
-                                    // Try with English (United Kingdom) culture which uses dd-MM-yyyy
-                                    try
-                                    {
-                                        var enGb = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
-                                        if (System.DateTime.TryParseExact(dateStr, formats, enGb, System.Globalization.DateTimeStyles.None, out parsedDate))
-                                            haveDate = true;
-                                        else if (System.DateTime.TryParse(dateStr, enGb, System.Globalization.DateTimeStyles.None, out parsedDate))
-                                            haveDate = true;
-                                    }
-                                    catch
-                                    {
-                                        // fall through
-                                    }
 
-                                    // final fallback: a flexible TryParse with invariant culture
-                                    if (!haveDate)
-                                    {
-                                        if (System.DateTime.TryParse(dateStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out parsedDate))
-                                            haveDate = true;
-                                    }
+                                if (!haveDate)
+                                {
+                                    // record debug info for this row so you can see exact failing content
+                                    string existingMsg = string.Empty;
+                                    if (newRow.Table.Columns.Contains("ProcessingMessage") && newRow["ProcessingMessage"] != null && newRow["ProcessingMessage"] != DBNull.Value)
+                                        existingMsg = newRow["ProcessingMessage"].ToString();
+
+                                    string msg = "Missing/Unparseable Date (raw: \"" + (dateStr ?? "<null>") + "\").";
+                                    newRow["ProcessingMessage"] = (existingMsg + " " + msg).Trim();
                                 }
                             }
 
                             if (haveDate)
                             {
-                                newRow["Date"] = parsedDate;
-                                // Canonicalize Day from parsed date's weekday
+                                // store date (only date part) and canonical day
+                                newRow["Date"] = parsedDate.Date;
                                 newRow["Day"] = parsedDate.DayOfWeek.ToString();
 
-                                // If CSV provided a Day and it still doesn't match parsed day, append message (optional)
                                 if (!string.IsNullOrWhiteSpace(dayStr) && !string.Equals(dayStr.Trim(), parsedDate.DayOfWeek.ToString(), StringComparison.OrdinalIgnoreCase))
                                 {
                                     string existingMsg = string.Empty;
@@ -486,29 +505,115 @@ namespace AnmolDristi
                                         existingMsg = newRow["ProcessingMessage"].ToString();
 
                                     string msg = "Day/Date mismatch (day provided: " + dayStr.Trim() + ", date parsed weekday: " + parsedDate.DayOfWeek.ToString() + ").";
-                                    // You may choose to comment this out if you don't want mismatch messages at all.
                                     newRow["ProcessingMessage"] = (existingMsg + " " + msg).Trim();
                                 }
                             }
                             else
                             {
+                                // keep Date as DBNull and set Day if provided
                                 newRow["Date"] = DBNull.Value;
                                 if (!string.IsNullOrWhiteSpace(dayStr))
                                 {
-                                    try
-                                    {
-                                        newRow["Day"] = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(dayStr.Trim().ToLower());
-                                    }
-                                    catch
-                                    {
-                                        newRow["Day"] = dayStr.Trim();
-                                    }
+                                    try { newRow["Day"] = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(dayStr.Trim().ToLower()); }
+                                    catch { newRow["Day"] = dayStr.Trim(); }
                                 }
                                 else
                                 {
                                     newRow["Day"] = DBNull.Value;
                                 }
                             }
+
+
+                            //----------Commented on 07-Dec-225--------------------------- //
+                            //// --- Day/Date parsing (robust, prioritizes dd-MM-yyyy) ---
+                            //string dayStr = SafeGet(normalized, "Day");
+                            //string dateStr = SafeGet(normalized, "Date");
+
+                            //// alternate headers
+                            //if (string.IsNullOrWhiteSpace(dayStr)) dayStr = SafeGet(normalized, "Weekday");
+                            //if (string.IsNullOrWhiteSpace(dateStr)) dateStr = SafeGet(normalized, "User_Created_Date");
+                            //if (string.IsNullOrWhiteSpace(dateStr)) dateStr = SafeGet(normalized, "ActivityDate");
+
+                            //// attempt combined-field detection (unchanged from previous logic)...
+                            //// (you can keep your existing scan-through-normalized block here if needed)
+
+                            //// New parsing: prefer exact dd-MM-yyyy formats
+                            //System.DateTime parsedDate = System.DateTime.MinValue;
+                            //bool haveDate = false;
+                            //if (!string.IsNullOrWhiteSpace(dateStr))
+                            //{
+                            //    string[] formats = new[] {
+                            //        "dd-MM-yyyy", "d-M-yyyy", "dd/MM/yyyy", "d/M/yyyy",
+                            //        "MM/dd/yyyy", "yyyy-MM-dd", "yyyyMMdd"
+                            //    };
+
+                            //    // Try exact parse with invariant (explicit formats)
+                            //    if (System.DateTime.TryParseExact(dateStr, formats, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out parsedDate))
+                            //    {
+                            //        haveDate = true;
+                            //    }
+                            //    else
+                            //    {
+                            //        // Try with English (United Kingdom) culture which uses dd-MM-yyyy
+                            //        try
+                            //        {
+                            //            var enGb = System.Globalization.CultureInfo.GetCultureInfo("en-GB");
+                            //            if (System.DateTime.TryParseExact(dateStr, formats, enGb, System.Globalization.DateTimeStyles.None, out parsedDate))
+                            //                haveDate = true;
+                            //            else if (System.DateTime.TryParse(dateStr, enGb, System.Globalization.DateTimeStyles.None, out parsedDate))
+                            //                haveDate = true;
+                            //        }
+                            //        catch
+                            //        {
+                            //            // fall through
+                            //        }
+
+                            //        // final fallback: a flexible TryParse with invariant culture
+                            //        if (!haveDate)
+                            //        {
+                            //            if (System.DateTime.TryParse(dateStr, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out parsedDate))
+                            //                haveDate = true;
+                            //        }
+                            //    }
+                            //}
+
+                            //if (haveDate)
+                            //{
+                            //    newRow["Date"] = parsedDate;
+                            //    // Canonicalize Day from parsed date's weekday
+                            //    newRow["Day"] = parsedDate.DayOfWeek.ToString();
+
+                            //    // If CSV provided a Day and it still doesn't match parsed day, append message (optional)
+                            //    if (!string.IsNullOrWhiteSpace(dayStr) && !string.Equals(dayStr.Trim(), parsedDate.DayOfWeek.ToString(), StringComparison.OrdinalIgnoreCase))
+                            //    {
+                            //        string existingMsg = string.Empty;
+                            //        if (newRow.Table.Columns.Contains("ProcessingMessage") && newRow["ProcessingMessage"] != null && newRow["ProcessingMessage"] != DBNull.Value)
+                            //            existingMsg = newRow["ProcessingMessage"].ToString();
+
+                            //        string msg = "Day/Date mismatch (day provided: " + dayStr.Trim() + ", date parsed weekday: " + parsedDate.DayOfWeek.ToString() + ").";
+                            //        // You may choose to comment this out if you don't want mismatch messages at all.
+                            //        newRow["ProcessingMessage"] = (existingMsg + " " + msg).Trim();
+                            //    }
+                            //}
+                            //else
+                            //{
+                            //    newRow["Date"] = DBNull.Value;
+                            //    if (!string.IsNullOrWhiteSpace(dayStr))
+                            //    {
+                            //        try
+                            //        {
+                            //            newRow["Day"] = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(dayStr.Trim().ToLower());
+                            //        }
+                            //        catch
+                            //        {
+                            //            newRow["Day"] = dayStr.Trim();
+                            //        }
+                            //    }
+                            //    else
+                            //    {
+                            //        newRow["Day"] = DBNull.Value;
+                            //    }
+                            //}
 
                             // --- Total distance: set default 0.00 when missing ---
                             string kmStr = SafeGet(normalized, "Total_Distance_Travelled_In_KM");
@@ -602,6 +707,18 @@ namespace AnmolDristi
             }
         }
 
+        private string NormalizeDateString(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            s = s.Trim();
+            s = s.Replace("\"", "");     // stray double quotes
+            s = s.Replace("'", "");      // stray single quotes
+            s = s.Replace("\uFEFF", ""); // BOM
+            s = s.Replace("\u00A0", " "); // non-breaking space
+            return s.Trim();
+        }
+
+
 
         private DataTable CreateStagingDataTableSchema()
         {
@@ -673,6 +790,61 @@ namespace AnmolDristi
         }
 
         private string SafeGet(IDictionary<string, string> dict, string key)
+        {
+            if (dict == null) return null;
+
+            // direct lookup
+            string v;
+            if (dict.TryGetValue(key, out v) && !string.IsNullOrWhiteSpace(v))
+                return CleanString(v);
+
+            // heuristics
+            var alternatives = new[]
+            {
+        key,
+        key.Replace("_", " "),
+        key.Replace("_", ""),
+        key.ToLowerInvariant(),
+        key.ToUpperInvariant()
+    };
+
+            foreach (var alt in alternatives)
+            {
+                string v2;
+                if (dict.TryGetValue(alt, out v2) && !string.IsNullOrWhiteSpace(v2))
+                    return CleanString(v2);
+            }
+
+            // final fallback: partial match
+            foreach (string k in dict.Keys)
+            {
+                if (!string.IsNullOrWhiteSpace(k) &&
+                    k.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    string v3 = dict[k];
+                    if (!string.IsNullOrWhiteSpace(v3))
+                        return CleanString(v3);
+                }
+            }
+
+            return null;
+        }
+
+
+        private string CleanString(string s)
+        {
+            if (s == null) return null;
+            s = s.Trim();
+            s = s.Replace("\uFEFF", ""); // BOM
+            s = s.Replace("\u00A0", " "); // NBSP
+            s = s.Replace("“", "\"").Replace("”", "\"");
+            s = s.Replace("‘", "'").Replace("’", "'");
+            return s.Trim();
+        }
+
+
+
+        private string SafeGet_OLD(IDictionary<string, string> dict, string key)
         {
             if (dict == null) return null;
 

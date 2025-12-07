@@ -1240,6 +1240,44 @@ namespace AnmolDristi
             ShowPolicyModal();
         }
 
+        protected void BindPolicyApprovers()
+        {
+            // read session values (use same keys you already set)
+            string rOneName = (Session["RONE_NAME"] ?? string.Empty).ToString().Trim();
+            string rOneCode = (Session["RONE_CODE"] ?? string.Empty).ToString().Trim();
+
+            string rTwoName = (Session["RTWO_NAME"] ?? string.Empty).ToString().Trim();
+            string rTwoCode = (Session["RTWO_CODE"] ?? string.Empty).ToString().Trim();
+
+            // Auditor scope - keep placeholder session keys for future population
+            // Set these from wherever you set RONE/RTWO (example below)
+            string auditorName = (Session["AUDITOR_NAME"] ?? string.Empty).ToString().Trim();
+            string auditorCode = (Session["AUDITOR_CODE"] ?? string.Empty).ToString().Trim();
+
+            // Compose display text - prefer "Name (Code)" when code exists
+            lblApproverL1.Text = ComposeNameWithCode(rOneName, rOneCode);
+            lblApproverL2.Text = ComposeNameWithCode(rTwoName, rTwoCode);
+            lblApproverAuditor.Text = ComposeNameWithCode(auditorName, auditorCode);
+
+            // Toggle visibility of entire columns depending on availability
+            approverL1Container.Visible = !string.IsNullOrEmpty(rOneName) || !string.IsNullOrEmpty(rOneCode);
+            approverL2Container.Visible = !string.IsNullOrEmpty(rTwoName) || !string.IsNullOrEmpty(rTwoCode);
+            approverAuditorContainer.Visible = !string.IsNullOrEmpty(auditorName) || !string.IsNullOrEmpty(auditorCode);
+        }
+
+        // small helper to create "Name (Code)" or fallback
+        private string ComposeNameWithCode(string name, string code)
+        {
+            if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(code))
+                return $"{HttpUtility.HtmlEncode(name)} ({HttpUtility.HtmlEncode(code)})";
+            if (!string.IsNullOrEmpty(name))
+                return HttpUtility.HtmlEncode(name);
+            if (!string.IsNullOrEmpty(code))
+                return $"({HttpUtility.HtmlEncode(code)})";
+            return "—";
+        }
+
+
         private void BindPolicyToModal(PolicyResolved policy)
         {
             if (policy == null) return;
@@ -1302,7 +1340,7 @@ namespace AnmolDristi
             policyJsonRaw.Visible = false;
 
             LBL_ExpenseMsg.Text = string.Empty;
-
+            BindPolicyApprovers();
             // show policy modal
             //ShowPolicyModal();
         }

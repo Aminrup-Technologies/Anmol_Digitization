@@ -1156,6 +1156,60 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox policyJsonRaw;
         
         /// <summary>
+        /// approverL1Container control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl approverL1Container;
+        
+        /// <summary>
+        /// lblApproverL1 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblApproverL1;
+        
+        /// <summary>
+        /// approverL2Container control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl approverL2Container;
+        
+        /// <summary>
+        /// lblApproverL2 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblApproverL2;
+        
+        /// <summary>
+        /// approverAuditorContainer control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl approverAuditorContainer;
+        
+        /// <summary>
+        /// lblApproverAuditor control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblApproverAuditor;
+        
+        /// <summary>
         /// lnkCopyJson control.
         /// </summary>
         /// <remarks>
