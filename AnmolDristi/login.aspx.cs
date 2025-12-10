@@ -234,7 +234,7 @@ namespace AnmolDristi
                 Tuple<int, Guid> result = null;
                 try
                 {
-                    result = SessionHelper.CreateActiveSession(userId, workman);
+                    result = SessionHelper.CreateOrReuseActiveSession(userId, workman);
                 }
                 catch (Exception exSess)
                 {
@@ -245,8 +245,16 @@ namespace AnmolDristi
 
                 if (result != null)
                 {
-                    Session["ActiveSessionId"] = result.Item1;
-                    Session["LoginToken"] = result.Item2.ToString();
+                    int activeSessionId = result.Item1;
+                    Guid loginToken = result.Item2;
+
+                    Session["ActiveSessionId"] = activeSessionId;
+                    Session["LoginToken"] = loginToken.ToString();
+
+                    //Session["ActiveSessionId"] = result.Item1;
+                    //Session["LoginToken"] = result.Item2.ToString();
+
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "storeToken", $"sessionStorage.setItem('LoginToken','{loginToken}'); sessionStorage.setItem('ActiveSessionId','{activeSessionId}');", true);
                 }
                 else
                 {

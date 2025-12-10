@@ -355,6 +355,28 @@
 
         })();
     </script>
+    <script>
+        (function(){
+          try {
+            var intervalMs = 30000; // 30s
+            function sendHeartbeat() {
+              try {
+                var token = sessionStorage.getItem('LoginToken') || null;
+                if (!token) return;
+                var payload = JSON.stringify({ loginToken: token });
+                fetch('/heartbeat.aspx/Heartbeat', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                  body: payload
+                }).catch(function(e){ /* silent */ });
+              } catch (e) {}
+            }
+            // run immediately and then periodically
+            sendHeartbeat();
+            setInterval(sendHeartbeat, intervalMs);
+          } catch(e){}
+        })();
+    </script>
 
 </head>
 <body class="nav-md footer_fixed">

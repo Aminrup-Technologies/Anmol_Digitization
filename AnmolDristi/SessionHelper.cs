@@ -50,6 +50,71 @@ namespace AnmolDristi
             return ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         }
 
+        // Returns (ActiveSessionId, LoginToken)
+        public static Tuple<int, Guid> CreateOrReuseActiveSession(int userId, string employeeCode)
+        {
+            using (var con = new SqlConnection(GetConnectionString()))
+            using (var cmd = con.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    DECLARE @existingId INT, @existingToken UNIQUEIDENTIFIER;
+
+                    SELECT TOP 1 @existingId = ActiveSessionId, @existingToken = LoginToken
+                    FROM dbo.ActiveUserSession
+                    WHERE UserId = @UserId AND IsActive = 1
+                      AND ClientIP = @ClientIP AND BrowserInfo = @BrowserInfo
+                      AND (
+                           (LastHeartbeat IS NOT NULL AND LastHeartbeat >= DATEADD(MINUTE, -5, SYSUTCDATETIME()))
+                           OR (LastHeartbeat IS NULL AND LoginTime >= DATEADD(MINUTE, -5, SYSUTCDATETIME()))
+                          )
+                    ORDER BY LoginTime DESC;
+
+                    IF @existingId IS NOT NULL
+                    BEGIN
+                      UPDATE dbo.ActiveUserSession
+                      SET SessionId = @SessionId, LastHeartbeat = SYSUTCDATETIME(), LoginTime = SYSUTCDATETIME(), HostName = @HostName
+                      WHERE ActiveSessionId = @existingId;
+
+                      SELECT @existingId AS ActiveSessionId, @existingToken AS LoginToken;
+                      RETURN;
+                    END
+
+                    INSERT INTO dbo.ActiveUserSession
+                    (UserId, EmployeeCode, SessionId, LoginTime, LastHeartbeat, ClientIP, HostName, BrowserInfo, IsActive, LoginToken)
+                    VALUES (@UserId, @EmployeeCode, @SessionId, SYSUTCDATETIME(), SYSUTCDATETIME(), @ClientIP, @HostName, @BrowserInfo, 1, NEWID());
+
+                    SELECT CAST(SCOPE_IDENTITY() AS INT) AS ActiveSessionId, (SELECT LoginToken FROM dbo.ActiveUserSession WHERE ActiveSessionId = SCOPE_IDENTITY()) AS LoginToken;
+                    ";
+                cmd.CommandType = CommandType.Text;
+
+                string sessionId = HttpContext.Current.Session != null ? HttpContext.Current.Session.SessionID : string.Empty;
+                var req = HttpContext.Current.Request;
+                string clientIp = req.UserHostAddress ?? "";
+                string browser = req.Browser != null ? req.Browser.Browser + " " + req.Browser.Version : "";
+                string hostName = req.UserHostName ?? "";
+
+                cmd.Parameters.AddWithValue("@UserId", userId);
+                cmd.Parameters.AddWithValue("@EmployeeCode", (object)employeeCode ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@SessionId", (object)sessionId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ClientIP", (object)clientIp ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@BrowserInfo", (object)browser ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@HostName", (object)hostName ?? DBNull.Value);
+
+                con.Open();
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    if (rdr.Read())
+                    {
+                        int activeId = Convert.ToInt32(rdr["ActiveSessionId"]);
+                        Guid token = rdr["LoginToken"] != DBNull.Value ? (Guid)rdr["LoginToken"] : Guid.Empty;
+                        return Tuple.Create(activeId, token);
+                    }
+                }
+            }
+            return Tuple.Create(0, Guid.Empty);
+        }
+
+
         public static Tuple<int, Guid> CreateActiveSession(int userId, string employeeCode)
         {
             if (HttpContext.Current == null)
@@ -330,6 +395,18 @@ namespace AnmolDristi
         }
 
         public static bool UpdateHeartbeat(Guid loginToken)
+        {
+            using (var con = new SqlConnection(GetConnectionString()))
+            using (var cmd = new SqlCommand("UPDATE dbo.ActiveUserSession SET LastHeartbeat = SYSUTCDATETIME() WHERE LoginToken = @t AND IsActive = 1", con))
+            {
+                cmd.Parameters.Add("@t", SqlDbType.UniqueIdentifier).Value = loginToken;
+                con.Open();
+                return cmd.ExecuteNonQuery() > 0;
+            }
+        }
+
+
+        public static bool UpdateHeartbeat_09Dec25(Guid loginToken)
         {
             string sql = "UPDATE ActiveUserSession SET LastHeartbeat = GETDATE() WHERE LoginToken = @t AND IsActive = 1";
             using (SqlConnection con = new SqlConnection(ConnStr))

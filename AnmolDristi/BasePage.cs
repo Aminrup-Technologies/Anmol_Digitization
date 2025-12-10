@@ -40,11 +40,59 @@ namespace AnmolDristi  // use your project namespace
             EnsureSessionValid();
         }
 
+        private const int HEARTBEAT_SEC = 30;
+        private const string LAST_BEAT_KEY = "__LastHeartUtc";
+
         protected void EnsureSessionValid()
         {
             if (Session["USERID"] == null && Session["USERNAME"] == null && Session["WORKMAN"] == null && Session["LoginToken"] == null)
             {
+                //RedirectToLogin();
+                return;
+            }
+
+            if (!ValidateTokenOnEveryRequest) return;
+
+            Guid token;
+            if (!Guid.TryParse(CurrentLoginToken, out token))
+            {
+                //RedirectToLogin();
+                return;
+            }
+
+            try
+            {
+                DateTime last = DateTime.MinValue;
+                if (Session[LAST_BEAT_KEY] != null) DateTime.TryParse(Session[LAST_BEAT_KEY].ToString(), out last);
+
+                if ((DateTime.UtcNow - last).TotalSeconds >= HEARTBEAT_SEC)
+                {
+                    bool updated = SessionHelper.UpdateHeartbeat(token);
+                    if (updated) Session[LAST_BEAT_KEY] = DateTime.UtcNow.ToString("o");
+                    else
+                    {
+                        // If DB says session not active then force logout
+                        if (!SessionHelper.IsSessionActive(token)) RedirectToLogin();
+                    }
+                }
+                else
+                {
+                    // we refreshed recently; optionally do nothing else
+                    // if you need stronger validation uncomment:
+                    // if (!SessionHelper.IsSessionActive(token)) RedirectToLogin();
+                }
+            }
+            catch
+            {
+                // On DB error, safer to redirect to login (reduce partial auth states)
                 RedirectToLogin();
+            }
+        }
+        protected void EnsureSessionValid_09Dec25()
+        {
+            if (Session["USERID"] == null && Session["USERNAME"] == null && Session["WORKMAN"] == null && Session["LoginToken"] == null)
+            {
+                //RedirectToLogin();
                 return;
             }
 
@@ -53,7 +101,7 @@ namespace AnmolDristi  // use your project namespace
                 Guid token;
                 if (!Guid.TryParse(CurrentLoginToken, out token) || !SessionHelper.IsSessionActive(token))
                 {
-                    RedirectToLogin();
+                    //RedirectToLogin();
                 }
             }
         }
