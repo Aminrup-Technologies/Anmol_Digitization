@@ -29,6 +29,68 @@ namespace AnmolDristi
             Application["CleanupTimer"] = timer;
         }
 
+        protected void Application_AcquireRequestState(object sender, EventArgs e)
+        {
+            HttpContext ctx = HttpContext.Current;
+            if (ctx == null || ctx.Session == null)
+                return;
+
+            string path = ctx.Request.Url.AbsolutePath.ToLowerInvariant();
+
+            // -------------------------------
+            // 1. Pages that must be skipped
+            // -------------------------------
+            if (
+                path.EndsWith("/login.aspx") ||
+                path.EndsWith("/logout.aspx") ||
+                path.Contains("/heartbeat.aspx") ||
+                path.Contains("/webresource.axd") ||
+                path.Contains("/scriptresource.axd") ||
+                path.EndsWith(".css") ||
+                path.EndsWith(".js") ||
+                path.EndsWith(".png") ||
+                path.EndsWith(".jpg") ||
+                path.EndsWith(".gif") ||
+                path.EndsWith(".ico")
+               )
+            {
+                return;
+            }
+
+            // ---------------------------------
+            // 2. Detect broken / partial session
+            // ---------------------------------
+            bool hasUser =
+                ctx.Session["USERID"] != null ||
+                ctx.Session["WORKMAN"] != null ||
+                ctx.Session["USERNAME"] != null;
+
+            bool hasToken = ctx.Session["LoginToken"] != null;
+
+            // ---------------------------------
+            // 3. If user exists but token missing
+            //    -> session is corrupt
+            // ---------------------------------
+            if (hasUser && !hasToken)
+            {
+                try
+                {
+                    ctx.Session.Clear();
+                    ctx.Session.Abandon();
+                }
+                catch { }
+
+                // Expire ASP.NET session cookie
+                HttpCookie sessionCookie = new HttpCookie("ASP.NET_SessionId", "");
+                sessionCookie.Expires = DateTime.Now.AddDays(-1);
+                sessionCookie.Path = "/";
+                ctx.Response.Cookies.Add(sessionCookie);
+
+                // Redirect safely
+                ctx.Response.Redirect("~/login.aspx?reason=sessionexpired", true);
+            }
+        }
+
         protected void Session_Start(object sender, EventArgs e)
         {
 
