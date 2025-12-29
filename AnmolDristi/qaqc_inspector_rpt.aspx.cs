@@ -17,7 +17,7 @@ using System.Configuration;
 
 namespace AnmolDristi.qaqc
 {
-    public partial class qaqc_inspector_rpt : System.Web.UI.Page
+    public partial class qaqc_inspector_rpt : BasePage
     {
         DB_Utility_OH4Y dbcl = new DB_Utility_OH4Y();
         public static string ImgLink1 = string.Empty;

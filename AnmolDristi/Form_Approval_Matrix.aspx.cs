@@ -13,7 +13,7 @@ using System.Web.UI.WebControls;
 
 namespace AnmolDristi
 {
-    public partial class Form_Approval_Matrix : System.Web.UI.Page
+    public partial class Form_Approval_Matrix : BasePage
     {
         private static string formName = string.Empty;
         private static string documentNumber = string.Empty;
@@ -701,7 +701,7 @@ namespace AnmolDristi
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 // Base SQL query
-                string query = "SELECT * FROM MST_FormsApprovalMatrix WHERE 1=1";
+                string query = "SELECT * FROM MST_FormsApprovalMatrix WHERE Active = 1";
 
                 // Add conditions dynamically, excluding zero, null, or empty values
                 if (!string.IsNullOrEmpty(formId) && formId != "0")
