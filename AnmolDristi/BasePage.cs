@@ -36,14 +36,150 @@ namespace AnmolDristi  // use your project namespace
 
         protected override void OnInit(EventArgs e)
         {
+            //base.OnInit(e);
+            //EnsureSessionValid();
+
             base.OnInit(e);
             EnsureSessionValid();
+            // Only validate on real pages, not global pipeline
+            if (Session["LoginToken"] == null)
+                return;
+
+            Guid token;
+            if (!Guid.TryParse(Session["LoginToken"].ToString(), out token))
+                return;
+
+            //if (!SessionHelper.IsSessionActive(token))
+            //{
+            //    RedirectToLogin();
+            //}
         }
 
-        private const int HEARTBEAT_SEC = 30;
+
+        private const int HEARTBEAT_SEC = 60;
+        private const int LOGOUT_GRACE_MIN = 5;
         private const string LAST_BEAT_KEY = "__LastHeartUtc";
+        private const string LAST_OK_KEY = "__LastSessionOkUtc";
 
         protected void EnsureSessionValid()
+        {
+            if (Session["LoginToken"] == null)
+                return;
+
+            Guid token;
+            if (!Guid.TryParse(CurrentLoginToken, out token))
+                return;
+
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                // Heartbeat update
+                DateTime lastBeat = DateTime.MinValue;
+                if (Session[LAST_BEAT_KEY] != null)
+                    DateTime.TryParse(Session[LAST_BEAT_KEY].ToString(), out lastBeat);
+
+                if ((now - lastBeat).TotalSeconds >= HEARTBEAT_SEC)
+                {
+                    if (SessionHelper.UpdateHeartbeat(token))
+                    {
+                        Session[LAST_BEAT_KEY] = now.ToString("o");
+                        Session[LAST_OK_KEY] = now.ToString("o");
+                    }
+                }
+
+                // Soft validation
+                DateTime lastOk = DateTime.MinValue;
+                if (Session[LAST_OK_KEY] != null)
+                    DateTime.TryParse(Session[LAST_OK_KEY].ToString(), out lastOk);
+
+                if ((now - lastOk).TotalMinutes >= LOGOUT_GRACE_MIN)
+                {
+                    if (!SessionHelper.IsSessionActive(token))
+                    {
+                        RedirectToLogin();
+                    }
+                    else
+                    {
+                        Session[LAST_OK_KEY] = now.ToString("o");
+                    }
+                }
+            }
+            catch
+            {
+                // NEVER logout on transient failures
+            }
+        }
+
+
+        //private const int HEARTBEAT_SEC = 60;          // align with JS heartbeat
+        //private const int LOGOUT_GRACE_MIN = 5;        // tolerate failures
+        //private const string LAST_BEAT_KEY = "__LastHeartUtc";
+        //private const string LAST_OK_KEY = "__LastSessionOkUtc";
+
+        //protected void EnsureSessionValid()
+        //{
+        //    // No auth context at all → ignore
+        //    if (Session["LoginToken"] == null)
+        //        return;
+
+        //    if (!ValidateTokenOnEveryRequest)
+        //        return;
+
+        //    Guid token;
+        //    if (!Guid.TryParse(CurrentLoginToken, out token))
+        //        return;
+
+        //    try
+        //    {
+        //        var now = DateTime.Now;
+
+        //        // -------- HEARTBEAT UPDATE --------
+        //        DateTime lastBeat = DateTime.MinValue;
+        //        if (Session[LAST_BEAT_KEY] != null)
+        //            DateTime.TryParse(Session[LAST_BEAT_KEY].ToString(), out lastBeat);
+
+        //        if ((now - lastBeat).TotalSeconds >= HEARTBEAT_SEC)
+        //        {
+        //            if (SessionHelper.UpdateHeartbeat(token))
+        //            {
+        //                Session[LAST_BEAT_KEY] = now.ToString("o");
+        //                Session[LAST_OK_KEY] = now.ToString("o");
+        //            }
+        //        }
+
+        //        // -------- SOFT VALIDATION --------
+        //        DateTime lastOk = DateTime.MinValue;
+        //        if (Session[LAST_OK_KEY] != null)
+        //            DateTime.TryParse(Session[LAST_OK_KEY].ToString(), out lastOk);
+
+        //        // Only do a HARD logout if DB confirms inactivity
+        //        // AND grace window has passed
+        //        if ((now - lastOk).TotalMinutes >= LOGOUT_GRACE_MIN)
+        //        {
+        //            if (!SessionHelper.IsSessionActive(token))
+        //            {
+        //                RedirectToLogin();
+        //            }
+        //            else
+        //            {
+        //                Session[LAST_OK_KEY] = now.ToString("o");
+        //            }
+        //        }
+        //    }
+        //    catch
+        //    {
+        //        // NEVER logout on exception
+        //        // Treat as transient failure
+        //    }
+        //}
+
+
+
+        //private const int HEARTBEAT_SEC = 30;
+        //private const string LAST_BEAT_KEY = "__LastHeartUtc";
+
+        protected void EnsureSessionValid_03Jan26()
         {
             if (Session["USERID"] == null && Session["USERNAME"] == null && Session["WORKMAN"] == null && Session["LoginToken"] == null)
             {
@@ -65,10 +201,10 @@ namespace AnmolDristi  // use your project namespace
                 DateTime last = DateTime.MinValue;
                 if (Session[LAST_BEAT_KEY] != null) DateTime.TryParse(Session[LAST_BEAT_KEY].ToString(), out last);
 
-                if ((DateTime.UtcNow - last).TotalSeconds >= HEARTBEAT_SEC)
+                if ((DateTime.Now - last).TotalSeconds >= HEARTBEAT_SEC)
                 {
                     bool updated = SessionHelper.UpdateHeartbeat(token);
-                    if (updated) Session[LAST_BEAT_KEY] = DateTime.UtcNow.ToString("o");
+                    if (updated) Session[LAST_BEAT_KEY] = DateTime.Now.ToString("o");
                     else
                     {
                         // If DB says session not active then force logout

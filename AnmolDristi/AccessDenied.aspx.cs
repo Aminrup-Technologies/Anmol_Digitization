@@ -45,7 +45,7 @@ namespace AnmolDristi
             using (var cn = new System.Data.SqlClient.SqlConnection(connStr))
             using (var cmd = new System.Data.SqlClient.SqlCommand(@"
                 INSERT INTO dbo.AccessDeniedLog (UserId, UserIdentifier, RequiredPermission, Url, IpAddress, EventTime)
-                VALUES (@uid, @uident, @perm, @url, @ip, SYSUTCDATETIME())", cn))
+                VALUES (@uid, @uident, @perm, @url, @ip, SYSDATETIME())", cn))
             {
                 cmd.Parameters.AddWithValue("@uid", userId);
                 cmd.Parameters.AddWithValue("@uident", userIdentifier ?? (object)DBNull.Value);

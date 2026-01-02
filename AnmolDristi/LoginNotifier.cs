@@ -19,7 +19,7 @@ namespace AnmolDristi
                 string body = $@"
                 <p>User <b>{username}</b> logged in successfully.</p>
                 <p>IP Address: {ipAddress}</p>
-                <p>Timestamp: {DateTime.UtcNow}</p>";
+                <p>Timestamp: {DateTime.Now}</p>";
 
                 // Send email
                 EmailNotifier.Notify(subject, body, recipients);

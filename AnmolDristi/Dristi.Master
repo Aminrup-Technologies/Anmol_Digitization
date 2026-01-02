@@ -356,27 +356,50 @@
         })();
     </script>
     <script>
-        (function(){
-          try {
-            var intervalMs = 30000; // 30s
-            function sendHeartbeat() {
-              try {
-                var token = sessionStorage.getItem('LoginToken') || null;
-                if (!token) return;
-                var payload = JSON.stringify({ loginToken: token });
-                fetch('/heartbeat.aspx/Heartbeat', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json;charset=utf-8' },
-                  body: payload
-                }).catch(function(e){ /* silent */ });
-              } catch (e) {}
-            }
-            // run immediately and then periodically
-            sendHeartbeat();
-            setInterval(sendHeartbeat, intervalMs);
-          } catch(e){}
+        (function () {
+            try {
+                var intervalMs = 30000; // 30s
+                function sendHeartbeat() {
+                    try {
+                        var token = sessionStorage.getItem('LoginToken') || null;
+                        if (!token) return;
+                        var payload = JSON.stringify({ loginToken: token });
+                        fetch('/heartbeat.aspx/Heartbeat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                            body: payload
+                        }).catch(function (e) { /* silent */ });
+                    } catch (e) { }
+                }
+                // run immediately and then periodically
+                sendHeartbeat();
+                setInterval(sendHeartbeat, intervalMs);
+            } catch (e) { }
         })();
     </script>
+    <script>
+(function () {
+    setInterval(function () {
+        try {
+            var token = sessionStorage.getItem("ActiveLoginToken");
+            if (!token) return;
+
+            fetch('<%= ResolveUrl("~/heartbeat.aspx/Heartbeat") %>', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify({ loginToken: token })
+            });
+        } catch (e) { }
+    }, 60000); // 1 minute
+})();
+</script>
+
+
+
 
 </head>
 <body class="nav-md footer_fixed">

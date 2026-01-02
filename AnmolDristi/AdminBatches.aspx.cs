@@ -14,13 +14,22 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                System.Diagnostics.Debug.WriteLine("IsPostBack true; request.Form keys: " + Request.Form.Count);
-                lblRunMessage.Text = "IsPostBack at " + DateTime.Now.ToLongTimeString();
+                // require USERID and USERNAME as minimum for a logged-in user
+                if (Session["USERID"] != null && Session["USERNAME"] != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("IsPostBack true; request.Form keys: " + Request.Form.Count);
+                    lblRunMessage.Text = "IsPostBack at " + DateTime.Now.ToLongTimeString();
 
-                // sensible defaults (IST)
-                txtTo.Text = DateTime.Now.ToString("yyyy-MM-dd 23:59:59");
-                txtFrom.Text = DateTime.Now.AddDays(-7).ToString("yyyy-MM-dd 00:00:00");
-                BindBatches();
+                    // sensible defaults (IST)
+                    txtTo.Text = DateTime.Now.ToString("yyyy-MM-dd 23:59:59");
+                    txtFrom.Text = DateTime.Now.AddDays(-7).ToString("yyyy-MM-dd 00:00:00");
+                    BindBatches();
+                }
+                else
+                {
+                    // no session - redirect to login or handle as per your app flow
+                    Response.Redirect("~/Login.aspx");
+                }             
             }
 
             lblSelectedBatch.Text = string.IsNullOrEmpty(hfSelectedBatch.Value) ? "(none selected)" : hfSelectedBatch.Value;

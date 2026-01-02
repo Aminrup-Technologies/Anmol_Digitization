@@ -130,7 +130,7 @@ namespace AnmolDristi
                     if (result != null && result != DBNull.Value)
                     {
                         var name = Convert.ToString(result);
-                        HttpRuntime.Cache.Insert(cacheKey, name, null, DateTime.UtcNow.AddSeconds(MasterLookupCacheSeconds), System.Web.Caching.Cache.NoSlidingExpiration);
+                        HttpRuntime.Cache.Insert(cacheKey, name, null, DateTime.Now.AddSeconds(MasterLookupCacheSeconds), System.Web.Caching.Cache.NoSlidingExpiration);
                         return name;
                     }
                 }
