@@ -64,7 +64,7 @@ namespace AnmolDristi
         -- Deactivate sessions from OTHER browsers/devices
         UPDATE ActiveUserSession
         SET IsActive = 0,
-            LogoutTime = SYSUTCDATETIME()
+            LogoutTime = SYSDATETIME()
         WHERE UserId = @UserId
           AND IsActive = 1
           AND (
@@ -83,14 +83,14 @@ namespace AnmolDristi
           AND IsActive = 1
           AND ClientIP = @ClientIP
           AND BrowserInfo = @BrowserInfo
-          AND LastHeartbeat >= DATEADD(MINUTE, -5, SYSUTCDATETIME())
+          AND LastHeartbeat >= DATEADD(MINUTE, -5, SYSDATETIME())
         ORDER BY LastHeartbeat DESC;
 
         IF @existingId IS NOT NULL
         BEGIN
             UPDATE ActiveUserSession
             SET SessionId = @SessionId,
-                LastHeartbeat = SYSUTCDATETIME()
+                LastHeartbeat = SYSDATETIME()
             WHERE ActiveSessionId = @existingId;
 
             COMMIT TRAN;
@@ -98,7 +98,6 @@ namespace AnmolDristi
             RETURN;
         END
 
-        -- Create NEW session
         INSERT INTO ActiveUserSession
         (
             UserId, EmployeeCode, SessionId,
@@ -109,7 +108,7 @@ namespace AnmolDristi
         VALUES
         (
             @UserId, @EmployeeCode, @SessionId,
-            SYSUTCDATETIME(), SYSUTCDATETIME(),
+            SYSDATETIME(), SYSDATETIME(),
             @ClientIP, @BrowserInfo,
             1, NEWID()
         );
@@ -523,14 +522,14 @@ namespace AnmolDristi
             string sql = @"
             UPDATE ActiveUserSession
             SET IsActive = 0,
-                LogoutTime = SYSUTCDATETIME()
+                LogoutTime = SYSDATETIME()
             WHERE IsActive = 1
               AND (
                     (LastHeartbeat IS NOT NULL 
-                     AND LastHeartbeat < DATEADD(MINUTE, -@minutes, SYSUTCDATETIME()))
+                     AND LastHeartbeat < DATEADD(MINUTE, -@minutes, SYSDATETIME()))
                     OR
                     (LastHeartbeat IS NULL 
-                     AND LoginTime < DATEADD(MINUTE, -@minutes, SYSUTCDATETIME()))
+                     AND LoginTime < DATEADD(MINUTE, -@minutes, SYSDATETIME()))
                   );";
 
             using (SqlConnection con = new SqlConnection(ConnStr))
