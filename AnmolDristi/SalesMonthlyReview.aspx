@@ -2755,86 +2755,86 @@
 
             window.enableButtonsAfterModalClose = function () {
                 var btnSubmit = document.getElementById('<%= btn_submit.ClientID %>');
-        var btnDraft = document.getElementById('<%= btn_save_draft.ClientID %>');
-        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.style.opacity = '1'; btnSubmit.style.cursor = 'pointer'; }
-        if (btnDraft) { btnDraft.disabled = false; btnDraft.style.opacity = '1'; btnDraft.style.cursor = 'pointer'; }
+                var btnDraft = document.getElementById('<%= btn_save_draft.ClientID %>');
+                if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.style.opacity = '1'; btnSubmit.style.cursor = 'pointer'; }
+                if (btnDraft) { btnDraft.disabled = false; btnDraft.style.opacity = '1'; btnDraft.style.cursor = 'pointer'; }
 
-        var confirmBtn = document.getElementById('submitModalConfirm');
-        var cancelBtn = document.getElementById('submitModalCancel');
-        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
-        if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.style.opacity = '1'; }
-    };
+                var confirmBtn = document.getElementById('submitModalConfirm');
+                var cancelBtn = document.getElementById('submitModalCancel');
+                if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.style.opacity = '1'; }
+                if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.style.opacity = '1'; }
+            };
 
             // Fallback __doPostBack if not provided by ASP.NET
             if (typeof __doPostBack === 'undefined') {
                 window.__doPostBack = function (eventTarget, eventArgument) {
                     var btn = document.getElementById('<%= btn_submit.ClientID %>');
-            if (btn) {
-                var onClick = btn.getAttribute('onclick');
-                if (onClick) btn.removeAttribute('onclick');
-                btn.click();
-                if (onClick) btn.setAttribute('onclick', onClick);
-            }
-        };
-        }
+                    if (btn) {
+                        var onClick = btn.getAttribute('onclick');
+                        if (onClick) btn.removeAttribute('onclick');
+                        btn.click();
+                        if (onClick) btn.setAttribute('onclick', onClick);
+                    }
+                };
+                }
         })();
 
-    /* ===========================
-       14. Save Draft helpers (button UX + page loader)
-       - handleSaveDraftClick disables button, shows spinner text, wires PageRequestManager to re-enable after async postback
-       =========================== */
-    (function () {
-        'use strict';
-        window.handleSaveDraftClick = function (btn) {
-            try {
-                btn.disabled = true;
-                if (btn.tagName.toLowerCase() === "button") {
-                    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
-                } else {
-                    btn.value = "Saving...";
-                }
-
-                showPageLoader();
-
-                var prm = Sys.WebForms.PageRequestManager.getInstance();
-                if (prm) {
-                    prm.add_endRequest(function () {
-                        btn.disabled = false;
+            /* ===========================
+               14. Save Draft helpers (button UX + page loader)
+               - handleSaveDraftClick disables button, shows spinner text, wires PageRequestManager to re-enable after async postback
+               =========================== */
+            (function () {
+                'use strict';
+                window.handleSaveDraftClick = function (btn) {
+                    try {
+                        btn.disabled = true;
                         if (btn.tagName.toLowerCase() === "button") {
-                            btn.innerHTML = "Save as Draft";
+                            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
                         } else {
-                            btn.value = "Save as Draft";
+                            btn.value = "Saving...";
                         }
-                        hidePageLoader();
-                    });
-                }
 
-                return true;
-            } catch (err) {
-                console.error("handleSaveDraftClick error:", err);
-                return true;
-            }
-        };
+                        showPageLoader();
 
-        window.showPageLoader = function () {
-            var el = document.getElementById("pageLoader");
-            if (el) el.style.display = "block";
-        };
-        window.hidePageLoader = function () {
-            var el = document.getElementById("pageLoader");
-            if (el) el.style.display = "none";
-        };
-    })();
+                        var prm = Sys.WebForms.PageRequestManager.getInstance();
+                        if (prm) {
+                            prm.add_endRequest(function () {
+                                btn.disabled = false;
+                                if (btn.tagName.toLowerCase() === "button") {
+                                    btn.innerHTML = "Save as Draft";
+                                } else {
+                                    btn.value = "Save as Draft";
+                                }
+                                hidePageLoader();
+                            });
+                        }
 
-    /* ===========================
-       15. Misc small helpers & copy policy JSON
-       - copyPolicyJson shows the textbox, selects and copies using document.execCommand
-       - showPolicyBypassNotice: sample informational PNotify call
-       =========================== */
-    (function () {
-        'use strict';
-        window.copyPolicyJson = function () {
-            var tb = document.getElementById('<%= policyJsonRaw.ClientID %>');
+                        return true;
+                    } catch (err) {
+                        console.error("handleSaveDraftClick error:", err);
+                        return true;
+                    }
+                };
+
+                window.showPageLoader = function () {
+                    var el = document.getElementById("pageLoader");
+                    if (el) el.style.display = "block";
+                };
+                window.hidePageLoader = function () {
+                    var el = document.getElementById("pageLoader");
+                    if (el) el.style.display = "none";
+                };
+            })();
+
+            /* ===========================
+               15. Misc small helpers & copy policy JSON
+               - copyPolicyJson shows the textbox, selects and copies using document.execCommand
+               - showPolicyBypassNotice: sample informational PNotify call
+               =========================== */
+            (function () {
+                'use strict';
+                window.copyPolicyJson = function () {
+                    var tb = document.getElementById('<%= policyJsonRaw.ClientID %>');
             if (!tb) return;
             tb.style.display = 'block';
             tb.select();
@@ -3045,5 +3045,14 @@
             });
         });
     </script>
+
+    <script type="text/javascript">
+        function clearExpenseModalInputs() {
+            $('#expenseModal').find('input:text, textarea').val('');
+            $('#expenseModal').find('input:checkbox').prop('checked', false);
+            $('#expenseModal').find('select').prop('selectedIndex', 0);
+        }
+    </script>
+
 
 </asp:Content>

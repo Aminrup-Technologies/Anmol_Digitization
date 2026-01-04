@@ -1120,6 +1120,59 @@ namespace AnmolDristi
             }
         }
 
+        private void ResetExpenseEntryFields()
+        {
+            // Text inputs
+            TXT_DAAmount.Text = string.Empty;
+            TXT_DAFromPlace.Text = string.Empty;
+            TXT_DAFromPlace.ReadOnly = false;
+            TXT_DAToPlace.Text = string.Empty;
+            TXT_DAToPlace.ReadOnly = false;
+            TXT_TravelDescription.Text = string.Empty;
+            TXT_TravelDescription.ReadOnly = false;
+
+            TXT_HotelAmount.Text = string.Empty;
+            TXT_HotelAmount.ReadOnly = false;
+            TXT_HotelBillNo.Text = string.Empty;
+            TXT_HotelBillNo.ReadOnly = false;
+            TXT_HotelPurpose.Text = string.Empty;
+            TXT_HotelPurpose.ReadOnly = false;
+
+            TXT_TravelAmount.Text = string.Empty;
+            TXT_TravelAmount.ReadOnly = false;
+            TXT_TravelInvoiceNo.Text = string.Empty;
+            TXT_TravelInvoiceNo.ReadOnly = false;
+
+            // Dates (default to today IST)
+            DateTime istNow = DateTime.UtcNow.AddMinutes(330);
+            TXT_TravelDate.Text = istNow.ToString("yyyy-MM-dd");
+            TXT_HotelFromDate.Text = istNow.ToString("yyyy-MM-dd");
+            TXT_HotelToDate.Text = istNow.ToString("yyyy-MM-dd");
+
+            // Checkboxes & dropdowns
+            CHK_TravelInvoice.Checked = false;
+            if (DDL_ExpenseType != null) DDL_ExpenseType.SelectedIndex = 0;
+            if (DDL_TravelType != null) DDL_TravelType.SelectedIndex = 0;
+
+            // Messages
+            LBL_ExpenseMsg.Text = "";
+
+            // 🔥 Clear hidden fields (MOST IMPORTANT)
+            HF_ActivityId.Value = "";
+            HF_ActivityDate.Value = "";
+            HF_SnapResolvedDA.Value = "";
+            HF_SnapPolicyMode.Value = "";
+
+            // Clear file upload via JS
+            ScriptManager.RegisterStartupScript(
+                this,
+                this.GetType(),
+                "clearFile",
+                $"$('#{FU_Attachment.ClientID}').val('');",
+                true
+            );
+        }
+
 
         private bool SanitizeDecimal(string input, CultureInfo ci, out decimal result)
         {
@@ -1578,6 +1631,8 @@ namespace AnmolDristi
 
             if (e.CommandName == "OpenExpenses")
             {
+                ResetExpenseEntryFields();
+
                 string arg = e.CommandArgument.ToString();
                 var parts = arg.Split('|');
                 string activityId = parts[0];
@@ -1623,48 +1678,98 @@ namespace AnmolDristi
                 }
 
 
-                // If no expense rows exist for this activity, CLEAR the modal inputs so user can enter new ones
+                //// If no expense rows exist for this activity, CLEAR the modal inputs so user can enter new ones
+                //if (dt == null || dt.Rows.Count == 0)
+                //{
+                //    // --- Ensure expense-level snapshot HFs are available ---
+                //    // If LoadExpenseForActivity didn't populate HF_Snap* (no rows), copy from master/employee-level HFs if present.
+                //    try
+                //    {
+                //        // Only copy if snapshot HF is empty - prevents overwriting if already set elsewhere
+                //        if (string.IsNullOrWhiteSpace(HF_SnapPolicyMode?.Value) && HF_ResolvedPolicyMode != null && !string.IsNullOrWhiteSpace(HF_ResolvedPolicyMode.Value))
+                //            HF_SnapPolicyMode.Value = HF_ResolvedPolicyMode.Value;
+
+                //        if (string.IsNullOrWhiteSpace(HF_SnapResolvedDA?.Value) && HF_ResolvedDA != null && !string.IsNullOrWhiteSpace(HF_ResolvedDA.Value))
+                //            HF_SnapResolvedDA.Value = HF_ResolvedDA.Value;
+
+                //        if (string.IsNullOrWhiteSpace(HF_SnapHotelCap?.Value) && HF_ResolvedHotelCap != null && !string.IsNullOrWhiteSpace(HF_ResolvedHotelCap.Value))
+                //            HF_SnapHotelCap.Value = HF_ResolvedHotelCap.Value;
+
+                //        if (string.IsNullOrWhiteSpace(HF_SnapOutstationDA?.Value) && HF_OutstationDA != null && !string.IsNullOrWhiteSpace(HF_OutstationDA.Value))
+                //            HF_SnapOutstationDA.Value = HF_OutstationDA.Value;
+
+                //        if (string.IsNullOrWhiteSpace(HF_SnapOwnArrangementDA?.Value) && HF_OwnArrangementDA != null && !string.IsNullOrWhiteSpace(HF_OwnArrangementDA.Value))
+                //            HF_SnapOwnArrangementDA.Value = HF_OwnArrangementDA.Value;
+                //    }
+                //    catch
+                //    {
+                //        // ignore if any HF missing — fallback below
+                //    }
+
+                //    // TXT_DAAmount gets snapshot resolved DA when available; otherwise fallback to lblResolvedDA
+                //    if (!string.IsNullOrWhiteSpace(HF_SnapResolvedDA?.Value))
+                //        TXT_DAAmount.Text = HF_SnapResolvedDA.Value;
+                //    else if (lblResolvedDA != null && !string.IsNullOrWhiteSpace(lblResolvedDA.Text))
+                //        TXT_DAAmount.Text = lblResolvedDA.Text;
+                //    else
+                //        TXT_DAAmount.Text = string.Empty;
+
+                //    TXT_HotelAmount.Text = string.Empty;
+                //    TXT_HotelBillNo.Text = string.Empty;
+                //    TXT_HotelPurpose.Text = string.Empty;
+
+                //    // Set hotel/travel dates to activity date if available, else today's IST
+                //    DateTime parsed;
+                //    if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
+                //    {
+                //        TXT_HotelFromDate.Text = parsed.ToString("yyyy-MM-dd");
+                //        TXT_HotelToDate.Text = parsed.ToString("yyyy-MM-dd");
+                //        TXT_TravelDate.Text = parsed.ToString("yyyy-MM-dd");
+                //        lbl_traveldate.Text = parsed.ToString("dd-MM-yyyy");
+                //    }
+                //    else
+                //    {
+                //        var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+                //        var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist);
+                //        TXT_HotelFromDate.Text = nowIst.ToString("yyyy-MM-dd");
+                //        TXT_TravelDate.Text = nowIst.ToString("yyyy-MM-dd");
+                //        lbl_traveldate.Text = nowIst.ToString("dd-MM-yyyy");
+                //    }
+
+                //    // Clear any prior messages
+                //    LBL_ExpenseMsg.Text = "";
+                //    HF_SnapPolicyMode.Value = "HQ";
+                //    ApplyPolicyMode_ClientCall("HQ");
+
+                //    // Clear the file input via client script (FileUpload value cannot be set server-side)
+                //    ScriptManager.RegisterStartupScript(this, this.GetType(), "clearFileInput_" + FU_Attachment.ClientID, $"$('#{FU_Attachment.ClientID}').val('');", true);
+                //}
+
                 if (dt == null || dt.Rows.Count == 0)
                 {
-                    // --- Ensure expense-level snapshot HFs are available ---
-                    // If LoadExpenseForActivity didn't populate HF_Snap* (no rows), copy from master/employee-level HFs if present.
-                    try
-                    {
-                        // Only copy if snapshot HF is empty - prevents overwriting if already set elsewhere
-                        if (string.IsNullOrWhiteSpace(HF_SnapPolicyMode?.Value) && HF_ResolvedPolicyMode != null && !string.IsNullOrWhiteSpace(HF_ResolvedPolicyMode.Value))
-                            HF_SnapPolicyMode.Value = HF_ResolvedPolicyMode.Value;
+                    // 👉 NEW entry for this date (no saved expenses)
 
-                        if (string.IsNullOrWhiteSpace(HF_SnapResolvedDA?.Value) && HF_ResolvedDA != null && !string.IsNullOrWhiteSpace(HF_ResolvedDA.Value))
-                            HF_SnapResolvedDA.Value = HF_ResolvedDA.Value;
+                    // Use policy resolved defaults ONLY (fresh snapshot)
+                    if (!string.IsNullOrWhiteSpace(HF_ResolvedPolicyMode?.Value))
+                        HF_SnapPolicyMode.Value = HF_ResolvedPolicyMode.Value;
 
-                        if (string.IsNullOrWhiteSpace(HF_SnapHotelCap?.Value) && HF_ResolvedHotelCap != null && !string.IsNullOrWhiteSpace(HF_ResolvedHotelCap.Value))
-                            HF_SnapHotelCap.Value = HF_ResolvedHotelCap.Value;
+                    if (!string.IsNullOrWhiteSpace(HF_ResolvedDA?.Value))
+                        HF_SnapResolvedDA.Value = HF_ResolvedDA.Value;
 
-                        if (string.IsNullOrWhiteSpace(HF_SnapOutstationDA?.Value) && HF_OutstationDA != null && !string.IsNullOrWhiteSpace(HF_OutstationDA.Value))
-                            HF_SnapOutstationDA.Value = HF_OutstationDA.Value;
+                    if (!string.IsNullOrWhiteSpace(HF_ResolvedHotelCap?.Value))
+                        HF_SnapHotelCap.Value = HF_ResolvedHotelCap.Value;
 
-                        if (string.IsNullOrWhiteSpace(HF_SnapOwnArrangementDA?.Value) && HF_OwnArrangementDA != null && !string.IsNullOrWhiteSpace(HF_OwnArrangementDA.Value))
-                            HF_SnapOwnArrangementDA.Value = HF_OwnArrangementDA.Value;
-                    }
-                    catch
-                    {
-                        // ignore if any HF missing — fallback below
-                    }
+                    if (!string.IsNullOrWhiteSpace(HF_OutstationDA?.Value))
+                        HF_SnapOutstationDA.Value = HF_OutstationDA.Value;
 
-                    // TXT_DAAmount gets snapshot resolved DA when available; otherwise fallback to lblResolvedDA
-                    if (!string.IsNullOrWhiteSpace(HF_SnapResolvedDA?.Value))
-                        TXT_DAAmount.Text = HF_SnapResolvedDA.Value;
-                    else if (lblResolvedDA != null && !string.IsNullOrWhiteSpace(lblResolvedDA.Text))
-                        TXT_DAAmount.Text = lblResolvedDA.Text;
-                    else
-                        TXT_DAAmount.Text = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(HF_OwnArrangementDA?.Value))
+                        HF_SnapOwnArrangementDA.Value = HF_OwnArrangementDA.Value;
 
-                    TXT_HotelAmount.Text = string.Empty;
-                    TXT_HotelBillNo.Text = string.Empty;
-                    TXT_HotelPurpose.Text = string.Empty;
+                    // Apply default DA amount (policy-based)
+                    TXT_DAAmount.Text = HF_SnapResolvedDA.Value ?? "";
 
-                    // Set hotel/travel dates to activity date if available, else today's IST
                     DateTime parsed;
+                    // Date defaults = selected activity date
                     if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
                     {
                         TXT_HotelFromDate.Text = parsed.ToString("yyyy-MM-dd");
@@ -1672,22 +1777,18 @@ namespace AnmolDristi
                         TXT_TravelDate.Text = parsed.ToString("yyyy-MM-dd");
                         lbl_traveldate.Text = parsed.ToString("dd-MM-yyyy");
                     }
-                    else
-                    {
-                        var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
-                        var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist);
-                        TXT_HotelFromDate.Text = nowIst.ToString("yyyy-MM-dd");
-                        TXT_TravelDate.Text = nowIst.ToString("yyyy-MM-dd");
-                        lbl_traveldate.Text = nowIst.ToString("dd-MM-yyyy");
-                    }
 
-                    // Clear any prior messages
-                    LBL_ExpenseMsg.Text = "";
-                    HF_SnapPolicyMode.Value = "HQ";
-                    ApplyPolicyMode_ClientCall("HQ");
+                    // Policy UI sync
+                    if (!string.IsNullOrWhiteSpace(HF_SnapPolicyMode.Value))
+                        ApplyPolicyMode_ClientCall(HF_SnapPolicyMode.Value);
 
-                    // Clear the file input via client script (FileUpload value cannot be set server-side)
-                    ScriptManager.RegisterStartupScript(this, this.GetType(), "clearFileInput_" + FU_Attachment.ClientID, $"$('#{FU_Attachment.ClientID}').val('');", true);
+                    // Clear file input (browser-side)
+                    ScriptManager.RegisterStartupScript(
+                        this, GetType(),
+                        "clearFile_" + activityId,
+                        $"$('#{FU_Attachment.ClientID}').val('');",
+                        true
+                    );
                 }
                 else
                 {
@@ -3257,7 +3358,6 @@ namespace AnmolDristi
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
             }
         }
-
         protected void BTN_SaveExpense_Click_OLD3(object sender, EventArgs e)
         {
             LBL_ExpenseMsg.Text = "";

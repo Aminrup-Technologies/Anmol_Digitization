@@ -108,7 +108,7 @@ namespace AnmolDristi
             }
             else if (tableName == "MST_Designation" && textColumn == "Designation_Description")
             {
-                sql = "SELECT TOP 1 Designation_Description FROM MST_Designation WHERE Designation_ID = @Id";
+                sql = "SELECT TOP 1 Designation_Description FROM MST_Designation WHERE Id = @Id";
             }
             else
             {
