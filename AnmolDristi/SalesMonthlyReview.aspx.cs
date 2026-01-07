@@ -4894,7 +4894,7 @@ namespace AnmolDristi
                        AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate,
                        PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus
                 FROM dbo.SalesDailyExpense
-                WHERE ActivityId = @ActivityId
+                WHERE ActivityId = @ActivityId AND IsDeleted = 0
                 ORDER BY ExpenseDate DESC, ExpenseId DESC
             ", con))
             using (var da = new SqlDataAdapter(cmd))
@@ -5678,14 +5678,24 @@ namespace AnmolDristi
                             }
                         }
 
-                        // authoritative permissions: block deleting if parent activity is not Draft
-                        if (!string.IsNullOrWhiteSpace(activityClaimStatus) && !activityClaimStatus.Equals("Draft", StringComparison.OrdinalIgnoreCase))
+                        //// authoritative permissions: block deleting if parent activity is not Draft
+                        //if (!string.IsNullOrWhiteSpace(activityClaimStatus) && !activityClaimStatus.Equals("Draft", StringComparison.OrdinalIgnoreCase))
+                        //{
+                        //    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                        //    LBL_ExpenseMsg.Text = "Cannot delete expense because parent activity is not in Draft state.";
+                        //    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                        //    return;
+                        //}
+
+                        // ✅ Expense-level authority check
+                        if (!string.Equals(expenseClaimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
                         {
                             LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
-                            LBL_ExpenseMsg.Text = "Cannot delete expense because parent activity is not in Draft state.";
-                            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                            LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                            ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                             return;
                         }
+
 
                         // block manual deletion of auto rows (users should not delete IsAutoDA rows directly)
                         if (isAutoRow)
@@ -5788,6 +5798,39 @@ namespace AnmolDristi
                                     isFirstForType = false;
                                 }
 
+                                //// collect auto-DA rows (only if we will delete them)
+                                //var autoIds = new List<int>();
+                                //var autoPaths = new List<string>();
+
+                                //if (isFirstForType && matchFrom != DateTime.MinValue)
+                                //{
+                                //    string findAutoSql = @"
+                                //SELECT ExpenseId, AttachmentPath
+                                //FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
+                                //WHERE ActivityId = @ActivityId
+                                //  AND ExpenseType = 'DA'
+                                //  AND IsAutoDA = 1
+                                //  AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+
+                                //    using (var findCmd = new SqlCommand(findAutoSql, con, tx))
+                                //    {
+                                //        findCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                                //        findCmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.Date) { Value = matchFrom });
+                                //        findCmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.Date) { Value = matchTo });
+
+                                //        using (var rdr = findCmd.ExecuteReader())
+                                //        {
+                                //            while (rdr.Read())
+                                //            {
+                                //                if (rdr["ExpenseId"] != DBNull.Value)
+                                //                    autoIds.Add(Convert.ToInt32(rdr["ExpenseId"]));
+                                //                if (rdr["AttachmentPath"] != DBNull.Value)
+                                //                    autoPaths.Add(rdr["AttachmentPath"].ToString());
+                                //            }
+                                //        }
+                                //    }
+                                //}
+
                                 // collect auto-DA rows (only if we will delete them)
                                 var autoIds = new List<int>();
                                 var autoPaths = new List<string>();
@@ -5795,25 +5838,26 @@ namespace AnmolDristi
                                 if (isFirstForType && matchFrom != DateTime.MinValue)
                                 {
                                     string findAutoSql = @"
-                                SELECT ExpenseId, AttachmentPath
-                                FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
-                                WHERE ActivityId = @ActivityId
-                                  AND ExpenseType = 'DA'
-                                  AND IsAutoDA = 1
-                                  AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+                                        SELECT ExpenseId, AttachmentPath
+                                        FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
+                                        WHERE ActivityId = @ActivityId
+                                          AND ExpenseType = 'DA'
+                                          AND IsAutoDA = 1
+                                          AND ClaimStatus = 'Draft'
+                                          AND IsDeleted = 0
+                                          AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
 
                                     using (var findCmd = new SqlCommand(findAutoSql, con, tx))
                                     {
-                                        findCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
-                                        findCmd.Parameters.Add(new SqlParameter("@FromDate", SqlDbType.Date) { Value = matchFrom });
-                                        findCmd.Parameters.Add(new SqlParameter("@ToDate", SqlDbType.Date) { Value = matchTo });
+                                        findCmd.Parameters.AddWithValue("@ActivityId", activityId);
+                                        findCmd.Parameters.AddWithValue("@FromDate", matchFrom);
+                                        findCmd.Parameters.AddWithValue("@ToDate", matchTo);
 
                                         using (var rdr = findCmd.ExecuteReader())
                                         {
                                             while (rdr.Read())
                                             {
-                                                if (rdr["ExpenseId"] != DBNull.Value)
-                                                    autoIds.Add(Convert.ToInt32(rdr["ExpenseId"]));
+                                                autoIds.Add(Convert.ToInt32(rdr["ExpenseId"]));
                                                 if (rdr["AttachmentPath"] != DBNull.Value)
                                                     autoPaths.Add(rdr["AttachmentPath"].ToString());
                                             }
@@ -5821,32 +5865,81 @@ namespace AnmolDristi
                                     }
                                 }
 
-                                // delete primary expense
-                                using (var del = new SqlCommand("DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId = @ExpenseId", con, tx))
+
+                                //// delete primary expense
+                                //using (var del = new SqlCommand("DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId = @ExpenseId", con, tx))
+                                //{
+                                //    del.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+                                //    int affected = del.ExecuteNonQuery();
+                                //    if (affected <= 0)
+                                //    {
+                                //        tx.Rollback();
+                                //        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                //        LBL_ExpenseMsg.Text = "Expense not found or already removed.";
+                                //        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                //        return;
+                                //    }
+                                //}
+
+                                using (var del = new SqlCommand(@"
+                                    UPDATE dbo.SalesDailyExpense
+                                    SET 
+                                        IsDeleted = 1,
+                                        DeletedBy = @User,
+                                        DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                                        DeleteReason = 'User removed draft expense'
+                                    WHERE ExpenseId = @ExpenseId
+                                      AND ClaimStatus = 'Draft'
+                                      AND IsDeleted = 0", con, tx))
                                 {
-                                    del.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+                                    del.Parameters.AddWithValue("@ExpenseId", expenseId);
+                                    del.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
+
                                     int affected = del.ExecuteNonQuery();
                                     if (affected <= 0)
                                     {
                                         tx.Rollback();
                                         LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                                        LBL_ExpenseMsg.Text = "Expense not found or already removed.";
-                                        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                        LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                                        ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                                         return;
                                     }
                                 }
 
-                                // delete auto DA rows if found and if this was the first expense
+
+                                //// delete auto DA rows if found and if this was the first expense
+                                //if (autoIds.Count > 0)
+                                //{
+                                //    // build parameterized IN list safely
+                                //    string inList = string.Join(",", autoIds); // safe because values are from DB
+                                //    string delAutoSql = $"DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId IN ({inList})";
+                                //    using (var delAuto = new SqlCommand(delAutoSql, con, tx))
+                                //    {
+                                //        delAuto.ExecuteNonQuery();
+                                //    }
+                                //}
+
                                 if (autoIds.Count > 0)
                                 {
-                                    // build parameterized IN list safely
-                                    string inList = string.Join(",", autoIds); // safe because values are from DB
-                                    string delAutoSql = $"DELETE FROM dbo.SalesDailyExpense WHERE ExpenseId IN ({inList})";
+                                    string inList = string.Join(",", autoIds); // safe (DB sourced)
+                                    string delAutoSql = $@"
+                                        UPDATE dbo.SalesDailyExpense
+                                        SET 
+                                            IsDeleted = 1,
+                                            DeletedBy = @User,
+                                            DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                                            DeleteReason = 'Auto-DA reversed due to primary expense deletion'
+                                        WHERE ExpenseId IN ({inList})
+                                          AND ClaimStatus = 'Draft'
+                                          AND IsDeleted = 0";
+
                                     using (var delAuto = new SqlCommand(delAutoSql, con, tx))
                                     {
+                                        delAuto.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
                                         delAuto.ExecuteNonQuery();
                                     }
                                 }
+
 
                                 tx.Commit();
 
@@ -5870,12 +5963,12 @@ namespace AnmolDristi
                                     }
                                 };
 
-                                // delete for primary
-                                tryDeleteFile(attachmentPath);
+                                //// delete for primary
+                                //tryDeleteFile(attachmentPath);
 
-                                // delete for auto rows attachments collected earlier
-                                foreach (var pth in autoPaths)
-                                    tryDeleteFile(pth);
+                                //// delete for auto rows attachments collected earlier
+                                //foreach (var pth in autoPaths)
+                                //    tryDeleteFile(pth);
 
                                 // Reload UI from DB (authoritative)
                                 LoadExpenseForActivity(activityId.ToString());
