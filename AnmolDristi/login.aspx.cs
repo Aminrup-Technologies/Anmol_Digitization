@@ -126,10 +126,11 @@ namespace AnmolDristi
                 Session["RONE_CODE"] = row["ReportingManagerCode"] == DBNull.Value ? "" : row["ReportingManagerCode"].ToString();
                 Session["RTWO_NAME"] = row["ReportingManagersManagerName"] == DBNull.Value ? "" : row["ReportingManagersManagerName"].ToString();
                 Session["RTWO_CODE"] = row["ReportingManagersManagerCode"] == DBNull.Value ? "" : row["ReportingManagersManagerCode"].ToString();
+                Session["AUDITOR_NAME"] = "Rohan Saraf";
+                Session["AUDITOR_CODE"] = "Audit";
 
                 //Session["AUDITOR_NAME"] = row["AuditorName"] == DBNull.Value ? "" : row["AuditorName"].ToString();
                 //Session["AUDITOR_CODE"] = row["AuditorCode"] == DBNull.Value ? "" : row["AuditorCode"].ToString();
-
 
                 // --- Begin: Hash-on-login / migration logic ---
                 bool migrated = false;

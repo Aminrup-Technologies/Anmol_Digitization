@@ -7097,6 +7097,9 @@ namespace AnmolDristi
 
         private int ExecuteSubmitForApproval(DataTable tvp, int year, int month, string remarks)
         {
+            if (Session["RONE_CODE"] == null)
+                throw new Exception("Approval hierarchy not loaded in session.");
+
             int approvalRequestId = 0;
             using (SqlConnection con = new SqlConnection(connString))
             using (SqlCommand cmd = new SqlCommand("dbo.usp_SubmitSalesDailyActivities", con))
@@ -7110,6 +7113,17 @@ namespace AnmolDristi
                 cmd.Parameters.AddWithValue("@Year", year);
                 cmd.Parameters.AddWithValue("@Month", month);
                 cmd.Parameters.AddWithValue("@Remarks", (object)remarks ?? DBNull.Value);
+
+                cmd.Parameters.AddWithValue("@L1Code", string.IsNullOrWhiteSpace(Convert.ToString(Session["RONE_CODE"])) ? (object)DBNull.Value : Session["RONE_CODE"].ToString());
+                //cmd.Parameters.AddWithValue("@L2Code", string.IsNullOrWhiteSpace(Convert.ToString(Session["RTWO_CODE"])) ? (object)DBNull.Value : Session["RTWO_CODE"].ToString());
+                cmd.Parameters.AddWithValue("@L2Code", DBNull.Value);
+                cmd.Parameters.AddWithValue("@L3Code", DBNull.Value);   // Not available in session yet
+                cmd.Parameters.AddWithValue("@AuditorCode", string.IsNullOrWhiteSpace(Convert.ToString(Session["AUDITOR_CODE"])) ? (object)DBNull.Value : Session["AUDITOR_CODE"].ToString());
+
+                //cmd.Parameters.AddWithValue("@L1Code", asmCode);
+                //cmd.Parameters.AddWithValue("@L2Code", (object)rsmCode ?? DBNull.Value);
+                //cmd.Parameters.AddWithValue("@L3Code", (object)nsmCode ?? DBNull.Value);
+                //cmd.Parameters.AddWithValue("@AuditorCode", auditorCode);
 
                 con.Open();
                 using (var rdr = cmd.ExecuteReader())
