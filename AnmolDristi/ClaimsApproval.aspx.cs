@@ -1297,64 +1297,64 @@ namespace AnmolDristi
         }
 
 
-        [WebMethod(EnableSession = true)]
-        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static object UpdateActivityKM(int activityId, decimal? newKm, string reason)
-        {
-            try
-            {
-                if (!newKm.HasValue)
-                    return new { success = false, message = "New KM value is required." };
+        //[WebMethod(EnableSession = true)]
+        //[ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        //public static object UpdateActivityKM(int activityId, decimal? newKm, string reason)
+        //{
+        //    try
+        //    {
+        //        if (!newKm.HasValue)
+        //            return new { success = false, message = "New KM value is required." };
 
-                decimal nm = newKm.Value;
-                string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        //        decimal nm = newKm.Value;
+        //        string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
-                // Check ClaimStatus
-                string Status = null;
-                using (var con = new System.Data.SqlClient.SqlConnection(connString))
-                using (var cmd = new System.Data.SqlClient.SqlCommand(
-                    "SELECT TOP 1 DetailStatus FROM dbo.SalesApprovalRequestDetail WHERE ActivityId = @ActivityId", con))
-                {
-                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                    con.Open();
-                    var obj = cmd.ExecuteScalar();
-                    Status = obj == DBNull.Value || obj == null ? null : obj.ToString();
-                }
+        //        // Check ClaimStatus
+        //        string Status = null;
+        //        using (var con = new System.Data.SqlClient.SqlConnection(connString))
+        //        using (var cmd = new System.Data.SqlClient.SqlCommand(
+        //            "SELECT TOP 1 DetailStatus FROM dbo.SalesApprovalRequestDetail WHERE ActivityId = @ActivityId", con))
+        //        {
+        //            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+        //            con.Open();
+        //            var obj = cmd.ExecuteScalar();
+        //            Status = obj == DBNull.Value || obj == null ? null : obj.ToString();
+        //        }
 
-                var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
-                if (!allowed.Contains(Status ?? string.Empty))
-                {
-                    return new { success = false, message = $"KM cannot be edited when Status = '{Status ?? "Unknown"}'." };
-                }
+        //        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+        //        if (!allowed.Contains(Status ?? string.Empty))
+        //        {
+        //            return new { success = false, message = $"KM cannot be edited when Status = '{Status ?? "Unknown"}'." };
+        //        }
 
-                // call stored procedure
-                string changedBy = (HttpContext.Current.Session["WORKMAN"] as string) ?? (HttpContext.Current.User?.Identity?.Name ?? "system");
+        //        // call stored procedure
+        //        string changedBy = (HttpContext.Current.Session["WORKMAN"] as string) ?? (HttpContext.Current.User?.Identity?.Name ?? "system");
 
-                using (var con = new System.Data.SqlClient.SqlConnection(connString))
-                using (var cmd = new System.Data.SqlClient.SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
-                {
-                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                    cmd.Parameters.AddWithValue("@NewKM", nm);
-                    cmd.Parameters.AddWithValue("@ChangedBy", changedBy);
-                    cmd.Parameters.AddWithValue("@Reason", (object)reason ?? DBNull.Value);
+        //        using (var con = new System.Data.SqlClient.SqlConnection(connString))
+        //        using (var cmd = new System.Data.SqlClient.SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
+        //        {
+        //            cmd.CommandType = System.Data.CommandType.StoredProcedure;
+        //            cmd.Parameters.AddWithValue("@ActivityId", activityId);
+        //            cmd.Parameters.AddWithValue("@NewKM", nm);
+        //            cmd.Parameters.AddWithValue("@ChangedBy", changedBy);
+        //            cmd.Parameters.AddWithValue("@Reason", (object)reason ?? DBNull.Value);
 
-                    con.Open();
-                    cmd.CommandTimeout = 60;
-                    cmd.ExecuteNonQuery();
-                }
+        //            con.Open();
+        //            cmd.CommandTimeout = 60;
+        //            cmd.ExecuteNonQuery();
+        //        }
 
-                return new { success = true };
-            }
-            catch (System.Data.SqlClient.SqlException sqlex)
-            {
-                return new { success = false, message = sqlex.Message };
-            }
-            catch (System.Exception ex)
-            {
-                return new { success = false, message = ex.Message };
-            }
-        }
+        //        return new { success = true };
+        //    }
+        //    catch (System.Data.SqlClient.SqlException sqlex)
+        //    {
+        //        return new { success = false, message = sqlex.Message };
+        //    }
+        //    catch (System.Exception ex)
+        //    {
+        //        return new { success = false, message = ex.Message };
+        //    }
+        //}
 
 
 
@@ -1409,6 +1409,95 @@ namespace AnmolDristi
         //        return new { success = false, message = ex.Message };
         //    }
         //}
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static object UpdateActivityKM(int activityId, decimal? newKm, string reason)
+        {
+            try
+            {
+                if (!newKm.HasValue)
+                    return new { success = false, message = "New KM value is required." };
+
+                string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                bool canEdit = true;
+                int approvalRequestId;
+
+                using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand(@"
+                    SELECT TOP 1 ApprovalRequestId
+                    FROM dbo.SalesApprovalRequestDetail
+                    WHERE ActivityId = @ActivityId", con))
+                {
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    con.Open();
+                    approvalRequestId = Convert.ToInt32(cmd.ExecuteScalar());
+                }
+
+                // 🔒 Check Accounts stage
+                using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand(@"
+                    SELECT TOP 1 Status
+                    FROM dbo.SalesApprovalRequestApprover
+                    WHERE ApprovalRequestId = @ApprovalRequestId
+                      AND ApproverRole = 'Accounts'", con))
+                {
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+                    con.Open();
+
+                    var statusObj = cmd.ExecuteScalar();
+                    string accountsStatus = statusObj?.ToString();
+
+                    // Lock ONLY if Accounts has acted
+                    if (!string.IsNullOrEmpty(accountsStatus) &&
+                        !accountsStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                    {
+                        canEdit = false;
+                    }
+                }
+
+                if (!canEdit)
+                {
+                    return new
+                    {
+                        success = false,
+                        message = "KM editing is locked as Accounts has already processed the request."
+                    };
+                }
+
+
+
+                string changedBy =
+                    (HttpContext.Current.Session["WORKMAN"] as string)
+                    ?? HttpContext.Current.User.Identity.Name
+                    ?? "system";
+
+                using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    cmd.Parameters.AddWithValue("@NewKM", newKm.Value);
+                    cmd.Parameters.AddWithValue("@ChangedBy", changedBy);
+                    cmd.Parameters.AddWithValue("@Reason", (object)reason ?? DBNull.Value);
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                return new { success = true };
+            }
+            catch (SqlException ex)
+            {
+                return new { success = false, message = ex.Message };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, message = ex.Message };
+            }
+        }
+
 
         protected void gvRequests_PageIndexChanging(object sender, GridViewPageEventArgs e)
         {
