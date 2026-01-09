@@ -635,6 +635,14 @@
                                             OnClick="btnMarkReadyForPayment_Click"
                                             Visible="false" />
 
+                                        &nbsp;
+
+                                        <asp:Button ID="btnReopenRequest"
+                                            runat="server"
+                                            Text="Reopen Request"
+                                            CssClass="btn btn-warning"
+                                            OnClick="btnReopenRequest_Click"
+                                            Visible="false" />
                                     </div>
                                 </div>
                             </ContentTemplate>

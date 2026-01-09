@@ -332,6 +332,18 @@ namespace AnmolDristi
             txtRemark.ReadOnly = true;
             chkSelect.Enabled = false;
 
+            if (lblHeaderStatus.Text.Equals("Reopened", StringComparison.OrdinalIgnoreCase))
+            {
+                // allow only Auditor to act
+                if (Convert.ToInt32(ViewState["CurrentUserLevel"]) != 2)
+                {
+                    e.Row.FindControl("btnApproveRow").Visible = false;
+                    e.Row.FindControl("btnRejectRow").Visible = false;
+                    return;
+                }
+            }
+
+
             if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 return;
 
@@ -1564,17 +1576,77 @@ namespace AnmolDristi
                 }
             }
 
-            int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
-            // Auditor-only, only when fully completed
-            btnMarkReadyForPayment.Visible =
-            currentUserLevel == 2 &&
-            lblHeaderStatus.Text != null &&
-            lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
+            string approverRole = GetCurrentUserApproverRole(approvalRequestId);
+            bool isAuditor = IsAuditor(approvalRequestId);
 
+            btnReopenRequest.Visible = isAuditor && lblHeaderStatus.Text != null &&
+            (
+                lblHeaderStatus.Text.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                lblHeaderStatus.Text.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+            );
+
+            int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+            btnMarkReadyForPayment.Visible = isAuditor && lblHeaderStatus.Text != null &&
+            lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
 
             // open modal (partial postback safe)
             ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
         }
+
+        private bool IsAuditor(int approvalRequestId)
+        {
+            string role = GetCurrentUserApproverRole(approvalRequestId);
+            return !string.IsNullOrEmpty(role) &&
+                   role.Equals("Auditor", StringComparison.OrdinalIgnoreCase);
+        }
+
+
+        private string GetCurrentUserApproverRole(int approvalRequestId)
+        {
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT ApproverRole
+                FROM SalesApprovalRequestApprover
+                WHERE ApprovalRequestId = @ApprovalRequestId
+                  AND ApproverLoginId = @LoginId", con))
+            {
+                cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+                cmd.Parameters.AddWithValue("@LoginId", GetLoggedInEmployeeCode());
+
+                con.Open();
+                object role = cmd.ExecuteScalar();
+                return role == null ? null : role.ToString();
+            }
+        }
+
+
+        protected void btnReopenRequest_Click(object sender, EventArgs e)
+        {
+            int approvalRequestId = Convert.ToInt32(lblModalRequestId.Text);
+            string auditor = GetLoggedInEmployeeCode();
+
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_ReopenApprovalRequestByAuditor", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+                cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                cmd.Parameters.AddWithValue("@Remarks", "Reopened by Auditor");
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+
+            // 🔁 Refresh UI
+            BindDetailsGrid(approvalRequestId);
+            BindRequestsGrid();
+
+            lblModalMessage.Text = "Request reopened successfully.";
+            lblModalMessage.CssClass = "text-success";
+
+            ScriptManager.RegisterStartupScript(
+                this, GetType(), "openModal", "openDetailsModal();", true);
+        }
+
 
         protected void BindDetailsGrid_Direct(int approvalRequestId)
         {
