@@ -359,6 +359,12 @@
             color: #198754;
             font-weight: 600;
         }
+
+        .text-muted-fallback {
+            color: #6c757d;
+            font-style: italic;
+        }
+
     </style>
 
 </asp:Content>
@@ -409,11 +415,11 @@
                                                 <ItemTemplate>
                                                     <span class="grand-total">
                                                         <%# 
-              String.Format(
-                  "{0:N2}",
-                  Convert.ToDecimal(Eval("TotalClaimAmount"))
-                + Convert.ToDecimal(Eval("TotalExpenseAmount"))
-              ) 
+                                                          String.Format(
+                                                              "{0:N2}",
+                                                              Convert.ToDecimal(Eval("TotalClaimAmount"))
+                                                            + Convert.ToDecimal(Eval("TotalExpenseAmount"))
+                                                          ) 
                                                         %>
                                                     </span>
                                                 </ItemTemplate>
@@ -620,6 +626,16 @@
                                             OnClick="btnRejectSelected_Click"
                                             OnClientClick="return validateReject();" />
                                     </div>
+                                    <div class="col-auto">
+                                        <asp:Button
+                                            ID="btnMarkReadyForPayment"
+                                            runat="server"
+                                            Text="✔ Mark Ready for Payment"
+                                            CssClass="btn btn-warning btn-sm"
+                                            OnClick="btnMarkReadyForPayment_Click"
+                                            Visible="false" />
+
+                                    </div>
                                 </div>
                             </ContentTemplate>
                             <Triggers>
@@ -652,6 +668,30 @@
                     </div>
                     <div class="modal-body">
                         <input type="hidden" id="km_modal_activityid" />
+
+                        <!-- Travel reference -->
+                        <div class="alert alert-light border mb-3" id="km_modal_travel_ref">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <strong>From:</strong>
+                                    <span id="km_modal_fromplace" class="text-primary"></span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>To:</strong>
+                                    <span id="km_modal_toplace" class="text-primary"></span>
+                                </div>
+                                <div class="col-md-4 text-right">
+                                    <a href="#" id="km_modal_maplink"
+                                       target="_blank"
+                                       class="btn btn-sm btn-outline-primary"
+                                       style="display:none;">
+                                        <i class="fa fa-map-marker"></i> View Distance
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group">
@@ -722,6 +762,7 @@
                 </div>
             </div>
         </div>
+
         <div id="expenseTooltip"
             style="display: none; position: absolute; z-index: 99999; max-width: 420px; background: #fff; border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,.2); padding: 8px; font-size: 12px; border-radius: 4px;">
         </div>
@@ -1506,6 +1547,40 @@
                         $tbody.append('<tr><td colspan="5">No history</td></tr>');
                         return;
                     }
+                    // Set From / To reference (top of modal)
+                    var fromPlace = '';
+                    var toPlace = '';
+
+                    if (data && data.length > 0) {
+                        var first = data[0];
+                        fromPlace = first.TravelFromPlace || '';
+                        toPlace = first.TravelToPlace || '';
+                    }
+
+                    $('#km_modal_fromplace').text(fromPlace || 'No data available');
+                    $('#km_modal_toplace').text(toPlace || 'No data available');
+
+                    // Google Maps link
+                    if (fromPlace && toPlace) {
+                        var mapsUrl =
+                            'https://www.google.com/maps/dir/?api=1' +
+                            '&origin=' + encodeURIComponent(fromPlace) +
+                            '&destination=' + encodeURIComponent(toPlace) +
+                            '&travelmode=driving';
+
+                        $('#km_modal_maplink')
+                            .attr('href', mapsUrl)
+                            .show();
+                    } else {
+                        $('#km_modal_maplink')
+                            .attr('href', '#')
+                            .hide();
+                    }
+
+                    $('#km_modal_travel_ref').show();
+
+
+
                     data.forEach(function (r) {
                         var whenLocal = r.ModifiedDateTimeIST || r.ModifiedDateTime || '';
                         var oldKm = (r.OldKM === null || r.OldKM === undefined) ? '' : parseFloat(r.OldKM).toFixed(2);

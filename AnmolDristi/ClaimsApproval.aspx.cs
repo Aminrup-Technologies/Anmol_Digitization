@@ -1195,33 +1195,86 @@ namespace AnmolDristi
         }
 
         // --- returns history rows for display ---
+        //[WebMethod(EnableSession = true)]
+        //[ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        //public static object GetKMHistory(int activityId)
+        //{
+        //    var results = new List<object>();
+        //    string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        //    using (var con = new System.Data.SqlClient.SqlConnection(connString))
+        //    using (var cmd = new System.Data.SqlClient.SqlCommand(
+        //        "SELECT HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = @ActivityId ORDER BY ModifiedDateTime DESC", con))
+        //    {
+        //        cmd.Parameters.AddWithValue("@ActivityId", activityId);
+        //        con.Open();
+        //        using (var rdr = cmd.ExecuteReader())
+        //        {
+        //            while (rdr.Read())
+        //            {
+        //                DateTime utc = rdr.GetDateTime(rdr.GetOrdinal("ModifiedDateTime"));
+        //                // convert to IST string for display
+        //                DateTime ist;
+        //                try
+        //                {
+        //                    ist = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(utc, "UTC", "India Standard Time");
+        //                }
+        //                catch
+        //                {
+        //                    ist = utc.AddHours(5).AddMinutes(30);
+        //                }
+        //                results.Add(new
+        //                {
+        //                    HistoryId = rdr["HistoryId"],
+        //                    ActivityId = rdr["ActivityId"],
+        //                    OldKM = rdr["OldKM"],
+        //                    NewKM = rdr["NewKM"],
+        //                    ModifiedBy = rdr["ModifiedBy"] as string,
+        //                    ModifiedDateTime = utc.ToString("dd-MM-yyyy HH:mm:ss tt"),
+        //                    ModifiedDateTimeIST = ist.ToString("dd-MM-yyyy HH:mm:ss tt"),
+        //                    Reason = rdr["Reason"] as string
+        //                });
+        //            }
+        //        }
+        //    }
+        //    return results;
+        //}
+
+
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static object GetKMHistory(int activityId)
         {
             var results = new List<object>();
-            string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            string connString = System.Configuration.ConfigurationManager
+                                    .ConnectionStrings["DbConn"].ConnectionString;
+
             using (var con = new System.Data.SqlClient.SqlConnection(connString))
             using (var cmd = new System.Data.SqlClient.SqlCommand(
-                "SELECT HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = @ActivityId ORDER BY ModifiedDateTime DESC", con))
+                "dbo.usp_GetSalesDailyActivityKMHistory", con))
             {
+                cmd.CommandType = System.Data.CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@ActivityId", activityId);
+
                 con.Open();
                 using (var rdr = cmd.ExecuteReader())
                 {
                     while (rdr.Read())
                     {
-                        DateTime utc = rdr.GetDateTime(rdr.GetOrdinal("ModifiedDateTime"));
-                        // convert to IST string for display
+                        DateTime utc = rdr.GetDateTime(
+                            rdr.GetOrdinal("ModifiedDateTime"));
+
+                        // Convert UTC → IST for display
                         DateTime ist;
                         try
                         {
-                            ist = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(utc, "UTC", "India Standard Time");
+                            ist = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(
+                                utc, "UTC", "India Standard Time");
                         }
                         catch
                         {
                             ist = utc.AddHours(5).AddMinutes(30);
                         }
+
                         results.Add(new
                         {
                             HistoryId = rdr["HistoryId"],
@@ -1229,15 +1282,20 @@ namespace AnmolDristi
                             OldKM = rdr["OldKM"],
                             NewKM = rdr["NewKM"],
                             ModifiedBy = rdr["ModifiedBy"] as string,
+                            Reason = rdr["Reason"] as string,
+
+                            TravelFromPlace = rdr["TravelFromPlace"] as string,
+                            TravelToPlace = rdr["TravelToPlace"] as string,
+
                             ModifiedDateTime = utc.ToString("dd-MM-yyyy HH:mm:ss tt"),
-                            ModifiedDateTimeIST = ist.ToString("dd-MM-yyyy HH:mm:ss tt"),
-                            Reason = rdr["Reason"] as string
+                            ModifiedDateTimeIST = ist.ToString("dd-MM-yyyy HH:mm:ss tt")
                         });
                     }
                 }
             }
             return results;
         }
+
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
@@ -1416,6 +1474,14 @@ namespace AnmolDristi
                     }
                 }
             }
+
+            int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+            // Auditor-only, only when fully completed
+            btnMarkReadyForPayment.Visible =
+            currentUserLevel == 2 &&
+            lblHeaderStatus.Text != null &&
+            lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
+
 
             // open modal (partial postback safe)
             ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
@@ -1991,5 +2057,26 @@ namespace AnmolDristi
             return Session["WORKMAN"] as string;
             // return HttpContext.Current.User?.Identity?.Name ?? "EMP001";
         }
+
+        protected void btnMarkReadyForPayment_Click(object sender, EventArgs e)
+        {
+            int approvalRequestId = Convert.ToInt32(lblModalRequestId.Text);
+            string auditor = GetLoggedInEmployeeCode();
+
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+                cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+
+            lblHeaderStatus.Text = "ReadyForPayment";
+            lblModalMessage.Text = "Request marked Ready for Payment.";
+            lblModalMessage.CssClass = "text-success";
+        }
+
     }
 }
