@@ -321,9 +321,7 @@
                 padding: 8px 6px;
             }
         }
-    </style>
 
-    <style>
         #kmEditModal .modal-header {
             border-bottom: 2px solid #004085;
         }
@@ -346,6 +344,20 @@
 
         #km_history_tbl td, #km_history_tbl th {
             white-space: nowrap;
+        }
+
+        .progress-cell[data-progress="Not Started"] {
+            color: #6c757d;
+        }
+
+        .progress-cell[data-progress="Partially Approved"] {
+            color: #fd7e14;
+            font-weight: 600;
+        }
+
+        .progress-cell[data-progress="Fully Approved"] {
+            color: #198754;
+            font-weight: 600;
         }
     </style>
 
@@ -393,17 +405,38 @@
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Total Claim" HeaderStyle-Width="140px">
+                                            <asp:TemplateField HeaderText="Grand Claim Amount (₹)" HeaderStyle-Width="170px">
                                                 <ItemTemplate>
-                                                    <span class="total-claim-cell" data-amount='<%# Eval("TotalExpenseAmount") %>'><%# Eval("TotalExpenseAmount") %></span>
+                                                    <span class="grand-total">
+                                                        <%# 
+              String.Format(
+                  "{0:N2}",
+                  Convert.ToDecimal(Eval("TotalClaimAmount"))
+                + Convert.ToDecimal(Eval("TotalExpenseAmount"))
+              ) 
+                                                        %>
+                                                    </span>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
+
                                             <asp:TemplateField HeaderText="Status" HeaderStyle-Width="120px">
                                                 <ItemTemplate>
-                                                    <span class="status-cell" data-status='<%# Eval("ApproverStatus") %>'><%# Eval("ApproverStatus") %></span>
+                                                    <span class="status-cell" data-status='<%# Eval("RequestStatus") %>'>
+                                                        <%# Eval("RequestStatus") %>
+                                                    </span>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
+
+                                            <asp:TemplateField HeaderText="Approval Progress" HeaderStyle-Width="160px">
+                                                <ItemTemplate>
+                                                    <span class="progress-cell"
+                                                        data-progress='<%# Eval("ApprovalProgress") %>'>
+                                                        <%# Eval("ApprovalProgress") %>
+                                                    </span>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+
 
                                             <asp:TemplateField HeaderText="Actions" HeaderStyle-Width="100px">
                                                 <ItemTemplate>
@@ -595,6 +628,9 @@
                                 <asp:AsyncPostBackTrigger ControlID="gvDetails" EventName="RowCommand" />
                             </Triggers>
                         </asp:UpdatePanel>
+                        <script type="text/javascript">
+                            window.__currentUserLevel = <%= ViewState["CurrentUserLevel"] ?? 0 %>;
+                        </script>
                     </div>
 
                     <div class="modal-footer">
@@ -604,6 +640,7 @@
                 </div>
             </div>
         </div>
+
         <input type="hidden" id="km_modal_activityid_outer" />
         <!-- PASTE KM MODAL HERE (outside the UpdatePanel) -->
         <div id="kmEditModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
@@ -684,6 +721,9 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <div id="expenseTooltip"
+            style="display: none; position: absolute; z-index: 99999; max-width: 420px; background: #fff; border: 1px solid #ccc; box-shadow: 0 2px 8px rgba(0,0,0,.2); padding: 8px; font-size: 12px; border-radius: 4px;">
         </div>
 
     </div>
@@ -1366,55 +1406,57 @@
             });
 
             var hideTimer = null;
-            function clearHideTimer() { if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; } }
+
+            function clearHideTimer() {
+                if (hideTimer) {
+                    clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+            }
 
             $(document).on('mouseenter', '.btn-expenses', function (e) {
                 var $btn = $(this);
                 clearHideTimer();
+
                 var payload = readExpensesPayloadInternal($btn);
                 var contentHtml = makePopoverContentFromJson(payload);
-                try {
-                    $btn.popover && $btn.popover('dispose');
-                } catch (ignore) { }
 
-                $btn.popover({
-                    html: true,
-                    content: contentHtml,
-                    trigger: 'manual',
-                    placement: $btn.data('placement') || 'left',
-                    container: 'body'
-                });
+                if (!contentHtml) return;
 
-                $btn.popover('show');
+                var $tip = $('#expenseTooltip');
+                $tip.html(contentHtml);
 
-                var pid = $btn.data('popover-id') || null;
-                var $pop = null;
-                try {
-                    $pop = $('body').find('.popover').last();
-                } catch (ignore) { $pop = null; }
+                // Position tooltip near button
+                var offset = $btn.offset();
+                var left = offset.left + $btn.outerWidth() + 8;
+                var top = offset.top;
 
-                if ($pop && $pop.length) {
-                    $pop.on('mouseenter.expensePopover', function () {
-                        clearHideTimer();
-                    }).on('mouseleave.expensePopover', function () {
-                        hideTimer = setTimeout(function () {
-                            try { $btn.popover && $btn.popover('dispose'); } catch (ignore) { }
-                        }, 150);
-                    });
-                }
+                $tip.css({
+                    left: left + 'px',
+                    top: top + 'px'
+                }).fadeIn(100);
             });
 
-            $(document).on('mouseleave', '.btn-expenses', function (e) {
-                var $btn = $(this);
+            $(document).on('mouseleave', '.btn-expenses', function () {
                 clearHideTimer();
                 hideTimer = setTimeout(function () {
-                    try { $btn.popover && $btn.popover('dispose'); } catch (ignore) { }
+                    $('#expenseTooltip').fadeOut(100);
+                }, 150);
+            });
+
+            // Keep tooltip visible when hovering it
+            $(document).on('mouseenter', '#expenseTooltip', function () {
+                clearHideTimer();
+            }).on('mouseleave', '#expenseTooltip', function () {
+                hideTimer = setTimeout(function () {
+                    $('#expenseTooltip').fadeOut(100);
                 }, 150);
             });
 
             $(window).on('beforeunload', function () {
-                try { $('.btn-expenses').popover && $('.btn-expenses').popover('dispose'); } catch (ignore) { }
+                $('#expenseTooltip').hide();
             });
+
 
             $(document).on('contextmenu', '.btn-expenses, .open-expenses-modal', function (e) {
                 var $el = $(this);
@@ -1495,11 +1537,22 @@
                 var claimStatus = ($span.data('claimstatus') || '').toString().trim();
                 log(nowTag(), "Edit click: claimStatus=", claimStatus);
 
+                //var allowed = ["Draft", "Submitted"];
+                //if (allowed.indexOf(claimStatus) === -1) {
+                //    $('#km_modal_message').html('<div class="text-warning">KM cannot be edited for status: ' + (claimStatus || 'Unknown') + '.</div>');
+                //    return false;
+                //}
+
                 var allowed = ["Draft", "Submitted"];
-                if (allowed.indexOf(claimStatus) === -1) {
-                    $('#km_modal_message').html('<div class="text-warning">KM cannot be edited for status: ' + (claimStatus || 'Unknown') + '.</div>');
+                var isAuditor = (window.__currentUserLevel === 2);
+
+                if (!isAuditor && allowed.indexOf(claimStatus) === -1) {
+                    $('#km_modal_message').html(
+                      '<div class="text-warning">KM cannot be edited for status: ' + (claimStatus || 'Unknown') + '.</div>'
+                    );
                     return false;
                 }
+
 
                 // resolve activityId robustly (prefer span data attr)
                 var activityId = $span.data('activityid') || $btn.data('activityid') || $btn.attr('data-activityid') || null;
