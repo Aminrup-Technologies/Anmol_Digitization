@@ -2013,7 +2013,7 @@ namespace AnmolDristi.qaqc
 
         private static readonly object _lockObject = new object();
 
-        protected void btnSubmit_Click(object sender, EventArgs e)
+        protected void btnSubmit_Click_OLD(object sender, EventArgs e)
         {
             lock (_lockObject)
             {
@@ -2035,7 +2035,246 @@ namespace AnmolDristi.qaqc
             }
         }
 
+        protected void btnSubmit_Click(object sender, EventArgs e)
+        {
+            lock (_lockObject)
+            {
+                try
+                {
+                    var qcData = RetrieveFormData();
+                    LogFormData(qcData);
+
+                    int qcInspectorId = InsertQCDataWithTransaction(qcData);
+
+                    // Store for downstream packet entry
+                    Session["QCInspectorID"] = qcInspectorId;
+
+                    // UX handoff
+                    ShowPostSubmitConfirmation();
+                }
+                catch (Exception ex)
+                {
+                    var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                    EmailNotifier.Notify(
+                        "Application Error",
+                        $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>",
+                        recipients
+                    );
+
+                    DisplayErrorNotification(ex.Message);
+                }
+            }
+        }
+
+        private void ShowPostSubmitConfirmation()
+        {
+            pnlPostSubmit.Visible = true;
+            btnSubmit.Enabled = false;
+        }
+
+        public class FieldParseException : Exception
+        {
+            public string FieldName { get; private set; }
+            public string InputValue { get; private set; }
+
+            public FieldParseException(string fieldName, string inputValue, Exception innerException)
+                : base($"Parsing failed for field '{fieldName}' with value '{inputValue}'.", innerException)
+            {
+                FieldName = fieldName;
+                InputValue = inputValue;
+            }
+        }
+
+
+        private decimal? TryParseDecimalWithContext(string input, string fieldName)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return null;
+
+            decimal value;
+            if (decimal.TryParse(input, out value))
+                return value;
+
+            throw new FieldParseException(fieldName, input, new FormatException("Invalid decimal format"));
+        }
+
+
+        private int? TryParseIntWithContext(string input, string fieldName)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return null;
+
+            int value;
+            if (int.TryParse(input, out value))
+                return value;
+
+            throw new FieldParseException(fieldName, input, new FormatException("Invalid integer format"));
+        }
+
+
+        private int ParseSessionInt(string sessionKey)
+        {
+            object value = Session[sessionKey];
+
+            if (value == null)
+                throw new FieldParseException(
+                    sessionKey,
+                    "NULL",
+                    new Exception("Session value is null")
+                );
+
+            int result;
+            if (int.TryParse(value.ToString(), out result))
+                return result;
+
+            throw new FieldParseException(
+                sessionKey,
+                value.ToString(),
+                new FormatException("Invalid integer in session")
+            );
+        }
+
+
         private QCInspectorData RetrieveFormData()
+        {
+            try
+            {
+                return new QCInspectorData
+                {
+                    PlantName = DDL_Plant.SelectedValue,
+                    Line = DDL_PlantLine.SelectedValue,
+                    ProductCategory = DDL_ProductCategory.SelectedValue,
+                    ProductBrand = DDL_ProductBrand.SelectedValue,
+                    BrandSKU = DDL_BrandSKU.SelectedValue,
+
+                    NumberOfPieces = TryParseIntWithContext(
+                        TB_NoOfPcs.Text.Trim(), "NumberOfPieces") ?? 0,
+
+                    VarietyOrLotNo = string.IsNullOrWhiteSpace(TB_VartyPkt.Text)
+                                        ? null
+                                        : TB_VartyPkt.Text.Trim(),
+
+                    BakingTime = string.IsNullOrWhiteSpace(TB_BakingTime.Text)
+                                        ? null
+                                        : TB_BakingTime.Text.Trim(),
+
+                    BakingTime2 = string.IsNullOrWhiteSpace(TB_BakingTime2.Text)
+                                        ? null
+                                        : TB_BakingTime2.Text.Trim(),
+
+                    ColorAppearance = TryParseIntWithContext(
+                        RBL_ColorApp.SelectedValue, "ColorAppearance") ?? 0,
+
+                    CommentsForColorAppearance = TXB_ColorApp_Remarks.Text.Trim(),
+
+                    FlavourAndTaste = TryParseIntWithContext(
+                        RBL_FlavTst.SelectedValue, "FlavourAndTaste") ?? 0,
+
+                    CommentsForFlavourAndTaste = TXB_RBL_FlavTst_Rmrks.Text.Trim(),
+
+                    DesignImplementation = TryParseIntWithContext(
+                        RBL_DesignImp.SelectedValue, "DesignImplementation") ?? 0,
+
+                    CommentsForDesignImplementation = TXB_DesignImp_Remarks.Text.Trim(),
+
+                    TextureBite = TryParseIntWithContext(
+                        RBL_TextureBite.SelectedValue, "TextureBite") ?? 0,
+
+                    CommentsForTextureBite = TXB_TextureBite_Remarks.Text.Trim(),
+
+                    ShapeOrSize = string.IsNullOrWhiteSpace(TB_ShapeSize.Text)
+                                        ? null
+                                        : TB_ShapeSize.Text.Trim(),
+
+                    CommentsForShapeOrSize = string.Empty,
+
+                    GaugeValue = TryParseDecimalWithContext(
+                        TB_Length.Text.Trim(), "GaugeValue") ?? 0,
+
+                    DryWeight = TryParseDecimalWithContext(
+                        TB_Breadth.Text.Trim(), "DryWeight") ?? 0,
+
+                    DippedWeight = TryParseDecimalWithContext(
+                        TB_Height.Text.Trim(), "DippedWeight") ?? 0,
+
+                    Moisture = TryParseDecimalWithContext(
+                        TB_Moisture.Text.Trim(), "Moisture") ?? 0,
+
+                    aWmax = TryParseDecimalWithContext(
+                        TB_aWMAX.Text.Trim(), "aW_max") ?? 0,
+
+                    pHvalue = TryParseDecimalWithContext(
+                        TB_pHvalue.Text.Trim(), "pH_value") ?? 0,
+
+                    GaugeLength = TryParseDecimalWithContext(
+                        TB_GaugeLen.Text.Trim(), "GaugeLength") ?? 0,
+
+                    CommentsGaugeLength = TXB_GaugeLen_Remarks.Text.Trim(),
+
+                    WeightWithoutOil = TryParseDecimalWithContext(
+                        TB_wgtwtoil.Text.Trim(), "WeightWithoutOil") ?? 0,
+
+                    WeightWithOil = TryParseDecimalWithContext(
+                        TB_wgtwoil.Text.Trim(), "WeightWithOil") ?? 0,
+
+                    OilPercentValue = TryParseDecimalWithContext(
+                        TB_oilpercent.Text.Trim(), "OilPercentage") ?? 0,
+
+                    Shell10Weight = TryParseDecimalWithContext(
+                        TB_shell10.Text.Trim(), "Shell10Weight") ?? 0,
+
+                    Shell5CreamWeight = TryParseDecimalWithContext(
+                        TB_shell5cream.Text.Trim(), "Shell5CreamWeight") ?? 0,
+
+                    CreamPercentage = TryParseDecimalWithContext(
+                        TB_creampercent.Text.Trim(), "CreamPercentage") ?? 0,
+
+                    PacketWeight = TryParseDecimalWithContext(
+                        TB_PktWgt.Text.Trim(), "PacketWeight") ?? 0,
+
+                    DesignAndImplementation = hdn_img1.Value,
+                    ColourAndAppearance = hdn_img2.Value,
+
+                    Remarks = string.IsNullOrWhiteSpace(TXB_Remarks.Text)
+                                ? null
+                                : TXB_Remarks.Text.Trim(),
+
+                    //SubmittedByPNo = Session["WORKMAN"].ToString(),
+                    //SubmittedById = Convert.ToInt32(Session["USERID"]),
+
+                    SubmittedById = ParseSessionInt("CurrentUserId"),
+                    SubmittedByPNo = Session["WORKMAN"]?.ToString() ?? string.Empty,
+
+                    Shift = hdn_shiftvalue.Value,
+                    FormID = 1,
+
+                    Approver1EmployeeCode = Approver1CodeLabel.Text.Trim(),
+                    Approver2EmployeeCode = Approver2CodeLabel.Text.Trim(),
+                    DottedLineApproverEmployeeCode = DottedLineApproverCodeLabel.Text.Trim()
+                };
+            }
+            catch (FieldParseException ex)
+            {
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+
+                EmailNotifier.Notify(
+                    "QC Inspector – Field Parsing Error",
+                    $@"
+                    <p><b>Field Name:</b> {ex.FieldName}</p>
+                    <p><b>Input Value:</b> {ex.InputValue}</p>
+                    <p><b>Page:</b> qaqc_inspector_rpt.aspx</p>
+                    <p><b>Method:</b> RetrieveFormData</p>
+                    <p><b>Error:</b> {ex.InnerException.Message}</p>
+                    ",
+                    recipients
+                );
+
+                throw;
+            }
+        }
+
+
+        private QCInspectorData RetrieveFormData_OLD()
         {
             try
             {
@@ -2171,7 +2410,7 @@ namespace AnmolDristi.qaqc
             }
         }
 
-        private decimal? TryParseDecimalWithContext(string input, string fieldName)
+        private decimal? TryParseDecimalWithContext_OLD(string input, string fieldName)
         {
             if (string.IsNullOrWhiteSpace(input))
                 return null;
@@ -2293,7 +2532,7 @@ namespace AnmolDristi.qaqc
             });
         }
 
-        private void InsertQCDataWithTransaction(QCInspectorData qcData)
+        private void InsertQCDataWithTransaction_OLD(QCInspectorData qcData)
         {
             using (var transaction = new TransactionScope())
             {
@@ -2325,6 +2564,44 @@ namespace AnmolDristi.qaqc
                 }
             }
         }
+
+        private int InsertQCDataWithTransaction(QCInspectorData qcData)
+        {
+            using (var transaction = new TransactionScope())
+            {
+                try
+                {
+                    var dataAccess = new QCInspectorDataAccess();
+
+                    int qcInspectorId = dataAccess.InsertQCInspectorData(
+                        qcData.PlantName, qcData.Line, qcData.ProductCategory, qcData.ProductBrand, qcData.BrandSKU,
+                        qcData.NumberOfPieces, qcData.GaugeValue, qcData.DryWeight, qcData.DippedWeight, qcData.VarietyOrLotNo,
+                        qcData.BakingTime, qcData.BakingTime2, qcData.ColorAppearance, qcData.CommentsForColorAppearance,
+                        qcData.FlavourAndTaste, qcData.CommentsForFlavourAndTaste, qcData.DesignImplementation,
+                        qcData.CommentsForDesignImplementation, qcData.TextureBite, qcData.CommentsForTextureBite,
+                        qcData.ShapeOrSize, qcData.CommentsForShapeOrSize, qcData.Moisture, qcData.aWmax,
+                        qcData.pHvalue, qcData.GaugeLength, qcData.CommentsGaugeLength, qcData.WeightWithoutOil,
+                        qcData.WeightWithOil, qcData.OilPercentValue, qcData.PacketWeight,
+                        qcData.DesignAndImplementation, qcData.ColourAndAppearance, qcData.Remarks,
+                        qcData.SubmittedById, DateTime.Now.Date, DateTime.Now.TimeOfDay,
+                        qcData.Shift, qcData.SubmittedByPNo, qcData.FormID,
+                        qcData.Approver1EmployeeCode, qcData.Approver2EmployeeCode,
+                        qcData.DottedLineApproverEmployeeCode,
+                        qcData.Shell10Weight, qcData.Shell5CreamWeight, qcData.CreamPercentage
+                    );
+
+                    transaction.Complete();
+
+                    MakeInputsReadOnly();
+                    return qcInspectorId;
+                }
+                catch
+                {
+                    throw; // let caller handle logging & notification
+                }
+            }
+        }
+
 
         private void DisplayErrorNotification(string errorMessage)
         {

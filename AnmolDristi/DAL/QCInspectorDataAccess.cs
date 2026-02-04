@@ -93,7 +93,7 @@ namespace AnmolDristi.DAL
 
 
 
-        public void InsertQCInspectorData(
+        public int InsertQCInspectorData(
             string plantName, string line, string productCategory, string productBrand, string SKUId,
             int numberOfPieces, decimal gaugeValue, decimal dryWeight, decimal dippedWeight,
             string varietyOrLotNo, string bakingTime, string bakingTime2,
@@ -171,7 +171,10 @@ namespace AnmolDristi.DAL
 
                     // Open the connection and execute the command
                     connection.Open();
-                    command.ExecuteNonQuery();
+                    //command.ExecuteNonQuery();
+
+                    int qcInspectorId = Convert.ToInt32(command.ExecuteScalar());
+                    return qcInspectorId;
                 }
             }
         }

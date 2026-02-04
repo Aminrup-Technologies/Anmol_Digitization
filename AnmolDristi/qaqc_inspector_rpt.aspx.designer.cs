@@ -1903,6 +1903,24 @@ namespace AnmolDristi.qaqc {
         protected global::System.Web.UI.WebControls.Button btnReset;
         
         /// <summary>
+        /// pnlPostSubmit control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Panel pnlPostSubmit;
+        
+        /// <summary>
+        /// btnProceedPacket control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnProceedPacket;
+        
+        /// <summary>
         /// Label6 control.
         /// </summary>
         /// <remarks>

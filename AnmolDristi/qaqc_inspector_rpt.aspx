@@ -257,19 +257,19 @@
                     var oilPercentage = ((weightWithOilInput - weightWithoutOilInput) / weightWithOilInput) * 100;
                     console.log("Weight with oil input:", oilPercentage);
                     document.getElementById('<%= TB_oilpercent.ClientID %>').value = oilPercentage.toFixed(2);
-            } else {
-                console.error("One or more input elements not found.");
+                } else {
+                    console.error("One or more input elements not found.");
+                }
             }
-        }
 
-        function calculateCreamPercentage() {
-            var weight10Input = parseFloat(document.getElementById('<%= TB_shell10.ClientID %>').value) || 0;
-            var weight5WithCreamInput = parseFloat(document.getElementById('<%= TB_shell5cream.ClientID %>').value) || 0;
+            function calculateCreamPercentage() {
+                var weight10Input = parseFloat(document.getElementById('<%= TB_shell10.ClientID %>').value) || 0;
+                var weight5WithCreamInput = parseFloat(document.getElementById('<%= TB_shell5cream.ClientID %>').value) || 0;
 
-            if (weight10Input && weight5WithCreamInput) {
-                var creamPercent = ((weight5WithCreamInput - weight10Input) / weight5WithCreamInput) * 100;
-                console.log("Cream percentage calculated:", creamPercent);
-                document.getElementById('<%= TB_creampercent.ClientID %>').value = creamPercent.toFixed(2);
+                if (weight10Input && weight5WithCreamInput) {
+                    var creamPercent = ((weight5WithCreamInput - weight10Input) / weight5WithCreamInput) * 100;
+                    console.log("Cream percentage calculated:", creamPercent);
+                    document.getElementById('<%= TB_creampercent.ClientID %>').value = creamPercent.toFixed(2);
             } else {
                 console.error("One or more input values are invalid or zero.");
             }
@@ -279,62 +279,62 @@
         function validateShapeSize(sender, args) {
             console.log("validateShapeSize function called");
             var remarks = document.getElementById('<%= TXB_ShapeSize_Remarks.ClientID %>').value;
-                var shapeSize = parseFloat(document.getElementById('<%= TB_ShapeSize.ClientID %>').value);
-                var minShapeSize = parseFloat(document.getElementById('<%= hdnMinShapeSize.ClientID %>').value);
-                var maxShapeSize = parseFloat(document.getElementById('<%= hdnMaxShapeSize.ClientID %>').value);
-                if (shapeSize === '' || isNaN(shapeSize)) {
+            var shapeSize = parseFloat(document.getElementById('<%= TB_ShapeSize.ClientID %>').value);
+            var minShapeSize = parseFloat(document.getElementById('<%= hdnMinShapeSize.ClientID %>').value);
+            var maxShapeSize = parseFloat(document.getElementById('<%= hdnMaxShapeSize.ClientID %>').value);
+            if (shapeSize === '' || isNaN(shapeSize)) {
+                args.IsValid = false;
+                showNotification('Error', 'Shape size is required.', 'error');
+                return false;
+            } else {
+                if (shapeSize <= minShapeSize || shapeSize >= maxShapeSize) {
                     args.IsValid = false;
-                    showNotification('Error', 'Shape size is required.', 'error');
-                    return false;
-                } else {
-                    if (shapeSize <= minShapeSize || shapeSize >= maxShapeSize) {
-                        args.IsValid = false;
-                        document.getElementById('ShapeSizeRemarksDIV').style.display = 'block'; // Show the remarks div
+                    document.getElementById('ShapeSizeRemarksDIV').style.display = 'block'; // Show the remarks div
 
-                        if (remarks.trim() === '') {
-                            // Remarks are not provided, show error
-                            showNotification('Error', 'Shape size must be between ' + minShapeSize + ' and ' + maxShapeSize + ' and reason must be provided!', 'error');
-                            return false;
-                        } else {
-                            // Remarks are provided, allow submission
-                            args.IsValid = true;
-                            return true;
-                        }
+                    if (remarks.trim() === '') {
+                        // Remarks are not provided, show error
+                        showNotification('Error', 'Shape size must be between ' + minShapeSize + ' and ' + maxShapeSize + ' and reason must be provided!', 'error');
+                        return false;
                     } else {
-                        // Shape size is within the valid range, hide remarks div
+                        // Remarks are provided, allow submission
                         args.IsValid = true;
-                        document.getElementById('ShapeSizeRemarksDIV').style.display = 'none';
                         return true;
                     }
-                }
-            }
-
-            var remarksVisible = false;
-            function toggleDesignImpRemarksDiv(radioButtonList) {
-                console.log("toggleDesignImpRemarksDiv function called");
-                var selectedValue = radioButtonList.querySelector("input:checked").value;
-                var remarksDiv = document.getElementById("DesignImpRemarksDiv");
-                console.log("Selected value: " + selectedValue);
-                if (selectedValue === "0") {
-                    remarksDiv.style.display = "block";
-                    remarksVisible = true;
                 } else {
-                    remarksDiv.style.display = "none";
-                    remarksVisible = false;
+                    // Shape size is within the valid range, hide remarks div
+                    args.IsValid = true;
+                    document.getElementById('ShapeSizeRemarksDIV').style.display = 'none';
+                    return true;
                 }
             }
+        }
 
-            function validateDesignImpRemarks(sender, args) {
-                var remarksInput = document.getElementById("TXB_DesignImp_Remarks");
-                args.IsValid = !remarksVisible || (remarksVisible && remarksInput.value.trim() !== "");
+        var remarksVisible = false;
+        function toggleDesignImpRemarksDiv(radioButtonList) {
+            console.log("toggleDesignImpRemarksDiv function called");
+            var selectedValue = radioButtonList.querySelector("input:checked").value;
+            var remarksDiv = document.getElementById("DesignImpRemarksDiv");
+            console.log("Selected value: " + selectedValue);
+            if (selectedValue === "0") {
+                remarksDiv.style.display = "block";
+                remarksVisible = true;
+            } else {
+                remarksDiv.style.display = "none";
+                remarksVisible = false;
             }
+        }
+
+        function validateDesignImpRemarks(sender, args) {
+            var remarksInput = document.getElementById("TXB_DesignImp_Remarks");
+            args.IsValid = !remarksVisible || (remarksVisible && remarksInput.value.trim() !== "");
+        }
 
 
-            function validateGaugeLen(sender, args) {
-                console.log("validateGaugeLen function called");
+        function validateGaugeLen(sender, args) {
+            console.log("validateGaugeLen function called");
 
-                // Retrieve elements and values
-                var remarks = document.getElementById('<%= TXB_GaugeLen_Remarks.ClientID %>').value;
+            // Retrieve elements and values
+            var remarks = document.getElementById('<%= TXB_GaugeLen_Remarks.ClientID %>').value;
             var gaugeLen = parseFloat(document.getElementById('<%= TB_GaugeLen.ClientID %>').value);
             var minGaugeLen = parseFloat(document.getElementById('<%= hdnMinGaugelen.ClientID %>').value);
             var maxGaugeLen = parseFloat(document.getElementById('<%= hdnMaxGaugelen.ClientID %>').value);
@@ -436,32 +436,32 @@
                                 }
                                 document.getElementById('<%= uploadedImage1.ClientID %>').src = response.imageUrl;
 
-                                new PNotify({
-                                    title: 'Upload Success',
-                                    text: 'Image Saved!',
-                                    type: 'success',
-                                    styling: 'bootstrap3'
-                                });
-                            } else {
-                                new PNotify({
-                                    title: 'Upload Failed',
-                                    text: 'An error occurred during the upload.',
-                                    type: 'error',
-                                    styling: 'bootstrap3'
-                                });
-                            }
-                        };
+                                    new PNotify({
+                                        title: 'Upload Success',
+                                        text: 'Image Saved!',
+                                        type: 'success',
+                                        styling: 'bootstrap3'
+                                    });
+                                } else {
+                                    new PNotify({
+                                        title: 'Upload Failed',
+                                        text: 'An error occurred during the upload.',
+                                        type: 'error',
+                                        styling: 'bootstrap3'
+                                    });
+                                }
+                            };
 
-                        xhr.send(formData);
-                    }, 'image/jpeg', 0.8); // Compress with quality 0.8 (80%)
+                            xhr.send(formData);
+                        }, 'image/jpeg', 0.8); // Compress with quality 0.8 (80%)
+                    };
                 };
-            };
 
-            reader.readAsDataURL(file);
-        }
+                reader.readAsDataURL(file);
+            }
 
-        function validateForm2() {
-            var fileInput = document.getElementById('<%= FU_DesgImp.ClientID %>');
+            function validateForm2() {
+                var fileInput = document.getElementById('<%= FU_DesgImp.ClientID %>');
             if (fileInput.files.length === 0) {
                 new PNotify({
                     title: 'Validation Error',
@@ -604,6 +604,13 @@
         return true; // Allow form submission if all validations pass
     }
     </script>
+
+    <script type="text/javascript">
+        function openPacketWeight() {
+            window.open('qaqc_packet_weight.aspx', '_blank');
+        }
+    </script>
+
 
 
     <asp:HiddenField ID="hdn_img1" runat="server" />
@@ -1192,6 +1199,19 @@
                             </div>
 
                         </div>
+
+                        <asp:Panel ID="pnlPostSubmit" runat="server" Visible="false" CssClass="alert alert-success">
+                            <strong>QC Inspection saved successfully.</strong><br />
+                            Please proceed to Packet Weight Capture.
+    <br />
+                            <br />
+                            <asp:Button ID="btnProceedPacket"
+                                runat="server"
+                                Text="Proceed to Packet Weight Entry"
+                                CssClass="btn btn-primary btn-sm"
+                                OnClientClick="openPacketWeight(); return false;" />
+                        </asp:Panel>
+
                     </div>
                 </div>
             </div>

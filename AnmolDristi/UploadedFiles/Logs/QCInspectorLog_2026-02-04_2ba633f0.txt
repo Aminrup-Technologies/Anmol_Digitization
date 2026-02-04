@@ -1,0 +1,46 @@
+PlantName: 102
+Line: 201
+ProductCategory: 1001
+ProductBrand: 3001
+BrandSKU: SKU255
+NumberOfPieces: 30
+GaugeValue: 32
+DryWeight: 28
+DippedWeight: 0.02
+VarietyOrLotNo: 32
+BakingTime: 04:43
+BakingTime2: 00:00
+ColorAppearance: 1
+CommentsForColorAppearance: 
+FlavourAndTaste: 1
+CommentsForFlavourAndTaste: 
+DesignImplementation: 1
+CommentsForDesignImplementation: 
+TextureBite: 1
+CommentsForTextureBite: 
+ShapeOrSize: 0.00
+CommentsForShapeOrSize: 
+Moisture: 1.25
+aWmax: 0
+pHvalue: 0.75
+GaugeLength: 209
+CommentsGaugeLength: 
+WeightWithoutOil: 34.50
+WeightWithOil: 36.50
+OilPercentValue: 5.48
+PacketWeight: 36.03
+DesignAndImplementation: /UploadedFiles/QCIR/DesignImp/DesignImp_1770203903091.jpg
+ColourAndAppearance: /UploadedFiles/QCIR/ClrApp/ClrApp_1770203900307.jpg
+Remarks: 
+SubmittedById: 48
+Date: 04-02-2026 00:00:00
+Time: 16:48:25.0558748
+Shift: B
+SubmittedByPNo: AHO445
+FormID: 1
+Approver1EmployeeCode: ADMIN
+Approver2EmployeeCode: ADMIN
+DottedLineApproverEmployeeCode: ADMIN
+Shell10Weight: 12
+Shell5CreamWeight: 13
+CreamPercentage: 7.69
