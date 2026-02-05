@@ -611,33 +611,23 @@
         }
     </script>
 
-
-
     <asp:HiddenField ID="hdn_img1" runat="server" />
     <asp:HiddenField ID="hdn_img2" runat="server" />
-
-
     <asp:HiddenField ID="hdn_shiftvalue" runat="server" />
     <asp:HiddenField ID="hdn_fromid" runat="server" />
     <asp:HiddenField ID="hdn_formname" runat="server" />
     <asp:HiddenField ID="hdnMinNoOfPcs" runat="server" />
     <asp:HiddenField ID="hdnMaxNoOfPcs" runat="server" />
-
     <asp:HiddenField ID="hdnMinShapeSize" runat="server" />
     <asp:HiddenField ID="hdnMaxShapeSize" runat="server" />
-
     <asp:HiddenField ID="hdnMinBakingTime" runat="server" />
     <asp:HiddenField ID="hdnMaxBakingTime" runat="server" />
-
     <asp:HiddenField ID="hdnMinBakingTime2" runat="server" />
     <asp:HiddenField ID="hdnMaxBakingTime2" runat="server" />
-
     <asp:HiddenField ID="hdnMinGaugelen" runat="server" />
     <asp:HiddenField ID="hdnMaxGaugelen" runat="server" />
-
     <asp:HiddenField ID="hdnMin" runat="server" />
     <asp:HiddenField ID="hdnMax" runat="server" />
-
     <asp:HiddenField ID="HiddenField1" runat="server" />
     <asp:HiddenField ID="HiddenField2" runat="server" />
 
@@ -1203,7 +1193,7 @@
                         <asp:Panel ID="pnlPostSubmit" runat="server" Visible="false" CssClass="alert alert-success">
                             <strong>QC Inspection saved successfully.</strong><br />
                             Please proceed to Packet Weight Capture.
-    <br />
+                            <br />
                             <br />
                             <asp:Button ID="btnProceedPacket"
                                 runat="server"

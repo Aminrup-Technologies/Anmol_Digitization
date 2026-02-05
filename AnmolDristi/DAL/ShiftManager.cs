@@ -118,5 +118,68 @@ namespace AnmolDristi.DAL
 
             return shifts;
         }
+
+        public class ShiftInfo
+        {
+            public string ShiftName { get; set; }
+            public TimeSpan StartTime { get; set; }
+            public TimeSpan EndTime { get; set; }
+        }
+
+
+        public ShiftInfo GetCurrentShiftInfo()
+        {
+            TimeSpan currentTime = DateTime.Now.TimeOfDay;
+
+            using (SqlConnection conn =
+                new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT ShiftName, StartTime, EndTime
+        FROM ShiftMasterTable
+        ORDER BY ShiftId", conn))
+            {
+                conn.Open();
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string shiftName = reader.GetString(0);
+                        TimeSpan startTime = reader.GetTimeSpan(1);
+                        TimeSpan endTime = reader.GetTimeSpan(2);
+
+                        // Normal shift
+                        if (startTime < endTime)
+                        {
+                            if (currentTime >= startTime && currentTime < endTime)
+                            {
+                                return new ShiftInfo
+                                {
+                                    ShiftName = shiftName,
+                                    StartTime = startTime,
+                                    EndTime = endTime
+                                };
+                            }
+                        }
+                        // Overnight shift (C)
+                        else
+                        {
+                            if (currentTime >= startTime || currentTime < endTime)
+                            {
+                                return new ShiftInfo
+                                {
+                                    ShiftName = shiftName,
+                                    StartTime = startTime,
+                                    EndTime = endTime
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+
+            throw new Exception("Unable to determine current shift.");
+        }
+
     }
 }

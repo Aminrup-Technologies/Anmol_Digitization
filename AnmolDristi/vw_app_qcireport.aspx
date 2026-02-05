@@ -33,6 +33,29 @@
         .approver-item {
             text-align: center;
         }
+
+        .section-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2A3F54;
+        }
+        .readonly-input {
+            background-color: #f9f9f9;
+            cursor: not-allowed;
+            text-align: right;
+        }
+        .interval-header {
+            background-color: #eef3f8;
+            padding: 6px 10px;
+            border-left: 4px solid #337ab7;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .summary-box {
+            background-color: #fafafa;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
     </style>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -987,12 +1010,143 @@
                                         <asp:Button ID="btnSubmit" runat="server" Text="Re-Validate Inputs" CssClass="btn btn-warning btn-sm" ValidationGroup="Submit" CausesValidation="true" />
                                         <asp:Button ID="btnApprove" runat="server" Text="Approve" CssClass="btn btn-success btn-sm" CausesValidation="false" OnClick="btnApprove_Click" />
                                         <asp:Button ID="btnReject" runat="server" Text="Reject" CssClass="btn btn-danger btn-sm" CausesValidation="false" OnClick="btnReject_Click" />
-                                        <asp:Button ID="btnBack" runat="server" Text="Back" CssClass="btn btn-primary btn-sm" CausesValidation="false" OnClick="btnBack_Click"/>
+                                        <asp:Button ID="btnBack" runat="server" Text="Back" CssClass="btn btn-primary btn-sm" CausesValidation="false" OnClick="btnBack_Click" />
                                     </div>
                                 </div>
                             </div>
 
                         </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="row">
+                <div class="col-md-12 col-sm-12">
+                    <div class="x_panel">
+                        <!-- HEADER -->
+                        <div class="page-title">
+                            <div class="title_left">
+                                <h3>Packet Weight – View</h3>
+                            </div>
+                        </div>
+
+                        <!-- QC CONTEXT -->
+                        <div class="x_panel">
+                            <div class="x_title">
+                                <h2>QC Context</h2>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+                                <div class="row">
+                                    <div class="col-md-3"><b>Plant:</b>
+                                        <asp:Label ID="lblPlant" runat="server" /></div>
+                                    <div class="col-md-3"><b>Line:</b>
+                                        <asp:Label ID="lblLine" runat="server" /></div>
+                                    <div class="col-md-3"><b>SKU:</b>
+                                        <asp:Label ID="lblSKU" runat="server" /></div>
+                                    <div class="col-md-3"><b>Variety / Lot:</b>
+                                        <asp:Label ID="lblVariety" runat="server" /></div>
+                                </div>
+                                <hr />
+                                <div class="row">
+                                    <div class="col-md-4"><b>QC Submitted At:</b>
+                                        <asp:Label ID="lblQCSubmittedAt" runat="server" /></div>
+                                    <div class="col-md-4"><b>Shift:</b>
+                                        <asp:Label ID="lblShift" runat="server" /></div>
+                                    <div class="col-md-4"><b>Packet Window:</b>
+                                        <asp:Label ID="lblWindow" runat="server" /></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PACKET WEIGHT DETAILS -->
+                        <div class="x_panel">
+                            <div class="x_title">
+                                <h2>Packet Weight Details (Read-Only)</h2>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+
+                                <asp:Repeater ID="rptIntervalsView" runat="server">
+                                    <ItemTemplate>
+
+                                        <div class="interval-header">
+                                            Interval:
+                                            <%# Eval("IntervalStart") %> – <%# Eval("IntervalEnd") %>
+                                        </div>
+
+                                        <table class="table table-bordered table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Packet 1</th>
+                                                    <th>Packet 2</th>
+                                                    <th>Packet 3</th>
+                                                    <th>Packet 4</th>
+                                                    <th>Packet 5</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>
+                                                        <asp:TextBox runat="server" Text='<%# Eval("Packet1") %>' CssClass="form-control readonly-input" ReadOnly="true" /></td>
+                                                    <td>
+                                                        <asp:TextBox runat="server" Text='<%# Eval("Packet2") %>' CssClass="form-control readonly-input" ReadOnly="true" /></td>
+                                                    <td>
+                                                        <asp:TextBox runat="server" Text='<%# Eval("Packet3") %>' CssClass="form-control readonly-input" ReadOnly="true" /></td>
+                                                    <td>
+                                                        <asp:TextBox runat="server" Text='<%# Eval("Packet4") %>' CssClass="form-control readonly-input" ReadOnly="true" /></td>
+                                                    <td>
+                                                        <asp:TextBox runat="server" Text='<%# Eval("Packet5") %>' CssClass="form-control readonly-input" ReadOnly="true" /></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                    </ItemTemplate>
+                                </asp:Repeater>
+
+                            </div>
+                        </div>
+
+                        <!-- SYSTEM CALCULATIONS -->
+                        <div class="x_panel">
+                            <div class="x_title">
+                                <h2>Final System Calculations</h2>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+                                <div class="row summary-box">
+                                    <div class="col-md-3"><b>Min Weight:</b><br />
+                                        <asp:Label ID="lblMinWeight" runat="server" /></div>
+                                    <div class="col-md-3"><b>Max Weight:</b><br />
+                                        <asp:Label ID="lblMaxWeight" runat="server" /></div>
+                                    <div class="col-md-3"><b>Average Weight:</b><br />
+                                        <asp:Label ID="lblAverage" runat="server" /></div>
+                                    <div class="col-md-3"><b>Give-Away %:</b><br />
+                                        <asp:Label ID="lblGiveAway" runat="server" /></div>
+                                </div>
+                                <div class="text-muted" style="margin-top: 5px; font-size: 12px;">
+                                    * Values shown are final and derived from system calculations at submission time.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ACTIONS -->
+                        <div class="x_panel" id="pktwgt" runat="server" visible="false">
+                            <div class="x_content">
+                                <asp:Button runat="server"
+                                    Text="Close"
+                                    CssClass="btn btn-secondary btn-sm"
+                                    OnClientClick="window.close(); return false;" />
+
+                                <asp:Button runat="server"
+                                    Text="Print"
+                                    CssClass="btn btn-info btn-sm"
+                                    OnClientClick="window.print(); return false;" />
+                            </div>
+                        </div>
+
+                        <asp:Label ID="lblError" runat="server" CssClass="text-danger" />
                     </div>
                 </div>
             </div>
@@ -1010,32 +1164,41 @@
                             <div class="approver-flow">
                                 <div class="approver-item">
                                     <p>
-                                        <asp:Label ID="Label7" runat="server" Text="Approver 1" /></p>
+                                        <asp:Label ID="Label7" runat="server" Text="Approver 1" />
+                                    </p>
                                     <asp:Image ID="Image3" runat="server" ImageUrl="~/WebData/No_Image.jpg" class="approver-photo" />
                                     <p>
-                                        <asp:Label ID="Approver1NameLabel" runat="server" Font-Bold="true" /></p>
+                                        <asp:Label ID="Approver1NameLabel" runat="server" Font-Bold="true" />
+                                    </p>
                                     <p>
-                                        <asp:Label ID="Approver1CodeLabel" runat="server" Font-Bold="true" /></p>
+                                        <asp:Label ID="Approver1CodeLabel" runat="server" Font-Bold="true" />
+                                    </p>
                                 </div>
                                 <div class="flow-line"></div>
                                 <div class="approver-item">
                                     <p>
-                                        <asp:Label ID="Label8" runat="server" Text="Approver 2" /></p>
+                                        <asp:Label ID="Label8" runat="server" Text="Approver 2" />
+                                    </p>
                                     <asp:Image ID="Image2" runat="server" ImageUrl="~/WebData/No_Image.jpg" class="approver-photo" />
                                     <p>
-                                        <asp:Label ID="Approver2NameLabel" runat="server" Font-Bold="true" /></p>
+                                        <asp:Label ID="Approver2NameLabel" runat="server" Font-Bold="true" />
+                                    </p>
                                     <p>
-                                        <asp:Label ID="Approver2CodeLabel" runat="server" Font-Bold="true" /></p>
+                                        <asp:Label ID="Approver2CodeLabel" runat="server" Font-Bold="true" />
+                                    </p>
                                 </div>
                                 <div class="flow-line"></div>
                                 <div class="approver-item">
                                     <p>
-                                        <asp:Label ID="Label9" runat="server" Text="Approver 3" /></p>
+                                        <asp:Label ID="Label9" runat="server" Text="Approver 3" />
+                                    </p>
                                     <asp:Image ID="Image1" runat="server" ImageUrl="~/WebData/No_Image.jpg" class="approver-photo" />
                                     <p>
-                                        <asp:Label ID="DottedLineApproverNameLabel" runat="server" Font-Bold="true" /></p>
+                                        <asp:Label ID="DottedLineApproverNameLabel" runat="server" Font-Bold="true" />
+                                    </p>
                                     <p>
-                                        <asp:Label ID="DottedLineApproverCodeLabel" runat="server" Font-Bold="true" /></p>
+                                        <asp:Label ID="DottedLineApproverCodeLabel" runat="server" Font-Bold="true" />
+                                    </p>
                                 </div>
                             </div>
 

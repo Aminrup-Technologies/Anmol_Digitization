@@ -282,6 +282,7 @@
     <Content Include="qaqc_oven_report.aspx" />
     <Content Include="qaqc_oven_viewpage.aspx" />
     <Content Include="qaqc_overwrap.aspx" />
+    <Content Include="qaqc_packet_weight.aspx" />
     <Content Include="qaqc_pcr_analytics.aspx" />
     <Content Include="qaqc_pre_dispatch_QI_Report.aspx" />
     <Content Include="qaqc_process_rpt.aspx" />
@@ -1017,6 +1018,13 @@
     </Compile>
     <Compile Include="qaqc_overwrap.aspx.designer.cs">
       <DependentUpon>qaqc_overwrap.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_packet_weight.aspx.cs">
+      <DependentUpon>qaqc_packet_weight.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_packet_weight.aspx.designer.cs">
+      <DependentUpon>qaqc_packet_weight.aspx</DependentUpon>
     </Compile>
     <Compile Include="qaqc_pcr_analytics.aspx.cs">
       <DependentUpon>qaqc_pcr_analytics.aspx</DependentUpon>

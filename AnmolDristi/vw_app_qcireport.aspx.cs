@@ -6,11 +6,14 @@ using System.IO;
 using System.Linq;
 using System.Web.UI;
 using System.Configuration;
+using System.Collections.Generic;
 
 namespace AnmolDristi
 {
     public partial class vw_app_qcireport : System.Web.UI.Page
     {
+        private readonly string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
         public static Int32 RecordID =0;
         public static Int32 ViewerMode = 0;
 
@@ -56,6 +59,7 @@ namespace AnmolDristi
             if (dt.Rows.Count > 0)
             {
                 BindData(dt);
+                LoadPacketWeightView(recordID);
             }
             else
             {
@@ -1259,5 +1263,198 @@ namespace AnmolDristi
                 Response.Redirect("home.aspx", false);
             }
         }
+
+        public class PacketIntervalView
+        {
+            public TimeSpan IntervalStart { get; set; }
+            public TimeSpan IntervalEnd { get; set; }
+            public decimal? Packet1 { get; set; }
+            public decimal? Packet2 { get; set; }
+            public decimal? Packet3 { get; set; }
+            public decimal? Packet4 { get; set; }
+            public decimal? Packet5 { get; set; }
+        }
+
+        private void LoadPacketWeightView(int qcInspectorId)
+        {
+            int packetHdrId = 0;
+
+            // 1️⃣ Load Header + QC Context + System Calculations
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT 
+                    h.PacketHdrID,
+                    h.StandardWeight,
+                    h.MinWeight,
+                    h.MaxWeight,
+                    h.AvgWeight,
+                    h.WindowStartTime,
+                    h.WindowEndTime,
+                    h.GiveAwayPercent,
+                    q.PlantName,
+                    q.Line,
+                    q.SKUId,
+                    q.ProductBrand,
+                    q.SubmittedDate,
+                    q.SubmittedTime,
+                    q.Shift
+                FROM TRN_qc_packet_weight_hdr h
+                INNER JOIN TRN_qcinspector q 
+                    ON q.ID = h.QCInspectorID
+                WHERE h.QCInspectorID = @QCInspectorID", con))
+            {
+                cmd.Parameters.AddWithValue("@QCInspectorID", qcInspectorId);
+                con.Open();
+
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    if (!dr.Read())
+                    {
+                        lblError.Text = "Packet Weight data not found for this QC.";
+                        return;
+                    }
+
+                    packetHdrId = Convert.ToInt32(dr["PacketHdrID"]);
+
+                    // QC Context
+                    lblPlant.Text = dr["PlantName"].ToString();
+                    lblLine.Text = dr["Line"].ToString();
+                    lblSKU.Text = dr["SKUId"].ToString();
+                    lblVariety.Text = dr["VarietyOrLotNo"].ToString();
+                    lblShift.Text = dr["Shift"].ToString();
+                    if (dr["WindowStartTime"] != DBNull.Value && dr["WindowEndTime"] != DBNull.Value)
+                    {
+                        TimeSpan windowStart = (TimeSpan)dr["WindowStartTime"];
+                        TimeSpan windowEnd = (TimeSpan)dr["WindowEndTime"];
+
+                        lblWindow.Text = $"{windowStart:hh\\:mm} – {windowEnd:hh\\:mm}";
+                    }
+                    else
+                    {
+                        lblWindow.Text = "N/A";
+                    }
+
+                    DateTime qcSubmitted = Convert.ToDateTime(dr["SubmittedDate"]).Add((TimeSpan)dr["SubmittedTime"]);
+                    lblQCSubmittedAt.Text = qcSubmitted.ToString("dd-MMM-yyyy HH:mm");
+
+                    // System Calculations (DB authoritative)
+                    lblMinWeight.Text = dr["MinWeight"].ToString();
+                    lblMaxWeight.Text = dr["MaxWeight"].ToString();
+                    lblAverage.Text = dr["AvgWeight"].ToString();
+                    lblGiveAway.Text = dr["GiveAwayPercent"].ToString() + " %";
+                }
+            }
+
+            // 2️⃣ Load Packet Detail Rows
+            DataTable dtDtl = new DataTable();
+
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT 
+            IntervalStart,
+            IntervalEnd,
+            PacketNo,
+            PacketWeight
+        FROM TRN_qc_packet_weight_dtl
+        WHERE PacketHdrID = @PacketHdrID
+        ORDER BY IntervalStart, PacketNo
+    ", con))
+            {
+                cmd.Parameters.AddWithValue("@PacketHdrID", packetHdrId);
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    da.Fill(dtDtl);
+            }
+
+            // 3️⃣ Shape Detail → Interval-wise View Model
+            var intervalGroups = dtDtl.AsEnumerable()
+                .GroupBy(r => new
+                {
+                    Start = r.Field<TimeSpan>("IntervalStart"),
+                    End = r.Field<TimeSpan>("IntervalEnd")
+                });
+
+            List<PacketIntervalView> viewList = new List<PacketIntervalView>();
+
+            foreach (var g in intervalGroups)
+            {
+                PacketIntervalView v = new PacketIntervalView
+                {
+                    IntervalStart = g.Key.Start,
+                    IntervalEnd = g.Key.End
+                };
+
+                foreach (var row in g)
+                {
+                    int p = row.Field<int>("PacketNo");
+                    decimal w = row.Field<decimal>("PacketWeight");
+
+                    if (p == 1) v.Packet1 = w;
+                    else if (p == 2) v.Packet2 = w;
+                    else if (p == 3) v.Packet3 = w;
+                    else if (p == 4) v.Packet4 = w;
+                    else if (p == 5) v.Packet5 = w;
+                }
+
+                viewList.Add(v);
+            }
+
+            // 4️⃣ Bind to Repeater (Read-only)
+            rptIntervalsView.DataSource = viewList;
+            rptIntervalsView.DataBind();
+        }
+
+
+        private List<PacketIntervalView> BuildIntervalView(int packetHdrId)
+        {
+            DataTable dt = new DataTable();
+
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT IntervalStart, IntervalEnd, PacketNo, PacketWeight
+        FROM TRN_qc_packet_weight_dtl
+        WHERE PacketHdrID = @PacketHdrID
+        ORDER BY IntervalStart, PacketNo", con))
+            {
+                cmd.Parameters.AddWithValue("@PacketHdrID", packetHdrId);
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    da.Fill(dt);
+            }
+
+            var grouped = dt.AsEnumerable()
+                .GroupBy(r => new
+                {
+                    Start = r.Field<TimeSpan>("IntervalStart"),
+                    End = r.Field<TimeSpan>("IntervalEnd")
+                });
+
+            List<PacketIntervalView> list = new List<PacketIntervalView>();
+
+            foreach (var g in grouped)
+            {
+                PacketIntervalView v = new PacketIntervalView
+                {
+                    IntervalStart = g.Key.Start,
+                    IntervalEnd = g.Key.End
+                };
+
+                foreach (var row in g)
+                {
+                    int p = row.Field<int>("PacketNo");
+                    decimal w = row.Field<decimal>("PacketWeight");
+
+                    if (p == 1) v.Packet1 = w;
+                    if (p == 2) v.Packet2 = w;
+                    if (p == 3) v.Packet3 = w;
+                    if (p == 4) v.Packet4 = w;
+                    if (p == 5) v.Packet5 = w;
+                }
+
+                list.Add(v);
+            }
+
+            return list;
+        }
+
+
     }
 }
