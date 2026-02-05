@@ -379,6 +379,7 @@
     <Content Include="WebData\SecondarySales.png" />
     <Content Include="WebData\SingleTick.gif" />
     <Content Include="WebData\success_gif.gif" />
+    <Content Include="WebData\tada.jpg" />
     <Content Include="WebData\TertiarySales.png" />
     <Content Include="WebData\vault.jpg" />
     <Content Include="WebData\webdatacapture.jpg" />

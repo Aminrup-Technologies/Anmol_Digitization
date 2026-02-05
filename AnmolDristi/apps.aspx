@@ -286,7 +286,18 @@
                                                 </div>
                                             </div>
 
-
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="login.aspx">
+                                                            <img style="width: 60%; display: block;" src="WebData/tada.jpg" alt="image" height="70%" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>SO-TA/DA</p>
+                                                    </div>
+                                                </div>
+                                            </div>
 
                                             <%--<div class="col-md-55">
                                                 <div class="thumbnail">
