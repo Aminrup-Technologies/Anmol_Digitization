@@ -606,11 +606,24 @@
     </script>
 
     <script type="text/javascript">
+        //function openPacketWeight() {
+        //    window.location.href = 'qaqc_packet_weight.aspx';
+        //}
+
         function openPacketWeight() {
-            window.open('qaqc_packet_weight.aspx', '_blank');
+            var qcId = document.getElementById('<%= hdnQCInspectorID.ClientID %>').value;
+
+            if (!qcId) {
+                alert('QC reference missing. Please reload.');
+                return;
+            }
+
+            window.location.href =
+                'qaqc_packet_weight.aspx?qcid=' + qcId;
         }
     </script>
 
+    <asp:HiddenField ID="hdnQCInspectorID" runat="server" />
     <asp:HiddenField ID="hdn_img1" runat="server" />
     <asp:HiddenField ID="hdn_img2" runat="server" />
     <asp:HiddenField ID="hdn_shiftvalue" runat="server" />

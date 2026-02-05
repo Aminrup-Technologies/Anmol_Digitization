@@ -1,4 +1,4 @@
-﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="qaqc_packet_weight.aspx.cs" Inherits="AnmolDristi.qaqc_packet_weight" %>
+﻿<%@ Page Title="AIL | QAQC-Add Packet Weight Report" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="qaqc_packet_weight.aspx.cs" Inherits="AnmolDristi.qaqc_packet_weight" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style>

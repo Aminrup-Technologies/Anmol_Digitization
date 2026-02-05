@@ -1,4 +1,4 @@
-﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="vw_app_qcireport.aspx.cs" Inherits="AnmolDristi.vw_app_qcireport" %>
+﻿<%@ Page Title="AIL | QAQC-View QCI & Packet Weight Report" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="vw_app_qcireport.aspx.cs" Inherits="AnmolDristi.vw_app_qcireport" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style type="text/css">

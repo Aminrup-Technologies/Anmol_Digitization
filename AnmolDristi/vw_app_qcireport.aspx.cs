@@ -1320,7 +1320,7 @@ namespace AnmolDristi
                     lblPlant.Text = dr["PlantName"].ToString();
                     lblLine.Text = dr["Line"].ToString();
                     lblSKU.Text = dr["SKUId"].ToString();
-                    lblVariety.Text = dr["VarietyOrLotNo"].ToString();
+                    lblVariety.Text = dr["ProductBrand"].ToString();
                     lblShift.Text = dr["Shift"].ToString();
                     if (dr["WindowStartTime"] != DBNull.Value && dr["WindowEndTime"] != DBNull.Value)
                     {

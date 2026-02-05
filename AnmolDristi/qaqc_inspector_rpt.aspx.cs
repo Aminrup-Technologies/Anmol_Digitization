@@ -2041,16 +2041,25 @@ namespace AnmolDristi.qaqc
             {
                 try
                 {
+                    // 1️⃣ Collect & validate QC data
                     var qcData = RetrieveFormData();
                     LogFormData(qcData);
 
+                    // 2️⃣ Persist QC (atomic) and get generated QCInspectorID
                     int qcInspectorId = InsertQCDataWithTransaction(qcData);
 
-                    // Store for downstream packet entry
+                    if (qcInspectorId <= 0)
+                        throw new Exception("QC save failed. QC reference not generated.");
+
+                    // 3️⃣ Store QC reference (optional, but OK for downstream use)
                     Session["QCInspectorID"] = qcInspectorId;
 
-                    // UX handoff
-                    ShowPostSubmitConfirmation();
+                    // 4️⃣ HARD redirect to Packet Weight (same tab, mandatory)
+                    Response.Redirect(
+                        "qaqc_packet_weight.aspx?qcid=" + qcInspectorId,
+                        false
+                    );
+                    Context.ApplicationInstance.CompleteRequest();
                 }
                 catch (Exception ex)
                 {
@@ -2065,6 +2074,7 @@ namespace AnmolDristi.qaqc
                 }
             }
         }
+
 
         private void ShowPostSubmitConfirmation()
         {
