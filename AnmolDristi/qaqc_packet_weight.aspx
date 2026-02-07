@@ -148,19 +148,19 @@
                             <div class="row">
                                 <div class="col-md-3">
                                     <b>Plant:</b>
-                                    <asp:Label ID="lblPlant" runat="server" />
+                                    <asp:Label ID="lblPlant" runat="server" Font-Bold="true" />
                                 </div>
                                 <div class="col-md-3">
                                     <b>Line:</b>
-                                    <asp:Label ID="lblLine" runat="server" />
+                                    <asp:Label ID="lblLine" runat="server" Font-Bold="true"  />
                                 </div>
                                 <div class="col-md-3">
                                     <b>SKU:</b>
-                                    <asp:Label ID="lblSKU" runat="server" />
+                                    <asp:Label ID="lblSKU" runat="server" Font-Bold="true"  />
                                 </div>
                                 <div class="col-md-3">
                                     <b>Variety:</b>
-                                    <asp:Label ID="lblVariety" runat="server" />
+                                    <asp:Label ID="lblVariety" runat="server" Font-Bold="true"  />
                                 </div>
                             </div>
 
@@ -169,15 +169,15 @@
                             <div class="row">
                                 <div class="col-md-4">
                                     <b>QC Submitted At:</b>
-                                    <asp:Label ID="lblQCSubmittedAt" runat="server" />
+                                    <asp:Label ID="lblQCSubmittedAt" runat="server" Font-Bold="true"  />
                                 </div>
                                 <div class="col-md-4">
                                     <b>Packet Window:</b>
-                                    <asp:Label ID="lblWindow" runat="server" />
+                                    <asp:Label ID="lblWindow" runat="server" Font-Bold="true"  />
                                 </div>
                                 <div class="col-md-4">
                                     <b>Shift:</b>
-                                    <asp:Label ID="lblShift" runat="server" />
+                                    <asp:Label ID="lblShift" runat="server" Font-Bold="true"  />
                                 </div>
                             </div>
                         </div>
