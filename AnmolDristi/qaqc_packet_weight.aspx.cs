@@ -23,27 +23,68 @@ namespace AnmolDristi
         private decimal standardWeight = 000.00M;
 
         // Logged-in user
-        private int currentUserId
+        private int CurrentUserId
         {
-            get { return Convert.ToInt32(Session["CurrentUserId"]); }
+            get
+            {
+                if (Session["CurrentUserId"] == null)
+                    throw new InvalidOperationException("User session expired.");
+
+                int userId;
+                if (!int.TryParse(Session["CurrentUserId"].ToString(), out userId))
+                    throw new InvalidOperationException("Invalid user session value.");
+
+                return userId;
+            }
         }
+
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            // 1️⃣ Validate login session (single contract)
+            ValidateSession(); // checks Session["CurrentUserId"]
+
+            // 2️⃣ Enforce Step-2 access (cannot be skipped)
+            if (!IsStep2Allowed())
+            {
+                Response.Redirect("qaqc_inspector_rpt.aspx", true);
+                return;
+            }
+
+            // 3️⃣ First-time page load only
             if (!IsPostBack)
             {
-                if (Session["USERID"] == null || Session["USERNAME"] == null || Session["WORKMAN"] == null)
-                {
-                    Response.Redirect("login.aspx");
-                }
-                else
-                {
-                    ResolveCurrentShift();   // 👈 ADD THIS
-                    LoadOldestPendingQC();
-                }
-
+                ResolveCurrentShift();   // sets shift & window context
+                LoadOldestPendingQC();   // loads QCInspectorID & context
             }
         }
+
+        private void ValidateSession()
+        {
+            if (Session["CurrentUserId"] == null)
+            {
+                Response.Redirect("login.aspx", true);
+            }
+        }
+
+
+        private bool IsStep2Allowed()
+        {
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+            SELECT 1
+            FROM TRN_qcinspector
+            WHERE SubmittedById = @UserId
+              AND QC_Status = 'STEP2_PENDING'", con))
+            {
+                cmd.Parameters.Add("@UserId", SqlDbType.Int)
+                              .Value = Convert.ToInt32(Session["CurrentUserId"]);
+
+                con.Open();
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
 
         private void LoadOldestPendingQC()
         {
@@ -55,36 +96,39 @@ namespace AnmolDristi
                 return;
             }
 
-            Session["QCInspectorID"] = qcInspectorId;
+            Session["CurrentQCId"] = qcInspectorId;
 
             LoadQCContext(qcInspectorId);
             BindIntervals(qcInspectorId);
         }
 
+
         private int GetOldestPendingQCInspectorId()
         {
             using (SqlConnection con = new SqlConnection(connectionString))
             using (SqlCommand cmd = new SqlCommand(@"
-                SELECT TOP 1 q.ID
-                FROM TRN_qcinspector q
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM TRN_qc_packet_weight_hdr p
-                    WHERE p.QCInspectorID = q.ID
-                )
-                ORDER BY q.SubmittedDate, q.SubmittedTime", con))
+        SELECT TOP 1 ID
+        FROM TRN_qcinspector
+        WHERE SubmittedById = @UserId
+          AND QC_Status = 'STEP2_PENDING'
+        ORDER BY SubmittedDate, SubmittedTime", con))
             {
+                cmd.Parameters.Add("@UserId", SqlDbType.Int)
+                              .Value = Convert.ToInt32(Session["CurrentUserId"]);
+
                 con.Open();
                 object result = cmd.ExecuteScalar();
                 return result == null ? 0 : Convert.ToInt32(result);
             }
         }
 
+
+
         private void LoadQCContext(int qcInspectorId)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
             using (SqlCommand cmd = new SqlCommand(@"
-                    SELECT  
+            SELECT  
                 q.PlantName,
                 q.Line,
                 q.SKUId,
@@ -94,65 +138,36 @@ namespace AnmolDristi
                 q.Shift,
                 s.SKU_name AS StandardWeightText
             FROM TRN_qcinspector q
-            INNER JOIN MST_Brand_SKU s
-                ON q.SKUId = s.SKUId
-            WHERE q.ID = @ID", con))
+            INNER JOIN MST_Brand_SKU s ON q.SKUId = s.SKUId
+            WHERE q.ID = @ID
+            AND q.QC_Status = 'STEP2_PENDING'", con))
             {
-                cmd.Parameters.AddWithValue("@ID", qcInspectorId);
+                cmd.Parameters.Add("@ID", SqlDbType.Int).Value = qcInspectorId;
 
                 con.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {
-                    if (dr.Read())
-                    {
-                        lblPlant.Text = dr["PlantName"].ToString();
-                        lblLine.Text = dr["Line"].ToString();
-                        lblSKU.Text = dr["SKUId"].ToString();
-                        lblVariety.Text = dr["ProductBrand"].ToString();
-                        lblShift.Text = dr["Shift"].ToString();
+                    if (!dr.Read())
+                        throw new Exception("Invalid or completed QC record.");
 
-                        DateTime qcSubmitted = Convert.ToDateTime(dr["SubmittedDate"]).Add((TimeSpan)dr["SubmittedTime"]);
-                        lblQCSubmittedAt.Text = qcSubmitted.ToString("dd-MMM-yyyy HH:mm");
+                    lblPlant.Text = dr["PlantName"].ToString();
+                    lblLine.Text = dr["Line"].ToString();
+                    lblSKU.Text = dr["SKUId"].ToString();
+                    lblVariety.Text = dr["ProductBrand"].ToString();
+                    lblShift.Text = dr["Shift"].ToString();
 
-                        string stdWeightText = dr["StandardWeightText"].ToString();
+                    DateTime qcSubmitted =
+                        Convert.ToDateTime(dr["SubmittedDate"])
+                        .Add((TimeSpan)dr["SubmittedTime"]);
 
-                        if (!decimal.TryParse(stdWeightText, out standardWeight))
-                            throw new Exception(
-                                $"Invalid standard weight configured for SKU {lblSKU.Text}.");
-                        hdnStdWeight.Value = standardWeight.ToString("0.00");
-                        hdnQCInspectorID.Value = qcInspectorId.ToString();
-                        // Optional UX visibility
-                        //lblStdWeight.Text = standardWeight.ToString("0.00") + " g";
-                    }
+                    lblQCSubmittedAt.Text = qcSubmitted.ToString("dd-MMM-yyyy HH:mm");
 
+                    if (!decimal.TryParse(dr["StandardWeightText"].ToString(), out standardWeight))
+                        throw new Exception($"Invalid standard weight for SKU {lblSKU.Text}");
+
+                    hdnStdWeight.Value = standardWeight.ToString("0.00");
+                    hdnQCInspectorID.Value = qcInspectorId.ToString();
                 }
-            }
-        }
-
-        private void BindIntervals_OLD(int qcInspectorId)
-        {
-            DataTable dt = new DataTable();
-
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("GetPacketWeightIntervalsByQCInspectorId", con))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@QCInspectorID", qcInspectorId);
-                cmd.Parameters.AddWithValue("@ShiftStartTime", shiftStartTime);
-                cmd.Parameters.AddWithValue("@ShiftEndTime", shiftEndTime);
-
-                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
-                {
-                    da.Fill(dt);
-                }
-            }
-
-            rptIntervals.DataSource = dt;
-            rptIntervals.DataBind();
-
-            if (dt.Rows.Count > 0)
-            {
-                lblWindow.Text = $"{dt.Rows[0]["IntervalStartTime"]} – {dt.Rows[dt.Rows.Count - 1]["IntervalEndTime"]}";
             }
         }
 
@@ -167,17 +182,38 @@ namespace AnmolDristi
                     lblError.Text = "No packet data found.";
                     return;
                 }
+
                 CalculateSummary(packetDetails);
                 InsertPacketWeight(packetDetails);
 
-                LockUI();
-                ShowSuccess();
+                UpdateQcStatus(Convert.ToInt32(Session["CurrentQCId"]),"STEP2_COMPLETED");
+                Session.Remove("CurrentQCId");
+                Response.Redirect("qaqc_inspector_rpt.aspx", true);
+                //LockUI();
+                //ShowSuccess();
             }
             catch (Exception ex)
             {
                 lblError.Text = ex.Message;
             }
         }
+
+        private void UpdateQcStatus(int qcId, string status)
+        {
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+            UPDATE TRN_qcinspector
+            SET QC_Status = @Status
+            WHERE ID = @QcId", con))
+            {
+                cmd.Parameters.Add("@Status", SqlDbType.VarChar, 30).Value = status;
+                cmd.Parameters.Add("@QcId", SqlDbType.Int).Value = qcId;
+
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
+
 
         private DataTable BuildPacketDetailTable()
         {
@@ -285,7 +321,7 @@ namespace AnmolDristi
                 cmd.Parameters.AddWithValue("@StandardWeight", stdWeight);
 
                 cmd.Parameters.AddWithValue("@Shift", lblShift.Text);
-                cmd.Parameters.AddWithValue("@SubmittedById", currentUserId);
+                cmd.Parameters.AddWithValue("@SubmittedById", CurrentUserId);
 
                 SqlParameter tvp = cmd.Parameters.AddWithValue("@PacketDetails", packetDetails);
 
@@ -364,9 +400,6 @@ namespace AnmolDristi
             if (Session["SHIFT_START"] == null || Session["SHIFT_END"] == null)
                 throw new Exception("Shift information not available.");
 
-            TimeSpan shiftStartTime = (TimeSpan)Session["SHIFT_START"];
-            TimeSpan shiftEndTime = (TimeSpan)Session["SHIFT_END"];
-
             DataTable dt = new DataTable();
 
             using (SqlConnection con = new SqlConnection(connectionString))
@@ -374,9 +407,8 @@ namespace AnmolDristi
                 "GetPacketWeightIntervalsByQCInspectorId", con))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@QCInspectorID", qcInspectorId);
-                cmd.Parameters.AddWithValue("@ShiftStartTime", shiftStartTime);
-                cmd.Parameters.AddWithValue("@ShiftEndTime", shiftEndTime);
+                cmd.Parameters.Add("@QCInspectorID", SqlDbType.Int)
+                              .Value = qcInspectorId;
 
                 using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                 {
@@ -393,6 +425,7 @@ namespace AnmolDristi
                     $"{dt.Rows[0]["IntervalStartTime"]} – {dt.Rows[dt.Rows.Count - 1]["IntervalEndTime"]}";
             }
         }
+
 
         private void CalculateSummary(DataTable packetDetails)
         {

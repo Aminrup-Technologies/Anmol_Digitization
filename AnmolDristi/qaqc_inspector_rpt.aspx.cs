@@ -19,33 +19,88 @@ namespace AnmolDristi.qaqc
 {
     public partial class qaqc_inspector_rpt : BasePage
     {
+        private readonly string cs = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         DB_Utility_OH4Y dbcl = new DB_Utility_OH4Y();
         public static string ImgLink1 = string.Empty;
         public static string ImgLink2 = string.Empty;
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            ValidateSession(); // ONLY validates Session["CurrentUserId"]
+
             if (!IsPostBack)
             {
-                if (Session["USERID"] == null || Session["USERNAME"] == null || Session["WORKMAN"] == null)
-                {
-                    Response.Redirect("login.aspx");
-                }
-                else
-                {
+                lbl_docname.Text = "QC - Inspection Report";
+                lbl_docnumber.Text = "ANMOL/DOC/DAN/QA/02";
 
-                    lbl_docname.Text = "QC - Inspection Report";
-                    lbl_docnumber.Text = "ANMOL/DOC/DAN/QA/02";
+                lbl_QCIR_ClrApp.Attributes["data-prefix"] = "QCIR/ClrApp";
+                lbl_QCIR_DesignImp.Attributes["data-prefix"] = "QCIR/DesignImp";
 
-                    lbl_QCIR_ClrApp.Attributes.Add("data-prefix", "QCIR/ClrApp");
-                    lbl_QCIR_DesignImp.Attributes.Add("data-prefix", "QCIR/DesignImp");
-
-                    PlantBinder();
-                    DisplayCurrentShift();
-                }
-
+                PlantBinder();          // Bind first-level dropdown
+                DisplayCurrentShift();  // Show shift info
             }
         }
+
+
+        private void ValidateSession()
+        {
+            if (Session["CurrentUserId"] == null)
+            {
+                Response.Redirect("qaqc_inspector_rpt.aspx", true);
+            }
+        }
+
+
+        private bool IsStep2Pending()
+        {
+            using (SqlConnection con = new SqlConnection(cs))
+            using (SqlCommand cmd = new SqlCommand(@"
+            SELECT 1
+            FROM TRN_qcinspector
+            WHERE SubmittedById  = @InspectorId
+              AND QC_Status = 'STEP2_PENDING'", con))
+            {
+                cmd.Parameters.Add("@InspectorId", SqlDbType.Int)
+                              .Value = Convert.ToInt32(Session["CurrentUserId"]);
+
+                con.Open();
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+        private bool IsStep2PendingForContext(
+    int userId,
+    string plant,
+    string line,
+    string category,
+    string brand,
+    string skuId)
+        {
+            using (SqlConnection con = new SqlConnection(cs))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT 1
+        FROM TRN_qcinspector
+        WHERE SubmittedById = @UserId
+          AND PlantName = @Plant
+          AND Line = @Line
+          AND ProductCategory = @Category
+          AND ProductBrand = @Brand
+          AND SKUId = @SKUId
+          AND QC_Status = 'STEP2_PENDING'", con))
+            {
+                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
+                cmd.Parameters.Add("@Plant", SqlDbType.NVarChar, 100).Value = plant;
+                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = line;
+                cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 100).Value = category;
+                cmd.Parameters.Add("@Brand", SqlDbType.NVarChar, 100).Value = brand;
+                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
+
+                con.Open();
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+
 
         private void DisplayCurrentShift()
         {
@@ -2012,6 +2067,57 @@ namespace AnmolDristi.qaqc
         //-------------------------------- SUBMIT Code redefined ---------------------------------------//
 
         private static readonly object _lockObject = new object();
+        protected void btnSubmit_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // 1️⃣ Collect & validate QC data
+                var qcData = RetrieveFormData();
+                LogFormData(qcData);
+
+                // 2️⃣ HARD BLOCK if Step-2 is pending for same context
+                if (IsStep2PendingForContext(
+                        CurrentUserId,
+                        qcData.PlantName,
+                        qcData.Line,
+                        qcData.ProductCategory,
+                        qcData.ProductBrand,
+                        qcData.BrandSKU))
+                {
+                    // Mandatory redirect to Step-2 (SAFE redirect)
+                    Response.Redirect("qaqc_packet_weight.aspx", false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
+                }
+
+                // 3️⃣ Persist QC + set QC_Status = STEP2_PENDING atomically
+                int qcInspectorId = InsertQCDataWithTransaction(qcData);
+
+                if (qcInspectorId <= 0)
+                    throw new Exception("QC save failed. QC reference not generated.");
+
+                // 4️⃣ Store QC reference (single source of truth)
+                Session["CurrentQCId"] = qcInspectorId;
+
+                // 5️⃣ Mandatory redirect to Step-2 (SAFE redirect)
+                Response.Redirect("qaqc_packet_weight.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
+                return;
+            }
+            catch (Exception ex)
+            {
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                EmailNotifier.Notify(
+                    "Application Error",
+                    $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>",
+                    recipients
+                );
+
+                DisplayErrorNotification("An unexpected error occurred while submitting QC.");
+            }
+        }
+
+
 
         protected void btnSubmit_Click_OLD(object sender, EventArgs e)
         {
@@ -2035,45 +2141,22 @@ namespace AnmolDristi.qaqc
             }
         }
 
-        protected void btnSubmit_Click(object sender, EventArgs e)
+        private void UpdateQcStatus(int qcId, string status)
         {
-            lock (_lockObject)
+            using (SqlConnection con = new SqlConnection(cs))
+            using (SqlCommand cmd = new SqlCommand(@"
+            UPDATE TRN_qcinspector
+            SET QC_Status = @Status
+            WHERE ID = @QcId", con))
             {
-                try
-                {
-                    // 1️⃣ Collect & validate QC data
-                    var qcData = RetrieveFormData();
-                    LogFormData(qcData);
+                cmd.Parameters.Add("@Status", SqlDbType.VarChar, 30).Value = status;
+                cmd.Parameters.Add("@QcId", SqlDbType.Int).Value = qcId;
 
-                    // 2️⃣ Persist QC (atomic) and get generated QCInspectorID
-                    int qcInspectorId = InsertQCDataWithTransaction(qcData);
-
-                    if (qcInspectorId <= 0)
-                        throw new Exception("QC save failed. QC reference not generated.");
-
-                    // 3️⃣ Store QC reference (optional, but OK for downstream use)
-                    Session["QCInspectorID"] = qcInspectorId;
-
-                    // 4️⃣ HARD redirect to Packet Weight (same tab, mandatory)
-                    Response.Redirect(
-                        "qaqc_packet_weight.aspx?qcid=" + qcInspectorId,
-                        false
-                    );
-                    Context.ApplicationInstance.CompleteRequest();
-                }
-                catch (Exception ex)
-                {
-                    var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
-                    EmailNotifier.Notify(
-                        "Application Error",
-                        $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>",
-                        recipients
-                    );
-
-                    DisplayErrorNotification(ex.Message);
-                }
+                con.Open();
+                cmd.ExecuteNonQuery();
             }
         }
+
 
 
         private void ShowPostSubmitConfirmation()
@@ -2677,6 +2760,45 @@ namespace AnmolDristi.qaqc
             public decimal Shell10Weight { get; set; } // 10-piece shell weight (g)
             public decimal Shell5CreamWeight { get; set; } // 5-piece shell weight with cream (g)
             public decimal CreamPercentage { get; set; } // Auto-calculated cream percentage
+        }
+
+        protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (DDL_Plant.SelectedIndex <= 0 ||
+                DDL_PlantLine.SelectedIndex <= 0 ||
+                DDL_ProductCategory.SelectedIndex <= 0 ||
+                DDL_ProductBrand.SelectedIndex <= 0 ||
+                string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue))
+            {
+                return; // context incomplete
+            }
+
+            CheckPendingStep2ForContext();
+        }
+
+        private void CheckPendingStep2ForContext()
+        {
+            int userId = Convert.ToInt32(Session["CurrentUserId"]);
+
+            string plant = DDL_Plant.SelectedValue;          // NVARCHAR
+            string line = DDL_PlantLine.SelectedValue;       // NVARCHAR
+            string category = DDL_ProductCategory.SelectedValue;
+            string brand = DDL_ProductBrand.SelectedValue;
+            string skuId = DDL_BrandSKU.SelectedValue;       // VARCHAR(50)
+
+            if (IsStep2PendingForContext(
+                    userId,
+                    plant,
+                    line,
+                    category,
+                    brand,
+                    skuId))
+            {
+                // Lock user into Step-2
+                Session["PendingQCContext"] = true;
+
+                Response.Redirect("qaqc_packet_weight.aspx", true);
+            }
         }
 
     }

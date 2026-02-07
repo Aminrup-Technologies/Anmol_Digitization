@@ -112,7 +112,7 @@ namespace AnmolDristi
                 Session["WORKMAN"] = workman;
                 Session["USERFNAME"] = firstName;
                 Session["USERNAME"] = fullName;
-                Session["USERID"] = workman;
+                Session["USERID"] = userId;
                 Session["REGION"] = row["RegionId"] == DBNull.Value ? "" : row["RegionId"].ToString();
                 Session["BRANCH"] = row["BranchId"] == DBNull.Value ? "" : row["BranchId"].ToString();
                 Session["MODULE"] = row["Module"] == DBNull.Value ? "" : row["Module"].ToString();
