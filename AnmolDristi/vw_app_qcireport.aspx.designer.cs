@@ -1750,6 +1750,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblLine;
         
         /// <summary>
+        /// lblVariety control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblVariety;
+        
+        /// <summary>
         /// lblSKU control.
         /// </summary>
         /// <remarks>
@@ -1759,13 +1768,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblSKU;
         
         /// <summary>
-        /// lblVariety control.
+        /// lbl_qcid control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblVariety;
+        protected global::System.Web.UI.WebControls.Label lbl_qcid;
         
         /// <summary>
         /// lblQCSubmittedAt control.
@@ -1777,15 +1786,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblQCSubmittedAt;
         
         /// <summary>
-        /// lblShift control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblShift;
-        
-        /// <summary>
         /// lblWindow control.
         /// </summary>
         /// <remarks>
@@ -1793,6 +1793,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblWindow;
+        
+        /// <summary>
+        /// lblShift control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblShift;
         
         /// <summary>
         /// rptIntervalsView control.

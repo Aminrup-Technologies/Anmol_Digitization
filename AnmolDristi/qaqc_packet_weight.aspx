@@ -138,51 +138,55 @@
             </div>
             <div class="row">
                 <div class="col-md-12 col-sm-12">
-                    <div class="x_panel">
+                    <div class="x_panel" style="border-top: 3px solid #2A3F54; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <div class="x_title">
-                            <h2>QC Context</h2>
+                            <h2 style="color: #2A3F54; font-weight: bold;"><i class="fa fa-info-circle"></i>QC Context</h2>
                             <div class="clearfix"></div>
                         </div>
 
                         <div class="x_content">
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <b>Plant:</b>
-                                    <asp:Label ID="lblPlant" runat="server" Font-Bold="true" />
+                            <div class="row" style="margin-bottom: 15px;">
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">Plant:</b><br />
+                                    <asp:Label ID="lblPlant" runat="server" Font-Bold="true" CssClass="text-primary" />
                                 </div>
-                                <div class="col-md-3">
-                                    <b>Line:</b>
-                                    <asp:Label ID="lblLine" runat="server" Font-Bold="true"  />
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">Line:</b><br />
+                                    <asp:Label ID="lblLine" runat="server" Font-Bold="true" CssClass="text-primary" />
                                 </div>
-                                <div class="col-md-3">
-                                    <b>SKU:</b>
-                                    <asp:Label ID="lblSKU" runat="server" Font-Bold="true"  />
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">Variety:</b><br />
+                                    <asp:Label ID="lblVariety" runat="server" Font-Bold="true" CssClass="text-primary" />
                                 </div>
-                                <div class="col-md-3">
-                                    <b>Variety:</b>
-                                    <asp:Label ID="lblVariety" runat="server" Font-Bold="true"  />
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">SKU:</b><br />
+                                    <asp:Label ID="lblSKU" runat="server" Font-Bold="true" CssClass="text-primary" />
                                 </div>
+                                
                             </div>
 
-                            <hr />
+                            <hr style="margin: 10px 0; border-top: 1px solid #eee;" />
 
                             <div class="row">
-                                <div class="col-md-4">
-                                    <b>QC Submitted At:</b>
-                                    <asp:Label ID="lblQCSubmittedAt" runat="server" Font-Bold="true"  />
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">QC ID:</b><br />
+                                    <asp:Label ID="lbl_qcid" runat="server" Font-Bold="true" ForeColor="#E74C3C" />
                                 </div>
-                                <div class="col-md-4">
-                                    <b>Packet Window:</b>
-                                    <asp:Label ID="lblWindow" runat="server" Font-Bold="true"  />
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">QC Submitted At:</b><br />
+                                    <asp:Label ID="lblQCSubmittedAt" runat="server" Font-Bold="true" />
                                 </div>
-                                <div class="col-md-4">
-                                    <b>Shift:</b>
-                                    <asp:Label ID="lblShift" runat="server" Font-Bold="true"  />
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">Packet Window:</b><br />
+                                    <asp:Label ID="lblWindow" runat="server" Font-Bold="true" />
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <b style="color: #555;">Shift:</b><br />
+                                    <asp:Label ID="lblShift" runat="server" Font-Bold="true" />
                                 </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 

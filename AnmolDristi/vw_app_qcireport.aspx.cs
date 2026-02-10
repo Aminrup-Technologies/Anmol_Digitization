@@ -7,6 +7,7 @@ using System.Linq;
 using System.Web.UI;
 using System.Configuration;
 using System.Collections.Generic;
+using System.Web;
 
 namespace AnmolDristi
 {
@@ -1294,6 +1295,7 @@ namespace AnmolDristi
                     q.PlantName,
                     q.Line,
                     q.SKUId,
+                    q.ProductCategory,
                     q.ProductBrand,
                     q.SubmittedDate,
                     q.SubmittedTime,
@@ -1316,11 +1318,29 @@ namespace AnmolDristi
 
                     packetHdrId = Convert.ToInt32(dr["PacketHdrID"]);
 
+                    lbl_qcid.Text = qcInspectorId.ToString();
+
                     // QC Context
-                    lblPlant.Text = dr["PlantName"].ToString();
-                    lblLine.Text = dr["Line"].ToString();
-                    lblSKU.Text = dr["SKUId"].ToString();
-                    lblVariety.Text = dr["ProductBrand"].ToString();
+                    //lblPlant.Text = dr["PlantName"].ToString();
+                    lblPlant.Text = GetPlantName(Convert.ToInt32(dr["PlantName"])) ?? dr["PlantName"].ToString();
+
+                    //lblLine.Text = dr["Line"].ToString();
+                    lblLine.Text = GetLineName(
+                        Convert.ToInt32(dr["PlantName"]),
+                        Convert.ToInt32(dr["Line"])
+                    ) ?? dr["Line"].ToString();
+
+                    //lblSKU.Text = dr["SKUId"].ToString();
+                    lblSKU.Text = GetSKUName(dr["SKUId"].ToString()) ?? dr["SKUId"].ToString();
+
+                    //lblVariety.Text = dr["ProductBrand"].ToString();
+                    lblVariety.Text = GetBrandName(
+                        Convert.ToInt32(dr["PlantName"]),
+                        Convert.ToInt32(dr["Line"]),
+                        Convert.ToInt32(dr["ProductCategory"]),
+                        Convert.ToInt32(dr["ProductBrand"])
+                    ) ?? dr["ProductBrand"].ToString();
+
                     lblShift.Text = dr["Shift"].ToString();
                     if (dr["WindowStartTime"] != DBNull.Value && dr["WindowEndTime"] != DBNull.Value)
                     {
@@ -1401,6 +1421,110 @@ namespace AnmolDristi
             // 4️⃣ Bind to Repeater (Read-only)
             rptIntervalsView.DataSource = viewList;
             rptIntervalsView.DataBind();
+        }
+
+        private string GetMasterDescription(string cachePrefix, string sql, Action<SqlParameterCollection> bindParams, int cacheSeconds = 300)
+        {
+            string cacheKey = cachePrefix;
+            var cached = HttpRuntime.Cache[cacheKey] as string;
+            if (!string.IsNullOrEmpty(cached)) return cached;
+
+            try
+            {
+                using (var con = new SqlConnection(
+                       ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                using (var cmd = new SqlCommand(sql, con))
+                {
+                    bindParams(cmd.Parameters);
+                    con.Open();
+
+                    var result = cmd.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        string value = Convert.ToString(result);
+                        HttpRuntime.Cache.Insert(
+                            cacheKey,
+                            value,
+                            null,
+                            DateTime.Now.AddSeconds(cacheSeconds),
+                            System.Web.Caching.Cache.NoSlidingExpiration);
+
+                        return value;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Warn("MasterLookup", ex.ToString());
+            }
+
+            return null;
+        }
+
+        private string GetPlantName(int plantId)
+        {
+            return GetMasterDescription(
+                $"PLANT::{plantId}",
+                @"SELECT TOP 1 plant_name + ' (' + sap_code + ')'
+          FROM MST_PlantDetails
+          WHERE plant_id = @plant_id",
+                p => p.AddWithValue("@plant_id", plantId)
+            );
+        }
+        private string GetLineName(int plantId, int lineId)
+        {
+            return GetMasterDescription(
+                $"LINE::{plantId}::{lineId}",
+                @"SELECT TOP 1 line_name
+          FROM MST_Plant_Lines
+          WHERE plant_id = @plant_id AND line_id = @line_id",
+                p =>
+                {
+                    p.AddWithValue("@plant_id", plantId);
+                    p.AddWithValue("@line_id", lineId);
+                }
+            );
+        }
+        private string GetCategoryName(int plantId, int lineId, int categoryId)
+        {
+            return GetMasterDescription(
+                $"CAT::{plantId}::{lineId}::{categoryId}",
+                @"SELECT TOP 1 category_name
+          FROM MST_LineCategory
+          WHERE plant_id=@plant AND line_id=@line AND category_id=@cat",
+                p =>
+                {
+                    p.AddWithValue("@plant", plantId);
+                    p.AddWithValue("@line", lineId);
+                    p.AddWithValue("@cat", categoryId);
+                }
+            );
+        }
+        private string GetBrandName(int plantId, int lineId, int categoryId, int brandId)
+        {
+            return GetMasterDescription(
+                $"BRAND::{plantId}::{lineId}::{categoryId}::{brandId}",
+                @"SELECT TOP 1 brand_name
+          FROM MST_LineCatBrands
+          WHERE plant_id=@p AND line_id=@l AND category_id=@c AND brand_id=@b",
+                p =>
+                {
+                    p.AddWithValue("@p", plantId);
+                    p.AddWithValue("@l", lineId);
+                    p.AddWithValue("@c", categoryId);
+                    p.AddWithValue("@b", brandId);
+                }
+            );
+        }
+        private string GetSKUName(string skuId)
+        {
+            return GetMasterDescription(
+                $"SKU::{skuId}",
+                @"SELECT TOP 1 SKU_name
+          FROM MST_Brand_SKU
+          WHERE SKUId=@sku",
+                p => p.AddWithValue("@sku", skuId)
+            );
         }
 
 

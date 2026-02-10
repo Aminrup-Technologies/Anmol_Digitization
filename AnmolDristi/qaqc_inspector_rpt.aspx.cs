@@ -68,40 +68,6 @@ namespace AnmolDristi.qaqc
             }
         }
 
-        private bool IsStep2PendingForContext(
-    int userId,
-    string plant,
-    string line,
-    string category,
-    string brand,
-    string skuId)
-        {
-            using (SqlConnection con = new SqlConnection(cs))
-            using (SqlCommand cmd = new SqlCommand(@"
-        SELECT 1
-        FROM TRN_qcinspector
-        WHERE SubmittedById = @UserId
-          AND PlantName = @Plant
-          AND Line = @Line
-          AND ProductCategory = @Category
-          AND ProductBrand = @Brand
-          AND SKUId = @SKUId
-          AND QC_Status = 'STEP2_PENDING'", con))
-            {
-                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
-                cmd.Parameters.Add("@Plant", SqlDbType.NVarChar, 100).Value = plant;
-                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = line;
-                cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 100).Value = category;
-                cmd.Parameters.Add("@Brand", SqlDbType.NVarChar, 100).Value = brand;
-                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
-
-                con.Open();
-                return cmd.ExecuteScalar() != null;
-            }
-        }
-
-
-
         private void DisplayCurrentShift()
         {
             ShiftManager shiftManager = new ShiftManager();
@@ -2762,42 +2728,141 @@ namespace AnmolDristi.qaqc
             public decimal CreamPercentage { get; set; } // Auto-calculated cream percentage
         }
 
+        //protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        //{
+        //    if (DDL_Plant.SelectedIndex <= 0 ||
+        //        DDL_PlantLine.SelectedIndex <= 0 ||
+        //        DDL_ProductCategory.SelectedIndex <= 0 ||
+        //        DDL_ProductBrand.SelectedIndex <= 0 ||
+        //        string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue))
+        //    {
+        //        return; // context incomplete
+        //    }
+
+        //    CheckPendingStep2ForContext();
+        //}
+
         protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
         {
+            // 1. Validate that the full context is selected
             if (DDL_Plant.SelectedIndex <= 0 ||
                 DDL_PlantLine.SelectedIndex <= 0 ||
                 DDL_ProductCategory.SelectedIndex <= 0 ||
                 DDL_ProductBrand.SelectedIndex <= 0 ||
                 string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue))
             {
-                return; // context incomplete
+                return; // Context incomplete, do nothing
             }
 
+            // 2. Run the Gatekeeper Check
             CheckPendingStep2ForContext();
         }
 
+        //private void CheckPendingStep2ForContext()
+        //{
+        //    int userId = Convert.ToInt32(Session["CurrentUserId"]);
+
+        //    string plant = DDL_Plant.SelectedValue;          // NVARCHAR
+        //    string line = DDL_PlantLine.SelectedValue;       // NVARCHAR
+        //    string category = DDL_ProductCategory.SelectedValue;
+        //    string brand = DDL_ProductBrand.SelectedValue;
+        //    string skuId = DDL_BrandSKU.SelectedValue;       // VARCHAR(50)
+
+        //    if (IsStep2PendingForContext(
+        //            userId,
+        //            plant,
+        //            line,
+        //            category,
+        //            brand,
+        //            skuId))
+        //    {
+        //        // Lock user into Step-2
+        //        Session["PendingQCContext"] = true;
+
+        //        Response.Redirect("qaqc_packet_weight.aspx", true);
+        //    }
+        //}
+
         private void CheckPendingStep2ForContext()
         {
+            // Gather all context variables
             int userId = Convert.ToInt32(Session["CurrentUserId"]);
-
-            string plant = DDL_Plant.SelectedValue;          // NVARCHAR
-            string line = DDL_PlantLine.SelectedValue;       // NVARCHAR
+            string plant = DDL_Plant.SelectedValue;
+            string line = DDL_PlantLine.SelectedValue;
             string category = DDL_ProductCategory.SelectedValue;
             string brand = DDL_ProductBrand.SelectedValue;
-            string skuId = DDL_BrandSKU.SelectedValue;       // VARCHAR(50)
+            string skuId = DDL_BrandSKU.SelectedValue;
 
-            if (IsStep2PendingForContext(
-                    userId,
-                    plant,
-                    line,
-                    category,
-                    brand,
-                    skuId))
+            // Call the database helper to get the specific Pending ID
+            int pendingQCId = GetPendingStep2Id(userId, plant, line, category, brand, skuId);
+
+            if (pendingQCId > 0)
             {
-                // Lock user into Step-2
-                Session["PendingQCContext"] = true;
+                // CASE: We found a pending draft for this User + SKU.
+                // Action: Resume the existing session.
 
-                Response.Redirect("qaqc_packet_weight.aspx", true);
+                Session["PendingQCContext"] = true;
+                Session["PendingQC_ID"] = pendingQCId; // SAVE THE ID so the next page knows what to load!
+
+                Response.Redirect("qaqc_packet_weight.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
+            }
+            else
+            {
+                // CASE: No pending draft found.
+                // Action: Allow user to start a brand new QC check.
+
+                Session["PendingQCContext"] = false;
+                Session["PendingQC_ID"] = null;
+            }
+        }
+
+        private int GetPendingStep2Id(int userId, string plant, string line, string category, string brand, string skuId)
+        {
+            // Use your connection string variable (cs or ConfigurationManager)
+            using (SqlConnection con = new SqlConnection(cs))
+            using (SqlCommand cmd = new SqlCommand("dbo.GetPendingQCStep2Id_ByContext", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
+                cmd.Parameters.Add("@PlantName", SqlDbType.NVarChar, 100).Value = plant;
+                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = line;
+                cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 100).Value = category;
+                cmd.Parameters.Add("@Brand", SqlDbType.NVarChar, 100).Value = brand;
+                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
+
+                con.Open();
+                object result = cmd.ExecuteScalar();
+
+                // If a row is found, return the ID. If not, return 0.
+                return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+            }
+        }
+
+        private bool IsStep2PendingForContext(int userId,string plant,string line,string category,string brand,string skuId)
+        {
+            using (SqlConnection con = new SqlConnection(cs))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT 1
+        FROM TRN_qcinspector
+        WHERE SubmittedById = @UserId
+          AND PlantName = @Plant
+          AND Line = @Line
+          AND ProductCategory = @Category
+          AND ProductBrand = @Brand
+          AND SKUId = @SKUId
+          AND QC_Status = 'STEP2_PENDING'", con))
+            {
+                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
+                cmd.Parameters.Add("@Plant", SqlDbType.NVarChar, 100).Value = plant;
+                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = line;
+                cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 100).Value = category;
+                cmd.Parameters.Add("@Brand", SqlDbType.NVarChar, 100).Value = brand;
+                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
+
+                con.Open();
+                return cmd.ExecuteScalar() != null;
             }
         }
 

@@ -68,63 +68,186 @@ namespace AnmolDristi
             }
         }
 
-
         private bool IsStep2Allowed()
         {
+            int userId = Convert.ToInt32(Session["CurrentUserId"]);
+
+            // If we have a target ID, verify ownership of THAT specific record
+            if (Session["PendingQC_ID"] != null)
+            {
+                int targetId = Convert.ToInt32(Session["PendingQC_ID"]);
+                using (SqlConnection con = new SqlConnection(connectionString))
+                using (SqlCommand cmd = new SqlCommand(@"
+            SELECT 1 FROM TRN_qcinspector 
+            WHERE ID = @ID AND SubmittedById = @UserId AND QC_Status = 'STEP2_PENDING'", con))
+                {
+                    cmd.Parameters.AddWithValue("@ID", targetId);
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    con.Open();
+                    return cmd.ExecuteScalar() != null;
+                }
+            }
+
+            // Fallback: Just check if they have ANY pending work allowed
             using (SqlConnection con = new SqlConnection(connectionString))
             using (SqlCommand cmd = new SqlCommand(@"
-            SELECT 1
-            FROM TRN_qcinspector
-            WHERE SubmittedById = @UserId
-              AND QC_Status = 'STEP2_PENDING'", con))
+        SELECT 1 FROM TRN_qcinspector 
+        WHERE SubmittedById = @UserId AND QC_Status = 'STEP2_PENDING'", con))
             {
-                cmd.Parameters.Add("@UserId", SqlDbType.Int)
-                              .Value = Convert.ToInt32(Session["CurrentUserId"]);
-
+                cmd.Parameters.AddWithValue("@UserId", userId);
                 con.Open();
                 return cmd.ExecuteScalar() != null;
             }
         }
 
+        //private bool IsStep2Allowed()
+        //{
+        //    using (SqlConnection con = new SqlConnection(connectionString))
+        //    using (SqlCommand cmd = new SqlCommand(@"
+        //    SELECT 1
+        //    FROM TRN_qcinspector
+        //    WHERE SubmittedById = @UserId
+        //      AND QC_Status = 'STEP2_PENDING'", con))
+        //    {
+        //        cmd.Parameters.Add("@UserId", SqlDbType.Int)
+        //                      .Value = Convert.ToInt32(Session["CurrentUserId"]);
+
+        //        con.Open();
+        //        return cmd.ExecuteScalar() != null;
+        //    }
+        //}
+
+
+        //private void LoadOldestPendingQC()
+        //{
+        //    int qcInspectorId = GetOldestPendingQCInspectorId();
+
+        //    if (qcInspectorId == 0)
+        //    {
+        //        ShowNoPendingMessage();
+        //        return;
+        //    }
+
+        //    Session["CurrentQCId"] = qcInspectorId;
+
+        //    LoadQCContext(qcInspectorId);
+        //    BindIntervals(qcInspectorId);
+        //}
+        //Commented on 10-Feb-2026
 
         private void LoadOldestPendingQC()
         {
-            int qcInspectorId = GetOldestPendingQCInspectorId();
+            int qcInspectorId = 0;
 
+            // 1️⃣ PRIORITY: Check if the previous page passed a specific ID
+            if (Session["PendingQC_ID"] != null)
+            {
+                qcInspectorId = Convert.ToInt32(Session["PendingQC_ID"]);
+            }
+
+            // 2️⃣ FALLBACK: If no specific ID found (e.g. direct URL access), search DB
             if (qcInspectorId == 0)
             {
-                ShowNoPendingMessage();
+                qcInspectorId = GetOldestPendingQCInspectorId();
+            }
+
+            // 3️⃣ FINAL CHECK: If still 0, user has no pending work.
+            if (qcInspectorId == 0)
+            {
+                // Redirect back to report/dashboard because they shouldn't be here
+                Response.Redirect("qaqc_inspector_rpt.aspx", true);
                 return;
             }
 
+            // 4️⃣ Load Data
             Session["CurrentQCId"] = qcInspectorId;
-
             LoadQCContext(qcInspectorId);
             BindIntervals(qcInspectorId);
         }
 
-
         private int GetOldestPendingQCInspectorId()
         {
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand(@"
-        SELECT TOP 1 ID
-        FROM TRN_qcinspector
-        WHERE SubmittedById = @UserId
-          AND QC_Status = 'STEP2_PENDING'
-        ORDER BY SubmittedDate, SubmittedTime", con))
+            // Ensure these Session keys match your Login logic exactly!
+            int currentUserId = Convert.ToInt32(Session["CurrentUserId"]);
+            string currentPlant = Session["PLANTID"] as string;
+            string currentLine = Session["CurrentLine"] as string;
+
+            if (string.IsNullOrEmpty(currentPlant) || string.IsNullOrEmpty(currentLine))
             {
-                cmd.Parameters.Add("@UserId", SqlDbType.Int)
-                              .Value = Convert.ToInt32(Session["CurrentUserId"]);
+                return 0;
+            }
+
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("dbo.GetPendingQCStep2Id_ByLine", con)) // Use the SP we created earlier
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = currentUserId;
+                cmd.Parameters.Add("@PlantName", SqlDbType.NVarChar, 100).Value = currentPlant;
+                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = currentLine;
 
                 con.Open();
                 object result = cmd.ExecuteScalar();
-                return result == null ? 0 : Convert.ToInt32(result);
+
+                if (result != null && result != DBNull.Value)
+                {
+                    return Convert.ToInt32(result);
+                }
+                return 0;
             }
         }
 
+        //private int GetOldestPendingQCInspectorId()
+        //{
+        //    // 1. Get Context from Session (assuming user selected Plant/Line on login)
+        //    int currentUserId = Convert.ToInt32(Session["CurrentUserId"]);
+        //    string currentPlant = Session["PLANTID"] as string;
+        //    string currentLine = Session["CurrentLine"] as string;
 
+        //    // Safety: If context is missing, we can't safely fetch a pending record
+        //    if (string.IsNullOrEmpty(currentPlant) || string.IsNullOrEmpty(currentLine))
+        //    {
+        //        return 0;
+        //    }
 
+        //    using (SqlConnection con = new SqlConnection(connectionString))
+        //    using (SqlCommand cmd = new SqlCommand("dbo.GetOldestPendingQCInspectorId", con))
+        //    {
+        //        cmd.CommandType = CommandType.StoredProcedure;
+
+        //        cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = currentUserId;
+        //        cmd.Parameters.Add("@PlantName", SqlDbType.NVarChar, 100).Value = currentPlant;
+        //        cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = currentLine;
+
+        //        con.Open();
+        //        object result = cmd.ExecuteScalar();
+
+        //        if (result != null && result != DBNull.Value)
+        //        {
+        //            return Convert.ToInt32(result);
+        //        }
+        //        return 0;
+        //    }
+        //}
+
+        //private int GetOldestPendingQCInspectorId()
+        //{
+        //    using (SqlConnection con = new SqlConnection(connectionString))
+        //    using (SqlCommand cmd = new SqlCommand(@"
+        //SELECT TOP 1 ID
+        //FROM TRN_qcinspector
+        //WHERE SubmittedById = @UserId
+        //  AND QC_Status = 'STEP2_PENDING'
+        //ORDER BY SubmittedDate, SubmittedTime", con))
+        //    {
+        //        cmd.Parameters.Add("@UserId", SqlDbType.Int)
+        //                      .Value = Convert.ToInt32(Session["CurrentUserId"]);
+
+        //        con.Open();
+        //        object result = cmd.ExecuteScalar();
+        //        return result == null ? 0 : Convert.ToInt32(result);
+        //    }
+        //}
         private void LoadQCContext(int qcInspectorId)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
@@ -161,6 +284,8 @@ namespace AnmolDristi
                         Convert.ToInt32(dr["Line"])
                     ) ?? dr["Line"].ToString();
 
+                    lbl_qcid.Text = qcInspectorId.ToString();
+
                     //lblSKU.Text = dr["SKUId"].ToString();
                     lblSKU.Text = GetSKUName(dr["SKUId"].ToString()) ?? dr["SKUId"].ToString();
 
@@ -189,11 +314,7 @@ namespace AnmolDristi
             }
         }
 
-        private string GetMasterDescription(
-    string cachePrefix,
-    string sql,
-    Action<SqlParameterCollection> bindParams,
-    int cacheSeconds = 300)
+        private string GetMasterDescription(string cachePrefix, string sql, Action<SqlParameterCollection> bindParams, int cacheSeconds = 300)
         {
             string cacheKey = cachePrefix;
             var cached = HttpRuntime.Cache[cacheKey] as string;

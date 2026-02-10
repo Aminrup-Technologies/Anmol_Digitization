@@ -39,11 +39,13 @@
             margin-bottom: 8px;
             color: #2A3F54;
         }
+
         .readonly-input {
             background-color: #f9f9f9;
             cursor: not-allowed;
             text-align: right;
         }
+
         .interval-header {
             background-color: #eef3f8;
             padding: 6px 10px;
@@ -51,6 +53,7 @@
             margin-top: 10px;
             font-weight: 600;
         }
+
         .summary-box {
             background-color: #fafafa;
             border: 1px solid #ddd;
@@ -1038,24 +1041,45 @@
                                 <div class="clearfix"></div>
                             </div>
                             <div class="x_content">
-                                <div class="row">
-                                    <div class="col-md-3"><b>Plant:</b>
-                                        <asp:Label ID="lblPlant" runat="server" /></div>
-                                    <div class="col-md-3"><b>Line:</b>
-                                        <asp:Label ID="lblLine" runat="server" /></div>
-                                    <div class="col-md-3"><b>SKU:</b>
-                                        <asp:Label ID="lblSKU" runat="server" /></div>
-                                    <div class="col-md-3"><b>Variety / Lot:</b>
-                                        <asp:Label ID="lblVariety" runat="server" /></div>
+                                <div class="row" style="margin-bottom: 15px;">
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">Plant:</b><br />
+                                        <asp:Label ID="lblPlant" runat="server" Font-Bold="true" CssClass="text-primary" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">Line:</b><br />
+                                        <asp:Label ID="lblLine" runat="server" Font-Bold="true" CssClass="text-primary" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">Variety:</b><br />
+                                        <asp:Label ID="lblVariety" runat="server" Font-Bold="true" CssClass="text-primary" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">SKU:</b><br />
+                                        <asp:Label ID="lblSKU" runat="server" Font-Bold="true" CssClass="text-primary" />
+                                    </div>
+
                                 </div>
-                                <hr />
+
+                                <hr style="margin: 10px 0; border-top: 1px solid #eee;" />
+
                                 <div class="row">
-                                    <div class="col-md-4"><b>QC Submitted At:</b>
-                                        <asp:Label ID="lblQCSubmittedAt" runat="server" /></div>
-                                    <div class="col-md-4"><b>Shift:</b>
-                                        <asp:Label ID="lblShift" runat="server" /></div>
-                                    <div class="col-md-4"><b>Packet Window:</b>
-                                        <asp:Label ID="lblWindow" runat="server" /></div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">QC ID:</b><br />
+                                        <asp:Label ID="lbl_qcid" runat="server" Font-Bold="true" ForeColor="#E74C3C" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">QC Submitted At:</b><br />
+                                        <asp:Label ID="lblQCSubmittedAt" runat="server" Font-Bold="true" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">Packet Window:</b><br />
+                                        <asp:Label ID="lblWindow" runat="server" Font-Bold="true" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <b style="color: #555;">Shift:</b><br />
+                                        <asp:Label ID="lblShift" runat="server" Font-Bold="true" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1116,14 +1140,22 @@
                             </div>
                             <div class="x_content">
                                 <div class="row summary-box">
-                                    <div class="col-md-3"><b>Min Weight:</b><br />
-                                        <asp:Label ID="lblMinWeight" runat="server" /></div>
-                                    <div class="col-md-3"><b>Max Weight:</b><br />
-                                        <asp:Label ID="lblMaxWeight" runat="server" /></div>
-                                    <div class="col-md-3"><b>Average Weight:</b><br />
-                                        <asp:Label ID="lblAverage" runat="server" /></div>
-                                    <div class="col-md-3"><b>Give-Away %:</b><br />
-                                        <asp:Label ID="lblGiveAway" runat="server" /></div>
+                                    <div class="col-md-3">
+                                        <b>Min Weight:</b><br />
+                                        <asp:Label ID="lblMinWeight" runat="server" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <b>Max Weight:</b><br />
+                                        <asp:Label ID="lblMaxWeight" runat="server" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <b>Average Weight:</b><br />
+                                        <asp:Label ID="lblAverage" runat="server" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <b>Give-Away %:</b><br />
+                                        <asp:Label ID="lblGiveAway" runat="server" />
+                                    </div>
                                 </div>
                                 <div class="text-muted" style="margin-top: 5px; font-size: 12px;">
                                     * Values shown are final and derived from system calculations at submission time.
