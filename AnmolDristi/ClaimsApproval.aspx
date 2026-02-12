@@ -305,6 +305,22 @@
             border-radius: 12px;
         }
 
+        /* Sticky Header Logic */
+        #detailsModal .table-responsive {
+            /* Ensure the container handles the scroll */
+            max-height: 60vh; /* Adjust height as needed to fit your screen */
+            overflow-y: auto;
+        }
+
+        #detailsModal .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1020; /* High z-index keeps it above row content */
+            background-color: #f8f9fa; /* Solid color (light gray) prevents transparency issues */
+            border-bottom: 2px solid #dee2e6; /* Stronger border for separation */
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+        }
+
         /* Responsive: ensure modal fits on small screens */
         @media (max-width: 991px) {
             #detailsModal .modal-dialog {
@@ -364,7 +380,6 @@
             color: #6c757d;
             font-style: italic;
         }
-
     </style>
 
 </asp:Content>
@@ -434,12 +449,16 @@
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Approval Progress" HeaderStyle-Width="160px">
+                                            <asp:TemplateField HeaderText="Current Stage" HeaderStyle-Width="180px">
                                                 <ItemTemplate>
-                                                    <span class="progress-cell"
-                                                        data-progress='<%# Eval("ApprovalProgress") %>'>
-                                                        <%# Eval("ApprovalProgress") %>
-                                                    </span>
+                                                    <div class="d-flex flex-column">
+                                                        <span class="progress-cell font-weight-bold" data-progress='<%# Eval("ApprovalProgress") %>'>
+                                                            <%# Eval("ApprovalProgress") %>
+                                                        </span>
+                                                        <small class="text-muted">
+                                                            <i class="fa fa-clock-o"></i>Pending: <%# Eval("PendingWithRole") %>
+                                                        </small>
+                                                    </div>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
@@ -471,7 +490,7 @@
         <div id="detailsModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" runat="server" clientidmode="Static">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
-                    <div class="modal-header">
+                    <%--<div class="modal-header">
                         <h5 class="modal-title">Approval Request Details -
                             <asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
                         <div class="ml-3">
@@ -481,6 +500,35 @@
                             </small>
                         </div>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#detailsModal').modal('hide');">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>--%>
+
+                    <div class="modal-header bg-light">
+                        <div class="d-flex flex-column justify-content-center">
+                            <h5 class="modal-title text-dark font-weight-bold mb-0">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" />
+                            </h5>
+                            <div class="text-muted mt-1" style="font-size: 0.9rem;">
+                                <i class="fa fa-user-circle-o mr-1"></i>
+                                <asp:Label ID="lblRequesterName" runat="server" Font-Bold="true" Text="-" />
+                                <span class="text-secondary ml-1">(<asp:Label ID="lblRequesterCode" runat="server" Text="-" />)</span>
+                            </div>
+                        </div>
+
+                        <div class="ml-auto text-right">
+                            <h5 class="mb-0 text-primary">
+                                <small class="text-muted mr-1" style="font-size: 0.8rem;">Grand Total:</small>
+                                ₹
+                                <asp:Label ID="lblHeaderTotalClaim" runat="server" Text="0.00" Font-Bold="true" />
+                            </h5>
+                            <div class="mt-1">
+                                <span class="badge badge-warning border px-2 py-1">Status:
+                                    <asp:Label ID="lblHeaderStatus" runat="server" Text="Pending" />
+                                </span>
+                            </div>
+                        </div>
+
+                        <button type="button" class="close ml-3 align-self-start" data-dismiss="modal" aria-label="Close" onclick="$('#detailsModal').modal('hide');">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
@@ -690,10 +738,10 @@
                                 </div>
                                 <div class="col-md-4 text-right">
                                     <a href="#" id="km_modal_maplink"
-                                       target="_blank"
-                                       class="btn btn-sm btn-outline-primary"
-                                       style="display:none;">
-                                        <i class="fa fa-map-marker"></i> View Distance
+                                        target="_blank"
+                                        class="btn btn-sm btn-outline-primary"
+                                        style="display: none;">
+                                        <i class="fa fa-map-marker"></i>View Distance
                                     </a>
                                 </div>
                             </div>
@@ -859,14 +907,14 @@
             syncHeaderCheckbox();
         }
 
-        // Called from header checkbox: pass `this`
-        function toggleHeaderCheckbox(chk) {
-            var container = getDetailsContainer();
-            if (!container) return;
-            Array.prototype.forEach.call(container.querySelectorAll('.row-select-checkbox'), function (cb) {
-                cb.checked = chk.checked;
-            });
-        }
+        //// Called from header checkbox: pass `this`
+        //function toggleHeaderCheckbox(chk) {
+        //    var container = getDetailsContainer();
+        //    if (!container) return;
+        //    Array.prototype.forEach.call(container.querySelectorAll('.row-select-checkbox'), function (cb) {
+        //        cb.checked = chk.checked;
+        //    });
+        //}
 
         // Keep header checkbox in sync with rows (call after binding)
         function syncHeaderCheckbox() {
@@ -1043,17 +1091,33 @@
             }
         }
 
-        function toggleHeaderCheckbox(chk) {
-            var container = getDetailsContainer();
-            if (!container) return;
+        // Ensure this is the ONLY definition of this function
+        function toggleHeaderCheckbox(headerChk) {
+            // 1. Get the container (table)
+            var $tbl = $(headerChk).closest('table');
+            var isChecked = headerChk.checked;
 
-            enforceRowSelectability();
-
-            var boxes = container.querySelectorAll('.row-select-checkbox:not(:disabled)');
-            boxes.forEach(function (cb) { setCheckboxChecked(cb, chk.checked); });
-
-            syncHeaderCheckbox();
+            // 2. Select ONLY rows that are NOT disabled
+            // This prevents "Already Approved" rows from being checked visually
+            $tbl.find('.row-select-checkbox:not(:disabled)').each(function () {
+                this.checked = isChecked;
+        
+                // Trigger change event if you have listeners for row highlighting
+                $(this).trigger('change'); 
+            });
         }
+
+        //function toggleHeaderCheckbox(chk) {
+        //    var container = getDetailsContainer();
+        //    if (!container) return;
+
+        //    enforceRowSelectability();
+
+        //    var boxes = container.querySelectorAll('.row-select-checkbox:not(:disabled)');
+        //    boxes.forEach(function (cb) { setCheckboxChecked(cb, chk.checked); });
+
+        //    syncHeaderCheckbox();
+        //}
 
         function initDetailsUI() {
             var container = getDetailsContainer();

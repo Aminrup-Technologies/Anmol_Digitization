@@ -2033,79 +2033,82 @@ namespace AnmolDristi.qaqc
         //-------------------------------- SUBMIT Code redefined ---------------------------------------//
 
         private static readonly object _lockObject = new object();
+        /*---------------------------------------------------------
+          EVENT: User Clicks Submit
+          ACTION: 
+             1. Check again for pending work (Race condition safety)
+             2. Insert NEW record if none exists
+             3. Redirect to Packet Weight Page
+        ----------------------------------------------------------*/
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
             try
             {
-                // 1️⃣ Collect & validate QC data
-                var qcData = RetrieveFormData();
-                LogFormData(qcData);
+                // 1. Gather Data
+                //int userId = Convert.ToInt32(Session["CurrentUserId"]);
+                //string plant = DDL_Plant.SelectedValue;
+                //string line = DDL_PlantLine.SelectedValue;
+                //string category = DDL_ProductCategory.SelectedValue;
+                //string brand = DDL_ProductBrand.SelectedValue;
+                //string skuId = DDL_BrandSKU.SelectedValue;
 
-                // 2️⃣ HARD BLOCK if Step-2 is pending for same context
-                if (IsStep2PendingForContext(
-                        CurrentUserId,
-                        qcData.PlantName,
-                        qcData.Line,
-                        qcData.ProductCategory,
-                        qcData.ProductBrand,
-                        qcData.BrandSKU))
+                // 2. REACTIVE CHECK: Did a pending record appear since the last check?
+                // Reuse the EXACT SAME Stored Procedure logic.
+                //int existingPendingId = GetPendingStep2Id(userId, plant, line, category, brand, skuId);
+
+                //if (existingPendingId > 0)
+                //{
+                //    // CASE A: A pending record ALREADY exists.
+                //    // Do NOT insert new. Redirect to the existing one.
+                //    RedirectToPacketWeight(existingPendingId);
+                //    return;
+                //}
+
+                // 3. CASE B: No pending record. Safe to Insert NEW.
+                // Collect other form data (Shift, Employee Codes, etc.)
+                var qcData = RetrieveFormData();
+
+                // Insert with Transaction
+                int newQCId = InsertQCDataWithTransaction(qcData);
+
+                if (newQCId <= 0)
                 {
-                    // Mandatory redirect to Step-2 (SAFE redirect)
-                    Response.Redirect("qaqc_packet_weight.aspx", false);
-                    Context.ApplicationInstance.CompleteRequest();
-                    return;
+                    throw new Exception("QC save failed. Reference ID not generated.");
                 }
 
-                // 3️⃣ Persist QC + set QC_Status = STEP2_PENDING atomically
-                int qcInspectorId = InsertQCDataWithTransaction(qcData);
-
-                if (qcInspectorId <= 0)
-                    throw new Exception("QC save failed. QC reference not generated.");
-
-                // 4️⃣ Store QC reference (single source of truth)
-                Session["CurrentQCId"] = qcInspectorId;
-
-                // 5️⃣ Mandatory redirect to Step-2 (SAFE redirect)
-                Response.Redirect("qaqc_packet_weight.aspx", false);
-                Context.ApplicationInstance.CompleteRequest();
-                return;
+                // 4. Redirect to NEW record
+                RedirectToPacketWeight(newQCId);
             }
             catch (Exception ex)
             {
-                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
-                EmailNotifier.Notify(
-                    "Application Error",
-                    $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>",
-                    recipients
-                );
-
-                DisplayErrorNotification("An unexpected error occurred while submitting QC.");
+                // Log and Notify
+                DisplayErrorNotification("Error submitting QC: " + ex.Message);
             }
         }
 
 
 
-        protected void btnSubmit_Click_OLD(object sender, EventArgs e)
-        {
-            lock (_lockObject)
-            {
-                try
-                {
-                    var qcData = RetrieveFormData();
-                    LogFormData(qcData);
-                    InsertQCDataWithTransaction(qcData);
+        //protected void btnSubmit_Click_OLD(object sender, EventArgs e)
+        //{
+        //    lock (_lockObject)
+        //    {
+        //        try
+        //        {
+        //            var qcData = RetrieveFormData();
+        //            LogFormData(qcData);
+        //            InsertQCDataWithTransaction(qcData);
 
-                }
-                catch (Exception ex)
-                {
-                    var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
-                    EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+        //            EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
 
-                    //logger.Error(ex, "An error occurred in RetrieveFormData");
-                    DisplayErrorNotification(ex.Message);
-                }
-            }
-        }
+        //            //logger.Error(ex, "An error occurred in RetrieveFormData");
+        //            DisplayErrorNotification(ex.Message);
+        //        }
+        //    }
+        //}
 
         private void UpdateQcStatus(int qcId, string status)
         {
@@ -2742,19 +2745,23 @@ namespace AnmolDristi.qaqc
         //    CheckPendingStep2ForContext();
         //}
 
+        /*---------------------------------------------------------
+          EVENT: User Selects SKU from Dropdown
+          ACTION: Proactively check for pending work
+        ----------------------------------------------------------*/
         protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // 1. Validate that the full context is selected
+            // 1. Validate full context selection
             if (DDL_Plant.SelectedIndex <= 0 ||
                 DDL_PlantLine.SelectedIndex <= 0 ||
                 DDL_ProductCategory.SelectedIndex <= 0 ||
                 DDL_ProductBrand.SelectedIndex <= 0 ||
                 string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue))
             {
-                return; // Context incomplete, do nothing
+                return;
             }
 
-            // 2. Run the Gatekeeper Check
+            // 2. Check for pending records (Gatekeeper)
             CheckPendingStep2ForContext();
         }
 
@@ -2783,7 +2790,7 @@ namespace AnmolDristi.qaqc
         //    }
         //}
 
-        private void CheckPendingStep2ForContext()
+        private void CheckPendingStep2ForContext_OLD()
         {
             // Gather all context variables
             int userId = Convert.ToInt32(Session["CurrentUserId"]);
@@ -2817,7 +2824,7 @@ namespace AnmolDristi.qaqc
             }
         }
 
-        private int GetPendingStep2Id(int userId, string plant, string line, string category, string brand, string skuId)
+        private int GetPendingStep2Id_OLD(int userId, string plant, string line, string category, string brand, string skuId)
         {
             // Use your connection string variable (cs or ConfigurationManager)
             using (SqlConnection con = new SqlConnection(cs))
@@ -2840,19 +2847,19 @@ namespace AnmolDristi.qaqc
             }
         }
 
-        private bool IsStep2PendingForContext(int userId,string plant,string line,string category,string brand,string skuId)
+        private bool IsStep2PendingForContext_OLD(int userId,string plant,string line,string category,string brand,string skuId)
         {
             using (SqlConnection con = new SqlConnection(cs))
             using (SqlCommand cmd = new SqlCommand(@"
-        SELECT 1
-        FROM TRN_qcinspector
-        WHERE SubmittedById = @UserId
-          AND PlantName = @Plant
-          AND Line = @Line
-          AND ProductCategory = @Category
-          AND ProductBrand = @Brand
-          AND SKUId = @SKUId
-          AND QC_Status = 'STEP2_PENDING'", con))
+            SELECT 1
+            FROM TRN_qcinspector
+            WHERE SubmittedById = @UserId
+              AND PlantName = @Plant
+              AND Line = @Line
+              AND ProductCategory = @Category
+              AND ProductBrand = @Brand
+              AND SKUId = @SKUId
+              AND QC_Status = 'STEP2_PENDING'", con))
             {
                 cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
                 cmd.Parameters.Add("@Plant", SqlDbType.NVarChar, 100).Value = plant;
@@ -2866,5 +2873,66 @@ namespace AnmolDristi.qaqc
             }
         }
 
+
+        //--Added on 12-Feb-26
+        /*---------------------------------------------------------
+          HELPER: Centralized Logic to Check for Pending Work
+        ----------------------------------------------------------*/
+        private void CheckPendingStep2ForContext()
+        {
+            int userId = Convert.ToInt32(Session["CurrentUserId"]);
+            string plant = DDL_Plant.SelectedValue;
+            string line = DDL_PlantLine.SelectedValue;
+            string category = DDL_ProductCategory.SelectedValue;
+            string brand = DDL_ProductBrand.SelectedValue;
+            string skuId = DDL_BrandSKU.SelectedValue;
+
+            // Call DB
+            int pendingQCId = GetPendingStep2Id(userId, plant, line, category, brand, skuId);
+
+            if (pendingQCId > 0)
+            {
+                // Found existing -> Redirect
+                RedirectToPacketWeight(pendingQCId);
+            }
+            // Else -> Stay on page, allow user to click Submit
+        }
+
+        /*---------------------------------------------------------
+          HELPER: Redirect Logic (Stateless)
+        ----------------------------------------------------------*/
+        private void RedirectToPacketWeight(int qcId)
+        {
+            // We pass the ID in the URL (QueryString) to be stateless/tab-safe.
+            // We also set the Context Flag in Session for the target page's safety check.
+            Session["PendingQCContext"] = true;
+
+            Response.Redirect($"qaqc_packet_weight.aspx?qcid={qcId}", false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+
+        /*---------------------------------------------------------
+          DATABASE HELPER: Calls the Stored Procedure
+        ----------------------------------------------------------*/
+        private int GetPendingStep2Id(int userId, string plant, string line, string category, string brand, string skuId)
+        {
+            using (SqlConnection con = new SqlConnection(cs))
+            using (SqlCommand cmd = new SqlCommand("dbo.GetPendingQCStep2Id_ByContext", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
+                cmd.Parameters.Add("@PlantName", SqlDbType.NVarChar, 100).Value = plant;
+                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = line;
+                cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 100).Value = category;
+                cmd.Parameters.Add("@Brand", SqlDbType.NVarChar, 100).Value = brand;
+                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
+
+                con.Open();
+                object result = cmd.ExecuteScalar();
+
+                return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
+            }
+        }
     }
 }

@@ -299,7 +299,7 @@ namespace AnmolDristi
             }
         }
 
-        protected void gvDetails_RowDataBound(object sender, GridViewRowEventArgs e)
+        protected void gvDetails_RowDataBound_11Feb26(object sender, GridViewRowEventArgs e)
         {
             if (e.Row.RowType != DataControlRowType.DataRow)
                 return;
@@ -371,7 +371,170 @@ namespace AnmolDristi
             }
         }
 
+        protected void gvDetails_RowDataBound_11Feb26_2(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow) return;
 
+            DataRowView drv = e.Row.DataItem as DataRowView;
+            if (drv == null) return;
+
+            // 1️⃣ Restore wiring
+            PopulateRowControls(e.Row, drv);
+
+            // 2️⃣ Setup Authority
+            if (ViewState["CurrentUserLevel"] == null) return; // Fail safe
+
+            int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"]);
+
+            // Handle NULLs safely
+            string detailStatus = Convert.ToString(drv["DetailStatus"]);
+            if (string.IsNullOrWhiteSpace(detailStatus)) detailStatus = "Pending"; // ✅ FIX: Treat NULL as Pending
+
+            int approvedLevel = drv["DetailApprovedLevel"] == DBNull.Value ? 0 : Convert.ToInt32(drv["DetailApprovedLevel"]);
+
+            // Find Controls
+            var btnApprove = (Button)e.Row.FindControl("btnApproveRow");
+            var btnReject = (Button)e.Row.FindControl("btnRejectRow");
+            var txtRemark = (TextBox)e.Row.FindControl("txtRowRemark");
+            var chkSelect = (CheckBox)e.Row.FindControl("chkSelect");
+
+            // 🔒 DEFAULT: LOCK EVERYTHING
+            btnApprove.Enabled = false;
+            btnApprove.CssClass = "btn btn-sm btn-outline-secondary disabled"; // Visual gray out
+            btnReject.Enabled = false;
+            txtRemark.ReadOnly = true;
+            chkSelect.Enabled = false;
+
+            // 3️⃣ LOGIC: REJECTED (Dead End)
+            if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                e.Row.CssClass += " table-danger"; // Make row red
+                return;
+            }
+
+            // 4️⃣ LOGIC: ALREADY DONE BY ME
+            if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel == currentUserLevel)
+            {
+                e.Row.CssClass += " table-success"; // Make row green
+                btnApprove.Text = "✔ Done"; // Visual feedback
+                return;
+            }
+
+            // 5️⃣ LOGIC: HANDOVER (Approved by Lower Level -> Needs Me)
+            if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel < currentUserLevel)
+            {
+                // ✅ Enable controls
+                UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
+
+                // ✅ Visual Cue: Yellow to show "Incoming Work"
+                e.Row.CssClass += " table-warning";
+                e.Row.ToolTip = $"Approved by Level {approvedLevel}, waiting for Level {currentUserLevel}.";
+                return;
+            }
+
+            // 6️⃣ LOGIC: FRESH ITEM (Pending or Null)
+            if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                // ✅ Enable controls
+                UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
+            }
+        }
+
+        protected void gvDetails_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            // ==========================================
+            // 1️⃣ DATA ROW LOGIC
+            // ==========================================
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                DataRowView drv = e.Row.DataItem as DataRowView;
+                if (drv == null) return;
+
+                // 🟢 A. ACCUMULATE TOTALS (Missing in your snippet)
+                _totalDistance += SafeDec(drv["Snapshot_TotalDistanceKM"]);
+                _totalTAClaim += SafeDec(drv["Snapshot_CalculatedClaimAmount"]);
+                _totalDA += SafeDec(drv["Snapshot_DAAmount"]);
+                _totalHotel += SafeDec(drv["Snapshot_HotelAmount"]);
+                _totalTravel += SafeDec(drv["Snapshot_TravelAmount"]);
+                _totalSnapshot += SafeDec(drv["Snapshot_ExpenseTotal"]);
+
+                // 🔵 B. RESTORE WIRING (Tooltips, KM Edit, etc.)
+                PopulateRowControls(e.Row, drv);
+
+                // 🟠 C. AUTHORITY & BUTTON LOGIC
+                if (ViewState["CurrentUserLevel"] == null) return;
+
+                int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"]);
+                string detailStatus = Convert.ToString(drv["DetailStatus"]);
+                if (string.IsNullOrWhiteSpace(detailStatus)) detailStatus = "Pending";
+
+                int approvedLevel = drv["DetailApprovedLevel"] == DBNull.Value ? 0 : Convert.ToInt32(drv["DetailApprovedLevel"]);
+
+                // Find Controls
+                var btnApprove = (Button)e.Row.FindControl("btnApproveRow");
+                var btnReject = (Button)e.Row.FindControl("btnRejectRow");
+                var txtRemark = (TextBox)e.Row.FindControl("txtRowRemark");
+                var chkSelect = (CheckBox)e.Row.FindControl("chkSelect");
+
+                // 🔒 DEFAULT: LOCK EVERYTHING
+                if (btnApprove != null)
+                {
+                    btnApprove.Enabled = false;
+                    btnApprove.CssClass = "btn btn-sm btn-outline-secondary disabled";
+                }
+                if (btnReject != null) btnReject.Enabled = false;
+                if (txtRemark != null) txtRemark.ReadOnly = true;
+                if (chkSelect != null) chkSelect.Enabled = false;
+
+                // LOGIC: REJECTED (Dead End)
+                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.Row.CssClass += " table-danger";
+                    return;
+                }
+
+                // LOGIC: ALREADY DONE BY ME
+                if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel == currentUserLevel)
+                {
+                    e.Row.CssClass += " table-success";
+                    if (btnApprove != null) btnApprove.Text = "✔ Done";
+                    return;
+                }
+
+                // LOGIC: HANDOVER (Approved by Lower Level -> Needs Me)
+                if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel < currentUserLevel)
+                {
+                    UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
+                    e.Row.CssClass += " table-warning";
+                    e.Row.ToolTip = $"Approved by Level {approvedLevel}, waiting for Level {currentUserLevel}.";
+                    return;
+                }
+
+                // LOGIC: FRESH ITEM (Pending or Null)
+                if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
+                }
+            }
+            // ==========================================
+            // 2️⃣ FOOTER LOGIC (Missing in your snippet)
+            // ==========================================
+            else if (e.Row.RowType == DataControlRowType.Footer)
+            {
+                FillFooterTotals(e.Row);
+            }
+        }
+
+        // Helper to keep code clean
+        private void UnlockControls(Button btnA, Button btnR, TextBox txt, CheckBox chk)
+        {
+            btnA.Enabled = true;
+            btnA.CssClass = "btn btn-sm btn-outline-success"; // Restore color
+            btnR.Enabled = true;
+            txt.ReadOnly = false;
+            txt.Text = ""; // Clear previous remarks if any, or keep them depending on preference
+            chk.Enabled = true;
+        }
 
         private void PopulateRowControls(GridViewRow row, DataRowView drv)
         {
@@ -815,7 +978,7 @@ namespace AnmolDristi
         }
 
         // helper to fill footer totals by finding the column index by header text
-        private void FillFooterTotals(GridViewRow footer)
+        private void FillFooterTotals_11Feb26(GridViewRow footer)
         {
             // map header texts to footer values
             var mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -840,7 +1003,33 @@ namespace AnmolDristi
             }
         }
 
-        // RowCommand for per-row approve/reject
+        private void FillFooterTotals(GridViewRow footer)
+        {
+            // Map header texts to the accumulated values
+            var mapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    {"Distance (KM)", _totalDistance.ToString("N2")},
+                    {"TA (₹)",        _totalTAClaim.ToString("N2")},   // TA Column Total
+                    {"DA (₹)",        _totalDA.ToString("N2")},
+                    {"Hotel (₹)",     _totalHotel.ToString("N2")},
+                    {"Travel (₹)",    _totalTravel.ToString("N2")},
+                    {"Total (₹)",     _totalSnapshot.ToString("N2")}   // Expenses Column Total
+                };
+
+            // Note: The "Grand Total" (TA + Expenses) is NOT in the grid footer columns by default.
+            // It is displayed in the Modal Header. 
+
+            for (int i = 0; i < gvDetails.Columns.Count; i++)
+            {
+                string headerText = gvDetails.Columns[i].HeaderText?.Trim() ?? "";
+                if (mapping.ContainsKey(headerText))
+                {
+                    footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
+                    footer.Cells[i].Text = "<strong>" + mapping[headerText] + "</strong>";
+                }
+            }
+        }
+
         protected void gvDetails_RowCommand_OLD(object sender, GridViewCommandEventArgs e)
         {
             if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
@@ -951,12 +1140,10 @@ namespace AnmolDristi
         {
             if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
             {
-                // inside gvDetails_RowCommand when processing ApproveRow / RejectRow
                 string newStatus = (e.CommandName == "ApproveRow") ? "Approved" : "Rejected";
                 int detailId = 0;
                 if (!int.TryParse(Convert.ToString(e.CommandArgument), out detailId)) return;
 
-                // get current request id safely
                 int requestId = 0;
                 int parsedRequestId;
                 if (int.TryParse(lblModalRequestId.Text, out parsedRequestId))
@@ -1553,14 +1740,25 @@ namespace AnmolDristi
 
         protected void ShowDetailsModal(int approvalRequestId)
         {
-            // store id in hidden field for later actions
+            // Store id in hidden field for later actions
             hfActionRequestId.Value = approvalRequestId.ToString();
             lblModalRequestId.Text = approvalRequestId.ToString();
 
+            // Bind the grid (this will now have correct footer totals due to the fix above)
             BindDetailsGrid(approvalRequestId);
 
-            // fetch header totals & status (optional display)
-            string headerSql = "SELECT TotalExpenseAmount, Status FROM dbo.SalesApprovalRequest WHERE ApprovalRequestId = @ApprovalRequestId";
+            // 1️⃣ UPDATED SQL: Fetch User Info + Both Amounts (TA & Expenses)
+            string headerSql = @"
+                SELECT 
+                    r.TotalClaimAmount, 
+                    r.TotalExpenseAmount, 
+                    r.Status,
+                    r.RequesterLoginId,
+                    ISNULL(u.EmployeeName, 'Unknown') as EmployeeName
+                FROM dbo.SalesApprovalRequest r
+                LEFT JOIN dbo.MST_UserMaster u ON r.RequesterLoginId = u.EmployeeCode
+                WHERE r.ApprovalRequestId = @ApprovalRequestId";
+
             using (var con = new SqlConnection(connString))
             using (var cmd = new SqlCommand(headerSql, con))
             {
@@ -1570,12 +1768,93 @@ namespace AnmolDristi
                 {
                     if (rdr.Read())
                     {
-                        lblHeaderTotalClaim.Text = rdr["TotalExpenseAmount"] == DBNull.Value ? "0.00" : Convert.ToDecimal(rdr["TotalExpenseAmount"]).ToString("N2");
+                        // 2️⃣ Populate User Info
+                        // Ensure you have these Label controls (lblRequesterName, lblRequesterCode) in your .aspx
+                        // If the controls don't exist yet, you might need to check for null or add them to markup first.
+                        var lblName = detailsModal.FindControl("lblRequesterName") as Label;
+                        var lblCode = detailsModal.FindControl("lblRequesterCode") as Label;
+
+                        if (lblName != null) lblName.Text = rdr["EmployeeName"].ToString();
+                        if (lblCode != null) lblCode.Text = rdr["RequesterLoginId"].ToString();
+
+                        // 3️⃣ Calculate Grand Total (TA + Expenses)
+                        decimal taAmount = rdr["TotalClaimAmount"] != DBNull.Value ? Convert.ToDecimal(rdr["TotalClaimAmount"]) : 0m;
+                        decimal expAmount = rdr["TotalExpenseAmount"] != DBNull.Value ? Convert.ToDecimal(rdr["TotalExpenseAmount"]) : 0m;
+
+                        decimal grandTotal = taAmount + expAmount;
+
+                        lblHeaderTotalClaim.Text = grandTotal.ToString("N2");
                         lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? "Pending";
                     }
                 }
             }
 
+            // --- Existing Permission/Button Logic ---
+            string approverRole = GetCurrentUserApproverRole(approvalRequestId);
+            bool isAuditor = IsAuditor(approvalRequestId);
+
+            // Reopen button logic
+            btnReopenRequest.Visible = isAuditor && lblHeaderStatus.Text != null &&
+            (
+                lblHeaderStatus.Text.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                lblHeaderStatus.Text.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+            );
+
+            // Ready for Payment button logic
+            // int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0); // (Not strictly needed here if purely Auditor check)
+            btnMarkReadyForPayment.Visible = isAuditor && lblHeaderStatus.Text != null &&
+            lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
+
+            // Open modal safely
+            ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
+        }
+
+        protected void ShowDetailsModal_OLD(int approvalRequestId)
+        {
+            // store id in hidden field for later actions
+            hfActionRequestId.Value = approvalRequestId.ToString();
+            lblModalRequestId.Text = approvalRequestId.ToString();
+
+            BindDetailsGrid(approvalRequestId);
+
+            // 1️⃣ UPDATED SQL: Fetch User Info + Both Amounts (TA & Expenses)
+            string headerSql = @"
+                SELECT 
+                    r.TotalClaimAmount, 
+                    r.TotalExpenseAmount, 
+                    r.Status,
+                    r.RequesterLoginId,
+                    ISNULL(u.EmployeeName, 'Unknown') as EmployeeName
+                FROM dbo.SalesApprovalRequest r
+                LEFT JOIN dbo.MST_UserMaster u ON r.RequesterLoginId = u.EmployeeCode
+                WHERE r.ApprovalRequestId = @ApprovalRequestId";
+
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(headerSql, con))
+            {
+                cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+                con.Open();
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    if (rdr.Read())
+                    {
+                        // 2️⃣ Populate User Info
+                        lblRequesterName.Text = rdr["EmployeeName"].ToString();
+                        lblRequesterCode.Text = rdr["RequesterLoginId"].ToString();
+
+                        // 3️⃣ Calculate Grand Total (TA + Expenses) matching your Grid logic
+                        decimal taAmount = rdr["TotalClaimAmount"] != DBNull.Value ? Convert.ToDecimal(rdr["TotalClaimAmount"]) : 0m;
+                        decimal expAmount = rdr["TotalExpenseAmount"] != DBNull.Value ? Convert.ToDecimal(rdr["TotalExpenseAmount"]) : 0m;
+
+                        decimal grandTotal = taAmount + expAmount;
+
+                        lblHeaderTotalClaim.Text = grandTotal.ToString("N2");
+                        lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? "Pending";
+                    }
+                }
+            }
+
+            // ... (Existing logic for btnReopenRequest / Auditor checks remains the same)
             string approverRole = GetCurrentUserApproverRole(approvalRequestId);
             bool isAuditor = IsAuditor(approvalRequestId);
 
@@ -1589,9 +1868,51 @@ namespace AnmolDristi
             btnMarkReadyForPayment.Visible = isAuditor && lblHeaderStatus.Text != null &&
             lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
 
-            // open modal (partial postback safe)
+            // open modal
             ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
         }
+
+        //protected void ShowDetailsModal_OLD(int approvalRequestId)
+        //{
+        //    // store id in hidden field for later actions
+        //    hfActionRequestId.Value = approvalRequestId.ToString();
+        //    lblModalRequestId.Text = approvalRequestId.ToString();
+
+        //    BindDetailsGrid(approvalRequestId);
+
+        //    // fetch header totals & status (optional display)
+        //    string headerSql = "SELECT TotalExpenseAmount, Status FROM dbo.SalesApprovalRequest WHERE ApprovalRequestId = @ApprovalRequestId";
+        //    using (var con = new SqlConnection(connString))
+        //    using (var cmd = new SqlCommand(headerSql, con))
+        //    {
+        //        cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+        //        con.Open();
+        //        using (var rdr = cmd.ExecuteReader())
+        //        {
+        //            if (rdr.Read())
+        //            {
+        //                lblHeaderTotalClaim.Text = rdr["TotalExpenseAmount"] == DBNull.Value ? "0.00" : Convert.ToDecimal(rdr["TotalExpenseAmount"]).ToString("N2");
+        //                lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? "Pending";
+        //            }
+        //        }
+        //    }
+
+        //    string approverRole = GetCurrentUserApproverRole(approvalRequestId);
+        //    bool isAuditor = IsAuditor(approvalRequestId);
+
+        //    btnReopenRequest.Visible = isAuditor && lblHeaderStatus.Text != null &&
+        //    (
+        //        lblHeaderStatus.Text.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+        //        lblHeaderStatus.Text.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+        //    );
+
+        //    int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+        //    btnMarkReadyForPayment.Visible = isAuditor && lblHeaderStatus.Text != null &&
+        //    lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
+
+        //    // open modal (partial postback safe)
+        //    ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
+        //}
 
         private bool IsAuditor(int approvalRequestId)
         {
@@ -1696,9 +2017,39 @@ namespace AnmolDristi
             gvDetails.DataBind();
         }
 
+        //protected void BindDetailsGrid(int approvalRequestId)
+        //{
+        //    // 🔑 ALWAYS set before binding
+        //    ViewState["CurrentUserLevel"] = GetCurrentUserApproverLevel(approvalRequestId);
+
+        //    DataTable dt = new DataTable();
+        //    using (var con = new SqlConnection(connString))
+        //    using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequestDetails", con))
+        //    {
+        //        cmd.CommandType = CommandType.StoredProcedure;
+        //        cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+
+        //        using (var da = new SqlDataAdapter(cmd))
+        //        {
+        //            da.Fill(dt);
+        //        }
+        //    }
+
+        //    gvDetails.DataSource = dt;
+        //    gvDetails.DataBind();
+        //}
+
         protected void BindDetailsGrid(int approvalRequestId)
         {
-            // 🔑 ALWAYS set before binding
+            // 1️⃣ RESET ACCUMULATORS (Crucial Fix: Resets totals before summing new rows)
+            _totalDistance = 0m;
+            _totalTAClaim = 0m;   // TA
+            _totalDA = 0m;
+            _totalHotel = 0m;
+            _totalTravel = 0m;
+            _totalSnapshot = 0m;  // Expenses (DA + Hotel + Travel)
+
+            // 🔑 ALWAYS set authority before binding so RowDataBound knows the level
             ViewState["CurrentUserLevel"] = GetCurrentUserApproverLevel(approvalRequestId);
 
             DataTable dt = new DataTable();
@@ -1716,6 +2067,12 @@ namespace AnmolDristi
 
             gvDetails.DataSource = dt;
             gvDetails.DataBind();
+
+            // ✅ ADD THIS LINE: This forces the GridView to use <thead> for the header row
+            if (gvDetails.Rows.Count > 0)
+            {
+                gvDetails.HeaderRow.TableSection = TableRowSection.TableHeader;
+            }
         }
 
 
@@ -1738,7 +2095,7 @@ namespace AnmolDristi
         }
 
         // ------------- Collect selected ids + per-row remarks (helpers used by Approve/Reject handlers) --------------
-        private DataTable BuildSelectedIdsTVP()
+        private DataTable BuildSelectedIdsTVP_OLD11Feb26()
         {
             var dt = new DataTable();
             dt.Columns.Add("Id", typeof(int));
@@ -1748,6 +2105,28 @@ namespace AnmolDristi
                 var chk = row.FindControl("chkSelect") as CheckBox;
                 if (chk != null && chk.Checked)
                 {
+                    int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
+                    dt.Rows.Add(detailId);
+                }
+            }
+            return dt;
+        }
+
+        private DataTable BuildSelectedIdsTVP()
+        {
+            var dt = new DataTable();
+            dt.Columns.Add("Id", typeof(int));
+
+            foreach (GridViewRow row in gvDetails.Rows)
+            {
+                // 1️⃣ Find the Checkbox
+                var chk = row.FindControl("chkSelect") as CheckBox;
+
+                // 2️⃣ CHECK ENABLED STATE (Critical Safety Check)
+                // We only want rows that are actually actionable (Enabled).
+                if (chk != null && chk.Checked && chk.Enabled)
+                {
+                    // 3️⃣ Safe to add
                     int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
                     dt.Rows.Add(detailId);
                 }

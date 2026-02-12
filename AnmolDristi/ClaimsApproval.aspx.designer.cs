@@ -58,13 +58,22 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblModalRequestId;
         
         /// <summary>
-        /// lblHeaderStatus control.
+        /// lblRequesterName control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblHeaderStatus;
+        protected global::System.Web.UI.WebControls.Label lblRequesterName;
+        
+        /// <summary>
+        /// lblRequesterCode control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblRequesterCode;
         
         /// <summary>
         /// lblHeaderTotalClaim control.
@@ -74,6 +83,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblHeaderTotalClaim;
+        
+        /// <summary>
+        /// lblHeaderStatus control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblHeaderStatus;
         
         /// <summary>
         /// upDetails control.
