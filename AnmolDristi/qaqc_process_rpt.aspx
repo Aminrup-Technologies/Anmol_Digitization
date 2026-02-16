@@ -2541,7 +2541,7 @@
                                                                             <asp:TextBox ID="txtStandardWeight" runat="server" CssClass="standard-weight form-control form-control-sm rounded" ForeColor="DimGray" Text='<%# Eval("BOM_Qnty") %>'></asp:TextBox>
                                                                             <asp:HiddenField ID="hdnMin" runat="server" Value='<%# Eval("MinValue") %>' />
                                                                             <asp:HiddenField ID="hdnMax" runat="server" Value='<%# Eval("MaxValue") %>' />
-                                                                            <%--ReadOnly='<%# Convert.ToInt32(Eval("BOM_Qnty")) == 0 ? false : true %>'--%>
+                                                                            <%--ReadOnly='<%# Eval("BOM_Qnty") == DBNull.Value || Convert.ToDecimal(Eval("BOM_Qnty")) == 0 ? false : true %>'--%>
                                                                         </ItemTemplate>
                                                                     </asp:TemplateField>
 

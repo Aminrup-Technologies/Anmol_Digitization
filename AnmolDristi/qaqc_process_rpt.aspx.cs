@@ -2462,77 +2462,177 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
         }
 
 
+        //private void BindGridView()
+        //{
+        //    int formId = 6;
+        //    int plantId = !string.IsNullOrWhiteSpace(DDL_Plant.SelectedValue) ? Convert.ToInt32(DDL_Plant.SelectedValue) : 0;
+        //    int lineId = !string.IsNullOrWhiteSpace(DDL_PlantLine.SelectedValue) ? Convert.ToInt32(DDL_PlantLine.SelectedValue) : 0;
+        //    int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+        //    int brandId = !string.IsNullOrWhiteSpace(DDL_ProductBrand.SelectedValue) ? Convert.ToInt32(DDL_ProductBrand.SelectedValue) : 0;
+
+        //    List<VarietyInfo> dataSave = new List<VarietyInfo>();
+
+        //    string baseQuery = @"SELECT field_name, DisplayName, ViewMode, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND Sub_Form = 'RawMaterial' AND IsLatest = 1 AND IsDeleted = 0 AND plant_id = @PlantID AND lineId = @LineID AND category_id = @CategoryID AND material_id = @BrandID";
+
+        //    using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+        //    {
+        //        using (SqlCommand cmd = new SqlCommand(baseQuery, con))
+        //        {
+        //            cmd.Parameters.AddWithValue("@FormID", formId);
+        //            cmd.Parameters.AddWithValue("@PlantID", plantId);
+        //            cmd.Parameters.AddWithValue("@LineID", lineId);
+        //            cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+        //            cmd.Parameters.AddWithValue("@BrandID", brandId);
+
+        //            con.Open();
+
+        //            using (SqlDataReader reader = cmd.ExecuteReader())
+        //            {
+        //                int sl = 1;
+        //                bool hasRows = false;
+
+        //                while (reader.Read())
+        //                {
+        //                    hasRows = true;
+
+        //                    dataSave.Add(new VarietyInfo
+        //                    {
+        //                        Sl = sl++,
+        //                        sap_IngredientName = reader["DisplayName"].ToString(),
+        //                        BOM_Qnty = reader["DefaultValue"] != DBNull.Value ? Convert.ToDecimal(reader["DefaultValue"]) : 0,
+        //                        MinValue = reader["RV_MinValue"] != DBNull.Value ? Convert.ToDecimal(reader["RV_MinValue"]) : 0,
+        //                        MaxValue = reader["RV_MaxValue"] != DBNull.Value ? Convert.ToDecimal(reader["RV_MaxValue"]) : 0
+        //                    });
+        //                }
+
+        //                if (!hasRows)
+        //                {
+        //                    // Call your fallback method here
+        //                    BindGridView_Global(); // Replace with your actual function name
+        //                    return;
+        //                }
+        //            }
+        //        }
+        //    }
+
+        //    while (dataSave.Count < 30)
+        //    {
+        //        dataSave.Add(new VarietyInfo
+        //        {
+        //            Sl = dataSave.Count + 1,
+        //            sap_IngredientName = "",
+        //            BOM_Qnty = 0,
+        //            MinValue = 0,
+        //            MaxValue = 0
+        //        });
+        //    }
+
+        //    Session["VarietyData"] = dataSave;
+        //    GridView1.DataSource = dataSave;
+        //    GridView1.DataBind();
+        //}
+
         private void BindGridView()
         {
-            int formId = 6;
-            int plantId = !string.IsNullOrWhiteSpace(DDL_Plant.SelectedValue) ? Convert.ToInt32(DDL_Plant.SelectedValue) : 0;
-            int lineId = !string.IsNullOrWhiteSpace(DDL_PlantLine.SelectedValue) ? Convert.ToInt32(DDL_PlantLine.SelectedValue) : 0;
-            int categoryId = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
-            int brandId = !string.IsNullOrWhiteSpace(DDL_ProductBrand.SelectedValue) ? Convert.ToInt32(DDL_ProductBrand.SelectedValue) : 0;
-
-            List<VarietyInfo> dataSave = new List<VarietyInfo>();
-
-            string baseQuery = @"SELECT field_name, DisplayName, ViewMode, RFV_YesNo, RFV_ErrorMsg, REV_YesNo, REV_ErrorMsg, REV_Expression, RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue, ControlType, DefaultValue FROM MST_FormFieldControls WHERE FormID = @FormID AND Sub_Form = 'RawMaterial' AND IsLatest = 1 AND IsDeleted = 0 AND plant_id = @PlantID AND lineId = @LineID AND category_id = @CategoryID AND material_id = @BrandID";
-
-            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            try
             {
-                using (SqlCommand cmd = new SqlCommand(baseQuery, con))
+                int formId = 6;
+                // Use TryParse for DDLs to avoid crashes on non-numeric selections
+                int plantId, lineId, categoryId, brandId;
+                int.TryParse(DDL_Plant.SelectedValue, out plantId);
+                int.TryParse(DDL_PlantLine.SelectedValue, out lineId);
+                int.TryParse(DDL_ProductCategory.SelectedValue, out categoryId);
+                int.TryParse(DDL_ProductBrand.SelectedValue, out brandId);
+
+                List<VarietyInfo> dataSave = new List<VarietyInfo>();
+
+                string baseQuery = @"SELECT DisplayName, RV_MinValue, RV_MaxValue, DefaultValue 
+                             FROM MST_FormFieldControls 
+                             WHERE FormID = @FormID AND Sub_Form = 'RawMaterial' AND IsLatest = 1 AND IsDeleted = 0 
+                             AND plant_id = @PlantID AND lineId = @LineID AND category_id = @CategoryID AND material_id = @BrandID";
+
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
                 {
-                    cmd.Parameters.AddWithValue("@FormID", formId);
-                    cmd.Parameters.AddWithValue("@PlantID", plantId);
-                    cmd.Parameters.AddWithValue("@LineID", lineId);
-                    cmd.Parameters.AddWithValue("@CategoryID", categoryId);
-                    cmd.Parameters.AddWithValue("@BrandID", brandId);
-
-                    con.Open();
-
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    using (SqlCommand cmd = new SqlCommand(baseQuery, con))
                     {
-                        int sl = 1;
-                        bool hasRows = false;
+                        cmd.Parameters.AddWithValue("@FormID", formId);
+                        cmd.Parameters.AddWithValue("@PlantID", plantId);
+                        cmd.Parameters.AddWithValue("@LineID", lineId);
+                        cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+                        cmd.Parameters.AddWithValue("@BrandID", brandId);
 
-                        while (reader.Read())
+                        con.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
                         {
-                            hasRows = true;
+                            int sl = 1;
+                            bool hasRows = false;
 
-                            dataSave.Add(new VarietyInfo
+                            while (reader.Read())
                             {
-                                Sl = sl++,
-                                sap_IngredientName = reader["DisplayName"].ToString(),
-                                BOM_Qnty = reader["DefaultValue"] != DBNull.Value ? Convert.ToDecimal(reader["DefaultValue"]) : 0,
-                                MinValue = reader["RV_MinValue"] != DBNull.Value ? Convert.ToDecimal(reader["RV_MinValue"]) : 0,
-                                MaxValue = reader["RV_MaxValue"] != DBNull.Value ? Convert.ToDecimal(reader["RV_MaxValue"]) : 0
-                            });
-                        }
+                                hasRows = true;
+                                dataSave.Add(new VarietyInfo
+                                {
+                                    Sl = sl++,
+                                    sap_IngredientName = reader["DisplayName"]?.ToString() ?? "",
+                                    // Use the Safe Parser for the columns identified in your data sample
+                                    BOM_Qnty = SafeParseDecimal(reader["DefaultValue"]),
+                                    MinValue = SafeParseDecimal(reader["RV_MinValue"]),
+                                    MaxValue = SafeParseDecimal(reader["RV_MaxValue"])
+                                });
+                            }
 
-                        if (!hasRows)
-                        {
-                            // Call your fallback method here
-                            BindGridView_Global(); // Replace with your actual function name
-                            return;
+                            if (!hasRows)
+                            {
+                                BindGridView_Global();
+                                return;
+                            }
                         }
                     }
                 }
-            }
 
-            while (dataSave.Count < 30)
-            {
-                dataSave.Add(new VarietyInfo
+                // Maintain the 30-row padding requirement
+                while (dataSave.Count < 30)
                 {
-                    Sl = dataSave.Count + 1,
-                    sap_IngredientName = "",
-                    BOM_Qnty = 0,
-                    MinValue = 0,
-                    MaxValue = 0
-                });
-            }
+                    dataSave.Add(new VarietyInfo { Sl = dataSave.Count + 1, sap_IngredientName = "", BOM_Qnty = 0, MinValue = 0, MaxValue = 0 });
+                }
 
-            Session["VarietyData"] = dataSave;
-            GridView1.DataSource = dataSave;
-            GridView1.DataBind();
+                Session["VarietyData"] = dataSave;
+                GridView1.DataSource = dataSave;
+                GridView1.DataBind();
+            }
+            catch (Exception ex)
+            {
+                // PNotify Error Display
+                ShowPNotify(ex.Message, "error");
+            }
         }
 
+        // Robust Decimal Parser to handle NULL, DBNull, and Empty Strings ("")
+        private decimal SafeParseDecimal(object value)
+        {
+            if (value == null || value == DBNull.Value) return 0;
 
+            string strValue = value.ToString().Trim();
+            if (string.IsNullOrEmpty(strValue)) return 0;
+
+            decimal result;
+            // tryParse handles strings that aren't valid numbers without crashing
+            return decimal.TryParse(strValue, out result) ? result : 0;
+        }
+
+        private void ShowPNotify(string message, string type)
+        {
+            string cleanMessage = message.Replace("'", "\\'").Replace("\r", "").Replace("\n", " ");
+            string script = $@"<script type='text/javascript'>
+                        new PNotify({{
+                            title: '{type.ToUpper()}',
+                            text: '{cleanMessage}',
+                            type: '{type}',
+                            styling: 'bootstrap3'
+                        }});
+                    </script>";
+            ClientScript.RegisterStartupScript(this.GetType(), "PNotifyScript", script, false);
+        }
 
 
         protected void GridView1_RowEditing(object sender, GridViewEditEventArgs e)
@@ -2811,6 +2911,15 @@ Loaded controls for: PlantID={plantId}, LineID={lineId}, CategoryID={categoryId}
             }
 
             return controls;
+        }
+
+        private decimal SafeGetDecimal(object value)
+        {
+            if (value == null || value == DBNull.Value || string.IsNullOrWhiteSpace(value.ToString()))
+                return 0;
+
+            decimal result;
+            return decimal.TryParse(value.ToString(), out result) ? result : 0;
         }
 
         // Updated method with additional filters for plant, line, category, and material/brand
