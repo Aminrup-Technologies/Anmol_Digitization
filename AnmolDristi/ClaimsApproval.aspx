@@ -48,12 +48,10 @@
             opacity: 0.6;
         }
 
-            .row-disabled input[type="checkbox"] {
+        .row-disabled input[type="checkbox"] {
                 cursor: not-allowed;
             }
 
-
-        /* Gentilia-friendly tweaks — tweak colors to match your theme variables */
         .gentilia-table {
             font-size: 0.92rem;
         }
@@ -72,7 +70,6 @@
             background: #f8fafb;
         }
 
-        /* Status badges */
         .status-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -114,12 +111,10 @@
             border: 1px solid #E2E8F0;
         }
 
-        /* Currency formatting */
         .total-claim-cell {
             font-weight: 700;
         }
 
-        /* small icon spacing */
         .action-buttons .btn i {
             margin-right: 6px;
         }
@@ -128,12 +123,10 @@
             background: #f1f6f9;
         }
 
-        /* hover highlight row */
         .gentilia-table tbody tr:hover {
             background: #f1f6f9;
         }
 
-        /* Responsive tweaks */
         @media (max-width: 767px) {
             .gentilia-table thead {
                 display: none;
@@ -150,10 +143,7 @@
                 padding: 6px 8px;
             }
         }
-    </style>
 
-    <!-- ====== Modal / Details Grid - Gentilia-friendly styling ====== -->
-    <style>
         /* Container & modal sizing */
         #detailsModal .modal-dialog {
             max-width: 1200px;
@@ -227,12 +217,12 @@
             z-index: 5;
         }
 
-            /* Disable hover effect on header (explicit) */
-            #detailsModal .table thead tr:hover,
-            #detailsModal .table thead th:hover {
-                background-color: inherit !important;
-                cursor: default !important;
-            }
+        /* Disable hover effect on header (explicit) */
+        #detailsModal .table thead tr:hover,
+        #detailsModal .table thead th:hover {
+            background-color: inherit !important;
+            cursor: default !important;
+        }
 
         /* Body rows: subtle alternating and selected state */
         #detailsModal .table tbody tr:nth-child(odd) {
@@ -292,11 +282,11 @@
             background: #fbfcfd;
         }
 
-            /* Footer label (error / status) push to left */
-            #detailsModal .modal-footer .text-danger {
-                margin-right: auto;
-                font-size: 0.92rem;
-            }
+        /* Footer label (error / status) push to left */
+        #detailsModal .modal-footer .text-danger {
+            margin-right: auto;
+            font-size: 0.92rem;
+        }
 
         /* Utility: make inline badges inside the table compact */
         #detailsModal .badge {
@@ -490,20 +480,6 @@
         <div id="detailsModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" runat="server" clientidmode="Static">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
-                    <%--<div class="modal-header">
-                        <h5 class="modal-title">Approval Request Details -
-                            <asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
-                        <div class="ml-3">
-                            <small class="text-muted">Status:<asp:Label ID="lblHeaderStatus" runat="server" Text="Pending" />
-                                &nbsp; | &nbsp;
-                                Total Claim:<asp:Label ID="lblHeaderTotalClaim" runat="server" Text="0.00" />
-                            </small>
-                        </div>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="$('#detailsModal').modal('hide');">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>--%>
-
                     <div class="modal-header bg-light">
                         <div class="d-flex flex-column justify-content-center">
                             <h5 class="modal-title text-dark font-weight-bold mb-0">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" />
@@ -675,22 +651,9 @@
                                             OnClientClick="return validateReject();" />
                                     </div>
                                     <div class="col-auto">
-                                        <asp:Button
-                                            ID="btnMarkReadyForPayment"
-                                            runat="server"
-                                            Text="✔ Mark Ready for Payment"
-                                            CssClass="btn btn-warning btn-sm"
-                                            OnClick="btnMarkReadyForPayment_Click"
-                                            Visible="false" />
-
+                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Mark Ready for Payment" CssClass="btn btn-warning btn-sm" OnClick="btnMarkReadyForPayment_Click" Visible="false" />
                                         &nbsp;
-
-                                        <asp:Button ID="btnReopenRequest"
-                                            runat="server"
-                                            Text="Reopen Request"
-                                            CssClass="btn btn-warning"
-                                            OnClick="btnReopenRequest_Click"
-                                            Visible="false" />
+                                        <asp:Button ID="btnReopenRequest" runat="server" Text="Reopen Request" CssClass="btn btn-warning" OnClick="btnReopenRequest_Click" Visible="false" />
                                     </div>
                                 </div>
                             </ContentTemplate>
@@ -714,7 +677,6 @@
         </div>
 
         <input type="hidden" id="km_modal_activityid_outer" />
-        <!-- PASTE KM MODAL HERE (outside the UpdatePanel) -->
         <div id="kmEditModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -724,8 +686,6 @@
                     </div>
                     <div class="modal-body">
                         <input type="hidden" id="km_modal_activityid" />
-
-                        <!-- Travel reference -->
                         <div class="alert alert-light border mb-3" id="km_modal_travel_ref">
                             <div class="row align-items-center">
                                 <div class="col-md-4">
@@ -906,15 +866,6 @@
             });
             syncHeaderCheckbox();
         }
-
-        //// Called from header checkbox: pass `this`
-        //function toggleHeaderCheckbox(chk) {
-        //    var container = getDetailsContainer();
-        //    if (!container) return;
-        //    Array.prototype.forEach.call(container.querySelectorAll('.row-select-checkbox'), function (cb) {
-        //        cb.checked = chk.checked;
-        //    });
-        //}
 
         // Keep header checkbox in sync with rows (call after binding)
         function syncHeaderCheckbox() {
@@ -1107,18 +1058,6 @@
             });
         }
 
-        //function toggleHeaderCheckbox(chk) {
-        //    var container = getDetailsContainer();
-        //    if (!container) return;
-
-        //    enforceRowSelectability();
-
-        //    var boxes = container.querySelectorAll('.row-select-checkbox:not(:disabled)');
-        //    boxes.forEach(function (cb) { setCheckboxChecked(cb, chk.checked); });
-
-        //    syncHeaderCheckbox();
-        //}
-
         function initDetailsUI() {
             var container = getDetailsContainer();
             if (!container) return;
@@ -1259,9 +1198,7 @@
                 });
             });
         })(jQuery);
-    </script>
 
-    <script type="text/javascript">
         /* --- helpers (kept, lightly cleaned) ------------------------------------- */
         function htmlDecode(encoded) {
             if (!encoded) return encoded;
@@ -1580,7 +1517,6 @@
         })(jQuery);
     </script>
 
-
     <script type="text/javascript">
         (function () {
             // ---------- persistent JS fallback ----------
@@ -1849,6 +1785,5 @@
 
         })();
     </script>
-
 
 </asp:Content>
