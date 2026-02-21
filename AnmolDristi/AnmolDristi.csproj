@@ -226,6 +226,7 @@
     <Content Include="ccp_checklist.aspx" />
     <Content Include="CCP_Checklist_detailed.aspx" />
     <Content Include="ClaimsApproval.aspx" />
+    <Content Include="ClaimsApproval_v2.aspx" />
     <Content Include="ClaimsSubmitted.aspx" />
     <Content Include="Claims_Config.aspx" />
     <Content Include="CorrugatedBoardBoxReport.aspx" />
@@ -607,6 +608,13 @@
     </Compile>
     <Compile Include="ClaimsApproval.aspx.designer.cs">
       <DependentUpon>ClaimsApproval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ClaimsApproval_v2.aspx.cs">
+      <DependentUpon>ClaimsApproval_v2.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ClaimsApproval_v2.aspx.designer.cs">
+      <DependentUpon>ClaimsApproval_v2.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimsSubmitted.aspx.cs">
       <DependentUpon>ClaimsSubmitted.aspx</DependentUpon>

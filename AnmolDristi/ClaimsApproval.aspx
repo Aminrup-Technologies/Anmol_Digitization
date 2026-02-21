@@ -1269,7 +1269,8 @@
             return null;
         }
 
-        /* --- modal renderer ----------------------------------------------------- */
+
+        /* --- Replace your existing openExpensesModal function with this --- */
         function openExpensesModal(jsonStr) {
             var arr = parseExpensesJson(jsonStr);
             var $body = $('#expensesModalBody').empty();
@@ -1280,62 +1281,57 @@
                 return;
             }
 
+            // Check if user is Auditor (Level 2)
+            var isAuditor = (window.__currentUserLevel === 2);
+
             var html = '<div class="table-responsive"><table class="table table-sm table-striped table-bordered mb-0">' +
                 '<thead><tr>' +
-                '<th style="width:40px">#</th>' +
+                '<th style="width:30px">#</th>' +
                 '<th>Type</th>' +
                 '<th>Date</th>' +
                 '<th>Purpose / Policy</th>' +
                 '<th class="text-right">Amount</th>' +
                 '<th>Bill No</th>' +
+                '<th class="text-center" style="width:110px">Action</th>' + // New Column
                 '</tr></thead><tbody>';
 
-            // --- build rows and accumulate total (replace your old for/total code) ---
             var totalAmt = 0;
+    
             for (var idx = 0; idx < arr.length; idx++) {
                 var ex = arr[idx] || {};
+        
+                // 1. Get ID and Status (Safety check for missing ID)
+                var expenseId = ex.ExpenseId || 0; 
+                var status = ex.ClaimStatus || 'Submitted'; 
 
-                // date formatting
+                // ... Existing formatting logic ...
                 var dateStr = ex.ExpenseDate ? ex.ExpenseDate : '';
-                try {
-                    var d = new Date(ex.ExpenseDate);
-                    if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
-                } catch (e) { /* ignore */ }
-
-                // amount display and numeric value for totaling
+                try { var d = new Date(ex.ExpenseDate); if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString(); } catch (e) { }
+        
                 var amtVal = parseFloat(ex.Amount);
-                var amtDisplay = '';
-                if (!isNaN(amtVal)) {
-                    totalAmt += amtVal;
-                    amtDisplay = amtVal.toFixed(2);
-                } else {
-                    amtDisplay = (ex.Amount != null ? htmlEncode(ex.Amount) : '');
-                }
+                var amtDisplay = !isNaN(amtVal) ? amtVal.toFixed(2) : (ex.Amount || '');
+                if (!isNaN(amtVal)) totalAmt += amtVal;
 
-                // bill column behavior (clickable when attachment exists)
-                var billHtml = '';
-                if (ex.BillNo) {
-                    if (ex.AttachmentPath) {
-                        var href = (ex.AttachmentPath || '#').replace(/"/g, '&quot;');
-                        billHtml = '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + htmlEncode(ex.BillNo) + '</a>';
+                var billHtml = ex.BillNo ? (ex.AttachmentPath ? '<a href="' + ex.AttachmentPath + '" target="_blank">' + htmlEncode(ex.BillNo) + '</a>' : '<span class="text-muted">' + htmlEncode(ex.BillNo) + '</span>') : '<span class="text-muted">—</span>';
+
+                // 2. Generate Action Buttons
+                var actionHtml = '';
+
+                if (status === 'Approved') {
+                    actionHtml = '<span class="badge badge-success">Approved</span>';
+                } 
+                else if (status === 'Rejected') {
+                    actionHtml = '<span class="badge badge-danger">Rejected</span>';
+                } 
+                else {
+                    // Only show buttons if Auditor and ID exists
+                    if (isAuditor && expenseId > 0) {
+                        actionHtml = '<div class="btn-group btn-group-sm">' +
+                                     '<button type="button" class="btn btn-outline-success" onclick="processExpense(' + expenseId + ', \'Approved\', this)" title="Approve">✔</button>' +
+                                     '<button type="button" class="btn btn-outline-danger" onclick="processExpense(' + expenseId + ', \'Rejected\', this)" title="Reject">✖</button>' +
+                                     '</div>';
                     } else {
-                        billHtml = '<span class="text-muted">' + htmlEncode(ex.BillNo) + '</span>';
-                    }
-                } else {
-                    billHtml = '<span class="text-muted">—</span>';
-                }
-
-                // policy snapshot snippet (unchanged)
-                var ps = maybeParsePolicySnapshot(ex.PolicySnapshot);
-                var psHtml = '';
-                if (ps) {
-                    if (ps.PolicyMode) {
-                        psHtml = '<small class="text-muted">Mode: <strong>' + htmlEncode(ps.PolicyMode) + '</strong></small>';
-                    } else if (typeof ps === 'object') {
-                        var keys = Object.keys(ps).slice(0, 3);
-                        var parts = [];
-                        for (var k = 0; k < keys.length; k++) parts.push(keys[k] + '=' + htmlEncode(ps[keys[k]]));
-                        psHtml = '<small class="text-muted">' + parts.join('; ') + '</small>';
+                        actionHtml = '<span class="badge badge-secondary">' + status + '</span>';
                     }
                 }
 
@@ -1343,23 +1339,144 @@
                     '<td>' + (idx + 1) + '</td>' +
                     '<td>' + htmlEncode(ex.ExpenseType || '') + '</td>' +
                     '<td>' + htmlEncode(dateStr) + '</td>' +
-                    '<td>' + htmlEncode(ex.Purpose || '') + (psHtml ? '<br/>' + psHtml : '') + '</td>' +
-                    '<td class="text-right">' + htmlEncode(amtDisplay) + (ex.Currency ? ' ' + htmlEncode(ex.Currency) : '') + '</td>' +
+                    '<td>' + htmlEncode(ex.Purpose || '') + '</td>' +
+                    '<td class="text-right">' + htmlEncode(amtDisplay) + '</td>' +
                     '<td>' + billHtml + '</td>' +
+                    '<td class="text-center">' + actionHtml + '</td>' + // Render Buttons
                     '</tr>';
             }
 
-            // --- append total row (after loop) ---
-            html += '<tr class="font-weight-bold bg-light">' +
-                    '<td colspan="4" class="text-right">Total</td>' +
-                    '<td class="text-right">' + totalAmt.toFixed(2) + '</td>' +
-                    '<td></td>' +
-                    '</tr>';
-
+            html += '<tr class="font-weight-bold bg-light"><td colspan="4" class="text-right">Total</td><td class="text-right">' + totalAmt.toFixed(2) + '</td><td></td><td></td></tr>';
             html += '</tbody></table></div>';
+    
             $body.html(html);
             $('#expensesModal').modal('show');
         }
+
+        /* --- AJAX Helper to update status --- */
+        function processExpense(id, newStatus, btn) {
+            if (!confirm("Confirm " + newStatus + "?")) return;
+
+            var $btn = $(btn);
+            // Visual feedback immediately
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                type: "POST",
+                url: "ClaimsApproval.aspx/UpdateIndividualExpense",
+                data: JSON.stringify({ expenseId: id, status: newStatus }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    if (response.d && response.d.success) {
+                        // Replace buttons with badge on success
+                        var badgeClass = (newStatus === 'Approved') ? 'badge-success' : 'badge-danger';
+                        var cell = $btn.closest('td');
+                        cell.html('<span class="badge ' + badgeClass + '">' + newStatus + '</span>');
+                    } else {
+                        alert("Error: " + (response.d.message || "Unknown error"));
+                        $btn.prop('disabled', false);
+                    }
+                },
+                error: function (err) {
+                    console.error(err);
+                    alert("Server connection failed.");
+                    $btn.prop('disabled', false);
+                }
+            });
+        }
+
+        /* --- modal renderer ----------------------------------------------------- */
+        //function openExpensesModal(jsonStr) {
+        //    var arr = parseExpensesJson(jsonStr);
+        //    var $body = $('#expensesModalBody').empty();
+
+        //    if (!arr || arr.length === 0) {
+        //        $body.html('<p class="text-muted">No expenses for this activity.</p>');
+        //        $('#expensesModal').modal('show');
+        //        return;
+        //    }
+
+        //    var html = '<div class="table-responsive"><table class="table table-sm table-striped table-bordered mb-0">' +
+        //        '<thead><tr>' +
+        //        '<th style="width:40px">#</th>' +
+        //        '<th>Type</th>' +
+        //        '<th>Date</th>' +
+        //        '<th>Purpose / Policy</th>' +
+        //        '<th class="text-right">Amount</th>' +
+        //        '<th>Bill No</th>' +
+        //        '</tr></thead><tbody>';
+
+        //    // --- build rows and accumulate total (replace your old for/total code) ---
+        //    var totalAmt = 0;
+        //    for (var idx = 0; idx < arr.length; idx++) {
+        //        var ex = arr[idx] || {};
+
+        //        // date formatting
+        //        var dateStr = ex.ExpenseDate ? ex.ExpenseDate : '';
+        //        try {
+        //            var d = new Date(ex.ExpenseDate);
+        //            if (!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
+        //        } catch (e) { /* ignore */ }
+
+        //        // amount display and numeric value for totaling
+        //        var amtVal = parseFloat(ex.Amount);
+        //        var amtDisplay = '';
+        //        if (!isNaN(amtVal)) {
+        //            totalAmt += amtVal;
+        //            amtDisplay = amtVal.toFixed(2);
+        //        } else {
+        //            amtDisplay = (ex.Amount != null ? htmlEncode(ex.Amount) : '');
+        //        }
+
+        //        // bill column behavior (clickable when attachment exists)
+        //        var billHtml = '';
+        //        if (ex.BillNo) {
+        //            if (ex.AttachmentPath) {
+        //                var href = (ex.AttachmentPath || '#').replace(/"/g, '&quot;');
+        //                billHtml = '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + htmlEncode(ex.BillNo) + '</a>';
+        //            } else {
+        //                billHtml = '<span class="text-muted">' + htmlEncode(ex.BillNo) + '</span>';
+        //            }
+        //        } else {
+        //            billHtml = '<span class="text-muted">—</span>';
+        //        }
+
+        //        // policy snapshot snippet (unchanged)
+        //        var ps = maybeParsePolicySnapshot(ex.PolicySnapshot);
+        //        var psHtml = '';
+        //        if (ps) {
+        //            if (ps.PolicyMode) {
+        //                psHtml = '<small class="text-muted">Mode: <strong>' + htmlEncode(ps.PolicyMode) + '</strong></small>';
+        //            } else if (typeof ps === 'object') {
+        //                var keys = Object.keys(ps).slice(0, 3);
+        //                var parts = [];
+        //                for (var k = 0; k < keys.length; k++) parts.push(keys[k] + '=' + htmlEncode(ps[keys[k]]));
+        //                psHtml = '<small class="text-muted">' + parts.join('; ') + '</small>';
+        //            }
+        //        }
+
+        //        html += '<tr>' +
+        //            '<td>' + (idx + 1) + '</td>' +
+        //            '<td>' + htmlEncode(ex.ExpenseType || '') + '</td>' +
+        //            '<td>' + htmlEncode(dateStr) + '</td>' +
+        //            '<td>' + htmlEncode(ex.Purpose || '') + (psHtml ? '<br/>' + psHtml : '') + '</td>' +
+        //            '<td class="text-right">' + htmlEncode(amtDisplay) + (ex.Currency ? ' ' + htmlEncode(ex.Currency) : '') + '</td>' +
+        //            '<td>' + billHtml + '</td>' +
+        //            '</tr>';
+        //    }
+
+        //    // --- append total row (after loop) ---
+        //    html += '<tr class="font-weight-bold bg-light">' +
+        //            '<td colspan="4" class="text-right">Total</td>' +
+        //            '<td class="text-right">' + totalAmt.toFixed(2) + '</td>' +
+        //            '<td></td>' +
+        //            '</tr>';
+
+        //    html += '</tbody></table></div>';
+        //    $body.html(html);
+        //    $('#expensesModal').modal('show');
+        //}
 
         /* --- popover summary renderer ------------------------------------------ */
         function makePopoverContentFromJson(jsonStr) {

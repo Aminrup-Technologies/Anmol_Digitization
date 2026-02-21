@@ -89,7 +89,39 @@ namespace AnmolDristi
             }
         }
 
+        [System.Web.Services.WebMethod(EnableSession = true)]
+        [System.Web.Script.Services.ScriptMethod(ResponseFormat = System.Web.Script.Services.ResponseFormat.Json)]
+        public static object UpdateIndividualExpense(int expenseId, string status)
+        {
+            try
+            {
+                // Get current logged-in user
+                string processedBy = HttpContext.Current.Session["WORKMAN"] as string
+                                     ?? HttpContext.Current.User?.Identity?.Name
+                                     ?? "System";
 
+                string connString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                using (var con = new System.Data.SqlClient.SqlConnection(connString))
+                using (var cmd = new System.Data.SqlClient.SqlCommand("dbo.usp_UpdateSalesDailyExpenseStatus", con))
+                {
+                    cmd.CommandType = System.Data.CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ExpenseId", expenseId);
+                    cmd.Parameters.AddWithValue("@NewStatus", status);
+                    cmd.Parameters.AddWithValue("@ActionBy", processedBy);
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                return new { success = true };
+            }
+            catch (Exception ex)
+            {
+                // Log error if needed
+                return new { success = false, message = ex.Message };
+            }
+        }
 
         protected void Page_Init(object sender, EventArgs e)
         {
