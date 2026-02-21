@@ -322,7 +322,10 @@ namespace AnmolDristi
                 _totalTravel += (drv["Snapshot_TravelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_TravelAmount"]);
                 _totalSnapshot += (drv["Snapshot_ExpenseTotal"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_ExpenseTotal"]);
 
-                // B. LOGIC: WHO CAN EDIT WHAT?
+                // B. RESTORE WIRING (CRITICAL: Loads Expenses JSON, tooltips, etc.)
+                //PopulateRowControls(e.Row, drv);
+
+                // C. LOGIC: WHO CAN EDIT WHAT?
                 int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
                 string detailStatus = drv["DetailStatus"].ToString();
                 if (string.IsNullOrEmpty(detailStatus)) detailStatus = "Pending";
@@ -346,7 +349,7 @@ namespace AnmolDristi
                     btnEditKM.Visible = true; // Auditors can always correct KM
                 }
 
-                // C. ROW COLORS & UNLOCKING
+                // D. ROW COLORS & UNLOCKING
                 if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
                     e.Row.CssClass += " table-danger"; // Red
@@ -360,16 +363,34 @@ namespace AnmolDristi
                 {
                     // HANDOVER: Approved by L1, Pending L2
                     e.Row.CssClass += " table-warning"; // Yellow
-                    UnlockRow(btnApprove, btnReject, txtRemark);
+                    UnlockRow(btnApprove, btnReject, txtRemark); // Assuming UnlockRow is correctly implemented below
                 }
                 else if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
                 {
                     // Fresh
                     UnlockRow(btnApprove, btnReject, txtRemark);
                 }
+
+                // E. VISUAL GATEKEEPER FLAG (Highlight Pending Receipts)
+                string expensesJson = drv["ExpensesJson"] != DBNull.Value ? drv["ExpensesJson"].ToString() : "";
+                bool hasPendingReceipts = expensesJson.Contains("\"ClaimStatus\":\"Submitted\"") ||
+                                          expensesJson.Contains("\"ClaimStatus\":\"Draft\"") ||
+                                          expensesJson.Contains("\"ClaimStatus\":\"Pending\"");
+
+                // If Auditor is viewing, and row has pending receipts, AND row isn't rejected
+                if (isAuditor && hasPendingReceipts && !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                {
+                    var btnExp = e.Row.FindControl("btnExp") as Button;
+                    if (btnExp != null)
+                    {
+                        btnExp.CssClass = "btn btn-sm btn-danger text-white btn-expenses pulse-warning";
+                        btnExp.Text = "⚠️ Action";
+                        btnExp.ToolTip = "Pending receipts require your approval or rejection!";
+                    }
+                }
             }
             // ==========================================
-            // 2. FOOTER LOGIC (This was missing!)
+            // 2. FOOTER LOGIC
             // ==========================================
             else if (e.Row.RowType == DataControlRowType.Footer)
             {
@@ -480,10 +501,17 @@ namespace AnmolDristi
             // Implementation of Bulk Reject
         }
 
+        private string GetLoggedInEmployeeCode()
+        {
+            // Example: from Session or User.Identity
+            return Session["WORKMAN"] as string;
+            // return HttpContext.Current.User?.Identity?.Name ?? "EMP001";
+        }
+
         protected void btnMarkReadyForPayment_Click(object sender, EventArgs e)
         {
             int reqId = Convert.ToInt32(hfActionRequestId.Value);
-            string auditor = Session["USERID"]?.ToString() ?? "System";
+            string auditor = GetLoggedInEmployeeCode();
 
             // 1. Force a final recalculation to guarantee financial accuracy (If you added this feature)
             // btnRecalculate_Click(null, null); 
@@ -672,15 +700,22 @@ namespace AnmolDristi
              * will automatically recalculate themselves based on these base values!
              */
             string sqlRecalculate = @"
+                UPDATE d
+                SET 
+                    Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
+                    Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
+                    Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
+                FROM SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id;
+
+                UPDATE SalesApprovalRequestDetail SET Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0) WHERE ApprovalRequestId = @Id;
+
                 UPDATE SalesApprovalRequest
                 SET 
                     ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
                     ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
                     ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
                     ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                    ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected')
-                WHERE ApprovalRequestId = @Id;
-            ";
+                    ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected') WHERE ApprovalRequestId = @Id;";
 
             try
             {
@@ -692,11 +727,9 @@ namespace AnmolDristi
                     cmd.ExecuteNonQuery();
                 }
 
-                // Provide success feedback
                 lblModalMessage.Text = "Amounts recalculated and synced successfully.";
                 lblModalMessage.CssClass = "text-success";
 
-                // Refresh the Grid and Dashboard Footer to show the latest state
                 BindDetailsGrid(reqId);
                 upDetails.Update();
             }
@@ -716,10 +749,7 @@ namespace AnmolDristi
             {
                 string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
                 var results = new List<object>();
-
-                // This query perfectly identifies the 3 distinct ways money is deducted
                 string sql = @"
-                    -- 1. Entire Row (Day) Rejected
                     SELECT 
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                         'Whole Day Rejected' AS DeductionType,
@@ -731,7 +761,6 @@ namespace AnmolDristi
 
                     UNION ALL
 
-                    -- 2. Specific Expense Receipts Rejected
                     SELECT 
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                         'Rejected Receipt: ' + e.ExpenseType AS DeductionType,
@@ -747,7 +776,6 @@ namespace AnmolDristi
 
                     UNION ALL
 
-                    -- 3. KM Reductions (FIXED: Finds the Peak Claimed KM)
                     SELECT 
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                         'KM Reduced (' + CAST(fk.ClaimedKM AS varchar) + ' to ' + CAST(d.Snapshot_TotalDistanceKM AS varchar) + ')' AS DeductionType,
@@ -756,17 +784,14 @@ namespace AnmolDristi
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                     INNER JOIN (
-                        -- Find the highest KM value this activity ever held
                         SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
                         FROM dbo.SalesDailyActivityKMHistory
                         GROUP BY ActivityId
                     ) fk ON d.ActivityId = fk.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
-              
-                    ORDER BY ActivityDate ASC;
-                ";
+                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'        
+                    ORDER BY ActivityDate ASC;";
 
                 using (var con = new SqlConnection(connString))
                 using (var cmd = new SqlCommand(sql, con))

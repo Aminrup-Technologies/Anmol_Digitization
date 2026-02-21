@@ -143,6 +143,18 @@
         #detailsModal .table tfoot tr:hover td {
             background-color: #f8f9fa !important; 
         }
+
+        /* Gatekeeper Warning Animation */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.75); }
+            70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .pulse-warning {
+            animation: pulse-red 2s infinite !important;
+            font-weight: bold !important;
+            border: 2px solid #dc3545 !important;
+        }
     </style>
 </asp:Content>
 
