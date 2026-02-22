@@ -1,4 +1,4 @@
-﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="ApprovedClaimsView.aspx.cs" Inherits="AnmolDristi.ApprovedClaimsView" %>
+﻿<%@ Page Title="AIL | Approved Claims View" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" MaintainScrollPositionOnPostback="true" CodeBehind="ApprovedClaimsView.aspx.cs" Inherits="AnmolDristi.ApprovedClaimsView" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style type="text/css">
@@ -90,16 +90,68 @@
         }
     </style>
 </asp:Content>
+
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
         <div class="container-fluid mt-3">
             <div class="row">
                 <div class="col-md-12">
                     <div class="x_panel shadow-sm rounded-2">
+
                         <div class="x_title d-flex justify-content-between align-items-center bg-primary text-white p-2 rounded-top">
-                            <h4 class="mb-0"><i class="fa fa-list-alt"></i>Approved Claims View</h4>
+                            <h4 class="mb-0"><i class="fa fa-list-alt"></i>Approved Claims View -
+                                <asp:Label ID="lblCurrentHeader" runat="server" Font-Bold="true"></asp:Label></h4>
                         </div>
+
                         <div class="x_content bg-light p-3 rounded-bottom">
+
+                            <div class="row mb-3 pb-3 border-bottom align-items-end">
+                                <div class="col-md-12 text-center mb-3">
+                                    <div class="btn-group" role="group">
+                                        <asp:Button ID="btnPrevMonth" runat="server" Text="Prev Month" CssClass="btn btn-info" OnClick="btnPrevMonth_Click" />
+                                        <asp:Button ID="btnCurrentMonth" runat="server" Text="Current Month" CssClass="btn btn-primary font-weight-bold" OnClick="btnCurrentMonth_Click" />
+                                        <asp:Button ID="btnNextMonth" runat="server" Text="Next Month" CssClass="btn btn-info" OnClick="btnNextMonth_Click" />
+                                    </div>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="font-weight-bold text-muted small">Search By Year</label>
+                                    <asp:DropDownList ID="ddlSearchYear" runat="server" CssClass="form-control form-control-sm"></asp:DropDownList>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="font-weight-bold text-muted small">Search By Month</label>
+                                    <asp:DropDownList ID="ddlSearchMonth" runat="server" CssClass="form-control form-control-sm">
+                                        <asp:ListItem Text="-- Select Month --" Value="0"></asp:ListItem>
+                                        <asp:ListItem Text="January" Value="1"></asp:ListItem>
+                                        <asp:ListItem Text="February" Value="2"></asp:ListItem>
+                                        <asp:ListItem Text="March" Value="3"></asp:ListItem>
+                                        <asp:ListItem Text="April" Value="4"></asp:ListItem>
+                                        <asp:ListItem Text="May" Value="5"></asp:ListItem>
+                                        <asp:ListItem Text="June" Value="6"></asp:ListItem>
+                                        <asp:ListItem Text="July" Value="7"></asp:ListItem>
+                                        <asp:ListItem Text="August" Value="8"></asp:ListItem>
+                                        <asp:ListItem Text="September" Value="9"></asp:ListItem>
+                                        <asp:ListItem Text="October" Value="10"></asp:ListItem>
+                                        <asp:ListItem Text="November" Value="11"></asp:ListItem>
+                                        <asp:ListItem Text="December" Value="12"></asp:ListItem>
+                                    </asp:DropDownList>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="font-weight-bold text-muted small">Search By Employee Code</label>
+                                    <asp:TextBox ID="txtSearchEmpCode" runat="server" CssClass="form-control form-control-sm" Placeholder="e.g. AHS1281"></asp:TextBox>
+                                </div>
+                                <div class="col-md-2 text-right">
+                                    <asp:Button ID="btnSearch" runat="server" Text="Search" CssClass="btn btn-success btn-sm w-100 mb-1" OnClick="btnSearch_Click" />
+                                    <asp:Button ID="btnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm w-100" OnClick="btnReset_Click" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-12 text-right">
+                                    <asp:Button ID="btnExportSelected" runat="server" Text="⬇ Export Selected to Excel" CssClass="btn btn-success btn-sm font-weight-bold" OnClick="btnExportSelected_Click" />
+                                </div>
+                            </div>
+
                             <div class="card-box table-responsive">
                                 <asp:Panel ID="pnlRequests" runat="server">
                                     <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
@@ -109,6 +161,18 @@
                                         <RowStyle CssClass="gentilia-row" />
                                         <AlternatingRowStyle CssClass="gentilia-row-alt" />
                                         <Columns>
+
+                                            <asp:TemplateField ItemStyle-Width="40px" HeaderStyle-CssClass="text-center" ItemStyle-CssClass="text-center">
+                                                <HeaderTemplate>
+                                                    <asp:CheckBox ID="chkSelectAllReq" runat="server" onclick="selectAllRequests(this)" ToolTip="Select All" />
+                                                </HeaderTemplate>
+                                                <ItemTemplate>
+                                                    <asp:CheckBox ID="chkSelectReq" runat="server" CssClass="req-select-checkbox" />
+                                                    <asp:HiddenField ID="hfReqId" runat="server" Value='<%# Eval("ApprovalRequestId") %>' />
+                                                    <asp:HiddenField ID="hfEmpCode" runat="server" Value='<%# Eval("RequesterLoginId") %>' />
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+
                                             <asp:BoundField DataField="ApprovalRequestId" HeaderText="ID" HeaderStyle-Width="50px" />
                                             <asp:TemplateField HeaderText="Employee Name" HeaderStyle-Width="220px">
                                                 <ItemTemplate><%# Eval("EmployeeName") %> (<%# Eval("RequesterLoginId") %>)</ItemTemplate>
@@ -132,8 +196,8 @@
                                                     <asp:LinkButton ID="lnkView" runat="server" CommandName="View" CommandArgument='<%# Eval("ApprovalRequestId") %>' CssClass="btn btn-sm btn-primary" ToolTip="View Details">
                                                         <i class="fa fa-eye"></i> View
                                                     </asp:LinkButton>
-                                                    <asp:LinkButton ID="lnkExport" runat="server" CommandName="ExportExcel" CommandArgument='<%# Eval("ApprovalRequestId") %>' CssClass="btn btn-sm btn-success" ToolTip="Export to Excel">
-                                                        <i class="fa fa-file-excel-o"></i> Export
+                                                    <asp:LinkButton ID="lnkExport" runat="server" CommandName="ExportExcel" CommandArgument='<%# Eval("ApprovalRequestId") %>' CssClass="btn btn-sm btn-outline-success" ToolTip="Export to Excel">
+                                                        <i class="fa fa-file-excel-o"></i>
                                                     </asp:LinkButton>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
@@ -141,6 +205,7 @@
                                     </asp:GridView>
                                 </asp:Panel>
                             </div>
+
                         </div>
                     </div>
                 </div>
@@ -171,6 +236,7 @@
                                                     <small class="text-muted"><%# Eval("Day") %></small>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
+
                                             <asp:TemplateField HeaderText="Distance (KM)">
                                                 <ItemTemplate>
                                                     <span class="km-value font-weight-bold" data-activityid='<%# Eval("ActivityId") %>'>
@@ -181,11 +247,13 @@
                                                     </button>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
+
                                             <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+
                                             <asp:TemplateField HeaderText="Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
                                                     <asp:Label ID="lblRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' />
@@ -195,7 +263,6 @@
                                                 <ItemTemplate>
                                                     <button type="button" class="btn btn-sm btn-info text-white btn-expenses" data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts">
                                                         <i class="fa fa-list-alt"></i>View
-                                                   
                                                     </button>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
@@ -242,52 +309,6 @@
 
                         <div class="ml-4 text-right">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="expensesModal" class="modal fade" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Expense Receipts</h5>
-                        <button type="button" class="close" data-dismiss="modal">×</button>
-                    </div>
-                    <div class="modal-body" id="expensesModalBody">Loading...</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="deductionsModal" tabindex="-1" role="dialog" style="z-index: 1060;">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content border-danger">
-                    <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title"><i class="fa fa-scissors"></i>Deduction Breakdown</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">×</span>
-                        </button>
-                    </div>
-                    <div class="modal-body p-0">
-                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                            <table class="table table-striped table-hover mb-0" id="tblDeductions">
-                                <thead class="bg-light sticky-top">
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Deduction Source</th>
-                                        <th>Reason / Remarks</th>
-                                        <th class="text-right text-danger">Amount (₹)</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                                <tfoot class="bg-light font-weight-bold">
-                                    <tr>
-                                        <td colspan="3" class="text-right">Total Deductions:</td>
-                                        <td class="text-right text-danger" id="lblDeductionsModalTotal">0.00</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
                         </div>
                     </div>
                 </div>
@@ -343,6 +364,52 @@
             </div>
         </div>
 
+        <div id="expensesModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Expense Receipts</h5>
+                        <button type="button" class="close" data-dismiss="modal">×</button>
+                    </div>
+                    <div class="modal-body" id="expensesModalBody">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="deductionsModal" tabindex="-1" role="dialog" style="z-index: 1060;">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content border-danger">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title"><i class="fa fa-scissors"></i>Deduction Breakdown</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-striped table-hover mb-0" id="tblDeductions">
+                                <thead class="bg-light sticky-top">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Deduction Source</th>
+                                        <th>Reason / Remarks</th>
+                                        <th class="text-right text-danger">Amount (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                                <tfoot class="bg-light font-weight-bold">
+                                    <tr>
+                                        <td colspan="3" class="text-right">Total Deductions:</td>
+                                        <td class="text-right text-danger" id="lblDeductionsModalTotal">0.00</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script type="text/javascript">
@@ -354,6 +421,10 @@
                 renderExpenses(data);
             }
         });
+
+        function selectAllRequests(chk) {
+            $('.req-select-checkbox input').prop('checked', chk.checked);
+        }
 
         function renderExpenses(data) {
             if (!data || data.length === 0) {
@@ -392,59 +463,6 @@
             html += '</tbody></table>';
             $('#expensesModalBody').html(html);
             $('#expensesModal').modal('show');
-        }
-
-        function openDetailsModal() {
-            $('#detailsModal').modal('show');
-        }
-
-        function showDeductionsBreakdown() {
-            var reqId = document.getElementById('<%= lblModalRequestId.ClientID %>').innerText;
-            if (!reqId || reqId === "0") return;
-
-            $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center">Loading details...</td></tr>');
-            $('#lblDeductionsModalTotal').text('0.00');
-            $('#deductionsModal').modal('show');
-
-            $.ajax({
-                type: 'POST',
-                url: 'ApprovedClaimsView.aspx/GetDeductionBreakdown',
-                data: JSON.stringify({ approvalRequestId: parseInt(reqId) }),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                success: function (resp) {
-                    var responseObj = resp.d;
-                    var tbody = $('#tblDeductions tbody').empty();
-                    var total = 0;
-
-                    if (!responseObj || responseObj.success === false) {
-                        tbody.html('<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>');
-                        return;
-                    }
-
-                    var data = responseObj.data;
-                    if (!data || data.length === 0) {
-                        tbody.html('<tr><td colspan="4" class="text-center text-muted">No deductions found.</td></tr>');
-                        return;
-                    }
-
-                    data.forEach(function (item) {
-                        total += item.DeductedAmount;
-                        tbody.append(
-                            '<tr>' +
-                            '<td>' + item.ActivityDate + '</td>' +
-                            '<td><strong>' + item.DeductionType + '</strong></td>' +
-                            '<td>' + (item.Reason || '-') + '</td>' +
-                            '<td class="text-right text-danger font-weight-bold">' + item.DeductedAmount.toFixed(2) + '</td>' +
-                            '</tr>'
-                        );
-                    });
-                    $('#lblDeductionsModalTotal').text(total.toFixed(2));
-                },
-                error: function () {
-                    $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>');
-                }
-            });
         }
 
         // --- KM HISTORY HANDLING ---
@@ -512,6 +530,59 @@
                 });
             }).fail(function (xhr, status, err) {
                 $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error communicating with server.</td></tr>');
+            });
+        }
+
+        function openDetailsModal() {
+            $('#detailsModal').modal('show');
+        }
+
+        function showDeductionsBreakdown() {
+            var reqId = document.getElementById('<%= lblModalRequestId.ClientID %>').innerText;
+            if (!reqId || reqId === "0") return;
+
+            $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center">Loading details...</td></tr>');
+            $('#lblDeductionsModalTotal').text('0.00');
+            $('#deductionsModal').modal('show');
+
+            $.ajax({
+                type: 'POST',
+                url: 'ApprovedClaimsView.aspx/GetDeductionBreakdown',
+                data: JSON.stringify({ approvalRequestId: parseInt(reqId) }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (resp) {
+                    var responseObj = resp.d;
+                    var tbody = $('#tblDeductions tbody').empty();
+                    var total = 0;
+
+                    if (!responseObj || responseObj.success === false) {
+                        tbody.html('<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>');
+                        return;
+                    }
+
+                    var data = responseObj.data;
+                    if (!data || data.length === 0) {
+                        tbody.html('<tr><td colspan="4" class="text-center text-muted">No deductions found.</td></tr>');
+                        return;
+                    }
+
+                    data.forEach(function (item) {
+                        total += item.DeductedAmount;
+                        tbody.append(
+                            '<tr>' +
+                            '<td>' + item.ActivityDate + '</td>' +
+                            '<td><strong>' + item.DeductionType + '</strong></td>' +
+                            '<td>' + (item.Reason || '-') + '</td>' +
+                            '<td class="text-right text-danger font-weight-bold">' + item.DeductedAmount.toFixed(2) + '</td>' +
+                            '</tr>'
+                        );
+                    });
+                    $('#lblDeductionsModalTotal').text(total.toFixed(2));
+                },
+                error: function () {
+                    $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>');
+                }
             });
         }
     </script>

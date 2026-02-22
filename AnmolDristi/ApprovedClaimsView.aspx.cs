@@ -8,8 +8,8 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Web.Services;
 using System.Web.Script.Services;
-using System.IO;
 using ClosedXML.Excel;
+using System.IO;
 
 namespace AnmolDristi
 {
@@ -29,24 +29,134 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                if (Session["workman"] != null)
+                if (Session["USERID"] != null)
                 {
+                    PopulateYearDropdown();
+                    SetDefaultClaimMonth();
                     BindRequestsGrid();
                 }
             }
         }
 
+        // ==========================================
+        // UI & FILTER LOGIC
+        // ==========================================
+        private void PopulateYearDropdown()
+        {
+            ddlSearchYear.Items.Clear();
+            ddlSearchYear.Items.Add(new ListItem("-- Select Year --", "0"));
+            int currentYear = DateTime.Now.Year;
+            for (int i = currentYear - 2; i <= currentYear + 1; i++)
+            {
+                ddlSearchYear.Items.Add(new ListItem(i.ToString(), i.ToString()));
+            }
+        }
+
+        private void SetDefaultClaimMonth()
+        {
+            // Claims are typically filed for the previous month
+            DateTime claimMonth = DateTime.Now.AddMonths(-1);
+
+            ViewState["FilterYear"] = claimMonth.Year;
+            ViewState["FilterMonth"] = claimMonth.Month;
+            txtSearchEmpCode.Text = "";
+
+            SyncUIWithViewState();
+        }
+
+        private void SyncUIWithViewState()
+        {
+            int y = (int)ViewState["FilterYear"];
+            int m = (int)ViewState["FilterMonth"];
+
+            DateTime dt = new DateTime(y, m, 1);
+            lblCurrentHeader.Text = dt.ToString("MMMM, yyyy");
+
+            if (ddlSearchYear.Items.FindByValue(y.ToString()) != null)
+                ddlSearchYear.SelectedValue = y.ToString();
+
+            if (ddlSearchMonth.Items.FindByValue(m.ToString()) != null)
+                ddlSearchMonth.SelectedValue = m.ToString();
+        }
+
+        protected void btnPrevMonth_Click(object sender, EventArgs e)
+        {
+            DateTime currentFilter = new DateTime((int)ViewState["FilterYear"], (int)ViewState["FilterMonth"], 1);
+            DateTime prevMonth = currentFilter.AddMonths(-1);
+
+            ViewState["FilterYear"] = prevMonth.Year;
+            ViewState["FilterMonth"] = prevMonth.Month;
+
+            SyncUIWithViewState();
+            BindRequestsGrid();
+        }
+
+        protected void btnNextMonth_Click(object sender, EventArgs e)
+        {
+            DateTime currentFilter = new DateTime((int)ViewState["FilterYear"], (int)ViewState["FilterMonth"], 1);
+            DateTime nextMonth = currentFilter.AddMonths(1);
+
+            ViewState["FilterYear"] = nextMonth.Year;
+            ViewState["FilterMonth"] = nextMonth.Month;
+
+            SyncUIWithViewState();
+            BindRequestsGrid();
+        }
+
+        protected void btnCurrentMonth_Click(object sender, EventArgs e)
+        {
+            SetDefaultClaimMonth();
+            BindRequestsGrid();
+        }
+
+        protected void btnSearch_Click(object sender, EventArgs e)
+        {
+            if (ddlSearchYear.SelectedValue != "0")
+                ViewState["FilterYear"] = Convert.ToInt32(ddlSearchYear.SelectedValue);
+
+            if (ddlSearchMonth.SelectedValue != "0")
+                ViewState["FilterMonth"] = Convert.ToInt32(ddlSearchMonth.SelectedValue);
+
+            lblCurrentHeader.Text = "Custom Search Results";
+            BindRequestsGrid();
+        }
+
+        protected void btnReset_Click(object sender, EventArgs e)
+        {
+            SetDefaultClaimMonth();
+            BindRequestsGrid();
+        }
+
+        // ==========================================
+        // DATA BINDING
+        // ==========================================
         protected void BindRequestsGrid()
         {
             string employeeCode = Session["workman"]?.ToString() ?? "Guest";
             DataTable dt = new DataTable();
+
             using (var con = new SqlConnection(connString))
             {
-                // TODO: Replace with your actual SP that gets Approved Claims for the logged-in user
                 using (var cmd = new SqlCommand("dbo.usp_GetApprovedClaimsByUser", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@UserLoginId", employeeCode);
+
+                    if (ViewState["FilterYear"] != null && ddlSearchYear.SelectedValue != "0")
+                        cmd.Parameters.AddWithValue("@FilterYear", ViewState["FilterYear"]);
+                    else
+                        cmd.Parameters.AddWithValue("@FilterYear", DBNull.Value);
+
+                    if (ViewState["FilterMonth"] != null && ddlSearchMonth.SelectedValue != "0")
+                        cmd.Parameters.AddWithValue("@FilterMonth", ViewState["FilterMonth"]);
+                    else
+                        cmd.Parameters.AddWithValue("@FilterMonth", DBNull.Value);
+
+                    if (!string.IsNullOrWhiteSpace(txtSearchEmpCode.Text))
+                        cmd.Parameters.AddWithValue("@SearchEmpCode", txtSearchEmpCode.Text.Trim());
+                    else
+                        cmd.Parameters.AddWithValue("@SearchEmpCode", DBNull.Value);
+
                     using (var da = new SqlDataAdapter(cmd))
                     {
                         da.Fill(dt);
@@ -71,6 +181,9 @@ namespace AnmolDristi
             }
         }
 
+        // ==========================================
+        // EXPORT LOGIC (CLOSEDXML)
+        // ==========================================
         private void ExportClaimToExcel(int reqId)
         {
             DataTable dtExport = new DataTable();
@@ -89,12 +202,9 @@ namespace AnmolDristi
 
             if (dtExport.Rows.Count > 0)
             {
-                // 1. Get the RequesterLoginId (Employee Code) for the filename
                 string empCode = dtExport.Rows[0]["Employee Code"].ToString();
-                // Notice we are using .xlsx now!
                 string fileName = $"Claim_{reqId}_{empCode}.xlsx";
 
-                // 2. Create a new Totals Row
                 DataRow totalRow = dtExport.NewRow();
 
                 totalRow["Claim No"] = DBNull.Value;
@@ -102,12 +212,9 @@ namespace AnmolDristi
                 totalRow["Employee Name"] = DBNull.Value;
                 totalRow["Date"] = DBNull.Value;
                 totalRow["Day"] = "TOTAL:";
-
-                // NEW: Leave Route columns blank on the totals row
                 totalRow["From Place"] = DBNull.Value;
                 totalRow["To Place"] = DBNull.Value;
 
-                // Calculate sums using DataTable.Compute
                 totalRow["KM Claimed"] = dtExport.Compute("SUM([KM Claimed])", string.Empty);
                 totalRow["TA Bill"] = dtExport.Compute("SUM([TA Bill])", string.Empty);
                 totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
@@ -118,21 +225,16 @@ namespace AnmolDristi
 
                 dtExport.Rows.Add(totalRow);
 
-                // 3. Export Logic using ClosedXML
                 using (XLWorkbook wb = new XLWorkbook())
                 {
-                    // Add the DataTable as a worksheet
                     var ws = wb.Worksheets.Add(dtExport, "Approved Claim");
 
-                    // Format the Totals row (the very last used row)
                     var lastRow = ws.LastRowUsed();
                     lastRow.Style.Font.Bold = true;
                     lastRow.Style.Fill.BackgroundColor = XLColor.LightGray;
 
-                    // Auto-fit all columns so the data is instantly readable
                     ws.Columns().AdjustToContents();
 
-                    // Prepare the response for a true .xlsx file
                     Response.Clear();
                     Response.Buffer = true;
                     Response.Charset = "";
@@ -150,12 +252,9 @@ namespace AnmolDristi
             }
         }
 
-        // Required by ASP.NET when using GridView.RenderControl
-        public override void VerifyRenderingInServerForm(Control control)
-        {
-            /* Confirms that an HtmlForm control is rendered for the specified ASP.NET server control at run time. */
-        }
-
+        // ==========================================
+        // DETAILS MODAL LOGIC
+        // ==========================================
         protected void ShowDetailsModal(int reqId)
         {
             lblModalRequestId.Text = reqId.ToString();
@@ -177,7 +276,6 @@ namespace AnmolDristi
 
             using (var con = new SqlConnection(connString))
             {
-                // A. Fetch Line Items
                 using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequestDetails", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -188,7 +286,6 @@ namespace AnmolDristi
                     }
                 }
 
-                // B. Fetch Header Info
                 string sql = "SELECT (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName FROM SalesApprovalRequest r WHERE ApprovalRequestId = @Id";
                 using (var cmd = new SqlCommand(sql, con))
                 {
@@ -212,7 +309,7 @@ namespace AnmolDristi
                 }
             }
 
-            // C. CALCULATE SUMMARY
+            // Dashboard Math
             decimal currentApproved = _totalTAClaim + _totalSnapshot;
             decimal totalDeductions = 0m;
             decimal currentApprovedAmount = 0m;
@@ -276,7 +373,6 @@ namespace AnmolDristi
             decimal originalClaimedAmount = currentApprovedAmount + totalDeductedAmount;
             decimal originalClaimedKM = currentApprovedKM + totalDeductedKM;
 
-            // Update UI Labels
             lblSummaryOriginal.Text = originalClaimedAmount.ToString("N2");
             lblSummaryApproved.Text = currentApprovedAmount.ToString("N2");
             lblSummaryDeduction.Text = totalDeductedAmount.ToString("N2");
@@ -292,7 +388,6 @@ namespace AnmolDristi
                 DataRowView drv = e.Row.DataItem as DataRowView;
                 if (drv == null) return;
 
-                // Accumulate totals
                 _totalDistance += (drv["Snapshot_TotalDistanceKM"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_TotalDistanceKM"]);
                 _totalTAClaim += (drv["Snapshot_CalculatedClaimAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_CalculatedClaimAmount"]);
                 _totalDA += (drv["Snapshot_DAAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_DAAmount"]);
@@ -300,7 +395,6 @@ namespace AnmolDristi
                 _totalTravel += (drv["Snapshot_TravelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_TravelAmount"]);
                 _totalSnapshot += (drv["Snapshot_ExpenseTotal"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_ExpenseTotal"]);
 
-                // Apply read-only status coloring
                 string detailStatus = drv["DetailStatus"].ToString();
                 if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
@@ -355,6 +449,9 @@ namespace AnmolDristi
             }
         }
 
+        // ==========================================
+        // WEBMETHODS
+        // ==========================================
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static object GetDeductionBreakdown(int approvalRequestId)
@@ -449,11 +546,10 @@ namespace AnmolDristi
                 {
                     con.Open();
 
-                    // 1. Fetch Travel 'From' and 'To' directly from Expenses
                     string sqlPlaces = @"
-                    SELECT 
-                        (SELECT TOP 1 FromPlace FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND FromPlace IS NOT NULL ORDER BY ExpenseId ASC) as FromPlace,
-                        (SELECT TOP 1 ToPlace FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND ToPlace IS NOT NULL ORDER BY ExpenseId DESC) as ToPlace";
+                        SELECT 
+                            (SELECT TOP 1 FromPlace FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND FromPlace IS NOT NULL ORDER BY ExpenseId ASC) as FromPlace,
+                            (SELECT TOP 1 ToPlace FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND ToPlace IS NOT NULL ORDER BY ExpenseId DESC) as ToPlace";
 
                     using (var cmd = new SqlCommand(sqlPlaces, con))
                     {
@@ -468,9 +564,11 @@ namespace AnmolDristi
                         }
                     }
 
-                    // 2. Fetch the actual KM Change History
-                    string sqlHistory = @"SELECT HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason 
-                    FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = @ActivityId ORDER BY ModifiedDateTime DESC";
+                    string sqlHistory = @"
+                        SELECT HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason 
+                        FROM dbo.SalesDailyActivityKMHistory 
+                        WHERE ActivityId = @ActivityId 
+                        ORDER BY ModifiedDateTime DESC";
 
                     using (var cmd = new SqlCommand(sqlHistory, con))
                     {
@@ -502,6 +600,139 @@ namespace AnmolDristi
             catch (Exception ex)
             {
                 return new { success = false, message = ex.Message };
+            }
+        }
+
+        protected void btnExportSelected_Click(object sender, EventArgs e)
+        {
+            List<int> selectedReqIds = new List<int>();
+            Dictionary<int, string> reqEmpMap = new Dictionary<int, string>();
+
+            // 1. Gather all selected Request IDs from the grid
+            foreach (GridViewRow row in gvRequests.Rows)
+            {
+                if (row.RowType == DataControlRowType.DataRow)
+                {
+                    CheckBox chk = row.FindControl("chkSelectReq") as CheckBox;
+                    if (chk != null && chk.Checked)
+                    {
+                        HiddenField hfReqId = row.FindControl("hfReqId") as HiddenField;
+                        HiddenField hfEmpCode = row.FindControl("hfEmpCode") as HiddenField;
+                        int reqId;
+                        if (hfReqId != null && int.TryParse(hfReqId.Value, out reqId))
+                        {
+                            selectedReqIds.Add(reqId);
+                            // Store the Employee Code so we can name the Excel sheet nicely
+                            reqEmpMap[reqId] = hfEmpCode != null ? hfEmpCode.Value : "EMP";
+                        }
+                    }
+                }
+            }
+
+            // Guard clause: if they clicked the button without selecting anything
+            if (selectedReqIds.Count == 0)
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('Please select at least one claim to export.');", true);
+                return;
+            }
+
+            // 2. Create a single Workbook and iterate through the selected IDs
+            using (XLWorkbook wb = new XLWorkbook())
+            {
+                using (var con = new SqlConnection(connString))
+                {
+                    con.Open(); // Open the connection just once for better performance
+
+                    foreach (int reqId in selectedReqIds)
+                    {
+                        DataTable dtExport = new DataTable();
+                        using (var cmd = new SqlCommand("dbo.usp_Export_Auditor_Final_Excel", con))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                            using (var da = new SqlDataAdapter(cmd))
+                            {
+                                da.Fill(dtExport);
+                            }
+                        }
+
+                        if (dtExport.Rows.Count > 0)
+                        {
+                            // A. Create the Totals Row
+                            DataRow totalRow = dtExport.NewRow();
+                            totalRow["Claim No"] = DBNull.Value;
+                            totalRow["Employee Code"] = DBNull.Value;
+                            totalRow["Employee Name"] = DBNull.Value;
+                            totalRow["Date"] = DBNull.Value;
+                            totalRow["Day"] = "TOTAL:";
+                            totalRow["From Place"] = DBNull.Value;
+                            totalRow["To Place"] = DBNull.Value;
+
+                            totalRow["KM Claimed"] = dtExport.Compute("SUM([KM Claimed])", string.Empty);
+                            totalRow["TA Bill"] = dtExport.Compute("SUM([TA Bill])", string.Empty);
+                            totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
+                            totalRow["Hotel"] = dtExport.Compute("SUM([Hotel])", string.Empty);
+                            totalRow["Travel / OPA"] = dtExport.Compute("SUM([Travel / OPA])", string.Empty);
+                            totalRow["Total DA + Hotel + OPA"] = dtExport.Compute("SUM([Total DA + Hotel + OPA])", string.Empty);
+                            totalRow["Final Approved Amount"] = dtExport.Compute("SUM([Final Approved Amount])", string.Empty);
+
+                            dtExport.Rows.Add(totalRow);
+
+                            // B. Name the Sheet (Excel limits sheet names to 31 characters max)
+                            string sheetName = $"ID_{reqId}_{reqEmpMap[reqId]}";
+                            string finalSheetName = sheetName;
+
+                            // Ensure initial name is 31 characters max
+                            if (finalSheetName.Length > 31)
+                            {
+                                finalSheetName = finalSheetName.Substring(0, 31);
+                            }
+
+                            // Make absolutely sure the sheet name is unique in the workbook
+                            int counter = 1;
+                            while (wb.Worksheets.Contains(finalSheetName))
+                            {
+                                string suffix = $"_{counter}";
+                                // Calculate exactly how many characters we can keep from the original name
+                                int allowedLength = 31 - suffix.Length;
+
+                                finalSheetName = $"{sheetName.Substring(0, Math.Min(sheetName.Length, allowedLength))}{suffix}";
+                                counter++;
+                            }
+
+                            // C. Add to Workbook and Style
+                            var ws = wb.Worksheets.Add(dtExport, finalSheetName);
+                            var lastRow = ws.LastRowUsed();
+                            lastRow.Style.Font.Bold = true;
+                            lastRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+                            ws.Columns().AdjustToContents();
+                        }
+                    }
+                }
+
+                // 3. Final Download Logic
+                if (wb.Worksheets.Count > 0)
+                {
+                    string fileName = $"Bulk_Claims_Export_{DateTime.Now:ddMMMyyyy}.xlsx";
+
+                    Response.Clear();
+                    Response.Buffer = true;
+                    Response.Charset = "";
+                    Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    Response.AddHeader("content-disposition", "attachment;filename=" + fileName);
+
+                    using (MemoryStream memoryStream = new MemoryStream())
+                    {
+                        wb.SaveAs(memoryStream);
+                        memoryStream.WriteTo(Response.OutputStream);
+                        Response.Flush();
+                        Response.End();
+                    }
+                }
+                else
+                {
+                    ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('No exportable data found for the selected claims.');", true);
+                }
             }
         }
     }
