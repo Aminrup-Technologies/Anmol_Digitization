@@ -380,12 +380,12 @@ namespace AnmolDristi
                 // If Auditor is viewing, and row has pending receipts, AND row isn't rejected
                 if (isAuditor && hasPendingReceipts && !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
-                    var btnExp = e.Row.FindControl("btnExp") as Button;
+                    var btnExp = e.Row.FindControl("btnExp") as System.Web.UI.HtmlControls.HtmlButton;
                     if (btnExp != null)
                     {
-                        btnExp.CssClass = "btn btn-sm btn-danger text-white btn-expenses pulse-warning";
-                        btnExp.Text = "⚠️ Action";
-                        btnExp.ToolTip = "Pending receipts require your approval or rejection!";
+                        btnExp.Attributes["class"] = "btn btn-sm btn-danger text-white btn-expenses pulse-warning";
+                        btnExp.InnerText = "⚠️ Action";
+                        btnExp.Attributes["title"] = "Pending receipts require your approval or rejection!";
                     }
                 }
             }
@@ -466,10 +466,10 @@ namespace AnmolDristi
 
                 GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
                 TextBox txt = row.FindControl("txtRowRemark") as TextBox;
-                string remark = txt.Text;
+                string remark = txt != null ? txt.Text : "";
 
                 string action = isApprove ? "APPROVE" : "REJECT";
-                string user = Session["workman"]?.ToString() ?? "System";
+                string user = GetLoggedInEmployeeCode(); // Standardized to your identity method
 
                 using (var con = new SqlConnection(connString))
                 using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
@@ -484,21 +484,115 @@ namespace AnmolDristi
                     cmd.ExecuteNonQuery();
                 }
 
-                // Refresh to update colors/totals
+                // 1. CRITICAL: Force recalculation so the Dashboard Amounts instantly react to the approval/rejection!
+                int reqId = Convert.ToInt32(hfActionRequestId.Value);
+                ExecuteRecalculationSQL(reqId);
+
+                // 2. Refresh the Grid (This also runs the Gatekeeper check for the "Ready for Payment" button)
                 BindDetailsGrid(Convert.ToInt32(hfActionRequestId.Value));
+
+                // 3. Tell the UI to paint the changes
+                upDetails.Update();
             }
         }
 
         protected void btnApproveSelected_Click(object sender, EventArgs e)
         {
-            // Implementation of Bulk Approval calling usp_ProcessApprovalRequestDetails_WithRemarks
-            // (Standard logic same as V1, builds TVP and calls SP)
-            // After calling SP, call BindDetailsGrid()
+            ProcessBulkAction("Approved");
         }
 
         protected void btnRejectSelected_Click(object sender, EventArgs e)
         {
-            // Implementation of Bulk Reject
+            ProcessBulkAction("Rejected");
+        }
+
+        // =========================================================
+        // UNIFIED BULK ACTION PROCESSOR
+        // =========================================================
+        private void ProcessBulkAction(string newStatus)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(hfActionRequestId.Value)) return;
+
+                int reqId = Convert.ToInt32(hfActionRequestId.Value);
+                string auditor = GetLoggedInEmployeeCode(); // Rule 1: Safe Identity
+                int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+                string remarks = txtBulkRemarks.Text.Trim();
+
+                int processedCount = 0;
+
+                using (var con = new SqlConnection(connString))
+                {
+                    con.Open();
+
+                    // Loop through the grid to find checked rows
+                    foreach (GridViewRow row in gvDetails.Rows)
+                    {
+                        if (row.RowType == DataControlRowType.DataRow)
+                        {
+                            // Update these IDs if your ASPX uses different names for the Checkbox/HiddenField
+                            var chk = row.FindControl("chkSelect") as CheckBox;
+                            var hfActivityId = row.FindControl("hfActivityId") as HiddenField;
+
+                            if (chk != null && chk.Checked && hfActivityId != null && !string.IsNullOrEmpty(hfActivityId.Value))
+                            {
+                                int activityId = Convert.ToInt32(hfActivityId.Value);
+
+                                string sql = @"
+                            UPDATE dbo.SalesApprovalRequestDetail 
+                            SET DetailStatus = @Status, 
+                                DetailRemarks = @Remarks, 
+                                DetailApprovedBy = @ActionBy, 
+                                DetailApprovedOn = GETDATE(),
+                                DetailApprovedLevel = @Level
+                            WHERE ActivityId = @ActivityId AND ApprovalRequestId = @ReqId";
+
+                                using (var cmd = new SqlCommand(sql, con))
+                                {
+                                    cmd.Parameters.AddWithValue("@Status", newStatus);
+                                    cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remarks) ? (object)DBNull.Value : remarks);
+                                    cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                                    cmd.Parameters.AddWithValue("@Level", currentLevel);
+                                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                                    cmd.Parameters.AddWithValue("@ReqId", reqId);
+
+                                    cmd.ExecuteNonQuery();
+                                    processedCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (processedCount > 0)
+                {
+                    // Rule 2: Force recalculation so the Dashboard Footers jump instantly!
+                    ExecuteRecalculationSQL(reqId);
+
+                    // Clear the remarks box so it doesn't accidentally apply to the next batch
+                    txtBulkRemarks.Text = "";
+
+                    lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {newStatus}.";
+                    lblModalMessage.CssClass = newStatus == "Approved" ? "text-success font-weight-bold" : "text-danger font-weight-bold";
+                }
+                else
+                {
+                    lblModalMessage.Text = "Please select at least one row to apply the bulk action.";
+                    lblModalMessage.CssClass = "text-warning font-weight-bold";
+                }
+
+                // Rule 3: Bind Details Grid will automatically run the Gatekeeper Logic 
+                // to check if the 'Mark Ready for Payment' button should appear!
+                BindDetailsGrid(reqId);
+                upDetails.Update();
+            }
+            catch (Exception ex)
+            {
+                lblModalMessage.Text = "Error processing bulk action: " + ex.Message;
+                lblModalMessage.CssClass = "text-danger font-weight-bold";
+                upDetails.Update();
+            }
         }
 
         private string GetLoggedInEmployeeCode()
@@ -510,40 +604,81 @@ namespace AnmolDristi
 
         protected void btnMarkReadyForPayment_Click(object sender, EventArgs e)
         {
-            int reqId = Convert.ToInt32(hfActionRequestId.Value);
-            string auditor = GetLoggedInEmployeeCode();
-
-            // 1. Force a final recalculation to guarantee financial accuracy (If you added this feature)
-            // btnRecalculate_Click(null, null); 
-
-            // 2. Execute Status Updates
-            using (var con = new SqlConnection(connString))
+            try
             {
-                con.Open();
+                int reqId = Convert.ToInt32(hfActionRequestId.Value);
+                string auditor = GetLoggedInEmployeeCode();
 
-                // A. Gently force the Header to "Completed" (bridges the gap if they approved row-by-row)
-                using (var cmdFix = new SqlCommand("UPDATE SalesApprovalRequest SET Status = 'Completed' WHERE ApprovalRequestId = @Id AND Status = 'Pending'", con))
+                // 1. Force a final recalculation to guarantee financial accuracy
+                ExecuteRecalculationSQL(reqId);
+
+                // 2. Execute Status Updates
+                using (var con = new SqlConnection(connString))
                 {
-                    cmdFix.Parameters.AddWithValue("@Id", reqId);
-                    cmdFix.ExecuteNonQuery();
+                    con.Open();
+
+                    // A. Force the Header to "Completed" AND log it in the Status History table
+                    string fixStatusSql = @"
+                        UPDATE dbo.SalesApprovalRequest 
+                        SET Status = 'Completed' 
+                        WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+
+                        IF @@ROWCOUNT > 0
+                        BEGIN
+                            INSERT INTO dbo.ApprovalRequestStatusHistory 
+                            (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
+                            VALUES 
+                            (@Id, 'Pending', 'Completed', @AuditorId, 'Auditor finalized all rows and synced calculations.');
+                        END";
+
+                    using (var cmdFix = new SqlCommand(fixStatusSql, con))
+                    {
+                        cmdFix.Parameters.AddWithValue("@Id", reqId);
+                        cmdFix.Parameters.AddWithValue("@AuditorId", auditor);
+                        cmdFix.ExecuteNonQuery();
+                    }
+
+                    // B. NEW: Officially mark the Workflow Routing Table as Approved!
+                    string sqlWorkflow = @"
+                        UPDATE dbo.SalesApprovalRequestApprover 
+                        SET 
+                            Status = 'Approved', 
+                            ActionBy = @AuditorId, 
+                            ActionDate = GETDATE() 
+                        WHERE ApprovalRequestId = @Id 
+                          AND ApproverLevel = 2 
+                          AND Status = 'Pending'";
+
+                    using (var cmdWorkflow = new SqlCommand(sqlWorkflow, con))
+                    {
+                        cmdWorkflow.Parameters.AddWithValue("@Id", reqId);
+                        cmdWorkflow.Parameters.AddWithValue("@AuditorId", auditor);
+                        cmdWorkflow.ExecuteNonQuery();
+                    }
+
+                    // C. Push it to ReadyForPayment using your existing SP
+                    using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                        cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                        cmd.ExecuteNonQuery();
+                    }
                 }
 
-                // B. Now push it to ReadyForPayment using your existing SP
-                using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                    cmd.Parameters.AddWithValue("@ActionBy", auditor);
-                    cmd.ExecuteNonQuery();
-                }
+                lblModalMessage.Text = "Calculated & Marked Ready for Payment.";
+                lblModalMessage.CssClass = "text-success font-weight-bold";
+
+                // Refresh the UI to reflect the final state
+                BindDetailsGrid(reqId);
+                upDetails.Update();
             }
-
-            lblModalMessage.Text = "Calculated & Marked Ready for Payment.";
-            lblModalMessage.CssClass = "text-success font-weight-bold";
-
-            // Refresh the UI to reflect the final state
-            BindDetailsGrid(reqId);
-            upDetails.Update();
+            catch (Exception ex)
+            {
+                lblModalMessage.Text = "Error: " + ex.Message;
+                lblModalMessage.CssClass = "text-danger font-weight-bold";
+                upDetails.Update();
+            }
         }
 
         // --- 4. WEB METHODS (AJAX) ---
@@ -689,54 +824,25 @@ namespace AnmolDristi
         protected void btnRecalculate_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(hfActionRequestId.Value)) return;
-
             int reqId = Convert.ToInt32(hfActionRequestId.Value);
-
-            /* * LOGIC EXPLANATION:
-             * We sum up the snapshot columns for the specific ApprovalRequestId.
-             * We EXCLUDE rows where DetailStatus = 'Rejected', meaning if an Auditor rejects
-             * a whole day, it contributes 0 to the final Approved buckets.
-             * The table's computed columns (ApprovedExpenseAmount & TotalApprovedAmount) 
-             * will automatically recalculate themselves based on these base values!
-             */
-            string sqlRecalculate = @"
-                UPDATE d
-                SET 
-                    Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                    Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                    Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
-                FROM SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id;
-
-                UPDATE SalesApprovalRequestDetail SET Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0) WHERE ApprovalRequestId = @Id;
-
-                UPDATE SalesApprovalRequest
-                SET 
-                    ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                    ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                    ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                    ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                    ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected') WHERE ApprovalRequestId = @Id;";
 
             try
             {
-                using (var con = new SqlConnection(connString))
-                using (var cmd = new SqlCommand(sqlRecalculate, con))
-                {
-                    cmd.Parameters.AddWithValue("@Id", reqId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                }
+                // 1. Run the Math silently
+                ExecuteRecalculationSQL(reqId);
 
+                // 2. Set the success message
                 lblModalMessage.Text = "Amounts recalculated and synced successfully.";
-                lblModalMessage.CssClass = "text-success";
+                lblModalMessage.CssClass = "text-success font-weight-bold";
 
+                // 3. Update UI once
                 BindDetailsGrid(reqId);
                 upDetails.Update();
             }
             catch (Exception ex)
             {
                 lblModalMessage.Text = "Error during recalculation: " + ex.Message;
-                lblModalMessage.CssClass = "text-danger";
+                lblModalMessage.CssClass = "text-danger font-weight-bold";
                 upDetails.Update();
             }
         }
@@ -817,6 +923,41 @@ namespace AnmolDristi
             catch (Exception ex)
             {
                 return new { success = false, message = ex.Message };
+            }
+        }
+
+        // =========================================================
+        // CORE MATH ENGINE: Executes Recalculation SQL Only (No UI Updates)
+        // =========================================================
+        private void ExecuteRecalculationSQL(int reqId)
+        {
+            string sqlRecalculate = @"
+            UPDATE d
+            SET 
+                Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
+                Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
+                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
+            FROM SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id;
+
+            UPDATE SalesApprovalRequestDetail 
+            SET Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0) 
+            WHERE ApprovalRequestId = @Id;
+
+            UPDATE SalesApprovalRequest
+            SET 
+                ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
+                ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
+                ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
+                ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
+                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected') 
+            WHERE ApprovalRequestId = @Id;";
+
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(sqlRecalculate, con))
+            {
+                cmd.Parameters.AddWithValue("@Id", reqId);
+                con.Open();
+                cmd.ExecuteNonQuery();
             }
         }
     }

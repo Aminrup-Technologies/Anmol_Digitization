@@ -217,6 +217,7 @@
     <Content Include="add_region.aspx" />
     <Content Include="add_users.aspx" />
     <Content Include="AdminBatches.aspx" />
+    <Content Include="ApprovedClaimsView.aspx" />
     <Content Include="apps.aspx" />
     <Content Include="app_qc_inspectorreport.aspx" />
     <Content Include="bopp_tape.aspx" />
@@ -536,6 +537,13 @@
       <DependentUpon>AdminBatches.aspx</DependentUpon>
     </Compile>
     <Compile Include="AesEncryptionHelper.cs" />
+    <Compile Include="ApprovedClaimsView.aspx.cs">
+      <DependentUpon>ApprovedClaimsView.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ApprovedClaimsView.aspx.designer.cs">
+      <DependentUpon>ApprovedClaimsView.aspx</DependentUpon>
+    </Compile>
     <Compile Include="apps.aspx.cs">
       <DependentUpon>apps.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>

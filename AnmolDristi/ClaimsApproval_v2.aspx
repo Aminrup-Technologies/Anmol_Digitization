@@ -102,7 +102,7 @@
         /* =========================================================
            MODAL & STICKY GRID LOGIC (PERFECT SCROLLING)
         ========================================================= */
-        
+
         /* 1. Remove scroll from the outer modal body to prevent double scrollbars */
         #detailsModal .modal-body {
             padding: 16px 18px;
@@ -141,15 +141,24 @@
 
         /* Ensure hover effects don't mess up the sticky header/footer colors */
         #detailsModal .table tfoot tr:hover td {
-            background-color: #f8f9fa !important; 
+            background-color: #f8f9fa !important;
         }
 
         /* Gatekeeper Warning Animation */
         @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.75); }
-            70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.75);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
         }
+
         .pulse-warning {
             animation: pulse-red 2s infinite !important;
             font-weight: bold !important;
@@ -245,6 +254,7 @@
                                                 </HeaderTemplate>
                                                 <ItemTemplate>
                                                     <asp:CheckBox ID="chkSelect" runat="server" CssClass="row-select-checkbox" />
+                                                    <asp:HiddenField ID="hfActivityId" runat="server" Value='<%# Eval("ActivityId") %>' />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
@@ -271,18 +281,21 @@
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+
                                             <asp:TemplateField HeaderText="Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
                                                     <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' CssClass="form-control form-control-sm" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
+
                                             <asp:TemplateField HeaderText="Details" ItemStyle-HorizontalAlign="Center">
                                                 <ItemTemplate>
-                                                    <button type="button" class="btn btn-sm btn-info text-white btn-expenses" data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts">
+                                                    <button type="button" runat="server" id="btnExp" class="btn btn-sm btn-info text-white btn-expenses" data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts">
                                                         <i class="fa fa-list-alt"></i>View
                                                     </button>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
+
                                             <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%">
                                                 <ItemTemplate>
                                                     <asp:Button ID="btnApproveRow" runat="server" CssClass="btn btn-sm btn-outline-success" Text="✔" CommandName="ApproveRow" CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
@@ -329,25 +342,34 @@
 
                         <div class="dashboard-box bg-white border">
                             <span class="dashboard-label text-muted">Original Claimed</span>
-                            <h5 class="dashboard-value text-dark mb-0">₹ <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
+                            <h5 class="dashboard-value text-dark mb-0">₹
+                                <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
                             <small class="font-weight-bold text-muted d-block mt-1">
-                                <i class="fa fa-road"></i> <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" /> KM
+                                <i class="fa fa-road"></i>
+                                <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" />
+                                KM
                             </small>
                         </div>
 
                         <div class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
                             <span class="dashboard-label text-danger">Total Deductions <i class="fa fa-info-circle ml-1"></i></span>
-                            <h5 class="dashboard-value text-danger mb-0">(-) ₹ <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
+                            <h5 class="dashboard-value text-danger mb-0">(-) ₹
+                                <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
                             <small class="font-weight-bold text-danger d-block mt-1">
-                                <i class="fa fa-road"></i> (-) <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" /> KM
+                                <i class="fa fa-road"></i>(-)
+                                <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" />
+                                KM
                             </small>
                         </div>
 
                         <div class="dashboard-box bg-success text-white border border-success">
-                            <span class="dashboard-label text-white" style="opacity:0.9">Net Approved</span>
-                            <h5 class="dashboard-value text-white mb-0">₹ <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
+                            <span class="dashboard-label text-white" style="opacity: 0.9">Net Approved</span>
+                            <h5 class="dashboard-value text-white mb-0">₹
+                                <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
                             <small class="font-weight-bold text-white d-block mt-1">
-                                <i class="fa fa-road"></i> <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" /> KM
+                                <i class="fa fa-road"></i>
+                                <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" />
+                                KM
                             </small>
                         </div>
 
