@@ -13,7 +13,7 @@ using System.IO;
 
 namespace AnmolDristi
 {
-    public partial class ApprovedClaimsView : System.Web.UI.Page
+    public partial class ApprovedClaimsView : BasePage
     {
         private string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
@@ -27,6 +27,7 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            RequirePermission("UI.SO_TaDa_ViewApproved.View");
             if (!IsPostBack)
             {
                 if (Session["USERID"] != null)

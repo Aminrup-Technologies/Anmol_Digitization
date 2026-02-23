@@ -1,23 +1,14 @@
 ﻿<%@ Page Title="ADMIN | Role Permission Audit" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="RolePermissionAudit.aspx.cs" Inherits="AnmolDristi.RolePermissionAudit" %>
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
-
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
         <div class="container">
-            <div class="page-title">
-                <div class="title_left">
-                    <h5>Main Heading</h5>
-                </div>
-            </div>
-
-            <div class="clearfix"></div>
-
             <div class="row">
-                <div class="col-md-12 col-sm-12  ">
+                <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <div class="x_title">
-                            <h2>Role → Permission Manager</h2>
+                            <h2>Role Permission Audit Log</h2>
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
@@ -25,81 +16,56 @@
                         </div>
                         <div class="x_content">
                             <div class="row">
-                                <!-- First set of dropdown list -->
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <div class="form-group">
-                                        <label class="label-align">Filter RoleId:<span class="text text-danger">*</span></label>
-                                        <asp:TextBox ID="txtRoleId" runat="server" CssClass="form-control form-control-sm rounded" />
+                                        <label class="label-align">Filter by Role:</label>
+                                        <asp:DropDownList ID="ddlRole" runat="server" CssClass="form-control form-control-sm rounded" />
                                     </div>
                                 </div>
 
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <div class="form-group">
-                                        <label class="label-align">PermId :<span class="text text-danger">*</span></label>
-                                        <asp:TextBox ID="txtPermId" runat="server" CssClass="form-control form-control-sm rounded" />
+                                        <label class="label-align">Filter by Permission:</label>
+                                        <asp:DropDownList ID="ddlPerm" runat="server" CssClass="form-control form-control-sm rounded" />
                                     </div>
                                 </div>
 
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <div class="form-group">
-                                        <label class="label-align">From Date :<span class="text text-danger">*</span></label>
-                                        <asp:TextBox ID="txtFrom" runat="server" CssClass="form-control form-control-sm rounded" />
+                                        <label class="label-align">From Date:</label>
+                                        <%-- Using TextMode="Date" renders a native browser calendar picker! --%>
+                                        <asp:TextBox ID="txtFrom" runat="server" TextMode="Date" CssClass="form-control form-control-sm rounded" />
                                     </div>
                                 </div>
 
-                                <div class="col-md-6">
+                                <div class="col-md-3">
                                     <div class="form-group">
-                                        <label class="label-align">To Date :<span class="text text-danger">*</span></label>
-                                        <asp:TextBox ID="txtTo" runat="server" CssClass="form-control form-control-sm rounded" />
+                                        <label class="label-align">To Date:</label>
+                                        <asp:TextBox ID="txtTo" runat="server" TextMode="Date" CssClass="form-control form-control-sm rounded" />
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-6 center-margin">
+                            <div class="col-md-12">
                                 <div class="ln_solid"></div>
-                                <div class="item form-group row">
-                                    <div class="col-md-6 col-sm-12">
-                                        <asp:Label ID="lblMessage" runat="server" Text="Click SUBMIT to Save Data!!"></asp:Label>
+                                <div class="form-group row align-items-center">
+                                    <div class="col-md-6 col-sm-12 font-weight-bold">
+                                        <asp:Label ID="lblMessage" runat="server" Text="Select filters and click Load."></asp:Label>
                                     </div>
-                                    <div class="col-md-6 col-sm-12">
-                                        <button type="button" class="btn btn-danger btn-sm collapse-link">Cancel</button>
-                                        <button type="reset" class="btn btn-warning btn-sm">Reset</button>
-                                        <asp:Button ID="btnFilter" runat="server" Text="Load" OnClick="btnFilter_Click" CssClass="btn btn-primary btn-sm"/>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Small modal -->
-                            <asp:Button ID="ShowPopup" runat="server" Text="Button" class="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />
-                            <div id="MyPopup" class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-hidden="true">
-                                <div class="modal-dialog modal-sm">
-                                    <div class="modal-content">
-
-                                        <div class="modal-header">
-                                            <h4 class="modal-title" id="myModalLabel2"></h4>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">×</span>
-                                            </button>
-                                        </div>
-                                        <div class="modal-body">
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
-                                        </div>
-
+                                    <div class="col-md-6 col-sm-12 text-right">
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.location.href=window.location.href;">Reset Filters</button>
+                                        <asp:Button ID="btnFilter" runat="server" Text="Load Audit Log" OnClick="btnFilter_Click" CssClass="btn btn-primary btn-sm"/>
                                     </div>
                                 </div>
                             </div>
-                            <!-- Small Modal - END---->
                         </div>
-
                     </div>
                 </div>
 
                 <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <div class="x_title">
-                            <h2>View and Manage : Permissions</h2>
+                            <h2>Audit Results</h2>
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
@@ -109,7 +75,7 @@
                             <div class="row">
                                 <div class="col-md-12 col-sm-12">
                                     <div class="card-box table-responsive">
-                                        <asp:GridView ID="gvAudit" runat="server" AutoGenerateColumns="true" />
+                                        <asp:GridView ID="gvAudit" runat="server" AutoGenerateColumns="true" CssClass="table table-striped table-bordered table-hover" UseAccessibleHeader="true" />
                                     </div>
                                 </div>
                             </div>

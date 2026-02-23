@@ -332,6 +332,7 @@
     <Content Include="SalesMonthlyReview.aspx" />
     <Content Include="SubmitClaim.aspx" />
     <Content Include="UiControlMapper.aspx" />
+    <Content Include="UserRoleAudit.aspx" />
     <Content Include="UserRoleManager.aspx" />
     <Content Include="viewusers.aspx" />
     <Content Include="vm_ccp_checklist.aspx" />
@@ -1407,6 +1408,13 @@
       <DependentUpon>UploadImageHandler.ashx</DependentUpon>
     </Compile>
     <Compile Include="UserAuthService.cs" />
+    <Compile Include="UserRoleAudit.aspx.cs">
+      <DependentUpon>UserRoleAudit.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UserRoleAudit.aspx.designer.cs">
+      <DependentUpon>UserRoleAudit.aspx</DependentUpon>
+    </Compile>
     <Compile Include="UserRoleManager.aspx.cs">
       <DependentUpon>UserRoleManager.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>

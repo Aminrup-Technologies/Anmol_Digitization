@@ -126,8 +126,13 @@ namespace AnmolDristi
                 // If your sidebar markup is inside a server control with ID `sidebar-menu`,
                 // use that control's reference. Example: SidebarMenuControl
 
-                PermissionHelper.RefreshSessionPermissions();
-                PermissionHelper.ApplyUiPermissions(this); // will traverse all controls on the master
+                //PermissionHelper.RefreshSessionPermissions();
+                //PermissionHelper.ApplyUiPermissions(this); // will traverse all controls on the master
+                // REMOVE this line:
+                // PermissionHelper.RefreshSessionPermissions(); 
+
+                // KEEP this line:
+                PermissionHelper.ApplyUiPermissions(this);
                 DumpControls(this); // or pass your sidebar wrapper control
 
 

@@ -1,23 +1,21 @@
 ﻿<%@ Page Title="ADMIN | User Role Manager" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="UserRoleManager.aspx.cs" Inherits="AnmolDristi.UserRoleManager" %>
-<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
 
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <style>
+        /* Makes the CheckBoxList look better in Bootstrap */
+        .chk-list label { margin-left: 8px; font-weight: normal; cursor: pointer; }
+        .chk-list td { padding: 5px 15px 5px 0; }
+    </style>
 </asp:Content>
+
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
         <div class="container">
-            <%--<div class="page-title">
-                <div class="title_left">
-                    <h5>Main Heading</h5>
-                </div>
-            </div>
-
-            <div class="clearfix"></div>--%>
-
             <div class="row">
-                <div class="col-md-12 col-sm-12  ">
+                <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <div class="x_title">
-                            <h2>Role → Permission Manager</h2>
+                            <h2>User &rarr; Role Manager</h2>
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
@@ -25,67 +23,42 @@
                         </div>
                         <div class="x_content">
                             <div class="row">
-                                <!-- First set of dropdown list -->
-                                <%--<div class="col-md-6">
-                                    <div class="form-group">
-                                        <label class="label-align">UserId :<span class="text text-danger">*</span></label>
-                                        <asp:TextBox ID="txtUserId" runat="server" CssClass="form-control form-control-sm rounded" />
-                                    </div>
-                                </div>--%>
-
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label class="label-align">UserId :<span class="text text-danger">*</span></label>
-                                        <asp:TextBox ID="txtEmployeeCode" runat="server" CssClass="form-control form-control-sm rounded" />
+                                        <label class="label-align">Employee Code :<span class="text text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <asp:TextBox ID="txtEmployeeCode" runat="server" CssClass="form-control form-control-sm" placeholder="Enter Employee Code" />
+                                            <span class="input-group-btn">
+                                                <asp:Button ID="btnLoad" runat="server" Text="Load Roles" OnClick="btnLoad_Click" CssClass="btn btn-primary btn-sm" ValidationGroup="LoadGroup" />
+                                            </span>
+                                        </div>
+                                        <asp:RequiredFieldValidator ID="rfvEmpCode" runat="server" ControlToValidate="txtEmployeeCode" 
+                                            ErrorMessage="Employee Code is required." CssClass="text-danger" Display="Dynamic" ValidationGroup="LoadGroup" />
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-6 center-margin">
+                            <div class="col-md-12">
                                 <div class="ln_solid"></div>
-                                <div class="item form-group row">
-                                    <div class="col-md-6 col-sm-12">
-                                        <asp:Label ID="lblMessage" runat="server" Text="Click SUBMIT to Save Data!!"></asp:Label>
+                                <div class="form-group row align-items-center">
+                                    <div class="col-md-6 col-sm-12 font-weight-bold">
+                                        <asp:Label ID="lblMessage" runat="server" Text="Enter Employee Code and click Load Roles."></asp:Label>
                                     </div>
-                                    <div class="col-md-6 col-sm-12">
-                                        <button type="button" class="btn btn-danger btn-sm collapse-link">Cancel</button>
-                                        <button type="reset" class="btn btn-warning btn-sm">Reset</button>
-                                        <asp:Button ID="btnLoad" runat="server" Text="Load" OnClick="btnLoad_Click" CssClass="btn btn-primary btn-sm"/>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Small modal -->
-                            <asp:Button ID="ShowPopup" runat="server" Text="Button" class="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />
-                            <div id="MyPopup" class="modal fade bs-example-modal-sm" tabindex="-1" role="dialog" aria-hidden="true">
-                                <div class="modal-dialog modal-sm">
-                                    <div class="modal-content">
-
-                                        <div class="modal-header">
-                                            <h4 class="modal-title" id="myModalLabel2"></h4>
-                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                <span aria-hidden="true">×</span>
-                                            </button>
-                                        </div>
-                                        <div class="modal-body">
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
-                                        </div>
-
+                                    <div class="col-md-6 col-sm-12 text-right">
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="window.location.href=window.location.href;">Reset</button>
+                                        <%-- Fixed the text to say 'Save' --%>
+                                        <asp:Button ID="btnSaveRoles" runat="server" Text="Save Assignments" OnClick="btnSaveRoles_Click" CssClass="btn btn-success btn-sm" ValidationGroup="LoadGroup"/>
                                     </div>
                                 </div>
                             </div>
-                            <!-- Small Modal - END---->
                         </div>
-
                     </div>
                 </div>
 
                 <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <div class="x_title">
-                            <h2>View and Manage : Permissions</h2>
+                            <h2>Assign Roles</h2>
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
@@ -94,22 +67,9 @@
                         <div class="x_content">
                             <div class="row">
                                 <div class="col-md-12 col-sm-12">
-                                    <div class="card-box table-responsive">
-                                        <asp:CheckBoxList ID="cblRoles" runat="server" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6 center-margin">
-                                <div class="ln_solid"></div>
-                                <div class="item form-group row">
-                                    <div class="col-md-6 col-sm-12">
-                                        <asp:Label ID="Label1" runat="server" Text="Click SUBMIT to Save Data!!"></asp:Label>
-                                    </div>
-                                    <div class="col-md-6 col-sm-12">
-                                        <button type="button" class="btn btn-danger btn-sm collapse-link">Cancel</button>
-                                        <button type="reset" class="btn btn-warning btn-sm">Reset</button>
-                                        <asp:Button ID="btnSaveRoles" runat="server" Text="Load" OnClick="btnSaveRoles_Click" CssClass="btn btn-primary btn-sm"/>
+                                    <div class="card-box">
+                                        <%-- Added a custom CSS class for better spacing --%>
+                                        <asp:CheckBoxList ID="cblRoles" runat="server" CssClass="chk-list" RepeatColumns="3" RepeatDirection="Horizontal" />
                                     </div>
                                 </div>
                             </div>

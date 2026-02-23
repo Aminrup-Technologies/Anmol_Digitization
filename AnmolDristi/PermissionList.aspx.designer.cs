@@ -13,6 +13,15 @@ namespace AnmolDristi {
     public partial class PermissionList {
         
         /// <summary>
+        /// hfPermissionId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfPermissionId;
+        
+        /// <summary>
         /// txtPKey control.
         /// </summary>
         /// <remarks>
@@ -22,6 +31,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox txtPKey;
         
         /// <summary>
+        /// rfvPKey control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvPKey;
+        
+        /// <summary>
         /// txtPName control.
         /// </summary>
         /// <remarks>
@@ -29,6 +47,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txtPName;
+        
+        /// <summary>
+        /// rfvPName control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvPName;
         
         /// <summary>
         /// txtPType control.
@@ -58,6 +85,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox txtCtrl;
         
         /// <summary>
+        /// chkIsObsolete control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.CheckBox chkIsObsolete;
+        
+        /// <summary>
         /// lblMessage control.
         /// </summary>
         /// <remarks>
@@ -74,15 +110,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnCreatePerm;
-        
-        /// <summary>
-        /// ShowPopup control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button ShowPopup;
         
         /// <summary>
         /// gvPerms control.
