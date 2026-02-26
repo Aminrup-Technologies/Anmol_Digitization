@@ -92,11 +92,15 @@
                                     <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control"></asp:DropDownList>
                                 </div>
 
-                                <div class="col-md-2 col-sm-2 col-xs-12 form-group">
+                                <div class="col-md-3 col-sm-4 col-xs-12 form-group">
                                     <br />
-                                    <asp:LinkButton ID="lnkBtnSearch" runat="server" CssClass="btn btn-success" OnClick="lnkBtnSearch_Click">
-    <i class="fa fa-search"></i> Fetch Records
-</asp:LinkButton>
+                                    <asp:LinkButton ID="lnkBtnSearch" runat="server" CssClass="btn btn-success mt-1" OnClick="lnkBtnSearch_Click">
+                                        <i class="fa fa-search"></i> Search
+                                    </asp:LinkButton>
+
+                                    <asp:LinkButton ID="lnkBtnExport" runat="server" CssClass="btn btn-warning mt-1" OnClick="lnkBtnExport_Click">
+                                        <i class="fa fa-file-excel-o"></i> Export Excel
+                                    </asp:LinkButton>
                                 </div>
                             </div>
                         </div>
@@ -122,31 +126,27 @@
                             <div class="table-responsive">
                                 <asp:GridView ID="gvHeaders" runat="server" AutoGenerateColumns="False"
                                     CssClass="table table-striped table-bordered jambo_table bulk_action valign-middle"
-                                    GridLines="None"
-                                    EmptyDataText="<div class='alert alert-warning text-center' style='margin: 10px;'><i class='fa fa-info-circle'></i> No records found for the selected filters.</div>"
-                                    OnRowCommand="gvHeaders_RowCommand">
+                                    GridLines="None" OnRowCommand="gvHeaders_RowCommand">
                                     <Columns>
                                         <asp:BoundField DataField="EntryDate" HeaderText="Date" DataFormatString="{0:dd-MMM-yyyy}" />
-
+                                        <asp:BoundField DataField="EntryTime" HeaderText="Entry Time" />
+                                        <asp:BoundField DataField="SubmitterDetails" HeaderText="Submitted By" ItemStyle-CssClass="text-left" />
                                         <asp:TemplateField HeaderText="Shift">
                                             <ItemTemplate>
                                                 <span class="badge bg-green"><%# Eval("Shift") %></span>
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
-                                        <asp:BoundField DataField="PlantName" HeaderText="Plant" />
-                                        <asp:BoundField DataField="Line" HeaderText="Line" />
+                                        <asp:BoundField DataField="PlantNameText" HeaderText="Plant" />
+                                        <asp:BoundField DataField="LineNameText" HeaderText="Line" />
+
+
+                                        <asp:BoundField DataField="CategoryNameText" HeaderText="Category" />
+                                        <asp:BoundField DataField="BrandNameText" HeaderText="Brand" />
                                         <asp:BoundField DataField="SKUName" HeaderText="SKU" ItemStyle-Font-Bold="true" />
 
-                                        <asp:BoundField DataField="StandardWeight" HeaderText="Std Wgt (g)" DataFormatString="{0:0.00}" />
-                                        <asp:BoundField DataField="MinWeight" HeaderText="Min (g)" DataFormatString="{0:0.00}" />
-                                        <asp:BoundField DataField="MaxWeight" HeaderText="Max (g)" DataFormatString="{0:0.00}" />
-
-                                        <asp:TemplateField HeaderText="Avg (g)">
-                                            <ItemTemplate>
-                                                <strong class="text-primary"><%# Eval("AvgWeight", "{0:0.00}") %></strong>
-                                            </ItemTemplate>
-                                        </asp:TemplateField>
+                                        <asp:BoundField DataField="StandardWeight" HeaderText="Std(g)" DataFormatString="{0:0.00}" />
+                                        <asp:BoundField DataField="AvgWeight" HeaderText="Avg(g)" DataFormatString="{0:0.00}" ItemStyle-Font-Bold="true" />
 
                                         <asp:TemplateField HeaderText="Give-Away %">
                                             <ItemTemplate>
@@ -158,11 +158,9 @@
 
                                         <asp:TemplateField HeaderText="Action">
                                             <ItemTemplate>
-                                                <asp:LinkButton ID="lnkView" runat="server"
-                                                    CommandName="ViewDetails"
-                                                    CommandArgument='<%# Eval("PacketHdrID") %>'
-                                                    CssClass="btn btn-info btn-xs" ToolTip="View Interval Details">
-                                                    <i class="fa fa-list-alt"></i> Details
+                                                <asp:LinkButton ID="lnkView" runat="server" CommandName="ViewDetails"
+                                                    CommandArgument='<%# Eval("PacketHdrID") %>' CssClass="btn btn-info btn-xs">
+                                                    <i class="fa fa-eye"></i> Details
                                                 </asp:LinkButton>
                                             </ItemTemplate>
                                         </asp:TemplateField>
@@ -179,7 +177,7 @@
     </div>
 
     <div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-md" role="document">
+        <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header dark-header">
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -188,22 +186,67 @@
                     <h4 class="modal-title" id="detailsModalLabel"><i class="fa fa-balance-scale"></i>Packet Weight Details</h4>
                 </div>
                 <div class="modal-body">
+
+                    <div class="well well-sm" style="background-color: #f8f9fa; border: 1px solid #E6E9ED; border-radius: 4px; padding: 15px;">
+                        <div class="row" style="margin-bottom: 10px;">
+                            <div class="col-md-4 col-sm-6">
+                                <span class="text-muted">Date:</span><br />
+                                <asp:Label ID="lblModalDate" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
+                            </div>
+                            <div class="col-md-4 col-sm-6">
+                                <span class="text-muted">Shift:</span><br />
+                                <asp:Label ID="lblModalShift" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
+                            </div>
+                            <div class="col-md-4 col-sm-12">
+                                <span class="text-muted">Plant & Line:</span><br />
+                                <asp:Label ID="lblModalPlantLine" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <span class="text-muted">SKU:</span><br />
+                                <asp:Label ID="lblModalSKU" runat="server" Font-Bold="true" CssClass="text-primary" Font-Size="11pt"></asp:Label>
+                            </div>
+                        </div>
+                        <hr style="margin: 10px 0; border-top: 1px solid #d8d8d8;" />
+                        <div class="row">
+                            <div class="col-md-2 col-sm-4 col-xs-6">
+                                <span class="text-muted">Std Wgt:</span><br />
+                                <asp:Label ID="lblModalStd" runat="server" Font-Bold="true"></asp:Label>
+                            </div>
+                            <div class="col-md-2 col-sm-4 col-xs-6">
+                                <span class="text-muted">Minimum:</span><br />
+                                <asp:Label ID="lblModalMin" runat="server" Font-Bold="true"></asp:Label>
+                            </div>
+                            <div class="col-md-2 col-sm-4 col-xs-6">
+                                <span class="text-muted">Maximum:</span><br />
+                                <asp:Label ID="lblModalMax" runat="server" Font-Bold="true"></asp:Label>
+                            </div>
+                            <div class="col-md-2 col-sm-4 col-xs-6">
+                                <span class="text-muted">Average:</span><br />
+                                <asp:Label ID="lblModalAvg" runat="server" Font-Bold="true" CssClass="text-info"></asp:Label>
+                            </div>
+                            <div class="col-md-4 col-sm-8 col-xs-12">
+                                <span class="text-muted">Give-Away %:</span><br />
+                                <asp:Label ID="lblModalGiveAway" runat="server" Font-Bold="true" Font-Size="12pt"></asp:Label>
+                            </div>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <asp:GridView ID="gvDetails" runat="server" AutoGenerateColumns="False"
-                            CssClass="table table-striped table-bordered valign-middle">
-                            <HeaderStyle BackColor="#f5f7fa" ForeColor="#333" />
+                            CssClass="table table-striped table-bordered valign-middle text-center">
+                            <HeaderStyle BackColor="#2A3F54" ForeColor="#ECF0F1" />
                             <Columns>
-                                <asp:BoundField DataField="PacketNo" HeaderText="Packet No." />
                                 <asp:TemplateField HeaderText="Interval Window">
                                     <ItemTemplate>
-                                        <i class="fa fa-clock-o text-muted"></i><%# Eval("IntervalStart") %> - <%# Eval("IntervalEnd") %>
+                                        <i class="fa fa-clock-o text-muted"></i><strong><%# Eval("IntervalWindow") %></strong>
                                     </ItemTemplate>
                                 </asp:TemplateField>
-                                <asp:TemplateField HeaderText="Weight (g)">
-                                    <ItemTemplate>
-                                        <strong><%# Eval("PacketWeight", "{0:0.00}") %></strong>
-                                    </ItemTemplate>
-                                </asp:TemplateField>
+                                <asp:BoundField DataField="Packet1" HeaderText="Pkt 1 (g)" DataFormatString="{0:0.00}" />
+                                <asp:BoundField DataField="Packet2" HeaderText="Pkt 2 (g)" DataFormatString="{0:0.00}" />
+                                <asp:BoundField DataField="Packet3" HeaderText="Pkt 3 (g)" DataFormatString="{0:0.00}" />
+                                <asp:BoundField DataField="Packet4" HeaderText="Pkt 4 (g)" DataFormatString="{0:0.00}" />
+                                <asp:BoundField DataField="Packet5" HeaderText="Pkt 5 (g)" DataFormatString="{0:0.00}" />
                             </Columns>
                         </asp:GridView>
                     </div>

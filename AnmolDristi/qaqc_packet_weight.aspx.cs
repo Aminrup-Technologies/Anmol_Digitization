@@ -307,16 +307,25 @@ namespace AnmolDristi
 
             foreach (RepeaterItem item in rptIntervals.Items)
             {
-                HiddenField hfStart = item.FindControl("hfStart") as HiddenField;
-                HiddenField hfEnd = item.FindControl("hfEnd") as HiddenField;
-                if (hfStart == null || hfEnd == null) continue;
+                HiddenField hfStart = item.FindControl("hfStart") as HiddenField; // Holds "0 - 2 Hours"
+                if (hfStart == null) continue;
 
-                TimeSpan start = TimeSpan.Parse(hfStart.Value);
-                TimeSpan end = TimeSpan.Parse(hfEnd.Value);
+                // ALIGNMENT FIX: Map the text window back to valid TimeSpans for the DB
+                TimeSpan start = TimeSpan.Zero;
+                TimeSpan end = TimeSpan.Zero;
+
+                switch (hfStart.Value)
+                {
+                    case "0 - 2 Hours": start = new TimeSpan(0, 0, 0); end = new TimeSpan(2, 0, 0); break;
+                    case "2 - 4 Hours": start = new TimeSpan(2, 0, 0); end = new TimeSpan(4, 0, 0); break;
+                    case "4 - 6 Hours": start = new TimeSpan(4, 0, 0); end = new TimeSpan(6, 0, 0); break;
+                    case "6 - 8 Hours": start = new TimeSpan(6, 0, 0); end = new TimeSpan(8, 0, 0); break;
+                    default: start = TimeSpan.Zero; end = TimeSpan.FromHours(2); break;
+                }
 
                 for (int i = 1; i <= 5; i++)
                 {
-                    TextBox txt = item.FindControl($"txtPacket{i}") as TextBox;
+                    TextBox txt = item.FindControl("txtPacket" + i) as TextBox;
                     if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
                     {
                         decimal weight;
@@ -324,14 +333,6 @@ namespace AnmolDristi
                         {
                             dt.Rows.Add(start, end, i, weight);
                         }
-                        else
-                        {
-                            throw new Exception($"Invalid weight format at {start}-{end}, Packet {i}");
-                        }
-                    }
-                    else
-                    {
-                        throw new Exception($"Missing weight at {start}-{end}, Packet {i}");
                     }
                 }
             }
@@ -341,7 +342,6 @@ namespace AnmolDristi
         private void InsertPacketWeight(DataTable packetDetails)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
-            // IMPORTANT: Update this SP to accept Context parameters instead of QCInspectorID
             using (SqlCommand cmd = new SqlCommand("dbo.InsertPacketWeightData_Independent", con))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
@@ -349,11 +349,13 @@ namespace AnmolDristi
                 decimal stdWeight = 0;
                 decimal.TryParse(hdnStdWeight.Value, out stdWeight);
 
+                // Pass the context including Category and Brand
                 cmd.Parameters.AddWithValue("@Plant", DDL_Plant.SelectedValue);
                 cmd.Parameters.AddWithValue("@Line", DDL_PlantLine.SelectedValue);
                 cmd.Parameters.AddWithValue("@Category", DDL_ProductCategory.SelectedValue);
                 cmd.Parameters.AddWithValue("@Brand", DDL_ProductBrand.SelectedValue);
                 cmd.Parameters.AddWithValue("@SKUId", DDL_BrandSKU.SelectedValue);
+
                 cmd.Parameters.AddWithValue("@StandardWeight", stdWeight);
                 cmd.Parameters.AddWithValue("@Shift", lblShift.Text);
                 cmd.Parameters.AddWithValue("@SubmittedById", CurrentUserId);
