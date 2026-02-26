@@ -9,21 +9,26 @@
             font-weight: 600;
             border-left: 4px solid #337ab7;
         }
+
         .packet-table th {
             text-align: center;
             font-size: 12px;
             background-color: #fafafa;
         }
+
         .packet-table td {
             padding: 4px;
         }
+
         .packet-input {
             text-align: right;
         }
+
         .is-invalid {
             border: 1px solid #d9534f !important;
             background-color: #fff5f5;
         }
+
         .alert-success {
             margin-top: 15px;
         }
@@ -59,9 +64,14 @@
 
         function recalculatePreview() {
             const stdWeightField = document.getElementById('<%= hdnStdWeight.ClientID %>');
+            const tareWeightField = document.getElementById('<%= hdnTareWeight.ClientID %>'); // New
+
             if (!stdWeightField || stdWeightField.value === "") return;
 
             const standardWeight = parseFloat(stdWeightField.value);
+            // Safely parse Tare Weight (default to 0 if empty)
+            const tareWeight = (tareWeightField && tareWeightField.value !== "") ? parseFloat(tareWeightField.value) : 0; 
+
             if (isNaN(standardWeight) || standardWeight <= 0) return;
 
             const inputs = document.querySelectorAll('.packet-input');
@@ -83,11 +93,14 @@
             const min = Math.min(...values);
             const max = Math.max(...values);
             const avg = values.reduce((a, b) => a + b, 0) / values.length;
-            const giveAway = ((avg - standardWeight) / standardWeight) * 100;
+    
+            // NEW: Calculate Net Average, then Give-Away
+            const netAvg = avg - tareWeight;
+            const giveAway = ((netAvg - standardWeight) / standardWeight) * 100;
 
             document.getElementById('<%= lblMinWeight.ClientID %>').innerText = min.toFixed(2);
             document.getElementById('<%= lblMaxWeight.ClientID %>').innerText = max.toFixed(2);
-            document.getElementById('<%= lblAverage.ClientID %>').innerText = avg.toFixed(2);
+            document.getElementById('<%= lblAverage.ClientID %>').innerText = avg.toFixed(2); // Displays Gross Average
             document.getElementById('<%= lblGiveAway.ClientID %>').innerText = giveAway.toFixed(2) + " %";
         }
 
@@ -110,7 +123,7 @@
                 <div class="col-md-12 col-sm-12">
                     <div class="x_panel" style="border-top: 3px solid #2A3F54; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                         <div class="x_title">
-                            <h2 style="color: #2A3F54; font-weight: bold;"><i class="fa fa-info-circle"></i> Context Selection</h2>
+                            <h2 style="color: #2A3F54; font-weight: bold;"><i class="fa fa-info-circle"></i>Context Selection</h2>
                             <div class="clearfix"></div>
                         </div>
 
@@ -160,7 +173,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="row">
                                 <div class="col-md-3">
                                     <div class="mb-3">
@@ -210,8 +223,12 @@
                                     Enter <b>one packet weight per field</b>.  
                                     All 5 packet weights are mandatory for each interval block.
                                     <asp:HiddenField ID="hdnStdWeight" runat="server" />
+                                    <asp:HiddenField ID="hdnTareWeight" runat="server" />
                                 </div>
-
+                                <div class="alert alert-warning" style="padding: 10px; font-size: 13px;">
+                                    <i class="fa fa-clock-o"></i>
+                                    <b>Time-Gated Entry:</b> Intervals will automatically unlock as your shift progresses. You can only enter packet weights for 30-minute blocks that have already passed.
+                                </div>
                                 <asp:Repeater ID="rptIntervals" runat="server">
                                     <ItemTemplate>
                                         <div class="interval-header">
@@ -232,11 +249,16 @@
                                             </thead>
                                             <tbody>
                                                 <tr>
-                                                    <td><asp:TextBox ID="txtPacket1" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
-                                                    <td><asp:TextBox ID="txtPacket2" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
-                                                    <td><asp:TextBox ID="txtPacket3" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
-                                                    <td><asp:TextBox ID="txtPacket4" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
-                                                    <td><asp:TextBox ID="txtPacket5" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
+                                                    <td>
+                                                        <asp:TextBox ID="txtPacket1" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
+                                                    <td>
+                                                        <asp:TextBox ID="txtPacket2" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
+                                                    <td>
+                                                        <asp:TextBox ID="txtPacket3" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
+                                                    <td>
+                                                        <asp:TextBox ID="txtPacket4" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
+                                                    <td>
+                                                        <asp:TextBox ID="txtPacket5" runat="server" CssClass="form-control form-control-sm packet-input" placeholder="e.g. 36.05" onkeypress="return allowNumericOnly(event)" oninput="recalculatePreview()" /></td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -259,10 +281,14 @@
                                     * Preview only. Final values will be calculated and locked after submission.
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-3"><strong>Min Weight (g):</strong><br /><asp:Label ID="lblMinWeight" runat="server" Text="-" /></div>
-                                    <div class="col-md-3"><strong>Max Weight (g):</strong><br /><asp:Label ID="lblMaxWeight" runat="server" Text="-" /></div>
-                                    <div class="col-md-3"><strong>Average Weight (g):</strong><br /><asp:Label ID="lblAverage" runat="server" Text="-" /></div>
-                                    <div class="col-md-3"><strong>Give-Away (%):</strong><br /><asp:Label ID="lblGiveAway" runat="server" Text="-" /></div>
+                                    <div class="col-md-3"><strong>Min Weight (g):</strong><br />
+                                        <asp:Label ID="lblMinWeight" runat="server" Text="-" /></div>
+                                    <div class="col-md-3"><strong>Max Weight (g):</strong><br />
+                                        <asp:Label ID="lblMaxWeight" runat="server" Text="-" /></div>
+                                    <div class="col-md-3"><strong>Average Weight (g):</strong><br />
+                                        <asp:Label ID="lblAverage" runat="server" Text="-" /></div>
+                                    <div class="col-md-3"><strong>Give-Away (%):</strong><br />
+                                        <asp:Label ID="lblGiveAway" runat="server" Text="-" /></div>
                                 </div>
                             </div>
                         </div>

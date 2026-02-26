@@ -208,19 +208,27 @@ namespace AnmolDristi
         private void LoadSKUMetadata(string skuId)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("SELECT SKU_name FROM MST_Brand_SKU WHERE SKUId = @SKUId", con))
+            // Fetch SKU_details1 (Tare Weight) along with SKU_name (Standard Weight)
+            using (SqlCommand cmd = new SqlCommand("SELECT SKU_name, ISNULL(SKU_details1, '0') AS TareWeight FROM MST_Brand_SKU WHERE SKUId = @SKUId", con))
             {
                 cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
                 con.Open();
-                object result = cmd.ExecuteScalar();
-                if (result != null)
+                using (SqlDataReader dr = cmd.ExecuteReader())
                 {
-                    // Assuming SKU_name holds the target Standard Weight as text
-                    decimal standardWeight;
-                    if (decimal.TryParse(result.ToString(), out standardWeight))
+                    if (dr.Read())
                     {
-                        hdnStdWeight.Value = standardWeight.ToString("0.00");
-                        lblStandardWeightDisplay.Text = standardWeight.ToString("0.00");
+                        decimal standardWeight, tareWeight;
+
+                        if (decimal.TryParse(dr["SKU_name"].ToString(), out standardWeight))
+                        {
+                            hdnStdWeight.Value = standardWeight.ToString("0.00");
+                            lblStandardWeightDisplay.Text = standardWeight.ToString("0.00");
+                        }
+
+                        if (decimal.TryParse(dr["TareWeight"].ToString(), out tareWeight))
+                        {
+                            hdnTareWeight.Value = tareWeight.ToString("0.00");
+                        }
                     }
                 }
             }
@@ -307,22 +315,20 @@ namespace AnmolDristi
 
             foreach (RepeaterItem item in rptIntervals.Items)
             {
-                HiddenField hfStart = item.FindControl("hfStart") as HiddenField; // Holds "0 - 2 Hours"
-                if (hfStart == null) continue;
+                // 1. Find both start and end hidden fields
+                HiddenField hfStart = item.FindControl("hfStart") as HiddenField;
+                HiddenField hfEnd = item.FindControl("hfEnd") as HiddenField;
 
-                // ALIGNMENT FIX: Map the text window back to valid TimeSpans for the DB
+                if (hfStart == null || hfEnd == null) continue;
+
+                // 2. Dynamically parse the actual 30-minute timestamps (e.g., "09:00:00" and "09:30:00")
                 TimeSpan start = TimeSpan.Zero;
                 TimeSpan end = TimeSpan.Zero;
 
-                switch (hfStart.Value)
-                {
-                    case "0 - 2 Hours": start = new TimeSpan(0, 0, 0); end = new TimeSpan(2, 0, 0); break;
-                    case "2 - 4 Hours": start = new TimeSpan(2, 0, 0); end = new TimeSpan(4, 0, 0); break;
-                    case "4 - 6 Hours": start = new TimeSpan(4, 0, 0); end = new TimeSpan(6, 0, 0); break;
-                    case "6 - 8 Hours": start = new TimeSpan(6, 0, 0); end = new TimeSpan(8, 0, 0); break;
-                    default: start = TimeSpan.Zero; end = TimeSpan.FromHours(2); break;
-                }
+                TimeSpan.TryParse(hfStart.Value, out start);
+                TimeSpan.TryParse(hfEnd.Value, out end);
 
+                // 3. Loop through the 5 packets for this specific 30-minute interval
                 for (int i = 1; i <= 5; i++)
                 {
                     TextBox txt = item.FindControl("txtPacket" + i) as TextBox;
@@ -333,9 +339,20 @@ namespace AnmolDristi
                         {
                             dt.Rows.Add(start, end, i, weight);
                         }
+                        else
+                        {
+                            // STOP: Prevent saving if they typed letters instead of numbers
+                            throw new Exception($"Invalid weight format for Packet {i} in the {start:hh\\:mm} interval.");
+                        }
+                    }
+                    else
+                    {
+                        // STOP: Prevent saving if a box is completely empty
+                        throw new Exception($"Missing weight for Packet {i} in the {start:hh\\:mm} interval.");
                     }
                 }
             }
+
             return dt;
         }
 
@@ -347,9 +364,10 @@ namespace AnmolDristi
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 decimal stdWeight = 0;
+                decimal tareWeight = 0;
                 decimal.TryParse(hdnStdWeight.Value, out stdWeight);
+                decimal.TryParse(hdnTareWeight.Value, out tareWeight); // Fetch from hidden field
 
-                // Pass the context including Category and Brand
                 cmd.Parameters.AddWithValue("@Plant", DDL_Plant.SelectedValue);
                 cmd.Parameters.AddWithValue("@Line", DDL_PlantLine.SelectedValue);
                 cmd.Parameters.AddWithValue("@Category", DDL_ProductCategory.SelectedValue);
@@ -357,6 +375,7 @@ namespace AnmolDristi
                 cmd.Parameters.AddWithValue("@SKUId", DDL_BrandSKU.SelectedValue);
 
                 cmd.Parameters.AddWithValue("@StandardWeight", stdWeight);
+                cmd.Parameters.AddWithValue("@TareWeight", tareWeight); // NEW PARAMETER
                 cmd.Parameters.AddWithValue("@Shift", lblShift.Text);
                 cmd.Parameters.AddWithValue("@SubmittedById", CurrentUserId);
 

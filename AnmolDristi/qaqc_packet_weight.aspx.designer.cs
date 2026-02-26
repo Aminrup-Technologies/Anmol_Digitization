@@ -238,6 +238,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField hdnStdWeight;
         
         /// <summary>
+        /// hdnTareWeight control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hdnTareWeight;
+        
+        /// <summary>
         /// rptIntervals control.
         /// </summary>
         /// <remarks>
