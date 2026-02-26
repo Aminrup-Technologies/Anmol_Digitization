@@ -27,6 +27,39 @@
     <link href="Resources/custom/custom.css" rel="stylesheet" />
 
     <style type="text/css">
+        /* 1. Hide the hamburger toggle completely */
+        #menu_toggle { display: none !important; }
+
+        /* 2. KILL THE FLYOUTS: Completely hide the default floating menus globally */
+        body.nav-sm .nav.child_menu, 
+        body.nav-sm .active-sm {
+            display: none !important; 
+        }
+
+        /* 3. Lock main content so it NEVER jumps when the sidebar expands */
+        body.nav-md .container.body .right_col,
+        body.nav-sm .container.body .right_col {
+            margin-left: 70px !important; /* Always leave room for the narrow bar */
+            width: auto !important; 
+            padding: 10px 20px !important;
+            z-index: 1;
+        }
+
+        /* 4. Make the sidebar float OVER the content when it expands */
+        .col-md-3.left_col {
+            position: fixed !important; 
+            z-index: 9999 !important;
+            height: 100vh !important;
+            overflow-y: auto !important;
+            transition: width 0.2s ease; /* Smooth expanding animation */
+        }
+        
+        /* 5. Fix top navigation padding */
+        .nav_menu { width: 100%; margin-bottom: 0; }
+        
+        /* 6. Hide ANMOL text in narrow mode */
+        body.nav-sm .site_title span { display: none !important; }
+        body.nav-sm .nav_title { width: 70px !important; }
     </style>
     <asp:ContentPlaceHolder ID="head" runat="server">
     </asp:ContentPlaceHolder>
@@ -378,31 +411,31 @@
         })();
     </script>
     <script>
-(function () {
-    setInterval(function () {
-        try {
-            var token = sessionStorage.getItem("ActiveLoginToken");
-            if (!token) return;
+        (function () {
+            setInterval(function () {
+                try {
+                    var token = sessionStorage.getItem("ActiveLoginToken");
+                    if (!token) return;
 
-            fetch('<%= ResolveUrl("~/heartbeat.aspx/Heartbeat") %>', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json; charset=utf-8',
-                    'Cache-Control': 'no-cache'
-                },
-                body: JSON.stringify({ loginToken: token })
-            });
-        } catch (e) { }
-    }, 60000); // 1 minute
-})();
-</script>
+                    fetch('<%= ResolveUrl("~/heartbeat.aspx/Heartbeat") %>', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8',
+                            'Cache-Control': 'no-cache'
+                        },
+                        body: JSON.stringify({ loginToken: token })
+                    });
+                } catch (e) { }
+            }, 60000); // 1 minute
+        })();
+    </script>
 
 
 
 
 </head>
-<body class="nav-md footer_fixed">
+<body class="nav-sm footer_fixed">
     <div id="loader">
         <img src="WebData/Internal/Hourglass.gif" alt="loadergif" />
     </div>
@@ -422,7 +455,6 @@
 
                             <div class="clearfix"></div>
 
-                            <!-- menu profile quick info -->
                             <div class="profile clearfix">
                                 <div class="profile_pic">
                                     <img id="ProfilePic_1" src="~/WebData/No_Image.jpg" runat="server" alt="..." class="img-circle profile_img">
@@ -432,19 +464,14 @@
                                 <asp:Label ID="lbl_loginusername1" runat="server" Text="Login_Name" Font-Bold="true"></asp:Label>
                                 </div>
                             </div>
-                            <!-- /menu profile quick info -->
-
                             <br />
 
-                            <!-- sidebar menu -->
                             <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
                                 <div class="menu_section">
                                     <h3>General</h3>
                                     <ul class="nav side-menu">
-                                        <li id="HomePage" runat="server" visible="false"><a><i class="fa fa-home"></i>Home <span class="fa fa-chevron-down"></span></a>
-                                            <ul class="nav child_menu">
-                                                <li id="Home1" runat="server" visible="false"><a href="home.aspx">Dashboard-1<span class="label label-success pull-right">Click !!</span></a></li>
-                                            </ul>
+                                        <li id="HomePage" runat="server" visible="false">
+                                            <a href="home.aspx" title="Dashboard-1"><i class="fa fa-home"></i>Home</a>
                                         </li>
 
                                         <li id="ImputForms" runat="server" visible="false"><a><i class="fa fa-pencil-square-o"></i>Forms<span class="fa fa-chevron-down"></span></a>
@@ -518,9 +545,6 @@
                                     </ul>
                                 </div>
                             </div>
-                            <!-- /sidebar menu -->
-
-                            <!-- /menu footer buttons -->
                             <div class="sidebar-footer hidden-small">
                                 <a data-toggle="tooltip" data-placement="top" title="Settings">
                                     <span class="glyphicon glyphicon-cog" aria-hidden="true"></span>
@@ -535,11 +559,9 @@
                                     <span class="glyphicon glyphicon-off" aria-hidden="true"></span>
                                 </a>
                             </div>
-                            <!-- /menu footer buttons -->
                         </div>
                     </div>
 
-                    <!-- top navigation -->
                     <div class="top_nav">
                         <div class="nav_menu">
                             <div class="nav toggle">
@@ -563,7 +585,6 @@
                             </nav>
                         </div>
                     </div>
-                    <!-- /top navigation -->
                 </div>
                 <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
             </div>
@@ -610,7 +631,6 @@
             </div>
             <%--- Logout Modal -------- END --%>
 
-            <!-- Small modal -->
             <asp:Button ID="ShowPopup" runat="server" Text="Button" class="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />
             <div id="MyPopup" class="modal fade bs-example-modal-sm" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-dialog modal-sm">
@@ -630,7 +650,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Small Modal - END---->
             <script type="text/javascript">
                 document.addEventListener("DOMContentLoaded", function () {
                     document.getElementById('content').style.display = 'block';
@@ -669,6 +688,33 @@
             <script src="Resources//pnotify/dist/pnotify.buttons.js"></script>
             <script src="Resources//pnotify/dist/pnotify.nonblock.js"></script>
             <script src="Resources//jQuery-Smart-Wizard/js/jquery.smartWizard.js"></script>
+
+            <script type="text/javascript">
+                $(document).ready(function() {
+                    var $body = $('body');
+                    var $sidebar = $('.left_col');
+
+                    // 1. Enforce Narrow Mode globally on load
+                    $body.removeClass('nav-md').addClass('nav-sm');
+                    $('#menu_toggle').off('click'); // Disable default toggle
+
+                    // 2. Temporarily expand the sidebar when hovered
+                    $sidebar.hover(
+                        function() {
+                            // Mouse Enters: Switch to Wide view so standard accordions work
+                            $body.removeClass('nav-sm').addClass('nav-md');
+                        },
+                        function() {
+                            // Mouse Leaves: Switch back to Narrow view
+                            $body.removeClass('nav-md').addClass('nav-sm');
+                            
+                            // Close any open accordions so it's tidy for the next time
+                            $('.child_menu').slideUp(200);
+                            $('ul.side-menu li').removeClass('active');
+                        }
+                    );
+                });
+            </script>
 
         </form>
     </div>

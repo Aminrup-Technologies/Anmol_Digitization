@@ -7,7 +7,7 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Configuration;
-using AnmolDristi.DAL; // Assuming ShiftManager is here
+using AnmolDristi.DAL;
 using static AnmolDristi.DAL.ShiftManager;
 
 namespace AnmolDristi
@@ -16,7 +16,6 @@ namespace AnmolDristi
     {
         private readonly string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
-        // --- Helper Property: Get Logged-in User ID Safely ---
         private int CurrentUserId
         {
             get
@@ -36,7 +35,6 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            // 1. Validate Session on every load
             if (Session["CurrentUserId"] == null)
             {
                 Response.Redirect("login.aspx", true);
@@ -45,176 +43,210 @@ namespace AnmolDristi
 
             if (!IsPostBack)
             {
-                // 2. Resolve Shift Context (Display purposes)
                 ResolveCurrentShift();
-
-                // 3. Load the specific QC Record (Logic updated for URL/Stateless)
-                LoadTargetQCRecord();
+                PlantBinder();
             }
         }
 
         /* --------------------------------------------------------------------------
-           LOGIC: Determine WHICH record to load
-           Priority 1: QueryString (Stateless/Tab-Safe)
-           Priority 2: Fallback to DB (Safety Net)
+           CASCADING DROPDOWNS LOGIC
            -------------------------------------------------------------------------- */
-        private void LoadTargetQCRecord()
+        public void PlantBinder()
         {
-            int targetQcId = 0;
+            string query = "SELECT plant_id, CONCAT(plant_name, '[', sap_code, ']') AS plant_name FROM MST_PlantDetails";
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_Plant, "plant_name", "plant_id", out recordsBound);
+            if (!recordsBound) DatabaseHelper.BindWithDefaultNoRecords(DDL_Plant);
+        }
 
-            // 1. Check QueryString (Preferred)
-            if (!string.IsNullOrEmpty(Request.QueryString["qcid"]))
+        protected void DDL_Plant_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ResetEntryPanel();
+            if (DDL_Plant.SelectedIndex != 0)
             {
-                int requestedId;
-                if (int.TryParse(Request.QueryString["qcid"], out requestedId))
-                {
-                    // SECURITY CHECK: Does this ID belong to the logged-in User?
-                    if (ValidateRecordOwnership(requestedId))
-                    {
-                        targetQcId = requestedId;
-                    }
-                    else
-                    {
-                        // ID exists, but user doesn't own it (Security Risk or Session Timeout)
-                        // Send them back to the dashboard
-                        Response.Redirect("qaqc_inspector_rpt.aspx", true);
-                        return;
-                    }
-                }
-            }
-
-            // 2. Fallback: If URL is empty, find the OLDEST pending record for this user
-            if (targetQcId == 0)
-            {
-                targetQcId = GetOldestPendingQCInspectorId();
-            }
-
-            // 3. Final Decision
-            if (targetQcId > 0)
-            {
-                // Store in HiddenField for the Submit button to use later
-                hdnQCInspectorID.Value = targetQcId.ToString();
-                Session["CurrentQCId"] = targetQcId; // Optional: Keep for legacy consistency
-
-                LoadQCContext(targetQcId);
-                BindIntervals(targetQcId);
+                string selectedPlantValue = DDL_Plant.SelectedValue;
+                lbl_DDL_Plant_Value.Text = selectedPlantValue;
+                PlantLinesBinder(selectedPlantValue);
             }
             else
             {
-                // No work found -> Go back to Dashboard
-                Response.Redirect("qaqc_inspector_rpt.aspx", true);
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
             }
         }
 
-        /* --------------------------------------------------------------------------
-           SECURITY: Ensure User Owns the Record
-           -------------------------------------------------------------------------- */
-        private bool ValidateRecordOwnership(int qcId)
+        private void PlantLinesBinder(string selectedPlantValue)
         {
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand(@"
-                SELECT 1 
-                FROM TRN_qcinspector 
-                WHERE ID = @ID 
-                  AND SubmittedById = @UserId 
-                  AND QC_Status = 'STEP2_PENDING'", con))
-            {
-                cmd.Parameters.AddWithValue("@ID", qcId);
-                cmd.Parameters.AddWithValue("@UserId", CurrentUserId);
+            string query = "SELECT line_id, line_name FROM MST_Plant_Lines WHERE plant_id = @SelectedPlantValue and view_status=1 and delete_status=0 order by plant_id";
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_PlantLine, "line_name", "line_id", new SqlParameter("@SelectedPlantValue", selectedPlantValue), out recordsBound);
+            if (!recordsBound) DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
+        }
 
-                con.Open();
-                return cmd.ExecuteScalar() != null;
+        protected void DDL_PlantLine_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ResetEntryPanel();
+            if (DDL_PlantLine.SelectedIndex != 0)
+            {
+                string selectedPlantValue = DDL_Plant.SelectedValue;
+                string selectedPlantLineValue = DDL_PlantLine.SelectedValue;
+                lbl_DDL_PlantLine_Value.Text = selectedPlantLineValue;
+                LineProductsBinder(selectedPlantValue, selectedPlantLineValue);
+            }
+            else
+            {
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_ProductCategory);
             }
         }
 
-        /* --------------------------------------------------------------------------
-           FALLBACK: Find oldest pending record if URL is missing
-           -------------------------------------------------------------------------- */
-        private int GetOldestPendingQCInspectorId()
+        private void LineProductsBinder(string selectedPlantValue, string selectedPlantLineValue)
         {
-            // Context from Login Session
-            string currentPlant = Session["PLANTID"] as string;
-            string currentLine = Session["CurrentLine"] as string;
-
-            if (string.IsNullOrEmpty(currentPlant) || string.IsNullOrEmpty(currentLine))
-                return 0;
-
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("dbo.GetOldestPendingQCInspectorId", con))
+            string query = "SELECT category_id, category_name FROM MST_LineCategory WHERE plant_id = @PlantId AND line_id = @LineId and view_status=1 and delete_status=0 order by category_id";
+            SqlParameter[] parameters = new SqlParameter[]
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = CurrentUserId;
-                cmd.Parameters.Add("@PlantName", SqlDbType.NVarChar, 100).Value = currentPlant;
-                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = currentLine;
+                new SqlParameter("@PlantId", selectedPlantValue),
+                new SqlParameter("@LineId", selectedPlantLineValue)
+            };
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_ProductCategory, "category_name", "category_id", parameters, out recordsBound);
+            if (!recordsBound) DatabaseHelper.BindWithDefaultNoRecords(DDL_ProductCategory);
+        }
 
+        protected void DDL_ProductCategory_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ResetEntryPanel();
+            if (DDL_ProductCategory.SelectedIndex != 0)
+            {
+                string selectedPlantValue = DDL_Plant.SelectedValue;
+                string selectedPlantLineValue = DDL_PlantLine.SelectedValue;
+                string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue;
+                lbl_DDL_ProductCategory_Value.Text = selectedProductCategoryValue;
+                ProductBrandsBinder(selectedPlantValue, selectedPlantLineValue, selectedProductCategoryValue);
+            }
+            else
+            {
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_ProductBrand);
+            }
+        }
+
+        private void ProductBrandsBinder(string selectedPlantValue, string selectedPlantLineValue, string selectedProductCategoryValue)
+        {
+            string query = "SELECT brand_id, brand_name FROM MST_LineCatBrands WHERE plant_id = @PlantId AND line_id = @LineId and category_id=@CategoryId and view_status=1 and delete_status=0 order by brand_id";
+            SqlParameter[] parameters = new SqlParameter[]
+            {
+                new SqlParameter("@PlantId", selectedPlantValue),
+                new SqlParameter("@LineId", selectedPlantLineValue),
+                new SqlParameter("@CategoryId", selectedProductCategoryValue)
+            };
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_ProductBrand, "brand_name", "brand_id", parameters, out recordsBound);
+            if (!recordsBound) DatabaseHelper.BindWithDefaultNoRecords(DDL_ProductBrand);
+        }
+
+        protected void DDL_ProductBrand_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ResetEntryPanel();
+            if (DDL_ProductBrand.SelectedIndex != 0)
+            {
+                string selectedProductBrandValue = DDL_ProductBrand.SelectedValue;
+                lbl_DDL_ProductBrand_Value.Text = selectedProductBrandValue;
+                BrandSKUBinder(selectedProductBrandValue);
+            }
+            else
+            {
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_BrandSKU);
+            }
+        }
+
+        private void BrandSKUBinder(string selectedProductBrandValue)
+        {
+            string query = "SELECT SKUId, SKU_name FROM MST_Brand_SKU WHERE brand_id = @SelectedPlantValue and ViewMode=1 order by SKUId";
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_BrandSKU, "SKU_name", "SKUId", new SqlParameter("@SelectedPlantValue", selectedProductBrandValue), out recordsBound);
+            if (!recordsBound) DatabaseHelper.BindWithDefaultNoRecords(DDL_BrandSKU);
+        }
+
+        private void ResetEntryPanel()
+        {
+            pnlPacketEntry.Visible = false;
+            divMetadata.Visible = false;
+            lblError.Text = string.Empty;
+        }
+
+        /* --------------------------------------------------------------------------
+           FINAL SELECTION: Fetch Standard Weight & Intervals Independently
+           -------------------------------------------------------------------------- */
+        protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            lblError.Text = string.Empty;
+
+            if (DDL_Plant.SelectedIndex <= 0 || DDL_PlantLine.SelectedIndex <= 0 ||
+                DDL_ProductCategory.SelectedIndex <= 0 || DDL_ProductBrand.SelectedIndex <= 0 ||
+                string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) || DDL_BrandSKU.SelectedIndex <= 0)
+            {
+                ResetEntryPanel();
+                return;
+            }
+
+            string skuId = DDL_BrandSKU.SelectedValue;
+
+            // 1. Fetch the Standard Weight Directly from Master
+            LoadSKUMetadata(skuId);
+
+            // 2. Fetch Intervals based on the Context/Latest Record in the Packet Weight Table
+            BindIntervalsByContext(
+                DDL_Plant.SelectedValue,
+                DDL_PlantLine.SelectedValue,
+                DDL_ProductCategory.SelectedValue,
+                DDL_ProductBrand.SelectedValue,
+                skuId
+            );
+
+            divMetadata.Visible = true;
+            pnlPacketEntry.Visible = true;
+        }
+
+        private void LoadSKUMetadata(string skuId)
+        {
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("SELECT SKU_name FROM MST_Brand_SKU WHERE SKUId = @SKUId", con))
+            {
+                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
                 con.Open();
                 object result = cmd.ExecuteScalar();
-
-                return (result != null && result != DBNull.Value) ? Convert.ToInt32(result) : 0;
-            }
-        }
-
-        /* --------------------------------------------------------------------------
-           UI BINDING: Load Header Info
-           -------------------------------------------------------------------------- */
-        private void LoadQCContext(int qcInspectorId)
-        {
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand(@"
-            SELECT  
-                q.PlantName, q.Line, q.SKUId, q.ProductCategory, q.ProductBrand, 
-                q.SubmittedDate, q.SubmittedTime, q.Shift, 
-                s.SKU_name AS StandardWeightText
-            FROM TRN_qcinspector q
-            INNER JOIN MST_Brand_SKU s ON q.SKUId = s.SKUId
-            WHERE q.ID = @ID", con))
-            {
-                cmd.Parameters.Add("@ID", SqlDbType.Int).Value = qcInspectorId;
-                con.Open();
-                using (SqlDataReader dr = cmd.ExecuteReader())
+                if (result != null)
                 {
-                    if (dr.Read())
+                    // Assuming SKU_name holds the target Standard Weight as text
+                    decimal standardWeight;
+                    if (decimal.TryParse(result.ToString(), out standardWeight))
                     {
-                        // Using your existing helper methods to resolve names
-                        lblPlant.Text = GetPlantName(Convert.ToInt32(dr["PlantName"])) ?? dr["PlantName"].ToString();
-                        lblLine.Text = GetLineName(Convert.ToInt32(dr["PlantName"]), Convert.ToInt32(dr["Line"])) ?? dr["Line"].ToString();
-
-                        lbl_qcid.Text = qcInspectorId.ToString();
-                        lblSKU.Text = GetSKUName(dr["SKUId"].ToString()) ?? dr["SKUId"].ToString();
-
-                        lblVariety.Text = GetBrandName(
-                            Convert.ToInt32(dr["PlantName"]),
-                            Convert.ToInt32(dr["Line"]),
-                            Convert.ToInt32(dr["ProductCategory"]),
-                            Convert.ToInt32(dr["ProductBrand"])
-                        ) ?? dr["ProductBrand"].ToString();
-
-                        lblShift.Text = dr["Shift"].ToString();
-
-                        DateTime qcSubmitted = Convert.ToDateTime(dr["SubmittedDate"]).Add((TimeSpan)dr["SubmittedTime"]);
-                        lblQCSubmittedAt.Text = qcSubmitted.ToString("dd-MMM-yyyy HH:mm");
-
-                        decimal standardWeight;
-                        if (decimal.TryParse(dr["StandardWeightText"].ToString(), out standardWeight))
-                        {
-                            hdnStdWeight.Value = standardWeight.ToString("0.00");
-                        }
+                        hdnStdWeight.Value = standardWeight.ToString("0.00");
+                        lblStandardWeightDisplay.Text = standardWeight.ToString("0.00");
                     }
                 }
             }
         }
 
-        /* --------------------------------------------------------------------------
-           UI BINDING: Generate Intervals (The 30-min slots)
-           -------------------------------------------------------------------------- */
-        private void BindIntervals(int qcInspectorId)
+        private void BindIntervalsByContext(string plant, string line, string category, string brand, string skuId)
         {
             DataTable dt = new DataTable();
             using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("dbo.GetPacketWeightIntervalsByQCInspectorId", con))
+            using (SqlCommand cmd = new SqlCommand("dbo.GetNextPacketWeightIntervals_ByContext", con))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add("@QCInspectorID", SqlDbType.Int).Value = qcInspectorId;
+                cmd.Parameters.Add("@UserId", SqlDbType.Int).Value = CurrentUserId;
+                cmd.Parameters.Add("@Plant", SqlDbType.NVarChar, 100).Value = plant;
+                cmd.Parameters.Add("@Line", SqlDbType.NVarChar, 100).Value = line;
+                cmd.Parameters.Add("@Category", SqlDbType.NVarChar, 100).Value = category;
+                cmd.Parameters.Add("@Brand", SqlDbType.NVarChar, 100).Value = brand;
+                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
+
+                // Pass current Date, Shift Name, and Shift Start Time for Time-Gating
+                cmd.Parameters.Add("@EntryDate", SqlDbType.Date).Value = DateTime.Today;
+                cmd.Parameters.Add("@Shift", SqlDbType.VarChar, 50).Value = lblShift.Text;
+
+                // Ensure Session["SHIFT_START"] exists, otherwise default to midnight
+                string shiftStart = Session["SHIFT_START"] != null ? Session["SHIFT_START"].ToString() : "00:00";
+                cmd.Parameters.Add("@ShiftStartTime", SqlDbType.VarChar, 20).Value = shiftStart;
 
                 using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                 {
@@ -231,7 +263,10 @@ namespace AnmolDristi
             }
             else
             {
-                lblWindow.Text = "No pending intervals required.";
+                // If 0 rows are returned, they are either done, or they are too early!
+                lblWindow.Text = "Not Available";
+                lblError.Text = "Notice: You have either completed all 4 intervals, or the 2-hour window for the next interval has not opened yet.";
+                pnlPacketEntry.Visible = false; // Safely hide the entry grid
             }
         }
 
@@ -242,15 +277,6 @@ namespace AnmolDristi
         {
             try
             {
-                // Ensure we have the QC ID from the hidden field
-                int qcInspectorId;
-                if (!int.TryParse(hdnQCInspectorID.Value, out qcInspectorId))
-                {
-                    lblError.Text = "Session lost. Please reload the page.";
-                    return;
-                }
-
-                // 1. Build Data Table
                 DataTable packetDetails = BuildPacketDetailTable();
                 if (packetDetails.Rows.Count == 0)
                 {
@@ -258,21 +284,12 @@ namespace AnmolDristi
                     return;
                 }
 
-                // 2. Calculate Summary (Updates UI labels)
                 CalculateSummary(packetDetails);
+                InsertPacketWeight(packetDetails);
 
-                // 3. Insert Data into DB
-                InsertPacketWeight(qcInspectorId, packetDetails);
-
-                // 4. Update Header Status
-                UpdateQcStatus(qcInspectorId, "STEP2_COMPLETED");
-
-                // 5. Cleanup & Redirect
-                Session.Remove("CurrentQCId"); // Clean up legacy session
-
-                // Return to Dashboard to start next task
-                Response.Redirect("qaqc_inspector_rpt.aspx", false);
-                Context.ApplicationInstance.CompleteRequest();
+                pnlPacketEntry.Visible = false;
+                divMetadata.Visible = false;
+                pnlSuccess.Visible = true;
             }
             catch (Exception ex)
             {
@@ -282,7 +299,6 @@ namespace AnmolDristi
 
         private DataTable BuildPacketDetailTable()
         {
-            // MUST MATCH SQL TYPE: [dbo].[PacketWeightDetailType]
             DataTable dt = new DataTable();
             dt.Columns.Add("IntervalStart", typeof(TimeSpan));
             dt.Columns.Add("IntervalEnd", typeof(TimeSpan));
@@ -293,7 +309,6 @@ namespace AnmolDristi
             {
                 HiddenField hfStart = item.FindControl("hfStart") as HiddenField;
                 HiddenField hfEnd = item.FindControl("hfEnd") as HiddenField;
-
                 if (hfStart == null || hfEnd == null) continue;
 
                 TimeSpan start = TimeSpan.Parse(hfStart.Value);
@@ -302,8 +317,6 @@ namespace AnmolDristi
                 for (int i = 1; i <= 5; i++)
                 {
                     TextBox txt = item.FindControl($"txtPacket{i}") as TextBox;
-
-                    // Simple validation: Ensure text exists
                     if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
                     {
                         decimal weight;
@@ -318,7 +331,6 @@ namespace AnmolDristi
                     }
                     else
                     {
-                        // Throw error if fields are empty (Assuming mandatory)
                         throw new Exception($"Missing weight at {start}-{end}, Packet {i}");
                     }
                 }
@@ -326,38 +338,30 @@ namespace AnmolDristi
             return dt;
         }
 
-        private void InsertPacketWeight(int qcId, DataTable packetDetails)
+        private void InsertPacketWeight(DataTable packetDetails)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("dbo.InsertPacketWeightData_Final", con))
+            // IMPORTANT: Update this SP to accept Context parameters instead of QCInspectorID
+            using (SqlCommand cmd = new SqlCommand("dbo.InsertPacketWeightData_Independent", con))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
 
                 decimal stdWeight = 0;
                 decimal.TryParse(hdnStdWeight.Value, out stdWeight);
 
-                cmd.Parameters.AddWithValue("@QCInspectorID", qcId);
+                cmd.Parameters.AddWithValue("@Plant", DDL_Plant.SelectedValue);
+                cmd.Parameters.AddWithValue("@Line", DDL_PlantLine.SelectedValue);
+                cmd.Parameters.AddWithValue("@Category", DDL_ProductCategory.SelectedValue);
+                cmd.Parameters.AddWithValue("@Brand", DDL_ProductBrand.SelectedValue);
+                cmd.Parameters.AddWithValue("@SKUId", DDL_BrandSKU.SelectedValue);
                 cmd.Parameters.AddWithValue("@StandardWeight", stdWeight);
                 cmd.Parameters.AddWithValue("@Shift", lblShift.Text);
                 cmd.Parameters.AddWithValue("@SubmittedById", CurrentUserId);
 
-                // Pass Table Valued Parameter
                 SqlParameter tvp = cmd.Parameters.AddWithValue("@PacketDetails", packetDetails);
                 tvp.SqlDbType = SqlDbType.Structured;
-                tvp.TypeName = "dbo.PacketWeightDetailType"; // Must match SQL Type Name
+                tvp.TypeName = "dbo.PacketWeightDetailType";
 
-                con.Open();
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        private void UpdateQcStatus(int qcId, string status)
-        {
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("UPDATE TRN_qcinspector SET QC_Status = @Status WHERE ID = @ID", con))
-            {
-                cmd.Parameters.AddWithValue("@Status", status);
-                cmd.Parameters.AddWithValue("@ID", qcId);
                 con.Open();
                 cmd.ExecuteNonQuery();
             }
@@ -368,26 +372,16 @@ namespace AnmolDristi
             ShiftManager shiftManager = new ShiftManager();
             ShiftInfo shift = shiftManager.GetCurrentShiftInfo();
             lblShift.Text = shift.ShiftName;
-
             Session["SHIFT_NAME"] = shift.ShiftName;
-            Session["SHIFT_START"] = shift.StartTime;
-            Session["SHIFT_END"] = shift.EndTime;
         }
 
         private void CalculateSummary(DataTable packetDetails)
         {
-            var weights = packetDetails.AsEnumerable()
-                           .Select(r => r.Field<decimal>("PacketWeight"))
-                           .ToList();
-
+            var weights = packetDetails.AsEnumerable().Select(r => r.Field<decimal>("PacketWeight")).ToList();
             if (weights.Count == 0) return;
 
             decimal stdWeight;
-            if (!decimal.TryParse(hdnStdWeight.Value, out stdWeight) || stdWeight <= 0)
-            {
-                // Safety check
-                return;
-            }
+            if (!decimal.TryParse(hdnStdWeight.Value, out stdWeight) || stdWeight <= 0) return;
 
             decimal min = weights.Min();
             decimal max = weights.Max();
@@ -398,115 +392,6 @@ namespace AnmolDristi
             lblMaxWeight.Text = max.ToString("0.00");
             lblAverage.Text = averageWeight.ToString("0.00");
             lblGiveAway.Text = giveAwayPercent.ToString("0.00") + " %";
-        }
-
-        // --- MASTER LOOKUP HELPERS (Unchanged as requested) ---
-
-        private string GetMasterDescription(string cachePrefix, string sql, Action<SqlParameterCollection> bindParams, int cacheSeconds = 300)
-        {
-            string cacheKey = cachePrefix;
-            var cached = HttpRuntime.Cache[cacheKey] as string;
-            if (!string.IsNullOrEmpty(cached)) return cached;
-
-            try
-            {
-                using (var con = new SqlConnection(connectionString))
-                using (var cmd = new SqlCommand(sql, con))
-                {
-                    bindParams(cmd.Parameters);
-                    con.Open();
-
-                    var result = cmd.ExecuteScalar();
-                    if (result != null && result != DBNull.Value)
-                    {
-                        string value = Convert.ToString(result);
-                        HttpRuntime.Cache.Insert(
-                            cacheKey,
-                            value,
-                            null,
-                            DateTime.Now.AddSeconds(cacheSeconds),
-                            System.Web.Caching.Cache.NoSlidingExpiration);
-
-                        return value;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Trace.TraceWarning("MasterLookup", ex.ToString());
-            }
-
-            return null;
-        }
-
-        private string GetPlantName(int plantId)
-        {
-            return GetMasterDescription(
-                $"PLANT::{plantId}",
-                @"SELECT TOP 1 plant_name + ' (' + sap_code + ')'
-                  FROM MST_PlantDetails
-                  WHERE plant_id = @plant_id",
-                p => p.AddWithValue("@plant_id", plantId)
-            );
-        }
-
-        private string GetLineName(int plantId, int lineId)
-        {
-            return GetMasterDescription(
-                $"LINE::{plantId}::{lineId}",
-                @"SELECT TOP 1 line_name
-                  FROM MST_Plant_Lines
-                  WHERE plant_id = @plant_id AND line_id = @line_id",
-                p =>
-                {
-                    p.AddWithValue("@plant_id", plantId);
-                    p.AddWithValue("@line_id", lineId);
-                }
-            );
-        }
-
-        private string GetCategoryName(int plantId, int lineId, int categoryId)
-        {
-            return GetMasterDescription(
-                $"CAT::{plantId}::{lineId}::{categoryId}",
-                @"SELECT TOP 1 category_name
-                  FROM MST_LineCategory
-                  WHERE plant_id=@plant AND line_id=@line AND category_id=@cat",
-                p =>
-                {
-                    p.AddWithValue("@plant", plantId);
-                    p.AddWithValue("@line", lineId);
-                    p.AddWithValue("@cat", categoryId);
-                }
-            );
-        }
-
-        private string GetBrandName(int plantId, int lineId, int categoryId, int brandId)
-        {
-            return GetMasterDescription(
-                $"BRAND::{plantId}::{lineId}::{categoryId}::{brandId}",
-                @"SELECT TOP 1 brand_name
-                  FROM MST_LineCatBrands
-                  WHERE plant_id=@p AND line_id=@l AND category_id=@c AND brand_id=@b",
-                p =>
-                {
-                    p.AddWithValue("@p", plantId);
-                    p.AddWithValue("@l", lineId);
-                    p.AddWithValue("@c", categoryId);
-                    p.AddWithValue("@b", brandId);
-                }
-            );
-        }
-
-        private string GetSKUName(string skuId)
-        {
-            return GetMasterDescription(
-                $"SKU::{skuId}",
-                @"SELECT TOP 1 SKU_name
-                  FROM MST_Brand_SKU
-                  WHERE SKUId=@sku",
-                p => p.AddWithValue("@sku", skuId)
-            );
         }
     }
 }

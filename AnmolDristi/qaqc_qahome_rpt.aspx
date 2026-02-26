@@ -29,6 +29,13 @@
 
                             </a>
 
+                            <a class="btn btn-app" href="qaqc_packet_weight_view.aspx">
+                                <span class="badge bg-green">
+                                    <asp:Label ID="lblPacketWeights" runat="server" Text="0" Visible="true" Font-Bold="true"></asp:Label></span>
+                                <i class="fa fa-edit"></i>Packet Weights
+
+                            </a>
+
                             <a class="btn btn-app" href="qaqc_rotaryline_view.aspx">
                                 <span class="badge bg-green">
                                     <asp:Label ID="lblRotaryLine" runat="server" Text="0" Visible="true" Font-Bold="true"></asp:Label></span>

@@ -76,15 +76,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl HomePage;
         
         /// <summary>
-        /// Home1 control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Home1;
-        
-        /// <summary>
         /// ImputForms control.
         /// </summary>
         /// <remarks>

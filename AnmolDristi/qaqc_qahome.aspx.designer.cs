@@ -40,6 +40,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lbl_tbttodaycount;
         
         /// <summary>
+        /// lbl_pcktwgtcount control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_pcktwgtcount;
+        
+        /// <summary>
         /// Label5 control.
         /// </summary>
         /// <remarks>
