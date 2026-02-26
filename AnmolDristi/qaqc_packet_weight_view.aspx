@@ -186,7 +186,6 @@
                     <h4 class="modal-title" id="detailsModalLabel"><i class="fa fa-balance-scale"></i>Packet Weight Details</h4>
                 </div>
                 <div class="modal-body">
-
                     <div class="well well-sm" style="background-color: #f8f9fa; border: 1px solid #E6E9ED; border-radius: 4px; padding: 15px;">
                         <div class="row" style="margin-bottom: 10px;">
                             <div class="col-md-4 col-sm-6">
@@ -208,30 +207,8 @@
                                 <asp:Label ID="lblModalSKU" runat="server" Font-Bold="true" CssClass="text-primary" Font-Size="11pt"></asp:Label>
                             </div>
                         </div>
-                        <hr style="margin: 10px 0; border-top: 1px solid #d8d8d8;" />
-                        <div class="row">
-                            <div class="col-md-2 col-sm-4 col-xs-6">
-                                <span class="text-muted">Std Wgt:</span><br />
-                                <asp:Label ID="lblModalStd" runat="server" Font-Bold="true"></asp:Label>
-                            </div>
-                            <div class="col-md-2 col-sm-4 col-xs-6">
-                                <span class="text-muted">Minimum:</span><br />
-                                <asp:Label ID="lblModalMin" runat="server" Font-Bold="true"></asp:Label>
-                            </div>
-                            <div class="col-md-2 col-sm-4 col-xs-6">
-                                <span class="text-muted">Maximum:</span><br />
-                                <asp:Label ID="lblModalMax" runat="server" Font-Bold="true"></asp:Label>
-                            </div>
-                            <div class="col-md-2 col-sm-4 col-xs-6">
-                                <span class="text-muted">Average:</span><br />
-                                <asp:Label ID="lblModalAvg" runat="server" Font-Bold="true" CssClass="text-info"></asp:Label>
-                            </div>
-                            <div class="col-md-4 col-sm-8 col-xs-12">
-                                <span class="text-muted">Give-Away %:</span><br />
-                                <asp:Label ID="lblModalGiveAway" runat="server" Font-Bold="true" Font-Size="12pt"></asp:Label>
-                            </div>
-                        </div>
                     </div>
+
                     <div class="table-responsive">
                         <asp:GridView ID="gvDetails" runat="server" AutoGenerateColumns="False"
                             CssClass="table table-striped table-bordered valign-middle text-center">
@@ -249,6 +226,37 @@
                                 <asp:BoundField DataField="Packet5" HeaderText="Pkt 5 (g)" DataFormatString="{0:0.00}" />
                             </Columns>
                         </asp:GridView>
+                    </div>
+
+                    <div class="row mt-3 p-3" style="background-color: #f8f9fa; border-radius: 5px; border: 1px solid #ddd; margin: 0px 5px;">
+                        <div class="col-md-12">
+                            <h6 class="font-weight-bold" style="color: #2A3F54;">Calculation Breakdown</h6>
+                            <hr style="margin-top: 5px; margin-bottom: 10px;" />
+                        </div>
+                        <div class="col-md-2">
+                            <small class="text-muted">Gross Avg</small><br />
+                            <asp:Label ID="lblModalGrossAvg" runat="server" Font-Bold="true" />
+                            g
+                        </div>
+                        <div class="col-md-1 text-center"><strong>-</strong></div>
+                        <div class="col-md-2">
+                            <small class="text-muted">Tare (Wrapper)</small><br />
+                            <asp:Label ID="lblModalTare" runat="server" Font-Bold="true" ForeColor="Red" />
+                            g
+                        </div>
+                        <div class="col-md-1 text-center"><strong>=</strong></div>
+                        <div class="col-md-2">
+                            <small class="text-muted">Net Avg</small><br />
+                            <asp:Label ID="lblModalNetAvg" runat="server" Font-Bold="true" ForeColor="Green" />
+                            g
+                        </div>
+                        <div class="col-md-4" style="border-left: 1px solid #ccc;">
+                            <small class="text-muted">Target Std:</small>
+                            <asp:Label ID="lblModalCalcStd" runat="server" Font-Bold="true" />
+                            g<br />
+                            <small class="text-muted">Final Give-Away:</small>
+                            <asp:Label ID="lblModalCalcGiveAway" runat="server" Font-Bold="true" />
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

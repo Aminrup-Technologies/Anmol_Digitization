@@ -157,12 +157,6 @@ namespace AnmolDristi
             }
         }
 
-        /* --------------------------------------------------------------------------
-           MODAL POPUP LOGIC (ROW COMMAND)
-           -------------------------------------------------------------------------- */
-        /* --------------------------------------------------------------------------
-   MODAL POPUP LOGIC (ROW COMMAND)
-   -------------------------------------------------------------------------- */
         protected void gvHeaders_RowCommand(object sender, GridViewCommandEventArgs e)
         {
             if (e.CommandName == "ViewDetails")
@@ -170,103 +164,70 @@ namespace AnmolDristi
                 int packetHdrId;
                 if (int.TryParse(e.CommandArgument.ToString(), out packetHdrId))
                 {
-                    // 1. Fetch and bind the Summary Header info
-                    BindModalSummary(packetHdrId);
+                    // 1. Fetch both Summary and Details in a single, high-performance DB call
+                    LoadModalDetails(packetHdrId);
 
-                    // 2. Fetch and bind the 5-packet intervals
-                    BindModalDetails(packetHdrId);
-
-                    // Trigger the Javascript to open the modal
-                    ScriptManager.RegisterStartupScript(this, this.GetType(), "PopModal", "openDetailsModal();", true);
+                    // 2. Trigger the Javascript to open the modal
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "PopModal", "$('#detailsModal').modal('show');", true);
                 }
             }
         }
 
-        private void BindModalSummary(int packetHdrId)
+        private void LoadModalDetails(int packetHdrId)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("dbo.GetPacketWeightDetails_ForView", con))
             {
-                // Reusing the same join logic from the main grid to ensure names are readable
-                string query = @"
-            SELECT 
-                h.[EntryDate],
-                h.[Shift],
-                ISNULL(p.plant_name, h.PlantName) AS PlantNameText,
-                ISNULL(l.line_name, h.Line) AS LineNameText,
-                ISNULL(s.[SKU_name], h.SKUId) AS SKUName,
-                h.[StandardWeight],
-                h.[MinWeight],
-                h.[MaxWeight],
-                h.[AvgWeight],
-                h.[GiveAwayPercent]
-            FROM [dbo].[TRN_qc_packet_weight_hdr] h
-            LEFT JOIN [dbo].[MST_Brand_SKU] s ON h.SKUId = CAST(s.SKUId AS VARCHAR(50))
-            LEFT JOIN [dbo].[MST_PlantDetails] p ON h.PlantName = CAST(p.plant_id AS VARCHAR(50))
-            LEFT JOIN [dbo].[MST_Plant_Lines] l ON h.Line = CAST(l.line_id AS VARCHAR(50)) AND h.PlantName = CAST(l.plant_id AS VARCHAR(50))
-            WHERE h.[PacketHdrID] = @PacketHdrID";
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@PacketHdrID", packetHdrId);
 
-                using (SqlCommand cmd = new SqlCommand(query, con))
+                con.Open();
+
+                // Use SqlDataReader to read multiple result sets from the Stored Procedure
+                using (SqlDataReader dr = cmd.ExecuteReader())
                 {
-                    cmd.Parameters.AddWithValue("@PacketHdrID", packetHdrId);
-                    con.Open();
-                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    // -------------------------------------------------------------
+                    // RESULT SET 1: The Header & Calculation Summary
+                    // -------------------------------------------------------------
+                    if (dr.Read())
                     {
-                        if (dr.Read())
-                        {
-                            // Bind context labels
-                            lblModalDate.Text = Convert.ToDateTime(dr["EntryDate"]).ToString("dd-MMM-yyyy");
-                            lblModalShift.Text = dr["Shift"].ToString();
-                            lblModalPlantLine.Text = dr["PlantNameText"].ToString() + " / " + dr["LineNameText"].ToString();
-                            lblModalSKU.Text = dr["SKUName"].ToString();
+                        // Top Context Labels
+                        lblModalDate.Text = dr["EntryDateText"].ToString();
+                        lblModalShift.Text = dr["Shift"].ToString();
+                        lblModalPlantLine.Text = dr["PlantLineText"].ToString();
+                        lblModalSKU.Text = dr["SKUNameText"].ToString();
 
-                            // Bind calculation labels
-                            lblModalStd.Text = Convert.ToDecimal(dr["StandardWeight"]).ToString("0.00") + " g";
-                            lblModalMin.Text = Convert.ToDecimal(dr["MinWeight"]).ToString("0.00") + " g";
-                            lblModalMax.Text = Convert.ToDecimal(dr["MaxWeight"]).ToString("0.00") + " g";
-                            lblModalAvg.Text = Convert.ToDecimal(dr["AvgWeight"]).ToString("0.00") + " g";
+                        // Retrieve calculation values from DB
+                        decimal std = Convert.ToDecimal(dr["StandardWeight"]);
+                        decimal grossAvg = Convert.ToDecimal(dr["AvgWeight"]);
+                        decimal giveAway = Convert.ToDecimal(dr["GiveAwayPercent"]);
+                        decimal tare = dr["TareWeight"] != DBNull.Value ? Convert.ToDecimal(dr["TareWeight"]) : 0;
 
-                            // Handle Give-Away Coloring
-                            decimal giveAway = Convert.ToDecimal(dr["GiveAwayPercent"]);
-                            lblModalGiveAway.Text = giveAway.ToString("0.00") + " %";
-                            if (giveAway > 0)
-                            {
-                                lblModalGiveAway.ForeColor = System.Drawing.Color.Red;
-                            }
-                            else
-                            {
-                                lblModalGiveAway.ForeColor = System.Drawing.Color.Green;
-                            }
-                        }
+                        // Calculate Net Average
+                        decimal netAvg = grossAvg - tare;
+
+                        // Populate the Bottom Calculation Breakdown Labels
+                        lblModalGrossAvg.Text = grossAvg.ToString("0.00");
+                        lblModalTare.Text = tare.ToString("0.00");
+                        lblModalNetAvg.Text = netAvg.ToString("0.00");
+                        lblModalCalcStd.Text = std.ToString("0.00");
+
+                        lblModalCalcGiveAway.Text = giveAway.ToString("0.00") + " %";
+                        lblModalCalcGiveAway.ForeColor = giveAway > 0 ? System.Drawing.Color.Red : System.Drawing.Color.Green;
+                    }
+
+                    // -------------------------------------------------------------
+                    // RESULT SET 2: The 20 Packets (4 Rows x 5 Packets)
+                    // -------------------------------------------------------------
+                    if (dr.NextResult())
+                    {
+                        gvDetails.DataSource = dr;
+                        gvDetails.DataBind();
                     }
                 }
             }
         }
 
-        private void BindModalDetails(int packetHdrId)
-        {
-            DataTable dt = new DataTable();
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("dbo.GetPacketWeightDetails_ForView", con))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add("@PacketHdrID", SqlDbType.Int).Value = packetHdrId;
-
-                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
-                {
-                    da.Fill(dt);
-                }
-            }
-
-            gvDetails.DataSource = dt;
-            gvDetails.DataBind();
-        }
-
-        /* --------------------------------------------------------------------------
-           EXCEL EXPORT LOGIC
-           -------------------------------------------------------------------------- */
-        /* --------------------------------------------------------------------------
-    EXCEL EXPORT LOGIC (CLEAN DATA ONLY)
-    -------------------------------------------------------------------------- */
         protected void lnkBtnExport_Click(object sender, EventArgs e)
         {
             lblMessage.Text = string.Empty;
