@@ -64,13 +64,13 @@
 
         function recalculatePreview() {
             const stdWeightField = document.getElementById('<%= hdnStdWeight.ClientID %>');
-            const tareWeightField = document.getElementById('<%= hdnTareWeight.ClientID %>'); // New
+            const tareWeightField = document.getElementById('<%= hdnTareWeight.ClientID %>');
 
             if (!stdWeightField || stdWeightField.value === "") return;
 
             const standardWeight = parseFloat(stdWeightField.value);
             // Safely parse Tare Weight (default to 0 if empty)
-            const tareWeight = (tareWeightField && tareWeightField.value !== "") ? parseFloat(tareWeightField.value) : 0; 
+            const tareWeight = (tareWeightField && tareWeightField.value !== "") ? parseFloat(tareWeightField.value) : 0;
 
             if (isNaN(standardWeight) || standardWeight <= 0) return;
 
@@ -90,17 +90,23 @@
                 return;
             }
 
-            const min = Math.min(...values);
-            const max = Math.max(...values);
-            const avg = values.reduce((a, b) => a + b, 0) / values.length;
-    
-            // NEW: Calculate Net Average, then Give-Away
-            const netAvg = avg - tareWeight;
+            // 1. Calculate Raw Gross Values from the textboxes
+            const grossMin = Math.min(...values);
+            const grossMax = Math.max(...values);
+            const grossAvg = values.reduce((a, b) => a + b, 0) / values.length;
+
+            // 2. Calculate Net Values (Gross minus Wrapper Tare)
+            const netMin = grossMin - tareWeight;
+            const netMax = grossMax - tareWeight;
+            const netAvg = grossAvg - tareWeight;
+
+            // 3. Calculate Final Give-Away % based strictly on Net Average
             const giveAway = ((netAvg - standardWeight) / standardWeight) * 100;
 
-            document.getElementById('<%= lblMinWeight.ClientID %>').innerText = min.toFixed(2);
-            document.getElementById('<%= lblMaxWeight.ClientID %>').innerText = max.toFixed(2);
-            document.getElementById('<%= lblAverage.ClientID %>').innerText = avg.toFixed(2); // Displays Gross Average
+            // 4. Bind the Net calculations to the UI Labels
+            document.getElementById('<%= lblMinWeight.ClientID %>').innerText = netMin.toFixed(2);
+            document.getElementById('<%= lblMaxWeight.ClientID %>').innerText = netMax.toFixed(2);
+            document.getElementById('<%= lblAverage.ClientID %>').innerText = netAvg.toFixed(2);
             document.getElementById('<%= lblGiveAway.ClientID %>').innerText = giveAway.toFixed(2) + " %";
         }
 
@@ -221,8 +227,8 @@
                                 <div class="alert alert-info">
                                     <strong>Instruction:</strong>
                                     Enter <b>one packet weight per field</b>.  
-                                    All 5 packet weights are mandatory for each interval block.
-                                    <asp:HiddenField ID="hdnStdWeight" runat="server" />
+                        All 5 packet weights are mandatory for each interval block.
+                        <asp:HiddenField ID="hdnStdWeight" runat="server" />
                                     <asp:HiddenField ID="hdnTareWeight" runat="server" />
                                 </div>
                                 <div class="alert alert-warning" style="padding: 10px; font-size: 13px;">
@@ -277,18 +283,34 @@
                                 <div class="clearfix"></div>
                             </div>
                             <div class="x_content">
-                                <div class="text-muted" style="font-size: 12px; margin-bottom: 5px;">
+                                <div class="text-muted" style="font-size: 12px; margin-bottom: 10px;">
                                     * Preview only. Final values will be calculated and locked after submission.
                                 </div>
-                                <div class="row">
-                                    <div class="col-md-3"><strong>Min Weight (g):</strong><br />
-                                        <asp:Label ID="lblMinWeight" runat="server" Text="-" /></div>
-                                    <div class="col-md-3"><strong>Max Weight (g):</strong><br />
-                                        <asp:Label ID="lblMaxWeight" runat="server" Text="-" /></div>
-                                    <div class="col-md-3"><strong>Average Weight (g):</strong><br />
-                                        <asp:Label ID="lblAverage" runat="server" Text="-" /></div>
-                                    <div class="col-md-3"><strong>Give-Away (%):</strong><br />
-                                        <asp:Label ID="lblGiveAway" runat="server" Text="-" /></div>
+                                <div class="row" style="background-color: #f8f9fa; padding: 10px 0; border-radius: 4px; border: 1px solid #ddd; margin: 0;">
+                                    <div class="col-md-2 col-sm-4">
+                                        <strong>Net Min (g):</strong><br />
+                                        <asp:Label ID="lblMinWeight" runat="server" Text="-" />
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <strong>Net Max (g):</strong><br />
+                                        <asp:Label ID="lblMaxWeight" runat="server" Text="-" />
+                                    </div>
+                                    <div class="col-md-2 col-sm-4" style="border-left: 2px solid #fff;">
+                                        <strong>Gross Avg (g):</strong><br />
+                                        <asp:Label ID="lblAverage" runat="server" Text="-" />
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <strong>Tare Wgt (g):</strong><br />
+                                        <asp:Label ID="lblTareDisplay" runat="server" Text="-" ForeColor="Red" />
+                                    </div>
+                                    <div class="col-md-2 col-sm-4">
+                                        <strong>Net Avg (g):</strong><br />
+                                        <asp:Label ID="lblNetAvgDisplay" runat="server" Text="-" ForeColor="Green" Font-Bold="true" />
+                                    </div>
+                                    <div class="col-md-2 col-sm-4" style="border-left: 2px solid #fff;">
+                                        <strong>Give-Away (%):</strong><br />
+                                        <asp:Label ID="lblGiveAway" runat="server" Text="-" Font-Bold="true" />
+                                    </div>
                                 </div>
                             </div>
                         </div>

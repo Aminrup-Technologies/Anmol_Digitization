@@ -283,6 +283,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblAverage;
         
         /// <summary>
+        /// lblTareDisplay control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblTareDisplay;
+        
+        /// <summary>
+        /// lblNetAvgDisplay control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblNetAvgDisplay;
+        
+        /// <summary>
         /// lblGiveAway control.
         /// </summary>
         /// <remarks>

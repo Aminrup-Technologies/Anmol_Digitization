@@ -27,40 +27,66 @@
     <link href="Resources/custom/custom.css" rel="stylesheet" />
 
     <style type="text/css">
-        /* 1. Hide the hamburger toggle completely */
-        #menu_toggle { display: none !important; }
+        /* =========================================================
+           DESKTOP ONLY (Screens 992px and wider)
+           ========================================================= */
+        @media (min-width: 992px) {
+            /* 1. Hide the hamburger toggle completely on desktop */
+            #menu_toggle {
+                display: none !important;
+            }
 
-        /* 2. KILL THE FLYOUTS: Completely hide the default floating menus globally */
-        body.nav-sm .nav.child_menu, 
-        body.nav-sm .active-sm {
-            display: none !important; 
+            /* 2. KILL THE FLYOUTS: Completely hide floating menus */
+            body.nav-sm .nav.child_menu,
+            body.nav-sm .active-sm {
+                display: none !important;
+            }
+
+            /* 3. Lock main content so it NEVER jumps */
+            body.nav-md .container.body .right_col,
+            body.nav-sm .container.body .right_col {
+                margin-left: 70px !important;
+                width: auto !important;
+                padding: 10px 20px !important;
+                z-index: 1;
+            }
+
+            /* 4. Make the sidebar float OVER the content when expanded */
+            .col-md-3.left_col {
+                position: fixed !important;
+                z-index: 9999 !important;
+                height: 100vh !important;
+                overflow-y: auto !important;
+                transition: width 0.2s ease;
+            }
+
+            /* 5. Fix top navigation padding */
+            .nav_menu {
+                width: 100%;
+                margin-bottom: 0;
+            }
+
+            /* 6. Hide ANMOL text in narrow mode */
+            body.nav-sm .site_title span {
+                display: none !important;
+            }
+
+            body.nav-sm .nav_title {
+                width: 70px !important;
+            }
         }
 
-        /* 3. Lock main content so it NEVER jumps when the sidebar expands */
-        body.nav-md .container.body .right_col,
-        body.nav-sm .container.body .right_col {
-            margin-left: 70px !important; /* Always leave room for the narrow bar */
-            width: auto !important; 
-            padding: 10px 20px !important;
-            z-index: 1;
+        /* =========================================================
+           MOBILE ONLY (Screens smaller than 992px)
+           ========================================================= */
+        @media (max-width: 991px) {
+            /* Ensure the hamburger toggle is visible so users can tap it */
+            #menu_toggle {
+                display: block !important;
+            }
         }
-
-        /* 4. Make the sidebar float OVER the content when it expands */
-        .col-md-3.left_col {
-            position: fixed !important; 
-            z-index: 9999 !important;
-            height: 100vh !important;
-            overflow-y: auto !important;
-            transition: width 0.2s ease; /* Smooth expanding animation */
-        }
-        
-        /* 5. Fix top navigation padding */
-        .nav_menu { width: 100%; margin-bottom: 0; }
-        
-        /* 6. Hide ANMOL text in narrow mode */
-        body.nav-sm .site_title span { display: none !important; }
-        body.nav-sm .nav_title { width: 70px !important; }
     </style>
+
     <asp:ContentPlaceHolder ID="head" runat="server">
     </asp:ContentPlaceHolder>
 
@@ -690,29 +716,47 @@
             <script src="Resources//jQuery-Smart-Wizard/js/jquery.smartWizard.js"></script>
 
             <script type="text/javascript">
-                $(document).ready(function() {
+                $(document).ready(function () {
                     var $body = $('body');
                     var $sidebar = $('.left_col');
 
-                    // 1. Enforce Narrow Mode globally on load
-                    $body.removeClass('nav-md').addClass('nav-sm');
-                    $('#menu_toggle').off('click'); // Disable default toggle
+                    // Helper function to check if the user is on a Desktop
+                    function isDesktop() {
+                        return $(window).width() >= 992;
+                    }
 
-                    // 2. Temporarily expand the sidebar when hovered
+                    // 1. Initial Load setup
+                    if (isDesktop()) {
+                        // Force Narrow Mode on Desktop
+                        $body.removeClass('nav-md').addClass('nav-sm');
+                    } else {
+                        // Ensure mobile loads correctly (Gentelella usually hides the md menu on mobile via CSS)
+                        $body.removeClass('nav-sm').addClass('nav-md');
+                    }
+
+                    // 2. Temporarily expand the sidebar when hovered (ONLY ON DESKTOP)
                     $sidebar.hover(
-                        function() {
-                            // Mouse Enters: Switch to Wide view so standard accordions work
-                            $body.removeClass('nav-sm').addClass('nav-md');
+                        function () {
+                            if (isDesktop()) {
+                                $body.removeClass('nav-sm').addClass('nav-md');
+                            }
                         },
-                        function() {
-                            // Mouse Leaves: Switch back to Narrow view
-                            $body.removeClass('nav-md').addClass('nav-sm');
-                            
-                            // Close any open accordions so it's tidy for the next time
-                            $('.child_menu').slideUp(200);
-                            $('ul.side-menu li').removeClass('active');
+                        function () {
+                            if (isDesktop()) {
+                                $body.removeClass('nav-md').addClass('nav-sm');
+                                // Close any open accordions
+                                $('.child_menu').slideUp(200);
+                                $('ul.side-menu li').removeClass('active');
+                            }
                         }
                     );
+
+                    // 3. Handle screen resizing (e.g., rotating a tablet)
+                    $(window).resize(function () {
+                        if (isDesktop()) {
+                            $body.removeClass('nav-md').addClass('nav-sm');
+                        }
+                    });
                 });
             </script>
 
