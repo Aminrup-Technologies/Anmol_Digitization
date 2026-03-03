@@ -85,6 +85,55 @@
         #detailsModal .table tfoot tr:hover td {
             background-color: #f8f9fa !important;
         }
+
+        /* =========================================
+           📱 MOBILE RESPONSIVE FIXES
+           ========================================= */
+        @media (max-width: 767px) {
+            /* Fix overflowing button group by stacking them */
+            .mobile-btn-group {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+
+                .mobile-btn-group .btn {
+                    width: 100%;
+                    border-radius: 4px !important; /* Removes the flat edges of grouped buttons */
+                    margin-bottom: 8px;
+                }
+
+            /* Adjust header text size */
+            .x_title h4 {
+                font-size: 1.1rem !important;
+            }
+
+            /* Shrink table font slightly for better fit */
+            .gentilia-table {
+                font-size: 0.82rem;
+            }
+
+            .btn-sm {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.75rem;
+            }
+
+            .dashboard-box {
+                margin-bottom: 10px;
+                width: 100%;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+
+                .modal-footer .text-right {
+                    text-align: center !important;
+                    margin-left: 0 !important;
+                    margin-top: 10px;
+                }
+        }
     </style>
 </asp:Content>
 
@@ -102,19 +151,21 @@
 
                         <div class="x_content bg-light p-3 rounded-bottom">
                             <div class="row mb-3 pb-3 border-bottom align-items-end">
+
                                 <div class="col-md-12 text-center mb-3">
-                                    <div class="btn-group" role="group">
+                                    <div class="btn-group mobile-btn-group" role="group">
                                         <asp:Button ID="btnPrevMonth" runat="server" Text="Prev Month" CssClass="btn btn-info" OnClick="btnPrevMonth_Click" />
                                         <asp:Button ID="btnCurrentMonth" runat="server" Text="Current Month" CssClass="btn btn-primary font-weight-bold" OnClick="btnCurrentMonth_Click" />
                                         <asp:Button ID="btnNextMonth" runat="server" Text="Next Month" CssClass="btn btn-info" OnClick="btnNextMonth_Click" />
                                     </div>
                                 </div>
 
-                                <div class="col-md-3">
+                                <div class="col-md-3 mb-2">
                                     <label class="font-weight-bold text-muted small">Search By Year</label>
                                     <asp:DropDownList ID="ddlSearchYear" runat="server" CssClass="form-control form-control-sm"></asp:DropDownList>
                                 </div>
-                                <div class="col-md-3">
+
+                                <div class="col-md-3 mb-2">
                                     <label class="font-weight-bold text-muted small">Search By Month</label>
                                     <asp:DropDownList ID="ddlSearchMonth" runat="server" CssClass="form-control form-control-sm">
                                         <asp:ListItem Text="-- Select Month --" Value="0"></asp:ListItem>
@@ -132,7 +183,8 @@
                                         <asp:ListItem Text="December" Value="12"></asp:ListItem>
                                     </asp:DropDownList>
                                 </div>
-                                <div class="col-md-4">
+
+                                <div class="col-md-4 mb-2">
                                     <label class="font-weight-bold text-muted small">Claim Status</label>
                                     <asp:DropDownList ID="ddlSearchStatus" runat="server" CssClass="form-control form-control-sm">
                                         <asp:ListItem Text="-- All Statuses --" Value=""></asp:ListItem>
@@ -142,15 +194,16 @@
                                         <asp:ListItem Text="ReadyForPayment" Value="ReadyForPayment"></asp:ListItem>
                                     </asp:DropDownList>
                                 </div>
-                                <div class="col-md-2 text-right">
-                                    <asp:Button ID="btnSearch" runat="server" Text="Search" CssClass="btn btn-success btn-sm w-100 mb-1" OnClick="btnSearch_Click" />
+
+                                <div class="col-md-2 mt-2 mt-md-0 text-right">
+                                    <asp:Button ID="btnSearch" runat="server" Text="Search" CssClass="btn btn-success btn-sm w-100 mb-2" OnClick="btnSearch_Click" />
                                     <asp:Button ID="btnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm w-100" OnClick="btnReset_Click" />
                                 </div>
                             </div>
 
                             <div class="row mb-2">
-                                <div class="col-md-12 text-right">
-                                    <asp:Button ID="btnExportSelected" runat="server" Text="⬇ Export Selected to Excel" CssClass="btn btn-success btn-sm font-weight-bold" OnClick="btnExportSelected_Click" />
+                                <div class="col-md-12 text-md-right text-center">
+                                    <asp:Button ID="btnExportSelected" runat="server" Text="⬇ Export Selected to Excel" CssClass="btn btn-success btn-sm font-weight-bold w-100 w-md-auto" OnClick="btnExportSelected_Click" />
                                 </div>
                             </div>
 
