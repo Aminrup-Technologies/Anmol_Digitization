@@ -1434,9 +1434,9 @@ namespace AnmolDristi
                                 {
                                     decimal autoDA = 0m;
                                     if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase))
-                                        decimal.TryParse(HF_OutstationDA != null ? HF_OutstationDA.Value : "", out autoDA);
+                                        decimal.TryParse(hfOutDA, out autoDA); // Use the safe variable
                                     else
-                                        decimal.TryParse(HF_OwnArrangementDA != null ? HF_OwnArrangementDA.Value : "", out autoDA);
+                                        decimal.TryParse(hfOwnDA, out autoDA); // Use the safe variable
 
                                     if (autoDA > 0m)
                                     {
@@ -1496,8 +1496,10 @@ namespace AnmolDristi
                                          policyMode.Equals("OwnArrangement", StringComparison.OrdinalIgnoreCase)))
                                     {
                                         decimal autoDA = 0m;
-                                        if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase)) decimal.TryParse(HF_OutstationDA != null ? HF_OutstationDA.Value : "", out autoDA);
-                                        else decimal.TryParse(HF_OwnArrangementDA != null ? HF_OwnArrangementDA.Value : "", out autoDA);
+                                        if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase))
+                                            decimal.TryParse(hfOutDA, out autoDA); // Use the safe variable
+                                        else
+                                            decimal.TryParse(hfOwnDA, out autoDA); // Use the safe variable
 
                                         if (autoDA > 0m)
                                             EnsureAutoDA(activityId, travelDateNullable ?? DateTime.Now, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
@@ -1590,14 +1592,15 @@ namespace AnmolDristi
 
         private void EnsureAutoDA(int activityId, DateTime expenseDate, decimal amount, string policyMode, string policySnapshot, string createdBy, SqlConnection con, SqlTransaction tx)
         {
-            using (SqlCommand chk = new SqlCommand(@"SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.SalesDailyExpense WITH (NOLOCK) WHERE ActivityId = @ActivityId AND LOWER(ExpenseType) = 'da' AND CAST(ExpenseDate AS date) = @ExpenseDate) THEN 1 ELSE 0 END", con, tx))
+            // FIX: Added 'WITH (UPDLOCK)' for transaction safety and 'AND IsDeleted = 0' to ignore soft-deleted records!
+            using (SqlCommand chk = new SqlCommand(@"SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.SalesDailyExpense WITH (UPDLOCK) WHERE ActivityId = @ActivityId AND LOWER(ExpenseType) = 'da' AND CAST(ExpenseDate AS date) = @ExpenseDate AND IsDeleted = 0) THEN 1 ELSE 0 END", con, tx))
             {
                 chk.CommandType = CommandType.Text;
                 chk.Parameters.Add("@ActivityId", SqlDbType.Int).Value = activityId;
                 chk.Parameters.Add("@ExpenseDate", SqlDbType.Date).Value = expenseDate.Date;
 
                 int existsFlag = Convert.ToInt32(chk.ExecuteScalar() ?? 0);
-                if (existsFlag == 1) return;
+                if (existsFlag == 1) return; // Silent skip if ACTIVE DA already exists
             }
 
             using (SqlCommand cmd = new SqlCommand("usp_SaveDailyExpense", con, tx))
