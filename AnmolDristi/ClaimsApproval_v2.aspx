@@ -169,7 +169,7 @@
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <asp:HiddenField ID="hfActionRequestId" runat="server" />
-
+    <asp:HiddenField ID="hfReturnReason" runat="server" ClientIDMode="Static" />
     <div class="right_col" role="main">
         <div class="container-fluid mt-3">
             <div class="row">
@@ -405,11 +405,9 @@
 
                             <div>
                                 <asp:Button ID="btnRecalculate" runat="server" Text="↻ Re-Calculate" CssClass="btn btn-info btn-sm m-0" OnClick="btnRecalculate_Click" ToolTip="Recalculate approved amounts" />
-
+                                <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return to Employee" CssClass="btn btn-danger btn-sm m-0 ml-2" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" />
                                 <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward to Next Level" CssClass="btn btn-success btn-sm m-0 ml-2" OnClick="btnForwardLevel_Click" Visible="false" />
-
                                 <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Mark Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2" OnClick="btnMarkReadyForPayment_Click" Visible="false" />
-
                                 <button type="button" class="btn btn-secondary btn-sm m-0 ml-2" data-dismiss="modal">Close</button>
                             </div>
                         </div>
@@ -886,6 +884,19 @@
                     $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>');
                 }
             });
+        }
+
+        // NEW: Mandatory Return Reason Prompt
+        function promptForReturn() {
+            var reason = prompt("Please enter the reason for returning this ENTIRE claim to the employee:");
+            if (reason != null && reason.trim() !== "") {
+                document.getElementById('hfReturnReason').value = reason;
+                return true;
+            } else if (reason != null) {
+                alert("A reason is required to return the claim.");
+                return false;
+            }
+            return false; // Cancelled action
         }
     </script>
 </asp:Content>

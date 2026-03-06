@@ -294,6 +294,9 @@ namespace AnmolDristi
             // 2. Auditor gets the Yellow Payment Button (Requires Day rows AND Child Receipts to be cleared)
             btnMarkReadyForPayment.Visible = isAuditorCheck && !pendingActionExists && (unprocessedReceipts == 0);
 
+            // NEW: Return to sender visible to any active approver
+            btnReturnToEmployee.Visible = (isLevel1 || isAuditorCheck);
+
             // 3. Smart User Feedback Messaging
             if (isAuditorCheck && !pendingActionExists && unprocessedReceipts > 0)
             {
@@ -397,6 +400,48 @@ namespace AnmolDristi
             catch (Exception ex)
             {
                 lblModalMessage.Text = "Error during handover: " + ex.Message;
+                lblModalMessage.CssClass = "text-danger font-weight-bold";
+                upDetails.Update();
+            }
+        }
+
+        // NEW: Global Return Logic
+        protected void btnReturnToEmployee_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int reqId = Convert.ToInt32(hfActionRequestId.Value);
+                string user = GetLoggedInEmployeeCode();
+                string reason = hfReturnReason.Value.Trim(); // Safely fetch the JS prompt input
+
+                if (string.IsNullOrEmpty(reason))
+                {
+                    lblModalMessage.Text = "A return reason is mandatory.";
+                    lblModalMessage.CssClass = "text-danger font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
+
+                using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand("dbo.usp_ReturnClaimToEmployee", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                    cmd.Parameters.AddWithValue("@ActionBy", user);
+                    cmd.Parameters.AddWithValue("@ReturnReason", reason);
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                hfReturnReason.Value = ""; // Clear state securely
+
+                BindRequestsGrid();
+                ScriptManager.RegisterStartupScript(this, GetType(), "closeModal", "$('#detailsModal').modal('hide');", true);
+            }
+            catch (Exception ex)
+            {
+                lblModalMessage.Text = "Error returning claim: " + ex.Message;
                 lblModalMessage.CssClass = "text-danger font-weight-bold";
                 upDetails.Update();
             }

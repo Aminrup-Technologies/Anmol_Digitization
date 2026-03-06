@@ -22,6 +22,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField hfActionRequestId;
         
         /// <summary>
+        /// hfReturnReason control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfReturnReason;
+        
+        /// <summary>
         /// pnlRequests control.
         /// </summary>
         /// <remarks>
@@ -191,6 +200,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnRecalculate;
+        
+        /// <summary>
+        /// btnReturnToEmployee control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnReturnToEmployee;
         
         /// <summary>
         /// btnForwardLevel control.
