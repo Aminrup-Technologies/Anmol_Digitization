@@ -13,6 +13,15 @@ namespace AnmolDristi {
     public partial class ClaimsApproval_v2 {
         
         /// <summary>
+        /// upMainGrid control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.UpdatePanel upMainGrid;
+        
+        /// <summary>
         /// hfActionRequestId control.
         /// </summary>
         /// <remarks>
@@ -29,6 +38,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfReturnReason;
+        
+        /// <summary>
+        /// hfCurrentUserLevel control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfCurrentUserLevel;
         
         /// <summary>
         /// pnlRequests control.
@@ -193,13 +211,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblModalMessage;
         
         /// <summary>
-        /// btnRecalculate control.
+        /// lnkRecalculate control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnRecalculate;
+        protected global::System.Web.UI.WebControls.LinkButton lnkRecalculate;
         
         /// <summary>
         /// btnReturnToEmployee control.
