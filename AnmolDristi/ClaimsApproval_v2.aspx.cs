@@ -281,20 +281,32 @@ namespace AnmolDristi
                 unprocessedReceipts = Convert.ToInt32(cmd.ExecuteScalar());
             }
 
-            bool isAuditorCheck = (Convert.ToInt32(ViewState["CurrentUserLevel"]) == 2);
+            // =========================================================
+            // SMART BUTTON VISIBILITY & WORKFLOW ROUTING
+            // =========================================================
+            int currentLvl = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+            bool isLevel1 = (currentLvl == 1);
+            bool isAuditorCheck = (currentLvl == 2);
 
-            // 2. The Payment Button ONLY appears if NO parent rows are pending AND NO child receipts are pending
+            // 1. Level 1 gets the Green Forward Button (Only requires Day rows to be cleared)
+            btnForwardLevel.Visible = isLevel1 && !pendingActionExists;
+
+            // 2. Auditor gets the Yellow Payment Button (Requires Day rows AND Child Receipts to be cleared)
             btnMarkReadyForPayment.Visible = isAuditorCheck && !pendingActionExists && (unprocessedReceipts == 0);
 
-            // 3. Smart Auditor Feedback: If rows are done but receipts are missed, tell them!
+            // 3. Smart User Feedback Messaging
             if (isAuditorCheck && !pendingActionExists && unprocessedReceipts > 0)
             {
                 lblModalMessage.Text = $"⚠️ Cannot finalize: {unprocessedReceipts} expense receipt(s) are still pending inside 'View Details'.";
                 lblModalMessage.CssClass = "text-danger font-weight-bold";
             }
-            else if (!isAuditorCheck || (!pendingActionExists && unprocessedReceipts == 0))
+            else if (isLevel1 && pendingActionExists)
             {
-                // Clear the warning if everything is actually done
+                lblModalMessage.Text = "Please action all day rows to forward this request.";
+                lblModalMessage.CssClass = "text-warning font-weight-bold";
+            }
+            else
+            {
                 lblModalMessage.Text = "";
             }
 
@@ -302,6 +314,92 @@ namespace AnmolDristi
             btnApproveSelected.Visible = pendingActionExists;
             btnRejectSelected.Visible = pendingActionExists;
             txtBulkRemarks.Visible = pendingActionExists;
+        } // <-- End of BindDetailsGrid method
+
+        protected void btnForwardLevel_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int reqId = Convert.ToInt32(hfActionRequestId.Value);
+                string user = GetLoggedInEmployeeCode();
+                int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 1);
+
+                // 1. Force recalculation to lock in their math before forwarding
+                ExecuteRecalculationSQL(reqId);
+
+                using (var con = new SqlConnection(connString))
+                {
+                    con.Open();
+
+                    // 2. The Handover SQL: Mark Level 1 as Approved AND advance the Master Header to Level 2
+                    string sqlWorkflow = @"
+                        -- A. Close out the current user's workflow step
+                        UPDATE dbo.SalesApprovalRequestApprover 
+                        SET Status = 'Approved', ActionBy = @User, ActionDate = SYSUTCDATETIME() 
+                        WHERE ApprovalRequestId = @Id AND ApproverLevel = @Level AND Status = 'Pending';
+
+                        -- B. Find the NEXT person in line (The Auditor)
+                        DECLARE @NextLevel INT, @NextLogin NVARCHAR(100), @NextRole NVARCHAR(100);
+                        
+                        SELECT TOP 1 
+                            @NextLevel = ApproverLevel, 
+                            @NextLogin = ApproverLoginId, 
+                            @NextRole = ApproverRole
+                        FROM dbo.SalesApprovalRequestApprover
+                        WHERE ApprovalRequestId = @Id AND ApproverLevel > @Level AND Status = 'Pending'
+                        ORDER BY ApproverLevel ASC;
+
+                        -- C. Advance the Master Header so it appears on the Auditor's Dashboard
+                        IF @NextLevel IS NOT NULL
+                        BEGIN
+                            UPDATE dbo.SalesApprovalRequest
+                            SET 
+                                CurrentApproverLevel = @NextLevel,
+                                CurrentApproverLoginId = @NextLogin,
+                                ModifiedBy = @User,
+                                ModifiedOn = SYSUTCDATETIME()
+                            WHERE ApprovalRequestId = @Id;
+
+                            -- Log the exact handover
+                            INSERT INTO dbo.ApprovalRequestStatusHistory 
+                            (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
+                            VALUES 
+                            (@Id, 'Pending', 'Pending', @User, CONCAT('Level ', @Level, ' approved. Forwarded to ', @NextRole, ' (', ISNULL(@NextLogin, 'Audit Pool'), ')'));
+                        END
+                        ELSE
+                        BEGIN
+                            -- Fallback: If no Auditor exists, safely mark the whole claim as Completed
+                            UPDATE dbo.SalesApprovalRequest
+                            SET Status = 'Completed', ModifiedBy = @User, ModifiedOn = SYSUTCDATETIME()
+                            WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+
+                            INSERT INTO dbo.ApprovalRequestStatusHistory 
+                            (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
+                            VALUES 
+                            (@Id, 'Pending', 'Completed', @User, 'All approval levels finished. Awaiting Payment.');
+                        END";
+
+                    using (var cmd = new SqlCommand(sqlWorkflow, con))
+                    {
+                        cmd.Parameters.AddWithValue("@Id", reqId);
+                        cmd.Parameters.AddWithValue("@User", user);
+                        cmd.Parameters.AddWithValue("@Level", currentLevel);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                // 3. Refresh the main background dashboard so the request disappears from Tanmoy's queue
+                BindRequestsGrid();
+
+                // 4. Close the modal seamlessly
+                ScriptManager.RegisterStartupScript(this, GetType(), "closeModal", "$('#detailsModal').modal('hide');", true);
+            }
+            catch (Exception ex)
+            {
+                lblModalMessage.Text = "Error during handover: " + ex.Message;
+                lblModalMessage.CssClass = "text-danger font-weight-bold";
+                upDetails.Update();
+            }
         }
 
         protected void gvDetails_RowDataBound(object sender, GridViewRowEventArgs e)

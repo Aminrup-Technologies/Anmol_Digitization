@@ -504,6 +504,9 @@ namespace AnmolDristi
 
         protected void gvActivities_RowCommand(object sender, GridViewCommandEventArgs e)
         {
+            // Global connection string reference (adjust if yours is named differently)
+            string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
             if (e.CommandName == "OpenExpenses")
             {
                 ResetExpenseEntryFields();
@@ -526,7 +529,6 @@ namespace AnmolDristi
 
                 if (dt != null && dt.Rows.Count > 0 && dt.Columns.Contains("PolicyMode") && dt.Rows[0]["PolicyMode"] != DBNull.Value)
                 {
-                    // If records exist in DB, strictly use what is in the DB
                     explicitMode = dt.Rows[0]["PolicyMode"].ToString().Trim();
                 }
 
@@ -598,7 +600,69 @@ namespace AnmolDristi
                     if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = string.Empty;
                 }
 
-                // USE THE NEW SAFE SCRIPT INJECTOR
+                // ====================================================================
+                // UI LOCK: Expense Modal View-Only Mode
+                // ====================================================================
+                string claimStatus = "Draft";
+                using (SqlConnection conStat = new SqlConnection(connString))
+                {
+                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                    {
+                        cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                        conStat.Open();
+                        object statObj = cmdStat.ExecuteScalar();
+                        if (statObj != null && statObj != DBNull.Value) claimStatus = statObj.ToString().Trim();
+                    }
+                }
+
+                // ====================================================================
+                // UI LOCK: Expense Modal View-Only Mode
+                // ====================================================================
+                if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                    claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 1. Hide the Save and KM Modify buttons
+                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
+                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
+                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = false;
+
+                    // 2. Loop through the Repeater to swap the Delete icon for the Lock icon
+                    if (rptExpenses != null)
+                    {
+                        foreach (RepeaterItem item in rptExpenses.Items)
+                        {
+                            if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
+                            {
+                                LinkButton lnkDelete = item.FindControl("lnkDeleteExpense") as LinkButton;
+                                LinkButton lnkDisabled = item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
+
+                                if (lnkDelete != null) lnkDelete.Visible = false; // Hide trash can
+                                if (lnkDisabled != null) lnkDisabled.Visible = true; // Show padlock
+                            }
+                        }
+                    }
+
+                    if (LBL_ExpenseMsg != null)
+                    {
+                        LBL_ExpenseMsg.Text = "🔒 This month is " + claimStatus + ". You are in View-Only mode.";
+                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    }
+                }
+                else
+                {
+                    // It is a Draft - unlock everything!
+                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = true;
+                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = true;
+                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = true;
+
+                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "";
+
+                    // (Note: We don't need to manually unlock the repeater items here because 
+                    // your rptExpenses_ItemDataBound method will handle re-binding them correctly for Drafts).
+                }
+                // ====================================================================
+
                 string script = string.Format("if(typeof openExpenseModalSafe === 'function') openExpenseModalSafe('{0}', '{1}'); else $('#expenseModal').modal('show');", activityId, explicitMode.Replace("'", "\\'"));
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "openExpenseModalSafe_" + activityId, script, true);
             }
@@ -628,6 +692,42 @@ namespace AnmolDristi
 
                 BindKmHistory(activityId);
 
+                // ====================================================================
+                // UI LOCK: KM Modal View-Only Mode
+                // ====================================================================
+                string claimStatus = "Draft";
+                using (SqlConnection conStat = new SqlConnection(connString))
+                {
+                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                    {
+                        cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                        conStat.Open();
+                        object statObj = cmdStat.ExecuteScalar();
+                        if (statObj != null && statObj != DBNull.Value) claimStatus = statObj.ToString().Trim();
+                    }
+                }
+
+                if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                    claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (btnSaveKm != null) btnSaveKm.Visible = false;
+                    if (txtModalKM != null) txtModalKM.Enabled = false;
+                    if (txtKmReason != null) txtKmReason.Enabled = false;
+
+                    if (lblModalCurrentKm != null)
+                    {
+                        lblModalCurrentKm.Text += "<br/><span style='color:red;'>🔒 <b>This month is " + claimStatus + ". You are in View-Only mode.</b></span>";
+                    }
+                }
+                else
+                {
+                    if (btnSaveKm != null) btnSaveKm.Visible = true;
+                    if (txtModalKM != null) txtModalKM.Enabled = true;
+                    if (txtKmReason != null) txtKmReason.Enabled = true;
+                }
+                // ====================================================================
+
                 string modalId = "editKmModal";
                 string script = string.Format("setTimeout(function(){{ $('#{0}').modal('show'); $('#spMinKm').text('{1}'); $('#spMaxKm').text('{2}'); }}, 50);",
                     modalId, minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
@@ -639,6 +739,31 @@ namespace AnmolDristi
                 int activityId;
                 if (int.TryParse(e.CommandArgument.ToString(), out activityId))
                 {
+                    // ====================================================================
+                    // SECURITY GATE: Prevent Inline Editing if Submitted
+                    // ====================================================================
+                    string currentStatus = "Draft";
+                    using (SqlConnection conStat = new SqlConnection(connString))
+                    {
+                        using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                        {
+                            cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                            conStat.Open();
+                            object statObj = cmdStat.ExecuteScalar();
+                            if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
+                        }
+                    }
+
+                    if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                        currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                        currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                    {
+                        lbl_msg.Text = "Cannot edit row. This claim is " + currentStatus + ".";
+                        lbl_msg.ForeColor = System.Drawing.Color.Red;
+                        return; // Blocks the inline edit entirely
+                    }
+                    // ====================================================================
+
                     int rowIndex = FindRowIndexByActivityId(activityId);
                     if (rowIndex >= 0)
                     {
@@ -651,6 +776,34 @@ namespace AnmolDristi
             else if (e.CommandName == "UpdateRow")
             {
                 int activityId = Convert.ToInt32(e.CommandArgument);
+
+                // ====================================================================
+                // SECURITY GATE: Prevent Inline Updating if Submitted
+                // ====================================================================
+                string currentStatus = "Draft";
+                using (SqlConnection conStat = new SqlConnection(connString))
+                {
+                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                    {
+                        cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                        conStat.Open();
+                        object statObj = cmdStat.ExecuteScalar();
+                        if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
+                    }
+                }
+
+                if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                    currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                    currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    lbl_msg.Text = "Update blocked. This claim is " + currentStatus + ".";
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+                    gvActivities.EditIndex = -1; // Reset grid
+                    BindGrid(false);
+                    return;
+                }
+                // ====================================================================
+
                 GridViewRow row = ((LinkButton)e.CommandSource).NamingContainer as GridViewRow;
                 TextBox txtKM = row.FindControl("txtKM") as TextBox;
                 if (txtKM == null) return;
@@ -719,6 +872,34 @@ namespace AnmolDristi
 
             if (row != null) PopulateEditKmModalFromRow(row);
             else PopulateEditKmModalFromDb(activityId);
+
+            // ====================================================================
+            // SECURITY GATE: Prevent saving KMs if the month is already submitted
+            // ====================================================================
+            string currentStatus = "Draft";
+            string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString; // Adjust if your variable is different
+
+            using (SqlConnection conStat = new SqlConnection(connString))
+            {
+                using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                {
+                    cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                    conStat.Open();
+                    object statObj = cmdStat.ExecuteScalar();
+                    if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
+                }
+            }
+
+            if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
+                btnSaveKm.Enabled = false;
+                //return; // <--- Instantly blocks the save!
+            }
+            // ====================================================================
 
             string hideOuter = "$('#expenseModal').modal('hide');";
             ScriptManager.RegisterStartupScript(this, this.GetType(), "hideExpenseBeforeOpenInner_" + activityId, hideOuter, true);
@@ -840,7 +1021,32 @@ namespace AnmolDristi
 
             int activityId;
             if (hdnActivityId == null || !int.TryParse(hdnActivityId.Value, out activityId)) return;
+            // ====================================================================
+            // SECURITY GATE: Prevent saving KMs if the month is already submitted
+            // ====================================================================
+            string currentStatus = "Draft";
+            string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString; // Adjust if your variable is different
 
+            using (SqlConnection conStat = new SqlConnection(connString))
+            {
+                using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                {
+                    cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                    conStat.Open();
+                    object statObj = cmdStat.ExecuteScalar();
+                    if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
+                }
+            }
+
+            if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
+                return; // <--- Instantly blocks the save!
+            }
+            // ====================================================================
             string modifiedBy = GetCurrentUserLoginId();
 
             try
@@ -1147,6 +1353,40 @@ namespace AnmolDristi
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                 return;
             }
+
+            // ====================================================================
+            // SECURITY GATE: Prevent saving if the month is already submitted
+            // ====================================================================
+            string currentStatus = "Draft";
+            using (SqlConnection conStat = new SqlConnection(connString))
+            {
+                using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                {
+                    cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                    conStat.Open();
+                    object statObj = cmdStat.ExecuteScalar();
+                    if (statObj != null && statObj != DBNull.Value)
+                    {
+                        currentStatus = statObj.ToString().Trim();
+                    }
+                }
+            }
+
+            if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            {
+                if (LBL_ExpenseMsg != null)
+                {
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                    LBL_ExpenseMsg.Text = "Access Denied: You cannot modify expenses for a submitted claim.";
+                }
+                string safeErr = "Cannot modify expenses. The claim for this month is currently " + currentStatus + ".";
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErr", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                return; // <--- This immediately stops the save process!
+            }
+            // ====================================================================
 
             string expenseType = "DA";
             if (DDL_ExpenseType != null && !string.IsNullOrWhiteSpace(DDL_ExpenseType.SelectedValue))
@@ -1850,6 +2090,243 @@ namespace AnmolDristi
         }
 
         protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
+        {
+            if (e.CommandName == "DeleteExpense")
+            {
+                var arg = e.CommandArgument != null ? e.CommandArgument.ToString() : "";
+                var parts = arg.Split(new[] { '|' }, 3);
+
+                int expenseId;
+                if (parts.Length < 1 || !int.TryParse(parts[0], out expenseId))
+                {
+                    if (LBL_ExpenseMsg != null)
+                    {
+                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                        LBL_ExpenseMsg.Text = "Invalid expense id.";
+                    }
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+
+                string incomingAttachmentPath = parts.Length > 1 ? (string.IsNullOrWhiteSpace(parts[1]) ? null : parts[1]) : null;
+                int activityIdFromArg = 0; if (parts.Length > 2) int.TryParse(parts[2], out activityIdFromArg);
+
+                // ====================================================================
+                // SECURITY GATE: Prevent Deleting if the month is already submitted
+                // ====================================================================
+                string currentStatus = "Draft";
+                // Assuming connString is defined elsewhere in your class
+                using (SqlConnection conStat = new SqlConnection(connString))
+                {
+                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                    {
+                        // Use activityIdFromArg as it's extracted from the CommandArgument
+                        cmdStat.Parameters.AddWithValue("@ActId", activityIdFromArg);
+                        conStat.Open();
+                        object statObj = cmdStat.ExecuteScalar();
+                        if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
+                    }
+                }
+
+                if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                    currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                    currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    string safeErr = "Cannot delete this expense. The claim for this month is currently " + currentStatus + ".";
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrDel", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
+                    return; // <--- Instantly blocks the deletion!
+                }
+                // ====================================================================
+
+                try
+                {
+                    using (SqlConnection con = new SqlConnection(connString))
+                    {
+                        con.Open();
+                        string lookupSql = @"SELECT e.ExpenseId, e.ActivityId, e.ExpenseType, e.ExpenseDate, e.FromDate, e.ToDate, e.AttachmentPath, e.IsAutoDA, e.ClaimStatus AS ExpenseClaimStatus, a.ClaimStatus AS ActivityClaimStatus, e.ExpenseSeq, e.CreatedDateTime FROM dbo.SalesDailyExpense e LEFT JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId WHERE e.ExpenseId = @ExpenseId";
+                        int activityId = 0; string expenseType = null; DateTime? expDate = null, fromDate = null, toDate = null;
+                        string attachmentPath = incomingAttachmentPath; bool isAutoRow = false; string expenseClaimStatus = null;
+
+                        using (var lookup = new SqlCommand(lookupSql, con))
+                        {
+                            lookup.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+                            using (var rdr = lookup.ExecuteReader())
+                            {
+                                if (!rdr.Read())
+                                {
+                                    if (LBL_ExpenseMsg != null)
+                                    {
+                                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                        LBL_ExpenseMsg.Text = "Expense not found.";
+                                    }
+                                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                    return;
+                                }
+                                activityId = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
+                                expenseType = rdr["ExpenseType"] != DBNull.Value ? rdr["ExpenseType"].ToString() : null;
+                                if (rdr["ExpenseDate"] != DBNull.Value) expDate = Convert.ToDateTime(rdr["ExpenseDate"]);
+                                if (rdr["FromDate"] != DBNull.Value) fromDate = Convert.ToDateTime(rdr["FromDate"]);
+                                if (rdr["ToDate"] != DBNull.Value) toDate = Convert.ToDateTime(rdr["ToDate"]);
+                                if (string.IsNullOrWhiteSpace(attachmentPath) && rdr["AttachmentPath"] != DBNull.Value) attachmentPath = rdr["AttachmentPath"].ToString();
+                                isAutoRow = rdr["IsAutoDA"] != DBNull.Value && Convert.ToInt32(rdr["IsAutoDA"]) == 1;
+                                expenseClaimStatus = rdr["ExpenseClaimStatus"] != DBNull.Value ? rdr["ExpenseClaimStatus"].ToString() : null;
+                            }
+                        }
+
+                        if (!string.Equals(expenseClaimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (LBL_ExpenseMsg != null)
+                            {
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                                LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                            }
+                            ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                            return;
+                        }
+
+                        if (isAutoRow)
+                        {
+                            if (LBL_ExpenseMsg != null)
+                            {
+                                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
+                                LBL_ExpenseMsg.Text = "Cannot delete system-generated (auto) expense directly.";
+                            }
+                            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                            return;
+                        }
+
+                        DateTime matchFrom = DateTime.MinValue, matchTo = DateTime.MinValue;
+                        if (expenseType != null && expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (fromDate.HasValue && toDate.HasValue) { matchFrom = fromDate.Value.Date; matchTo = toDate.Value.Date; }
+                            else if (expDate.HasValue) matchFrom = matchTo = expDate.Value.Date;
+                        }
+                        else if (expenseType != null && expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (expDate.HasValue) matchFrom = matchTo = expDate.Value.Date;
+                        }
+                        else
+                        {
+                            if (expDate.HasValue) matchFrom = matchTo = expDate.Value.Date;
+                        }
+
+                        using (SqlTransaction tx = con.BeginTransaction())
+                        {
+                            try
+                            {
+                                bool isFirstForType = false;
+                                if (matchFrom != DateTime.MinValue)
+                                {
+                                    string firstSql = @"SELECT TOP 1 ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND LOWER(ISNULL(ExpenseType,'')) = LOWER(ISNULL(@ExpenseType,'')) AND CAST(ISNULL(ExpenseDate, GETDATE()) AS DATE) = @MatchDate ORDER BY CASE WHEN ExpenseSeq IS NULL THEN 2147483647 ELSE ExpenseSeq END ASC, ISNULL(CreatedDateTime, '1900-01-01') ASC, ExpenseId ASC";
+                                    using (var firstCmd = new SqlCommand(firstSql, con, tx))
+                                    {
+                                        firstCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                                        firstCmd.Parameters.Add(new SqlParameter("@ExpenseType", SqlDbType.NVarChar, 50) { Value = expenseType ?? (object)DBNull.Value });
+                                        firstCmd.Parameters.Add(new SqlParameter("@MatchDate", SqlDbType.Date) { Value = matchFrom });
+                                        object firstObj = firstCmd.ExecuteScalar();
+                                        if (firstObj != null && firstObj != DBNull.Value) isFirstForType = (Convert.ToInt32(firstObj) == expenseId);
+                                        else isFirstForType = true;
+                                    }
+                                }
+
+                                var autoIds = new List<int>();
+                                if (isFirstForType && matchFrom != DateTime.MinValue)
+                                {
+                                    // Make sure to add AND IsDeleted = 0 to this query as well!
+                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus = 'Draft' AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+                                    using (var findCmd = new SqlCommand(findAutoSql, con, tx))
+                                    {
+                                        findCmd.Parameters.AddWithValue("@ActivityId", activityId);
+                                        findCmd.Parameters.AddWithValue("@FromDate", matchFrom);
+                                        findCmd.Parameters.AddWithValue("@ToDate", matchTo);
+                                        using (var rdr = findCmd.ExecuteReader()) { while (rdr.Read()) autoIds.Add(Convert.ToInt32(rdr["ExpenseId"])); }
+                                    }
+                                }
+
+                                using (var del = new SqlCommand(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'User removed draft expense' WHERE ExpenseId = @ExpenseId AND ClaimStatus = 'Draft' AND IsDeleted = 0", con, tx))
+                                {
+                                    del.Parameters.AddWithValue("@ExpenseId", expenseId);
+                                    del.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
+                                    if (del.ExecuteNonQuery() <= 0)
+                                    {
+                                        tx.Rollback();
+                                        if (LBL_ExpenseMsg != null)
+                                        {
+                                            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                            LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                                        }
+                                        ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                        return;
+                                    }
+                                }
+
+                                if (autoIds.Count > 0)
+                                {
+                                    string inList = string.Join(",", autoIds.Select(n => n.ToString()).ToArray());
+                                    string delAutoSql = string.Format(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'Auto-DA reversed due to primary expense deletion' WHERE ExpenseId IN ({0}) AND ClaimStatus = 'Draft' AND IsDeleted = 0", inList);
+                                    using (var delAuto = new SqlCommand(delAutoSql, con, tx))
+                                    {
+                                        delAuto.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
+                                        delAuto.ExecuteNonQuery();
+                                    }
+                                }
+
+                                tx.Commit();
+                                DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
+                                Session.Remove(GetCurrentSessionKey());
+                                BindGrid(false);
+
+                                string currentMode = "";
+                                if (dtAfterDel != null && dtAfterDel.Rows.Count > 0 && dtAfterDel.Columns.Contains("PolicyMode") && dtAfterDel.Rows[0]["PolicyMode"] != DBNull.Value)
+                                    currentMode = dtAfterDel.Rows[0]["PolicyMode"].ToString().Trim();
+                                if (string.IsNullOrWhiteSpace(currentMode) && HF_ResolvedPolicyMode != null) currentMode = HF_ResolvedPolicyMode.Value.Trim();
+                                if (string.IsNullOrWhiteSpace(currentMode)) currentMode = "HQ";
+
+                                if (LBL_ExpenseMsg != null)
+                                {
+                                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
+                                    LBL_ExpenseMsg.Text = "Expense deleted.";
+                                }
+
+                                string scriptDel = string.Format("if(typeof openExpenseModalSafe === 'function') openExpenseModalSafe('{0}', '{1}'); else $('#expenseModal').modal('show');", activityId, currentMode.Replace("'", "\\'"));
+                                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpenseDeleted", scriptDel, true);
+                            }
+                            catch (Exception ex)
+                            {
+                                try { tx.Rollback(); } catch { }
+                                if (LBL_ExpenseMsg != null)
+                                {
+                                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                    LBL_ExpenseMsg.Text = ex.Message;
+                                }
+                                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                return;
+                            }
+                        }
+                    }
+                }
+                catch (SqlException sqx)
+                {
+                    if (LBL_ExpenseMsg != null)
+                    {
+                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                        LBL_ExpenseMsg.Text = sqx.Message;
+                    }
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                }
+                catch (Exception ex)
+                {
+                    if (LBL_ExpenseMsg != null)
+                    {
+                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                        LBL_ExpenseMsg.Text = ex.Message;
+                    }
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                }
+            }
+        }
+
+        protected void rptExpenses_ItemCommand_OLD(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName == "DeleteExpense")
             {
