@@ -1009,5 +1009,27 @@
                 }
             });
         }
+
+        // =========================================================
+        // UPDATEPANEL SCROLL MEMORY 
+        // =========================================================
+        var prm = Sys.WebForms.PageRequestManager.getInstance();
+        var _gridScrollTop = 0;
+
+        // 1. Right before the server recalculates, memorize the scroll position
+        prm.add_beginRequest(function (sender, args) {
+            var gridContainer = document.querySelector('#detailsModal .table-responsive');
+            if (gridContainer) {
+                _gridScrollTop = gridContainer.scrollTop;
+            }
+        });
+
+        // 2. The millisecond the new grid loads, snap the scrollbar back
+        prm.add_endRequest(function (sender, args) {
+            var gridContainer = document.querySelector('#detailsModal .table-responsive');
+            if (gridContainer) {
+                gridContainer.scrollTop = _gridScrollTop;
+            }
+        });
     </script>
 </asp:Content>
