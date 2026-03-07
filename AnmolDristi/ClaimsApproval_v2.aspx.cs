@@ -472,9 +472,6 @@ namespace AnmolDristi
                 _totalTravel += (drv["Snapshot_TravelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_TravelAmount"]);
                 _totalSnapshot += (drv["Snapshot_ExpenseTotal"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_ExpenseTotal"]);
 
-                // B. RESTORE WIRING (CRITICAL: Loads Expenses JSON, tooltips, etc.)
-                //PopulateRowControls(e.Row, drv);
-
                 // C. LOGIC: WHO CAN EDIT WHAT?
                 int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
                 string detailStatus = drv["DetailStatus"].ToString();
@@ -484,27 +481,11 @@ namespace AnmolDristi
                 var btnApprove = (Button)e.Row.FindControl("btnApproveRow");
                 var btnReject = (Button)e.Row.FindControl("btnRejectRow");
                 var txtRemark = (TextBox)e.Row.FindControl("txtRowRemark");
-                var btnEditKM = (System.Web.UI.HtmlControls.HtmlButton)e.Row.FindControl("btnEditKM");
 
-                // Default: Lock
+                // Default: Lock parent row actions
                 if (btnApprove != null) btnApprove.Enabled = false;
                 if (btnReject != null) btnReject.Enabled = false;
                 if (txtRemark != null) txtRemark.ReadOnly = true;
-                if (btnEditKM != null) btnEditKM.Visible = false;
-
-                // REVISION: Allow BOTH Approver 1 and Auditor to correct KM
-                bool canEditKM = (currentLevel == 1 || currentLevel == 2);
-                if (canEditKM && btnEditKM != null)
-                {
-                    btnEditKM.Visible = true;
-                }
-
-                // Scenario: Auditor Logic
-                bool isAuditor = (currentLevel == 2);
-                if (isAuditor && btnEditKM != null)
-                {
-                    btnEditKM.Visible = true; // Auditors can always correct KM
-                }
 
                 // D. ROW COLORS & UNLOCKING
                 if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
@@ -520,7 +501,7 @@ namespace AnmolDristi
                 {
                     // HANDOVER: Approved by L1, Pending L2
                     e.Row.CssClass += " table-warning"; // Yellow
-                    UnlockRow(btnApprove, btnReject, txtRemark); // Assuming UnlockRow is correctly implemented below
+                    UnlockRow(btnApprove, btnReject, txtRemark);
                 }
                 else if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
                 {
@@ -534,13 +515,17 @@ namespace AnmolDristi
                                           expensesJson.Contains("\"ClaimStatus\":\"Draft\"") ||
                                           expensesJson.Contains("\"ClaimStatus\":\"Pending\"");
 
+                // Re-declare isAuditor to run the check below
+                bool isAuditor = (currentLevel == 2);
+
                 // If Auditor is viewing, and row has pending receipts, AND row isn't rejected
                 if (isAuditor && hasPendingReceipts && !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
                     var btnExp = e.Row.FindControl("btnExp") as System.Web.UI.HtmlControls.HtmlButton;
                     if (btnExp != null)
                     {
-                        btnExp.Attributes["class"] = "btn btn-sm btn-danger text-white btn-expenses pulse-warning";
+                        // FIXED: Changed 'btn-expenses' to 'btn-day-action shadow-sm' so the unified modal still opens!
+                        btnExp.Attributes["class"] = "btn btn-sm btn-danger text-white btn-day-action pulse-warning shadow-sm";
                         btnExp.InnerText = "⚠️ Action";
                         btnExp.Attributes["title"] = "Pending receipts require your approval or rejection!";
                     }

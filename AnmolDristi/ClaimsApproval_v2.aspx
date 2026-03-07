@@ -280,31 +280,36 @@
                                                     <span class="km-value font-weight-bold" data-activityid='<%# Eval("ActivityId") %>'>
                                                         <%# Eval("Snapshot_TotalDistanceKM", "{0:N2}") %>
                                                     </span>
-                                                    <button type="button" runat="server" id="btnEditKM" class="btn btn-sm btn-outline-primary ml-2 btn-edit-km" title="Modify KM">
-                                                        <i class="fa fa-pencil-square-o"></i>Edit
-                                                    </button>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
-
                                             <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
-
+                                            <asp:TemplateField HeaderText="Day Action" ItemStyle-HorizontalAlign="Center" HeaderStyle-Width="8%">
+                                                <ItemTemplate>
+                                                    <button type="button" runat="server" id="btnExp" class="btn btn-sm btn-info text-white btn-day-action shadow-sm"
+                                                        data-activityid='<%# Eval("ActivityId") %>'
+                                                        data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts & Distance">
+                                                        <i class="fa fa-folder-open"></i>Open
+                                                   
+                                                    </button>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
                                             <asp:TemplateField HeaderText="Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
                                                     <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' CssClass="form-control form-control-sm" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Details" ItemStyle-HorizontalAlign="Center">
+                                            <%--<asp:TemplateField HeaderText="Details" ItemStyle-HorizontalAlign="Center">
                                                 <ItemTemplate>
                                                     <button type="button" runat="server" id="btnExp" class="btn btn-sm btn-info text-white btn-expenses" data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts">
                                                         <i class="fa fa-list-alt"></i>View
                                                     </button>
                                                 </ItemTemplate>
-                                            </asp:TemplateField>
+                                            </asp:TemplateField>--%>
 
                                             <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%">
                                                 <ItemTemplate>
@@ -388,7 +393,7 @@
 
         <input type="hidden" id="km_modal_activityid_outer" />
 
-        <div id="kmEditModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <%--<div id="kmEditModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header bg-primary text-white">
@@ -464,9 +469,9 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div>--%>
 
-        <div id="expensesModal" class="modal fade" tabindex="-1" role="dialog">
+        <%--<div id="expensesModal" class="modal fade" tabindex="-1" role="dialog">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -474,6 +479,105 @@
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body" id="expensesModalBody">Loading...</div>
+                </div>
+            </div>
+        </div>--%>
+
+        <div id="unifiedDayModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+
+                    <div class="modal-header bg-dark text-white p-2">
+                        <h6 class="modal-title m-0"><i class="fa fa-calendar-check-o mr-2"></i>Day Details & Actions</h6>
+                        <button type="button" class="close text-white" data-dismiss="modal">×</button>
+                    </div>
+
+                    <div class="modal-body p-0">
+                        <ul class="nav nav-tabs nav-justified bg-light m-0" id="dayModalTabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active font-weight-bold text-dark py-3" id="receipts-tab" data-toggle="tab" href="#tab-receipts" role="tab">
+                                    <i class="fa fa-receipt text-info"></i>Expense Receipts
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link font-weight-bold text-dark py-3" id="distance-tab" data-toggle="tab" href="#tab-distance" role="tab">
+                                    <i class="fa fa-map-marker text-danger"></i>Distance (KM) & Map
+                                </a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content p-3">
+
+                            <div class="tab-pane active" id="tab-receipts" role="tabpanel">
+                                <div id="unifiedExpensesBody">
+                                    <div class="text-center py-4 text-muted"><i class="fa fa-spinner fa-spin fa-2x"></i>
+                                        <br />
+                                        Loading receipts...</div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane" id="tab-distance" role="tabpanel">
+                                <input type="hidden" id="km_modal_activityid" />
+
+                                <div class="alert alert-info border mb-3 py-2">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-4"><strong>From:</strong> <span id="km_modal_fromplace" class="text-dark"></span></div>
+                                        <div class="col-md-4"><strong>To:</strong> <span id="km_modal_toplace" class="text-dark"></span></div>
+                                        <div class="col-md-4 text-right">
+                                            <a href="#" id="km_modal_maplink" target="_blank" class="btn btn-sm btn-primary shadow-sm" style="display: none;">
+                                                <i class="fa fa-map"></i>View on Map
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row" id="divKmControls">
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label class="font-weight-bold text-muted small mb-1">Current KM</label>
+                                            <input type="text" id="km_modal_current" class="form-control form-control-sm bg-light font-weight-bold" readonly />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label class="font-weight-bold text-primary small mb-1">New KM</label>
+                                            <input type="number" step="0.01" id="km_modal_new" class="form-control form-control-sm border-primary" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="font-weight-bold text-muted small mb-1">Reason for change</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" id="km_modal_reason" class="form-control" placeholder="Required if changing KM..." />
+                                                <div class="input-group-append">
+                                                    <button type="button" id="km_modal_save" class="btn btn-success" onclick="saveKM()"><i class="fa fa-save"></i>Save</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="km_modal_message" class="mb-2"></div>
+
+                                <h6 class="text-secondary border-bottom pb-1 mt-3"><i class="fa fa-history"></i>Modification History</h6>
+                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                                    <table class="table table-striped table-sm border" id="km_history_tbl">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>Date (IST)</th>
+                                                <th>Old KM</th>
+                                                <th>New KM</th>
+                                                <th>Changed By</th>
+                                                <th>Reason</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -522,68 +626,6 @@
 
         function selectAllRows(chk) {
             $('.row-select-checkbox input').prop('checked', chk.checked);
-        }
-
-        // --- EXPENSE HANDLING ---
-        $(document).on('click', '.btn-expenses', function() {
-            var json = $(this).attr('data-expenses'); // Use attr to ensure raw JSON string is grabbed
-            if (json) {
-                var data = JSON.parse(json);
-                renderExpenses(data);
-            }
-        });
-
-        function renderExpenses(data) {
-            if(!data || data.length === 0) {
-                $('#expensesModalBody').html('<div class="alert alert-warning">No receipts attached for this day.</div>');
-                $('#expensesModal').modal('show');
-                return;
-            }
-
-            // Added Date and Purpose columns
-            var html = '<table class="table table-bordered table-striped table-hover"><thead><tr class="bg-light">' +
-                       '<th>Date</th><th>Type</th><th>Purpose</th><th>Bill No</th><th class="text-right">Amount</th><th class="text-center">Action</th></tr></thead><tbody>';
-    
-            // REVISION: Allow both Level 1 and Level 2 to see the action buttons
-            var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
-            var canAction = (activeLevel === 1 || activeLevel === 2);
-
-            $.each(data, function(i, item) {
-                // Safely format the date
-                var expDate = item.ExpenseDate ? new Date(item.ExpenseDate).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : '-';
-        
-                var statusBadge = '';
-                if(item.ClaimStatus === 'Approved') {
-                    statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fa fa-check"></i> Approved</span>';
-                }
-                else if(item.ClaimStatus === 'Rejected') {
-                    statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fa fa-times"></i> Rejected</span>';
-                }
-                else {
-                    // REVISION: Use canAction to show buttons
-                    if(canAction) {
-                        statusBadge = '<button type="button" class="btn btn-sm btn-success mr-1" onclick="updateExpense(' + item.ExpenseId + ',\'Approved\', this)" title="Approve"><i class="fa fa-check"></i></button>' +
-                                      '<button type="button" class="btn btn-sm btn-danger" onclick="updateExpense(' + item.ExpenseId + ',\'Rejected\', this)" title="Reject"><i class="fa fa-times"></i></button>';
-                    } else {
-                        statusBadge = '<span class="badge badge-warning text-dark px-2 py-1">Pending</span>';
-                    }
-                }
-        
-                // Add paperclip icon to bill link
-                var billLink = item.AttachmentPath ? '<a href="' + item.AttachmentPath + '" target="_blank" class="text-primary font-weight-bold"><i class="fa fa-paperclip"></i> ' + (item.BillNo || 'View Bill') + '</a>' : (item.BillNo || '-');
-
-                html += '<tr>' +
-                        '<td>' + expDate + '</td>' +
-                        '<td><strong>' + (item.ExpenseType || '-') + '</strong></td>' +
-                        '<td><small>' + (item.Purpose || '-') + '</small></td>' +
-                        '<td>' + billLink + '</td>' +
-                        '<td class="text-right font-weight-bold text-dark">₹ ' + parseFloat(item.Amount).toFixed(2) + '</td>' +
-                        '<td class="text-center">' + statusBadge + '</td>' +
-                        '</tr>';
-            });
-            html += '</tbody></table>';
-            $('#expensesModalBody').html(html);
-            $('#expensesModal').modal('show');
         }
 
         // --- KM EDITING ---
@@ -761,46 +803,6 @@
             });
         }
 
-        // Save Action
-        function saveKM() {
-            var $saveBtn = $('#km_modal_save');
-            $saveBtn.prop('disabled', true);
-            $('#km_modal_message').empty();
-
-            var id = $('#km_modal_activityid').val();
-            var km = $('#km_modal_new').val();
-            var reason = $('#km_modal_reason').val();
-            
-            if(!km || !reason) { 
-                $('#km_modal_message').html('<div class="text-danger">KM and Reason are required.</div>'); 
-                $saveBtn.prop('disabled', false);
-                return; 
-            }
-
-            $.ajax({
-                type: "POST",
-                url: "ClaimsApproval_v2.aspx/UpdateActivityKM",
-                data: JSON.stringify({ activityId: parseInt(id), newKm: parseFloat(km), reason: reason }),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-                success: function(r) {
-                    if(r.d && r.d.success) {
-                        $('#kmEditModal').modal('hide');
-                        // Trigger Server Refresh
-                        document.getElementById('btnRefreshCalculations').click();
-                    } else {
-                        $('#km_modal_message').html('<div class="text-danger">' + r.d.message + '</div>');
-                    }
-                },
-                error: function() {
-                    $('#km_modal_message').html('<div class="text-danger">Server error occurred.</div>');
-                },
-                complete: function() {
-                    $saveBtn.prop('disabled', false);
-                }
-            });
-        }
-
         function openDetailsModal() { $('#detailsModal').modal('show'); }
 
         function showDeductionsBreakdown() {
@@ -882,5 +884,130 @@
             return true;
         }
 
+
+
+        //Unified Modal
+        // UNIFIED DAY ACTION BUTTON CLICK
+        $(document).on('click', '.btn-day-action', function(e) {
+            e.preventDefault();
+            var $row = $(this).closest('tr');
+            
+            // 1. Extract Data
+            var actId = $(this).data('activityid');
+            var currentKm = $row.find('.km-value').text().trim();
+            var expensesJson = $(this).attr('data-expenses');
+            
+            // 2. Security Check (Only Level 1 & 2 can edit KM)
+            var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
+            if (activeLevel === 1 || activeLevel === 2) {
+                $('#divKmControls').show();
+            } else {
+                $('#divKmControls').hide(); // Lock it down for regular users viewing history
+            }
+
+            // 3. Setup Distance Tab
+            $('#km_modal_activityid').val(actId);
+            $('#km_modal_current').val(currentKm);
+            $('#km_modal_new').val(currentKm);
+            $('#km_modal_reason').val('');
+            $('#km_modal_message').empty();
+            loadKmHistory(actId);
+            
+            // 4. Setup Receipts Tab
+            if (expensesJson && expensesJson.trim() !== "[]") {
+                var data = JSON.parse(expensesJson);
+                renderExpenses(data); // Call our builder function
+            } else {
+                $('#unifiedExpensesBody').html('<div class="alert alert-warning text-center mt-3"><i class="fa fa-folder-open-o fa-2x d-block mb-2"></i> No receipts attached for this day.</div>');
+            }
+            
+            // 5. Reset to Tab 1 and Show Modal
+            $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
+            $('#unifiedDayModal').modal('show');
+        });
+
+        // UPDATED: Render Expenses HTML builder
+        function renderExpenses(data) {
+            var html = '<table class="table table-sm table-bordered table-striped table-hover mt-2"><thead class="bg-light">' +
+                       '<tr><th>Date</th><th>Type</th><th>Purpose</th><th>Bill No</th><th class="text-right">Amount</th><th class="text-center">Action</th></tr></thead><tbody>';
+            
+            var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
+            var canAction = (activeLevel === 1 || activeLevel === 2);
+
+            $.each(data, function(i, item) {
+                var expDate = item.ExpenseDate ? new Date(item.ExpenseDate).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : '-';
+                var statusBadge = '';
+                
+                if(item.ClaimStatus === 'Approved') {
+                    statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fa fa-check"></i> Approved</span>';
+                } else if(item.ClaimStatus === 'Rejected') {
+                    statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fa fa-times"></i> Rejected</span>';
+                } else {
+                    if(canAction) {
+                        statusBadge = '<button type="button" class="btn btn-sm btn-success mr-1 py-0 px-2" onclick="updateExpense(' + item.ExpenseId + ',\'Approved\', this)" title="Approve"><i class="fa fa-check"></i></button>' +
+                                      '<button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="updateExpense(' + item.ExpenseId + ',\'Rejected\', this)" title="Reject"><i class="fa fa-times"></i></button>';
+                    } else {
+                        statusBadge = '<span class="badge badge-warning text-dark px-2 py-1">Pending</span>';
+                    }
+                }
+        
+                var billLink = item.AttachmentPath ? '<a href="' + item.AttachmentPath + '" target="_blank" class="text-primary font-weight-bold"><i class="fa fa-paperclip"></i> ' + (item.BillNo || 'View Bill') + '</a>' : (item.BillNo || '-');
+
+                html += '<tr>' +
+                        '<td>' + expDate + '</td>' +
+                        '<td><strong>' + (item.ExpenseType || '-') + '</strong></td>' +
+                        '<td><small>' + (item.Purpose || '-') + '</small></td>' +
+                        '<td>' + billLink + '</td>' +
+                        '<td class="text-right font-weight-bold text-dark">₹ ' + parseFloat(item.Amount).toFixed(2) + '</td>' +
+                        '<td class="text-center">' + statusBadge + '</td>' +
+                        '</tr>';
+            });
+            html += '</tbody></table>';
+            
+            // Push directly to the new Tab!
+            $('#unifiedExpensesBody').html(html);
+        }
+
+        // UPDATED: Save KM Function (Closes unified modal on success)
+        function saveKM() {
+            var $saveBtn = $('#km_modal_save');
+            $saveBtn.prop('disabled', true);
+            $('#km_modal_message').empty();
+
+            var id = $('#km_modal_activityid').val();
+            var km = $('#km_modal_new').val();
+            var reason = $('#km_modal_reason').val();
+            var curKm = $('#km_modal_current').val();
+
+            if(!km || !reason) { 
+                $('#km_modal_message').html('<div class="text-danger font-weight-bold">⚠️ Both New KM and Reason are strictly required.</div>');
+                $saveBtn.prop('disabled', false);
+                return; 
+            }
+            if(parseFloat(km) === parseFloat(curKm)) {
+                $('#km_modal_message').html('<div class="text-warning font-weight-bold">⚠️ New KM must be different from Current KM.</div>');
+                $saveBtn.prop('disabled', false);
+                return;
+            }
+
+            $.ajax({
+                type: "POST",
+                url: "ClaimsApproval_v2.aspx/UpdateActivityKM",
+                data: JSON.stringify({ activityId: parseInt(id), newKm: parseFloat(km), reason: reason }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function(r) {
+                    if(r.d && r.d.success) {
+                        $('#unifiedDayModal').modal('hide'); // Close the unified modal
+                        document.getElementById('btnRefreshCalculations').click(); // Instant refresh
+                    } else {
+                        $('#km_modal_message').html('<div class="text-danger">Error: ' + r.d.message + '</div>');
+                    }
+                },
+                complete: function() {
+                    $saveBtn.prop('disabled', false);
+                }
+            });
+        }
     </script>
 </asp:Content>
