@@ -22,33 +22,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.UpdatePanel upMainGrid;
         
         /// <summary>
-        /// hfActionRequestId control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField hfActionRequestId;
-        
-        /// <summary>
-        /// hfReturnReason control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField hfReturnReason;
-        
-        /// <summary>
-        /// hfCurrentUserLevel control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField hfCurrentUserLevel;
-        
-        /// <summary>
         /// pnlRequests control.
         /// </summary>
         /// <remarks>
@@ -76,6 +49,42 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl detailsModal;
         
         /// <summary>
+        /// upDetails control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.UpdatePanel upDetails;
+        
+        /// <summary>
+        /// hfActionRequestId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfActionRequestId;
+        
+        /// <summary>
+        /// hfReturnReason control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfReturnReason;
+        
+        /// <summary>
+        /// hfCurrentUserLevel control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfCurrentUserLevel;
+        
+        /// <summary>
         /// lblModalRequestId control.
         /// </summary>
         /// <remarks>
@@ -92,15 +101,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblRequesterName;
-        
-        /// <summary>
-        /// upDetails control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.UpdatePanel upDetails;
         
         /// <summary>
         /// gvDetails control.

@@ -179,9 +179,6 @@
                         <div class="x_content bg-light p-3 rounded-bottom">
                             <asp:UpdatePanel ID="upMainGrid" runat="server" UpdateMode="Conditional">
                                 <ContentTemplate>
-                                    <asp:HiddenField ID="hfActionRequestId" runat="server" />
-                                    <asp:HiddenField ID="hfReturnReason" runat="server" ClientIDMode="Static" />
-                                    <asp:HiddenField ID="hfCurrentUserLevel" runat="server" ClientIDMode="Static" />
                                     <div class="card-box table-responsive">
                                         <asp:Panel ID="pnlRequests" runat="server">
                                             <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
@@ -238,20 +235,28 @@
         <div id="detailsModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" runat="server" clientidmode="Static">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
-                    <div class="modal-header bg-light">
-                        <h5 class="modal-title font-weight-bold">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
-                        <div class="ml-auto">
-                            <asp:Label ID="lblRequesterName" runat="server" Font-Bold="true" />
-                        </div>
-                        <button type="button" class="close ml-3" data-dismiss="modal"><span>×</span></button>
-                    </div>
 
                     <asp:UpdatePanel ID="upDetails" runat="server" UpdateMode="Conditional">
                         <ContentTemplate>
+
+                            <asp:HiddenField ID="hfActionRequestId" runat="server" />
+                            <asp:HiddenField ID="hfReturnReason" runat="server" ClientIDMode="Static" />
+                            <asp:HiddenField ID="hfCurrentUserLevel" runat="server" ClientIDMode="Static" />
+
+                            <div class="modal-header bg-light">
+                                <h5 class="modal-title font-weight-bold">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
+                                <div class="ml-auto">
+                                    <asp:Label ID="lblRequesterName" runat="server" Font-Bold="true" />
+                                </div>
+                                <button type="button" class="close ml-3" data-dismiss="modal"><span>×</span></button>
+                            </div>
+
                             <div class="modal-body p-3">
                                 <div class="table-responsive small">
                                     <asp:GridView ID="gvDetails" runat="server" AutoGenerateColumns="false" CssClass="table table-hover table-bordered"
                                         DataKeyNames="ApprovalRequestDetailId" OnRowDataBound="gvDetails_RowDataBound" OnRowCommand="gvDetails_RowCommand" ShowFooter="true">
+
+                                        <%-- ALL YOUR GRID COLUMNS STAY EXACTLY THE SAME HERE --%>
                                         <Columns>
                                             <asp:TemplateField HeaderText="Sel" ItemStyle-Width="30px">
                                                 <HeaderTemplate>
@@ -324,55 +329,12 @@
                                 <asp:Button ID="btnRefreshCalculations" runat="server" OnClick="btnRefreshCalculations_Click" ClientIDMode="Static" Style="display: none;" />
                             </div>
 
-                            <%--<div class="modal-footer bg-light d-flex justify-content-between align-items-center">
-                        <div class="dashboard-box bg-white border">
-                            <span class="dashboard-label text-muted">Original Claimed</span>
-                            <h5 class="dashboard-value text-dark mb-0">₹
-                                <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
-                            <small class="font-weight-bold text-muted d-block mt-1">
-                                <i class="fa fa-road"></i>
-                                <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" />
-                                KM
-                            </small>
-                        </div>
-
-                        <div class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
-                            <span class="dashboard-label text-danger">Total Deductions <i class="fa fa-info-circle ml-1"></i></span>
-                            <h5 class="dashboard-value text-danger mb-0">(-) ₹
-                                <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
-                            <small class="font-weight-bold text-danger d-block mt-1">
-                                <i class="fa fa-road"></i>(-)
-                                <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" />
-                                KM
-                            </small>
-                        </div>
-
-                        <div class="dashboard-box bg-success text-white border border-success">
-                            <span class="dashboard-label text-white" style="opacity: 0.9">Net Approved</span>
-                            <h5 class="dashboard-value text-white mb-0">₹
-                                <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
-                            <small class="font-weight-bold text-white d-block mt-1">
-                                <i class="fa fa-road"></i>
-                                <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" />
-                                KM
-                            </small>
-                        </div>
-
-                        <div class="ml-4 text-right">
-                            <asp:Label ID="lblModalMessage" runat="server" CssClass="text-danger font-weight-bold d-block mb-1" />
-                            <asp:Button ID="btnRecalculate" runat="server" Text="↻ Re-Calculate" CssClass="btn btn-info btn-sm mr-2" OnClick="btnRecalculate_Click" ToolTip="Recalculate approved amounts for all categories" />
-                            <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Mark Ready for Payment" CssClass="btn btn-warning btn-sm mr-2" OnClick="btnMarkReadyForPayment_Click" Visible="false" />
-                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>--%>
-
                             <div class="modal-footer bg-light d-flex justify-content-between align-items-end" style="border-top: 2px solid #dee2e6;">
-
                                 <div class="d-flex" style="gap: 15px;">
                                     <div class="dashboard-box bg-white border">
                                         <span class="dashboard-label text-muted">Original Claimed</span>
                                         <h5 class="dashboard-value text-dark mb-0">₹
-                                    <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
+                                            <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-muted d-block mt-1">
                                             <i class="fa fa-road"></i>
                                             <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" />
@@ -383,10 +345,10 @@
                                     <div class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
                                         <span class="dashboard-label text-danger">Total Deductions <i class="fa fa-info-circle ml-1"></i></span>
                                         <h5 class="dashboard-value text-danger mb-0">(-) ₹
-                                    <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
+                                            <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-danger d-block mt-1">
                                             <i class="fa fa-road"></i>(-)
-                                    <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" />
+                                            <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" />
                                             KM
                                         </small>
                                     </div>
@@ -394,7 +356,7 @@
                                     <div class="dashboard-box bg-success text-white border border-success">
                                         <span class="dashboard-label text-white" style="opacity: 0.9">Net Approved</span>
                                         <h5 class="dashboard-value text-white mb-0">₹
-                                    <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
+                                            <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-white d-block mt-1">
                                             <i class="fa fa-road"></i>
                                             <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" />
@@ -405,7 +367,6 @@
 
                                 <div class="text-right">
                                     <asp:Label ID="lblModalMessage" runat="server" CssClass="d-block mb-2 font-weight-bold" />
-
                                     <div>
                                         <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0" OnClick="btnRecalculate_Click" OnClientClick="showRecalculateSpinner(this);" ToolTip="Recalculate approved amounts">
                                             <i class="fa fa-refresh"></i> Re-Calculate
@@ -416,10 +377,11 @@
                                         <button type="button" class="btn btn-secondary btn-sm m-0 ml-2" data-dismiss="modal">Close</button>
                                     </div>
                                 </div>
-
                             </div>
+
                         </ContentTemplate>
                     </asp:UpdatePanel>
+
                 </div>
             </div>
         </div>

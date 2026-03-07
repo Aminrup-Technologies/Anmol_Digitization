@@ -96,6 +96,7 @@ namespace AnmolDristi
             decimal originalClaimed = 0m;
             string status = "Pending";
             string requesterName = "";
+            string requesterCode = ""; // NEW: Variable for Employee Code
 
             using (var con = new SqlConnection(connString))
             {
@@ -107,11 +108,12 @@ namespace AnmolDristi
                     using (var da = new SqlDataAdapter(cmd)) { da.Fill(dt); }
                 }
 
-                // B. Fetch Header Info & Original Amount
+                // B. Fetch Header Info & Original Amount (FIXED: Added RequesterLoginId)
                 string sql = @"
                     SELECT 
                         ISNULL(OriginalClaimAmount, ISNULL(TotalClaimAmount,0) + ISNULL(TotalExpenseAmount,0)) as OrigTotal,
                         Status,
+                        RequesterLoginId,
                         (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName
                     FROM SalesApprovalRequest r 
                     WHERE ApprovalRequestId = @Id";
@@ -127,12 +129,16 @@ namespace AnmolDristi
                             originalClaimed = Convert.ToDecimal(rdr["OrigTotal"]);
                             status = rdr["Status"].ToString();
                             requesterName = rdr["EmpName"].ToString();
+                            requesterCode = rdr["RequesterLoginId"].ToString(); // NEW: Grabbing the code
                         }
                     }
                 }
             }
 
-            lblRequesterName.Text = requesterName;
+            // Populate Modal Header Labels beautifully
+            lblModalRequestId.Text = reqId.ToString();
+            lblRequesterName.Text = $"<i class='fa fa-user mr-1'></i> {requesterName} ({requesterCode})";
+
             gvDetails.DataSource = dt;
             gvDetails.DataBind();
 
@@ -315,252 +321,6 @@ namespace AnmolDristi
             }
 
             // Hide Bulk Action Bar if no parent row actions are left
-            btnApproveSelected.Visible = pendingActionExists;
-            btnRejectSelected.Visible = pendingActionExists;
-            txtBulkRemarks.Visible = pendingActionExists;
-        }
-
-        protected void BindDetailsGrid_OLD(int reqId)
-        {
-            _totalSnapshot = 0m;
-            _totalTAClaim = 0m;
-
-            // Re-check level to be safe
-            ViewState["CurrentUserLevel"] = GetCurrentUserApproverLevel(reqId);
-
-            DataTable dt = new DataTable();
-            decimal originalClaimed = 0m;
-            string status = "Pending";
-            string requesterName = "";
-
-            using (var con = new SqlConnection(connString))
-            {
-                // A. Fetch Line Items
-                using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequestDetails", con))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                    using (var da = new SqlDataAdapter(cmd)) { da.Fill(dt); }
-                }
-
-                // B. Fetch Header Info & Original Amount
-                // Note: OriginalClaimAmount is the new column. Fallback to calculation if null.
-                string sql = @"
-                    SELECT 
-                        ISNULL(OriginalClaimAmount, ISNULL(TotalClaimAmount,0) + ISNULL(TotalExpenseAmount,0)) as OrigTotal,
-                        Status,
-                        (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName
-                    FROM SalesApprovalRequest r 
-                    WHERE ApprovalRequestId = @Id";
-
-                using (var cmd = new SqlCommand(sql, con))
-                {
-                    cmd.Parameters.AddWithValue("@Id", reqId);
-                    con.Open();
-                    using (var rdr = cmd.ExecuteReader())
-                    {
-                        if (rdr.Read())
-                        {
-                            originalClaimed = Convert.ToDecimal(rdr["OrigTotal"]);
-                            status = rdr["Status"].ToString();
-                            requesterName = rdr["EmpName"].ToString();
-                        }
-                    }
-                }
-            }
-
-            lblRequesterName.Text = requesterName;
-            gvDetails.DataSource = dt;
-            gvDetails.DataBind();
-
-            // ✅ ADD THIS FIX: Forces the GridView to use <thead> and <tfoot> for sticky CSS
-            if (gvDetails.Rows.Count > 0)
-            {
-                gvDetails.HeaderRow.TableSection = TableRowSection.TableHeader;
-
-                // This makes the GridView Footer stickable!
-                if (gvDetails.FooterRow != null)
-                {
-                    gvDetails.FooterRow.TableSection = TableRowSection.TableFooter;
-                }
-            }
-
-            // C. CALCULATE SUMMARY
-            // --- CALCULATE DASHBOARD FIGURES (SELF-BALANCING LOGIC) ---
-
-            // 1. Current Approved is safely derived directly from the Grid Accumulators
-            decimal currentApproved = _totalTAClaim + _totalSnapshot;
-
-            // 2. Fetch EXACT Deductions by querying actual Auditor Rejections (matches the Modal)
-            decimal totalDeductions = 0m;
-            decimal currentApprovedAmount = 0m;
-            decimal currentApprovedKM = 0m;
-            decimal totalDeductedAmount = 0m;
-            decimal totalDeductedKM = 0m;
-
-            string sqlDashboard = @"
-                -- Query 1: Calculate Net Approved
-                SELECT 
-                    ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
-                    ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
-                FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') <> 'Rejected';
-
-                -- Query 2: Calculate Deductions (Amounts and KM)
-                SELECT 
-                    ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
-                    ISNULL(SUM(DeductedKM), 0) AS DeductedKM
-                FROM (
-                    -- A. Whole Day Rejected 
-                    SELECT 
-                        CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
-                        ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
-                    FROM dbo.SalesApprovalRequestDetail d
-                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus = 'Rejected'
-        
-                    UNION ALL
-        
-                    -- B. Specific Receipts Rejected 
-                    SELECT 
-                        CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount,
-                        0 AS DeductedKM
-                    FROM dbo.SalesDailyExpense e
-                    INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
-                    WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = 'Rejected' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> 'Rejected'
-        
-                    UNION ALL
-        
-                    -- C. KM Reductions (FIXED: Finds the Peak Claimed KM)
-                    SELECT 
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 2.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
-                        (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
-                    FROM dbo.SalesApprovalRequestDetail d
-                    INNER JOIN (
-                        -- Find the highest KM value this activity ever held (The user's submitted claim)
-                        SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
-                        FROM dbo.SalesDailyActivityKMHistory
-                        GROUP BY ActivityId
-                    ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id 
-                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM 
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
-                ) x;
-            ";
-
-            using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand(sqlDashboard, con))
-            {
-                cmd.Parameters.AddWithValue("@Id", reqId);
-                if (con.State != ConnectionState.Open) con.Open();
-
-                using (var rdr = cmd.ExecuteReader())
-                {
-                    // Read Result 1 (Approved Totals)
-                    if (rdr.Read())
-                    {
-                        currentApprovedKM = Convert.ToDecimal(rdr["ApprovedKM"]);
-                        currentApprovedAmount = Convert.ToDecimal(rdr["ApprovedAmount"]);
-                    }
-
-                    // Move to Result 2 (Deduction Totals)
-                    if (rdr.NextResult() && rdr.Read())
-                    {
-                        totalDeductedAmount = Convert.ToDecimal(rdr["DeductedAmount"]);
-                        totalDeductedKM = Convert.ToDecimal(rdr["DeductedKM"]);
-                    }
-                }
-            }
-
-            // Self-Balancing Original Claim (Math is always perfect)
-            decimal originalClaimedAmount = currentApprovedAmount + totalDeductedAmount;
-            decimal originalClaimedKM = currentApprovedKM + totalDeductedKM;
-
-            // Update UI Labels (Amounts)
-            lblSummaryOriginal.Text = originalClaimedAmount.ToString("N2");
-            lblSummaryApproved.Text = currentApprovedAmount.ToString("N2");
-            lblSummaryDeduction.Text = totalDeductedAmount.ToString("N2");
-
-            // Update UI Labels (KMs)
-            lblSummaryOriginalKM.Text = originalClaimedKM.ToString("N2");
-            lblSummaryApprovedKM.Text = currentApprovedKM.ToString("N2");
-            lblSummaryDeductedKM.Text = totalDeductedKM.ToString("N2");
-
-            // D. AUDITOR BUTTONS
-            //bool isAuditor = (Convert.ToInt32(ViewState["CurrentUserLevel"]) == 2);
-            //btnMarkReadyForPayment.Visible = isAuditor && (status == "Completed");
-
-            // =========================================================
-            // SMART BUTTON VISIBILITY (Check Parent Rows)
-            // =========================================================
-            bool pendingActionExists = false;
-
-            // 1. Scan the grid to see if any 'Approve' row buttons are still clickable
-            foreach (GridViewRow row in gvDetails.Rows)
-            {
-                if (row.RowType == DataControlRowType.DataRow)
-                {
-                    var btnApprove = row.FindControl("btnApproveRow") as Button;
-                    if (btnApprove != null && btnApprove.Enabled)
-                    {
-                        pendingActionExists = true;
-                        break;
-                    }
-                }
-            }
-
-            // =========================================================
-            // THE GATEKEEPER: Check Child Expenses (Receipts)
-            // =========================================================
-            int unprocessedReceipts = 0;
-            string sqlCheckReceipts = @"
-                SELECT COUNT(1) 
-                FROM dbo.SalesDailyExpense e
-                INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
-                WHERE d.ApprovalRequestId = @Id 
-                  AND e.IsDeleted = 0 
-                  AND ISNULL(e.ClaimStatus, '') NOT IN ('Approved', 'Rejected')";
-
-            using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand(sqlCheckReceipts, con))
-            {
-                cmd.Parameters.AddWithValue("@Id", reqId);
-                if (con.State != ConnectionState.Open) con.Open();
-                unprocessedReceipts = Convert.ToInt32(cmd.ExecuteScalar());
-            }
-
-            // =========================================================
-            // SMART BUTTON VISIBILITY & WORKFLOW ROUTING
-            // =========================================================
-            int currentLvl = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
-            bool isLevel1 = (currentLvl == 1);
-            bool isAuditorCheck = (currentLvl == 2);
-
-            // 1. Level 1 gets the Green Forward Button (Only requires Day rows to be cleared)
-            btnForwardLevel.Visible = isLevel1 && !pendingActionExists;
-
-            // 2. Auditor gets the Yellow Payment Button (Requires Day rows AND Child Receipts to be cleared)
-            btnMarkReadyForPayment.Visible = isAuditorCheck && !pendingActionExists && (unprocessedReceipts == 0);
-
-            // NEW: Return to sender visible to any active approver
-            btnReturnToEmployee.Visible = (isLevel1 || isAuditorCheck);
-
-            // 3. Smart User Feedback Messaging
-            if (isAuditorCheck && !pendingActionExists && unprocessedReceipts > 0)
-            {
-                lblModalMessage.Text = $"⚠️ Cannot finalize: {unprocessedReceipts} expense receipt(s) are still pending inside 'View Details'.";
-                lblModalMessage.CssClass = "text-danger font-weight-bold";
-            }
-            else if (isLevel1 && pendingActionExists)
-            {
-                lblModalMessage.Text = "Please action all day rows to forward this request.";
-                lblModalMessage.CssClass = "text-warning font-weight-bold";
-            }
-            else
-            {
-                lblModalMessage.Text = "";
-            }
-
-            // 4. Hide Bulk Action Bar if no parent row actions are left
             btnApproveSelected.Visible = pendingActionExists;
             btnRejectSelected.Visible = pendingActionExists;
             txtBulkRemarks.Visible = pendingActionExists;
@@ -850,6 +610,8 @@ namespace AnmolDristi
         protected void btnRefreshCalculations_Click(object sender, EventArgs e)
         {
             int reqId = Convert.ToInt32(hfActionRequestId.Value);
+
+            ExecuteRecalculationSQL(reqId);
             BindDetailsGrid(reqId);
             upDetails.Update();
 
