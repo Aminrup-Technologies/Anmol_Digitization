@@ -254,6 +254,7 @@
     <Content Include="ManageEmployeeTolerance.aspx" />
     <Content Include="ManageExpenseSettings.aspx" />
     <Content Include="MyClaimsView.aspx" />
+    <Content Include="MyClaimsView_v2.aspx" />
     <Content Include="New_User.aspx" />
     <Content Include="Oven_Report_Detailed.aspx" />
     <Content Include="overwrap_approval.aspx" />
@@ -833,6 +834,13 @@
     </Compile>
     <Compile Include="MyClaimsView.aspx.designer.cs">
       <DependentUpon>MyClaimsView.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="MyClaimsView_v2.aspx.cs">
+      <DependentUpon>MyClaimsView_v2.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="MyClaimsView_v2.aspx.designer.cs">
+      <DependentUpon>MyClaimsView_v2.aspx</DependentUpon>
     </Compile>
     <Compile Include="New_User.aspx.cs">
       <DependentUpon>New_User.aspx</DependentUpon>

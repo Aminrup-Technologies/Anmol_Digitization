@@ -562,7 +562,7 @@
                                             <ul class="nav child_menu">
                                                 <li id="SO_TaDa_AdminConfig" runat="server" visible="false"><a href="Claims_Config.aspx">Admin Config.<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="SO_TaDa_Submit" runat="server" visible="false"><a href="SalesMonthlyReview.aspx">Apply Claims<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="SO_TaDa_View" runat="server" visible="false"><a href="MyClaimsView.aspx">View Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_View" runat="server" visible="false"><a href="MyClaimsView_v2.aspx">View Claims<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="SO_TaDa_Approve" runat="server" visible="false"><a href="ClaimsApproval_v2.aspx">View Pending<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="SO_TaDa_ViewApproved" runat="server" visible="false"><a href="ApprovedClaimsView.aspx">View Approved<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>

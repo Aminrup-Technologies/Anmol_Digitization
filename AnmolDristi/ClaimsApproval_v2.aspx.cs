@@ -31,13 +31,152 @@ namespace AnmolDristi
             {
                 if (Session["USERID"] != null)
                 {
+                    PopulateFilters(); // <-- Add this
                     BindRequestsGrid();
                 }
             }
         }
 
-        // --- 1. DASHBOARD LIST ---
+        private void PopulateFilters()
+        {
+            // Business Logic: Active claims are for the previous calendar month (e.g., in March, we review February)
+            DateTime activeClaimMonth = DateTime.Now.AddMonths(-1);
+
+            ddlYear.Items.Clear();
+            ddlYear.Items.Add(new ListItem("-- All Years --", "0"));
+
+            // Build a dynamic 5-year window based on the actual current year
+            int actualYear = DateTime.Now.Year;
+            for (int i = actualYear - 3; i <= actualYear + 1; i++)
+            {
+                ddlYear.Items.Add(new ListItem(i.ToString(), i.ToString()));
+            }
+
+            // Default the dropdowns to the active claim month (e.g., February 2026)
+            if (ddlYear.Items.FindByValue(activeClaimMonth.Year.ToString()) != null)
+            {
+                ddlYear.SelectedValue = activeClaimMonth.Year.ToString();
+            }
+            ddlMonth.SelectedValue = activeClaimMonth.Month.ToString();
+        }
+
+        private void PopulateFilters_OLD()
+        {
+            int currentYear = DateTime.Now.Year;
+            ddlYear.Items.Clear();
+            ddlYear.Items.Add(new ListItem("-- All Years --", "0"));
+
+            // Build a dynamic 5-year window
+            for (int i = currentYear - 3; i <= currentYear + 1; i++)
+            {
+                ddlYear.Items.Add(new ListItem(i.ToString(), i.ToString()));
+            }
+
+            // Default to Current Month/Year
+            ddlYear.SelectedValue = currentYear.ToString();
+            ddlMonth.SelectedValue = DateTime.Now.Month.ToString();
+        }
+
         protected void BindRequestsGrid()
+        {
+            string employeeCode = Session["workman"]?.ToString() ?? "Guest";
+            DataTable dt = new DataTable();
+
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand("dbo.usp_GetPendingApprovalsForUser_Filters", con))
+            using (var da = new SqlDataAdapter(cmd))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@ApproverLoginId", employeeCode);
+
+                // --- Inject UI Filters ---
+                int year = 0; int month = 0;
+
+                if (int.TryParse(ddlYear.SelectedValue, out year) && year > 0)
+                    cmd.Parameters.AddWithValue("@Year", year);
+                else
+                    cmd.Parameters.AddWithValue("@Year", DBNull.Value);
+
+                if (int.TryParse(ddlMonth.SelectedValue, out month) && month > 0)
+                    cmd.Parameters.AddWithValue("@Month", month);
+                else
+                    cmd.Parameters.AddWithValue("@Month", DBNull.Value);
+
+                if (!string.IsNullOrWhiteSpace(txtSearchEmp.Text))
+                    cmd.Parameters.AddWithValue("@EmpCode", txtSearchEmp.Text.Trim());
+                else
+                    cmd.Parameters.AddWithValue("@EmpCode", DBNull.Value);
+
+                da.Fill(dt);
+            }
+
+            gvRequests.DataSource = dt;
+            gvRequests.DataBind();
+
+            // ==========================================================
+            // REQUIRED FOR DATATABLES: Forces the Grid to use <thead>
+            // ==========================================================
+            if (gvRequests.Rows.Count > 0)
+            {
+                gvRequests.UseAccessibleHeader = true;
+                gvRequests.HeaderRow.TableSection = TableRowSection.TableHeader;
+            }
+
+            if (upMainGrid != null) upMainGrid.Update();
+        }
+
+        protected void btnSearch_Click(object sender, EventArgs e)
+        {
+            BindRequestsGrid();
+        }
+
+        protected void btnReset_Click(object sender, EventArgs e)
+        {
+            txtSearchEmp.Text = string.Empty;
+            PopulateFilters(); // Resets back to current month
+            BindRequestsGrid();
+        }
+
+        protected void btnPrevMonth_Click(object sender, EventArgs e)
+        {
+            AdjustMonth(-1);
+        }
+
+        protected void btnCurrentMonth_Click(object sender, EventArgs e)
+        {
+            PopulateFilters();
+            BindRequestsGrid();
+        }
+
+        protected void btnNextMonth_Click(object sender, EventArgs e)
+        {
+            AdjustMonth(1);
+        }
+
+        private void AdjustMonth(int monthOffset)
+        {
+            int currentY = 0, currentM = 0;
+
+            if (int.TryParse(ddlYear.SelectedValue, out currentY) && int.TryParse(ddlMonth.SelectedValue, out currentM) && currentY > 0 && currentM > 0)
+            {
+                // Create a date using the dropdowns and adjust it safely
+                DateTime viewDate = new DateTime(currentY, currentM, 1);
+                DateTime targetDate = viewDate.AddMonths(monthOffset);
+
+                // Ensure the new Year exists in our dropdown
+                if (ddlYear.Items.FindByValue(targetDate.Year.ToString()) == null)
+                {
+                    ddlYear.Items.Add(new ListItem(targetDate.Year.ToString(), targetDate.Year.ToString()));
+                }
+
+                ddlYear.SelectedValue = targetDate.Year.ToString();
+                ddlMonth.SelectedValue = targetDate.Month.ToString();
+            }
+            BindRequestsGrid();
+        }
+
+        // --- 1. DASHBOARD LIST ---
+        protected void BindRequestsGrid_OLD()
         {
             string employeeCode = Session["workman"]?.ToString() ?? "Guest";
             DataTable dt = new DataTable();

@@ -1,6 +1,7 @@
 ﻿<%@ Page Title="AIL | Claims Approval V2" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" MaintainScrollPositionOnPostback="true" CodeBehind="ClaimsApproval_v2.aspx.cs" Inherits="AnmolDristi.ClaimsApproval_v2" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <link href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css" rel="stylesheet" />
     <style type="text/css">
         .btn-group .btn i {
             margin-right: 4px;
@@ -24,7 +25,6 @@
             background: #f8fafb;
         }
 
-        /* Status Badges */
         .status-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -51,7 +51,6 @@
             border: 1px solid #F7C6C6;
         }
 
-        /* Modal Dashboard Styles */
         .dashboard-box {
             min-width: 160px;
             padding: 10px;
@@ -72,7 +71,6 @@
             margin-bottom: 0;
         }
 
-        /* Row Highlighting for Handover */
         .table-warning {
             background-color: #fff3cd !important;
         }
@@ -85,7 +83,6 @@
             background-color: #f8d7da !important;
         }
 
-        /* Sticky Header */
         #detailsModal .table-responsive {
             max-height: 60vh;
             overflow-y: auto;
@@ -99,27 +96,19 @@
             border-bottom: 2px solid #dee2e6;
         }
 
-        /* =========================================================
-           MODAL & STICKY GRID LOGIC (PERFECT SCROLLING)
-        ========================================================= */
-
-        /* 1. Remove scroll from the outer modal body to prevent double scrollbars */
         #detailsModal .modal-body {
             padding: 16px 18px;
             background: #ffffff;
-            /* Note: removed overflow:auto and max-height from here */
         }
 
-        /* 2. The Table Container becomes the ONLY scrolling element */
         #detailsModal .table-responsive {
-            max-height: 55vh; /* Adjusts dynamically to screen */
+            max-height: 55vh;
             overflow-y: auto;
             overflow-x: auto;
-            margin-bottom: 15px; /* Adds breathing room above bulk actions */
-            border-bottom: 1px solid #dee2e6; /* Clean edge */
+            margin-bottom: 15px;
+            border-bottom: 1px solid #dee2e6;
         }
 
-        /* 3. Sticky Header (Top) */
         #detailsModal .table thead th {
             position: sticky;
             top: 0;
@@ -129,7 +118,6 @@
             box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
         }
 
-        /* 4. Sticky Footer (Bottom Totals) */
         #detailsModal .table tfoot td {
             position: sticky;
             bottom: 0;
@@ -139,12 +127,10 @@
             box-shadow: 0 -2px 4px -1px rgba(0, 0, 0, 0.08);
         }
 
-        /* Ensure hover effects don't mess up the sticky header/footer colors */
         #detailsModal .table tfoot tr:hover td {
             background-color: #f8f9fa !important;
         }
 
-        /* Gatekeeper Warning Animation */
         @keyframes pulse-red {
             0% {
                 box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.75);
@@ -180,11 +166,53 @@
                             <asp:UpdatePanel ID="upMainGrid" runat="server" UpdateMode="Conditional">
                                 <ContentTemplate>
                                     <div class="card-box table-responsive">
+
+                                        <div class="card-box border bg-white p-3 mb-3 shadow-sm rounded">
+                                            <div class="text-center mb-3">
+                                                <asp:Button ID="btnPrevMonth" runat="server" Text="Prev Month" CssClass="btn btn-info btn-sm px-4" OnClick="btnPrevMonth_Click" />
+                                                <asp:Button ID="btnCurrentMonth" runat="server" Text="Current Month" CssClass="btn btn-primary btn-sm px-4 mx-2" OnClick="btnCurrentMonth_Click" />
+                                                <asp:Button ID="btnNextMonth" runat="server" Text="Next Month" CssClass="btn btn-info btn-sm px-4" OnClick="btnNextMonth_Click" />
+                                            </div>
+
+                                            <div class="row align-items-end">
+                                                <div class="col-md-3">
+                                                    <label class="font-weight-bold text-muted small">Search By Year</label>
+                                                    <asp:DropDownList ID="ddlYear" runat="server" CssClass="form-control form-control-sm"></asp:DropDownList>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="font-weight-bold text-muted small">Search By Month</label>
+                                                    <asp:DropDownList ID="ddlMonth" runat="server" CssClass="form-control form-control-sm">
+                                                        <asp:ListItem Value="0">-- All Months --</asp:ListItem>
+                                                        <asp:ListItem Value="1">January</asp:ListItem>
+                                                        <asp:ListItem Value="2">February</asp:ListItem>
+                                                        <asp:ListItem Value="3">March</asp:ListItem>
+                                                        <asp:ListItem Value="4">April</asp:ListItem>
+                                                        <asp:ListItem Value="5">May</asp:ListItem>
+                                                        <asp:ListItem Value="6">June</asp:ListItem>
+                                                        <asp:ListItem Value="7">July</asp:ListItem>
+                                                        <asp:ListItem Value="8">August</asp:ListItem>
+                                                        <asp:ListItem Value="9">September</asp:ListItem>
+                                                        <asp:ListItem Value="10">October</asp:ListItem>
+                                                        <asp:ListItem Value="11">November</asp:ListItem>
+                                                        <asp:ListItem Value="12">December</asp:ListItem>
+                                                    </asp:DropDownList>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="font-weight-bold text-muted small">Search By Employee Code / Name</label>
+                                                    <asp:TextBox ID="txtSearchEmp" runat="server" CssClass="form-control form-control-sm" placeholder="e.g. AHS1281 or Manish"></asp:TextBox>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <asp:Button ID="btnSearch" runat="server" Text="Search" CssClass="btn btn-success btn-sm w-100 mb-1" OnClick="btnSearch_Click" />
+                                                    <asp:Button ID="btnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm w-100 m-0" OnClick="btnReset_Click" />
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <asp:Panel ID="pnlRequests" runat="server">
-                                            <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
-                                                ShowHeaderWhenEmpty="true" AutoGenerateColumns="false" AllowPaging="true" PageSize="20"
-                                                OnRowCommand="gvRequests_RowCommand"
-                                                DataKeyNames="ApprovalRequestId" GridLines="None">
+                                            <asp:GridView ID="gvRequests" runat="server" ClientIDMode="Static"
+                                                CssClass="table table-striped jambo_table bulk_action dt-responsive nowrap"
+                                                ShowHeaderWhenEmpty="true" AutoGenerateColumns="false"
+                                                OnRowCommand="gvRequests_RowCommand" DataKeyNames="ApprovalRequestId">
                                                 <HeaderStyle CssClass="gentilia-table-header" />
                                                 <RowStyle CssClass="gentilia-row" />
                                                 <AlternatingRowStyle CssClass="gentilia-row-alt" />
@@ -193,7 +221,7 @@
                                                     <asp:TemplateField HeaderText="Employee Name" HeaderStyle-Width="220px">
                                                         <ItemTemplate><%# Eval("EmployeeName") %> (<%# Eval("RequesterLoginId") %>)</ItemTemplate>
                                                     </asp:TemplateField>
-                                                    <asp:BoundField DataField="RequestDate" HeaderText="Requested Date" DataFormatString="{0:dd-MMM-yyyy}" />
+                                                    <asp:BoundField DataField="RequestDate" HeaderText="Requested Date" DataFormatString="{0:dd-MMM-yyyy hh:mm:ss tt}" />
                                                     <asp:BoundField DataField="MonthName" HeaderText="Month" />
                                                     <asp:TemplateField HeaderText="Total Claim (₹)">
                                                         <ItemTemplate>
@@ -216,7 +244,7 @@
                                                     <asp:TemplateField HeaderText="Actions">
                                                         <ItemTemplate>
                                                             <asp:LinkButton ID="lnkView" runat="server" CommandName="View" CommandArgument='<%# Eval("ApprovalRequestId") %>' CssClass="btn btn-sm btn-primary">
-                                                        <i class="fa fa-eye"></i> View
+                                                                <i class="fa fa-eye"></i> View
                                                             </asp:LinkButton>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
@@ -235,10 +263,8 @@
         <div id="detailsModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" runat="server" clientidmode="Static">
             <div class="modal-dialog modal-xl" role="document">
                 <div class="modal-content">
-
                     <asp:UpdatePanel ID="upDetails" runat="server" UpdateMode="Conditional">
                         <ContentTemplate>
-
                             <asp:HiddenField ID="hfActionRequestId" runat="server" />
                             <asp:HiddenField ID="hfReturnReason" runat="server" ClientIDMode="Static" />
                             <asp:HiddenField ID="hfCurrentUserLevel" runat="server" ClientIDMode="Static" />
@@ -255,8 +281,6 @@
                                 <div class="table-responsive small">
                                     <asp:GridView ID="gvDetails" runat="server" AutoGenerateColumns="false" CssClass="table table-hover table-bordered"
                                         DataKeyNames="ApprovalRequestDetailId" OnRowDataBound="gvDetails_RowDataBound" OnRowCommand="gvDetails_RowCommand" ShowFooter="true">
-
-                                        <%-- ALL YOUR GRID COLUMNS STAY EXACTLY THE SAME HERE --%>
                                         <Columns>
                                             <asp:TemplateField HeaderText="Sel" ItemStyle-Width="30px">
                                                 <HeaderTemplate>
@@ -293,7 +317,6 @@
                                                         data-activityid='<%# Eval("ActivityId") %>'
                                                         data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts & Distance">
                                                         <i class="fa fa-folder-open"></i>Open
-                                                   
                                                     </button>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
@@ -302,15 +325,6 @@
                                                     <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' CssClass="form-control form-control-sm" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
-
-                                            <%--<asp:TemplateField HeaderText="Details" ItemStyle-HorizontalAlign="Center">
-                                                <ItemTemplate>
-                                                    <button type="button" runat="server" id="btnExp" class="btn btn-sm btn-info text-white btn-expenses" data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts">
-                                                        <i class="fa fa-list-alt"></i>View
-                                                    </button>
-                                                </ItemTemplate>
-                                            </asp:TemplateField>--%>
-
                                             <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%">
                                                 <ItemTemplate>
                                                     <asp:Button ID="btnApproveRow" runat="server" CssClass="btn btn-sm btn-outline-success" Text="✔" CommandName="ApproveRow" CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
@@ -331,11 +345,11 @@
                                     </div>
                                 </div>
 
-                                <asp:Button ID="btnRefreshCalculations" runat="server" OnClick="btnRefreshCalculations_Click" ClientIDMode="Static" Style="display: none;" />
+                                <asp:Button ID="btnRefreshCalculations" runat="server" OnClick="btnRefreshCalculations_Click" ClientIDMode="Static" Style="" />
                             </div>
 
-                            <div class="modal-footer bg-light d-flex justify-content-between align-items-end" style="border-top: 2px solid #dee2e6;">
-                                <div class="d-flex" style="gap: 15px;">
+                            <div class="modal-footer bg-light d-flex justify-content-between align-items-end" style="">
+                                <div class="d-flex" style="">
                                     <div class="dashboard-box bg-white border">
                                         <span class="dashboard-label text-muted">Original Claimed</span>
                                         <h5 class="dashboard-value text-dark mb-0">₹
@@ -347,7 +361,7 @@
                                         </small>
                                     </div>
 
-                                    <div class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
+                                    <div class="dashboard-box bg-white border border-danger" style="" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
                                         <span class="dashboard-label text-danger">Total Deductions <i class="fa fa-info-circle ml-1"></i></span>
                                         <h5 class="dashboard-value text-danger mb-0">(-) ₹
                                             <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
@@ -359,7 +373,7 @@
                                     </div>
 
                                     <div class="dashboard-box bg-success text-white border border-success">
-                                        <span class="dashboard-label text-white" style="opacity: 0.9">Net Approved</span>
+                                        <span class="dashboard-label text-white" style="">Net Approved</span>
                                         <h5 class="dashboard-value text-white mb-0">₹
                                             <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-white d-block mt-1">
@@ -383,110 +397,17 @@
                                     </div>
                                 </div>
                             </div>
-
                         </ContentTemplate>
                     </asp:UpdatePanel>
-
                 </div>
             </div>
         </div>
 
         <input type="hidden" id="km_modal_activityid_outer" />
 
-        <%--<div id="kmEditModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title">Edit Distance (KM)</h5>
-                        <button type="button" class="close text-white" data-dismiss="modal">×</button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" id="km_modal_activityid" />
-
-                        <div class="alert alert-light border mb-3" id="km_modal_travel_ref">
-                            <div class="row align-items-center">
-                                <div class="col-md-4">
-                                    <strong>From:</strong>
-                                    <span id="km_modal_fromplace" class="text-primary"></span>
-                                </div>
-                                <div class="col-md-4">
-                                    <strong>To:</strong>
-                                    <span id="km_modal_toplace" class="text-primary"></span>
-                                </div>
-                                <div class="col-md-4 text-right">
-                                    <a href="#" id="km_modal_maplink" target="_blank" class="btn btn-sm btn-outline-primary" style="display: none;">
-                                        <i class="fa fa-map-marker"></i>View Distance
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Current KM</label>
-                                    <input type="text" id="km_modal_current" class="form-control bg-light" readonly />
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">New KM</label>
-                                    <input type="number" step="0.01" id="km_modal_new" class="form-control" />
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="font-weight-bold">Reason (when KM changes)</label>
-                                    <textarea id="km_modal_reason" class="form-control" rows="2" placeholder="Enter reason"></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr />
-
-                        <h5 class="text-secondary mb-3"><i class="fa fa-history"></i>KM Change History</h5>
-                        <div class="table-responsive" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px;">
-                            <table class="table table-striped table-hover table-sm" id="km_history_tbl">
-                                <thead class="thead-dark">
-                                    <tr>
-                                        <th>Date (IST)</th>
-                                        <th>Old KM</th>
-                                        <th>New KM</th>
-                                        <th>Changed By</th>
-                                        <th>Reason</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-
-                        <div id="km_modal_message" class="mt-2"></div>
-                    </div>
-
-                    <div class="modal-footer bg-light">
-                        <button type="button" id="km_modal_save" class="btn btn-success" onclick="saveKM()"><i class="fa fa-save"></i>Save</button>
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="fa fa-times"></i>Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>--%>
-
-        <%--<div id="expensesModal" class="modal fade" tabindex="-1" role="dialog">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Expense Receipts</h5>
-                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body" id="expensesModalBody">Loading...</div>
-                </div>
-            </div>
-        </div>--%>
-
         <div id="unifiedDayModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-
                     <div class="modal-header bg-dark text-white p-2">
                         <h6 class="modal-title m-0"><i class="fa fa-calendar-check-o mr-2"></i>Day Details & Actions</h6>
                         <button type="button" class="close text-white" data-dismiss="modal">×</button>
@@ -507,12 +428,13 @@
                         </ul>
 
                         <div class="tab-content p-3">
-
                             <div class="tab-pane active" id="tab-receipts" role="tabpanel">
                                 <div id="unifiedExpensesBody">
-                                    <div class="text-center py-4 text-muted"><i class="fa fa-spinner fa-spin fa-2x"></i>
+                                    <div class="text-center py-4 text-muted">
+                                        <i class="fa fa-spinner fa-spin fa-2x"></i>
                                         <br />
-                                        Loading receipts...</div>
+                                        Loading receipts...
+                                    </div>
                                 </div>
                             </div>
 
@@ -575,7 +497,6 @@
                                     </table>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -602,8 +523,7 @@
                                         <th class="text-right text-danger">Amount (₹)</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                </tbody>
+                                <tbody></tbody>
                                 <tfoot class="bg-light font-weight-bold">
                                     <tr>
                                         <td colspan="3" class="text-right">Total Deductions:</td>
@@ -619,6 +539,8 @@
 
     </div>
 
+    <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
     <script type="text/javascript">
         // Global refresh flag
         var _refreshNeeded = false;
@@ -628,18 +550,9 @@
             $('.row-select-checkbox input').prop('checked', chk.checked);
         }
 
-        // --- KM EDITING ---
-        // Updated delegation to ensure it finds the correct Activity ID
-        $(document).on('click', '.btn-edit-km', function(e) {
-            e.preventDefault();
-            // Traverse back up to the TD, then find the span with the ID
-            var actId = $(this).closest('td').find('.km-value').data('activityid');
-            $('#km_activity_id').val(actId);
-            $('#km_new_value').val('');
-            $('#km_reason').val('');
-            $('#kmEditModal').modal('show');
-        });
-
+        // =========================================================
+        // EXPENSE / KM ACTIONS
+        // =========================================================
         function updateExpense(id, status, btn) {
             if(!confirm('Mark this receipt as ' + status + '?')) return;
             $(btn).prop('disabled', true);
@@ -654,8 +567,7 @@
                     if(r.d && r.d.success) {
                         var badge = (status === 'Approved') ? '<span class="badge badge-success">Approved</span>' : '<span class="badge badge-danger">Rejected</span>';
                         $(btn).parent().html(badge);
-                        
-                        // FIX: Trigger the background calculation refresh INSTANTLY!
+                        // Trigger the background calculation refresh INSTANTLY!
                         document.getElementById('btnRefreshCalculations').click();
                     } else {
                         alert(r.d.message);
@@ -664,20 +576,12 @@
             });
         }
 
-        $('#expensesModal').on('hidden.bs.modal', function () {
-            if (_refreshNeeded) {
-                _refreshNeeded = false;
-                // Trigger Server Refresh
-                document.getElementById('btnRefreshCalculations').click();
-            }
-        });
-
         function loadKmHistory(activityId) {
             $('#km_history_tbl tbody').empty().append('<tr><td colspan="5">Loading...</td></tr>');
     
             $.ajax({
                 type: 'POST',
-                url: 'ClaimsApproval_v2.aspx/GetKMHistory', // 🔑 FIXED URL to V2
+                url: 'ClaimsApproval_v2.aspx/GetKMHistory', 
                 data: JSON.stringify({ activityId: activityId }),
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json'
@@ -689,14 +593,12 @@
                     return;
                 }
 
-                // 1. Populate 'From' and 'To' Reference safely
                 var fPlace = res.fromPlace || '';
                 var tPlace = res.toPlace || '';
         
                 $('#km_modal_fromplace').text(fPlace || 'No data available');
                 $('#km_modal_toplace').text(tPlace || 'No data available');
 
-                // Generate Maps Link (✅ FIXED URL FORMAT)
                 if (fPlace && tPlace) {
                     var mapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(fPlace) + '&destination=' + encodeURIComponent(tPlace) + '&travelmode=driving';
                     $('#km_modal_maplink').attr('href', mapsUrl).show();
@@ -704,7 +606,6 @@
                     $('#km_modal_maplink').attr('href', '#').hide();
                 }
 
-                // 2. Populate History Table
                 var $tbody = $('#km_history_tbl tbody').empty();
         
                 if (!res.history || res.history.length === 0) {
@@ -726,186 +627,30 @@
                         '</tr>'
                     );
                 });
-
             }).fail(function (xhr, status, err) {
                 $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error communicating with server.</td></tr>');
             });
         }
 
-        // Open Modal Event
-        $(document).on('click', '.btn-edit-km', function(e) {
-            e.preventDefault();
-            var actId = $(this).closest('td').find('.km-value').data('activityid');
-            var currentKm = $(this).closest('td').find('.km-value').text().trim();
-            
-            $('#km_modal_activityid').val(actId);
-            $('#km_modal_current').val(currentKm);
-            $('#km_modal_new').val(currentKm); // Pre-fill with current
-            $('#km_modal_reason').val('');
-            $('#km_modal_message').empty();
-            
-            // Trigger history load
-            loadKmHistory(actId);
-            
-            $('#kmEditModal').modal('show');
-        });
-
-        // Ensure your save function is also pointing to V2!
-        function onSaveKmClickHandler() {
-            var $saveBtn = $(this);
-            $saveBtn.prop('disabled', true);
-            $('#km_modal_message').empty();
-
-            var activityId = parseInt($('#km_modal_activityid').val(), 10) || window.__kmCurrentActivityId;
-            var newKmRaw = $('#km_modal_new').val();
-            var newKm = parseFloat(newKmRaw);
-            var curKm = parseFloat($('#km_modal_current').val());
-            var reason = ($('#km_modal_reason').val() || '').trim();
-
-            if (!activityId || isNaN(activityId)) {
-                $('#km_modal_message').html('<div class="text-danger">Invalid activity selected.</div>');
-                $saveBtn.prop('disabled', false); return;
-            }
-            if (isNaN(newKm)) {
-                $('#km_modal_message').html('<div class="text-danger">Enter a valid New KM value.</div>');
-                $saveBtn.prop('disabled', false); return;
-            }
-            if (Math.abs(newKm - curKm) > 0.001 && reason.length === 0) {
-                $('#km_modal_message').html('<div class="text-danger">Reason is required when KM is changed.</div>');
-                $saveBtn.prop('disabled', false); return;
-            }
-
-            $.ajax({
-                type: 'POST',
-                url: 'ClaimsApproval_v2.aspx/UpdateActivityKM', // 🔑 FIXED URL to V2
-                data: JSON.stringify({ activityId: activityId, newKm: newKm, reason: reason }),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json'
-            }).done(function (resp) {
-                var r = resp && resp.d ? resp.d : resp;
-                if (r && r.success) {
-                    // Update UI
-                    var $span = $('.km-value[data-activityid="' + activityId + '"]').first();
-                    if ($span && $span.length) {
-                        $span.text(parseFloat(newKm).toFixed(2));
-                        $span.data('currentkm', newKm);
-                    }
-                    $('#kmEditModal').modal('hide');
-                    // Trigger background calculation refresh
-                    document.getElementById('btnRefreshCalculations').click();
-                } else {
-                    $('#km_modal_message').html('<div class="text-danger">' + (r.message || 'Error saving.') + '</div>');
-                }
-            }).fail(function () {
-                $('#km_modal_message').html('<div class="text-danger">Server Error while saving.</div>');
-            }).always(function () {
-                $saveBtn.prop('disabled', false);
-            });
-        }
-
-        function openDetailsModal() { $('#detailsModal').modal('show'); }
-
-        function showDeductionsBreakdown() {
-            var reqId = document.getElementById('<%= hfActionRequestId.ClientID %>').value;
-            if (!reqId) return;
-
-            $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center">Loading details...</td></tr>');
-            $('#lblDeductionsModalTotal').text('0.00');
-            $('#deductionsModal').modal('show');
-
-            $.ajax({
-                type: 'POST',
-                url: 'ClaimsApproval_v2.aspx/GetDeductionBreakdown',
-                data: JSON.stringify({ approvalRequestId: parseInt(reqId) }),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                success: function (resp) {
-                    // ASP.NET wraps the response in resp.d
-                    var responseObj = resp.d; 
-                    var tbody = $('#tblDeductions tbody').empty();
-                    var total = 0;
-
-                    // 1. Check if the server reported an error
-                    if (!responseObj || responseObj.success === false) {
-                        var errMsg = responseObj ? responseObj.message : "Unknown error";
-                        tbody.html('<tr><td colspan="4" class="text-center text-danger">Error: ' + errMsg + '</td></tr>');
-                        return;
-                    }
-
-                    // 2. Extract the actual array
-                    var data = responseObj.data;
-
-                    // 3. Handle empty data
-                    if (!data || data.length === 0) {
-                        tbody.html('<tr><td colspan="4" class="text-center text-muted">No deductions found.</td></tr>');
-                        return;
-                    }
-
-                    // 4. Populate the table safely
-                    data.forEach(function (item) {
-                        total += item.DeductedAmount;
-                        tbody.append(
-                            '<tr>' +
-                            '<td>' + item.ActivityDate + '</td>' +
-                            '<td><strong>' + item.DeductionType + '</strong></td>' +
-                            '<td>' + (item.Reason || '-') + '</td>' +
-                            '<td class="text-right text-danger font-weight-bold">' + item.DeductedAmount.toFixed(2) + '</td>' +
-                            '</tr>'
-                        );
-                    });
-
-                    $('#lblDeductionsModalTotal').text(total.toFixed(2));
-                },
-                error: function () {
-                    $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>');
-                }
-            });
-        }
-
-        // NEW: Mandatory Return Reason Prompt
-        function promptForReturn() {
-            var reason = prompt("Please enter the reason for returning this ENTIRE claim to the employee:");
-            if (reason != null && reason.trim() !== "") {
-                document.getElementById('hfReturnReason').value = reason;
-                return true;
-            } else if (reason != null) {
-                alert("A reason is required to return the claim.");
-                return false;
-            }
-            return false; // Cancelled action
-        }
-
-        function showRecalculateSpinner(btn) {
-            // Change the icon to a spinner and update text
-            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Calculating...';
-            // Add Bootstrap's disabled class so it looks inactive
-            btn.classList.add('disabled');
-            // Allow the ASP.NET postback to proceed
-            return true;
-        }
-
-
-
-        //Unified Modal
-        // UNIFIED DAY ACTION BUTTON CLICK
+        // =========================================================
+        // UNIFIED DAY MODAL LOGIC
+        // =========================================================
         $(document).on('click', '.btn-day-action', function(e) {
             e.preventDefault();
             var $row = $(this).closest('tr');
             
-            // 1. Extract Data
             var actId = $(this).data('activityid');
             var currentKm = $row.find('.km-value').text().trim();
             var expensesJson = $(this).attr('data-expenses');
             
-            // 2. Security Check (Only Level 1 & 2 can edit KM)
             var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
             if (activeLevel === 1 || activeLevel === 2) {
                 $('#divKmControls').show();
             } else {
-                $('#divKmControls').hide(); // Lock it down for regular users viewing history
+                $('#divKmControls').hide();
             }
 
-            // 3. Setup Distance Tab
+            // Setup Distance Tab
             $('#km_modal_activityid').val(actId);
             $('#km_modal_current').val(currentKm);
             $('#km_modal_new').val(currentKm);
@@ -913,20 +658,18 @@
             $('#km_modal_message').empty();
             loadKmHistory(actId);
             
-            // 4. Setup Receipts Tab
+            // Setup Receipts Tab
             if (expensesJson && expensesJson.trim() !== "[]") {
                 var data = JSON.parse(expensesJson);
-                renderExpenses(data); // Call our builder function
+                renderExpenses(data);
             } else {
                 $('#unifiedExpensesBody').html('<div class="alert alert-warning text-center mt-3"><i class="fa fa-folder-open-o fa-2x d-block mb-2"></i> No receipts attached for this day.</div>');
             }
             
-            // 5. Reset to Tab 1 and Show Modal
             $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
             $('#unifiedDayModal').modal('show');
         });
 
-        // UPDATED: Render Expenses HTML builder
         function renderExpenses(data) {
             var html = '<table class="table table-sm table-bordered table-striped table-hover mt-2"><thead class="bg-light">' +
                        '<tr><th>Date</th><th>Type</th><th>Purpose</th><th>Bill No</th><th class="text-right">Amount</th><th class="text-center">Action</th></tr></thead><tbody>';
@@ -963,12 +706,9 @@
                         '</tr>';
             });
             html += '</tbody></table>';
-            
-            // Push directly to the new Tab!
             $('#unifiedExpensesBody').html(html);
         }
 
-        // UPDATED: Save KM Function (Closes unified modal on success)
         function saveKM() {
             var $saveBtn = $('#km_modal_save');
             $saveBtn.prop('disabled', true);
@@ -998,8 +738,8 @@
                 dataType: "json",
                 success: function(r) {
                     if(r.d && r.d.success) {
-                        $('#unifiedDayModal').modal('hide'); // Close the unified modal
-                        document.getElementById('btnRefreshCalculations').click(); // Instant refresh
+                        $('#unifiedDayModal').modal('hide');
+                        document.getElementById('btnRefreshCalculations').click();
                     } else {
                         $('#km_modal_message').html('<div class="text-danger">Error: ' + r.d.message + '</div>');
                     }
@@ -1011,25 +751,148 @@
         }
 
         // =========================================================
-        // UPDATEPANEL SCROLL MEMORY 
+        // UI HELPERS & DASHBOARD ACTIONS
         // =========================================================
-        var prm = Sys.WebForms.PageRequestManager.getInstance();
+        function openDetailsModal() { $('#detailsModal').modal('show'); }
+
+        function showDeductionsBreakdown() {
+            var reqId = document.getElementById('<%= hfActionRequestId.ClientID %>').value;
+            if (!reqId) return;
+
+            $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center">Loading details...</td></tr>');
+            $('#lblDeductionsModalTotal').text('0.00');
+            $('#deductionsModal').modal('show');
+
+            $.ajax({
+                type: 'POST',
+                url: 'ClaimsApproval_v2.aspx/GetDeductionBreakdown',
+                data: JSON.stringify({ approvalRequestId: parseInt(reqId) }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (resp) {
+                    var responseObj = resp.d; 
+                    var tbody = $('#tblDeductions tbody').empty();
+                    var total = 0;
+
+                    if (!responseObj || responseObj.success === false) {
+                        var errMsg = responseObj ? responseObj.message : "Unknown error";
+                        tbody.html('<tr><td colspan="4" class="text-center text-danger">Error: ' + errMsg + '</td></tr>');
+                        return;
+                    }
+
+                    var data = responseObj.data;
+                    if (!data || data.length === 0) {
+                        tbody.html('<tr><td colspan="4" class="text-center text-muted">No deductions found.</td></tr>');
+                        return;
+                    }
+
+                    data.forEach(function (item) {
+                        total += item.DeductedAmount;
+                        tbody.append(
+                            '<tr>' +
+                            '<td>' + item.ActivityDate + '</td>' +
+                            '<td><strong>' + item.DeductionType + '</strong></td>' +
+                            '<td>' + (item.Reason || '-') + '</td>' +
+                            '<td class="text-right text-danger font-weight-bold">' + item.DeductedAmount.toFixed(2) + '</td>' +
+                            '</tr>'
+                        );
+                    });
+
+                    $('#lblDeductionsModalTotal').text(total.toFixed(2));
+                },
+                error: function () {
+                    $('#tblDeductions tbody').html('<tr><td colspan="4" class="text-center text-danger">Error loading data.</td></tr>');
+                }
+            });
+        }
+
+        function promptForReturn() {
+            var reason = prompt("Please enter the reason for returning this ENTIRE claim to the employee:");
+            if (reason != null && reason.trim() !== "") {
+                document.getElementById('hfReturnReason').value = reason;
+                return true;
+            } else if (reason != null) {
+                alert("A reason is required to return the claim.");
+                return false;
+            }
+            return false;
+        }
+
+        function showRecalculateSpinner(btn) {
+            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Calculating...';
+            btn.classList.add('disabled');
+            return true;
+        }
+
+        // =========================================================
+        // ASP.NET AJAX UPDATEPANEL HOOKS
+        // =========================================================
         var _gridScrollTop = 0;
+        
+        if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+            var prm = Sys.WebForms.PageRequestManager.getInstance();
+            
+            prm.add_beginRequest(function (sender, args) {
+                // Scroll Memory Check
+                var gridContainer = document.querySelector('#detailsModal .table-responsive');
+                if (gridContainer) {
+                    _gridScrollTop = gridContainer.scrollTop;
+                }
+            });
 
-        // 1. Right before the server recalculates, memorize the scroll position
-        prm.add_beginRequest(function (sender, args) {
-            var gridContainer = document.querySelector('#detailsModal .table-responsive');
-            if (gridContainer) {
-                _gridScrollTop = gridContainer.scrollTop;
-            }
-        });
+            prm.add_endRequest(function (sender, args) {
+                // Restore Scroll Memory
+                var gridContainer = document.querySelector('#detailsModal .table-responsive');
+                if (gridContainer) {
+                    gridContainer.scrollTop = _gridScrollTop;
+                }
+                
+                // Re-initialize Datatables
+                initDataTablesSafe();
+            });
+        }
 
-        // 2. The millisecond the new grid loads, snap the scrollbar back
-        prm.add_endRequest(function (sender, args) {
-            var gridContainer = document.querySelector('#detailsModal .table-responsive');
-            if (gridContainer) {
-                gridContainer.scrollTop = _gridScrollTop;
+        // =========================================================
+        // GENTELLELA DATATABLES INITIALIZATION
+        // =========================================================
+        function applyDataTables() {
+            var $grid = $('#gvRequests');
+            
+            if ($grid.length > 0 && $grid.find('tbody tr').length > 0 && typeof $.fn.dataTable !== 'undefined') {
+                if ($.fn.dataTable.isDataTable('#gvRequests')) {
+                    $grid.DataTable().destroy();
+                }
+
+                $grid.DataTable({
+                    "pageLength": 15,                
+                    "lengthMenu": [10, 15, 25, 50],  
+                    "ordering": true,                
+                    "searching": true,               
+                    "responsive": true,
+                    "order": [[ 3, "desc" ]],        
+                    "language": {
+                        "search": "Quick Filter:",
+                        "lengthMenu": "Show _MENU_ requests"
+                    },
+                    "columnDefs": [
+                        { "orderable": false, "targets": [7] } 
+                    ]
+                });
+            } else if (typeof $.fn.dataTable === 'undefined') {
+                console.warn("DataTables library is not loaded yet.");
             }
+        }
+
+        function initDataTablesSafe() {
+            if (typeof $.fn.dataTable !== 'undefined') {
+                applyDataTables();
+            } else {
+                setTimeout(initDataTablesSafe, 100);
+            }
+        }
+
+        $(document).ready(function () {
+            initDataTablesSafe();
         });
     </script>
 </asp:Content>

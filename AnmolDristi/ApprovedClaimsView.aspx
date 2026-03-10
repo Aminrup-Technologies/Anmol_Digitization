@@ -177,7 +177,7 @@
                                             <asp:TemplateField HeaderText="Employee Name" HeaderStyle-Width="220px">
                                                 <ItemTemplate><%# Eval("EmployeeName") %> (<%# Eval("RequesterLoginId") %>)</ItemTemplate>
                                             </asp:TemplateField>
-                                            <asp:BoundField DataField="RequestDate" HeaderText="Requested Date" DataFormatString="{0:dd-MMM-yyyy}" />
+                                            <asp:BoundField DataField="RequestDate" HeaderText="Requested Date" DataFormatString="{0:dd-MMM-yyyy hh:mm:ss tt}" />
                                             <asp:BoundField DataField="MonthName" HeaderText="Month" />
                                             <asp:TemplateField HeaderText="Approved Amount (₹)">
                                                 <ItemTemplate>
