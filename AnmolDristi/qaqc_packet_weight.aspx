@@ -69,7 +69,6 @@
             if (!stdWeightField || stdWeightField.value === "") return;
 
             const standardWeight = parseFloat(stdWeightField.value);
-            // Safely parse Tare Weight (default to 0 if empty)
             const tareWeight = (tareWeightField && tareWeightField.value !== "") ? parseFloat(tareWeightField.value) : 0;
 
             if (isNaN(standardWeight) || standardWeight <= 0) return;
@@ -90,24 +89,40 @@
                 return;
             }
 
-            // 1. Calculate Raw Gross Values from the textboxes
+            // 1. Calculate Raw Gross Values
             const grossMin = Math.min(...values);
             const grossMax = Math.max(...values);
             const grossAvg = values.reduce((a, b) => a + b, 0) / values.length;
 
-            // 2. Calculate Net Values (Gross minus Wrapper Tare)
+            // 2. Calculate Net Values
             const netMin = grossMin - tareWeight;
             const netMax = grossMax - tareWeight;
             const netAvg = grossAvg - tareWeight;
 
-            // 3. Calculate Final Give-Away % based strictly on Net Average
-            const giveAway = ((netAvg - standardWeight) / standardWeight) * 100;
+            // 3. Evaluate Give-Away / Underweight Flag
+            const giveAwayLabel = document.getElementById('<%= lblGiveAway.ClientID %>');
+            
+            if (netAvg < standardWeight) {
+                // FLAG: Underweight! (No give away, it's a deficit)
+                const deficit = standardWeight - netAvg;
+                giveAwayLabel.innerHTML = "<span style='color: #d9534f;'>Flag: Underweight (-" + deficit.toFixed(2) + "g)</span>";
+            } else if (netAvg === standardWeight) {
+                // Perfect weight
+                giveAwayLabel.innerHTML = "0.00 %";
+            } else {
+                // Positive Give Away
+                const giveAway = ((netAvg - standardWeight) / standardWeight) * 100;
+                giveAwayLabel.innerHTML = giveAway.toFixed(2) + " %";
+            }
 
-            // 4. Bind the Net calculations to the UI Labels
+            // 4. Bind the rest of the Net calculations to the UI Labels
             document.getElementById('<%= lblMinWeight.ClientID %>').innerText = netMin.toFixed(2);
             document.getElementById('<%= lblMaxWeight.ClientID %>').innerText = netMax.toFixed(2);
-            document.getElementById('<%= lblAverage.ClientID %>').innerText = netAvg.toFixed(2);
-            document.getElementById('<%= lblGiveAway.ClientID %>').innerText = giveAway.toFixed(2) + " %";
+            document.getElementById('<%= lblAverage.ClientID %>').innerText = grossAvg.toFixed(2);
+            document.getElementById('<%= lblNetAvgDisplay.ClientID %>').innerText = netAvg.toFixed(2);
+            
+            // Add a visual indicator to the Net Avg if it's underweight
+            document.getElementById('<%= lblNetAvgDisplay.ClientID %>').style.color = (netAvg < standardWeight) ? "#d9534f" : "green";
         }
 
         function clearPreview() {
@@ -115,6 +130,63 @@
             document.getElementById('<%= lblMaxWeight.ClientID %>').innerText = "-";
             document.getElementById('<%= lblAverage.ClientID %>').innerText = "-";
             document.getElementById('<%= lblGiveAway.ClientID %>').innerText = "-";
+        }
+
+        function showTareWeightModal() {
+            // Open the Bootstrap modal
+            $('#tareWeightModal').modal('show');
+            // Clear previous inputs/errors
+            document.getElementById('txtModalTareWeight').value = '';
+            document.getElementById('tareError').style.display = 'none';
+        }
+
+        function applyTareWeight() {
+            const val = document.getElementById('txtModalTareWeight').value.trim();
+            const num = parseFloat(val);
+
+            // Validate input
+            if (isNaN(num) || num <= 0) {
+                document.getElementById('tareError').style.display = 'block';
+                return;
+            }
+
+            // 1. Update the hidden field so the server gets the value on submit
+            document.getElementById('<%= hdnTareWeight.ClientID %>').value = num.toFixed(2);
+
+            // 2. Update the visual label in the System Calculations area
+            document.getElementById('<%= lblTareDisplay.ClientID %>').innerText = num.toFixed(2);
+
+            // 3. Hide the modal
+            $('#tareWeightModal').modal('hide');
+
+            // 4. Recalculate the preview in case they already typed some packet weights
+            recalculatePreview();
+        }
+
+        function validateTareInput() {
+            const val = document.getElementById('<%= txtModalTareWeight.ClientID %>').value.trim();
+            const num = parseFloat(val);
+    
+            if (isNaN(num) || num <= 0) {
+                document.getElementById('tareError').style.display = 'block';
+                return false; // Stop the postback to the server
+            }
+            document.getElementById('tareError').style.display = 'none';
+            return true; // Allow the postback to the server
+        }
+
+        function skipTareWeight() {
+            // 1. Explicitly set the hidden field to 0
+            document.getElementById('<%= hdnTareWeight.ClientID %>').value = "0.00";
+
+            // 2. Update the visual label in the System Calculations area
+            document.getElementById('<%= lblTareDisplay.ClientID %>').innerText = "0.00";
+
+            // 3. Hide the modal
+            $('#tareWeightModal').modal('hide');
+
+            // 4. Recalculate the preview using the 0 value
+            recalculatePreview();
         }
     </script>
 
@@ -299,10 +371,17 @@
                                         <strong>Gross Avg (g):</strong><br />
                                         <asp:Label ID="lblAverage" runat="server" Text="-" />
                                     </div>
+                                    <asp:HiddenField ID="hdnOldTareWeight" runat="server" />
+
                                     <div class="col-md-2 col-sm-4">
-                                        <strong>Tare Wgt (g):</strong><br />
+                                        <strong>Tare Wgt (g):</strong>
+                                        <a href="javascript:void(0);" onclick="showTareWeightModal();" title="Revise Tare Weight" style="margin-left: 5px;">
+                                            <i class="fa fa-pencil-square-o text-primary"></i>
+                                        </a>
+                                        <br />
                                         <asp:Label ID="lblTareDisplay" runat="server" Text="-" ForeColor="Red" />
                                     </div>
+
                                     <div class="col-md-2 col-sm-4">
                                         <strong>Net Avg (g):</strong><br />
                                         <asp:Label ID="lblNetAvgDisplay" runat="server" Text="-" ForeColor="Green" Font-Bold="true" />
@@ -335,6 +414,34 @@
                         <strong>Packet Weight Capture completed successfully.</strong><br />
                         You may close this tab or return to the Dashboard.
                     </asp:Panel>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tareWeightModal" class="modal fade" role="dialog" data-backdrop="static" data-keyboard="false">
+        <div class="modal-dialog modal-sm" style="margin-top: 15vh;">
+            <div class="modal-content" style="border-top: 4px solid #E74C3C;">
+                <div class="modal-header">
+                    <h4 class="modal-title" style="color: #2A3F54; font-weight: bold;">
+                        <i class="fa fa-balance-scale" style="color: #337ab7;"></i>Tare Weight Setup
+                    </h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Please enter the correct Tare Weight (g) for this SKU:</label>
+                        <asp:TextBox ID="txtModalTareWeight" runat="server" CssClass="form-control" placeholder="e.g. 2.50" onkeypress="return allowNumericOnly(event)"></asp:TextBox>
+                        <span id="tareError" class="text-danger" style="display: none; margin-top: 5px; font-size: 12px;">Please enter a valid weight greater than 0.</span>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5e5e5; padding: 10px;">
+                    <div style="font-size: 11px; color: #E74C3C; text-align: left; line-height: 1.2; max-width: 55%;">
+                        <strong>Note:</strong> Revisions are logged in the system for audit purposes.
+                    </div>
+                    <div style="white-space: nowrap;">
+                        <button type="button" class="btn btn-default btn-sm" onclick="skipTareWeight()">Skip/Close</button>
+                        <asp:Button ID="btnApplyTare" runat="server" Text="Save Change" CssClass="btn btn-primary btn-sm" OnClientClick="return validateTareInput();" OnClick="btnApplyTare_Click" />
+                    </div>
                 </div>
             </div>
         </div>

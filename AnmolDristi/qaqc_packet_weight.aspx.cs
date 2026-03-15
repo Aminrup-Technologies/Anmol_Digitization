@@ -205,7 +205,7 @@ namespace AnmolDristi
             pnlPacketEntry.Visible = true;
         }
 
-        private void LoadSKUMetadata(string skuId)
+        private void LoadSKUMetadata_OLD(string skuId)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
             // Fetch SKU_details1 (Tare Weight) along with SKU_name (Standard Weight)
@@ -228,6 +228,42 @@ namespace AnmolDristi
                         if (decimal.TryParse(dr["TareWeight"].ToString(), out tareWeight))
                         {
                             hdnTareWeight.Value = tareWeight.ToString("0.00");
+                        }
+                    }
+                }
+            }
+        }
+
+        private void LoadSKUMetadata(string skuId)
+        {
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("SELECT SKU_name, ISNULL(SKU_details1, '0') AS TareWeight FROM MST_Brand_SKU WHERE SKUId = @SKUId", con))
+            {
+                cmd.Parameters.Add("@SKUId", SqlDbType.VarChar, 50).Value = skuId;
+                con.Open();
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    if (dr.Read())
+                    {
+                        decimal standardWeight, tareWeight;
+
+                        if (decimal.TryParse(dr["SKU_name"].ToString(), out standardWeight))
+                        {
+                            hdnStdWeight.Value = standardWeight.ToString("0.00");
+                            lblStandardWeightDisplay.Text = standardWeight.ToString("0.00");
+                        }
+
+                        if (decimal.TryParse(dr["TareWeight"].ToString(), out tareWeight))
+                        {
+                            hdnTareWeight.Value = tareWeight.ToString("0.00");
+                            hdnOldTareWeight.Value = tareWeight.ToString("0.00"); // NEW: Track the old weight for the log
+                            lblTareDisplay.Text = tareWeight.ToString("0.00");
+
+                            // Trigger the popup if the value is 0
+                            if (tareWeight == 0)
+                            {
+                                ScriptManager.RegisterStartupScript(this, this.GetType(), "ShowTareModal", "setTimeout(function() { showTareWeightModal(); }, 200);", true);
+                            }
                         }
                     }
                 }
@@ -356,7 +392,7 @@ namespace AnmolDristi
             return dt;
         }
 
-        private void InsertPacketWeight(DataTable packetDetails)
+        private void InsertPacketWeight_OLD(DataTable packetDetails)
         {
             using (SqlConnection con = new SqlConnection(connectionString))
             using (SqlCommand cmd = new SqlCommand("dbo.InsertPacketWeightData_Independent", con))
@@ -388,6 +424,80 @@ namespace AnmolDristi
             }
         }
 
+        private void InsertPacketWeight(DataTable packetDetails)
+        {
+            // 1. Calculate the values needed for the database
+            var weights = packetDetails.AsEnumerable().Select(r => r.Field<decimal>("PacketWeight")).ToList();
+
+            decimal stdWeight = 0;
+            decimal tareWeight = 0;
+            decimal.TryParse(hdnStdWeight.Value, out stdWeight);
+            decimal.TryParse(hdnTareWeight.Value, out tareWeight);
+
+            // Gross Calculations
+            decimal grossMin = weights.Min();
+            decimal grossMax = weights.Max();
+            decimal grossAverage = weights.Average();
+
+            // Net Calculations
+            decimal netMin = grossMin - tareWeight;
+            decimal netMax = grossMax - tareWeight;
+            decimal netAverage = grossAverage - tareWeight;
+
+            decimal giveAwayPercent = 0;
+            bool isUnderweight = false;
+            decimal underweightDeficit = 0;
+
+            // Evaluate the Underweight Rule vs Give-Away
+            if (netAverage < stdWeight)
+            {
+                isUnderweight = true;
+                underweightDeficit = stdWeight - netAverage;
+                giveAwayPercent = 0; // No give away, it's a deficit
+            }
+            else if (netAverage > stdWeight && stdWeight > 0)
+            {
+                giveAwayPercent = ((netAverage - stdWeight) / stdWeight) * 100;
+            }
+
+            // 2. Send everything to the database
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("dbo.InsertPacketWeightData_Independent", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                // Existing Parameters
+                cmd.Parameters.AddWithValue("@Plant", DDL_Plant.SelectedValue);
+                cmd.Parameters.AddWithValue("@Line", DDL_PlantLine.SelectedValue);
+                cmd.Parameters.AddWithValue("@Category", DDL_ProductCategory.SelectedValue);
+                cmd.Parameters.AddWithValue("@Brand", DDL_ProductBrand.SelectedValue);
+                cmd.Parameters.AddWithValue("@SKUId", DDL_BrandSKU.SelectedValue);
+                cmd.Parameters.AddWithValue("@StandardWeight", stdWeight);
+                cmd.Parameters.AddWithValue("@TareWeight", tareWeight);
+                cmd.Parameters.AddWithValue("@Shift", lblShift.Text);
+                cmd.Parameters.AddWithValue("@SubmittedById", CurrentUserId);
+
+                // Summary Parameters matching SP
+                cmd.Parameters.AddWithValue("@GrossMin", grossMin);
+                cmd.Parameters.AddWithValue("@GrossMax", grossMax);
+                cmd.Parameters.AddWithValue("@GrossAvg", grossAverage);
+                cmd.Parameters.AddWithValue("@NetMin", netMin);
+                cmd.Parameters.AddWithValue("@NetMax", netMax);
+                cmd.Parameters.AddWithValue("@NetAvg", netAverage);
+                cmd.Parameters.AddWithValue("@GiveAwayPercent", giveAwayPercent);
+                cmd.Parameters.AddWithValue("@IsUnderweight", isUnderweight);
+                cmd.Parameters.AddWithValue("@UnderweightDeficit", underweightDeficit);
+
+                // Table-Valued Parameter for individual packets
+                SqlParameter tvp = cmd.Parameters.AddWithValue("@PacketDetails", packetDetails);
+                tvp.SqlDbType = SqlDbType.Structured;
+                tvp.TypeName = "dbo.PacketWeightDetailType";
+
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         private void ResolveCurrentShift()
         {
             ShiftManager shiftManager = new ShiftManager();
@@ -396,7 +506,7 @@ namespace AnmolDristi
             Session["SHIFT_NAME"] = shift.ShiftName;
         }
 
-        private void CalculateSummary(DataTable packetDetails)
+        private void CalculateSummary_OLD(DataTable packetDetails)
         {
             var weights = packetDetails.AsEnumerable().Select(r => r.Field<decimal>("PacketWeight")).ToList();
             if (weights.Count == 0) return;
@@ -413,6 +523,93 @@ namespace AnmolDristi
             lblMaxWeight.Text = max.ToString("0.00");
             lblAverage.Text = averageWeight.ToString("0.00");
             lblGiveAway.Text = giveAwayPercent.ToString("0.00") + " %";
+        }
+
+        private void CalculateSummary(DataTable packetDetails)
+        {
+            var weights = packetDetails.AsEnumerable().Select(r => r.Field<decimal>("PacketWeight")).ToList();
+            if (weights.Count == 0) return;
+
+            decimal stdWeight, tareWeight;
+            if (!decimal.TryParse(hdnStdWeight.Value, out stdWeight) || stdWeight <= 0) return;
+
+            decimal.TryParse(hdnTareWeight.Value, out tareWeight);
+
+            decimal grossMin = weights.Min();
+            decimal grossMax = weights.Max();
+            decimal grossAverage = weights.Average();
+
+            // Calculate Net Values
+            decimal netMin = grossMin - tareWeight;
+            decimal netMax = grossMax - tareWeight;
+            decimal netAvg = grossAverage - tareWeight;
+
+            // UI Binding
+            lblMinWeight.Text = netMin.ToString("0.00");
+            lblMaxWeight.Text = netMax.ToString("0.00");
+            lblAverage.Text = grossAverage.ToString("0.00");
+            lblTareDisplay.Text = tareWeight.ToString("0.00");
+            lblNetAvgDisplay.Text = netAvg.ToString("0.00");
+
+            // Evaluate Give-Away vs Underweight Flag
+            if (netAvg < stdWeight)
+            {
+                decimal deficit = stdWeight - netAvg;
+                lblGiveAway.Text = $"Flag: Underweight (-{deficit:0.00}g)";
+                lblGiveAway.ForeColor = System.Drawing.Color.FromName("#d9534f"); // Red
+                lblNetAvgDisplay.ForeColor = System.Drawing.Color.FromName("#d9534f"); // Red
+            }
+            else if (netAvg == stdWeight)
+            {
+                lblGiveAway.Text = "0.00 %";
+                lblGiveAway.ForeColor = System.Drawing.Color.Black;
+                lblNetAvgDisplay.ForeColor = System.Drawing.Color.Green;
+            }
+            else
+            {
+                decimal giveAwayPercent = ((netAvg - stdWeight) / stdWeight) * 100;
+                lblGiveAway.Text = giveAwayPercent.ToString("0.00") + " %";
+                lblGiveAway.ForeColor = System.Drawing.Color.Black;
+                lblNetAvgDisplay.ForeColor = System.Drawing.Color.Green;
+            }
+        }
+
+        protected void btnApplyTare_Click(object sender, EventArgs e)
+        {
+            decimal oldWeight = 0;
+            decimal.TryParse(hdnOldTareWeight.Value, out oldWeight);
+
+            decimal newWeight = 0;
+            if (decimal.TryParse(txtModalTareWeight.Text, out newWeight))
+            {
+                // 1. Update the Database and Log the Revision
+                UpdateTareWeightInDatabase(DDL_BrandSKU.SelectedValue, oldWeight, newWeight);
+
+                // 2. Update the UI and Hidden Fields with the new confirmed weight
+                hdnTareWeight.Value = newWeight.ToString("0.00");
+                hdnOldTareWeight.Value = newWeight.ToString("0.00"); // Reset old to new for future edits
+                lblTareDisplay.Text = newWeight.ToString("0.00");
+
+                // 3. Clear the textbox, hide the modal, and recalculate the Net preview
+                txtModalTareWeight.Text = "";
+                ScriptManager.RegisterStartupScript(this, this.GetType(), "HideTareModal", "$('#tareWeightModal').modal('hide'); recalculatePreview();", true);
+            }
+        }
+
+        private void UpdateTareWeightInDatabase(string skuId, decimal oldWeight, decimal newWeight)
+        {
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("dbo.UpdateTareWeightAndLog", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@SKUId", skuId);
+                cmd.Parameters.AddWithValue("@OldWeight", oldWeight);
+                cmd.Parameters.AddWithValue("@NewWeight", newWeight);
+                cmd.Parameters.AddWithValue("@UserId", CurrentUserId);
+
+                con.Open();
+                cmd.ExecuteNonQuery();
+            }
         }
     }
 }
