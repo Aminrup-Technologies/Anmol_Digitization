@@ -98,6 +98,34 @@
                                                 <asp:BoundField DataField="Total_Distance_Travelled_In_KM" HeaderText="Distance (KM)" />
                                             </Columns>
                                         </asp:GridView>
+
+                                        <div class="col-md-12 col-sm-12" id="divErrorLog" runat="server" visible="false">
+                                            <div class="x_panel" style="border: 1px solid #dc3545;">
+                                                <div class="x_title">
+                                                    <h2 class="text-danger"><i class="fa fa-exclamation-triangle"></i>Import Errors Found</h2>
+                                                    <ul class="nav navbar-right panel_toolbox">
+                                                        <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                                                    </ul>
+                                                    <div class="clearfix"></div>
+                                                </div>
+                                                <div class="x_content">
+                                                    <p class="text-muted">The following rows could not be imported. Please fix these issues in your CSV and try uploading them again.</p>
+                                                    <div class="card-box table-responsive">
+                                                        <asp:GridView ID="gvErrors" runat="server" CssClass="table table-striped table-bordered table-sm table-danger"
+                                                            AutoGenerateColumns="False" GridLines="None">
+                                                            <Columns>
+                                                                <asp:BoundField DataField="StagingId" HeaderText="Row Ref ID" />
+                                                                <asp:BoundField DataField="ErrorStage" HeaderText="Error Stage" />
+                                                                <asp:BoundField DataField="ErrorReason" HeaderText="Reason for Failure" />
+
+                                                                <%-- Optional: You can show the raw JSON or a specific column to help them identify the row --%>
+                                                                <asp:BoundField DataField="RawJson" HeaderText="Raw Uploaded Data" />
+                                                            </Columns>
+                                                        </asp:GridView>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -13,13 +13,13 @@ namespace AnmolDristi {
     public partial class AdminBatches {
         
         /// <summary>
-        /// hfRetryConfirmed control.
+        /// lblPageError control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField hfRetryConfirmed;
+        protected global::System.Web.UI.WebControls.Label lblPageError;
         
         /// <summary>
         /// txtFrom control.
@@ -139,6 +139,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button btnRun;
         
         /// <summary>
+        /// btnExportReport control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnExportReport;
+        
+        /// <summary>
         /// lblRunMessage control.
         /// </summary>
         /// <remarks>
@@ -148,13 +157,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblRunMessage;
         
         /// <summary>
-        /// ShowPopup control.
+        /// upResult control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button ShowPopup;
+        protected global::System.Web.UI.UpdatePanel upResult;
         
         /// <summary>
         /// gvResult control.

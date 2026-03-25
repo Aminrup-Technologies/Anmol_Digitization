@@ -150,6 +150,30 @@
             font-weight: bold !important;
             border: 2px solid #dc3545 !important;
         }
+
+        /* Gatekeeper Warning Animations */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.75); }
+            70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .pulse-warning { animation: pulse-red 2s infinite !important; font-weight: bold !important; border: 2px solid #dc3545 !important; }
+
+        /* NEW: Blue Pulse for "Open" Folder */
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.75); }
+            70% { box-shadow: 0 0 0 8px rgba(23, 162, 184, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(23, 162, 184, 0); }
+        }
+        .pulse-info { animation: pulse-blue 2s infinite !important; font-weight: bold !important; border: 1px solid #17a2b8 !important; }
+
+        /* NEW: Green Pulse for "Approve" Checkmark */
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.75); }
+            70% { box-shadow: 0 0 0 8px rgba(40, 167, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+        .pulse-success { animation: pulse-green 2s infinite !important; font-weight: bold !important; border: 1px solid #28a745 !important; }
     </style>
 </asp:Content>
 
@@ -292,29 +316,30 @@
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Date">
+                                            <asp:TemplateField HeaderText="Activity Date">
                                                 <ItemTemplate>
                                                     <%# Eval("ActivityDate", "{0:dd-MMM-yyyy}") %><br />
                                                     <small class="text-muted"><%# Eval("Day") %></small>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Distance (KM)">
+                                            <asp:TemplateField HeaderText="Distance Travelled(KM)">
                                                 <ItemTemplate>
-                                                    <span class="km-value font-weight-bold" data-activityid='<%# Eval("ActivityId") %>'>
+                                                    <span class="km-value font-weight-bold font-md" data-activityid='<%# Eval("ActivityId") %>'>
                                                         <%# Eval("Snapshot_TotalDistanceKM", "{0:N2}") %>
                                                     </span>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
-                                            <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="Total Bike TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
-                                            <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Day Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:TemplateField HeaderText="Day Action" ItemStyle-HorizontalAlign="Center" HeaderStyle-Width="8%">
                                                 <ItemTemplate>
                                                     <button type="button" runat="server" id="btnExp" class="btn btn-sm btn-info text-white btn-day-action shadow-sm"
                                                         data-activityid='<%# Eval("ActivityId") %>'
+                                                        data-detailid='<%# Eval("ApprovalRequestDetailId") %>'
                                                         data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts & Distance">
                                                         <i class="fa fa-folder-open"></i>Open
                                                     </button>
@@ -325,7 +350,7 @@
                                                     <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' CssClass="form-control form-control-sm" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
-                                            <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%">
+                                            <asp:TemplateField HeaderText="Local TA Actions" HeaderStyle-Width="5%">
                                                 <ItemTemplate>
                                                     <asp:Button ID="btnApproveRow" runat="server" CssClass="btn btn-sm btn-outline-success" Text="✔" CommandName="ApproveRow" CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
                                                     <asp:Button ID="btnRejectRow" runat="server" CssClass="btn btn-sm btn-outline-danger" Text="✖" CommandName="RejectRow" CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
@@ -440,7 +465,7 @@
 
                             <div class="tab-pane" id="tab-distance" role="tabpanel">
                                 <input type="hidden" id="km_modal_activityid" />
-
+                                <input type="hidden" id="km_modal_detailid" />
                                 <div class="alert alert-info border mb-3 py-2">
                                     <div class="row align-items-center">
                                         <div class="col-md-4"><strong>From:</strong> <span id="km_modal_fromplace" class="text-dark"></span></div>
@@ -499,6 +524,15 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="modal-footer bg-light d-flex justify-content-between">
+                        <div id="unified_modal_message" class="font-weight-bold"></div>
+                        <div>
+                            <button type="button" id="btnUnifiedApproveDay" class="btn btn-success" onclick="actionDayFromModal('APPROVE')">✔ Approve Entire Day</button>
+                            <button type="button" id="btnUnifiedRejectDay" class="btn btn-danger" onclick="actionDayFromModal('REJECT')">✖ Reject Entire Day</button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -542,7 +576,7 @@
     <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
     <script type="text/javascript">
-        // Global refresh flag
+        // Global variables
         var _refreshNeeded = false;
         var _currentUserLevel = <%= ViewState["CurrentUserLevel"] ?? 0 %>;
 
@@ -551,144 +585,96 @@
         }
 
         // =========================================================
-        // EXPENSE / KM ACTIONS
-        // =========================================================
-        function updateExpense(id, status, btn) {
-            if(!confirm('Mark this receipt as ' + status + '?')) return;
-            $(btn).prop('disabled', true);
-
-            $.ajax({
-                type: "POST",
-                url: "ClaimsApproval_v2.aspx/UpdateIndividualExpense",
-                data: JSON.stringify({ expenseId: id, status: status }),
-                contentType: "application/json; charset=utf-8",
-                dataType: "json",
-                success: function(r) {
-                    if(r.d && r.d.success) {
-                        var badge = (status === 'Approved') ? '<span class="badge badge-success">Approved</span>' : '<span class="badge badge-danger">Rejected</span>';
-                        $(btn).parent().html(badge);
-                        // Trigger the background calculation refresh INSTANTLY!
-                        document.getElementById('btnRefreshCalculations').click();
-                    } else {
-                        alert(r.d.message);
-                    }
-                }
-            });
-        }
-
-        function loadKmHistory(activityId) {
-            $('#km_history_tbl tbody').empty().append('<tr><td colspan="5">Loading...</td></tr>');
-    
-            $.ajax({
-                type: 'POST',
-                url: 'ClaimsApproval_v2.aspx/GetKMHistory', 
-                data: JSON.stringify({ activityId: activityId }),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json'
-            }).done(function (resp) {
-                var res = resp.d;
-        
-                if (!res || !res.success) {
-                    $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error: ' + (res ? res.message : 'Unknown error') + '</td></tr>');
-                    return;
-                }
-
-                var fPlace = res.fromPlace || '';
-                var tPlace = res.toPlace || '';
-        
-                $('#km_modal_fromplace').text(fPlace || 'No data available');
-                $('#km_modal_toplace').text(tPlace || 'No data available');
-
-                if (fPlace && tPlace) {
-                    var mapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(fPlace) + '&destination=' + encodeURIComponent(tPlace) + '&travelmode=driving';
-                    $('#km_modal_maplink').attr('href', mapsUrl).show();
-                } else {
-                    $('#km_modal_maplink').attr('href', '#').hide();
-                }
-
-                var $tbody = $('#km_history_tbl tbody').empty();
-        
-                if (!res.history || res.history.length === 0) {
-                    $tbody.append('<tr><td colspan="5" class="text-muted text-center font-italic">No previous KM modifications found.</td></tr>');
-                    return;
-                }
-
-                res.history.forEach(function (r) {
-                    var oldKm = r.OldKM != null ? parseFloat(r.OldKM).toFixed(2) : '';
-                    var newKm = r.NewKM != null ? parseFloat(r.NewKM).toFixed(2) : '';
-            
-                    $tbody.append(
-                        '<tr>' +
-                        '<td>' + (r.ModifiedDateTimeIST || '') + '</td>' +
-                        '<td>' + oldKm + '</td>' +
-                        '<td>' + newKm + '</td>' +
-                        '<td>' + (r.ModifiedBy || '') + '</td>' +
-                        '<td>' + (r.Reason || '') + '</td>' +
-                        '</tr>'
-                    );
-                });
-            }).fail(function (xhr, status, err) {
-                $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error communicating with server.</td></tr>');
-            });
-        }
-
-        // =========================================================
-        // UNIFIED DAY MODAL LOGIC
+        // 1. UNIFIED DAY MODAL TRIGGER & LOGIC
         // =========================================================
         $(document).on('click', '.btn-day-action', function(e) {
             e.preventDefault();
             var $row = $(this).closest('tr');
             
+            // Extract Data safely
             var actId = $(this).data('activityid');
+            var detailId = $(this).data('detailid'); 
             var currentKm = $row.find('.km-value').text().trim();
             var expensesJson = $(this).attr('data-expenses');
             
+            // CHECK LOCK STATE: Is this parent day already "✔ Done"?
+            // ASP.NET renders buttons as input type="submit", so we check .val()
+            var $btnApproveRow = $row.find('input[id*="btnApproveRow"]');
+            var isRowLocked = $btnApproveRow.length > 0 && $btnApproveRow.val().indexOf('Done') !== -1;
+            
+            // Set UI Controls based on user level AND row lock state
             var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
-            if (activeLevel === 1 || activeLevel === 2) {
+            if ((activeLevel === 1 || activeLevel === 2) && !isRowLocked) {
                 $('#divKmControls').show();
+                $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').show(); // Show Footer Actions
             } else {
                 $('#divKmControls').hide();
+                $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').hide(); // Lock it down
             }
 
-            // Setup Distance Tab
+            // Setup Distance Tab & Hidden Fields
             $('#km_modal_activityid').val(actId);
+            $('#km_modal_detailid').val(detailId); 
             $('#km_modal_current').val(currentKm);
             $('#km_modal_new').val(currentKm);
             $('#km_modal_reason').val('');
             $('#km_modal_message').empty();
+            $('#unified_modal_message').empty();
+            
             loadKmHistory(actId);
             
-            // Setup Receipts Tab
+            // Setup Receipts Tab (Pass the lock state!)
             if (expensesJson && expensesJson.trim() !== "[]") {
                 var data = JSON.parse(expensesJson);
-                renderExpenses(data);
+                renderExpenses(data, isRowLocked);
             } else {
                 $('#unifiedExpensesBody').html('<div class="alert alert-warning text-center mt-3"><i class="fa fa-folder-open-o fa-2x d-block mb-2"></i> No receipts attached for this day.</div>');
+                $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
             }
             
+            // Show Modal
             $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
             $('#unifiedDayModal').modal('show');
         });
 
-        function renderExpenses(data) {
+        // =========================================================
+        // 2. RENDER EXPENSES WITH SMART OVERRIDES
+        // =========================================================
+        function renderExpenses(data, isRowLocked) {
             var html = '<table class="table table-sm table-bordered table-striped table-hover mt-2"><thead class="bg-light">' +
                        '<tr><th>Date</th><th>Type</th><th>Purpose</th><th>Bill No</th><th class="text-right">Amount</th><th class="text-center">Action</th></tr></thead><tbody>';
             
             var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
-            var canAction = (activeLevel === 1 || activeLevel === 2);
+            var canAction = (activeLevel === 1 || activeLevel === 2) && !isRowLocked;
+            var hasPending = false; 
 
             $.each(data, function(i, item) {
                 var expDate = item.ExpenseDate ? new Date(item.ExpenseDate).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : '-';
                 var statusBadge = '';
                 
-                if(item.ClaimStatus === 'Approved') {
-                    statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fa fa-check"></i> Approved</span>';
-                } else if(item.ClaimStatus === 'Rejected') {
-                    statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fa fa-times"></i> Rejected</span>';
+                // Track Pending Status for the Gatekeeper
+                if(item.ClaimStatus !== 'Approved' && item.ClaimStatus !== 'Rejected') {
+                    hasPending = true;
+                }
+                
+                if (canAction) {
+                    // SMART OVERRIDE BUTTONS
+                    if(item.ClaimStatus === 'Approved') {
+                        statusBadge = '<span class="badge badge-success px-2 py-1 mr-2"><i class="fa fa-check"></i> Approved</span>' +
+                                      '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Rejected\', this)" title="Change to Reject"><i class="fa fa-times"></i> Reject</button>';
+                    } else if(item.ClaimStatus === 'Rejected') {
+                        statusBadge = '<span class="badge badge-danger px-2 py-1 mr-2"><i class="fa fa-times"></i> Rejected</span>' +
+                                      '<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Approved\', this)" title="Change to Approve"><i class="fa fa-check"></i> Approve</button>';
+                    } else {
+                        statusBadge = '<button type="button" class="btn btn-sm btn-success mr-1 py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Approved\', this)" title="Approve"><i class="fa fa-check"></i></button>' +
+                                      '<button type="button" class="btn btn-sm btn-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Rejected\', this)" title="Reject"><i class="fa fa-times"></i></button>';
+                    }
                 } else {
-                    if(canAction) {
-                        statusBadge = '<button type="button" class="btn btn-sm btn-success mr-1 py-0 px-2" onclick="updateExpense(' + item.ExpenseId + ',\'Approved\', this)" title="Approve"><i class="fa fa-check"></i></button>' +
-                                      '<button type="button" class="btn btn-sm btn-danger py-0 px-2" onclick="updateExpense(' + item.ExpenseId + ',\'Rejected\', this)" title="Reject"><i class="fa fa-times"></i></button>';
+                    // READ ONLY (Row is locked or user has no rights)
+                    if(item.ClaimStatus === 'Approved') {
+                        statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fa fa-check"></i> Approved</span>';
+                    } else if(item.ClaimStatus === 'Rejected') {
+                        statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fa fa-times"></i> Rejected</span>';
                     } else {
                         statusBadge = '<span class="badge badge-warning text-dark px-2 py-1">Pending</span>';
                     }
@@ -702,11 +688,73 @@
                         '<td><small>' + (item.Purpose || '-') + '</small></td>' +
                         '<td>' + billLink + '</td>' +
                         '<td class="text-right font-weight-bold text-dark">₹ ' + parseFloat(item.Amount).toFixed(2) + '</td>' +
-                        '<td class="text-center">' + statusBadge + '</td>' +
+                        '<td class="text-center" style="min-width: 160px;">' + statusBadge + '</td>' +
                         '</tr>';
             });
             html += '</tbody></table>';
             $('#unifiedExpensesBody').html(html);
+
+            // THE GATEKEEPER: Lock/Unlock the "Approve Entire Day" button
+            if (hasPending) {
+                $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'You must approve or reject all receipts above first.');
+            } else {
+                $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
+            }
+        }
+
+        // =========================================================
+        // 3. EXPENSE / KM AJAX ACTIONS
+        // =========================================================
+        // =========================================================
+        // EXPENSE / KM AJAX ACTIONS (WITH MANDATORY REMARKS)
+        // =========================================================
+        function updateExpense(id, status, btn) {
+            var remark = "";
+
+            // 1. Enforce Remark on Rejection
+            if (status === 'Rejected') {
+                remark = prompt('Please enter the reason for rejecting this receipt:');
+                
+                // If they click Cancel or leave it blank, abort the action completely
+                if (remark === null || remark.trim() === "") {
+                    alert('⚠️ A valid reason is strictly required to reject an expense.');
+                    return;
+                }
+            } else {
+                // 2. Standard confirmation for Approval
+                if(!confirm('Mark this receipt as Approved?')) return;
+            }
+
+            $(btn).prop('disabled', true);
+
+            $.ajax({
+                type: "POST",
+                url: "ClaimsApproval_v2.aspx/UpdateIndividualExpense",
+                // 3. NEW: We are now passing the 'remark' to the C# backend!
+                data: JSON.stringify({ expenseId: id, status: status, remark: remark.trim() }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function(r) {
+                    if(r.d && r.d.success) {
+                        // Re-render the HTML so the user can keep toggling if they made a mistake
+                        var newHtml = '';
+                        if(status === 'Approved') {
+                            newHtml = '<span class="badge badge-success px-2 py-1 mr-2"><i class="fa fa-check"></i> Approved</span>' +
+                                      '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Rejected\', this)" title="Change to Reject"><i class="fa fa-times"></i> Reject</button>';
+                        } else {
+                            newHtml = '<span class="badge badge-danger px-2 py-1 mr-2" title="Reason: ' + remark + '"><i class="fa fa-times"></i> Rejected</span>' +
+                                      '<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Approved\', this)" title="Change to Approve"><i class="fa fa-check"></i> Approve</button>';
+                        }
+                        $(btn).parent().html(newHtml);
+                        
+                        // Trigger background calculation INSTANTLY
+                        document.getElementById('btnRefreshCalculations').click();
+                    } else {
+                        alert(r.d.message);
+                        $(btn).prop('disabled', false);
+                    }
+                }
+            });
         }
 
         function saveKM() {
@@ -738,10 +786,17 @@
                 dataType: "json",
                 success: function(r) {
                     if(r.d && r.d.success) {
-                        $('#unifiedDayModal').modal('hide');
+                        $('#km_modal_message').html('<div class="alert alert-success py-2 mt-2 mb-0 font-weight-bold"><i class="fa fa-check-circle"></i> KM modified successfully!</div>');
+                        $('#km_modal_current').val(km);
+                        $('#km_modal_reason').val('');
+                        loadKmHistory(id);
                         document.getElementById('btnRefreshCalculations').click();
+                        
+                        setTimeout(function() { 
+                            $('#km_modal_message').fadeOut('fast', function() { $(this).empty().show(); }); 
+                        }, 4000);
                     } else {
-                        $('#km_modal_message').html('<div class="text-danger">Error: ' + r.d.message + '</div>');
+                        $('#km_modal_message').html('<div class="text-danger font-weight-bold">Error: ' + r.d.message + '</div>');
                     }
                 },
                 complete: function() {
@@ -750,8 +805,96 @@
             });
         }
 
+        function loadKmHistory(activityId) {
+            $('#km_history_tbl tbody').empty().append('<tr><td colspan="5">Loading...</td></tr>');
+    
+            $.ajax({
+                type: 'POST',
+                url: 'ClaimsApproval_v2.aspx/GetKMHistory', 
+                data: JSON.stringify({ activityId: activityId }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json'
+            }).done(function (resp) {
+                var res = resp.d;
+                if (!res || !res.success) {
+                    $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error: ' + (res ? res.message : 'Unknown error') + '</td></tr>');
+                    return;
+                }
+
+                var fPlace = res.fromPlace || '';
+                var tPlace = res.toPlace || '';
+        
+                $('#km_modal_fromplace').text(fPlace || 'No data available');
+                $('#km_modal_toplace').text(tPlace || 'No data available');
+
+                if (fPlace && tPlace) {
+                    var mapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(fPlace) + '&destination=' + encodeURIComponent(tPlace) + '&travelmode=driving';
+                    $('#km_modal_maplink').attr('href', mapsUrl).show();
+                } else {
+                    $('#km_modal_maplink').attr('href', '#').hide();
+                }
+
+                var $tbody = $('#km_history_tbl tbody').empty();
+                if (!res.history || res.history.length === 0) {
+                    $tbody.append('<tr><td colspan="5" class="text-muted text-center font-italic">No previous KM modifications found.</td></tr>');
+                    return;
+                }
+
+                res.history.forEach(function (r) {
+                    var oldKm = r.OldKM != null ? parseFloat(r.OldKM).toFixed(2) : '';
+                    var newKm = r.NewKM != null ? parseFloat(r.NewKM).toFixed(2) : '';
+                    $tbody.append(
+                        '<tr>' +
+                        '<td>' + (r.ModifiedDateTimeIST || '') + '</td>' +
+                        '<td>' + oldKm + '</td>' +
+                        '<td>' + newKm + '</td>' +
+                        '<td>' + (r.ModifiedBy || '') + '</td>' +
+                        '<td>' + (r.Reason || '') + '</td>' +
+                        '</tr>'
+                    );
+                });
+            }).fail(function (xhr, status, err) {
+                $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error communicating with server.</td></tr>');
+            });
+        }
+
         // =========================================================
-        // UI HELPERS & DASHBOARD ACTIONS
+        // 4. ACTION ENTIRE DAY FROM FOOTER
+        // =========================================================
+        function actionDayFromModal(action) {
+            var detailId = $('#km_modal_detailid').val();
+            var reqId = document.getElementById('<%= hfActionRequestId.ClientID %>').value;
+            var actionText = (action === 'APPROVE') ? 'approve' : 'reject';
+            
+            if(!confirm('Are you sure you want to ' + actionText + ' this entire day?')) return;
+            
+            $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').prop('disabled', true);
+            $('#unified_modal_message').html('<span class="text-info"><i class="fa fa-spinner fa-spin"></i> Processing...</span>');
+
+            $.ajax({
+                type: "POST",
+                url: "ClaimsApproval_v2.aspx/ActionDayRowSilent",
+                data: JSON.stringify({ detailId: parseInt(detailId), reqId: parseInt(reqId), action: action }),
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function(r) {
+                    if(r.d && r.d.success) {
+                        $('#unifiedDayModal').modal('hide');
+                        document.getElementById('btnRefreshCalculations').click();
+                    } else {
+                        $('#unified_modal_message').html('<span class="text-danger font-weight-bold">Error: ' + r.d.message + '</span>');
+                        $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').prop('disabled', false);
+                    }
+                },
+                error: function() {
+                    $('#unified_modal_message').html('<span class="text-danger font-weight-bold">Server Error occurred.</span>');
+                    $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').prop('disabled', false);
+                }
+            });
+        }
+
+        // =========================================================
+        // 5. UI HELPERS & DASHBOARD ACTIONS
         // =========================================================
         function openDetailsModal() { $('#detailsModal').modal('show'); }
 
@@ -825,7 +968,7 @@
         }
 
         // =========================================================
-        // ASP.NET AJAX UPDATEPANEL HOOKS
+        // 6. ASP.NET AJAX UPDATEPANEL HOOKS & DATATABLES
         // =========================================================
         var _gridScrollTop = 0;
         
@@ -833,36 +976,21 @@
             var prm = Sys.WebForms.PageRequestManager.getInstance();
             
             prm.add_beginRequest(function (sender, args) {
-                // Scroll Memory Check
                 var gridContainer = document.querySelector('#detailsModal .table-responsive');
-                if (gridContainer) {
-                    _gridScrollTop = gridContainer.scrollTop;
-                }
+                if (gridContainer) { _gridScrollTop = gridContainer.scrollTop; }
             });
 
             prm.add_endRequest(function (sender, args) {
-                // Restore Scroll Memory
                 var gridContainer = document.querySelector('#detailsModal .table-responsive');
-                if (gridContainer) {
-                    gridContainer.scrollTop = _gridScrollTop;
-                }
-                
-                // Re-initialize Datatables
+                if (gridContainer) { gridContainer.scrollTop = _gridScrollTop; }
                 initDataTablesSafe();
             });
         }
 
-        // =========================================================
-        // GENTELLELA DATATABLES INITIALIZATION
-        // =========================================================
         function applyDataTables() {
             var $grid = $('#gvRequests');
-            
             if ($grid.length > 0 && $grid.find('tbody tr').length > 0 && typeof $.fn.dataTable !== 'undefined') {
-                if ($.fn.dataTable.isDataTable('#gvRequests')) {
-                    $grid.DataTable().destroy();
-                }
-
+                if ($.fn.dataTable.isDataTable('#gvRequests')) { $grid.DataTable().destroy(); }
                 $grid.DataTable({
                     "pageLength": 15,                
                     "lengthMenu": [10, 15, 25, 50],  
@@ -870,13 +998,8 @@
                     "searching": true,               
                     "responsive": true,
                     "order": [[ 3, "desc" ]],        
-                    "language": {
-                        "search": "Quick Filter:",
-                        "lengthMenu": "Show _MENU_ requests"
-                    },
-                    "columnDefs": [
-                        { "orderable": false, "targets": [7] } 
-                    ]
+                    "language": { "search": "Quick Filter:", "lengthMenu": "Show _MENU_ requests" },
+                    "columnDefs": [{ "orderable": false, "targets": [7] }]
                 });
             } else if (typeof $.fn.dataTable === 'undefined') {
                 console.warn("DataTables library is not loaded yet.");
