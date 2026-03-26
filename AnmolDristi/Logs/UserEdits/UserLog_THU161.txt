@@ -1,0 +1,8 @@
+2026-03-26 16:45:36 | PASSWORD_RESET | Admin triggered manual password reset from Grid View. | By: Kaushik Kumar Majhi
+2026-03-26 17:21:50 | PROFILE_UPDATE | CHANGES DETECTED:
+Email: '' -> 'abc@xyz.com'
+Gender: '' -> 'Male' | By: Kaushik Kumar Majhi
+2026-03-26 17:26:00 | PROFILE_UPDATE | CHANGES DETECTED:
+PlantId: '0' -> '2387' | By: Kaushik Kumar Majhi
+2026-03-26 17:38:42 | PASSWORD_RESET | Admin triggered manual password reset. Set to auto-generated temporary password. | By: Kaushik Kumar Majhi
+2026-03-26 17:42:01 | PASSWORD_RESET | Admin triggered manual password reset. Set to auto-generated temporary password. | By: Kaushik Kumar Majhi

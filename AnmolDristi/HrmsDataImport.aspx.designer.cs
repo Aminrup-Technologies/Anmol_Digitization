@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace YourApp {
+namespace AnmolDristi {
     
     
     public partial class HrmsDataImport {

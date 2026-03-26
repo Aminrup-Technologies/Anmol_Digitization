@@ -1,4 +1,4 @@
-﻿<%@ Page Title="Upload & Map HRMS Data" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="HrmsDataImport.aspx.cs" Inherits="YourApp.HrmsDataImport" %>
+﻿<%@ Page Title="Upload & Map HRMS Data" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="HrmsDataImport.aspx.cs" Inherits="AnmolDristi.HrmsDataImport" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/3.5.3/select2.min.css" rel="stylesheet" />

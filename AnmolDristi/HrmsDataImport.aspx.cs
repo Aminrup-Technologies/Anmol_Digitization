@@ -7,9 +7,9 @@ using System.IO;
 using System.Web.UI.WebControls;
 using Microsoft.VisualBasic.FileIO;
 
-namespace YourApp
+namespace AnmolDristi
 {
-    public partial class HrmsDataImport : System.Web.UI.Page
+    public partial class HrmsDataImport : BasePage
     {
         // Define the exact columns your DB Staging Table expects
         private readonly string[] ExpectedDbColumns = new string[]
