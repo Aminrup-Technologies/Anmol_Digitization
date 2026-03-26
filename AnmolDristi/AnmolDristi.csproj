@@ -248,6 +248,8 @@
     <Content Include="global_formctrl.aspx" />
     <Content Include="heartbeat.aspx" />
     <Content Include="home.aspx" />
+    <Content Include="HrmsBatchManager.aspx" />
+    <Content Include="HrmsDataImport.aspx" />
     <Content Include="ImportCsv.aspx" />
     <Content Include="LeakAndSlant_Detailed.aspx" />
     <Content Include="leak_test.aspx" />
@@ -781,6 +783,20 @@
     </Compile>
     <Compile Include="home.aspx.designer.cs">
       <DependentUpon>home.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="HrmsBatchManager.aspx.cs">
+      <DependentUpon>HrmsBatchManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="HrmsBatchManager.aspx.designer.cs">
+      <DependentUpon>HrmsBatchManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="HrmsDataImport.aspx.cs">
+      <DependentUpon>HrmsDataImport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="HrmsDataImport.aspx.designer.cs">
+      <DependentUpon>HrmsDataImport.aspx</DependentUpon>
     </Compile>
     <Compile Include="ImportCsv.aspx.cs">
       <DependentUpon>ImportCsv.aspx</DependentUpon>
