@@ -112,22 +112,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.GridView gvHeaders;
         
         /// <summary>
-        /// lblModalDate control.
+        /// lblModalDateShift control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblModalDate;
-        
-        /// <summary>
-        /// lblModalShift control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblModalShift;
+        protected global::System.Web.UI.WebControls.Label lblModalDateShift;
         
         /// <summary>
         /// lblModalPlantLine control.
@@ -139,6 +130,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblModalPlantLine;
         
         /// <summary>
+        /// lblModalSubmitter control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblModalSubmitter;
+        
+        /// <summary>
+        /// lblModalVariety control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblModalVariety;
+        
+        /// <summary>
         /// lblModalSKU control.
         /// </summary>
         /// <remarks>
@@ -146,6 +155,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblModalSKU;
+        
+        /// <summary>
+        /// lblModalTimestamp control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblModalTimestamp;
         
         /// <summary>
         /// gvDetails control.

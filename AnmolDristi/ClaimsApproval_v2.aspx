@@ -2,6 +2,7 @@
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <link href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/responsive/2.2.3/css/responsive.bootstrap4.min.css" rel="stylesheet" />
     <style type="text/css">
         .btn-group .btn i {
             margin-right: 4px;
@@ -174,6 +175,101 @@
             100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
         }
         .pulse-success { animation: pulse-green 2s infinite !important; font-weight: bold !important; border: 1px solid #28a745 !important; }
+
+        /* =========================================================
+           MOBILE & UI BUG FIXES
+        ========================================================= */
+        
+        /* 1. Prevent TextBoxes from squishing into multiple lines */
+        #detailsModal .table-responsive input[type="text"] {
+            min-width: 140px;
+        }
+
+        /* 2. Prevent Action Buttons from wrapping awkwardly */
+        #detailsModal .table-responsive td:last-child, 
+        #detailsModal .table-responsive td:nth-last-child(2) {
+            white-space: nowrap;
+            min-width: 90px;
+        }
+
+        /* 3. Kill the "Ghost Checkbox" (Empty Footer Cell border artifact) */
+        #gvDetails tfoot td:first-child {
+            border: none !important;
+            background: transparent !important;
+        }
+
+        /* 4. Make Dashboard Boxes flexible */
+        .dashboard-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            width: 100%;
+        }
+        .dashboard-box {
+            flex: 1 1 30%; /* Grow to fill space, but min 30% width */
+            min-width: 115px;
+            padding: 10px;
+        }
+
+        /* 5. Mobile Specific Media Query (< 768px) */
+        @media (max-width: 768px) {
+            /* Stack the modal footer vertically */
+            #detailsModal .modal-footer {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+            
+            /* Center the error messages */
+            #lblModalMessage {
+                text-align: center;
+                display: block;
+                margin-top: 15px;
+                margin-bottom: 10px !important;
+            }
+
+            /* Make the action buttons wrap nicely and fill the screen */
+            .modal-action-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                justify-content: center;
+            }
+            .modal-action-buttons .btn {
+                margin: 0 !important;
+                flex: 1 1 45%; /* Buttons take half width */
+            }
+
+            /* Make the Inner Unified Modal buttons full width */
+            #unifiedDayModal .modal-footer {
+                flex-direction: column;
+            }
+            #unifiedDayModal .modal-footer .btn {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+        }
+
+        /* =========================================================
+           INNER GRID MOBILE SCROLLING FIX
+            ========================================================= */
+        
+            /* 1. Force the table to stretch and trigger horizontal scroll */
+            #detailsModal .table-responsive .table th,
+            #detailsModal .table-responsive .table td {
+                white-space: nowrap;
+                vertical-align: middle;
+            }
+
+            /* 2. Give the headers a little breathing room */
+            #detailsModal .table-responsive .table th {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            /* 3. Ensure the remarks box doesn't shrink to 0 */
+            #detailsModal .table-responsive input[type="text"] {
+                min-width: 160px; /* Forces enough width to read the text */
+            }
     </style>
 </asp:Content>
 
@@ -347,7 +443,7 @@
                                             </asp:TemplateField>
                                             <asp:TemplateField HeaderText="Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
-                                                    <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' CssClass="form-control form-control-sm" />
+                                                    <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' TextMode="MultiLine" Rows="2" CssClass="form-control form-control-sm" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
                                             <asp:TemplateField HeaderText="Local TA Actions" HeaderStyle-Width="5%">
@@ -373,51 +469,44 @@
                                 <asp:Button ID="btnRefreshCalculations" runat="server" OnClick="btnRefreshCalculations_Click" ClientIDMode="Static" Style="" />
                             </div>
 
-                            <div class="modal-footer bg-light d-flex justify-content-between align-items-end" style="">
-                                <div class="d-flex" style="">
+                            <div class="modal-footer bg-light d-flex justify-content-between align-items-end" style="border-top: 2px solid #dee2e6;">
+                                
+                                <div class="dashboard-container">
                                     <div class="dashboard-box bg-white border">
                                         <span class="dashboard-label text-muted">Original Claimed</span>
-                                        <h5 class="dashboard-value text-dark mb-0">₹
-                                            <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
+                                        <h5 class="dashboard-value text-dark mb-0">₹ <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-muted d-block mt-1">
-                                            <i class="fa fa-road"></i>
-                                            <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" />
-                                            KM
+                                            <i class="fa fa-road"></i> <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" /> KM
                                         </small>
                                     </div>
 
-                                    <div class="dashboard-box bg-white border border-danger" style="" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
+                                    <div class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
                                         <span class="dashboard-label text-danger">Total Deductions <i class="fa fa-info-circle ml-1"></i></span>
-                                        <h5 class="dashboard-value text-danger mb-0">(-) ₹
-                                            <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
+                                        <h5 class="dashboard-value text-danger mb-0">(-) ₹ <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-danger d-block mt-1">
-                                            <i class="fa fa-road"></i>(-)
-                                            <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" />
-                                            KM
+                                            <i class="fa fa-road"></i>(-) <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" /> KM
                                         </small>
                                     </div>
 
                                     <div class="dashboard-box bg-success text-white border border-success">
-                                        <span class="dashboard-label text-white" style="">Net Approved</span>
-                                        <h5 class="dashboard-value text-white mb-0">₹
-                                            <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
+                                        <span class="dashboard-label text-white" style="opacity: 0.9">Net Approved</span>
+                                        <h5 class="dashboard-value text-white mb-0">₹ <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-white d-block mt-1">
-                                            <i class="fa fa-road"></i>
-                                            <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" />
-                                            KM
+                                            <i class="fa fa-road"></i> <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" /> KM
                                         </small>
                                     </div>
                                 </div>
 
-                                <div class="text-right">
-                                    <asp:Label ID="lblModalMessage" runat="server" CssClass="d-block mb-2 font-weight-bold" />
-                                    <div>
+                                <div style="width: 100%;">
+                                    <asp:Label ID="lblModalMessage" runat="server" CssClass="d-block mb-2 font-weight-bold text-right" />
+                                    
+                                    <div class="modal-action-buttons">
                                         <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0" OnClick="btnRecalculate_Click" OnClientClick="showRecalculateSpinner(this);" ToolTip="Recalculate approved amounts">
                                             <i class="fa fa-refresh"></i> Re-Calculate
                                         </asp:LinkButton>
-                                        <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return to Employee" CssClass="btn btn-danger btn-sm m-0 ml-2" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" />
-                                        <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward to Next Level" CssClass="btn btn-success btn-sm m-0 ml-2" OnClick="btnForwardLevel_Click" Visible="false" />
-                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Mark Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2" OnClick="btnMarkReadyForPayment_Click" Visible="false" />
+                                        <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return" CssClass="btn btn-danger btn-sm m-0 ml-2" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" />
+                                        <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward" CssClass="btn btn-success btn-sm m-0 ml-2" OnClick="btnForwardLevel_Click" Visible="false" />
+                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2" OnClick="btnMarkReadyForPayment_Click" Visible="false" />
                                         <button type="button" class="btn btn-secondary btn-sm m-0 ml-2" data-dismiss="modal">Close</button>
                                     </div>
                                 </div>
@@ -574,7 +663,9 @@
     </div>
 
     <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>    
+    <script src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.2.3/js/responsive.bootstrap4.min.js"></script>
     <script type="text/javascript">
         // Global variables
         var _refreshNeeded = false;
@@ -996,10 +1087,23 @@
                     "lengthMenu": [10, 15, 25, 50],  
                     "ordering": true,                
                     "searching": true,               
-                    "responsive": true,
+                    "responsive": true,              // <-- This will now work!
                     "order": [[ 3, "desc" ]],        
                     "language": { "search": "Quick Filter:", "lengthMenu": "Show _MENU_ requests" },
-                    "columnDefs": [{ "orderable": false, "targets": [7] }]
+                    "columnDefs": [
+                        // Disable sorting on Actions column
+                        { "orderable": false, "targets": [7] }, 
+
+                        // MOBILE PRIORITIES:
+                        // Priority 1 (Never Hide): Employee Name [1], Total Claim [4], Actions [7]
+                        { "responsivePriority": 1, "targets": [1, 4, 7] },
+                        
+                        // Priority 2 (Hide Last): ID [0], Stage [6]
+                        { "responsivePriority": 2, "targets": [0, 6] },
+                        
+                        // Priority 3 (Hide First on small screens): Date [2], Month [3], Status [5]
+                        { "responsivePriority": 3, "targets": [2, 3, 5] }
+                    ]
                 });
             } else if (typeof $.fn.dataTable === 'undefined') {
                 console.warn("DataTables library is not loaded yet.");

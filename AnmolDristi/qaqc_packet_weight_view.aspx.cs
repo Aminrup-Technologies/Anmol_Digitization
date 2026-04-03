@@ -192,11 +192,14 @@ namespace AnmolDristi
                     if (dr.Read())
                     {
                         // Top Context Labels
-                        lblModalDate.Text = dr["EntryDateText"].ToString();
-                        lblModalShift.Text = dr["Shift"].ToString();
+                        lblModalDateShift.Text = dr["EntryDateText"].ToString() + " (Shift " + dr["Shift"].ToString() + ")";
                         lblModalPlantLine.Text = dr["PlantLineText"].ToString();
                         lblModalSKU.Text = dr["SKUNameText"].ToString();
 
+                        // NEW: Bind Variety and Submitter
+                        lblModalVariety.Text = dr["Variety"].ToString();
+                        lblModalSubmitter.Text = dr["SubmitterName"].ToString();
+                        lblModalTimestamp.Text = dr["SubmittedOn"] != DBNull.Value ? Convert.ToDateTime(dr["SubmittedOn"]).ToString("dd-MM-yyyy hh:mm:ss tt") : "N/A";
                         // Retrieve calculation values from DB
                         decimal std = Convert.ToDecimal(dr["StandardWeight"]);
                         decimal grossAvg = Convert.ToDecimal(dr["AvgWeight"]);

@@ -670,16 +670,42 @@ namespace AnmolDristi
                 string remark = AppendUserToRemark(rawRemark, user);
 
                 using (var con = new SqlConnection(connString))
-                using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
-                    cmd.Parameters.AddWithValue("@ApprovalRequestId", hfActionRequestId.Value);
-                    cmd.Parameters.AddWithValue("@Action", action);
-                    cmd.Parameters.AddWithValue("@ActionBy", user);
-                    cmd.Parameters.AddWithValue("@ActionRemarks", remark);
                     con.Open();
-                    cmd.ExecuteNonQuery();
+
+                    // 1. Existing Parent Row SP Call
+                    using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                        cmd.Parameters.AddWithValue("@ApprovalRequestId", hfActionRequestId.Value);
+                        cmd.Parameters.AddWithValue("@Action", action);
+                        cmd.Parameters.AddWithValue("@ActionBy", user);
+                        cmd.Parameters.AddWithValue("@ActionRemarks", remark);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // 2. NEW: Cascade the decision down to any pending child receipts!
+                    string cascadeSql = @"
+                        UPDATE dbo.SalesDailyExpense 
+                        SET ClaimStatus = @ActionStatus, 
+                            ClaimProcessedBy = @ActionBy, 
+                            ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                            ModifiedBy = @ActionBy,
+                            ModifiedOn = SYSUTCDATETIME(),
+                            Remarks = ISNULL(Remarks, @Remarks)
+                        WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
+                          AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                          AND IsDeleted = 0;";
+
+                    using (var cascadeCmd = new SqlCommand(cascadeSql, con))
+                    {
+                        cascadeCmd.Parameters.AddWithValue("@ActionStatus", isApprove ? "Approved" : "Rejected");
+                        cascadeCmd.Parameters.AddWithValue("@ActionBy", user);
+                        cascadeCmd.Parameters.AddWithValue("@DetailId", detailId);
+                        cascadeCmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remark) ? (object)DBNull.Value : remark);
+                        cascadeCmd.ExecuteNonQuery();
+                    }
                 }
 
                 int reqId = Convert.ToInt32(hfActionRequestId.Value);
@@ -723,13 +749,24 @@ namespace AnmolDristi
                                 int activityId = Convert.ToInt32(hfActivityId.Value);
 
                                 string sql = @"
-                            UPDATE dbo.SalesApprovalRequestDetail 
-                            SET DetailStatus = @Status, 
-                                DetailRemarks = @Remarks, 
-                                DetailApprovedBy = @ActionBy, 
-                                DetailApprovedOn = GETDATE(),
-                                DetailApprovedLevel = @Level
-                            WHERE ActivityId = @ActivityId AND ApprovalRequestId = @ReqId";
+                                    UPDATE dbo.SalesApprovalRequestDetail 
+                                    SET DetailStatus = @Status, 
+                                        DetailRemarks = @Remarks, 
+                                        DetailApprovedBy = @ActionBy, 
+                                        DetailApprovedOn = GETDATE(),
+                                        DetailApprovedLevel = @Level
+                                    WHERE ActivityId = @ActivityId AND ApprovalRequestId = @ReqId;
+
+                                    UPDATE dbo.SalesDailyExpense
+                                    SET ClaimStatus = @Status,
+                                        ClaimProcessedBy = @ActionBy,
+                                        ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                                        ModifiedBy = @ActionBy,
+                                        ModifiedOn = SYSUTCDATETIME(),
+                                        Remarks = ISNULL(Remarks, @Remarks)
+                                    WHERE ActivityId = @ActivityId 
+                                      AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                                      AND IsDeleted = 0;";
 
                                 using (var cmd = new SqlCommand(sql, con))
                                 {
@@ -1150,19 +1187,41 @@ namespace AnmolDristi
                 string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
                 using (var con = new SqlConnection(conn))
-                using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
-                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                    cmd.Parameters.AddWithValue("@Action", action);
-                    cmd.Parameters.AddWithValue("@ActionBy", user);
-                    // Automatically append the user to the system-generated modal remark
-                    string formattedRemark = AppendUserToRemark("Actioned via Day View Modal", user);
-                    cmd.Parameters.AddWithValue("@ActionRemarks", formattedRemark);
-                    //cmd.Parameters.AddWithValue("@ActionRemarks", "Actioned via Day View Modal");
                     con.Open();
-                    cmd.ExecuteNonQuery();
+
+                    // 1. Existing Parent Row SP Call
+                    using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                        cmd.Parameters.AddWithValue("@Action", action);
+                        cmd.Parameters.AddWithValue("@ActionBy", user);
+                        cmd.Parameters.AddWithValue("@ActionRemarks", "Actioned via Day View Modal");
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // 2. NEW: Cascade the decision down to any pending child receipts!
+                    string cascadeSql = @"
+                        UPDATE dbo.SalesDailyExpense 
+                        SET ClaimStatus = @ActionStatus, 
+                            ClaimProcessedBy = @ActionBy, 
+                            ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                            ModifiedBy = @ActionBy,
+                            ModifiedOn = SYSUTCDATETIME(),
+                            Remarks = ISNULL(Remarks, 'Actioned via Day View Modal')
+                        WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
+                          AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                          AND IsDeleted = 0;";
+
+                    using (var cascadeCmd = new SqlCommand(cascadeSql, con))
+                    {
+                        cascadeCmd.Parameters.AddWithValue("@ActionStatus", action == "APPROVE" ? "Approved" : "Rejected");
+                        cascadeCmd.Parameters.AddWithValue("@ActionBy", user);
+                        cascadeCmd.Parameters.AddWithValue("@DetailId", detailId);
+                        cascadeCmd.ExecuteNonQuery();
+                    }
                 }
                 return new { success = true };
             }

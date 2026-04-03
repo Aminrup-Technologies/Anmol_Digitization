@@ -146,8 +146,9 @@
                                         <asp:BoundField DataField="SKUName" HeaderText="SKU" ItemStyle-Font-Bold="true" />
 
                                         <asp:BoundField DataField="StandardWeight" HeaderText="Std(g)" DataFormatString="{0:0.00}" />
+                                        <asp:BoundField DataField="TareWeight" HeaderText="Tare Wgt (g)" DataFormatString="{0:0.00}" />
                                         <asp:BoundField DataField="AvgWeight" HeaderText="Avg(g)" DataFormatString="{0:0.00}" ItemStyle-Font-Bold="true" />
-
+                                        
                                         <asp:TemplateField HeaderText="Give-Away %">
                                             <ItemTemplate>
                                                 <span class='<%# Convert.ToDecimal(Eval("GiveAwayPercent")) > 0 ? "text-danger font-weight-bold" : "text-success font-weight-bold" %>'>
@@ -188,23 +189,31 @@
                 <div class="modal-body">
                     <div class="well well-sm" style="background-color: #f8f9fa; border: 1px solid #E6E9ED; border-radius: 4px; padding: 15px;">
                         <div class="row" style="margin-bottom: 10px;">
-                            <div class="col-md-4 col-sm-6">
-                                <span class="text-muted">Date:</span><br />
-                                <asp:Label ID="lblModalDate" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
+                            <div class="col-md-3 col-sm-6">
+                                <span class="text-muted">Date & Shift:</span><br />
+                                <asp:Label ID="lblModalDateShift" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
                             </div>
-                            <div class="col-md-4 col-sm-6">
-                                <span class="text-muted">Shift:</span><br />
-                                <asp:Label ID="lblModalShift" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
-                            </div>
-                            <div class="col-md-4 col-sm-12">
+                            <div class="col-md-5 col-sm-6">
                                 <span class="text-muted">Plant & Line:</span><br />
                                 <asp:Label ID="lblModalPlantLine" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
                             </div>
+                            <div class="col-md-4 col-sm-12">
+                                <span class="text-muted"><i class="fa fa-user"></i> Submitter:</span><br />
+                                <asp:Label ID="lblModalSubmitter" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
+                            </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-12">
-                                <span class="text-muted">SKU:</span><br />
+                            <div class="col-md-3 col-sm-6">
+                                <span class="text-muted">Variety:</span><br />
+                                <asp:Label ID="lblModalVariety" runat="server" Font-Bold="true" CssClass="text-primary" Font-Size="11pt"></asp:Label>
+                            </div>
+                            <div class="col-md-5 col-sm-6">
+                                <span class="text-muted">SKU(in gm):</span><br />
                                 <asp:Label ID="lblModalSKU" runat="server" Font-Bold="true" CssClass="text-primary" Font-Size="11pt"></asp:Label>
+                            </div>
+                            <div class="col-md-4 col-sm-12">
+                                <span class="text-muted"><i class="fa fa-user"></i> TimeStamp:</span><br />
+                                <asp:Label ID="lblModalTimestamp" runat="server" Font-Bold="true" CssClass="text-primary"></asp:Label>
                             </div>
                         </div>
                     </div>
