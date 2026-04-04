@@ -334,6 +334,7 @@
     <Content Include="RoleList.aspx" />
     <Content Include="RolePermissionAudit.aspx" />
     <Content Include="RolePermissionManager.aspx" />
+    <Content Include="RouteDistanceCalculation.aspx" />
     <Content Include="SalesMonthlyReview.aspx" />
     <Content Include="SubmitClaim.aspx" />
     <Content Include="UiControlMapper.aspx" />
@@ -1419,6 +1420,13 @@
     </Compile>
     <Compile Include="RolePermissionManager.aspx.designer.cs">
       <DependentUpon>RolePermissionManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RouteDistanceCalculation.aspx.cs">
+      <DependentUpon>RouteDistanceCalculation.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RouteDistanceCalculation.aspx.designer.cs">
+      <DependentUpon>RouteDistanceCalculation.aspx</DependentUpon>
     </Compile>
     <Compile Include="SalesMonthlyReview.aspx.cs">
       <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
