@@ -7,53 +7,36 @@
             margin: 0;
         }
 
-            .pagination-ys table td {
-                padding: 0;
-                border: none;
-            }
+        .pagination-ys table td {
+            padding: 0;
+            border: none;
+        }
 
-                .pagination-ys table td a, .pagination-ys table td span {
-                    position: relative;
-                    float: left;
-                    padding: 6px 12px;
-                    margin-left: -1px;
-                    line-height: 1.42857143;
-                    text-decoration: none;
-                    border: 1px solid #ddd;
-                    background-color: #fff;
-                    color: #73879C;
-                }
+        .pagination-ys table td a, .pagination-ys table td span {
+            position: relative;
+            float: left;
+            padding: 6px 12px;
+            margin-left: -1px;
+            line-height: 1.42857143;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            color: #73879C;
+        }
 
-                .pagination-ys table td span {
-                    background-color: #2A3F54;
-                    color: white;
-                    border-color: #2A3F54;
-                    cursor: default;
-                }
+        .pagination-ys table td span {
+            background-color: #2A3F54;
+            color: white;
+            border-color: #2A3F54;
+            cursor: default;
+        }
 
-                .pagination-ys table td a:hover {
-                    background-color: #eeeeee;
-                }
+        .pagination-ys table td a:hover {
+            background-color: #eeeeee;
+        }
 
         .action-btn {
             margin: 2px;
-        }
-
-        /* Custom Badges Ported from Reference */
-        .badge-verified {
-            background-color: #26b99a;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 11px;
-        }
-
-        .badge-rejected {
-            background-color: #d9534f;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 11px;
         }
     </style>
 
@@ -72,7 +55,7 @@
         <div class="">
             <div class="page-title">
                 <div class="title_left">
-                    <h3><i class="fa fa-users"></i>User Management <small>Admin Control Panel</small></h3>
+                    <h3><i class="fa fa-users"></i> User Management <small>Admin Control Panel</small></h3>
                 </div>
             </div>
 
@@ -91,14 +74,14 @@
 
                         <div class="x_content">
                             <div class="row mb-3">
-                                <div class="col-md-4 col-sm-4 form-group has-feedback">
+                                <div class="col-md-3 col-sm-3 form-group has-feedback">
                                     <label>Search Name or Code:</label>
                                     <asp:TextBox ID="txtSearch" runat="server" CssClass="form-control has-feedback-left" placeholder="e.g. Arjun or S126"></asp:TextBox>
                                     <span class="fa fa-user form-control-feedback left" aria-hidden="true" style="margin-top: 24px;"></span>
                                 </div>
 
-                                <div class="col-md-3 col-sm-3 form-group">
-                                    <label>Filter by Status:</label>
+                                <div class="col-md-2 col-sm-2 form-group">
+                                    <label>HR Status:</label>
                                     <asp:DropDownList ID="ddlStatusFilter" runat="server" CssClass="form-control">
                                         <asp:ListItem Text="All Statuses" Value="All"></asp:ListItem>
                                         <asp:ListItem Text="Active" Value="Active"></asp:ListItem>
@@ -106,7 +89,18 @@
                                     </asp:DropDownList>
                                 </div>
 
-                                <div class="col-md-5 col-sm-5 form-group" style="padding-top: 24px;">
+                                <div class="col-md-3 col-sm-3 form-group">
+                                    <label>System Activity:</label>
+                                    <asp:DropDownList ID="ddlActivityFilter" runat="server" CssClass="form-control">
+                                        <asp:ListItem Text="All Activity" Value="All"></asp:ListItem>
+                                        <asp:ListItem Text="Online Now" Value="OnlineNow"></asp:ListItem>
+                                        <asp:ListItem Text="Active (Last 30 Days)" Value="Active30"></asp:ListItem>
+                                        <asp:ListItem Text="Inactive (> 30 Days)" Value="Inactive30"></asp:ListItem>
+                                        <asp:ListItem Text="Never Logged In" Value="Never"></asp:ListItem>
+                                    </asp:DropDownList>
+                                </div>
+
+                                <div class="col-md-4 col-sm-4 form-group" style="padding-top: 24px;">
                                     <asp:LinkButton ID="btnSearch" runat="server" CssClass="btn btn-primary" OnClick="btnSearch_Click">
                                         <i class="fa fa-search"></i> Search
                                     </asp:LinkButton>
@@ -114,7 +108,7 @@
                                         <i class="fa fa-refresh"></i> Clear
                                     </asp:LinkButton>
 
-                                    <a href="New_User.aspx" class="btn btn-success pull-right"><i class="fa fa-plus"></i>Add New User</a>
+                                    <a href="New_User.aspx" class="btn btn-success pull-right"><i class="fa fa-plus"></i> Add User</a>
                                 </div>
                             </div>
 
@@ -133,16 +127,11 @@
                                         <asp:BoundField DataField="EmployeeCode" HeaderText="Emp Code" />
                                         <asp:BoundField DataField="EmployeeName" HeaderText="Employee Name" ControlStyle-Font-Bold="true"/>
 
-                                        <%-- New Grade Column --%>
                                         <asp:BoundField DataField="GradeName" HeaderText="Grade" />
-
                                         <asp:BoundField DataField="DesignationName" HeaderText="Designation" />
                                         <asp:BoundField DataField="DepartmentName" HeaderText="Department" />
-
-                                        <%-- New Region Column --%>
                                         <asp:BoundField DataField="RegionName" HeaderText="Region" />
 
-                                        <%-- New Stacked Manager Column --%>
                                         <asp:TemplateField HeaderText="Reporting Manager">
                                             <ItemTemplate>
                                                 <strong><%# Eval("ReportingManager") != DBNull.Value && !string.IsNullOrEmpty(Eval("ReportingManager").ToString()) ? Eval("ReportingManager") : "N/A" %></strong><br />
@@ -150,11 +139,23 @@
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Status">
+                                        <%-- ENHANCED STATUS COLUMN --%>
+                                        <asp:TemplateField HeaderText="Status & Activity">
                                             <ItemTemplate>
-                                                <span class="<%# Eval("EmployeeStatus").ToString() == "Active" ? "badge-verified" : "badge-rejected" %>">
+                                                <span class='label <%# Eval("EmployeeStatus").ToString().Equals("Active", StringComparison.OrdinalIgnoreCase) ? "label-success" : "label-danger" %>' style="padding: 4px 8px; font-size: 11px;">
                                                     <%# Eval("EmployeeStatus") %>
                                                 </span>
+                                                
+                                                <div style='margin-top: 6px; font-size: 11px;'>
+                                                    <span style='color: <%# (Eval("IsOnline") != DBNull.Value && Convert.ToBoolean(Eval("IsOnline"))) ? "#1ABB9C" : "#73879C" %>; font-weight: bold;'>
+                                                        <i class='fa <%# (Eval("IsOnline") != DBNull.Value && Convert.ToBoolean(Eval("IsOnline"))) ? "fa-circle" : "fa-circle-o" %>'></i> 
+                                                        <%# (Eval("IsOnline") != DBNull.Value && Convert.ToBoolean(Eval("IsOnline"))) ? "Online" : "Offline" %>
+                                                    </span>
+                                                </div>
+
+                                                <div style="color: #73879C; margin-top: 2px; font-size: 11px;">
+                                                    <i class="fa fa-clock-o"></i> <%# Eval("LastLogin") != DBNull.Value ? Convert.ToDateTime(Eval("LastLogin")).ToString("dd-MMM-yy HH:mm") : "Never Logged In" %>
+                                                </div>
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
@@ -175,7 +176,8 @@
 
                                                 <asp:LinkButton ID="btnResetPass" runat="server" CssClass="btn btn-warning btn-xs action-btn"
                                                     CommandName="ResetPassword" CommandArgument='<%# Eval("EmployeeCode") %>'
-                                                    OnClientClick="return confirm('Are you sure you want to trigger a password reset for this user?');" ToolTip="Reset Password">
+                                                    OnClientClick="return confirm('Are you sure you want to trigger a password reset for this user?');"
+                                                    ToolTip="Reset Password">
                                                     <i class="fa fa-key"></i>
                                                 </asp:LinkButton>
                                             </ItemTemplate>

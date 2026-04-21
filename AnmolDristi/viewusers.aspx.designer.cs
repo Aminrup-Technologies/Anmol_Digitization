@@ -31,6 +31,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.DropDownList ddlStatusFilter;
         
         /// <summary>
+        /// ddlActivityFilter control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList ddlActivityFilter;
+        
+        /// <summary>
         /// btnSearch control.
         /// </summary>
         /// <remarks>

@@ -128,7 +128,7 @@ namespace AnmolDristi
 
                                 formName = row["FormName"].ToString();
                                 documentNumber = row["DocumentNumber"].ToString();
-                                documentName  = row["DocumentName"].ToString();
+                                documentName = row["DocumentName"].ToString();
                                 issueDate = Convert.ToDateTime(row["IssueDate"]);
                                 issueNo = row["IssueNo"].ToString();
                                 revisionDate = Convert.ToDateTime(row["RevisionDate"]);
@@ -397,7 +397,7 @@ namespace AnmolDristi
 
         }
 
-        protected void BtnSubmit_Click(object sender, EventArgs e)
+        protected void BtnSubmit_Click_OLD(object sender, EventArgs e)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
@@ -465,6 +465,67 @@ namespace AnmolDristi
             }
         }
 
+        protected void BtnSubmit_Click(object sender, EventArgs e)
+        {
+            string app1 = TB_App1.Text.Trim();
+            string app2 = TB_App2.Text.Trim();
+            string app3 = TB_App3.Text.Trim();
+
+            // --- 1. THE CHECKPOINT: Validate all entered employees before doing anything ---
+            string validationError;
+            if (!ValidateEmployeeIsActive(app1, out validationError) ||
+                !ValidateEmployeeIsActive(app2, out validationError) ||
+                !ValidateEmployeeIsActive(app3, out validationError))
+            {
+                // Abort the save and show the error to the Admin
+                string errorScript = $"<script type='text/javascript'>new PNotify({{ title: 'Validation Failed', text: '{validationError.Replace("'", "\\'")}', type: 'error', styling: 'bootstrap3' }});</script>";
+                ClientScript.RegisterStartupScript(this.GetType(), "ShowValidationError", errorScript, false);
+                return;
+            }
+
+            // --- 2. PROCEED WITH SAVE IF VALID ---
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            int formId = Convert.ToInt32(DDL_FormName.SelectedValue);
+            int plantId = Convert.ToInt32(DDL_Plant.SelectedValue);
+
+            int lineId = 0;
+            if (!string.IsNullOrEmpty(DDL_Line.SelectedValue)) int.TryParse(DDL_Line.SelectedValue, out lineId);
+
+            string departmentValue = DDL_Department.SelectedValue;
+            string subDepartmentValue = DDL_SubDepartment.SelectedValue;
+            string userId = Session["USERID"] != null ? Session["USERID"].ToString() : "System";
+
+            try
+            {
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand command = new SqlCommand("sp_BulkUpsert_FormApproval_WithHistory", connection))
+                    {
+                        command.CommandType = CommandType.StoredProcedure;
+                        command.Parameters.AddWithValue("@plant_id", plantId);
+                        command.Parameters.AddWithValue("@line_id", lineId);
+                        command.Parameters.AddWithValue("@FormID", formId);
+                        command.Parameters.AddWithValue("@Department_ID", departmentValue == "0" ? (object)DBNull.Value : departmentValue);
+                        command.Parameters.AddWithValue("@SubDepartment_ID", subDepartmentValue == "0" ? (object)DBNull.Value : subDepartmentValue);
+                        command.Parameters.AddWithValue("@Approver1EmployeeCode", app1);
+                        command.Parameters.AddWithValue("@Approver2EmployeeCode", string.IsNullOrWhiteSpace(app2) ? (object)DBNull.Value : app2);
+                        command.Parameters.AddWithValue("@DottedLineApproverEmployeeCode", string.IsNullOrWhiteSpace(app3) ? (object)DBNull.Value : app3);
+                        command.Parameters.AddWithValue("@UserId", userId);
+
+                        connection.Open();
+                        command.ExecuteNonQuery();
+                    }
+                }
+
+                MakeInputsReadOnly();
+                BindGridViewByFilters();
+            }
+            catch (Exception ex)
+            {
+                string errorScript = $"<script type='text/javascript'>new PNotify({{ title: 'Database Error', text: '{ex.Message.Replace("'", "\\'")}', type: 'error', styling: 'bootstrap3' }});</script>";
+                ClientScript.RegisterStartupScript(this.GetType(), "ShowErrorNotification", errorScript, false);
+            }
+        }
         private void MakeInputsReadOnly()
         {
             DDL_FormName.Enabled = false;
@@ -541,26 +602,6 @@ namespace AnmolDristi
                 }
             }
             return employeeName;
-        }
-
-
-        private void BindGridView()
-        {
-            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-            // Fetch data from the database and bind it to the GridView
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                using (SqlCommand cmd = new SqlCommand("SELECT * FROM MST_FormsApprovalMatrix", conn))
-                {
-                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
-                    {
-                        DataTable dt = new DataTable();
-                        sda.Fill(dt);
-                        GV_FormsApprovalMatrix.DataSource = dt;
-                        GV_FormsApprovalMatrix.DataBind();
-                    }
-                }
-            }
         }
 
         private void BindGridViewbyForm(string FormID)
@@ -649,30 +690,48 @@ namespace AnmolDristi
             string approver2 = ((TextBox)GV_FormsApprovalMatrix.Rows[e.RowIndex].FindControl("Txt_Approver2")).Text;
             string dottedLineApprover = ((TextBox)GV_FormsApprovalMatrix.Rows[e.RowIndex].FindControl("Txt_DottedLineApprover")).Text;
 
+            // Fetch the user making the update (to store in History table)
+            string updatedBy = Session["USERID"] != null ? Session["USERID"].ToString() : "System";
+
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-            // Update the record in the database
-            using (SqlConnection conn = new SqlConnection(connectionString))
+
+            try
             {
-                using (SqlCommand cmd = new SqlCommand("UPDATE MST_FormsApprovalMatrix SET plant_id = @plantId, line_id = @lineId, Department_ID = @departmentId, SubDepartment_ID = @subDepartmentId, Approver1EmployeeCode = @approver1, Approver2EmployeeCode = @approver2, DottedLineApproverEmployeeCode = @dottedLineApprover WHERE Id = @id", conn))
+                using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    cmd.Parameters.AddWithValue("@plantId", plantId);
-                    cmd.Parameters.AddWithValue("@lineId", lineId);
-                    cmd.Parameters.AddWithValue("@departmentId", departmentId);
-                    cmd.Parameters.AddWithValue("@subDepartmentId", subDepartmentId);
-                    cmd.Parameters.AddWithValue("@approver1", approver1);
-                    cmd.Parameters.AddWithValue("@approver2", approver2);
-                    cmd.Parameters.AddWithValue("@dottedLineApprover", dottedLineApprover);
+                    using (SqlCommand cmd = new SqlCommand("sp_Update_FormApproval_WithHistory", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
 
-                    conn.Open();
-                    cmd.ExecuteNonQuery();
-                    conn.Close();
+                        // Add parameters, safely passing DBNull for empty textboxes
+                        cmd.Parameters.AddWithValue("@Id", id);
+                        cmd.Parameters.AddWithValue("@plant_id", string.IsNullOrWhiteSpace(plantId) ? (object)DBNull.Value : plantId);
+                        cmd.Parameters.AddWithValue("@line_id", string.IsNullOrWhiteSpace(lineId) ? (object)DBNull.Value : lineId);
+                        cmd.Parameters.AddWithValue("@Department_ID", string.IsNullOrWhiteSpace(departmentId) ? (object)DBNull.Value : departmentId);
+                        cmd.Parameters.AddWithValue("@SubDepartment_ID", string.IsNullOrWhiteSpace(subDepartmentId) ? (object)DBNull.Value : subDepartmentId);
+                        cmd.Parameters.AddWithValue("@Approver1EmployeeCode", string.IsNullOrWhiteSpace(approver1) ? (object)DBNull.Value : approver1);
+                        cmd.Parameters.AddWithValue("@Approver2EmployeeCode", string.IsNullOrWhiteSpace(approver2) ? (object)DBNull.Value : approver2);
+                        cmd.Parameters.AddWithValue("@DottedLineApproverEmployeeCode", string.IsNullOrWhiteSpace(dottedLineApprover) ? (object)DBNull.Value : dottedLineApprover);
+                        cmd.Parameters.AddWithValue("@UpdatedBy", updatedBy);
+
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
                 }
-            }
 
-            // Reset the GridView edit index and rebind data
-            GV_FormsApprovalMatrix.EditIndex = -1;
-            BindGridViewByFilters();
+                // Reset the GridView edit index and rebind data
+                GV_FormsApprovalMatrix.EditIndex = -1;
+                BindGridViewByFilters();
+
+                // Optional: Show success alert
+                ClientScript.RegisterStartupScript(this.GetType(), "UpdateSuccess", "<script>new PNotify({ title: 'Success', text: 'Matrix Updated and History Captured.', type: 'success', styling: 'bootstrap3' });</script>", false);
+            }
+            catch (Exception ex)
+            {
+                string errorMessage = ex.Message.Replace("'", "\\'");
+                string errorScript = $"<script>new PNotify({{ title: 'Error', text: '{errorMessage}', type: 'error', styling: 'bootstrap3' }});</script>";
+                ClientScript.RegisterStartupScript(this.GetType(), "UpdateError", errorScript, false);
+            }
         }
 
         protected void GV_FormsApprovalMatrix_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
@@ -687,11 +746,72 @@ namespace AnmolDristi
             // Additional commands can be handled here, if needed
         }
 
+        // --- NEW VALIDATION HELPER ---
+        private bool ValidateEmployeeIsActive(string employeeCode, out string errorMessage)
+        {
+            errorMessage = "";
+            if (string.IsNullOrWhiteSpace(employeeCode)) return true; // Empty is valid for optional approvers
+
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                string query = "SELECT EmployeeName, EmployeeStatus FROM MST_UserMaster WITH(NOLOCK) WHERE EmployeeCode = @EmployeeCode";
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@EmployeeCode", employeeCode);
+                    conn.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            string status = reader["EmployeeStatus"].ToString();
+                            string name = reader["EmployeeName"].ToString();
+
+                            if (status.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                errorMessage = $"Employee {employeeCode} ({name}) is currently {status}. You cannot assign inactive employees.";
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            errorMessage = $"Employee Code {employeeCode} does not exist in the system.";
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void BindGridView()
+        {
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                string query = GetBaseGridQuery();
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        sda.Fill(dt);
+                        GV_FormsApprovalMatrix.DataSource = dt;
+                        GV_FormsApprovalMatrix.DataBind();
+                    }
+                }
+            }
+        }
+
         private void BindGridViewByFilters()
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
-            // Collect selected values; exclude 0, null, or empty values
             string formId = DDL_FormName.SelectedValue;
             string plantId = DDL_Plant.SelectedValue;
             string lineId = DDL_Line.SelectedValue;
@@ -700,34 +820,22 @@ namespace AnmolDristi
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
-                // Base SQL query
-                string query = "SELECT * FROM MST_FormsApprovalMatrix WHERE Active = 1";
+                string query = GetBaseGridQuery();
 
-                // Add conditions dynamically, excluding zero, null, or empty values
-                if (!string.IsNullOrEmpty(formId) && formId != "0")
-                    query += " AND FormID = @FormID";
-                if (!string.IsNullOrEmpty(plantId) && plantId != "0")
-                    query += " AND plant_id = @plant_id";
-                if (!string.IsNullOrEmpty(lineId) && lineId != "0")
-                    query += " AND line_id = @line_id";
-                if (!string.IsNullOrEmpty(departmentId) && departmentId != "0")
-                    query += " AND Department_ID = @Department_ID";
-                if (!string.IsNullOrEmpty(subDepartmentId) && subDepartmentId != "0")
-                    query += " AND SubDepartment_ID = @SubDepartment_ID";
+                // Add conditions dynamically
+                if (!string.IsNullOrEmpty(formId) && formId != "0") query += " AND fam.FormID = @FormID";
+                if (!string.IsNullOrEmpty(plantId) && plantId != "0") query += " AND fam.plant_id = @plant_id";
+                if (!string.IsNullOrEmpty(lineId) && lineId != "0") query += " AND fam.line_id = @line_id";
+                if (!string.IsNullOrEmpty(departmentId) && departmentId != "0") query += " AND fam.Department_ID = @Department_ID";
+                if (!string.IsNullOrEmpty(subDepartmentId) && subDepartmentId != "0") query += " AND fam.SubDepartment_ID = @SubDepartment_ID";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
-                    // Add parameters based on valid dropdown selections
-                    if (!string.IsNullOrEmpty(formId) && formId != "0")
-                        cmd.Parameters.AddWithValue("@FormID", formId);
-                    if (!string.IsNullOrEmpty(plantId) && plantId != "0")
-                        cmd.Parameters.AddWithValue("@plant_id", plantId);
-                    if (!string.IsNullOrEmpty(lineId) && lineId != "0")
-                        cmd.Parameters.AddWithValue("@line_id", lineId);
-                    if (!string.IsNullOrEmpty(departmentId) && departmentId != "0")
-                        cmd.Parameters.AddWithValue("@Department_ID", departmentId);
-                    if (!string.IsNullOrEmpty(subDepartmentId) && subDepartmentId != "0")
-                        cmd.Parameters.AddWithValue("@SubDepartment_ID", subDepartmentId);
+                    if (!string.IsNullOrEmpty(formId) && formId != "0") cmd.Parameters.AddWithValue("@FormID", formId);
+                    if (!string.IsNullOrEmpty(plantId) && plantId != "0") cmd.Parameters.AddWithValue("@plant_id", plantId);
+                    if (!string.IsNullOrEmpty(lineId) && lineId != "0") cmd.Parameters.AddWithValue("@line_id", lineId);
+                    if (!string.IsNullOrEmpty(departmentId) && departmentId != "0") cmd.Parameters.AddWithValue("@Department_ID", departmentId);
+                    if (!string.IsNullOrEmpty(subDepartmentId) && subDepartmentId != "0") cmd.Parameters.AddWithValue("@SubDepartment_ID", subDepartmentId);
 
                     using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
                     {
@@ -740,6 +848,63 @@ namespace AnmolDristi
             }
         }
 
+        // Helper method to keep your SQL clean and reusable!
+        private string GetBaseGridQuery()
+        {
+            return @"
+                SELECT 
+                    fam.*,
+                    
+                    -- Fetching the descriptive names for the UI
+                    fm.DocumentName AS FormDesc,
+                    p.plant_name AS PlantName,
+                    l.line_name AS LineName,
+                    d.Department_Description AS DeptName,
+                    sd.SubDepartment_Description AS SubDeptName,
 
+                    -- Approver 1 Data
+                    u1.EmployeeName AS App1Name, u1.EmployeeStatus AS App1Status,
+                    s1.LoginTime AS App1Login, s1.IsActive AS App1Online,
+        
+                    -- Approver 2 Data
+                    u2.EmployeeName AS App2Name, u2.EmployeeStatus AS App2Status,
+                    s2.LoginTime AS App2Login, s2.IsActive AS App2Online,
+        
+                    -- Approver 3 Data
+                    u3.EmployeeName AS App3Name, u3.EmployeeStatus AS App3Status,
+                    s3.LoginTime AS App3Login, s3.IsActive AS App3Online
+
+                FROM MST_FormsApprovalMatrix fam WITH(NOLOCK)
+                
+                -- Master Data Joins (Solves the UI crashing bug)
+                LEFT JOIN MST_FormsMaster fm WITH(NOLOCK) ON fam.FormID = fm.FormID
+                LEFT JOIN MST_PlantDetails p WITH(NOLOCK) ON fam.plant_id = p.plant_id
+                LEFT JOIN MST_Plant_Lines l WITH(NOLOCK) ON fam.line_id = l.line_id
+                LEFT JOIN MST_Department d WITH(NOLOCK) ON fam.Department_ID = d.Department_ID
+                LEFT JOIN MST_SubDepartment sd WITH(NOLOCK) ON fam.SubDepartment_ID = sd.SubDepartment_ID
+
+                -- Approver 1 Joins
+                LEFT JOIN MST_UserMaster u1 WITH(NOLOCK) ON fam.Approver1EmployeeCode = u1.EmployeeCode
+                OUTER APPLY (
+                    SELECT TOP 1 LoginTime, IsActive FROM ActiveUserSession WITH(NOLOCK) 
+                    WHERE EmployeeCode = u1.EmployeeCode ORDER BY LoginTime DESC
+                ) s1
+
+                -- Approver 2 Joins
+                LEFT JOIN MST_UserMaster u2 WITH(NOLOCK) ON fam.Approver2EmployeeCode = u2.EmployeeCode
+                OUTER APPLY (
+                    SELECT TOP 1 LoginTime, IsActive FROM ActiveUserSession WITH(NOLOCK) 
+                    WHERE EmployeeCode = u2.EmployeeCode ORDER BY LoginTime DESC
+                ) s2
+
+                -- Dotted Line Approver Joins
+                LEFT JOIN MST_UserMaster u3 WITH(NOLOCK) ON fam.DottedLineApproverEmployeeCode = u3.EmployeeCode
+                OUTER APPLY (
+                    SELECT TOP 1 LoginTime, IsActive FROM ActiveUserSession WITH(NOLOCK) 
+                    WHERE EmployeeCode = u3.EmployeeCode ORDER BY LoginTime DESC
+                ) s3
+
+                WHERE fam.Active = 1";
+        }
     }
 }
