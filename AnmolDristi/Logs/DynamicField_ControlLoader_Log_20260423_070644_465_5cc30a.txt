@@ -1,0 +1,8 @@
+===================================================
+Log Created At: 2026-04-23 07:06:44.465
+===================================================
+Standard field configuration used.
+User: Gourisankar Ghosh (Code: S509)
+FormID: 6, SubForm: DoughData
+Loaded controls for: PlantID=102, LineID=201, CategoryID=1001, BrandID=3001
+

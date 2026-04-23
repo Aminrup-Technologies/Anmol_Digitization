@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace AnmolDristi
 {
-    public partial class qaqc_qahome_rpt : System.Web.UI.Page
+    public partial class qaqc_qahome_rpt : BasePage
     {
         protected void Page_Load(object sender, EventArgs e)
         {

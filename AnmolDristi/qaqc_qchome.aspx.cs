@@ -4,7 +4,7 @@ using System.Data.SqlClient;
 
 namespace AnmolDristi
 {
-    public partial class qaqc_qchome : System.Web.UI.Page
+    public partial class qaqc_qchome : BasePage
     {
         protected void Page_Load(object sender, EventArgs e)
         {

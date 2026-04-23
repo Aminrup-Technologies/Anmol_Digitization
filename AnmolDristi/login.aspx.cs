@@ -122,7 +122,6 @@ namespace AnmolDristi
                 Session["DESG"] = row["Designation_ID"] == DBNull.Value ? "" : row["Designation_ID"].ToString();
                 Session["GRADE"] = row["GradeId"] == DBNull.Value ? "" : row["GradeId"].ToString();
 
-                Session["RONE_NAME"] = row["ReportingManager"] == DBNull.Value ? "" : row["ReportingManager"].ToString();
                 Session["RONE_CODE"] = row["ReportingManagerCode"] == DBNull.Value ? "" : row["ReportingManagerCode"].ToString();
                 Session["RTWO_NAME"] = row["ReportingManagersManagerName"] == DBNull.Value ? "" : row["ReportingManagersManagerName"].ToString();
                 Session["RTWO_CODE"] = row["ReportingManagersManagerCode"] == DBNull.Value ? "" : row["ReportingManagersManagerCode"].ToString();
@@ -131,6 +130,43 @@ namespace AnmolDristi
 
                 //Session["AUDITOR_NAME"] = row["AuditorName"] == DBNull.Value ? "" : row["AuditorName"].ToString();
                 //Session["AUDITOR_CODE"] = row["AuditorCode"] == DBNull.Value ? "" : row["AuditorCode"].ToString();
+
+                // ---------------------------------------------------------
+                // --- NEW CODE: Fetch and Store ERP Plant ID Safely ---
+                // ---------------------------------------------------------
+                try
+                {
+                    int erpPlantId = 0;
+                    // Uses the SAP_Code bridge column we established in the database
+                    string erpQuery = @"
+                        SELECT PD.plant_id 
+                        FROM MST_UserMaster U
+                        INNER JOIN MST_Plant P ON U.PlantId = P.PlantID_ID
+                        INNER JOIN MST_PlantDetails PD ON P.SAP_Code = PD.sap_code
+                        WHERE U.EmployeeCode = @EmployeeCode";
+
+                    using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                    using (SqlCommand cmd = new SqlCommand(erpQuery, con))
+                    {
+                        cmd.Parameters.AddWithValue("@EmployeeCode", workman);
+                        con.Open();
+                        object erpResult = cmd.ExecuteScalar();
+
+                        if (erpResult != null && erpResult != DBNull.Value)
+                        {
+                            erpPlantId = Convert.ToInt32(erpResult);
+                        }
+                    }
+
+                    Session["ERPPlantId"] = erpPlantId;
+                    LogDebug("Successfully fetched ERPPlantId=" + erpPlantId + " for user=" + workman);
+                }
+                catch (Exception exErp)
+                {
+                    // Failsafe: Set to 0 and log it, but do NOT block the login process
+                    Session["ERPPlantId"] = 0;
+                    LogDebug("Non-fatal error: Failed to fetch ERPPlantId for user " + workman + " : " + exErp.ToString());
+                }
 
                 // --- Begin: Hash-on-login / migration logic ---
                 bool migrated = false;

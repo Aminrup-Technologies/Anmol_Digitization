@@ -1,0 +1,35 @@
+===================================================
+Log Created At: 2026-04-23 07:06:46.778
+===================================================
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:46 | Field: BalanceCondition (Balance Condition) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: BalanceCondition (Balance Condition) ---
+✔ Container found: BalanceCondition, Visible: True
+✔ Container found: BalanceCondition, Visible: True
+✔ Input control found: RBL_BalanceCondition, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for BalanceCondition, Visible: True
+✖ DropDownList not found for BalanceCondition
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:46 | Field: RawBiscuitWgt (Raw Biscuit Weight :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: RawBiscuitWgt (Raw Biscuit Weight :) ---
+✔ Container found: RawBiscuitWgt, Visible: True
+✔ Container found: RawBiscuitWgt, Visible: True
+✔ Input control found: TXB_RawBiscuitWgt, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00.00, Max=400.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for RawBiscuitWgt - Min: 00.00, Max: 400.00, Enabled: True
+✖ RadioButtonList not found for RawBiscuitWgt
+✖ DropDownList not found for RawBiscuitWgt
+---------------------------------------------------------------------------------------------
+
+
