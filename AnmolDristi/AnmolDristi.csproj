@@ -207,6 +207,7 @@
     <Content Include="aata_maida_frmctrl.aspx" />
     <Content Include="Aata_Maida_Submitter.aspx" />
     <Content Include="AccessDenied.aspx" />
+    <Content Include="AddMachine.aspx" />
     <Content Include="add_branch.aspx" />
     <Content Include="add_brandtypes.aspx" />
     <Content Include="add_company.aspx" />
@@ -239,6 +240,7 @@
     <Content Include="critical_quality_report.aspx" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
+    <Content Include="DeviceTransfer.aspx" />
     <Content Include="EditEmployee.aspx" />
     <Content Include="FinalCbbWtVM.aspx" />
     <Content Include="Final_CBB_Detailed.aspx" />
@@ -472,6 +474,13 @@
     </Compile>
     <Compile Include="AccessDenied.aspx.designer.cs">
       <DependentUpon>AccessDenied.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AddMachine.aspx.cs">
+      <DependentUpon>AddMachine.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="AddMachine.aspx.designer.cs">
+      <DependentUpon>AddMachine.aspx</DependentUpon>
     </Compile>
     <Compile Include="add_branch.aspx.cs">
       <DependentUpon>add_branch.aspx</DependentUpon>
@@ -712,6 +721,13 @@
     </Compile>
     <Compile Include="DebugPermissions.aspx.designer.cs">
       <DependentUpon>DebugPermissions.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DeviceTransfer.aspx.cs">
+      <DependentUpon>DeviceTransfer.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DeviceTransfer.aspx.designer.cs">
+      <DependentUpon>DeviceTransfer.aspx</DependentUpon>
     </Compile>
     <Compile Include="DownloadExpense.ashx.cs">
       <DependentUpon>DownloadExpense.ashx</DependentUpon>
@@ -1519,6 +1535,7 @@
     <Compile Include="WebsiteCredentialsView.aspx.designer.cs">
       <DependentUpon>WebsiteCredentialsView.aspx</DependentUpon>
     </Compile>
+    <Compile Include="ZKTecoManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
@@ -1527,10 +1544,38 @@
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <COMReference Include="zkemkeeper">
+      <Guid>{FE9DED34-E159-408E-8490-B720A5E632C7}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets')" />

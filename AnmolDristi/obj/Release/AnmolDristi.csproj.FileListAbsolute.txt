@@ -74,3 +74,6 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\CsvHelper.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.AsyncInterfaces.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.HashCode.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Interop.zkemkeeper.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\Interop.zkemkeeper.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\AnmolDristi.csproj.ResolveComReference.cache

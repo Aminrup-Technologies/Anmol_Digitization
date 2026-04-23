@@ -176,6 +176,8 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Memory.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Numerics.Vectors.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Runtime.CompilerServices.Unsafe.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Interop.zkemkeeper.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\Interop.zkemkeeper.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csproj.ResolveComReference.cache
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.pdb
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csprojResolveAssemblyReference.cache
