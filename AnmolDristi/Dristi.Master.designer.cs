@@ -337,6 +337,51 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl SO_TaDa_ViewApproved;
         
         /// <summary>
+        /// VMS_Module control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl VMS_Module;
+        
+        /// <summary>
+        /// VMS_OrganizationDetails control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl VMS_OrganizationDetails;
+        
+        /// <summary>
+        /// VMS_MyVisitors control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl VMS_MyVisitors;
+        
+        /// <summary>
+        /// VMS_MyVisits control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl VMS_MyVisits;
+        
+        /// <summary>
+        /// VMS_GateScanner control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl VMS_GateScanner;
+        
+        /// <summary>
         /// ProfilePic_2 control.
         /// </summary>
         /// <remarks>

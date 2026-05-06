@@ -383,6 +383,7 @@ namespace AnmolDristi
                                           : fullName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)[0];
 
                 // MINIMAL session items (keep for new code)
+                Session["EmployeeCode"] = workman;
                 Session["CurrentUserId"] = userId;
                 Session["WORKMAN"] = workman;
                 Session["USERFNAME"] = firstName;

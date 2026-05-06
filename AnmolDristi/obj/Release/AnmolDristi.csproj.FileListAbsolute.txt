@@ -77,3 +77,9 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Interop.zkemkeeper.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\Interop.zkemkeeper.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\AnmolDristi.csproj.ResolveComReference.cache
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.xml

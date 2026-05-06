@@ -55,6 +55,10 @@
     <ExcludeGeneratedDebugSymbol>true</ExcludeGeneratedDebugSymbol>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BouncyCastle.Cryptography, Version=2.0.0.0, Culture=neutral, PublicKeyToken=072edcf4a5328938, processorArchitecture=MSIL">
+      <HintPath>..\packages\BouncyCastle.Cryptography.2.6.2\lib\net461\BouncyCastle.Cryptography.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="ClosedXML, Version=0.94.2.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\ClosedXML.0.94.2\lib\net46\ClosedXML.dll</HintPath>
       <Private>True</Private>
@@ -85,6 +89,10 @@
     </Reference>
     <Reference Include="FastMember, Version=1.3.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\FastMember.1.3.0\lib\net45\FastMember.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="itextsharp, Version=5.5.13.5, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
+      <HintPath>..\packages\iTextSharp.5.5.13.5\lib\net461\itextsharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AI.Agent.Intercept, Version=2.4.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -142,6 +150,11 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="QRCoder, Version=1.8.0.0, Culture=neutral, PublicKeyToken=c4ed5b9ae8358a28, processorArchitecture=MSIL">
+      <HintPath>..\packages\QRCoder.1.8.0\lib\net40\QRCoder.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
       <Private>True</Private>
@@ -343,6 +356,13 @@
     <Content Include="UserRoleAudit.aspx" />
     <Content Include="UserRoleManager.aspx" />
     <Content Include="viewusers.aspx" />
+    <Content Include="VMS_DigitalPass.aspx" />
+    <Content Include="VMS_GateScanner.aspx" />
+    <Content Include="VMS_MyVisitors.aspx" />
+    <Content Include="VMS_MyVisits.aspx" />
+    <Content Include="VMS_OrganizationDetails.aspx" />
+    <Content Include="VMS_Registration.aspx" />
+    <Content Include="VMS_SelfLogin.aspx" />
     <Content Include="vm_ccp_checklist.aspx" />
     <Content Include="vm_leak_test.aspx" />
     <Content Include="vm_overwrap.aspx" />
@@ -1492,6 +1512,55 @@
     </Compile>
     <Compile Include="viewusers.aspx.designer.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_DigitalPass.aspx.cs">
+      <DependentUpon>VMS_DigitalPass.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_DigitalPass.aspx.designer.cs">
+      <DependentUpon>VMS_DigitalPass.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_GateScanner.aspx.cs">
+      <DependentUpon>VMS_GateScanner.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_GateScanner.aspx.designer.cs">
+      <DependentUpon>VMS_GateScanner.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_MyVisitors.aspx.cs">
+      <DependentUpon>VMS_MyVisitors.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_MyVisitors.aspx.designer.cs">
+      <DependentUpon>VMS_MyVisitors.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_MyVisits.aspx.cs">
+      <DependentUpon>VMS_MyVisits.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_MyVisits.aspx.designer.cs">
+      <DependentUpon>VMS_MyVisits.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_OrganizationDetails.aspx.cs">
+      <DependentUpon>VMS_OrganizationDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_OrganizationDetails.aspx.designer.cs">
+      <DependentUpon>VMS_OrganizationDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_Registration.aspx.cs">
+      <DependentUpon>VMS_Registration.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_Registration.aspx.designer.cs">
+      <DependentUpon>VMS_Registration.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_SelfLogin.aspx.cs">
+      <DependentUpon>VMS_SelfLogin.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_SelfLogin.aspx.designer.cs">
+      <DependentUpon>VMS_SelfLogin.aspx</DependentUpon>
     </Compile>
     <Compile Include="vm_ccp_checklist.aspx.cs">
       <DependentUpon>vm_ccp_checklist.aspx</DependentUpon>
