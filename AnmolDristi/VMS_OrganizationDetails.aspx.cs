@@ -5,7 +5,7 @@ using System.Configuration;
 using System.Web.UI.WebControls;
 using System.Drawing;
 using System.IO;
-using QRCoder; // Requires QRCoder NuGet Package
+using QRCoder;
 using System.Web.UI;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
@@ -27,7 +27,6 @@ namespace AnmolDristi
 
         private void BindOfficesGrid()
         {
-            // Join MST_Branch with VMS_OfficeSettings to show both configured and unconfigured offices
             string query = @"
                 SELECT 
                     b.Branch_ID, 
@@ -55,7 +54,6 @@ namespace AnmolDristi
         {
             if (e.CommandName == "EditOffice")
             {
-                // Existing Edit Logic...
                 int branchId = Convert.ToInt32(e.CommandArgument);
                 hfBranchID.Value = branchId.ToString();
                 pnlList.Visible = false;
@@ -63,13 +61,13 @@ namespace AnmolDristi
                 lblMsg.Text = "";
                 LoadOfficeDetails(branchId);
             }
-            else if (e.CommandName == "GenerateQR")
+            else if (e.CommandName == "GenerateQR" || e.CommandName == "GenerateGateQR")
             {
-                // Extract the three arguments we passed from the GridView
                 string[] args = e.CommandArgument.ToString().Split('|');
                 string branchId = args[0];
                 string aliasName = args[1];
                 string fullAddress = args[2];
+                string branchName = args.Length > 3 ? args[3] : "";
 
                 if (aliasName == "Not Configured")
                 {
@@ -78,13 +76,67 @@ namespace AnmolDristi
                     return;
                 }
 
-                GenerateReceptionQRPdf(branchId, aliasName, fullAddress);
+                if (e.CommandName == "GenerateQR")
+                {
+                    GenerateReceptionQRPdf(branchId, aliasName, fullAddress, branchName);
+                }
+                else if (e.CommandName == "GenerateGateQR")
+                {
+                    GenerateGateQRPdf(branchId, aliasName, fullAddress, branchName);
+                }
             }
         }
 
-        private void GenerateReceptionQRPdf(string branchId, string aliasName, string fullAddress)
+        private void AddCompanyDetailsToPDF(Document pdfDoc, string aliasName, string branchName, string fullAddress)
         {
-            // 1. Generate the QR Code Image using QRCoder
+            iTextSharp.text.Font companyFont = FontFactory.GetFont("Arial", 22, iTextSharp.text.Font.BOLD);
+            iTextSharp.text.Font subCompanyFont = FontFactory.GetFont("Arial", 16, iTextSharp.text.Font.BOLD, BaseColor.DARK_GRAY);
+            iTextSharp.text.Font branchFont = FontFactory.GetFont("Arial", 12, iTextSharp.text.Font.BOLD, BaseColor.BLACK);
+            iTextSharp.text.Font addressFont = FontFactory.GetFont("Arial", 11, iTextSharp.text.Font.NORMAL, BaseColor.DARK_GRAY);
+
+            string companyLine1 = aliasName;
+            string companyLine2 = string.Empty;
+
+            int dashIndex = aliasName.IndexOf('-');
+            if (dashIndex > 0)
+            {
+                companyLine1 = aliasName.Substring(0, dashIndex).Trim() + ",";
+                companyLine2 = aliasName.Substring(dashIndex + 1).Trim();
+            }
+
+            Paragraph comp1 = new Paragraph(companyLine1, companyFont);
+            comp1.Alignment = Element.ALIGN_CENTER;
+            comp1.SpacingBefore = 20f;
+            pdfDoc.Add(comp1);
+
+            if (!string.IsNullOrEmpty(companyLine2))
+            {
+                Paragraph comp2 = new Paragraph(companyLine2, subCompanyFont);
+                comp2.Alignment = Element.ALIGN_CENTER;
+                comp2.SpacingAfter = 5f;
+                pdfDoc.Add(comp2);
+            }
+            else
+            {
+                comp1.SpacingAfter = 5f;
+            }
+
+            if (!string.IsNullOrEmpty(branchName))
+            {
+                Paragraph branchP = new Paragraph("Branch: " + branchName, branchFont);
+                branchP.Alignment = Element.ALIGN_CENTER;
+                branchP.SpacingAfter = 5f;
+                pdfDoc.Add(branchP);
+            }
+
+            Paragraph address = new Paragraph(fullAddress, addressFont);
+            address.Alignment = Element.ALIGN_CENTER;
+            address.SpacingAfter = 25f;
+            pdfDoc.Add(address);
+        }
+
+        private void GenerateReceptionQRPdf(string branchId, string aliasName, string fullAddress, string branchName)
+        {
             string baseUrl = "https://apps.anmolindustries.com/VMS_SelfLogin.aspx";
             string kioskUrl = $"{baseUrl}?BranchId={branchId}";
 
@@ -94,114 +146,145 @@ namespace AnmolDristi
 
             Bitmap qrBitmap = qrCode.GetGraphic(20);
 
-            // 2. Initialize the PDF Document using iTextSharp (A4 Size, with margins)
-            Document pdfDoc = new Document(PageSize.A4, 50, 50, 80, 50);
+            Document pdfDoc = new Document(PageSize.A4, 30f, 30f, 40f, 30f);
             MemoryStream memStream = new MemoryStream();
             PdfWriter.GetInstance(pdfDoc, memStream);
             pdfDoc.Open();
 
-            // 3. Define Fonts
+            try
+            {
+                string logoPath = Server.MapPath("~/images/anmol_logo.png");
+                if (File.Exists(logoPath))
+                {
+                    iTextSharp.text.Image logoImg = iTextSharp.text.Image.GetInstance(logoPath);
+                    logoImg.Alignment = Element.ALIGN_CENTER;
+                    logoImg.ScaleToFit(150f, 80f);
+                    logoImg.SpacingAfter = 10f;
+                    pdfDoc.Add(logoImg);
+                }
+            }
+            catch (Exception) { }
+
             iTextSharp.text.Font titleFont = FontFactory.GetFont("Arial", 36, iTextSharp.text.Font.BOLD);
             iTextSharp.text.Font subTitleFont = FontFactory.GetFont("Arial", 16, iTextSharp.text.Font.NORMAL);
-            iTextSharp.text.Font companyFont = FontFactory.GetFont("Arial", 22, iTextSharp.text.Font.BOLD);
-            iTextSharp.text.Font addressFont = FontFactory.GetFont("Arial", 12, iTextSharp.text.Font.NORMAL, BaseColor.DARK_GRAY);
             iTextSharp.text.Font footerFont = FontFactory.GetFont("Arial", 10, iTextSharp.text.Font.ITALIC, BaseColor.GRAY);
 
-            // 4. Add "VISITORS" Title
             Paragraph title = new Paragraph("WELCOME VISITORS", titleFont);
             title.Alignment = Element.ALIGN_CENTER;
-            title.SpacingAfter = 10;
+            title.SpacingAfter = 5f;
             pdfDoc.Add(title);
 
-            // 5. Add Subtitle
             Paragraph subTitle = new Paragraph("Scan the QR & generate your pass", subTitleFont);
             subTitle.Alignment = Element.ALIGN_CENTER;
-            subTitle.SpacingAfter = 40;
+            subTitle.SpacingAfter = 20f;
             pdfDoc.Add(subTitle);
 
-            // 6. Convert Bitmap to iTextSharp Image and add to PDF
             using (MemoryStream imgStream = new MemoryStream())
             {
                 qrBitmap.Save(imgStream, System.Drawing.Imaging.ImageFormat.Png);
                 iTextSharp.text.Image pdfImg = iTextSharp.text.Image.GetInstance(imgStream.ToArray());
                 pdfImg.Alignment = Element.ALIGN_CENTER;
-                // Scale the QR code to be large and scannable from a distance
-                pdfImg.ScaleToFit(350f, 350f);
+                pdfImg.ScaleToFit(300f, 300f);
                 pdfDoc.Add(pdfImg);
             }
 
-            // Add spacing after QR Code
-            pdfDoc.Add(new Paragraph("\n\n"));
+            AddCompanyDetailsToPDF(pdfDoc, aliasName, branchName, fullAddress);
 
-            // 7. Add Company Name
-            Paragraph company = new Paragraph(aliasName, companyFont);
-            company.Alignment = Element.ALIGN_CENTER;
-            company.SpacingAfter = 5;
-            pdfDoc.Add(company);
-
-            // 8. Add Address
-            Paragraph address = new Paragraph(fullAddress, addressFont);
-            address.Alignment = Element.ALIGN_CENTER;
-            address.SpacingAfter = 50;
-            pdfDoc.Add(address);
-
-            // 9. Add Footer
             Paragraph footer = new Paragraph("Powered by Anmol-IT", footerFont);
             footer.Alignment = Element.ALIGN_CENTER;
             pdfDoc.Add(footer);
 
-            // 10. Close Document and Stream to Browser for Download
             pdfDoc.Close();
             byte[] bytes = memStream.ToArray();
             memStream.Close();
 
             Response.Clear();
             Response.ContentType = "application/pdf";
-            Response.AddHeader("content-disposition", $"attachment;filename=ReceptionQR_{aliasName.Replace(" ", "_")}.pdf");
+            Response.AddHeader("content-disposition", $"attachment;filename=ReceptionQR_{branchId}.pdf");
             Response.Buffer = true;
             Response.Cache.SetCacheability(HttpCacheability.NoCache);
             Response.BinaryWrite(bytes);
             Response.End();
         }
 
-        private void GenerateReceptionQR(string branchId, string aliasName)
+        private void GenerateGateQRPdf(string branchId, string aliasName, string fullAddress, string branchName)
         {
-            // 1. Define the base public URL of your VMS portal
-            // IMPORTANT: Change this to your actual production domain
-            string baseUrl = "https://vms.anmolindustries.com/VMS_SelfLogin.aspx";
+            string baseUrl = "https://apps.anmolindustries.com/VMS_GateScanner.aspx";
+            string gateUrl = $"{baseUrl}?BranchId={branchId}";
 
-            // 2. Append the specific Branch ID
-            string kioskUrl = $"{baseUrl}?BranchId={branchId}";
-
-            // 3. Generate the QR Code
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
-            // ECCLevel.Q allows 25% error correction, perfect for printed posters that might get smudged
-            QRCodeData qrCodeData = qrGenerator.CreateQrCode(kioskUrl, QRCodeGenerator.ECCLevel.Q);
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(gateUrl, QRCodeGenerator.ECCLevel.Q);
             QRCode qrCode = new QRCode(qrCodeData);
 
-            using (Bitmap bitMap = qrCode.GetGraphic(20))
+            Bitmap qrBitmap = qrCode.GetGraphic(20);
+
+            Document pdfDoc = new Document(PageSize.A4, 30f, 30f, 40f, 30f);
+            MemoryStream memStream = new MemoryStream();
+            PdfWriter.GetInstance(pdfDoc, memStream);
+            pdfDoc.Open();
+
+            try
             {
-                using (MemoryStream ms = new MemoryStream())
+                string logoPath = Server.MapPath("~/images/anmol_logo.png");
+                if (File.Exists(logoPath))
                 {
-                    bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                    byte[] byteImage = ms.ToArray();
-
-                    // 4. Bind to the UI
-                    imgKioskQR.ImageUrl = "data:image/png;base64," + Convert.ToBase64String(byteImage);
-                    lblModalPlantName.Text = aliasName;
-                    lblModalBranchId.Text = branchId;
-
-                    // 5. Trigger the Bootstrap Modal to open via JavaScript
-                    ScriptManager.RegisterStartupScript(this, this.GetType(), "Pop", "$('#qrModal').modal('show');", true);
+                    iTextSharp.text.Image logoImg = iTextSharp.text.Image.GetInstance(logoPath);
+                    logoImg.Alignment = Element.ALIGN_CENTER;
+                    logoImg.ScaleToFit(150f, 80f);
+                    logoImg.SpacingAfter = 10f;
+                    pdfDoc.Add(logoImg);
                 }
             }
+            catch (Exception) { }
+
+            iTextSharp.text.Font titleFont = FontFactory.GetFont("Arial", 32, iTextSharp.text.Font.BOLD, BaseColor.RED);
+            iTextSharp.text.Font subTitleFont = FontFactory.GetFont("Arial", 16, iTextSharp.text.Font.BOLD);
+            iTextSharp.text.Font footerFont = FontFactory.GetFont("Arial", 10, iTextSharp.text.Font.ITALIC, BaseColor.GRAY);
+
+            Paragraph title = new Paragraph("SECURITY DESK ONLY", titleFont);
+            title.Alignment = Element.ALIGN_CENTER;
+            title.SpacingAfter = 5f;
+            pdfDoc.Add(title);
+
+            Paragraph subTitle = new Paragraph("Guards: Scan this QR to open your Pass Scanner App", subTitleFont);
+            subTitle.Alignment = Element.ALIGN_CENTER;
+            subTitle.SpacingAfter = 20f;
+            pdfDoc.Add(subTitle);
+
+            using (MemoryStream imgStream = new MemoryStream())
+            {
+                qrBitmap.Save(imgStream, System.Drawing.Imaging.ImageFormat.Png);
+                iTextSharp.text.Image pdfImg = iTextSharp.text.Image.GetInstance(imgStream.ToArray());
+                pdfImg.Alignment = Element.ALIGN_CENTER;
+                pdfImg.ScaleToFit(300f, 300f);
+                pdfDoc.Add(pdfImg);
+            }
+
+            AddCompanyDetailsToPDF(pdfDoc, aliasName, branchName, fullAddress);
+
+            Paragraph footer = new Paragraph("RESTRICTED ACCESS - INTERNAL USE ONLY", FontFactory.GetFont("Arial", 12, iTextSharp.text.Font.BOLD, BaseColor.RED));
+            footer.Alignment = Element.ALIGN_CENTER;
+            pdfDoc.Add(footer);
+
+            pdfDoc.Close();
+            byte[] bytes = memStream.ToArray();
+            memStream.Close();
+
+            Response.Clear();
+            Response.ContentType = "application/pdf";
+            Response.AddHeader("content-disposition", $"attachment;filename=SecurityGateQR_{branchId}.pdf");
+            Response.Buffer = true;
+            Response.Cache.SetCacheability(HttpCacheability.NoCache);
+            Response.BinaryWrite(bytes);
+            Response.End();
         }
 
         private void LoadOfficeDetails(int branchId)
         {
+            string currentAlias = "Not Configured";
+
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                // 1. Get the basic ERP name for the header
                 string queryBranch = "SELECT Branch_Description FROM MST_Branch WHERE Branch_ID = @BranchID";
                 using (SqlCommand cmd = new SqlCommand(queryBranch, con))
                 {
@@ -211,7 +294,6 @@ namespace AnmolDristi
                     con.Close();
                 }
 
-                // 2. Load existing VMS settings if they exist
                 string querySettings = "SELECT * FROM VMS_OfficeSettings WHERE Branch_ID = @BranchID";
                 using (SqlCommand cmd = new SqlCommand(querySettings, con))
                 {
@@ -223,7 +305,8 @@ namespace AnmolDristi
 
                         if (dt.Rows.Count > 0)
                         {
-                            txtAlias.Text = dt.Rows[0]["AliasName"].ToString();
+                            currentAlias = dt.Rows[0]["AliasName"].ToString();
+                            txtAlias.Text = currentAlias;
                             txtAddress.Text = dt.Rows[0]["FullAddress"].ToString();
                             txtPolicy.Text = dt.Rows[0]["VisitorPolicyText"].ToString();
 
@@ -234,7 +317,6 @@ namespace AnmolDristi
                         }
                         else
                         {
-                            // Clear form for new configuration
                             txtAlias.Text = "";
                             txtAddress.Text = "";
                             txtPolicy.Text = "1. Suit Up! Wear required Hair Net...\n2. No Smoking or Gutkha...\n3. Stay Alert! Be mindful of moving machinery...";
@@ -243,8 +325,66 @@ namespace AnmolDristi
                 }
 
                 LoadOfficeTimings(branchId);
+
+                // NEW: Load the on-screen QR visual previews
+                LoadQRPreviews(branchId.ToString(), currentAlias);
             }
         }
+
+        // --- NEW: ON-SCREEN QR PREVIEW GENERATOR ---
+        private void LoadQRPreviews(string branchId, string aliasName)
+        {
+            if (string.IsNullOrEmpty(aliasName) || aliasName == "Not Configured")
+            {
+                imgPreviewVisitor.Visible = false;
+                imgPreviewSecurity.Visible = false;
+                lblPreviewVisitorAlias.Text = "Save Basic Details first to preview QR.";
+                lblPreviewSecurityAlias.Text = "Save Basic Details first to preview QR.";
+                return;
+            }
+
+            imgPreviewVisitor.Visible = true;
+            imgPreviewSecurity.Visible = true;
+
+            // Apply same hyphen-split logic as the PDF
+            string companyLine1 = aliasName;
+            int dashIndex = aliasName.IndexOf('-');
+            if (dashIndex > 0)
+            {
+                companyLine1 = aliasName.Substring(0, dashIndex).Trim();
+            }
+
+            lblPreviewVisitorAlias.Text = companyLine1;
+            lblPreviewSecurityAlias.Text = companyLine1;
+
+            string baseUrlKiosk = "https://apps.anmolindustries.com/VMS_SelfLogin.aspx";
+            string kioskUrl = $"{baseUrlKiosk}?BranchId={branchId}";
+
+            string baseUrlGate = "https://apps.anmolindustries.com/VMS_GateScanner.aspx";
+            string gateUrl = $"{baseUrlGate}?BranchId={branchId}";
+
+            imgPreviewVisitor.ImageUrl = GenerateBase64QR(kioskUrl);
+            imgPreviewSecurity.ImageUrl = GenerateBase64QR(gateUrl);
+        }
+
+        private string GenerateBase64QR(string url)
+        {
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            // ECCLevel.Q matches the robust error correction used in the PDFs
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(qrCodeData);
+
+            using (Bitmap bitMap = qrCode.GetGraphic(20))
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    bitMap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    byte[] byteImage = ms.ToArray();
+                    return "data:image/png;base64," + Convert.ToBase64String(byteImage);
+                }
+            }
+        }
+        // -------------------------------------------
 
         protected void btnSave_Click(object sender, EventArgs e)
         {
@@ -288,7 +428,8 @@ namespace AnmolDristi
                 lblMsg.ForeColor = Color.Green;
                 lblMsg.Text = "Details updated successfully!";
 
-                // Refresh grid but stay on the edit screen to allow further tab editing
+                // Re-load the office details so the newly saved Alias immediately updates the QR Previews
+                LoadOfficeDetails(branchId);
                 BindOfficesGrid();
             }
             catch (Exception ex)
@@ -306,7 +447,6 @@ namespace AnmolDristi
 
         private void LoadOfficeTimings(int branchId)
         {
-            // 1. Create a dummy table to ensure all 7 days are always shown on the UI
             DataTable dtTimings = new DataTable();
             dtTimings.Columns.Add("DayOfWeek");
             dtTimings.Columns.Add("IsOpen");
@@ -328,12 +468,10 @@ namespace AnmolDristi
 
                         foreach (string day in days)
                         {
-                            // Look for existing timing in DB
                             DataRow[] foundRows = dbData.Select($"DayOfWeek = '{day}'");
 
                             if (foundRows.Length > 0)
                             {
-                                // Record exists: Extract times (Handling NULLs if the office is closed that day)
                                 string openT = foundRows[0]["OpenTime"] != DBNull.Value ? DateTime.Parse(foundRows[0]["OpenTime"].ToString()).ToString("HH:mm") : "";
                                 string closeT = foundRows[0]["CloseTime"] != DBNull.Value ? DateTime.Parse(foundRows[0]["CloseTime"].ToString()).ToString("HH:mm") : "";
                                 string isOpen = string.IsNullOrEmpty(openT) ? "0" : "1";
@@ -342,7 +480,6 @@ namespace AnmolDristi
                             }
                             else
                             {
-                                // No record exists: Provide smart defaults (Sunday closed, Mon-Sat 10:00 to 18:30)
                                 if (day == "Sunday")
                                     dtTimings.Rows.Add(day, "0", "", "");
                                 else
@@ -353,12 +490,10 @@ namespace AnmolDristi
                 }
             }
 
-            // Bind to the new Repeater in Tab 3
             rptTimings.DataSource = dtTimings;
             rptTimings.DataBind();
         }
 
-        // --- ADD THIS NEW CLICK EVENT METHOD ---
         protected void btnSaveTimings_Click(object sender, EventArgs e)
         {
             int branchId = Convert.ToInt32(hfBranchID.Value);
@@ -367,7 +502,6 @@ namespace AnmolDristi
             {
                 con.Open();
 
-                // 1. Wipe existing timings for a clean slate update
                 string delQuery = "DELETE FROM VMS_PlantTimings WHERE Branch_ID = @BranchID";
                 using (SqlCommand cmdDel = new SqlCommand(delQuery, con))
                 {
@@ -375,7 +509,6 @@ namespace AnmolDristi
                     cmdDel.ExecuteNonQuery();
                 }
 
-                // 2. Insert new timings from the UI Grid
                 string insQuery = "INSERT INTO VMS_PlantTimings (Branch_ID, DayOfWeek, OpenTime, CloseTime) VALUES (@BranchID, @DayOfWeek, @OpenTime, @CloseTime)";
 
                 foreach (RepeaterItem item in rptTimings.Items)
@@ -392,7 +525,6 @@ namespace AnmolDristi
                             cmdIns.Parameters.AddWithValue("@BranchID", branchId);
                             cmdIns.Parameters.AddWithValue("@DayOfWeek", hfDay.Value);
 
-                            // If checked AND times are provided, save the times. Otherwise, save NULLs (Office Closed).
                             if (chkIsOpen.Checked && !string.IsNullOrEmpty(txtOpenTime.Text) && !string.IsNullOrEmpty(txtCloseTime.Text))
                             {
                                 cmdIns.Parameters.AddWithValue("@OpenTime", txtOpenTime.Text);

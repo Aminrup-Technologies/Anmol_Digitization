@@ -47,7 +47,7 @@ namespace AnmolDristi
                     badgeCount.InnerText = dtPending.Rows.Count.ToString();
                 }
 
-                // 2. Bind History Grid
+                // 2. Bind History Grid (Now includes logic to power the Manual Check-In/Out)
                 string historyQuery = "SELECT TOP 50 * FROM VMS_VisitLog WHERE HostEmployeeCode = @EmpCode AND ApprovalStatus IN ('Approved', 'Rejected') ORDER BY CreatedDate DESC";
                 using (SqlDataAdapter sda = new SqlDataAdapter(historyQuery, con))
                 {
@@ -85,7 +85,8 @@ namespace AnmolDristi
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                // Set VisitStatus to Scheduled along with ApprovalStatus
+                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
                 using (SqlCommand cmd = new SqlCommand(updateQuery, con))
                 {
                     cmd.Parameters.AddWithValue("@Token", qrToken);
@@ -125,7 +126,6 @@ namespace AnmolDristi
                 else if (!string.IsNullOrEmpty(mobile))
                 {
                     // TODO: Trigger SMS Gateway
-                    // string smsText = $"Your visit to Anmol Industries is approved. View your pass here: {passUrl}";
                 }
             }
 
@@ -138,7 +138,7 @@ namespace AnmolDristi
         {
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Rejected', ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Rejected', VisitStatus = 'Rejected', ApprovedOn = GETDATE() WHERE LogID = @LogID";
                 using (SqlCommand cmd = new SqlCommand(updateQuery, con))
                 {
                     cmd.Parameters.AddWithValue("@LogID", logId);
@@ -150,6 +150,48 @@ namespace AnmolDristi
             lblPendingMsg.ForeColor = Color.Red;
             lblPendingMsg.Text = "Visitor request rejected.";
             BindGrids(); // Refresh UI
+        }
+
+        // ========================================================
+        // NEW METHOD: Handle Manual Check-In and Check-Out by Host
+        // ========================================================
+        protected void gvHistory_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName == "ManualCheckIn" || e.CommandName == "ManualCheckOut")
+            {
+                int logId = Convert.ToInt32(e.CommandArgument);
+
+                using (SqlConnection con = new SqlConnection(connStr))
+                {
+                    string updateQuery = "";
+
+                    if (e.CommandName == "ManualCheckIn")
+                    {
+                        // FIXED: Changed CheckInTime to ActualInTime
+                        updateQuery = "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-In', ActualInTime = GETDATE() WHERE LogID = @LogID";
+                        lblHistoryMsg.ForeColor = Color.Green;
+                        lblHistoryMsg.Text = "Visitor successfully Checked-IN manually.";
+                    }
+                    else if (e.CommandName == "ManualCheckOut")
+                    {
+                        // FIXED: Changed CheckOutTime to ActualOutTime
+                        updateQuery = "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-Out', ActualOutTime = GETDATE() WHERE LogID = @LogID";
+                        lblHistoryMsg.ForeColor = Color.Green;
+                        lblHistoryMsg.Text = "Visitor successfully Checked-OUT manually.";
+                    }
+
+                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                    {
+                        cmd.Parameters.AddWithValue("@LogID", logId);
+                        con.Open();
+                        cmd.ExecuteNonQuery();
+                        con.Close();
+                    }
+                }
+
+                // Refresh the Grid to show updated statuses and swap the buttons immediately
+                BindGrids();
+            }
         }
     }
 }

@@ -57,6 +57,10 @@
             <div class="col-md-5 col-md-offset-3 col-sm-8 col-sm-offset-2 col-xs-12">
 
                 <asp:Panel ID="pnlRegistrationForm" runat="server" CssClass="mobile-form">
+                    <div class="text-center">
+                        <asp:Image ID="imgLogo" runat="server" ImageUrl="~/WebData/anmol_logo_GPTW.jpg" style="max-height: 80px; margin-bottom: 15px;" AlternateText="Anmol Logo" />
+                    </div>
+                    
                     <h3 class="text-center" style="color: #1ABB9C; font-weight: bold;">Complete Registration</h3>
                     <p class="text-center text-muted">Please provide your details and a photo.</p>
                     <div class="ln_solid"></div>

@@ -19,8 +19,13 @@ namespace AnmolDristi
             {
                 if (Request.QueryString["BranchId"] != null)
                 {
+                    string branchId = Request.QueryString["BranchId"].ToString();
+
                     // Lock the ID into the hidden field so it survives postbacks
-                    hfBranchId.Value = Request.QueryString["BranchId"].ToString();
+                    hfBranchId.Value = branchId;
+
+                    // Fetch and Display the Branch Name dynamically
+                    LoadBranchName(branchId);
                 }
                 else
                 {
@@ -29,6 +34,36 @@ namespace AnmolDristi
                     lblMessage.Text = "Invalid QR Code. Missing Location ID.";
                     pnlRequestOTP.Visible = false;
                 }
+            }
+        }
+
+        private void LoadBranchName(string branchId)
+        {
+            try
+            {
+                using (SqlConnection con = new SqlConnection(connStr))
+                {
+                    // Assuming your plant details are mapped in MST_PlantDetails
+                    string query = "SELECT plant_name FROM MST_PlantDetails WHERE plant_id = @BranchId";
+                    using (SqlCommand cmd = new SqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@BranchId", branchId);
+                        con.Open();
+                        object result = cmd.ExecuteScalar();
+                        if (result != null)
+                        {
+                            // Update the UI Label with the actual facility name
+                            lblBranchName.Text = result.ToString();
+                        }
+                        con.Close();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Safe fallback text if the DB query fails so the UI doesn't crash
+                lblBranchName.Text = "our Facility";
+                System.Diagnostics.Debug.WriteLine($"Error fetching branch name: {ex.Message}");
             }
         }
 
@@ -201,118 +236,6 @@ namespace AnmolDristi
             }
         }
 
-        protected void btnVerifyOTP_Click_OLD(object sender, EventArgs e)
-        {
-            string mobile = txtMobile.Text.Trim();
-            string email = txtEmail.Text.Trim();
-            string enteredMobileOTP = txtMobileOTP.Text.Trim();
-            string enteredEmailOTP = txtEmailOTP.Text.Trim();
-
-            bool isValid = false;
-
-            // 1. Verify BOTH OTPs in a single query
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                string query = @"
-                SELECT Id FROM VMS_OTPTracking 
-                WHERE MobileNo = @Mobile 
-                  AND EmailAddress = @Email 
-                  AND MobileOTP = @MobileOTP 
-                  AND EmailOTP = @EmailOTP 
-                  AND IsVerified = 0 
-                  AND ExpiresAt > GETDATE()";
-
-                using (SqlCommand cmd = new SqlCommand(query, con))
-                {
-                    cmd.Parameters.AddWithValue("@Mobile", mobile);
-                    cmd.Parameters.AddWithValue("@Email", email);
-                    cmd.Parameters.AddWithValue("@MobileOTP", enteredMobileOTP);
-                    cmd.Parameters.AddWithValue("@EmailOTP", enteredEmailOTP);
-
-                    con.Open();
-                    object result = cmd.ExecuteScalar();
-
-                    if (result != null)
-                    {
-                        isValid = true;
-                        // Mark the entire attempt as Verified
-                        SqlCommand updateCmd = new SqlCommand("UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = @Id", con);
-                        updateCmd.Parameters.AddWithValue("@Id", result);
-                        updateCmd.ExecuteNonQuery();
-                    }
-                    con.Close();
-                }
-            }
-
-            if (isValid)
-            {
-                // 1. Save validated details to session
-                Session["VerifiedMobile"] = mobile;
-                Session["VerifiedEmail"] = email;
-
-                // 2. Read the BranchId securely from the Hidden Field
-                string branchId = hfBranchId.Value;
-
-                if (string.IsNullOrEmpty(branchId))
-                {
-                    lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Session lost. Please scan the QR code again.";
-                    return;
-                }
-
-                // 3. The Bulletproof Redirect
-                string redirectUrl = $"VMS_Registration.aspx?BranchId={branchId}";
-
-                // Use 'false' to prevent ASP.NET from throwing a ThreadAbortException
-                Response.Redirect(redirectUrl, false);
-
-                // 3. The Client-Side JavaScript Redirect (Use if UpdatePanels block the redirect)
-                //string redirectUrl = $"VMS_Registration.aspx?BranchId={branchId}";
-                //ScriptManager.RegisterStartupScript(this, this.GetType(), "RedirectScript", $"window.location.href = '{redirectUrl}';", true);
-
-                // Tells ASP.NET to bypass the rest of the page lifecycle and send the redirect to the browser
-                Context.ApplicationInstance.CompleteRequest();
-            }
-            else
-            {
-                lblMessage.ForeColor = System.Drawing.Color.Red;
-                lblMessage.Text = "One or both codes are incorrect or expired. Please check and try again.";
-            }
-        }
-
-        private bool ValidateOTP(string contact, string otp)
-        {
-            bool isValid = false;
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                string query = @"
-                    SELECT Id FROM VMS_OTPTracking 
-                    WHERE MobileOrEmail = @Contact 
-                      AND OTPCode = @OTP 
-                      AND IsUsed = 0 
-                      AND ExpiresAt > GETDATE()";
-
-                using (SqlCommand cmd = new SqlCommand(query, con))
-                {
-                    cmd.Parameters.AddWithValue("@Contact", contact);
-                    cmd.Parameters.AddWithValue("@OTP", otp);
-                    con.Open();
-
-                    object result = cmd.ExecuteScalar();
-                    if (result != null)
-                    {
-                        isValid = true;
-                        // Mark as Used to prevent reuse
-                        SqlCommand updateCmd = new SqlCommand("UPDATE VMS_OTPTracking SET IsUsed = 1 WHERE Id = @Id", con);
-                        updateCmd.Parameters.AddWithValue("@Id", result);
-                        updateCmd.ExecuteNonQuery();
-                    }
-                    con.Close();
-                }
-            }
-            return isValid;
-        }
-
         protected void lnkResend_Click(object sender, EventArgs e)
         {
             btnSendOTP_Click(sender, e);
@@ -374,7 +297,6 @@ namespace AnmolDristi
                 string encodedMessage = HttpUtility.UrlEncode(rawMessage);
 
                 // 5. Construct the SMSCountry HTTP API URL
-                // Using parameters defined in the SMSCountry documentation: User, passwd, mobilenumber, message, sid, mtype
                 string url = $"http://api.smscountry.com/SMSCwebservice_bulk.aspx" +
                              $"?User={username}" +
                              $"&passwd={password}" +
@@ -383,10 +305,6 @@ namespace AnmolDristi
                              $"&sid={senderId}" +
                              $"&mtype=N" + // N = Normal Text
                              $"&DR=Y";    // Y = Delivery Report Required
-
-                // Note: If your specific SMSCountry DLT routing requires passing the Template ID in the URL, 
-                // you append it like this (check with your SMSCountry account manager if they require the explicit param):
-                // url += $"&templateid={dltTemplateId}"; 
 
                 // 6. Execute the HTTP Request
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);

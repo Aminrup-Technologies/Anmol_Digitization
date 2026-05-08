@@ -61,7 +61,7 @@
 
                                 <div role="tabpanel" class="tab-pane fade" id="tab_history" aria-labelledby="profile-tab">
                                     <div class="table-responsive" style="margin-top:15px;">
-                                        <asp:GridView ID="gvHistory" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-bordered">
+                                        <asp:GridView ID="gvHistory" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-bordered" DataKeyNames="LogID" OnRowCommand="gvHistory_RowCommand">
                                             <Columns>
                                                 <asp:BoundField DataField="VisitorName" HeaderText="Visitor Name" />
                                                 <asp:BoundField DataField="VisitorCompany" HeaderText="Company" />
@@ -74,9 +74,28 @@
                                                     </ItemTemplate>
                                                 </asp:TemplateField>
                                                 <asp:BoundField DataField="VisitStatus" HeaderText="Gate Status" />
+                                                
+                                                <asp:TemplateField HeaderText="Host Actions">
+                                                    <ItemTemplate>
+                                                        <asp:LinkButton ID="btnManualCheckIn" runat="server" CommandName="ManualCheckIn" CommandArgument='<%# Eval("LogID") %>' 
+                                                            CssClass="btn btn-info btn-xs" 
+                                                            Visible='<%# Convert.ToString(Eval("ApprovalStatus")) == "Approved" && Convert.ToString(Eval("VisitStatus")) != "Checked-In" && Convert.ToString(Eval("VisitStatus")) != "Checked-Out" %>' 
+                                                            OnClientClick="return confirm('Are you sure you want to manually Check-IN this visitor?');">
+                                                            <i class="fa fa-sign-in"></i> Check-In
+                                                        </asp:LinkButton>
+                                                        
+                                                        <asp:LinkButton ID="btnManualCheckOut" runat="server" CommandName="ManualCheckOut" CommandArgument='<%# Eval("LogID") %>' 
+                                                            CssClass="btn btn-warning btn-xs" 
+                                                            Visible='<%# Convert.ToString(Eval("ApprovalStatus")) == "Approved" && Convert.ToString(Eval("VisitStatus")) == "Checked-In" %>' 
+                                                            OnClientClick="return confirm('Are you sure you want to manually Check-OUT this visitor?');">
+                                                            <i class="fa fa-sign-out"></i> Check-Out
+                                                        </asp:LinkButton>
+                                                    </ItemTemplate>
+                                                </asp:TemplateField>
                                             </Columns>
                                         </asp:GridView>
                                     </div>
+                                    <asp:Label ID="lblHistoryMsg" runat="server" Font-Bold="true"></asp:Label>
                                 </div>
 
                             </div>

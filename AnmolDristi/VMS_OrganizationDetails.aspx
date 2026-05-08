@@ -10,6 +10,22 @@
             font-size: 12px;
             color: #73879C;
         }
+
+        .preview-box {
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .preview-visitor {
+            border: 1px solid #ddd;
+            background-color: #fcfcfc;
+        }
+        
+        .preview-security {
+            border: 2px dashed red;
+            background-color: #fff9f9;
+        }
     </style>
 </asp:Content>
 
@@ -32,6 +48,7 @@
                                         <asp:BoundField DataField="Branch_Description" HeaderText="ERP Branch Name" />
                                         <asp:BoundField DataField="AliasName" HeaderText="VMS Alias (Public Name)" />
                                         <asp:BoundField DataField="FullAddress" HeaderText="Office Details" />
+                                        
                                         <asp:TemplateField HeaderText="Action">
                                             <ItemTemplate>
                                                 <asp:LinkButton ID="btnEdit" runat="server" CommandName="EditOffice" CommandArgument='<%# Eval("Branch_ID") %>' CssClass="btn btn-info btn-xs"><i class="fa fa-pencil"></i> Edit Details</asp:LinkButton>
@@ -41,8 +58,17 @@
                                         <asp:TemplateField HeaderText="Reception Kiosk">
                                             <ItemTemplate>
                                                 <asp:LinkButton ID="btnGenerateQR" runat="server" CommandName="GenerateQR"
-                                                    CommandArgument='<%# Eval("Branch_ID") + "|" + Eval("AliasName") + "|" + Eval("FullAddress") %>'
-                                                    CssClass="btn btn-danger btn-xs"><i class="fa fa-file-pdf-o"></i> Download PDF
+                                                    CommandArgument='<%# Eval("Branch_ID") + "|" + Eval("AliasName") + "|" + Eval("FullAddress") + "|" + Eval("Branch_Description") %>'
+                                                    CssClass="btn btn-danger btn-xs"><i class="fa fa-file-pdf-o"></i> Visitor QR
+                                                </asp:LinkButton>
+                                            </ItemTemplate>
+                                        </asp:TemplateField>
+
+                                        <asp:TemplateField HeaderText="Security Gate">
+                                            <ItemTemplate>
+                                                <asp:LinkButton ID="btnGenerateGateQR" runat="server" CommandName="GenerateGateQR"
+                                                    CommandArgument='<%# Eval("Branch_ID") + "|" + Eval("AliasName") + "|" + Eval("FullAddress") + "|" + Eval("Branch_Description") %>'
+                                                    CssClass="btn btn-warning btn-xs"><i class="fa fa-qrcode"></i> Gate QR
                                                 </asp:LinkButton>
                                             </ItemTemplate>
                                         </asp:TemplateField>
@@ -62,6 +88,8 @@
                                     <li role="presentation" class="active"><a href="#tab_content1" id="basic-tab" role="tab" data-toggle="tab" aria-expanded="true">Basic Details Office</a></li>
                                     <li role="presentation" class=""><a href="#tab_content2" role="tab" id="policy-tab" data-toggle="tab" aria-expanded="false">Visitor Policy</a></li>
                                     <li role="presentation" class=""><a href="#tab_content3" role="tab" id="timing-tab" data-toggle="tab" aria-expanded="false">Office Timings</a></li>
+                                    
+                                    <li role="presentation" class=""><a href="#tab_content4" role="tab" id="preview-tab" data-toggle="tab" aria-expanded="false">QR Previews</a></li>
                                 </ul>
 
                                 <div id="myTabContent" class="tab-content">
@@ -72,7 +100,7 @@
                                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">Alias Company Name <span class="required">*</span></label>
                                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                                     <asp:TextBox ID="txtAlias" runat="server" CssClass="form-control" placeholder="e.g. Anmol Industries Limited - Greater Noida"></asp:TextBox>
-                                                    <span class="help-block">This name will appear on the visitor's mobile app and digital pass.</span>
+                                                    <span class="help-block">Use a hyphen (-) to separate lines. e.g., "Anmol Industries Limited - Corporate Office, Kolkata"</span>
                                                 </div>
                                             </div>
 
@@ -108,7 +136,7 @@
 
                                     <div role="tabpanel" class="tab-pane fade" id="tab_content3" aria-labelledby="timing-tab">
                                         <div class="form-horizontal form-label-left" style="margin-top: 20px;">
-                                            <p class="text-muted"><i class="fa fa-info-circle"></i>Edit timings of all your offices for all days of the week. Passes will only be valid during these operational hours.</p>
+                                            <p class="text-muted"><i class="fa fa-info-circle"></i> Edit timings of all your offices for all days of the week. Passes will only be valid during these operational hours.</p>
 
                                             <div class="table-responsive">
                                                 <table class="table table-striped jambo_table">
@@ -153,6 +181,43 @@
                                         </div>
                                     </div>
 
+                                    <div role="tabpanel" class="tab-pane fade" id="tab_content4" aria-labelledby="preview-tab">
+                                        <div class="row" style="margin-top: 20px;">
+                                            
+                                            <div class="col-md-6 col-sm-6 col-xs-12 text-center">
+                                                <div class="preview-box preview-visitor">
+                                                    <h3 style="font-weight: bold; color: #333;">WELCOME VISITORS</h3>
+                                                    <p class="text-muted">Scan the QR & generate your pass</p>
+                                                    
+                                                    <asp:Image ID="imgPreviewVisitor" runat="server" Width="220px" Height="220px" />
+                                                    
+                                                    <h4 style="font-weight: bold; margin-top: 15px;">
+                                                        <asp:Label ID="lblPreviewVisitorAlias" runat="server"></asp:Label>
+                                                    </h4>
+                                                    <p class="text-muted" style="font-size: 11px;">Powered by Anmol-IT</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-6 col-sm-6 col-xs-12 text-center">
+                                                <div class="preview-box preview-security">
+                                                    <h3 style="font-weight: bold; color: red;">SECURITY DESK ONLY</h3>
+                                                    <p class="text-muted" style="font-weight: bold;">Guards: Scan this QR to open Pass Scanner</p>
+                                                    
+                                                    <asp:Image ID="imgPreviewSecurity" runat="server" Width="220px" Height="220px" />
+                                                    
+                                                    <h4 style="font-weight: bold; margin-top: 15px; color: #333;">
+                                                        <asp:Label ID="lblPreviewSecurityAlias" runat="server"></asp:Label>
+                                                    </h4>
+                                                    <p style="color: red; font-size: 11px; font-weight: bold;">RESTRICTED ACCESS - INTERNAL USE ONLY</p>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                        <div class="text-center" style="margin-top: 10px;">
+                                            <p class="text-info"><i class="fa fa-info-circle"></i> <em>Previews are generated based on the currently saved configuration. Save changes to update the live preview.</em></p>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
 
@@ -174,51 +239,4 @@
             </div>
         </div>
     </div>
-
-    <div class="modal fade" id="qrModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                    <h4 class="modal-title">Reception Desk Poster</h4>
-                </div>
-
-                <div class="modal-body text-center" id="printArea">
-                    <h3 style="color: #1ABB9C; font-weight: bold;">WELCOME TO</h3>
-                    <h4 style="font-weight: bold;">
-                        <asp:Label ID="lblModalPlantName" runat="server"></asp:Label></h4>
-                    <br />
-                    <p>Please scan this QR code using your smartphone camera to register your visit and generate your Gate Pass.</p>
-                    <br />
-
-                    <asp:Image ID="imgKioskQR" runat="server" Width="250px" Height="250px" />
-
-                    <br />
-                    <br />
-                    <p class="text-muted">
-                        <small>Powered by VMS | Plant ID:
-                        <asp:Label ID="lblModalBranchId" runat="server"></asp:Label></small>
-                    </p>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-success" onclick="printQRPoster()"><i class="fa fa-print"></i>Print Poster</button>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <script type="text/javascript">
-        function printQRPoster() {
-            var printContents = document.getElementById('printArea').innerHTML;
-            var originalContents = document.body.innerHTML;
-            document.body.innerHTML = printContents;
-            window.print();
-            document.body.innerHTML = originalContents;
-            location.reload(); // Reload to restore event handlers after DOM swap
-        }
-    </script>
 </asp:Content>

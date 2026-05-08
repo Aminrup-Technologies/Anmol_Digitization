@@ -40,11 +40,17 @@
             <div class="col-md-4 col-md-offset-4 col-sm-6 col-sm-offset-3 col-xs-12">
 
                 <div class="mobile-card text-center">
+                    
+                    <asp:Image ID="imgLogo" runat="server" ImageUrl="~/WebData/anmol_logo_GPTW.jpg" style="max-height: 80px; margin-bottom: 15px;" AlternateText="Anmol Logo" />
+                    
                     <h2 class="brand-text">Anmol VMS</h2>
-                    <h4>Welcome to our Facility</h4>
+                    
+                    <h4>Welcome to <span style="color:#73879C;"><asp:Label ID="lblBranchName" runat="server" Text="our Facility"></asp:Label></span></h4>
                     <p class="text-muted">Please verify your contact details to proceed.</p>
+                    
                     <div class="ln_solid"></div>
                     <asp:HiddenField ID="hfBranchId" runat="server" />
+                    
                     <asp:Panel ID="pnlRequestOTP" runat="server">
                         <div class="form-group text-left">
                             <label>Mobile Number *</label>

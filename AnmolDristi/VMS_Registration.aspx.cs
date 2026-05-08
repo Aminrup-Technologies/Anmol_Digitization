@@ -71,7 +71,9 @@ namespace AnmolDristi
                             hosts.Add(new HostEmployee
                             {
                                 EmpCode = sdr["EmployeeCode"].ToString(),
-                                DisplayText = $"{sdr["EmployeeName"].ToString()} - {sdr["DepartmentName"].ToString()} ({sdr["EmployeeCode"].ToString()})"
+
+                                // Updated to hide the EmployeeCode from the UI dropdown
+                                DisplayText = $"{sdr["EmployeeName"].ToString()} - {sdr["DepartmentName"].ToString()}"
                             });
                         }
                     }
@@ -124,10 +126,8 @@ namespace AnmolDristi
                 using (SqlConnection con = new SqlConnection(connStr))
                 {
                     con.Open();
-
-                    // --- Calculate Pass Validity ---
                     DateTime validFrom = DateTime.Now;
-                    DateTime validUpto = DateTime.Now.AddHours(2);
+                    DateTime validUpto = DateTime.Now.AddHours(4);
                     string currentDay = validFrom.ToString("dddd");
 
                     string timingQuery = "SELECT CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek";
@@ -144,7 +144,7 @@ namespace AnmolDristi
 
                             if (validUpto <= validFrom)
                             {
-                                validUpto = validFrom.AddHours(2);
+                                validUpto = validFrom.AddHours(4);
                             }
                         }
                     }
