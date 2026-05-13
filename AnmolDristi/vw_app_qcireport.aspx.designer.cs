@@ -868,6 +868,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox TB_ShapeSize;
         
         /// <summary>
+        /// ShapeSizeRemarksDIV control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl ShapeSizeRemarksDIV;
+        
+        /// <summary>
         /// Label_TB_ShapeSize_Remarks control.
         /// </summary>
         /// <remarks>
@@ -1271,6 +1280,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox TB_GaugeLen;
+        
+        /// <summary>
+        /// GaugeLenRemarksDIV control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl GaugeLenRemarksDIV;
         
         /// <summary>
         /// Label_TB_GaugeLen_Remarks control.
@@ -1732,6 +1750,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button btnBack;
         
         /// <summary>
+        /// pcktwgt_pnl control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl pcktwgt_pnl;
+        
+        /// <summary>
         /// lblPlant control.
         /// </summary>
         /// <remarks>
@@ -1876,6 +1903,51 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label6;
         
         /// <summary>
+        /// LabelSubmitter control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label LabelSubmitter;
+        
+        /// <summary>
+        /// ImageSubmitter control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Image ImageSubmitter;
+        
+        /// <summary>
+        /// SubmitterNameLabel control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label SubmitterNameLabel;
+        
+        /// <summary>
+        /// SubmitterCodeLabel control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label SubmitterCodeLabel;
+        
+        /// <summary>
+        /// SubmitterStatusBadge control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label SubmitterStatusBadge;
+        
+        /// <summary>
         /// Label7 control.
         /// </summary>
         /// <remarks>
@@ -1910,6 +1982,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Approver1CodeLabel;
+        
+        /// <summary>
+        /// Approver1StatusBadge control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Approver1StatusBadge;
         
         /// <summary>
         /// Label8 control.
@@ -1948,6 +2029,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Approver2CodeLabel;
         
         /// <summary>
+        /// Approver2StatusBadge control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Approver2StatusBadge;
+        
+        /// <summary>
         /// Label9 control.
         /// </summary>
         /// <remarks>
@@ -1984,6 +2074,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label DottedLineApproverCodeLabel;
         
         /// <summary>
+        /// DottedAppStatusBadge control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label DottedAppStatusBadge;
+        
+        /// <summary>
         /// GridViewApprovers control.
         /// </summary>
         /// <remarks>
@@ -1991,5 +2090,14 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.GridView GridViewApprovers;
+        
+        /// <summary>
+        /// gvStandardLimits control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.GridView gvStandardLimits;
     }
 }

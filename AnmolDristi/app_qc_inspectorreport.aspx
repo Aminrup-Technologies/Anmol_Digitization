@@ -1,6 +1,6 @@
 ﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="app_qc_inspectorreport.aspx.cs" Inherits="AnmolDristi.app_qc_inspectorreport" %>
-<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
 
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
@@ -150,197 +150,95 @@
                 <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <div class="x_title">
-                            <h2>View and Select for Detailed View ||
-                                <asp:Button ID="Button1" runat="server" Text="Export" OnClick="ExportExcel" CssClass="btn btn-primary btn-sm" CausesValidation="false" /></h2>
+                            <h2>View and Select for Detailed View</h2>
                             <ul class="nav navbar-right panel_toolbox">
+                                <li>
+                                    <asp:Button ID="Button1" runat="server" Text="Export to Excel" OnClick="ExportExcel" CssClass="btn btn-primary btn-sm" CausesValidation="false" />
+                                </li>
+                                <li>
+                                    <asp:Button ID="btnBulkApprove" runat="server" Text="Bulk Approve Selected" CssClass="btn btn-success btn-sm" OnClick="btnBulkApprove_Click" OnClientClick="return confirm('Are you sure you want to approve all selected records?');" />
+                                </li>
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
                             <div class="clearfix"></div>
                         </div>
+
                         <div class="x_content">
                             <div class="row">
-                                <div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 450px; overflow: scroll;">
-                                    <asp:GridView ID="GridView1" runat="server" Width="100%" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap"
+                                <div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 500px; overflow: scroll;">
+
+                                    <asp:GridView ID="GridView1" runat="server" Width="100%" CssClass="table table-striped table-hover table-bordered table-sm table-condensed text-wrap"
                                         AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowCommand="GridView1_RowCommand">
+                                        <HeaderStyle BackColor="#2A3F54" ForeColor="White" />
                                         <Columns>
-                                            <asp:TemplateField HeaderText="SL" HeaderStyle-Width="2%">
-                                                <ItemTemplate>
-                                                    SL:<asp:Label ID="lbl_slno" runat="server" Text="<%# Container.DataItemIndex + 1 %>"></asp:Label>
-                                                    <br />
-                                                    DBID:<asp:Label ID="lbl_rowid" runat="server" Text='<%# Eval("rowid") %>' Visible="true" />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text text-center" />
-                                            </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Plant and Line Details" HeaderStyle-Width="10%">
+                                            <asp:TemplateField ItemStyle-Width="3%" ItemStyle-CssClass="text-center" HeaderStyle-CssClass="text-center">
+                                                <HeaderTemplate>
+                                                    <input type="checkbox" id="chkAll" onclick="SelectAllCheckboxes(this);" title="Select All" />
+                                                </HeaderTemplate>
                                                 <ItemTemplate>
-                                                    Plant:
-                                                    <asp:Label ID="lbl_PlantName" runat="server" Text='<%# Eval("PlantName") %>' Font-Bold="true" /><br />
-                                                    Line:
-                                                    <asp:Label ID="lbl_Line" runat="server" Text='<%# Eval("LineName") %>' Font-Bold="true" /><br />
-                                                    Category:
-                                                    <asp:Label ID="lbl_ProductCategory" runat="server" Text='<%# Eval("ProductCategory") %>' Font-Bold="true" /><br />
-                                                    Brand:
-                                                    <asp:Label ID="lbl_ProductBrand" runat="server" Text='<%# Eval("ProductBrand") %>' Font-Bold="true" /><br />
-                                                    SKU:
-                                                    <asp:Label ID="lbl_SKUId" runat="server" Text='<%# Eval("SKU_name") %>' Font-Bold="true" />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <asp:TemplateField HeaderText="Submission Details" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Date:
-                                                    <asp:Label ID="lbl_SubmittedDate" runat="server" Text='<%# Eval("SubmittedDate", "{0:dd-MM-yyyy}") %>' ForeColor="Brown" Font-Bold="true" /><br />
-                                                    Time:
-                                                    <asp:Label ID="lbl_SubmittedTime" runat="server" Text='<%# BindSubmittedTime(Eval("SubmittedTime")) %>' ForeColor="Brown" Font-Bold="true" /><br />
-                                                    Submitter:
-                                                    <asp:Label ID="lbl_EmployeeName" runat="server" Text='<%# Eval("EmployeeName") %>' />[<asp:Label ID="lbl_SubmittedByPNo" runat="server" Text='<%# Eval("SubmittedByPNo") %>' />]
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <asp:TemplateField HeaderText="Sample Details" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Number of Pieces:
-                                                    <asp:Label ID="lbl_NumberOfPieces" runat="server" Text='<%# Eval("NumberOfPieces") %>' /><br />
-                                                    Variety/Lot No:
-                                                    <asp:Label ID="lbl_VarietyOrLotNo" runat="server" Text='<%# Eval("VarietyOrLotNo") %>' /><br />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <asp:TemplateField HeaderText="Baking Time" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Baking Time:
-                                                    <asp:Label ID="lbl_BakingTime" runat="server" Text='<%# Eval("BakingTime") %>' /><br />
-                                                    Comments:
-                                                    <asp:Label ID="lbl_BakingTime_comments" runat="server" Text='<%# Eval("BakingTime_comments") %>' /><br />
-                                                    Baking Time 2:
-                                                    <asp:Label ID="lbl_BakingTime2" runat="server" Text='<%# Eval("BakingTime2") %>' /><br />
-                                                    Comments:
-                                                    <asp:Label ID="lbl_BakingTime2_comments" runat="server" Text='<%# Eval("BakingTime2_comments") %>' />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <%--<asp:TemplateField HeaderText="Appearance and Taste" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Color Appearance:
-                                                    <asp:Label ID="lbl_ColorAppearance" runat="server" Text='<%# Eval("ColorAppearance") %>' /><br />
-                                                    Comments:
-                                                    <asp:Label ID="lbl_CommentsForColorAppearance" runat="server" Text='<%# Eval("CommentsForColorAppearance") %>' /><br />
-                                                    Flavour and Taste:
-                                                    <asp:Label ID="lbl_FlavourAndTaste" runat="server" Text='<%# Eval("FlavourAndTaste") %>' /><br />
-                                                    Comments:
-                                                    <asp:Label ID="lbl_CommentsForFlavourAndTaste" runat="server" Text='<%# Eval("CommentsForFlavourAndTaste") %>' />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>--%>
-
-                                            <asp:TemplateField HeaderText="Appearance and Taste" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Color Appearance:
-                                                    <asp:Label ID="lbl_ColorAppearance" runat="server"
-                                                        Text='<%# Convert.ToBoolean(Eval("ColorAppearance")) ? "OK" : "Not OK" %>' Font-Bold="true" />
-                                                    ; Comments:
-                                                    <asp:Label ID="lbl_CommentsForColorAppearance" runat="server"
-                                                        Text='<%# Eval("CommentsForColorAppearance") %>' />
-                                                    <br />
-                                                    Flavour and Taste:
-                                                    <asp:Label ID="lbl_FlavourAndTaste" runat="server"
-                                                        Text='<%# Convert.ToBoolean(Eval("FlavourAndTaste")) ? "OK" : "Not OK" %>' Font-Bold="true" />
-                                                    Comments:
-                                                    <asp:Label ID="lbl_CommentsForFlavourAndTaste" runat="server"
-                                                        Text='<%# Eval("CommentsForFlavourAndTaste") %>' />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <asp:TemplateField HeaderText="Appearance and Texture" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Color Appearance:
-                                                    <asp:Label ID="lbl_DesignImplementation" runat="server"
-                                                        Text='<%# Convert.ToBoolean(Eval("DesignImplementation")) ? "OK" : "Not OK" %>' Font-Bold="true" />
-                                                    ; Comments:
-                                                    <asp:Label ID="lbl_CommentsForDesignImplementation" runat="server"
-                                                        Text='<%# Eval("CommentsForDesignImplementation") %>' />
-                                                    <br />
-                                                    Texture/Bite:
-                                                    <asp:Label ID="lbl_TextureBite" runat="server"
-                                                        Text='<%# Convert.ToBoolean(Eval("TextureBite")) ? "OK" : "Not OK" %>' Font-Bold="true" />
-                                                    ; Comments:
-                                                    <asp:Label ID="lbl_CommentsForTextureBite" runat="server"
-                                                        Text='<%# Eval("CommentsForTextureBite") %>' />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <asp:TemplateField HeaderText="Weights" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Weight Without Oil:
-                                                    <asp:Label ID="lbl_WeightWithoutOil" runat="server" Text='<%# Eval("WeightWithoutOil") %>' /><br />
-                                                    Weight With Oil:
-                                                    <asp:Label ID="lbl_WeightWithOil" runat="server" Text='<%# Eval("WeightWithOil") %>' /><br />
-                                                    Oil Percentage:
-                                                    <asp:Label ID="lbl_OilPercentage" runat="server" Text='<%# Eval("OilPercentage") %>' />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <asp:TemplateField HeaderText="Shape & Size" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Length:
-                                                    <asp:Label ID="lbl_Length" runat="server" Text='<%# Eval("Length") %>' /><br />
-                                                    Breadth:
-                                                    <asp:Label ID="lbl_Breadth" runat="server" Text='<%# Eval("Breadth") %>' /><br />
-                                                    Height:
-                                                    <asp:Label ID="lbl_Height" runat="server" Text='<%# Eval("Height") %>' /><br />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <asp:TemplateField HeaderText="Moisture and Packet Weight" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    Moisture:
-                                                    <asp:Label ID="lbl_Moisture" runat="server" Text='<%# Eval("Moisture") %>' /><br />
-                                                    Comments:
-                                                    <asp:Label ID="lbl_Moisture_comments" runat="server" Text='<%# Eval("Moisture_comments") %>' /><br />
-                                                    Packet Weight:
-                                                    <asp:Label ID="lbl_PacketWeight" runat="server" Text='<%# Eval("PacketWeight") %>' />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
-                                            </asp:TemplateField>
-
-                                            <%--<asp:TemplateField HeaderText="Product Apperance" HeaderStyle-Width="2%">
-                                                <ItemTemplate>
-                                                    <div class="thumbnail">
-                                                        <asp:Image ID="Img_DesignAndImplementation" runat="server" ImageUrl='<%# Eval("DesignAndImplementation") %>' CssClass="thumbnail-image" />
-                                                    </div>
+                                                    <asp:CheckBox ID="chkSelect" runat="server" />
+                                                    <asp:Label ID="lbl_rowid" runat="server" Text='<%# Eval("rowid") %>' Visible="false"></asp:Label>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Final Packet (Coding Zone)" HeaderStyle-Width="2%">
+                                            <asp:TemplateField HeaderText="Context" HeaderStyle-Width="15%">
                                                 <ItemTemplate>
-                                                    <div class="thumbnail">
-                                                        <asp:Image ID="Img_ColourAndAppearance" runat="server" ImageUrl='<%# Eval("ColourAndAppearance") %>' CssClass="thumbnail-image" />
-                                                    </div>
+                                                    <b>Date:</b> <%# Eval("SubmittedDate", "{0:dd-MMM-yyyy}") %><br />
+                                                    <b>Time/Shift:</b> <%# BindSubmittedTime(Eval("SubmittedTime")) %> / <%# Eval("Shift") %><br />
+                                                    <span class="text-muted"><i class="fa fa-user"></i>&nbsp;<%# Eval("EmployeeName") %></span>
                                                 </ItemTemplate>
-                                            </asp:TemplateField>--%>
-
-                                            <asp:TemplateField HeaderText="Approvals" HeaderStyle-Width="10%">
-                                                <ItemTemplate>
-                                                    A1:
-                                                    <asp:Label ID="lbl_Approver1" runat="server" Text='<%# Eval("Approver1EmployeeCode") %>' /><br />
-                                                    A2:
-                                                    <asp:Label ID="lbl_Approver2" runat="server" Text='<%# Eval("Approver2EmployeeCode") %>' /><br />
-                                                    A3:
-                                                    <asp:Label ID="lbl_DottedLineApproverEmployeeCode" runat="server" Text='<%# Eval("DottedLineApproverEmployeeCode") %>' /><br />
-                                                    <asp:Button ID="btn_viewdetails" runat="server" Text="Approve" Font-Size="Smaller" CssClass="btn btn-sm btn-warning" CommandName="ViewApprove" CausesValidation="false" CommandArgument="<%# Container.DataItemIndex %>" />
-                                                </ItemTemplate>
-                                                <ItemStyle CssClass="text" />
                                             </asp:TemplateField>
 
+                                            <asp:TemplateField HeaderText="Product Variant" HeaderStyle-Width="20%">
+                                                <ItemTemplate>
+                                                    <b>Plant:</b> <%# Eval("PlantName") %> (<%# Eval("LineName") %>)<br />
+                                                    <b>Brand:</b> <%# Eval("ProductBrand") %><br />
+                                                    <b>SKU:</b> <%# Eval("SKU_name") %>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+
+                                            <asp:TemplateField HeaderText="Key STD Metrics" HeaderStyle-Width="25%">
+    <ItemTemplate>
+        <div style="font-size:12px; line-height: 1.5;">
+            <b>Moisture:</b> <%# Eval("Moisture") %>% 
+            <span class="text-primary" style="font-size:11px; font-weight:bold;">
+                <%# GetStdLimitText(Eval("PlantId"), Eval("LineId"), Eval("ProductId"), Eval("BrandId"), Eval("SubmittedDate"), Eval("SubmittedTime"), "Moisture") %>
+            </span><br />
+            
+            <b>Pkt Wgt:</b> <%# Eval("PacketWeight") %>g 
+            <span class="text-primary" style="font-size:11px; font-weight:bold;">
+                <%# GetStdLimitText(Eval("PlantId"), Eval("LineId"), Eval("ProductId"), Eval("BrandId"), Eval("SubmittedDate"), Eval("SubmittedTime"), "PktWgt") %>
+            </span><br />
+            
+            <b>Baking:</b> <%# Eval("BakingTime") %> 
+            <span class="text-primary" style="font-size:11px; font-weight:bold;">
+                <%# GetStdLimitText(Eval("PlantId"), Eval("LineId"), Eval("ProductId"), Eval("BrandId"), Eval("SubmittedDate"), Eval("SubmittedTime"), "BakingTime") %>
+            </span><br />
+            
+            <b>Oil %:</b> <%# Eval("OilPercentage") %>%
+            <span class="text-primary" style="font-size:11px; font-weight:bold;">
+                <%# GetStdLimitText(Eval("PlantId"), Eval("LineId"), Eval("ProductId"), Eval("BrandId"), Eval("SubmittedDate"), Eval("SubmittedTime"), "oilpercent") %>
+            </span>
+        </div>
+    </ItemTemplate>
+</asp:TemplateField>
+
+<asp:TemplateField HeaderText="Workflow Status" HeaderStyle-Width="20%">
+    <ItemTemplate>
+        <div style="font-size:12px; line-height: 1.6;">
+            A1: <%# GetApproverDisplay(Eval("Approver1EmployeeCode"), Eval("Approver1_Status")) %><br />
+            A2: <%# GetApproverDisplay(Eval("Approver2EmployeeCode"), Eval("Approver2_Status")) %><br />
+            CQA: <%# GetApproverDisplay(Eval("DottedLineApproverEmployeeCode"), Eval("DottedApprover_Status")) %>
+        </div>
+    </ItemTemplate>
+</asp:TemplateField>
+
+                                            <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%" ItemStyle-CssClass="text-center">
+                                                <ItemTemplate>
+                                                    <asp:Button ID="btn_viewdetails" runat="server" Text="View & Audit" CssClass="btn btn-sm btn-info" CommandName="ViewApprove" CausesValidation="false" CommandArgument="<%# Container.DataItemIndex %>" />
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
 
                                         </Columns>
                                     </asp:GridView>
@@ -358,6 +256,16 @@
             $("#MyPopup .modal-title").html(title);
             $("#MyPopup .modal-body").html(body);
             $("#MyPopup").modal("show");
+        }
+
+        function SelectAllCheckboxes(chkAll) {
+            var grid = document.getElementById('<%= GridView1.ClientID %>');
+            var inputs = grid.getElementsByTagName("input");
+            for (var i = 0; i < inputs.length; i++) {
+                if (inputs[i].type == "checkbox" && inputs[i].id !== chkAll.id) {
+                    inputs[i].checked = chkAll.checked;
+                }
+            }
         }
     </script>
 </asp:Content>

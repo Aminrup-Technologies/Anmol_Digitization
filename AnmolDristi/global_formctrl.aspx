@@ -217,6 +217,7 @@
                                                                         <asp:ListItem Text="Spcl Alphanumeric" Value="^([A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*(,\s*[A-Za-z0-9\/]+(\s*/\s*[A-Za-z0-9]+)?\s*)*)?$" />
                                                                         <asp:ListItem Text="CS Alphanumeric" Value="^([A-Za-z]+[\s\-]?[0-9]*\s*(,\s*[A-Za-z]+[\s\-]?[0-9]*)*)?$" />
                                                                         <asp:ListItem Text="CS Dates" Value="^([0-3][0-9]-[0-1][0-9]-\d{4})(\s*,\s*[0-3][0-9]-[0-1][0-9]-\d{4})*$" />
+                                                                        <asp:ListItem Text="Time" Value="^([0-5][0-9]):([0-5][0-9])$" />
                                                                         <asp:ListItem Text="Time Span" Value="^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$" />
                                                                     </asp:DropDownList>
                                                                 </EditItemTemplate>

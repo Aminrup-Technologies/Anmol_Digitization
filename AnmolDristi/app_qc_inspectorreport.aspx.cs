@@ -957,5 +957,214 @@ namespace AnmolDristi
                 Response.Redirect("vw_app_qcireport.aspx?ID=" + dbid + "&VM=1", false);
             }
         }
+
+        // --- HELPER TO GENERATE BEAUTIFUL UI BADGES FOR THE GRID ---
+        protected string GetStatusBadge(object statusObj, object empCodeObj)
+        {
+            string empCode = empCodeObj != null ? empCodeObj.ToString() : "N/A";
+            string status = statusObj != null ? statusObj.ToString() : "0";
+
+            if (status == "1")
+            {
+                return $"<span class='badge bg-success' title='{empCode}'>Approved</span>";
+            }
+            else if (status == "2")
+            {
+                return $"<span class='badge bg-danger' title='{empCode}'>Rejected</span>";
+            }
+            else
+            {
+                return $"<span class='badge bg-warning text-dark' title='{empCode}'>Pending</span>";
+            }
+        }
+
+        // --- SMART BULK APPROVAL LOGIC ---
+        protected void btnBulkApprove_Click(object sender, EventArgs e)
+        {
+            string employeeCode = Session["WORKMAN"] as string;
+            if (string.IsNullOrEmpty(employeeCode))
+            {
+                ClientScript.RegisterStartupScript(this.GetType(), "alert", "alert('Session expired. Please log in again.');", true);
+                return;
+            }
+
+            int approvedCount = 0;
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+
+                foreach (GridViewRow row in GridView1.Rows)
+                {
+                    if (row.RowType == DataControlRowType.DataRow)
+                    {
+                        CheckBox chkSelect = (CheckBox)row.FindControl("chkSelect");
+
+                        if (chkSelect != null && chkSelect.Checked)
+                        {
+                            Label lblRowId = (Label)row.FindControl("lbl_rowid");
+                            if (lblRowId != null && !string.IsNullOrEmpty(lblRowId.Text))
+                            {
+                                int recordId = Convert.ToInt32(lblRowId.Text);
+
+                                // SMART QUERY: Automatically updates ONLY the approval tier belonging to the logged-in user.
+                                // Bypasses the update entirely if the user does not have authority for this specific row.
+                                string updateQuery = @"
+                            UPDATE TRN_qcinspector 
+                            SET 
+                                Approver1_Status = CASE WHEN Approver1EmployeeCode = @EmpCode THEN 1 ELSE Approver1_Status END,
+                                Approver1_TimeStamp = CASE WHEN Approver1EmployeeCode = @EmpCode THEN @TimeStamp ELSE Approver1_TimeStamp END,
+                                
+                                Approver2_Status = CASE WHEN Approver2EmployeeCode = @EmpCode THEN 1 ELSE Approver2_Status END,
+                                Approver2_TimeStamp = CASE WHEN Approver2EmployeeCode = @EmpCode THEN @TimeStamp ELSE Approver2_TimeStamp END,
+                                
+                                DottedApprover_Status = CASE WHEN DottedLineApproverEmployeeCode = @EmpCode THEN 1 ELSE DottedApprover_Status END,
+                                DottedApprover_TimeStamp = CASE WHEN DottedLineApproverEmployeeCode = @EmpCode THEN @TimeStamp ELSE DottedApprover_TimeStamp END
+                            WHERE ID = @ID 
+                              AND (Approver1EmployeeCode = @EmpCode OR Approver2EmployeeCode = @EmpCode OR DottedLineApproverEmployeeCode = @EmpCode)";
+
+                                using (SqlCommand cmd = new SqlCommand(updateQuery, conn))
+                                {
+                                    cmd.Parameters.AddWithValue("@TimeStamp", DateTime.Now);
+                                    cmd.Parameters.AddWithValue("@EmpCode", employeeCode);
+                                    cmd.Parameters.AddWithValue("@ID", recordId);
+
+                                    int rowsAffected = cmd.ExecuteNonQuery();
+                                    if (rowsAffected > 0)
+                                    {
+                                        approvedCount++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (approvedCount > 0)
+            {
+                string script = $"new PNotify({{ title: 'Success', text: 'Successfully bulk approved {approvedCount} records.', type: 'success', styling: 'bootstrap3' }});";
+                ClientScript.RegisterStartupScript(this.GetType(), "BulkApproveSuccess", script, true);
+
+                // Re-trigger the submit button to refresh the grid with the current filters
+                btn_submit_Click(null, null);
+            }
+            else
+            {
+                string script = "new PNotify({ title: 'Notice', text: 'No records were updated. Make sure you selected records where you are authorized to approve.', type: 'info', styling: 'bootstrap3' });";
+                ClientScript.RegisterStartupScript(this.GetType(), "BulkApproveNone", script, true);
+            }
+        }
+
+        // --- 1. HELPER TO RESOLVE EMPLOYEE NAMES & RENDER BADGES ---
+        protected string GetApproverDisplay(object empCodeObj, object statusObj)
+        {
+            // Fix: Added .Trim() to prevent hidden spaces from failing the empty check
+            string empCode = empCodeObj != null ? empCodeObj.ToString().Trim() : "";
+            string status = statusObj != null ? statusObj.ToString() : "0";
+            string badge = "";
+
+            if (status == "1") badge = "<span class='badge bg-success' style='font-size:10px;'>Approved</span>";
+            else if (status == "2") badge = "<span class='badge bg-danger' style='font-size:10px;'>Rejected</span>";
+            else badge = "<span class='badge bg-warning text-dark' style='font-size:10px;'>Pending</span>";
+
+            if (string.IsNullOrEmpty(empCode))
+            {
+                return $"<span class='text-muted'>Unassigned</span> {badge}";
+            }
+
+            // Fetch Name from DB and Cache it
+            string empName = GetMasterDescription($"EMP::{empCode}",
+                "SELECT TOP 1 EmployeeName FROM MST_UserMaster WHERE EmployeeCode = @emp",
+                p => p.AddWithValue("@emp", empCode)) ?? "Unknown";
+
+            return $"<b>{empName}</b> <span class='text-muted'>({empCode})</span> {badge}";
+        }
+
+        // --- 2. HELPER TO FETCH AND FORMAT HISTORICAL STD LIMITS ---
+        protected string GetStdLimitText(object plantObj, object lineObj, object catObj, object brandObj, object dateObj, object timeObj, string fieldName)
+        {
+            try
+            {
+                int formId = 1; // 1 = QAQC Inspector Report
+                int plantId = Convert.ToInt32(plantObj);
+                int lineId = Convert.ToInt32(lineObj);
+                int catId = Convert.ToInt32(catObj);
+                int brandId = Convert.ToInt32(brandObj);
+
+                // Calculate exact submission time
+                DateTime submissionDateTime = DateTime.Now;
+                if (dateObj != null && dateObj != DBNull.Value)
+                {
+                    DateTime date = Convert.ToDateTime(dateObj);
+                    if (timeObj != null && timeObj != DBNull.Value)
+                        submissionDateTime = date.Add((TimeSpan)timeObj);
+                    else
+                        submissionDateTime = date.Add(new TimeSpan(23, 59, 59));
+                }
+
+                // Cache Key specific to this Form + Date so we don't query the DB constantly
+                string cacheKey = $"STD_{formId}_{plantId}_{lineId}_{catId}_{brandId}_{submissionDateTime:yyyyMMdd}";
+                DataTable dtConfig = HttpRuntime.Cache[cacheKey] as DataTable;
+
+                if (dtConfig == null)
+                {
+                    dtConfig = DatabaseHelper.GetFormFieldControlByFormAndBrand(formId, plantId, lineId, brandId, catId, submissionDateTime);
+                    if (dtConfig != null)
+                    {
+                        HttpRuntime.Cache.Insert(cacheKey, dtConfig, null, DateTime.Now.AddMinutes(10), System.Web.Caching.Cache.NoSlidingExpiration);
+                    }
+                }
+
+                if (dtConfig != null)
+                {
+                    DataRow[] rows = dtConfig.Select($"field_name = '{fieldName}'");
+                    if (rows.Length > 0)
+                    {
+                        string min = rows[0]["RV_MinValue"].ToString();
+                        string max = rows[0]["RV_MaxValue"].ToString();
+                        if (!string.IsNullOrEmpty(min) && !string.IsNullOrEmpty(max))
+                        {
+                            return $"(Std: {min} - {max})";
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // If an error happens parsing the IDs, return a small red 'Err' to help debugging instead of failing silently
+                return $"<span style='color:red;'>Err</span>";
+            }
+
+            return "";
+        }
+
+        // --- 3. UNIVERSAL CACHED SQL EXECUTOR ---
+        private string GetMasterDescription(string cachePrefix, string sql, Action<SqlParameterCollection> bindParams, int cacheSeconds = 300)
+        {
+            string cacheKey = cachePrefix;
+            var cached = HttpRuntime.Cache[cacheKey] as string;
+            if (!string.IsNullOrEmpty(cached)) return cached;
+
+            try
+            {
+                using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                using (var cmd = new SqlCommand(sql, con))
+                {
+                    bindParams(cmd.Parameters);
+                    con.Open();
+                    var result = cmd.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        string value = Convert.ToString(result);
+                        HttpRuntime.Cache.Insert(cacheKey, value, null, DateTime.Now.AddSeconds(cacheSeconds), System.Web.Caching.Cache.NoSlidingExpiration);
+                        return value;
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
     }
 }

@@ -447,6 +447,11 @@
             });
         }
 
+        $(document).ready(function () {
+            // Initialize Bootstrap tooltips
+            $('[data-toggle="tooltip"]').tooltip({ html: true });
+        });
+
     </script>
 
     <asp:HiddenField ID="hdn_img1" runat="server" />
@@ -491,6 +496,15 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="lbl_docnumber" runat="server" Text="Label"></asp:Label></h2>
+
+                            <ul class="nav navbar-right panel_toolbox">
+                                <li>
+                                    <button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#stdLimitsModal">
+                                        <i class="fa fa-info-circle"></i>View Standard Limits
+                                    </button>
+                                </li>
+                            </ul>
+
                             <div class="clearfix"></div>
                         </div>
 
@@ -779,7 +793,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3" id="ShapeSizeRemarksDIV" style="display: none;">
+                            <div class="col-md-3" id="ShapeSizeRemarksDIV" style="display: none;" runat="server">
                                 <div class="mb-3">
                                     <asp:Label ID="Label_TB_ShapeSize_Remarks" runat="server" AssociatedControlID="TXB_ShapeSize_Remarks" Text="Shape Size Deviation Remarks:" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TBX_ShapeSize_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_ShapeSize_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
@@ -877,7 +891,7 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3" id="GaugeLenRemarksDIV" style="display: none;">
+                            <div class="col-md-3" id="GaugeLenRemarksDIV" style="display: none;" runat="server">
                                 <div class="mb-3">
                                     <asp:Label ID="Label_TB_GaugeLen_Remarks" runat="server" AssociatedControlID="TXB_GaugeLen_Remarks" Text="Gauge Length Deviation Remarks:" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TBX_GaugeLen_Remarks" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="TXB_GaugeLen_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
@@ -1024,7 +1038,7 @@
             </div>
 
 
-            <div class="row">
+            <div class="row" id="pcktwgt_pnl" runat="server" visible="false">
                 <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <!-- HEADER -->
@@ -1193,43 +1207,70 @@
 
                         </div>
                         <div class="x_content">
-                            <div class="approver-flow">
+                            <div class="approver-flow text-center">
+
                                 <div class="approver-item">
                                     <p>
-                                        <asp:Label ID="Label7" runat="server" Text="Approver 1" />
+                                        <asp:Label ID="LabelSubmitter" runat="server" Text="Submitted By" Font-Bold="true" ForeColor="#2A3F54" />
+                                    </p>
+                                    <asp:Image ID="ImageSubmitter" runat="server" ImageUrl="~/WebData/No_Image.jpg" class="approver-photo" />
+                                    <p style="margin-top: 5px; margin-bottom: 2px;">
+                                        <asp:Label ID="SubmitterNameLabel" runat="server" Font-Bold="true" /><br />
+                                        <span class="text-muted">
+                                            <asp:Label ID="SubmitterCodeLabel" runat="server" Font-Size="Smaller" /></span>
+                                    </p>
+                                    <p>
+                                        <asp:Label ID="SubmitterStatusBadge" runat="server" CssClass="badge bg-primary" Text="Submitted"></asp:Label>
+                                    </p>
+                                </div>
+
+                                <div class="flow-line"></div>
+                                <div class="approver-item">
+                                    <p>
+                                        <asp:Label ID="Label7" runat="server" Text="Approver 1" Font-Bold="true" ForeColor="#2A3F54" />
                                     </p>
                                     <asp:Image ID="Image3" runat="server" ImageUrl="~/WebData/No_Image.jpg" class="approver-photo" />
-                                    <p>
-                                        <asp:Label ID="Approver1NameLabel" runat="server" Font-Bold="true" />
+                                    <p style="margin-top: 5px; margin-bottom: 2px;">
+                                        <asp:Label ID="Approver1NameLabel" runat="server" Font-Bold="true" /><br />
+                                        <span class="text-muted">
+                                            <asp:Label ID="Approver1CodeLabel" runat="server" Font-Size="Smaller" /></span>
                                     </p>
                                     <p>
-                                        <asp:Label ID="Approver1CodeLabel" runat="server" Font-Bold="true" />
+                                        <asp:Label ID="Approver1StatusBadge" runat="server" CssClass="badge bg-warning" Text="Pending"></asp:Label>
                                     </p>
                                 </div>
+
                                 <div class="flow-line"></div>
+
                                 <div class="approver-item">
                                     <p>
-                                        <asp:Label ID="Label8" runat="server" Text="Approver 2" />
+                                        <asp:Label ID="Label8" runat="server" Text="Approver 2" Font-Bold="true" ForeColor="#2A3F54" />
                                     </p>
                                     <asp:Image ID="Image2" runat="server" ImageUrl="~/WebData/No_Image.jpg" class="approver-photo" />
-                                    <p>
-                                        <asp:Label ID="Approver2NameLabel" runat="server" Font-Bold="true" />
+                                    <p style="margin-top: 5px; margin-bottom: 2px;">
+                                        <asp:Label ID="Approver2NameLabel" runat="server" Font-Bold="true" /><br />
+                                        <span class="text-muted">
+                                            <asp:Label ID="Approver2CodeLabel" runat="server" Font-Size="Smaller" /></span>
                                     </p>
                                     <p>
-                                        <asp:Label ID="Approver2CodeLabel" runat="server" Font-Bold="true" />
+                                        <asp:Label ID="Approver2StatusBadge" runat="server" CssClass="badge bg-warning" Text="Pending"></asp:Label>
                                     </p>
                                 </div>
+
                                 <div class="flow-line"></div>
+
                                 <div class="approver-item">
                                     <p>
-                                        <asp:Label ID="Label9" runat="server" Text="Approver 3" />
+                                        <asp:Label ID="Label9" runat="server" Text="CQA Approver" Font-Bold="true" ForeColor="#2A3F54" />
                                     </p>
                                     <asp:Image ID="Image1" runat="server" ImageUrl="~/WebData/No_Image.jpg" class="approver-photo" />
-                                    <p>
-                                        <asp:Label ID="DottedLineApproverNameLabel" runat="server" Font-Bold="true" />
+                                    <p style="margin-top: 5px; margin-bottom: 2px;">
+                                        <asp:Label ID="DottedLineApproverNameLabel" runat="server" Font-Bold="true" /><br />
+                                        <span class="text-muted">
+                                            <asp:Label ID="DottedLineApproverCodeLabel" runat="server" Font-Size="Smaller" /></span>
                                     </p>
                                     <p>
-                                        <asp:Label ID="DottedLineApproverCodeLabel" runat="server" Font-Bold="true" />
+                                        <asp:Label ID="DottedAppStatusBadge" runat="server" CssClass="badge bg-warning" Text="Pending"></asp:Label>
                                     </p>
                                 </div>
                             </div>
@@ -1251,6 +1292,44 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <div class="modal fade" id="stdLimitsModal" tabindex="-1" role="dialog" aria-labelledby="stdLimitsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #2A3F54; color: white;">
+                    <h5 class="modal-title" id="stdLimitsModalLabel">
+                        <i class="fa fa-list-alt"></i>Standard Limits Reference
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">These were the standard limits active at the time this report was submitted.</p>
+
+                    <div class="table-responsive">
+                        <asp:GridView ID="gvStandardLimits" runat="server" AutoGenerateColumns="False"
+                            CssClass="table table-striped table-bordered table-sm">
+                            <Columns>
+                                <asp:BoundField DataField="DisplayName" HeaderText="Parameter Name" ItemStyle-Font-Bold="true" />
+                                <asp:BoundField DataField="RV_MinValue" HeaderText="Min Limit" ItemStyle-CssClass="text-center" HeaderStyle-CssClass="text-center" />
+                                <asp:BoundField DataField="RV_MaxValue" HeaderText="Max Limit" ItemStyle-CssClass="text-center" HeaderStyle-CssClass="text-center" />
+                                <asp:TemplateField HeaderText="Required?" ItemStyle-CssClass="text-center" HeaderStyle-CssClass="text-center">
+                                    <ItemTemplate>
+                                        <%# Convert.ToBoolean(Eval("RFV_YesNo")) ? "<span class='badge bg-danger'>Yes</span>" : "<span class='badge bg-secondary'>No</span>" %>
+                                    </ItemTemplate>
+                                </asp:TemplateField>
+                            </Columns>
+                        </asp:GridView>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 </asp:Content>
