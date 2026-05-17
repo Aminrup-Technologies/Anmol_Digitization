@@ -1,4 +1,16 @@
-﻿using System;
+﻿/*
+=========================================================
+Name: VMS_MyVisitors_Session_Fix
+When: 2026-05-14
+Why:  The Host Quick Login feature was creating Session["EmpCode"], 
+      but this page was strictly enforcing Session["WORKMAN"], 
+      causing an unwanted redirect to the standard login.
+What: Updated Page_Load and BindGrids to accept either 
+      Session["WORKMAN"] (Standard ERP) OR Session["EmpCode"] (Quick Login).
+=========================================================
+*/
+
+using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
@@ -15,11 +27,9 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                // In production, grab this from your global ERP Login Session
-                if (Session["WORKMAN"] == null)
+                // FIX: Check for BOTH the standard ERP session and the Quick Verification session
+                if (Session["WORKMAN"] == null && Session["EmpCode"] == null)
                 {
-                    // Redirect to login or set a fallback for testing
-                    //Session["WORKMAN"] = "AHO004"; // Testing as Arjun Pal
                     Response.Redirect("Login.aspx");
                     return;
                 }
@@ -30,7 +40,16 @@ namespace AnmolDristi
 
         private void BindGrids()
         {
-            string empCode = Session["WORKMAN"].ToString();
+            // FIX: Safely determine which session key holds the Employee Code
+            string empCode = "";
+            if (Session["WORKMAN"] != null)
+            {
+                empCode = Session["WORKMAN"].ToString();
+            }
+            else if (Session["EmpCode"] != null)
+            {
+                empCode = Session["EmpCode"].ToString();
+            }
 
             using (SqlConnection con = new SqlConnection(connStr))
             {

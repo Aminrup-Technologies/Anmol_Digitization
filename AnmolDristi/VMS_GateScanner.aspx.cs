@@ -59,6 +59,67 @@ namespace AnmolDristi
 
         private void BindInsideVisitors()
         {
+            // 1. Check if the guard is at a specific branch
+            int branchId = 0;
+            bool isSpecificGate = false;
+
+            if (Request.QueryString["BranchId"] != null && int.TryParse(Request.QueryString["BranchId"].ToString(), out branchId))
+            {
+                isSpecificGate = true;
+            }
+
+            // 2. Build the query dynamically
+            string query = @"
+                SELECT 
+                    v.LogID,
+                    v.VisitorName, 
+                    v.VisitorCompany, 
+                    ISNULL(NULLIF(v.VisitorMobile, ''), v.VisitorEmail) AS ContactInfo,
+                    ISNULL(u.EmployeeName, 'Unknown') AS HostName,
+                    v.ActualInTime,
+                    v.ValidUpto,
+                    v.PhotoPath
+                FROM VMS_VisitLog v
+                LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
+                WHERE v.VisitStatus = 'Checked-In'";
+
+            // 3. Apply the Branch restriction if applicable
+            if (isSpecificGate)
+            {
+                query += " AND v.TargetBranchID = @BranchId";
+            }
+
+            query += " ORDER BY v.ActualInTime DESC";
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    // 4. Bind the parameter safely
+                    if (isSpecificGate)
+                    {
+                        cmd.Parameters.AddWithValue("@BranchId", branchId);
+                    }
+
+                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        sda.Fill(dt);
+                        gvInside.DataSource = dt;
+                        gvInside.DataBind();
+
+                        lblInsideCount.Text = dt.Rows.Count.ToString();
+
+                        // TRIGGER AJAX PANELS TO UPDATE WITHOUT FLICKERING THE SCREEN
+                        upGrid.Update();
+                        upBadge.Update();
+                    }
+                }
+            }
+        }
+
+        private void BindInsideVisitors_OLD()
+        {
             string query = @"
                 SELECT 
                     v.LogID,
@@ -127,7 +188,153 @@ namespace AnmolDristi
         }
 
         // --- SCANNER EVENTS ---
+
         protected void btnProcessScan_Click(object sender, EventArgs e)
+        {
+            string scannedToken = hfScannedToken.Value;
+            Guid tokenGuid;
+
+            if (!Guid.TryParse(scannedToken, out tokenGuid))
+            {
+                ShowResult("result-card result-danger", "Invalid QR Code format.", "This does not belong to the Anmol VMS system.", "", null);
+                return;
+            }
+
+            int scannerBranchId = 0;
+            bool isSpecificGate = false;
+            if (Request.QueryString["BranchId"] != null && int.TryParse(Request.QueryString["BranchId"], out scannerBranchId))
+            {
+                isSpecificGate = true;
+            }
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                // REALIGNMENT 2: Added v.PassCategory to the SELECT query
+                string query = @"
+                SELECT 
+                    v.LogID, v.VisitorName, v.VisitorCompany, v.VisitorMobile, v.VisitorEmail, 
+                    v.ApprovalStatus, v.VisitStatus, v.ValidUpto, v.PhotoPath, v.ActualInTime, v.PassCategory,
+                    u.EmployeeName AS HostName, u.Email AS HostEmail, u.BranchId AS VisitBranchId,
+                    ISNULL(d.Department_Description, 'General') AS HostDepartment,
+                    ISNULL(b.Branch_Description, 'Unknown Branch') AS VisitBranchName
+                FROM VMS_VisitLog v
+                LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
+                LEFT JOIN MST_Department d ON CAST(u.DepartmentId AS VARCHAR) = d.Department_ID
+                LEFT JOIN MST_Branch b ON u.BranchId = b.Branch_ID
+                WHERE v.QRToken = @Token";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Token", tokenGuid);
+                    con.Open();
+
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        if (sdr.Read())
+                        {
+                            int logId = Convert.ToInt32(sdr["LogID"]);
+                            string status = sdr["ApprovalStatus"].ToString();
+
+                            // REALIGNMENT 1: Safe Null-handling for VisitStatus defaulting to 'Scheduled'
+                            string visitStatus = sdr["VisitStatus"] != DBNull.Value && !string.IsNullOrWhiteSpace(sdr["VisitStatus"].ToString())
+                                                 ? sdr["VisitStatus"].ToString()
+                                                 : "Scheduled";
+
+                            DateTime validUpto = Convert.ToDateTime(sdr["ValidUpto"]);
+                            string photoPath = sdr["PhotoPath"].ToString();
+
+                            int visitBranchId = sdr["VisitBranchId"] != DBNull.Value ? Convert.ToInt32(sdr["VisitBranchId"]) : 0;
+                            string visitBranchName = sdr["VisitBranchName"].ToString();
+
+                            hfCurrentLogId.Value = logId.ToString();
+                            hfHostEmail.Value = sdr["HostEmail"].ToString();
+                            hfHostName.Value = sdr["HostName"].ToString();
+                            hfVisName.Value = sdr["VisitorName"].ToString();
+                            hfCompany.Value = sdr["VisitorCompany"].ToString();
+
+                            string visName = hfVisName.Value;
+
+                            // Prepend the Category to the Company name for the Guard's visibility
+                            string category = sdr["PassCategory"].ToString();
+                            string company = string.IsNullOrEmpty(category) ? hfCompany.Value : $"[{category}] - {hfCompany.Value}";
+
+                            string contact = !string.IsNullOrEmpty(sdr["VisitorMobile"].ToString()) ? sdr["VisitorMobile"].ToString() : sdr["VisitorEmail"].ToString();
+                            string hostName = hfHostName.Value;
+                            string hostDept = sdr["HostDepartment"].ToString();
+                            string validUptoStr = validUpto.ToString("dd MMM, hh:mm tt");
+
+                            // CROSS-PLANT RESTRICTION
+                            if (isSpecificGate && scannerBranchId != visitBranchId)
+                            {
+                                ShowResult("result-card result-danger",
+                                    "Wrong Facility Alert",
+                                    $"This pass is strictly valid for <b>{visitBranchName}</b>. The visitor is at the wrong location.",
+                                    photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                                return;
+                            }
+
+                            if (status != "Approved")
+                            {
+                                ShowResult("result-card result-danger", "Access Denied", $"Pass is currently marked as: {status}", photoPath, null);
+                                return;
+                            }
+
+                            // EXPIRATION CHECK: Blocks Check-In, allows Check-Out
+                            if (DateTime.Now > validUpto && visitStatus == "Scheduled")
+                            {
+                                ShowResult("result-card result-danger", "Pass Expired", $"This pass expired on {validUptoStr}. Cannot Check-In.", photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                                return;
+                            }
+
+                            if (visitStatus == "Scheduled")
+                            {
+                                btnManualCheckIn.Enabled = true;
+                                btnManualCheckOut.Enabled = false;
+                                liCheckInTime.Visible = false;
+                                ShowResult("result-card result-info", "Visitor Identified", "Verify photo and click Confirm Check-IN.", photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                            }
+                            else if (visitStatus == "Checked-In")
+                            {
+                                DateTime inTime = sdr["ActualInTime"] != DBNull.Value ? Convert.ToDateTime(sdr["ActualInTime"]) : DateTime.Now;
+
+                                liCheckInTime.Visible = true;
+                                lblDetInTime.Text = inTime.ToString("dd MMM, hh:mm tt");
+                                btnManualCheckIn.Enabled = false;
+
+                                if (DateTime.Now < inTime.AddMinutes(10))
+                                {
+                                    btnManualCheckOut.Enabled = false;
+                                    btnManualCheckOut.Text = "Cannot Check-OUT yet (< 10 mins)";
+                                }
+                                else
+                                {
+                                    btnManualCheckOut.Enabled = true;
+                                    btnManualCheckOut.Text = "Confirm Check-OUT";
+                                }
+
+                                if (DateTime.Now > validUpto)
+                                {
+                                    ShowResult("result-card result-warning", "Visitor Overstayed", $"Pass expired on {validUptoStr}. Please verify and confirm Check-OUT.", photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                                }
+                                else
+                                {
+                                    ShowResult("result-card result-info", "Visitor Exiting", "Review Check-In time and confirm Check-OUT.", photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                                }
+                            }
+                            else if (visitStatus == "Checked-Out")
+                            {
+                                ShowResult("result-card result-danger", "Already Checked-Out", $"{visName} has already left the premises.", photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                            }
+                        }
+                        else
+                        {
+                            ShowResult("result-card result-danger", "Pass Not Found", "This pass does not exist in the database.", "", null);
+                        }
+                    }
+                }
+            }
+        }
+        protected void btnProcessScan_Click_OLD(object sender, EventArgs e)
         {
             string scannedToken = hfScannedToken.Value;
             Guid tokenGuid;

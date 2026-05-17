@@ -4,6 +4,10 @@ using System.Data.SqlClient;
 using System.Configuration;
 using System.Web.UI.WebControls;
 using System.Web.UI;
+using QRCoder;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 
 namespace AnmolDristi
 {
@@ -97,15 +101,60 @@ namespace AnmolDristi
                 else
                     lblStatus.CssClass = "badge badge-pending";
 
-                // 2. Show the "View Digital Pass" footer ONLY if approved
+                // 2. Process Digital Pass Footer & QR Code
                 Panel pnlFooter = (Panel)e.Item.FindControl("pnlFooter");
+
                 if (status == "approved")
                 {
-                    // Ensure the token exists before showing the button
                     object tokenObj = DataBinder.Eval(e.Item.DataItem, "QRToken");
-                    if (tokenObj != null && !string.IsNullOrEmpty(tokenObj.ToString()))
+
+                    if (tokenObj != DBNull.Value && tokenObj != null && !string.IsNullOrEmpty(tokenObj.ToString()))
                     {
+                        // Show the footer wrapper
                         pnlFooter.Visible = true;
+
+                        // Find the Image and Label controls inside the repeater
+                        System.Web.UI.WebControls.Image imgQRCode = (System.Web.UI.WebControls.Image)e.Item.FindControl("imgQRCode");
+                        Label lblQRMessage = (Label)e.Item.FindControl("lblQRMessage");
+
+                        if (imgQRCode != null)
+                        {
+                            // Initialize the QR Generator using the secure DB Token
+                            string qrTokenFromDb = tokenObj.ToString();
+                            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+                            QRCodeData qrCodeData = qrGenerator.CreateQrCode(qrTokenFromDb, QRCodeGenerator.ECCLevel.Q);
+                            QRCode qrCode = new QRCode(qrCodeData);
+
+                            // Render graphic (Size 5 is optimal for mobile screens)
+                            using (Bitmap qrCodeImage = qrCode.GetGraphic(5))
+                            {
+                                using (MemoryStream ms = new MemoryStream())
+                                {
+                                    // Convert the image directly to Base64 to serve it without saving to disk
+                                    qrCodeImage.Save(ms, ImageFormat.Png);
+                                    byte[] byteImage = ms.ToArray();
+                                    string base64String = Convert.ToBase64String(byteImage);
+
+                                    // Bind the generated image string to the UI control
+                                    imgQRCode.ImageUrl = "data:image/png;base64," + base64String;
+                                    imgQRCode.Visible = true;
+                                }
+                            }
+
+                            if (lblQRMessage != null)
+                            {
+                                lblQRMessage.Text = "Scan this at the security gate to check in.";
+                                lblQRMessage.Visible = true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Ensure the footer remains hidden if it is still pending or rejected
+                    if (pnlFooter != null)
+                    {
+                        pnlFooter.Visible = false;
                     }
                 }
             }

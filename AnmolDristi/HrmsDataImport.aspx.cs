@@ -15,8 +15,8 @@ namespace AnmolDristi
         private readonly string[] ExpectedDbColumns = new string[]
         {
             // Core
-            "EmpCode", "EmpName", "EmpStatus", "EmployeeStatus", "Email", "MobileNo", 
-    
+            "EmpCode", "EmpName", "EmpStatus", "EmployeeStatus", "Email", "MobileNo",
+            "DOJ", "Gender", // <--- ADDED HERE
             // Master IDs & Descriptions
             "Branch_ID", "Branch_Description",
             "Department_ID", "Department_Description",
@@ -41,9 +41,18 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["UserId"] == null)
+            // 1. Check if the user is authenticated
+            if (Session["UserId"] == null || string.IsNullOrEmpty(Session["UserId"].ToString()))
             {
-                // Response.Redirect("Login.aspx");
+                // Session expired or user not logged in. Redirect immediately.
+                // Appending a query string helps the Login page show a "Session Expired" message if desired.
+                Response.Redirect("~/Login.aspx?msg=session_expired", true);
+                return; // Ensure no further page lifecycle events fire
+            }
+
+            if (!IsPostBack)
+            {
+                // Any initial data binding goes here
             }
         }
 
@@ -145,6 +154,7 @@ namespace AnmolDristi
         protected void btnProcess_Click(object sender, EventArgs e)
         {
             string tempPath = Session["TempCsvPath"] as string;
+
             if (string.IsNullOrEmpty(tempPath) || !File.Exists(tempPath))
             {
                 ShowMessage("Session expired or file lost. Please upload again.", false);
@@ -171,13 +181,14 @@ namespace AnmolDristi
             {
                 // 2. Create Batch ID
                 int batchId = 0;
+                string uploadedBy = Session["UserId"] != null ? Session["UserId"].ToString() : "UnknownSystemUser";
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     string insertBatchSql = "INSERT INTO dbo.ImportBatchMaster (FileName, UploadedBy) OUTPUT INSERTED.BatchId VALUES (@FileName, @UploadedBy)";
                     using (SqlCommand cmd = new SqlCommand(insertBatchSql, conn))
                     {
                         cmd.Parameters.AddWithValue("@FileName", Session["OriginalFileName"].ToString());
-                        cmd.Parameters.AddWithValue("@UploadedBy", "Admin");
+                        cmd.Parameters.AddWithValue("@UploadedBy", uploadedBy);
                         conn.Open();
                         batchId = (int)cmd.ExecuteScalar();
                     }
@@ -254,7 +265,30 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
+                // Log the actual exception to your server logs here (NLog, Serilog, etc.)
                 ShowMessage(string.Format("A critical error occurred: {0}", ex.Message), false);
+            }
+            finally
+            {
+                // GUARANTEED CLEANUP: This runs no matter what happens above.
+                try
+                {
+                    if (!string.IsNullOrEmpty(tempPath) && File.Exists(tempPath))
+                    {
+                        // Force garbage collection to release file handles if TextFieldParser kept it open
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+
+                        File.Delete(tempPath);
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    // Failsafe: If deletion fails (e.g., file locked by another process), 
+                    // catch it so it doesn't crash the IIS worker process. 
+                    // In a real app, log this cleanupEx to your error logger.
+                    System.Diagnostics.Debug.WriteLine("Failed to delete temp file: " + cleanupEx.Message);
+                }
             }
         }
 

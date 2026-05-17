@@ -153,7 +153,7 @@ namespace AnmolDristi
 
             try
             {
-                string logoPath = Server.MapPath("~/images/anmol_logo.png");
+                string logoPath = Server.MapPath("~/WebData/anmol_logo_GPTW.jpg");
                 if (File.Exists(logoPath))
                 {
                     iTextSharp.text.Image logoImg = iTextSharp.text.Image.GetInstance(logoPath);
@@ -225,7 +225,7 @@ namespace AnmolDristi
 
             try
             {
-                string logoPath = Server.MapPath("~/images/anmol_logo.png");
+                string logoPath = Server.MapPath("~/WebData/anmol_logo_GPTW.jpg");
                 if (File.Exists(logoPath))
                 {
                     iTextSharp.text.Image logoImg = iTextSharp.text.Image.GetInstance(logoPath);

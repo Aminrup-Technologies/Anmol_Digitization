@@ -575,6 +575,7 @@
                                                 <li id="VMS_MyVisitors" runat="server" visible="false"><a href="VMS_MyVisitors.aspx">My Visitors<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="VMS_MyVisits" runat="server" visible="false"><a href="VMS_MyVisits.aspx">My Visits<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="VMS_GateScanner" runat="server" visible="false"><a href="VMS_GateScanner.aspx">Gate Scanner<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_AdminPending" runat="server" visible="false"><a href="VMS_AdminPending.aspx">Admin Pending<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 

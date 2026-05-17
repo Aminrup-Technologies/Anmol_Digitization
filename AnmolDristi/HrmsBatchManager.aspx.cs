@@ -3,6 +3,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Text;
+using System.Web;
 
 namespace AnmolDristi
 {
@@ -15,9 +16,12 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["UserId"] == null)
+            // 1. Enforce Security Gateway
+            if (Session["UserId"] == null || string.IsNullOrEmpty(Session["UserId"].ToString()))
             {
-                // Response.Redirect("Login.aspx");
+                // Redirect unauthorized users safely
+                Response.Redirect("~/Login.aspx?msg=session_expired", true);
+                return;
             }
 
             if (!IsPostBack)
@@ -80,12 +84,14 @@ namespace AnmolDristi
                     if (!string.IsNullOrEmpty(ddlStatus.SelectedValue))
                         cmd.Parameters.AddWithValue("@Status", ddlStatus.SelectedValue);
 
-                    SqlDataAdapter da = new SqlDataAdapter(cmd);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-
-                    gvBatches.DataSource = dt;
-                    gvBatches.DataBind();
+                    // 2. Wrap Adapter and DataTable in 'using' statements for immediate cleanup
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    using (DataTable dt = new DataTable())
+                    {
+                        da.Fill(dt);
+                        gvBatches.DataSource = dt;
+                        gvBatches.DataBind();
+                    }
                 }
             }
         }
@@ -207,7 +213,8 @@ namespace AnmolDristi
                         Response.ContentType = "text/csv";
                         Response.Output.Write(sb.ToString());
                         Response.Flush();
-                        Response.End();
+                        System.Web.HttpContext.Current.ApplicationInstance.CompleteRequest();
+                        //Response.End();
                     }
                 }
             }

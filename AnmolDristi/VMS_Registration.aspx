@@ -2,51 +2,12 @@
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style>
-        .mobile-form {
-            background: #fff;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-top: 30px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-top: 10px;
-        }
-
-        .btn-proceed {
-            background-color: #1ABB9C;
-            color: white;
-            width: 100%;
-            border-radius: 25px;
-            padding: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            margin-top: 20px;
-        }
-
-        .camera-box {
-            border: 2px dashed #1ABB9C;
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-
-        video, canvas {
-            width: 100%;
-            max-width: 300px;
-            border-radius: 8px;
-        }
-
-        .ui-autocomplete {
-            max-height: 200px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            z-index: 9999;
-        }
+        .mobile-form { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 30px; }
+        .form-label { font-weight: 600; color: #333; margin-top: 10px; }
+        .btn-proceed { background-color: #1ABB9C; color: white; width: 100%; border-radius: 25px; padding: 12px; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        .camera-box { border: 2px dashed #1ABB9C; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        video, canvas { width: 100%; max-width: 300px; border-radius: 8px; }
+        .ui-autocomplete { max-height: 200px; overflow-y: auto; overflow-x: hidden; z-index: 9999; }
     </style>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 </asp:Content>
@@ -80,6 +41,23 @@
                         </div>
                     </div>
 
+                    <div class="form-group">
+                        <label class="form-label">Purpose of Visit *</label>
+                        <asp:DropDownList ID="ddlPurpose" runat="server" CssClass="form-control">
+                            <asp:ListItem Text="-- Select Purpose --" Value=""></asp:ListItem>
+                            <asp:ListItem Text="Internal Employee (I Work Here)" Value="I Work Here"></asp:ListItem>
+                            <asp:ListItem Text="Meeting / Appointment" Value="Meeting Appointment"></asp:ListItem>
+                            <asp:ListItem Text="Delivery" Value="Delivery"></asp:ListItem>
+                            <asp:ListItem Text="Service / Maintenance" Value="Service"></asp:ListItem>
+                        </asp:DropDownList>
+                    </div>
+
+                    <div id="divInternalEmp" style="display: none;" class="form-group">
+                        <label class="form-label">Your Employee Code *</label>
+                        <asp:TextBox ID="txtInternalEmpCode" runat="server" CssClass="form-control" placeholder="Enter your Emp Code (e.g., AIL0000)"></asp:TextBox>
+                        <small class="text-muted">Required for auto-approval bypass.</small>
+                    </div>
+
                     <div class="row">
                         <div class="col-xs-6">
                             <label class="form-label">First Name *</label>
@@ -107,23 +85,13 @@
                         <small id="hostHelpText" class="text-muted">Select an active employee from the dropdown.</small>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Purpose of Visit *</label>
-                        <asp:DropDownList ID="ddlPurpose" runat="server" CssClass="form-control">
-                            <asp:ListItem Text="Meeting / Appointment" Value="Meeting Appointment"></asp:ListItem>
-                            <asp:ListItem Text="Delivery" Value="Delivery"></asp:ListItem>
-                            <asp:ListItem Text="Service / Maintenance" Value="Service"></asp:ListItem>
-                            <asp:ListItem Text="Internal Employee (I Work Here)" Value="I Work Here"></asp:ListItem>
-                        </asp:DropDownList>
-                    </div>
-
                     <asp:Button ID="btnSubmit" runat="server" CssClass="btn btn-proceed" Text="Submit Registration" OnClientClick="return validateForm();" OnClick="btnSubmit_Click" />
                 </asp:Panel>
 
                 <asp:Panel ID="pnlSuccess" runat="server" Visible="false" CssClass="mobile-form text-center">
                     <i class="fa fa-check-circle" style="font-size: 60px; color: #1ABB9C;"></i>
-                    <h2>Request Submitted!</h2>
-                    <p class="text-muted">Your host has been notified. Please wait for their approval to receive your Gate Pass.</p>
+                    <h2>Pass Generated!</h2>
+                    <p class="text-muted" id="pnlSuccessText" runat="server">Your pass has been generated. Please view it in 'My Visits'.</p>
                 </asp:Panel>
 
                 <div class="text-center" style="margin-top: 15px;">
@@ -134,10 +102,22 @@
         </div>
     </div>
 
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-
     <script type="text/javascript">
         $(document).ready(function () {
+            // --- 0. UI Interaction: Internal Employee Logic ---
+            $("#<%= ddlPurpose.ClientID %>").change(function () {
+                if ($(this).val() === "I Work Here") {
+                    $("#divInternalEmp").slideDown();
+                    // Optional UX: Auto-fill company name
+                    if ($("#<%= txtCompany.ClientID %>").val() === "") {
+                        $("#<%= txtCompany.ClientID %>").val("Anmol Industries Ltd.");
+                    }
+                } else {
+                    $("#divInternalEmp").slideUp();
+                    $("#<%= txtInternalEmpCode.ClientID %>").val("");
+                }
+            });
+
             // --- 1. HTML5 Camera Logic ---
             const video = document.getElementById('videoElement');
             const canvas = document.getElementById('canvasElement');
@@ -210,35 +190,37 @@
                     },
                     minLength: 2
                 });
-                }
+            }
 
-            // --- 3. The Fix: Dynamically load jQuery UI to bypass Master Page conflicts ---
             if (typeof $.ui === 'undefined' || typeof $.ui.autocomplete === 'undefined') {
                 $.getScript("https://code.jquery.com/ui/1.12.1/jquery-ui.min.js")
-                    .done(function () {
-                        // Successfully loaded, fire the autocomplete
-                        initializeAutocomplete();
-                    })
-                    .fail(function () {
-                        console.error("Failed to load jQuery UI. Check your firewall/internet.");
-                    });
+                    .done(function () { initializeAutocomplete(); })
+                    .fail(function () { console.error("Failed to load jQuery UI."); });
             } else {
-                // UI is already loaded somehow, just fire it
                 initializeAutocomplete();
             }
         });
 
-            // Basic Client-Side Validation
-            function validateForm() {
-                if ($("#<%= hfSelfieBase64.ClientID %>").val() === "") {
-                    alert("Please take a selfie photo before submitting.");
-                    return false;
-                }
-                if ($("#<%= hfSelectedHostCode.ClientID %>").val() === "") {
-                    alert("Please search and select a valid Host Employee.");
-                    return false;
-                }
-                return true;
+        // Basic Client-Side Validation
+        function validateForm() {
+            if ($("#<%= hfSelfieBase64.ClientID %>").val() === "") {
+                alert("Please take a selfie photo before submitting.");
+                return false;
             }
+            if ($("#<%= ddlPurpose.ClientID %>").val() === "") {
+                alert("Please select the purpose of your visit.");
+                return false;
+            }
+            // NEW: Enforce internal code if they select 'I Work Here'
+            if ($("#<%= ddlPurpose.ClientID %>").val() === "I Work Here" && $("#<%= txtInternalEmpCode.ClientID %>").val().trim() === "") {
+                alert("Please enter your Employee Code to self-approve your pass.");
+                return false;
+            }
+            if ($("#<%= hfSelectedHostCode.ClientID %>").val() === "") {
+                alert("Please search and select a valid Host Employee.");
+                return false;
+            }
+            return true;
+        }
     </script>
 </asp:Content>

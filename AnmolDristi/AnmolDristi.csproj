@@ -356,8 +356,10 @@
     <Content Include="UserRoleAudit.aspx" />
     <Content Include="UserRoleManager.aspx" />
     <Content Include="viewusers.aspx" />
+    <Content Include="VMS_AdminPending.aspx" />
     <Content Include="VMS_DigitalPass.aspx" />
     <Content Include="VMS_GateScanner.aspx" />
+    <Content Include="VMS_HostQuickLogin.aspx" />
     <Content Include="VMS_MyVisitors.aspx" />
     <Content Include="VMS_MyVisits.aspx" />
     <Content Include="VMS_OrganizationDetails.aspx" />
@@ -1513,6 +1515,13 @@
     <Compile Include="viewusers.aspx.designer.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>
     </Compile>
+    <Compile Include="VMS_AdminPending.aspx.cs">
+      <DependentUpon>VMS_AdminPending.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_AdminPending.aspx.designer.cs">
+      <DependentUpon>VMS_AdminPending.aspx</DependentUpon>
+    </Compile>
     <Compile Include="VMS_DigitalPass.aspx.cs">
       <DependentUpon>VMS_DigitalPass.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1526,6 +1535,13 @@
     </Compile>
     <Compile Include="VMS_GateScanner.aspx.designer.cs">
       <DependentUpon>VMS_GateScanner.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_HostQuickLogin.aspx.cs">
+      <DependentUpon>VMS_HostQuickLogin.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_HostQuickLogin.aspx.designer.cs">
+      <DependentUpon>VMS_HostQuickLogin.aspx</DependentUpon>
     </Compile>
     <Compile Include="VMS_MyVisitors.aspx.cs">
       <DependentUpon>VMS_MyVisitors.aspx</DependentUpon>
