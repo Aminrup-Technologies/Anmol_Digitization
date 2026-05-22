@@ -12,17 +12,18 @@ namespace AnmolDristi
 {
     public partial class UiControlMapper : BasePage
     {
-        // Use the connection string property from your BasePage or define it directly
         private string Conn => System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
-        // Optimized Regex for finding runat="server" controls
-        private static readonly Regex RunatIdRegex = new Regex(@"(?i)(?:id\s*=\s*['""](?<id>[^'""]+)['""]\s*[^>]*runat\s*=\s*['""]server['""])|(?:runat\s*=\s*['""]server['""]\s*[^>]*id\s*=\s*['""](?<id2>[^'""]+)['""])", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        // UPGRADED REGEX: Uses lookaheads to reliably capture the HTML Tag Name, ID, and runat="server"
+        private static readonly Regex RunatIdRegex = new Regex(
+            @"(?i)<(?<tag>[a-zA-Z0-9:]+)(?=[^>]*\bid\s*=\s*['""](?<id>[^'""]+)['""])(?=[^>]*\brunat\s*=\s*['""]server['""])[^>]*>",
+            RegexOptions.Compiled);
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            //RequirePermission("UI.Admin.ControlMapper");
             if (!IsPostBack)
             {
+                hfStep.Value = "1";
                 LoadPermissions();
                 LoadPageList();
             }
@@ -31,12 +32,9 @@ namespace AnmolDristi
         private void LoadPageList()
         {
             var root = Server.MapPath("~");
-
-            // Find both ASPX pages and Master pages
             var aspxFiles = Directory.GetFiles(root, "*.aspx", SearchOption.AllDirectories);
             var masterFiles = Directory.GetFiles(root, "*.master", SearchOption.AllDirectories);
 
-            // Combine, format, and sort them
             var pages = aspxFiles.Concat(masterFiles)
                 .Select(p => "~/" + p.Substring(root.Length).Replace("\\", "/"))
                 .OrderBy(x => x)
@@ -47,24 +45,6 @@ namespace AnmolDristi
             {
                 ddlPages.Items.Add(new ListItem(p, p));
             }
-
-            if (ddlPages.Items.Count > 0)
-            {
-                ddlPages.SelectedIndex = 0;
-                LoadControlsForPage(ddlPages.SelectedValue);
-            }
-        }
-
-        private void LoadPageList_OLD()
-        {
-            // Scan ~/*.aspx in web root and subfolders
-            var root = Server.MapPath("~");
-            var pages = Directory.GetFiles(root, "*.aspx", SearchOption.AllDirectories)
-                .Select(p => "~/" + p.Substring(root.Length).Replace("\\", "/"))
-                .OrderBy(x => x).ToList();
-
-            ddlPages.Items.Clear();
-            foreach (var p in pages) ddlPages.Items.Add(new ListItem(p, p));
 
             if (ddlPages.Items.Count > 0)
             {
@@ -94,42 +74,174 @@ namespace AnmolDristi
 
         private void LoadControlsForPage(string pageVirtualPath)
         {
-            lbControls.Items.Clear();
-            lblMappingStatus.Text = "Select a control to view mapping.";
+            tvControls.Nodes.Clear();
+            lblMappingStatus.Text = "Scanning file...";
 
             if (string.IsNullOrWhiteSpace(pageVirtualPath)) return;
-
             if (!pageVirtualPath.StartsWith("~/")) pageVirtualPath = "~/" + pageVirtualPath.TrimStart('/');
 
             var physical = Server.MapPath(pageVirtualPath);
             if (!File.Exists(physical)) return;
 
             var text = File.ReadAllText(physical);
-            var matches = RunatIdRegex.Matches(text);
+
+            // Create the Absolute Root (The Page itself)
+            TreeNode pageNode = new TreeNode($"📄 {Path.GetFileName(pageVirtualPath)}", "PAGE_ROOT");
+            pageNode.Expanded = true;
+            pageNode.SelectAction = TreeNodeSelectAction.None;
+            tvControls.Nodes.Add(pageNode);
+
+            // Track the current container we are inside
+            TreeNode currentParent = pageNode;
+
+            // Regex to find ANY control with runat="server"
+            var matches = Regex.Matches(text,
+                @"<(?<tag>[a-zA-Z0-9:]+)[^>]*\bid\s*=\s*['""](?<id>[^'""]+)['""][^>]*\brunat\s*=\s*['""]server['""][^>]*>",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
             var added = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (Match m in matches)
             {
-                var id = m.Groups["id"].Success ? m.Groups["id"].Value : m.Groups["id2"].Value;
-                if (string.IsNullOrWhiteSpace(id)) continue;
+                var tag = m.Groups["tag"].Value.ToLower();
+                var id = m.Groups["id"].Value;
 
-                if (!added.Contains(id))
+                if (string.IsNullOrWhiteSpace(id) || added.Contains(id)) continue;
+
+                // CHECK: Is this a Panel/Container?
+                // If it's a div or panel, it becomes the new parent for subsequent buttons
+                if (tag == "div" || tag == "asp:panel" || tag == "section")
                 {
-                    lbControls.Items.Add(new ListItem(id));
-                    added.Add(id);
-                }
-            }
+                    TreeNode divNode = new TreeNode($"📁 {id}", id);
+                    divNode.Expanded = true;
+                    divNode.ShowCheckBox = true; // You can map the whole container too!
+                    pageNode.ChildNodes.Add(divNode);
 
-            if (lbControls.Items.Count > 0)
-            {
-                lbControls.SelectedIndex = 0;
-                ShowSelectedControlMapping(pageVirtualPath, lbControls.SelectedValue);
+                    // Set this as the parent for the next loop iterations
+                    currentParent = divNode;
+                }
+                else
+                {
+                    // It's a button/link/input -> Add as child of the active div
+                    TreeNode leaf = new TreeNode($"🔹 {id}", id);
+                    leaf.ShowCheckBox = true;
+                    currentParent.ChildNodes.Add(leaf);
+                }
+
+                added.Add(id);
             }
         }
 
         private void ShowSelectedControlMapping(string page, string controlId)
         {
-            if (string.IsNullOrEmpty(page) || string.IsNullOrEmpty(controlId)) return;
+            if (string.IsNullOrEmpty(page) || string.IsNullOrEmpty(controlId) || controlId.StartsWith("~/")) return;
+
+            using (var cn = new SqlConnection(Conn))
+            // UPDATED SQL: Now reads from the UiControlMap table!
+            using (var cmd = new SqlCommand(@"
+        SELECT p.PermissionId, p.PermissionKey, p.PermissionName 
+        FROM dbo.UiControlMap m 
+        INNER JOIN dbo.Permission p ON m.PermissionId = p.PermissionId 
+        WHERE m.PagePath = @page AND m.ControlId = @ctrl AND p.IsObsolete = 0", cn))
+            {
+                cmd.Parameters.AddWithValue("@page", page);
+                cmd.Parameters.AddWithValue("@ctrl", controlId);
+                cn.Open();
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    if (rdr.Read())
+                    {
+                        int pid = rdr.IsDBNull(0) ? 0 : rdr.GetInt32(0);
+                        string key = rdr.IsDBNull(1) ? null : rdr.GetString(1);
+                        string name = rdr.IsDBNull(2) ? null : rdr.GetString(2);
+
+                        lblMappingStatus.Text = $"Control <b>{controlId}</b> is currently mapped to: <strong>{HttpUtility.HtmlEncode(name ?? key)}</strong>";
+                        lblMappingStatus.CssClass = "text-success";
+
+                        if (pid > 0)
+                        {
+                            var li = ddlPermissions.Items.FindByValue(pid.ToString());
+                            if (li != null)
+                            {
+                                ddlPermissions.ClearSelection();
+                                li.Selected = true;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        lblMappingStatus.Text = $"Control <b>{controlId}</b> has no permission mapped yet.";
+                        lblMappingStatus.CssClass = "text-warning";
+                        ddlPermissions.ClearSelection();
+                    }
+                }
+            }
+        }
+
+        protected void btnMap_Click(object sender, EventArgs e)
+        {
+            lblMessage.Text = "";
+            lblMessage.CssClass = "";
+
+            List<string> selectedControls = new List<string>();
+            GetCheckedNodes(tvControls.Nodes, selectedControls);
+
+            if (string.IsNullOrEmpty(ddlPages.SelectedValue) || selectedControls.Count == 0 || ddlPermissions.SelectedValue == "0")
+            {
+                lblMessage.Text = "Please check at least one Control box and select a Permission.";
+                lblMessage.CssClass = "text-danger";
+                hfStep.Value = "3";
+                return;
+            }
+
+            int permId = int.Parse(ddlPermissions.SelectedValue);
+            string page = ddlPages.SelectedValue;
+
+            try
+            {
+                using (var cn = new SqlConnection(Conn))
+                {
+                    cn.Open();
+
+                    foreach (string controlId in selectedControls)
+                    {
+                        // 1. Unmap this specific control from any previous permission to prevent duplicates
+                        using (var cmdClear = new SqlCommand("DELETE FROM dbo.UiControlMap WHERE PagePath = @PagePath AND ControlId = @ControlId", cn))
+                        {
+                            cmdClear.Parameters.AddWithValue("@PagePath", page);
+                            cmdClear.Parameters.AddWithValue("@ControlId", controlId);
+                            cmdClear.ExecuteNonQuery();
+                        }
+
+                        // 2. INSERT into the new Mapping Table!
+                        using (var cmdUpdate = new SqlCommand("INSERT INTO dbo.UiControlMap (PagePath, ControlId, PermissionId) VALUES (@PagePath, @ControlId, @PermissionId)", cn))
+                        {
+                            cmdUpdate.Parameters.AddWithValue("@PermissionId", permId);
+                            cmdUpdate.Parameters.AddWithValue("@PagePath", page);
+                            cmdUpdate.Parameters.AddWithValue("@ControlId", controlId);
+                            cmdUpdate.ExecuteNonQuery();
+                        }
+                    }
+                }
+
+                ShowSelectedControlMapping(page, selectedControls[0]);
+                lblMessage.Text = $"<i class='fa fa-check-circle'></i> Successfully mapped {selectedControls.Count} control(s)!";
+                lblMessage.CssClass = "text-success font-weight-bold";
+
+                ClearAllChecks(tvControls.Nodes);
+                hfStep.Value = "3";
+            }
+            catch (Exception ex)
+            {
+                lblMessage.Text = "Error saving mapping: " + ex.Message;
+                lblMessage.CssClass = "text-danger";
+                hfStep.Value = "3";
+            }
+        }
+
+        private void ShowSelectedControlMapping_OLD(string page, string controlId)
+        {
+            if (string.IsNullOrEmpty(page) || string.IsNullOrEmpty(controlId) || controlId.StartsWith("~/")) return;
 
             using (var cn = new SqlConnection(Conn))
             using (var cmd = new SqlCommand("SELECT PermissionId, PermissionKey, PermissionName FROM dbo.Permission WHERE PagePath = @page AND ControlId = @ctrl AND IsObsolete = 0", cn))
@@ -145,7 +257,7 @@ namespace AnmolDristi
                         string key = rdr.IsDBNull(1) ? null : rdr.GetString(1);
                         string name = rdr.IsDBNull(2) ? null : rdr.GetString(2);
 
-                        lblMappingStatus.Text = $"Currently mapped to: <strong>{HttpUtility.HtmlEncode(name ?? key)}</strong>";
+                        lblMappingStatus.Text = $"Control <b>{controlId}</b> is currently mapped to: <strong>{HttpUtility.HtmlEncode(name ?? key)}</strong>";
                         lblMappingStatus.CssClass = "text-success";
 
                         if (pid > 0)
@@ -160,10 +272,32 @@ namespace AnmolDristi
                     }
                     else
                     {
-                        lblMappingStatus.Text = "No permission mapped for this control yet.";
+                        lblMappingStatus.Text = $"Control <b>{controlId}</b> has no permission mapped yet.";
                         lblMappingStatus.CssClass = "text-warning";
                         ddlPermissions.ClearSelection();
                     }
+                }
+            }
+        }
+
+        private void GetCheckedNodes(TreeNodeCollection nodes, List<string> selected)
+        {
+            foreach (TreeNode node in nodes)
+            {
+                // If the node is checked, add it to our list
+                if (node.Checked)
+                {
+                    // Only add if it's not the Root Page Node itself (the ID might be a virtual path)
+                    if (!node.Value.StartsWith("~"))
+                    {
+                        selected.Add(node.Value);
+                    }
+                }
+
+                // Recursively check children
+                if (node.ChildNodes.Count > 0)
+                {
+                    GetCheckedNodes(node.ChildNodes, selected);
                 }
             }
         }
@@ -175,71 +309,50 @@ namespace AnmolDristi
             LoadPageList();
             lblMessage.Text = "Pages rescanned successfully.";
             lblMessage.CssClass = "text-info";
+            hfStep.Value = "1";
         }
 
         protected void ddlPages_ServerChange(object sender, EventArgs e)
         {
             LoadControlsForPage(ddlPages.SelectedValue);
-        }
-
-        protected void lbControls_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            ShowSelectedControlMapping(ddlPages.SelectedValue, lbControls.SelectedValue);
-        }
-
-        protected void btnMap_Click(object sender, EventArgs e)
-        {
+            hfStep.Value = "2";
             lblMessage.Text = "";
-            lblMessage.CssClass = "";
+        }
 
-            if (string.IsNullOrEmpty(ddlPages.SelectedValue) || lbControls.SelectedIndex < 0 || ddlPermissions.SelectedValue == "0")
+        // Fixes the CS1061 Error
+        protected void tvControls_SelectedNodeChanged(object sender, EventArgs e)
+        {
+            if (tvControls.SelectedNode != null)
             {
-                lblMessage.Text = "Please select a Page, a Control, and a Permission.";
-                lblMessage.CssClass = "text-danger";
-                return;
+                ShowSelectedControlMapping(ddlPages.SelectedValue, tvControls.SelectedNode.Value);
+                hfStep.Value = "3";
+                lblMessage.Text = "";
             }
+        }
 
-            int permId = int.Parse(ddlPermissions.SelectedValue);
-            string page = ddlPages.SelectedValue;
-            string controlId = lbControls.SelectedValue;
-
-            try
+        // Recursive helper to safely clear all checkboxes in the tree
+        private void ClearAllChecks(TreeNodeCollection nodes)
+        {
+            foreach (TreeNode node in nodes)
             {
-                using (var cn = new SqlConnection(Conn))
+                node.Checked = false;
+                if (node.ChildNodes.Count > 0)
                 {
-                    cn.Open();
-
-                    // First, unmap this control from any other permission it might currently have 
-                    // (to prevent one control from being assigned to multiple permissions)
-                    using (var cmdClear = new SqlCommand("UPDATE dbo.Permission SET PagePath = NULL, ControlId = NULL WHERE PagePath = @PagePath AND ControlId = @ControlId", cn))
-                    {
-                        cmdClear.Parameters.AddWithValue("@PagePath", page);
-                        cmdClear.Parameters.AddWithValue("@ControlId", controlId);
-                        cmdClear.ExecuteNonQuery();
-                    }
-
-                    // Now, assign the Page and Control to the newly selected Permission
-                    using (var cmdUpdate = new SqlCommand("UPDATE dbo.Permission SET PagePath = @PagePath, ControlId = @ControlId WHERE PermissionId = @PermissionId", cn))
-                    {
-                        cmdUpdate.Parameters.AddWithValue("@PermissionId", permId);
-                        cmdUpdate.Parameters.AddWithValue("@PagePath", page);
-                        cmdUpdate.Parameters.AddWithValue("@ControlId", controlId);
-                        cmdUpdate.ExecuteNonQuery();
-                    }
+                    ClearAllChecks(node.ChildNodes);
                 }
-
-                // Cache refresh skipped per instructions
-                // try { PermissionCache.InvalidateAllPermissionsCache(); } catch { }
-
-                ShowSelectedControlMapping(page, controlId); // Refresh UI to show new mapping
-                lblMessage.Text = "Mapping saved successfully.";
-                lblMessage.CssClass = "text-success";
             }
-            catch (Exception ex)
-            {
-                lblMessage.Text = "Error saving mapping: " + ex.Message;
-                lblMessage.CssClass = "text-danger";
-            }
+        }
+
+        protected void btnExpandAll_Click(object sender, EventArgs e)
+        {
+            tvControls.ExpandAll();
+            hfStep.Value = "2";
+        }
+
+        protected void btnCollapseAll_Click(object sender, EventArgs e)
+        {
+            tvControls.CollapseAll();
+            hfStep.Value = "2";
         }
     }
 }

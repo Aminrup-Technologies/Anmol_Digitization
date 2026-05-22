@@ -13,6 +13,15 @@ namespace AnmolDristi {
     public partial class UiControlMapper {
         
         /// <summary>
+        /// hfStep control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfStep;
+        
+        /// <summary>
         /// ddlPages control.
         /// </summary>
         /// <remarks>
@@ -31,22 +40,31 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button btnScan;
         
         /// <summary>
-        /// lbControls control.
+        /// btnExpandAll control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.ListBox lbControls;
+        protected global::System.Web.UI.WebControls.Button btnExpandAll;
         
         /// <summary>
-        /// ddlPermissions control.
+        /// btnCollapseAll control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList ddlPermissions;
+        protected global::System.Web.UI.WebControls.Button btnCollapseAll;
+        
+        /// <summary>
+        /// tvControls control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TreeView tvControls;
         
         /// <summary>
         /// lblMappingStatus control.
@@ -56,6 +74,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblMappingStatus;
+        
+        /// <summary>
+        /// ddlPermissions control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList ddlPermissions;
         
         /// <summary>
         /// lblMessage control.

@@ -22,40 +22,76 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl Org_MST;
         
         /// <summary>
-        /// Label3 control.
+        /// btn_AddCompany control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Label3;
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_AddCompany;
         
         /// <summary>
-        /// Label4 control.
+        /// lbl_add_company control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Label4;
+        protected global::System.Web.UI.WebControls.Label lbl_add_company;
         
         /// <summary>
-        /// Label5 control.
+        /// btn_AddRegion control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Label5;
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_AddRegion;
         
         /// <summary>
-        /// Label7 control.
+        /// lbl_add_region control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Label7;
+        protected global::System.Web.UI.WebControls.Label lbl_add_region;
+        
+        /// <summary>
+        /// btn_AddBranch control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_AddBranch;
+        
+        /// <summary>
+        /// lbl_add_branch control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_add_branch;
+        
+        /// <summary>
+        /// btn_AddPlants control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_AddPlants;
+        
+        /// <summary>
+        /// lbl_add_plants control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_add_plants;
         
         /// <summary>
         /// HRMS_MST control.
@@ -67,6 +103,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl HRMS_MST;
         
         /// <summary>
+        /// btn_HrmsDivision control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_HrmsDivision;
+        
+        /// <summary>
         /// Label1 control.
         /// </summary>
         /// <remarks>
@@ -74,6 +119,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label1;
+        
+        /// <summary>
+        /// btn_HrmsCategory control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_HrmsCategory;
         
         /// <summary>
         /// Label2 control.
@@ -85,6 +139,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label2;
         
         /// <summary>
+        /// btn_HrmsGrade control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_HrmsGrade;
+        
+        /// <summary>
         /// Label6 control.
         /// </summary>
         /// <remarks>
@@ -94,6 +157,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label6;
         
         /// <summary>
+        /// btn_HrmsDept control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_HrmsDept;
+        
+        /// <summary>
         /// Label8 control.
         /// </summary>
         /// <remarks>
@@ -101,6 +173,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label8;
+        
+        /// <summary>
+        /// btn_HrmsSubDept control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_HrmsSubDept;
         
         /// <summary>
         /// Label9 control.
@@ -121,6 +202,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl User_Mgmnt;
         
         /// <summary>
+        /// btn_NewUser control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_NewUser;
+        
+        /// <summary>
         /// Label17 control.
         /// </summary>
         /// <remarks>
@@ -128,6 +218,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label17;
+        
+        /// <summary>
+        /// btn_ManageUser control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_ManageUser;
         
         /// <summary>
         /// Label18 control.
@@ -139,6 +238,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label18;
         
         /// <summary>
+        /// btn_UserRoles control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_UserRoles;
+        
+        /// <summary>
         /// Label19 control.
         /// </summary>
         /// <remarks>
@@ -146,6 +254,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label19;
+        
+        /// <summary>
+        /// btn_UserAccess control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_UserAccess;
         
         /// <summary>
         /// Label20 control.
@@ -166,6 +283,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl Production_MST;
         
         /// <summary>
+        /// btn_ProdPlants control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_ProdPlants;
+        
+        /// <summary>
         /// Label10 control.
         /// </summary>
         /// <remarks>
@@ -173,6 +299,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label10;
+        
+        /// <summary>
+        /// btn_ProdLines control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_ProdLines;
         
         /// <summary>
         /// Label11 control.
@@ -184,6 +319,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label11;
         
         /// <summary>
+        /// btn_ProdCategory control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_ProdCategory;
+        
+        /// <summary>
         /// Label12 control.
         /// </summary>
         /// <remarks>
@@ -193,6 +337,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label12;
         
         /// <summary>
+        /// btn_ProdBrands control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_ProdBrands;
+        
+        /// <summary>
         /// Label13 control.
         /// </summary>
         /// <remarks>
@@ -200,6 +353,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label13;
+        
+        /// <summary>
+        /// btn_ProdSKU control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_ProdSKU;
         
         /// <summary>
         /// Label14 control.
@@ -220,6 +382,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl QC_Forms_CTRL;
         
         /// <summary>
+        /// btn_FormGlobal control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormGlobal;
+        
+        /// <summary>
         /// Label28 control.
         /// </summary>
         /// <remarks>
@@ -227,6 +398,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label28;
+        
+        /// <summary>
+        /// btn_FormQci control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormQci;
         
         /// <summary>
         /// Label15 control.
@@ -238,6 +418,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label15;
         
         /// <summary>
+        /// btn_FormRm0 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormRm0;
+        
+        /// <summary>
         /// Label22 control.
         /// </summary>
         /// <remarks>
@@ -245,6 +434,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label22;
+        
+        /// <summary>
+        /// btn_FormRm1 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormRm1;
         
         /// <summary>
         /// Label23 control.
@@ -256,6 +454,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label23;
         
         /// <summary>
+        /// btn_FormRm2 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormRm2;
+        
+        /// <summary>
         /// Label24 control.
         /// </summary>
         /// <remarks>
@@ -263,6 +470,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label24;
+        
+        /// <summary>
+        /// btn_FormRm3 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormRm3;
         
         /// <summary>
         /// Label25 control.
@@ -274,6 +490,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label25;
         
         /// <summary>
+        /// btn_FormRm4 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormRm4;
+        
+        /// <summary>
         /// Label26 control.
         /// </summary>
         /// <remarks>
@@ -281,6 +506,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label26;
+        
+        /// <summary>
+        /// btn_FormRm5 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormRm5;
         
         /// <summary>
         /// Label27 control.
@@ -301,6 +535,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl QC_Approval_Matrix;
         
         /// <summary>
+        /// btn_FormsMaster control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormsMaster;
+        
+        /// <summary>
         /// Label21 control.
         /// </summary>
         /// <remarks>
@@ -308,6 +551,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label21;
+        
+        /// <summary>
+        /// btn_FormsApprover control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_FormsApprover;
         
         /// <summary>
         /// Label16 control.
@@ -319,13 +571,22 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label16;
         
         /// <summary>
-        /// Div1 control.
+        /// Authorization_Panel control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Div1;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Authorization_Panel;
+        
+        /// <summary>
+        /// btn_SecRoles control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SecRoles;
         
         /// <summary>
         /// Label29 control.
@@ -337,6 +598,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label29;
         
         /// <summary>
+        /// btn_SecPermissions control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SecPermissions;
+        
+        /// <summary>
         /// Label30 control.
         /// </summary>
         /// <remarks>
@@ -344,6 +614,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label30;
+        
+        /// <summary>
+        /// btn_SecRolePermMap control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SecRolePermMap;
         
         /// <summary>
         /// Label34 control.
@@ -355,6 +634,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label34;
         
         /// <summary>
+        /// btn_SecUserRoleMap control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SecUserRoleMap;
+        
+        /// <summary>
         /// Label35 control.
         /// </summary>
         /// <remarks>
@@ -362,6 +650,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label35;
+        
+        /// <summary>
+        /// btn_SecUiMapper control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SecUiMapper;
         
         /// <summary>
         /// Label37 control.
@@ -373,6 +670,33 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label37;
         
         /// <summary>
+        /// btn_ViewUiCtrlMappings control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_ViewUiCtrlMappings;
+        
+        /// <summary>
+        /// Label3 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Label3;
+        
+        /// <summary>
+        /// btn_SecAuditTrails control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SecAuditTrails;
+        
+        /// <summary>
         /// Label36 control.
         /// </summary>
         /// <remarks>
@@ -382,13 +706,22 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label36;
         
         /// <summary>
-        /// Div2 control.
+        /// SelfSessions_Panel control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Div2;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SelfSessions_Panel;
+        
+        /// <summary>
+        /// btn_SessPermissions control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SessPermissions;
         
         /// <summary>
         /// Label31 control.
@@ -400,6 +733,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label31;
         
         /// <summary>
+        /// btn_SessPermJson control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SessPermJson;
+        
+        /// <summary>
         /// Label32 control.
         /// </summary>
         /// <remarks>
@@ -407,6 +749,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label Label32;
+        
+        /// <summary>
+        /// btn_SessRefresh control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_SessRefresh;
         
         /// <summary>
         /// Label33 control.

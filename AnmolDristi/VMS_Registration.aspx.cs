@@ -16,13 +16,77 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
+                // 1. Existing Security Check (Ensure they passed OTP)
                 if ((Session["VerifiedMobile"] == null && Session["VerifiedEmail"] == null) || Request.QueryString["BranchId"] == null)
                 {
                     Response.Redirect("VMS_SelfLogin.aspx", false);
                     Context.ApplicationInstance.CompleteRequest();
                     return;
                 }
+
                 hfBranchId.Value = Request.QueryString["BranchId"].ToString();
+
+                // 2. Prevent Duplicate Registration
+                CheckForActivePassAndRedirect();
+
+                // 3. NEW: Safely Pre-fill the contact fields
+                if (Session["VerifiedMobile"] != null && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
+                {
+                    txtMobile.Text = Session["VerifiedMobile"].ToString();
+                    txtMobile.ReadOnly = true; // Lock it since it was verified via OTP
+                }
+
+                if (Session["VerifiedEmail"] != null && !string.IsNullOrEmpty(Session["VerifiedEmail"].ToString()))
+                {
+                    txtEmail.Text = Session["VerifiedEmail"].ToString();
+                    txtEmail.ReadOnly = true; // Lock it since it was verified via OTP
+                }
+                else
+                {
+                    // If they skipped email at login, leave the box blank and editable
+                    txtEmail.Text = "";
+                    txtEmail.ReadOnly = false;
+                }
+            }
+        }
+
+        private void CheckForActivePassAndRedirect()
+        {
+            string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
+            string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
+            int branchId = Convert.ToInt32(hfBranchId.Value);
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                // Query checks for passes that are Pending/Approved AND haven't expired yet
+                string checkQuery = @"
+            SELECT COUNT(1) FROM VMS_VisitLog 
+            WHERE (VisitorMobile = @Mobile OR VisitorEmail = @Email) 
+              AND TargetBranchID = @BranchId 
+              AND ApprovalStatus IN ('Pending', 'Approved')
+              AND ValidUpto >= GETDATE()";
+
+                using (SqlCommand cmd = new SqlCommand(checkQuery, con))
+                {
+                    // Use "N/A" to prevent empty strings from accidentally matching bad database rows
+                    cmd.Parameters.AddWithValue("@Mobile", string.IsNullOrEmpty(visitorMobile) ? "N/A" : visitorMobile);
+                    cmd.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(visitorEmail) ? "N/A" : visitorEmail);
+                    cmd.Parameters.AddWithValue("@BranchId", branchId);
+
+                    con.Open();
+                    int activePassCount = Convert.ToInt32(cmd.ExecuteScalar());
+
+                    if (activePassCount > 0)
+                    {
+                        // An active pass already exists! 
+                        // Set the contact session required by MyVisits page
+                        Session["VerifiedContact"] = !string.IsNullOrEmpty(visitorMobile) ? visitorMobile : visitorEmail;
+
+                        // Instantly redirect them to their pass so they don't fill the form again
+                        Response.Redirect("VMS_MyVisits.aspx", false);
+                        Context.ApplicationInstance.CompleteRequest();
+                    }
+                }
             }
         }
 
@@ -86,9 +150,27 @@ namespace AnmolDristi
                 File.WriteAllBytes(fullPath, imageBytes);
                 string dbPhotoPath = "/Uploads/VisitorPhotos/" + fileName;
 
+                //string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
+                //string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
+                //if (visitorMobile.Length > 15) visitorMobile = visitorMobile.Substring(0, 15);
+
                 string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
-                string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
                 if (visitorMobile.Length > 15) visitorMobile = visitorMobile.Substring(0, 15);
+
+                // 🌟 NEW: Smart Email Handling
+                string visitorEmail = txtEmail.Text.Trim(); // Check if they typed it into the optional frontend box
+
+                // If the box is empty, check if we have a verified email in the session
+                if (string.IsNullOrEmpty(visitorEmail) && Session["VerifiedEmail"] != null)
+                {
+                    visitorEmail = Session["VerifiedEmail"].ToString();
+                }
+
+                // If it's STILL empty (Mobile-Only user who skipped the optional box), default to "N/A"
+                if (string.IsNullOrEmpty(visitorEmail))
+                {
+                    visitorEmail = "N/A";
+                }
 
                 string hostEmpCode = hfSelectedHostCode.Value;
                 // STRICT BACKEND VALIDATION: Host is mandatory for EVERYONE

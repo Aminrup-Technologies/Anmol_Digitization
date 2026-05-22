@@ -20,13 +20,33 @@
 
                         <div class="x_content">
 
-                            <div class="col-md-3">
+                            <%-- <div class="col-md-3">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_DDL_FormName" runat="server" AssociatedControlID="DDL_FormName" Text="Form Name " ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     [<asp:Label ID="lbl_DDL_FormName_Value" runat="server" AssociatedControlID="DDL_FormName" Text="N/A" ForeColor="LightBlue" Font-Bold="true" Font-Size="Smaller"></asp:Label>]
                                     <asp:RequiredFieldValidator ID="RFV_DDL_FormName" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="DDL_FormName" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:DropDownList ID="DDL_FormName" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" ValidationGroup="Submit" OnSelectedIndexChanged="DDL_FormName_SelectedIndexChanged"></asp:DropDownList>
+                                    </div>
+                                </div>
+                            </div>--%>
+
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <asp:Label ID="Lbl_DDL_FormName" runat="server" AssociatedControlID="DDL_FormName" Text="Form Name (Multi-Select)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    [<asp:Label ID="lbl_DDL_FormName_Value" runat="server" AssociatedControlID="DDL_FormName" Text="Hold Ctrl to select multiple" ForeColor="LightBlue" Font-Bold="true" Font-Size="Smaller"></asp:Label>]
+                                    <asp:RequiredFieldValidator ID="RFV_DDL_FormName" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="DDL_FormName" Display="Dynamic"></asp:RequiredFieldValidator>
+
+                                    <div class="input-group-sm">
+                                        <%-- Increased Rows to 8 and added CSS resize property --%>
+                                        <asp:ListBox ID="DDL_FormName" runat="server" CssClass="form-control form-control-sm rounded" SelectionMode="Multiple" Rows="8" Style="resize: vertical;" ValidationGroup="Submit"></asp:ListBox>
+                                    </div>
+
+                                    <%-- NEW: Button to trigger the grid refresh based on selections --%>
+                                    <div class="mt-2">
+                                        <asp:LinkButton ID="BtnFilter" runat="server" CssClass="btn btn-sm btn-info" OnClick="BtnFilter_Click" CausesValidation="false">
+                                            <i class="fa fa-search"></i> View Grid
+                                        </asp:LinkButton>
                                     </div>
                                 </div>
                             </div>
@@ -137,7 +157,11 @@
                                 <div class="x_content">
                                     <div class="row">
                                         <div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 450px; overflow: scroll;">
-                                            <asp:GridView ID="GV_FormsApprovalMatrix" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed" ShowHeaderWhenEmpty="true"
+                                            <asp:GridView ID="GV_FormsApprovalMatrix" runat="server" AutoGenerateColumns="False"
+                                                CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed"
+                                                ShowHeaderWhenEmpty="true"
+                                                AllowPaging="True" PageSize="80"
+                                                OnPageIndexChanging="GV_FormsApprovalMatrix_PageIndexChanging"
                                                 OnRowCommand="GV_FormsApprovalMatrix_RowCommand" OnRowEditing="GV_FormsApprovalMatrix_RowEditing"
                                                 OnRowUpdating="GV_FormsApprovalMatrix_RowUpdating" OnRowCancelingEdit="GV_FormsApprovalMatrix_RowCancelingEdit">
 
@@ -148,61 +172,75 @@
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:TemplateField HeaderText="Form ID" Visible="false">
+                                                    <asp:TemplateField HeaderText="Document / Form Info">
                                                         <ItemTemplate>
-                                                            <asp:Label ID="Lbl_FormID" runat="server" Text='<%# Eval("FormID") %>'></asp:Label>
+                                                            <div style="min-width: 250px;">
+                                                                <span class="badge badge-secondary" style="background-color: #73879C; font-size: 10px;">Form ID: <%# Eval("FormID") %>
+                                                                </span>
+                                                                <br />
+                                                                <span style="font-size: 13px; font-weight: bold; color: #2A3F54;">
+                                                                    <%# Eval("FormDesc") %>
+                                                                </span>
+                                                                <br />
+                                                                <span style="font-size: 11px; color: #1ABB9C;">
+                                                                    <i class="fa fa-file-text-o"></i><%# Eval("FormName") %>
+                                                                    <%# string.IsNullOrEmpty(Convert.ToString(Eval("DocumentNumber"))) ? "" : "(" + Eval("DocumentNumber") + ")" %>
+                                                                </span>
+                                                            </div>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:TemplateField HeaderText="Form" Visible="false">
+                                                    <asp:TemplateField HeaderText="Location (Plant & Line)">
                                                         <ItemTemplate>
-                                                            <asp:Label ID="Lbl_FormDesc" runat="server"
-                                                                Text='<%# Convert.ToString(Eval("FormID")) + (string.IsNullOrEmpty(Convert.ToString(Eval("FormDesc"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("FormDesc")) + "</strong>") %>'>
-                                                            </asp:Label>
-                                                        </ItemTemplate>
-                                                    </asp:TemplateField>
-
-                                                    <asp:TemplateField HeaderText="Plant">
-                                                        <ItemTemplate>
-                                                            <asp:Label ID="Lbl_PlantID" runat="server"
-                                                                Text='<%# Convert.ToString(Eval("plant_id")) + (string.IsNullOrEmpty(Convert.ToString(Eval("PlantName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("PlantName")) + "</strong>") %>'>
-                                                            </asp:Label>
+                                                            <div style="margin-bottom: 5px;">
+                                                                <i class="fa fa-building" style="color: #73879C;"></i>
+                                                                <span style="font-size: 11px; color: #73879C;">Plant:</span>
+                                                                <asp:Label ID="Lbl_PlantID" runat="server"
+                                                                    Text='<%# Convert.ToString(Eval("plant_id")) + (string.IsNullOrEmpty(Convert.ToString(Eval("PlantName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("PlantName")) + "</strong>") %>'>
+                                                                </asp:Label>
+                                                            </div>
+                                                            <div>
+                                                                <i class="fa fa-cogs" style="color: #73879C;"></i>
+                                                                <span style="font-size: 11px; color: #73879C;">Line:</span>
+                                                                <asp:Label ID="Lbl_LineID" runat="server"
+                                                                    Text='<%# Convert.ToString(Eval("line_id")) + (string.IsNullOrEmpty(Convert.ToString(Eval("LineName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("LineName")) + "</strong>") %>'>
+                                                                </asp:Label>
+                                                            </div>
                                                         </ItemTemplate>
                                                         <EditItemTemplate>
-                                                            <asp:TextBox ID="Txt_PlantID" runat="server" Text='<%# Bind("plant_id") %>' CssClass="form-control form-control-sm"></asp:TextBox>
+                                                            <div class="mb-1">
+                                                                <asp:TextBox ID="Txt_PlantID" runat="server" Text='<%# Bind("plant_id") %>' CssClass="form-control form-control-sm" placeholder="Plant ID" ToolTip="Plant ID"></asp:TextBox>
+                                                            </div>
+                                                            <div>
+                                                                <asp:TextBox ID="Txt_LineID" runat="server" Text='<%# Bind("line_id") %>' CssClass="form-control form-control-sm" placeholder="Line ID" ToolTip="Line ID"></asp:TextBox>
+                                                            </div>
                                                         </EditItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:TemplateField HeaderText="Line">
+                                                    <asp:TemplateField HeaderText="Scope (Dept & Sub-Dept)">
                                                         <ItemTemplate>
-                                                            <asp:Label ID="Lbl_LineID" runat="server"
-                                                                Text='<%# Convert.ToString(Eval("line_id")) + (string.IsNullOrEmpty(Convert.ToString(Eval("LineName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("LineName")) + "</strong>") %>'>
-                                                            </asp:Label>
+                                                            <div style="margin-bottom: 5px;">
+                                                                <i class="fa fa-sitemap" style="color: #73879C;"></i>
+                                                                <span style="font-size: 11px; color: #73879C;">Dept:</span>
+                                                                <asp:Label ID="Lbl_DepartmentID" runat="server"
+                                                                    Text='<%# Convert.ToString(Eval("Department_ID")) + (string.IsNullOrEmpty(Convert.ToString(Eval("DeptName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("DeptName")) + "</strong>") %>'>
+                                                                </asp:Label>
+                                                            </div>
+                                                            <div>
+                                                                <i class="fa fa-angle-double-right" style="color: #73879C;"></i>
+                                                                <span style="font-size: 11px; color: #73879C;">Sub:</span>
+                                                                <asp:Label ID="Lbl_SubDepartmentID" runat="server"
+                                                                    Text='<%# Convert.ToString(Eval("SubDepartment_ID")) + (string.IsNullOrEmpty(Convert.ToString(Eval("SubDeptName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("SubDeptName")) + "</strong>") %>'>
+                                                                </asp:Label>
+                                                            </div>
                                                         </ItemTemplate>
                                                         <EditItemTemplate>
-                                                            <asp:TextBox ID="Txt_LineID" runat="server" Text='<%# Bind("line_id") %>' CssClass="form-control form-control-sm"></asp:TextBox>
-                                                        </EditItemTemplate>
-                                                    </asp:TemplateField>
-
-                                                    <asp:TemplateField HeaderText="Department">
-                                                        <ItemTemplate>
-                                                            <asp:Label ID="Lbl_DepartmentID" runat="server"
-                                                                Text='<%# Convert.ToString(Eval("Department_ID")) + (string.IsNullOrEmpty(Convert.ToString(Eval("DeptName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("DeptName")) + "</strong>") %>'>
-                                                            </asp:Label>
-                                                        </ItemTemplate>
-                                                        <EditItemTemplate>
-                                                            <asp:TextBox ID="Txt_DepartmentID" runat="server" Text='<%# Bind("Department_ID") %>' CssClass="form-control form-control-sm"></asp:TextBox>
-                                                        </EditItemTemplate>
-                                                    </asp:TemplateField>
-
-                                                    <asp:TemplateField HeaderText="Sub-Department">
-                                                        <ItemTemplate>
-                                                            <asp:Label ID="Lbl_SubDepartmentID" runat="server"
-                                                                Text='<%# Convert.ToString(Eval("SubDepartment_ID")) + (string.IsNullOrEmpty(Convert.ToString(Eval("SubDeptName"))) ? "" : " - <strong style=\"color:#1ABB9C;\">" + Convert.ToString(Eval("SubDeptName")) + "</strong>") %>'>
-                                                            </asp:Label>
-                                                        </ItemTemplate>
-                                                        <EditItemTemplate>
-                                                            <asp:TextBox ID="Txt_SubDepartmentID" runat="server" Text='<%# Bind("SubDepartment_ID") %>' CssClass="form-control form-control-sm"></asp:TextBox>
+                                                            <div class="mb-1">
+                                                                <asp:TextBox ID="Txt_DepartmentID" runat="server" Text='<%# Bind("Department_ID") %>' CssClass="form-control form-control-sm" placeholder="Dept ID" ToolTip="Department ID"></asp:TextBox>
+                                                            </div>
+                                                            <div>
+                                                                <asp:TextBox ID="Txt_SubDepartmentID" runat="server" Text='<%# Bind("SubDepartment_ID") %>' CssClass="form-control form-control-sm" placeholder="Sub-Dept ID" ToolTip="Sub-Department ID"></asp:TextBox>
+                                                            </div>
                                                         </EditItemTemplate>
                                                     </asp:TemplateField>
 

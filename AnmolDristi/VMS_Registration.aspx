@@ -49,6 +49,7 @@
                             <asp:ListItem Text="Meeting / Appointment" Value="Meeting Appointment"></asp:ListItem>
                             <asp:ListItem Text="Delivery" Value="Delivery"></asp:ListItem>
                             <asp:ListItem Text="Service / Maintenance" Value="Service"></asp:ListItem>
+                            <asp:ListItem Text="Interview" Value="Interview"></asp:ListItem>
                         </asp:DropDownList>
                     </div>
 
@@ -56,6 +57,17 @@
                         <label class="form-label">Your Employee Code *</label>
                         <asp:TextBox ID="txtInternalEmpCode" runat="server" CssClass="form-control" placeholder="Enter your Emp Code (e.g., AIL0000)"></asp:TextBox>
                         <small class="text-muted">Required for auto-approval bypass.</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label class="form-label">Mobile Number *</label>
+                            <asp:TextBox ID="txtMobile" runat="server" CssClass="form-control" ReadOnly="true"></asp:TextBox>
+                        </div>
+                        <div class="col-xs-6">
+                            <label class="form-label">Email Address</label>
+                            <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" TextMode="Email" placeholder="Optional"></asp:TextBox>
+                        </div>
                     </div>
 
                     <div class="row">

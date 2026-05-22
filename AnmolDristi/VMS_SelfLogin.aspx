@@ -80,10 +80,15 @@
                             <asp:TextBox ID="txtMobileOTP" runat="server" CssClass="form-control otp-box" MaxLength="6" placeholder="• • • • • •" TextMode="Number"></asp:TextBox>
                         </div>
 
-                        <div class="form-group text-left">
+                        <%--<div class="form-group text-left">
                             <label>Email OTP *</label>
                             <asp:TextBox ID="txtEmailOTP" runat="server" CssClass="form-control otp-box" MaxLength="6" placeholder="• • • • • •" TextMode="Number"></asp:TextBox>
-                        </div>
+                        </div>--%>
+
+                        <asp:Panel ID="pnlEmailOTPInput" runat="server" CssClass="form-group text-left">
+                            <label>Email OTP</label>
+                            <asp:TextBox ID="txtEmailOTP" runat="server" CssClass="form-control otp-box" MaxLength="6" placeholder="• • • • • •" TextMode="Number"></asp:TextBox>
+                        </asp:Panel>
 
                         <asp:Button ID="btnVerifyOTP" runat="server" CssClass="btn btn-primary btn-mobile" Text="Verify & Proceed" OnClick="btnVerifyOTP_Click" />
 

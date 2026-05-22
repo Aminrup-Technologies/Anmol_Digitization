@@ -318,6 +318,7 @@
     <Content Include="qaqc_rotaryline_view.aspx" />
     <Content Include="qaqc_rotary_line.aspx" />
     <Content Include="qa_qc_FinalCbbWtReport.aspx" />
+    <Content Include="qualitydatamastering_home.aspx" />
     <Content Include="redirect.aspx" />
     <Content Include="ReloadSessionPerms.aspx" />
     <Content Include="RM_Class2.aspx" />
@@ -355,6 +356,7 @@
     <Content Include="UiControlMapper.aspx" />
     <Content Include="UserRoleAudit.aspx" />
     <Content Include="UserRoleManager.aspx" />
+    <Content Include="ViewUiControlMappings.aspx" />
     <Content Include="viewusers.aspx" />
     <Content Include="VMS_AdminPending.aspx" />
     <Content Include="VMS_DigitalPass.aspx" />
@@ -1242,6 +1244,13 @@
     <Compile Include="qa_qc_FinalCbbWtReport.aspx.designer.cs">
       <DependentUpon>qa_qc_FinalCbbWtReport.aspx</DependentUpon>
     </Compile>
+    <Compile Include="qualitydatamastering_home.aspx.cs">
+      <DependentUpon>qualitydatamastering_home.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qualitydatamastering_home.aspx.designer.cs">
+      <DependentUpon>qualitydatamastering_home.aspx</DependentUpon>
+    </Compile>
     <Compile Include="redirect.aspx.cs">
       <DependentUpon>redirect.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1507,6 +1516,13 @@
     </Compile>
     <Compile Include="UserRoleManager.aspx.designer.cs">
       <DependentUpon>UserRoleManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ViewUiControlMappings.aspx.cs">
+      <DependentUpon>ViewUiControlMappings.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ViewUiControlMappings.aspx.designer.cs">
+      <DependentUpon>ViewUiControlMappings.aspx</DependentUpon>
     </Compile>
     <Compile Include="viewusers.aspx.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>

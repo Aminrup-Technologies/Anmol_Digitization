@@ -79,7 +79,14 @@ namespace AnmolDristi
                 lblMessage.Text = "Please enter a valid 10-digit Mobile Number.";
                 return;
             }
-            if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            //if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            //{
+            //    lblMessage.ForeColor = Color.Red;
+            //    lblMessage.Text = "Please enter a valid Email Address.";
+            //    return;
+            //}
+
+            if (!string.IsNullOrEmpty(email) && !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
             {
                 lblMessage.ForeColor = Color.Red;
                 lblMessage.Text = "Please enter a valid Email Address.";
@@ -87,9 +94,12 @@ namespace AnmolDristi
             }
 
             // 2. Generate TWO separate OTPs
+            //Random rand = new Random();
+            //string mobileOTP = rand.Next(100000, 999999).ToString();
+            //string emailOTP = rand.Next(100000, 999999).ToString();
             Random rand = new Random();
             string mobileOTP = rand.Next(100000, 999999).ToString();
-            string emailOTP = rand.Next(100000, 999999).ToString();
+            string emailOTP = string.IsNullOrEmpty(email) ? "N/A" : rand.Next(100000, 999999).ToString();
 
             // 3. Save BOTH to a SINGLE Row in the Database
             using (SqlConnection con = new SqlConnection(connStr))
@@ -112,16 +122,26 @@ namespace AnmolDristi
                 con.Close();
             }
 
-            // 4. Dispatch Both
+            //// 4. Dispatch Both
+            //SendOtpSms(mobile, mobileOTP);
+            //QueueOtpEmail(email, emailOTP);
+
+            // Dispatch
             SendOtpSms(mobile, mobileOTP);
-            QueueOtpEmail(email, emailOTP);
+            if (!string.IsNullOrEmpty(email))
+            {
+                QueueOtpEmail(email, emailOTP);
+            }
 
             // 5. Update UI
+            //lblDisplayMobile.Text = "+91 " + mobile;
+            //lblDisplayEmail.Text = email;
             lblDisplayMobile.Text = "+91 " + mobile;
-            lblDisplayEmail.Text = email;
+            lblDisplayEmail.Text = string.IsNullOrEmpty(email) ? "(No Email Provided)" : email;
 
             pnlRequestOTP.Visible = false;
             pnlVerifyOTP.Visible = true;
+            pnlEmailOTPInput.Visible = !string.IsNullOrEmpty(email);
             lblMessage.Text = "";
 
             // [DEV ONLY] - Remove this line in production!
@@ -142,21 +162,29 @@ namespace AnmolDristi
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 con.Open();
+                //    string query = @"
+                //SELECT Id FROM VMS_OTPTracking 
+                //WHERE MobileNo = @Mobile 
+                //  AND EmailAddress = @Email
+                //  AND MobileOTP = @MobileOTP 
+                //  AND EmailOTP = @EmailOTP
+                //  AND IsVerified = 0 
+                //  AND ExpiresAt > GETDATE()";
+
                 string query = @"
-            SELECT Id FROM VMS_OTPTracking 
-            WHERE MobileNo = @Mobile 
-              AND EmailAddress = @Email
-              AND MobileOTP = @MobileOTP 
-              AND EmailOTP = @EmailOTP
-              AND IsVerified = 0 
-              AND ExpiresAt > GETDATE()";
+                SELECT Id FROM VMS_OTPTracking 
+                WHERE MobileNo = @Mobile 
+                  AND MobileOTP = @MobileOTP 
+                  AND (@Email = '' OR (EmailAddress = @Email AND EmailOTP = @EmailOTP))
+                  AND IsVerified = 0 
+                  AND ExpiresAt > GETDATE()";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@Mobile", mobile);
-                    cmd.Parameters.AddWithValue("@Email", email);
                     cmd.Parameters.AddWithValue("@MobileOTP", enteredMobileOTP);
-                    cmd.Parameters.AddWithValue("@EmailOTP", enteredEmailOTP);
+                    cmd.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(email) ? "" : email);
+                    cmd.Parameters.AddWithValue("@EmailOTP", string.IsNullOrEmpty(enteredEmailOTP) ? "" : enteredEmailOTP);
 
                     object result = cmd.ExecuteScalar();
                     if (result != null)

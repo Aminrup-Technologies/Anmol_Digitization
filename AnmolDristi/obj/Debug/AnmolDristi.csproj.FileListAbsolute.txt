@@ -181,3 +181,10 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\Interop.zke
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csproj.ResolveComReference.cache
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.pdb
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csprojResolveAssemblyReference.cache
