@@ -365,6 +365,7 @@
     <Content Include="VMS_MyVisitors.aspx" />
     <Content Include="VMS_MyVisits.aspx" />
     <Content Include="VMS_OrganizationDetails.aspx" />
+    <Content Include="VMS_ReceptionistLogs.aspx" />
     <Content Include="VMS_Registration.aspx" />
     <Content Include="VMS_SelfLogin.aspx" />
     <Content Include="vm_ccp_checklist.aspx" />
@@ -1579,6 +1580,13 @@
     </Compile>
     <Compile Include="VMS_OrganizationDetails.aspx.designer.cs">
       <DependentUpon>VMS_OrganizationDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_ReceptionistLogs.aspx.cs">
+      <DependentUpon>VMS_ReceptionistLogs.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_ReceptionistLogs.aspx.designer.cs">
+      <DependentUpon>VMS_ReceptionistLogs.aspx</DependentUpon>
     </Compile>
     <Compile Include="VMS_Registration.aspx.cs">
       <DependentUpon>VMS_Registration.aspx</DependentUpon>

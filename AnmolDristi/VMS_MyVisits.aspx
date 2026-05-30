@@ -135,9 +135,15 @@
                                 </div>
                             </div>
 
-                            <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer" Visible="false">
-                                <a href='VMS_DigitalPass.aspx?token=<%# Eval("QRToken") %>' class="btn btn-pass">
-                                    <i class="fa fa-qrcode"></i>View Digital Pass
+                            <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer text-center" Visible="false">
+                                <div style="padding: 15px 0;">
+                                    <asp:Image ID="imgQRCode" runat="server" Visible="false" Style="margin: 0 auto; max-width: 150px; border: 2px solid #eee; border-radius: 8px; padding: 5px;" />
+                                    <br />
+                                    <asp:Label ID="lblQRMessage" runat="server" Visible="false" CssClass="text-muted" Style="font-size: 12px; display: block; margin-top: 8px;"></asp:Label>
+                                </div>
+
+                                <a href='VMS_DigitalPass.aspx?token=<%# Eval("QRToken") %>' class="btn btn-pass" style="margin-top: 5px; display: inline-block;">
+                                    <i class="fa fa-qrcode"></i>Full Screen Pass
                                 </a>
                             </asp:Panel>
 

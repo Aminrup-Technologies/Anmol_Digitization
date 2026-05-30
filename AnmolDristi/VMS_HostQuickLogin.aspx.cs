@@ -134,6 +134,68 @@ namespace AnmolDristi
                 : "Visitor request has been rejected.";
         }
 
+        private void DispatchVisitorNotification(SqlConnection con, string visitId, Guid token)
+        {
+            string visEmail = "", visName = "", visMobile = "";
+
+            // 1. Get both email and mobile details
+            using (SqlCommand cmd = new SqlCommand("SELECT VisitorEmail, VisitorMobile, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID", con))
+            {
+                cmd.Parameters.AddWithValue("@LogID", visitId);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    if (sdr.Read())
+                    {
+                        visEmail = sdr["VisitorEmail"].ToString();
+                        visMobile = sdr["VisitorMobile"].ToString();
+                        visName = sdr["VisitorName"].ToString();
+                    }
+                }
+            }
+
+            string passUrl = $"https://apps.anmolindustries.com/VMS_DigitalPass.aspx?token={token}";
+
+            // 2. Dispatch Email (If provided and valid)
+            if (!string.IsNullOrEmpty(visEmail) && visEmail != "N/A")
+            {
+                string emailBody = $@"
+                <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>
+                    <h2 style='color: #1ABB9C;'>Visit Approved</h2>
+                    <p>Hi {visName}, your host has approved your visit.</p>
+                    <p>Click the link below to open your Digital Gate Pass and show it to the security guard.</p>
+                    <br/>
+                    <a href='{passUrl}' style='background-color: #1ABB9C; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>View Digital Pass</a>
+                </div>";
+
+                string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, 'Your Anmol Gate Pass', @Body, 'Email', 'Pending', 'VMS_PASS_EMAIL')";
+                using (SqlCommand qCmd = new SqlCommand(qQuery, con))
+                {
+                    qCmd.Parameters.AddWithValue("@LogId", visitId);
+                    qCmd.Parameters.AddWithValue("@Email", visEmail);
+                    qCmd.Parameters.AddWithValue("@Name", visName);
+                    qCmd.Parameters.AddWithValue("@Body", emailBody);
+                    qCmd.ExecuteNonQuery();
+                }
+            }
+
+            // 3. Dispatch SMS (If mobile is available)
+            if (!string.IsNullOrEmpty(visMobile))
+            {
+                // NOTE: Ensure you have an approved DLT Template in SMSCountry for this exact string format
+                string smsBody = $"Your visit to Anmol Industries is approved. Click to view your Gate Pass: {passUrl}";
+
+                string smsQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Mobile, @Name, 'SMS', @Body, 'SMS', 'Pending', 'VMS_PASS_SMS')";
+                using (SqlCommand smsCmd = new SqlCommand(smsQuery, con))
+                {
+                    smsCmd.Parameters.AddWithValue("@LogId", visitId);
+                    smsCmd.Parameters.AddWithValue("@Mobile", visMobile); // Stored in the Email column of the queue for simplicity, or adjust schema
+                    smsCmd.Parameters.AddWithValue("@Name", visName);
+                    smsCmd.Parameters.AddWithValue("@Body", smsBody);
+                    smsCmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         private void DispatchVisitorEmail(SqlConnection con, string visitId, Guid token)
         {
             string visEmail = "", visName = "";

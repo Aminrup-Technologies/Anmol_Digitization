@@ -157,44 +157,46 @@ namespace AnmolDristi
             string enteredEmailOTP = txtEmailOTP.Text.Trim();
 
             bool isValid = false;
+            string otpTrackingId = "";
 
-            // 1. Verify BOTH OTPs in a single query
+            // 1. Verify BOTH OTPs against the OTP Tracking Table
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 con.Open();
-                //    string query = @"
-                //SELECT Id FROM VMS_OTPTracking 
-                //WHERE MobileNo = @Mobile 
-                //  AND EmailAddress = @Email
-                //  AND MobileOTP = @MobileOTP 
-                //  AND EmailOTP = @EmailOTP
-                //  AND IsVerified = 0 
-                //  AND ExpiresAt > GETDATE()";
-
                 string query = @"
-                SELECT Id FROM VMS_OTPTracking 
-                WHERE MobileNo = @Mobile 
-                  AND MobileOTP = @MobileOTP 
-                  AND (@Email = '' OR (EmailAddress = @Email AND EmailOTP = @EmailOTP))
-                  AND IsVerified = 0 
-                  AND ExpiresAt > GETDATE()";
+            SELECT Id FROM VMS_OTPTracking 
+            WHERE MobileNo = @Mobile 
+              AND (EmailAddress = @Email OR @Email = '')
+              AND MobileOTP = @MobileOTP 
+              AND EmailOTP = @EmailOTP
+              AND IsVerified = 0 
+              AND ExpiresAt > GETDATE()";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@Mobile", mobile);
+                    cmd.Parameters.AddWithValue("@Email", email);
                     cmd.Parameters.AddWithValue("@MobileOTP", enteredMobileOTP);
-                    cmd.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(email) ? "" : email);
-                    cmd.Parameters.AddWithValue("@EmailOTP", string.IsNullOrEmpty(enteredEmailOTP) ? "" : enteredEmailOTP);
+
+                    // If email was left blank, the DB stored "N/A" for the OTP. Match that.
+                    string emailOtpToMatch = string.IsNullOrEmpty(email) ? "N/A" : enteredEmailOTP;
+                    cmd.Parameters.AddWithValue("@EmailOTP", emailOtpToMatch);
 
                     object result = cmd.ExecuteScalar();
                     if (result != null)
                     {
                         isValid = true;
-                        // Update IsVerified to 1 to prevent replay attacks
-                        new SqlCommand($"UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = {result}", con).ExecuteNonQuery();
+                        otpTrackingId = result.ToString();
+
+                        // Securely mark the OTP as used to prevent replay attacks
+                        string updateQuery = "UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = @Id";
+                        using (SqlCommand updateCmd = new SqlCommand(updateQuery, con))
+                        {
+                            updateCmd.Parameters.AddWithValue("@Id", otpTrackingId);
+                            updateCmd.ExecuteNonQuery();
+                        }
                     }
                 }
-                con.Close();
             }
 
             // 2. Route user based on validation results
@@ -217,17 +219,18 @@ namespace AnmolDristi
 
                 bool hasActiveVisitToday = false;
 
-                // CHECKPOINT: Prevent Duplicates
+                // 3. CHECKPOINT: Prevent Duplicates
                 using (SqlConnection con = new SqlConnection(connStr))
                 {
+                    // Checking if they already have an active pass right now
                     string checkQuery = @"
                 SELECT TOP 1 LogID 
                 FROM VMS_VisitLog 
                 WHERE (VisitorMobile = @Mobile OR VisitorEmail = @Email)
                   AND TargetBranchID = @BranchId
-                  AND CAST(CreatedDate AS DATE) = CAST(GETDATE() AS DATE)
                   AND ApprovalStatus IN ('Pending', 'Approved')
-                  AND VisitStatus != 'Checked-Out'";
+                  AND ISNULL(VisitStatus, '') != 'Checked-Out'
+                  AND ValidUpto >= GETDATE()";
 
                     using (SqlCommand cmdCheck = new SqlCommand(checkQuery, con))
                     {
@@ -240,19 +243,17 @@ namespace AnmolDristi
                         {
                             hasActiveVisitToday = true;
                         }
-                        con.Close();
                     }
                 }
 
+                // 4. Redirect based on duplicate check
                 if (hasActiveVisitToday)
                 {
-                    // Redirect using 'false' to prevent ThreadAbortException
                     Response.Redirect("VMS_MyVisits.aspx", false);
                     Context.ApplicationInstance.CompleteRequest();
                 }
                 else
                 {
-                    // Passes BranchId securely so Page_Load in VMS_Registration doesn't fail
                     Response.Redirect($"VMS_Registration.aspx?BranchId={branchId}", false);
                     Context.ApplicationInstance.CompleteRequest();
                 }

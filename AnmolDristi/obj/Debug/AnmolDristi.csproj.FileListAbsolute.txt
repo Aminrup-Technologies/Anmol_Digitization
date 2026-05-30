@@ -103,6 +103,8 @@ D:\AIL_AminrupTech\AnmolDristi\obj\Debug\AnmolDristi.csproj.CoreCompileInputs.ca
 D:\AIL_AminrupTech\AnmolDristi\obj\Debug\AnmolDri.829139B1.Up2Date
 D:\AIL_AminrupTech\AnmolDristi\obj\Debug\AnmolDristi.dll
 D:\AIL_AminrupTech\AnmolDristi\obj\Debug\AnmolDristi.pdb
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\Interop.zkemkeeper.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csproj.ResolveComReference.cache
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\NLog.config
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\roslyn\csc.exe
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\roslyn\Microsoft.Build.Tasks.CodeAnalysis.dll
@@ -119,6 +121,7 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\roslyn\VBCSCompil
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\AnmolDristi.dll.config
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\AnmolDristi.pdb
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ClosedXML.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\CsvHelper.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\DocumentFormat.OpenXml.dll
@@ -127,6 +130,7 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EntityFramework.S
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EPPlus.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ExcelNumberFormat.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\FastMember.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.Agent.Intercept.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.DependencyCollector.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.PerfCounterCollector.dll
@@ -140,6 +144,7 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.Has
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Newtonsoft.Json.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\NLog.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Buffers.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Diagnostics.DiagnosticSource.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.IO.FileSystem.Primitives.dll
@@ -148,6 +153,7 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Memory.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Numerics.Vectors.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Runtime.CompilerServices.Unsafe.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.dll
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ClosedXML.pdb
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ClosedXML.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\CsvHelper.xml
@@ -156,6 +162,7 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EntityFramework.x
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EntityFramework.SqlServer.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\EPPlus.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\ExcelNumberFormat.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.DependencyCollector.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.PerfCounterCollector.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.AI.ServerTelemetryChannel.xml
@@ -170,6 +177,7 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.Bcl.Has
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Newtonsoft.Json.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\NLog.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Buffers.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Diagnostics.DiagnosticSource.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Memory.xml
@@ -177,14 +185,6 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Numerics.V
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Runtime.CompilerServices.Unsafe.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\System.Threading.Tasks.Extensions.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\Interop.zkemkeeper.dll
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\Interop.zkemkeeper.dll
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csproj.ResolveComReference.cache
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.pdb
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.dll
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.dll
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.dll
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.xml
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.xml
-D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csprojResolveAssemblyReference.cache

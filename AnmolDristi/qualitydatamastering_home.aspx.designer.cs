@@ -193,22 +193,40 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label12;
         
         /// <summary>
-        /// Label13 control.
+        /// btn_managevariety control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Label13;
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_managevariety;
         
         /// <summary>
-        /// Label14 control.
+        /// lbl_VarietyCount control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Label14;
+        protected global::System.Web.UI.WebControls.Label lbl_VarietyCount;
+        
+        /// <summary>
+        /// btn_managesku control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlAnchor btn_managesku;
+        
+        /// <summary>
+        /// lbl_SKUCount control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lbl_SKUCount;
         
         /// <summary>
         /// QC_Forms_CTRL control.
@@ -319,13 +337,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label16;
         
         /// <summary>
-        /// Div1 control.
+        /// RolesNPermissions control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Div1;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl RolesNPermissions;
         
         /// <summary>
         /// Label29 control.
@@ -400,13 +418,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Label36;
         
         /// <summary>
-        /// Div2 control.
+        /// SelfSessions control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Div2;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SelfSessions;
         
         /// <summary>
         /// Label31 control.

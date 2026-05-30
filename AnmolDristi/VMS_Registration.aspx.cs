@@ -29,21 +29,37 @@ namespace AnmolDristi
                 // 2. Prevent Duplicate Registration
                 CheckForActivePassAndRedirect();
 
-                // 3. NEW: Safely Pre-fill the contact fields
+                // 3. 🌟 NEW: Early-Rejection Check for Office Hours
+                int currentBranchId = Convert.ToInt32(hfBranchId.Value);
+                if (!IsFacilityOpen(currentBranchId))
+                {
+                    lblMessage.ForeColor = System.Drawing.Color.Red;
+                    lblMessage.Text = "Welcome to Anmol Industries. Our visiting hours for today have concluded. Please coordinate with your host to schedule a visit for our next working day.";
+
+                    // Disable the form submission
+                    btnSubmit.Visible = false;
+
+                    // Optional: If you wrapped your input fields in an <asp:Panel ID="pnlRegistrationForm" runat="server">
+                    // you can hide the whole form cleanly by uncommenting the next line:
+                    pnlRegistrationForm.Visible = false; 
+
+                    return; // Stop loading the rest of the page
+                }
+
+                // 4. Safely Pre-fill the contact fields (Existing Logic)
                 if (Session["VerifiedMobile"] != null && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
                 {
                     txtMobile.Text = Session["VerifiedMobile"].ToString();
-                    txtMobile.ReadOnly = true; // Lock it since it was verified via OTP
+                    txtMobile.ReadOnly = true;
                 }
 
                 if (Session["VerifiedEmail"] != null && !string.IsNullOrEmpty(Session["VerifiedEmail"].ToString()))
                 {
                     txtEmail.Text = Session["VerifiedEmail"].ToString();
-                    txtEmail.ReadOnly = true; // Lock it since it was verified via OTP
+                    txtEmail.ReadOnly = true;
                 }
                 else
                 {
-                    // If they skipped email at login, leave the box blank and editable
                     txtEmail.Text = "";
                     txtEmail.ReadOnly = false;
                 }
@@ -60,11 +76,12 @@ namespace AnmolDristi
             {
                 // Query checks for passes that are Pending/Approved AND haven't expired yet
                 string checkQuery = @"
-            SELECT COUNT(1) FROM VMS_VisitLog 
-            WHERE (VisitorMobile = @Mobile OR VisitorEmail = @Email) 
-              AND TargetBranchID = @BranchId 
-              AND ApprovalStatus IN ('Pending', 'Approved')
-              AND ValidUpto >= GETDATE()";
+                SELECT COUNT(1) FROM VMS_VisitLog 
+                WHERE (VisitorMobile = @Mobile OR VisitorEmail = @Email) 
+                  AND TargetBranchID = @BranchId 
+                  AND ApprovalStatus IN ('Pending', 'Approved')
+                  AND ISNULL(VisitStatus, '') != 'Checked-Out'
+                  AND ValidUpto >= GETDATE()";
 
                 using (SqlCommand cmd = new SqlCommand(checkQuery, con))
                 {
@@ -137,6 +154,56 @@ namespace AnmolDristi
             {
                 lblMessage.Text = ""; // Reset errors
 
+                // --- 1. Gather Identifying Variables Early ---
+                string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
+                if (visitorMobile.Length > 15) visitorMobile = visitorMobile.Substring(0, 15);
+
+                string visitorEmail = txtEmail.Text.Trim();
+                if (string.IsNullOrEmpty(visitorEmail) && Session["VerifiedEmail"] != null)
+                {
+                    visitorEmail = Session["VerifiedEmail"].ToString();
+                }
+                if (string.IsNullOrEmpty(visitorEmail))
+                {
+                    visitorEmail = "N/A";
+                }
+
+                int branchId = Convert.ToInt32(hfBranchId.Value);
+
+                // --- 2. 🌟 ANTI-SPAM FAILSAFE: Prevent Duplicate Rapid-Clicks ---
+                using (SqlConnection con = new SqlConnection(connStr))
+                {
+                    string checkQuery = @"
+            SELECT COUNT(1) FROM VMS_VisitLog 
+            WHERE (VisitorMobile = @Mobile OR VisitorEmail = @Email) 
+              AND TargetBranchID = @BranchId 
+              AND ApprovalStatus IN ('Pending', 'Approved')
+              AND ISNULL(VisitStatus, '') != 'Checked-Out'
+              AND ValidUpto >= GETDATE()";
+
+                    using (SqlCommand cmdCheck = new SqlCommand(checkQuery, con))
+                    {
+                        cmdCheck.Parameters.AddWithValue("@Mobile", string.IsNullOrEmpty(visitorMobile) ? "N/A" : visitorMobile);
+                        cmdCheck.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(visitorEmail) ? "N/A" : visitorEmail);
+                        cmdCheck.Parameters.AddWithValue("@BranchId", branchId);
+
+                        con.Open();
+                        int activePassCount = Convert.ToInt32(cmdCheck.ExecuteScalar());
+                        con.Close();
+
+                        if (activePassCount > 0)
+                        {
+                            // A pass was literally just generated a millisecond ago. 
+                            // Redirect them peacefully without inserting a duplicate.
+                            Session["VerifiedContact"] = !string.IsNullOrEmpty(visitorMobile) ? visitorMobile : visitorEmail;
+                            Response.Redirect("VMS_MyVisits.aspx", false);
+                            Context.ApplicationInstance.CompleteRequest();
+                            return;
+                        }
+                    }
+                }
+
+                // --- 3. Process Selfie Image ---
                 string base64Data = hfSelfieBase64.Value;
                 if (string.IsNullOrEmpty(base64Data)) throw new Exception("No photo captured.");
                 base64Data = base64Data.Replace("data:image/png;base64,", "");
@@ -150,43 +217,20 @@ namespace AnmolDristi
                 File.WriteAllBytes(fullPath, imageBytes);
                 string dbPhotoPath = "/Uploads/VisitorPhotos/" + fileName;
 
-                //string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
-                //string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
-                //if (visitorMobile.Length > 15) visitorMobile = visitorMobile.Substring(0, 15);
-
-                string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
-                if (visitorMobile.Length > 15) visitorMobile = visitorMobile.Substring(0, 15);
-
-                // 🌟 NEW: Smart Email Handling
-                string visitorEmail = txtEmail.Text.Trim(); // Check if they typed it into the optional frontend box
-
-                // If the box is empty, check if we have a verified email in the session
-                if (string.IsNullOrEmpty(visitorEmail) && Session["VerifiedEmail"] != null)
-                {
-                    visitorEmail = Session["VerifiedEmail"].ToString();
-                }
-
-                // If it's STILL empty (Mobile-Only user who skipped the optional box), default to "N/A"
-                if (string.IsNullOrEmpty(visitorEmail))
-                {
-                    visitorEmail = "N/A";
-                }
-
+                // --- 4. Validate Host ---
                 string hostEmpCode = hfSelectedHostCode.Value;
-                // STRICT BACKEND VALIDATION: Host is mandatory for EVERYONE
                 if (string.IsNullOrEmpty(hostEmpCode))
                 {
                     throw new Exception("Selecting a Host Employee is mandatory to generate a pass.");
                 }
 
                 string fullName = txtFirstName.Text.Trim() + " " + txtLastName.Text.Trim();
-                int branchId = Convert.ToInt32(hfBranchId.Value);
                 int newVisitId = 0;
                 string hostEmail = "", hostName = "";
 
-                // --- 1. Internal Employee Self-Approval Logic ---
                 string currentApprovalStatus = "Pending";
 
+                // --- 5. Internal Employee Self-Approval Logic ---
                 if (ddlPurpose.SelectedValue == "I Work Here")
                 {
                     string internalCode = txtInternalEmpCode.Text.Trim();
@@ -195,7 +239,6 @@ namespace AnmolDristi
                         throw new Exception("You must provide your internal Employee Code to self-approve your pass.");
                     }
 
-                    // 🌟 UPGRADE: Fetch actual employee details instead of just a COUNT
                     using (SqlConnection conCheck = new SqlConnection(connStr))
                     {
                         conCheck.Open();
@@ -208,18 +251,12 @@ namespace AnmolDristi
                             {
                                 if (sdrCheck.Read())
                                 {
-                                    // 1. Grant Auto-Approval
                                     currentApprovalStatus = "Approved";
-
-                                    // 2. Fetch the official name from the Master Table
                                     fullName = sdrCheck["EmployeeName"].ToString();
 
-                                    // 3. Silently override the manual text inputs to ensure DB consistency
                                     string[] nameParts = fullName.Split(new[] { ' ' }, 2);
                                     txtFirstName.Text = nameParts.Length > 0 ? nameParts[0] : fullName;
                                     txtLastName.Text = nameParts.Length > 1 ? nameParts[1] : "";
-
-                                    // 4. Force the company name to your internal standard
                                     txtCompany.Text = "Anmol Industries Ltd.";
                                 }
                                 else
@@ -231,11 +268,12 @@ namespace AnmolDristi
                     }
                 }
 
+                // --- 6. DB Insertion & Timings Logic ---
                 using (SqlConnection con = new SqlConnection(connStr))
                 {
                     con.Open();
                     DateTime validFrom = DateTime.Now;
-                    DateTime validUpto = DateTime.Now.AddHours(8);
+                    DateTime validUpto = validFrom.AddHours(8);
                     string currentDay = validFrom.ToString("dddd");
 
                     string timingQuery = "SELECT CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek";
@@ -244,24 +282,27 @@ namespace AnmolDristi
                         timeCmd.Parameters.AddWithValue("@BranchID", branchId);
                         timeCmd.Parameters.AddWithValue("@DayOfWeek", currentDay);
                         object closeTimeObj = timeCmd.ExecuteScalar();
+
                         if (closeTimeObj != null && closeTimeObj != DBNull.Value)
                         {
                             TimeSpan closingTime = (TimeSpan)closeTimeObj;
                             validUpto = new DateTime(validFrom.Year, validFrom.Month, validFrom.Day, closingTime.Hours, closingTime.Minutes, closingTime.Seconds);
-                            if (validUpto <= validFrom) validUpto = validFrom.AddHours(8);
+
+                            if (validFrom >= validUpto)
+                            {
+                                throw new Exception($"Registration denied. The visiting hours for this facility ended at {validUpto.ToString("hh:mm tt")}.");
+                            }
                         }
                     }
 
-                    // --- 2. Generate a secure, unguessable token for the QR Code ---
                     Guid newQrToken = Guid.NewGuid();
 
-                    // --- 3. Insert the Visit Log ---
                     string insertQuery = @"
-                    INSERT INTO VMS_VisitLog 
-                    (PassCategory, VisitorName, VisitorFirstName, VisitorLastName, VisitorMobile, VisitorEmail, VisitorCompany, VisitorDesignation, PhotoPath, TargetBranchID, HostEmployeeCode, PurposeOfVisit, ApprovalStatus, ValidFrom, ValidUpto, QRToken)
-                    VALUES 
-                    (@Category, @FullName, @FirstName, @LastName, @Mobile, @Email, @Company, @Designation, @PhotoPath, @BranchID, @HostCode, 'General Visit', @ApprovalStatus, @ValidFrom, @ValidUpto, @QRToken);
-                    SELECT SCOPE_IDENTITY();";
+            INSERT INTO VMS_VisitLog 
+            (PassCategory, VisitorName, VisitorFirstName, VisitorLastName, VisitorMobile, VisitorEmail, VisitorCompany, VisitorDesignation, PhotoPath, TargetBranchID, HostEmployeeCode, PurposeOfVisit, ApprovalStatus, ValidFrom, ValidUpto, QRToken)
+            VALUES 
+            (@Category, @FullName, @FirstName, @LastName, @Mobile, @Email, @Company, @Designation, @PhotoPath, @BranchID, @HostCode, 'General Visit', @ApprovalStatus, @ValidFrom, @ValidUpto, @QRToken);
+            SELECT SCOPE_IDENTITY();";
 
                     using (SqlCommand cmd = new SqlCommand(insertQuery, con))
                     {
@@ -279,12 +320,12 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@ApprovalStatus", currentApprovalStatus);
                         cmd.Parameters.AddWithValue("@ValidFrom", validFrom);
                         cmd.Parameters.AddWithValue("@ValidUpto", validUpto);
-                        cmd.Parameters.AddWithValue("@QRToken", newQrToken); // Added QRToken parameter
+                        cmd.Parameters.AddWithValue("@QRToken", newQrToken);
 
                         newVisitId = Convert.ToInt32(cmd.ExecuteScalar());
                     }
 
-                    // 4. Get Host Details for Notification
+                    // --- 7. Queue Notifications ---
                     string hostQuery = "SELECT EmployeeName, Email FROM MST_UserMaster WHERE EmployeeCode = @HostCode";
                     using (SqlCommand hostCmd = new SqlCommand(hostQuery, con))
                     {
@@ -299,31 +340,45 @@ namespace AnmolDristi
                         }
                     }
 
-                    // 5. Queue the appropriate email based on the Approval Status
-                    if (!string.IsNullOrEmpty(hostEmail))
+                    // 🌟 NEW: Smart Fallback Email Routing
+                    bool isFallbackEmail = false;
+                    if (string.IsNullOrEmpty(hostEmail))
+                    {
+                        hostEmail = "dgtlautomation@anmolindustries.com";
+                        isFallbackEmail = true;
+                    }
+
+                    if (!string.IsNullOrEmpty(hostEmail)) // This will now always execute
                     {
                         if (currentApprovalStatus == "Pending")
                         {
-                            // Standard Visitor: Requires Action & Approval
                             string subject = $"Approval Needed: Visitor {fullName} has arrived";
+                            if (isFallbackEmail) subject = "[FALLBACK] " + subject; // Tag it for the IT team
+
                             byte[] plainTextBytes = System.Text.Encoding.UTF8.GetBytes(hostEmpCode);
                             string encodedEmpCode = Convert.ToBase64String(plainTextBytes);
 
                             string quickApproveLink = $"https://apps.anmolindustries.com/VMS_HostQuickLogin.aspx?vid={newVisitId}&t={encodedEmpCode}";
 
+                            // Add a red warning note if routed to the fallback address
+                            string fallbackNote = isFallbackEmail
+                                ? $"<p style='color: red; font-size: 12px;'><em>System Note: This email was routed to the fallback address because no valid email was found in the database for Host Code: {hostEmpCode}.</em></p>"
+                                : "";
+
                             string body = $@"
-                            <div style='font-family: Arial; padding: 20px;'>
-                                <h3 style='color: #1ABB9C;'>Hello {hostName},</h3>
-                                <p><strong>{fullName}</strong> from <strong>{txtCompany.Text}</strong> is waiting for your approval at the reception.</p>
-                                <br/>
-                                <a href='{quickApproveLink}' style='background: #1ABB9C; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Review & Approve Visitor</a>
-                            </div>";
+        <div style='font-family: Arial; padding: 20px;'>
+            {fallbackNote}
+            <h3 style='color: #1ABB9C;'>Hello {hostName},</h3>
+            <p><strong>{fullName}</strong> from <strong>{txtCompany.Text}</strong> is waiting for your approval at the reception.</p>
+            <br/>
+            <a href='{quickApproveLink}' style='background: #1ABB9C; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Review & Approve Visitor</a>
+        </div>";
 
                             string queueQuery = @"
-                            INSERT INTO NotificationQueue 
-                            (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) 
-                            VALUES 
-                            (@VisitId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_APPROVAL')";
+        INSERT INTO NotificationQueue 
+        (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) 
+        VALUES 
+        (@VisitId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_APPROVAL')";
 
                             using (SqlCommand qCmd = new SqlCommand(queueQuery, con))
                             {
@@ -337,21 +392,26 @@ namespace AnmolDristi
                         }
                         else if (currentApprovalStatus == "Approved")
                         {
-                            // Internal Employee: Auto-approved, send FYI only
                             string fyiSubject = $"FYI: Internal Colleague {fullName} has arrived";
+                            if (isFallbackEmail) fyiSubject = "[FALLBACK] " + fyiSubject;
+
+                            string fallbackNote = isFallbackEmail
+                                ? $"<p style='color: red; font-size: 12px;'><em>System Note: This email was routed to the fallback address because no valid email was found in the database for Host Code: {hostEmpCode}.</em></p>"
+                                : "";
 
                             string fyiBody = $@"
                             <div style='font-family: Arial; padding: 20px;'>
+                                {fallbackNote}
                                 <h3 style='color: #1ABB9C;'>Hello {hostName},</h3>
                                 <p><strong>{fullName}</strong> from <strong>{txtCompany.Text}</strong> (Internal Employee) is currently at the reception to meet you.</p>
                                 <p style='color: #73879C;'><em>Note: Their visitor pass has been automatically approved. No further action is required from your end.</em></p>
                             </div>";
 
                             string queueQuery = @"
-                            INSERT INTO NotificationQueue 
-                            (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) 
-                            VALUES 
-                            (@VisitId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_FYI_ARRIVAL')";
+                                INSERT INTO NotificationQueue 
+                                (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) 
+                                VALUES 
+                                (@VisitId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_FYI_ARRIVAL')";
 
                             using (SqlCommand qCmd = new SqlCommand(queueQuery, con))
                             {
@@ -366,8 +426,8 @@ namespace AnmolDristi
                     }
                 }
 
+                // --- 8. Complete Request & Redirect ---
                 Session["VerifiedContact"] = !string.IsNullOrEmpty(visitorMobile) ? visitorMobile : visitorEmail;
-
                 Response.Redirect("VMS_MyVisits.aspx", false);
                 Context.ApplicationInstance.CompleteRequest();
             }
@@ -376,6 +436,41 @@ namespace AnmolDristi
                 lblMessage.ForeColor = System.Drawing.Color.Red;
                 lblMessage.Text = "Submission Error: " + ex.Message;
             }
+        }
+
+        private bool IsFacilityOpen(int branchId)
+        {
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                DateTime now = DateTime.Now;
+                string currentDay = now.ToString("dddd");
+
+                string timingQuery = "SELECT CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek";
+
+                using (SqlCommand cmd = new SqlCommand(timingQuery, con))
+                {
+                    cmd.Parameters.AddWithValue("@BranchID", branchId);
+                    cmd.Parameters.AddWithValue("@DayOfWeek", currentDay);
+
+                    con.Open();
+                    object closeTimeObj = cmd.ExecuteScalar();
+
+                    if (closeTimeObj != null && closeTimeObj != DBNull.Value)
+                    {
+                        TimeSpan closingTime = (TimeSpan)closeTimeObj;
+                        DateTime closingDateTime = new DateTime(now.Year, now.Month, now.Day, closingTime.Hours, closingTime.Minutes, closingTime.Seconds);
+
+                        // If the current time is past the official closing time, return false
+                        if (now >= closingDateTime)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            // Defaults to true so that if a branch forgets to configure their timings in the DB, 
+            // it doesn't accidentally lock everyone out.
+            return true;
         }
     }
 }

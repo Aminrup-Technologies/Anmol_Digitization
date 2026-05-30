@@ -223,7 +223,6 @@
                 alert("Please select the purpose of your visit.");
                 return false;
             }
-            // NEW: Enforce internal code if they select 'I Work Here'
             if ($("#<%= ddlPurpose.ClientID %>").val() === "I Work Here" && $("#<%= txtInternalEmpCode.ClientID %>").val().trim() === "") {
                 alert("Please enter your Employee Code to self-approve your pass.");
                 return false;
@@ -232,6 +231,12 @@
                 alert("Please search and select a valid Host Employee.");
                 return false;
             }
+            
+            // 🌟 ANTI-SPAM FIX: Hide button instantly and show 'Processing...'
+            var submitBtn = $("#<%= btnSubmit.ClientID %>");
+            submitBtn.hide(); 
+            submitBtn.after('<button type="button" class="btn btn-proceed" disabled><i class="fa fa-spinner fa-spin"></i> Processing...</button>');
+            
             return true;
         }
     </script>

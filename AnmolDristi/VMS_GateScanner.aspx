@@ -76,12 +76,19 @@
             padding-top: 15px;
         }
 
-        .grid-avatar {
-            width: 40px; 
-            height: 40px; 
-            border-radius: 50%; 
-            object-fit: cover; 
-            border: 2px solid #ddd;
+        /* Responsive Card Styles for Repeater */
+        .visitor-card {
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column;
+            background: #fff;
+            transition: box-shadow 0.3s ease;
+        }
+        .visitor-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
     </style>
 </asp:Content>
@@ -106,13 +113,12 @@
                                 <li role="presentation" class="">
                                     <a href="#tab_inside" role="tab" id="inside-tab" data-toggle="tab" aria-expanded="false">
                                         <i class="fa fa-users"></i> Inside Premises 
-                                        
                                         <asp:UpdatePanel ID="upBadge" runat="server" UpdateMode="Conditional" RenderMode="Inline">
                                             <ContentTemplate>
                                                 <span class="badge bg-green"><asp:Label ID="lblInsideCount" runat="server" Text="0"></asp:Label></span>
                                             </ContentTemplate>
                                         </asp:UpdatePanel>
-                                    </a>
+                                     </a>
                                 </li>
                             </ul>
 
@@ -140,7 +146,6 @@
                                                 <asp:Button ID="btnProcessScan" runat="server" Text="Process" OnClick="btnProcessScan_Click" Style="display: none;" />
 
                                                 <asp:Panel ID="pnlResult" runat="server" CssClass="result-card" Visible="false">
-
                                                     <div class="row">
                                                         <div class="col-xs-12 text-center" style="margin-bottom: 15px;">
                                                             <asp:Image ID="imgVisitor" runat="server" CssClass="visitor-img" Visible="false" />
@@ -182,7 +187,6 @@
                                                                 <i class="fa fa-clock-o" style="width: 20px;"></i><b>Pass Valid Until:</b>
                                                                 <span class="pull-right text-danger"><asp:Label ID="lblDetValid" runat="server"></asp:Label></span>
                                                             </li>
-                                                            
                                                             <li class="list-group-item" id="liCheckInTime" runat="server" visible="false">
                                                                 <i class="fa fa-sign-in" style="width: 20px; color: green;"></i><b>Actual In-Time:</b>
                                                                 <span class="pull-right" style="color: green; font-weight: bold;"><asp:Label ID="lblDetInTime" runat="server"></asp:Label></span>
@@ -215,40 +219,42 @@
                                             
                                             <asp:UpdatePanel ID="upGrid" runat="server" UpdateMode="Conditional">
                                                 <ContentTemplate>
-                                                    
                                                     <asp:Label ID="lblGridMsg" runat="server" Font-Bold="true" ForeColor="Green" EnableViewState="false"></asp:Label>
 
-                                                    <div class="table-responsive" style="margin-top: 15px;">
-                                                        <asp:GridView ID="gvInside" runat="server" CssClass="table table-striped jambo_table" 
-                                                            AutoGenerateColumns="False" EmptyDataText="No visitors are currently inside the premises."
-                                                            OnRowDataBound="gvInside_RowDataBound" OnRowCommand="gvInside_RowCommand" DataKeyNames="LogID">
-                                                            <Columns>
-                                                                <asp:TemplateField HeaderText="Photo">
-                                                                    <ItemTemplate>
-                                                                        <img src='<%# Eval("PhotoPath") %>' class="grid-avatar" onerror="this.src='/images/user.png';" />
-                                                                    </ItemTemplate>
-                                                                </asp:TemplateField>
-                                                                <asp:BoundField DataField="VisitorName" HeaderText="Visitor Name" ItemStyle-Font-Bold="true" />
-                                                                <asp:BoundField DataField="VisitorCompany" HeaderText="Company" />
-                                                                <asp:BoundField DataField="ContactInfo" HeaderText="Contact Info" />
-                                                                <asp:BoundField DataField="HostName" HeaderText="Host Employee" />
-                                                                <asp:BoundField DataField="ActualInTime" HeaderText="Checked-In At" DataFormatString="{0:dd MMM, hh:mm tt}" ItemStyle-ForeColor="Green" ItemStyle-Font-Bold="true" />
-                                                                
-                                                                <asp:BoundField DataField="ValidUpto" HeaderText="Valid Until" DataFormatString="{0:dd MMM, hh:mm tt}" />
-                                                                
-                                                                <asp:TemplateField HeaderText="Action">
-                                                                    <ItemTemplate>
-                                                                        <asp:LinkButton ID="btnForceCheckOut" runat="server" CommandName="ForceCheckOut" 
-                                                                            CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-danger btn-xs" 
-                                                                            OnClientClick="return confirm('Are you sure you want to manually Check-Out this visitor?');">
-                                                                            <i class="fa fa-sign-out"></i> Check-OUT
-                                                                        </asp:LinkButton>
-                                                                    </ItemTemplate>
-                                                                </asp:TemplateField>
-                                                            </Columns>
-                                                        </asp:GridView>
+                                                    <div class="row" style="margin-top: 15px;">
+                                                        <asp:Repeater ID="rptVisitorLogs" runat="server" OnItemCommand="rptVisitorLogs_ItemCommand">
+                                                            <ItemTemplate>
+                                                                <div class="col-12 col-md-6 col-lg-4" style="margin-bottom: 20px;">
+                                                                    <div class="visitor-card shadow-sm">
+                                                                        <div class="card-body" style="padding: 15px; flex-grow: 1;">
+                                                                            
+                                                                            <div class="d-flex align-items-center" style="margin-bottom: 15px; display: flex;">
+                                                                                <img src='<%# Eval("PhotoPath") %>' onerror="this.src='/images/user.png';" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #1ABB9C; margin-right: 15px;" />
+                                                                                <div>
+                                                                                    <h4 style="margin: 0; font-weight: bold; color: #333; font-size:16px;"><%# Eval("VisitorName") %></h4>
+                                                                                    <small class="text-muted"><i class="fa fa-building"></i> <%# Eval("VisitorCompany") %></small>
+                                                                                </div>
+                                                                            </div>
+                                                                            
+                                                                            <p style="margin: 0 0 5px 0; font-size: 13px;"><i class="fa fa-phone"></i> <%# Eval("ContactInfo") %></p>
+                                                                            <p style="margin: 0 0 5px 0; font-size: 13px;"><i class="fa fa-user"></i> Host: <b><%# Eval("HostName") %></b></p>
+                                                                            <p style="margin: 0 0 5px 0; font-size: 13px; color: green;"><i class="fa fa-sign-in"></i> In: <%# Convert.ToDateTime(Eval("ActualInTime")).ToString("dd MMM, hh:mm tt") %></p>
+                                                                            <p style="margin: 0 0 10px 0; font-size: 13px; color: #d9534f;"><i class="fa fa-clock-o"></i> Valid Until: <%# Convert.ToDateTime(Eval("ValidUpto")).ToString("dd MMM, hh:mm tt") %></p>
+                                                                        </div>
+                                                                        
+                                                                        <div style="padding: 10px 15px; background-color: #f9f9f9; border-top: 1px solid #eee;">
+                                                                            <asp:LinkButton ID="btnForceCheckOut" runat="server" CommandName="ForceCheckOut" 
+                                                                                CommandArgument='<%# Eval("LogID") %>' 
+                                                                                CssClass='<%# GetButtonCss(Eval("ValidUpto")) %>' 
+                                                                                OnClientClick="return confirm('Are you sure you want to manually Check-Out this visitor?');">
+                                                                                <%# GetButtonText(Eval("ValidUpto")) %>
+                                                                            </asp:LinkButton>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </ItemTemplate>
+                                                        </asp:Repeater>
                                                     </div>
-
                                                 </ContentTemplate>
                                             </asp:UpdatePanel>
 
@@ -258,7 +264,7 @@
 
                             </div>
                         </div>
-                        </div>
+                    </div>
                 </div>
 
             </div>

@@ -152,15 +152,15 @@
                                 <i class="fa fa-edit"></i>Category
 
                             </a>
-                            <a class="btn btn-app" href="add_brandtypes.aspx">
+                            <a class="btn btn-app" href="add_brandtypes.aspx" id="btn_managevariety" runat="server">
                                 <span class="badge bg-green">OK
-                                    <asp:Label ID="Label13" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                    <asp:Label ID="lbl_VarietyCount" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Brands
 
                             </a>
-                            <a class="btn btn-app" href="qaqc_mst_sku.aspx">
+                            <a class="btn btn-app" href="qaqc_mst_sku.aspx" id="btn_managesku" runat="server">
                                 <span class="badge bg-green">OK
-                                    <asp:Label ID="Label14" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                    <asp:Label ID="lbl_SKUCount" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>SKU
 
                             </a>
@@ -249,7 +249,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-6" id="Div1" runat="server" visible="true">
+                <div class="col-md-6" id="RolesNPermissions" runat="server" visible="true">
                     <div class="x_panel">
                         <div class="x_title">
                             <h2>Roles & Permissions</h2>
@@ -301,7 +301,7 @@
                     </div>
                 </div>
 
-                <div class="col-md-6" id="Div2" runat="server" visible="true">
+                <div class="col-md-6" id="SelfSessions" runat="server" visible="true">
                     <div class="x_panel">
                         <div class="x_title">
                             <h2>User Sessions</h2>

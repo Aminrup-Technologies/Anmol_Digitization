@@ -28,6 +28,17 @@
             border: 1px solid #ddd;
             object-fit: cover;
         }
+
+        .email-body-preview {
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
     </style>
 </asp:Content>
 
@@ -58,11 +69,98 @@
                                         <div class="table-responsive">
                                             <asp:GridView ID="gvAdminPending" runat="server" AutoGenerateColumns="False"
                                                 CssClass="table table-striped table-bordered table-hover"
-                                                OnRowCommand="gvAdminPending_RowCommand"
+                                                OnRowCommand="gvAdminPending_RowCommand" OnRowDataBound="gvAdminPending_RowDataBound"
                                                 EmptyDataText="No pending visitors at this time."
                                                 EmptyDataRowStyle-CssClass="alert alert-success text-center">
                                                 <Columns>
-                                                    <asp:BoundField DataField="LogID" HeaderText="Log ID" ItemStyle-Width="60px" />
+                                                    <asp:TemplateField HeaderText="Log ID" ItemStyle-Width="70px" ItemStyle-CssClass="text-center">
+                                                        <ItemTemplate>
+                                                            <strong>#<%# Eval("LogID") %></strong><br />
+                                                            <asp:LinkButton ID="btnViewEmails" runat="server" CommandName="ViewEmails" CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-info btn-xs" ToolTip="View Email Logs" Style="margin-top: 5px;"><i class="fa fa-envelope"></i> Logs</asp:LinkButton>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
+
+                                                    <asp:TemplateField HeaderText="Visitor Details">
+                                                        <ItemTemplate>
+                                                            <div style="display: flex; align-items: center;">
+                                                                <img src='<%# Eval("PhotoPath") != DBNull.Value && !string.IsNullOrEmpty(Eval("PhotoPath").ToString()) ? ResolveUrl(Eval("PhotoPath").ToString()) : ResolveUrl("~/Images/default-avatar.png") %>' class="visitor-photo" />
+                                                                <div>
+                                                                    <strong style="color: #333; font-size: 13px;"><%# Eval("VisitorName") %></strong><br />
+                                                                    <small class="text-muted"><%# Eval("VisitorEmail") %></small>
+                                                                </div>
+                                                            </div>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
+
+                                                    <asp:TemplateField HeaderText="Branch (ID)">
+                                                        <ItemTemplate>
+                                                            <strong><%# Eval("Branch_Description") %></strong><br />
+                                                            <small class="text-muted"><i class="fa fa-map-marker"></i>ID: <%# Eval("TargetBranchID") %></small>
+                                                            <asp:HiddenField ID="hfTargetBranchID" runat="server" Value='<%# Eval("TargetBranchID") %>' />
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
+
+                                                    <%--<asp:TemplateField HeaderText="Host Details" ItemStyle-CssClass="grid-host">
+                                                        <ItemTemplate>
+                                                            <strong style="color: #555;"><%# Eval("HostName") %></strong>
+                                                            <small><i class="fa fa-id-badge"></i> Code: <%# Eval("HostEmployeeCode") %></small>
+                                                            <small><i class="fa fa-envelope"></i> <%# Eval("HostEmail") %></small>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>--%>
+
+                                                    <asp:TemplateField HeaderText="Host Code & Details" ItemStyle-Width="240px">
+                                                        <ItemTemplate>
+                                                            <div class="input-group" style="margin-bottom: 5px;">
+                                                                <asp:TextBox ID="txtHostCode" runat="server" CssClass="form-control input-sm" 
+                                                                             Placeholder="Emp Code..." AutoPostBack="true" 
+                                                                             OnTextChanged="txtHostCode_TextChanged" 
+                                                                             Text='<%# Eval("HostEmployeeCode") %>'></asp:TextBox>
+                                                                <span class="input-group-btn">
+                                                                    <asp:LinkButton ID="btnSyncHost" runat="server" CommandName="SyncHost" 
+                                                                                    CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-success btn-sm" 
+                                                                                    ToolTip="Save Host Change">
+                                                                        <i class="fa fa-save"></i>
+                                                                    </asp:LinkButton>
+                                                                </span>
+                                                            </div>
+                                                            <asp:Label ID="lblHostDetails" runat="server">
+                                                                <strong style="color: #555;"><%# Eval("HostName") %></strong><br />
+                                                                <small class="text-muted"><i class="fa fa-envelope"></i> <%# Eval("HostEmail") %></small>
+                                                            </asp:Label>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
+
+                                                    <asp:BoundField DataField="CreatedDate" HeaderText="Waiting Since" DataFormatString="{0:dd MMM yyyy, hh:mm tt}" />
+
+                                                    <asp:TemplateField HeaderText="Actions" ItemStyle-Width="180px" ItemStyle-CssClass="text-center">
+                                                        <ItemTemplate>
+                                                            <asp:LinkButton ID="btnRetrigger" runat="server" CommandName="Retrigger" CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-warning btn-sm" OnClientClick="return confirm('Send high-priority reminder?');"><i class="fa fa-bell"></i> Remind</asp:LinkButton>
+                                                            <asp:LinkButton ID="btnSoftDelete" runat="server" CommandName="SoftDelete" CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-danger btn-sm" OnClientClick="return confirm('Delete this duplicate/invalid request?');"><i class="fa fa-trash"></i> Delete</asp:LinkButton>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
+                                                </Columns>
+                                            </asp:GridView>
+                                        </div>
+                                    </div>
+
+                                    <div id="tabOnBehalf" class="tab-pane fade" role="tabpanel">
+                                        <div class="alert alert-info">
+                                            <strong><i class="fa fa-info-circle"></i>Note:</strong> Approving a pass here will bypass the Host and instantly send a digital pass.
+                                        </div>
+                                        <div class="table-responsive">
+                                            <asp:GridView ID="gvOnBehalf" runat="server" AutoGenerateColumns="False"
+                                                CssClass="table table-striped table-bordered table-hover"
+                                                DataKeyNames="LogID,VisitorEmail,VisitorName,HostEmail,HostName"
+                                                OnRowCommand="gvOnBehalf_RowCommand"
+                                                EmptyDataText="No pending visitors at this time."
+                                                EmptyDataRowStyle-CssClass="alert alert-success text-center">
+                                                <Columns>
+                                                    <asp:TemplateField HeaderText="Log ID" ItemStyle-Width="70px" ItemStyle-CssClass="text-center">
+                                                        <ItemTemplate>
+                                                            <strong>#<%# Eval("LogID") %></strong><br />
+                                                            <asp:LinkButton ID="btnViewEmails" runat="server" CommandName="ViewEmails" CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-info btn-xs" ToolTip="View Email Logs" Style="margin-top: 5px;"><i class="fa fa-envelope"></i> Logs</asp:LinkButton>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
 
                                                     <asp:TemplateField HeaderText="Visitor Details">
                                                         <ItemTemplate>
@@ -86,78 +184,22 @@
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:BoundField DataField="CreatedDate" HeaderText="Waiting Since" DataFormatString="{0:dd MMM yyyy, hh:mm tt}" />
-
-                                                    <asp:TemplateField HeaderText="Actions" ItemStyle-Width="150px" ItemStyle-CssClass="text-center">
-                                                        <ItemTemplate>
-                                                            <asp:LinkButton ID="btnRetrigger" runat="server" CommandName="Retrigger"
-                                                                CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-warning btn-sm"
-                                                                OnClientClick="return confirm('Send high-priority reminder?');">
-                                                                <i class="fa fa-bell"></i> Remind Host
-                                                            </asp:LinkButton>
-                                                        </ItemTemplate>
-                                                    </asp:TemplateField>
-                                                </Columns>
-                                            </asp:GridView>
-                                        </div>
-                                    </div>
-
-                                    <div id="tabOnBehalf" class="tab-pane fade" role="tabpanel">
-                                        <div class="alert alert-info">
-                                            <strong><i class="fa fa-info-circle"></i>Note:</strong> Approving a pass here will bypass the Host and instantly send a digital pass to the visitor.
-                                        </div>
-                                        <div class="table-responsive">
-                                            <asp:GridView ID="gvOnBehalf" runat="server" AutoGenerateColumns="False"
-                                                CssClass="table table-striped table-bordered table-hover"
-                                                DataKeyNames="LogID,VisitorEmail,VisitorName,HostEmail,HostName"
-                                                OnRowCommand="gvOnBehalf_RowCommand"
-                                                EmptyDataText="No pending visitors at this time."
-                                                EmptyDataRowStyle-CssClass="alert alert-success text-center">
-                                                <Columns>
-                                                    <asp:BoundField DataField="LogID" HeaderText="Log ID" ItemStyle-Width="60px" />
-
-                                                    <asp:TemplateField HeaderText="Visitor Details">
-                                                        <ItemTemplate>
-                                                            <div style="display: flex; align-items: center;">
-                                                                <img src='<%# Eval("PhotoPath") != DBNull.Value && !string.IsNullOrEmpty(Eval("PhotoPath").ToString()) ? ResolveUrl(Eval("PhotoPath").ToString()) : ResolveUrl("~/Images/default-avatar.png") %>' class="visitor-photo" />
-                                                                <div>
-                                                                    <strong style="color: #333; font-size: 13px;"><%# Eval("VisitorName") %></strong><br />
-                                                                    <small class="text-muted"><%# Eval("VisitorEmail") %></small><br />
-                                                                    <small class="text-muted"><%# Eval("CreatedDate") %></small>
-                                                                </div>
-                                                            </div>
-                                                        </ItemTemplate>
-                                                    </asp:TemplateField>
-
-                                                    <asp:BoundField DataField="Branch_Description" HeaderText="Branch / Plant" />
-
-                                                    <asp:TemplateField HeaderText="Host Details" ItemStyle-CssClass="grid-host">
-                                                        <ItemTemplate>
-                                                            <strong style="color: #555;"><%# Eval("HostName") %></strong>
-                                                            <small><i class="fa fa-id-badge"></i>Code: <%# Eval("HostEmployeeCode") %></small>
-                                                            <small><i class="fa fa-envelope"></i><%# Eval("HostEmail") %></small>
-                                                        </ItemTemplate>
-                                                    </asp:TemplateField>
-
                                                     <asp:TemplateField HeaderText="Schedule Date & Time" ItemStyle-Width="200px">
                                                         <ItemTemplate>
                                                             <asp:TextBox ID="txtScheduleDate" runat="server" TextMode="DateTimeLocal" CssClass="form-control input-sm"></asp:TextBox>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:TemplateField HeaderText="Admin Remarks (Required)" ItemStyle-Width="220px">
+                                                    <asp:TemplateField HeaderText="Admin Remarks" ItemStyle-Width="220px">
                                                         <ItemTemplate>
                                                             <asp:TextBox ID="txtRemarks" runat="server" CssClass="form-control input-sm" Placeholder="Reason for bypass..."></asp:TextBox>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:TemplateField HeaderText="Action" ItemStyle-CssClass="text-center" ItemStyle-Width="160px">
+                                                    <asp:TemplateField HeaderText="Action" ItemStyle-CssClass="text-center" ItemStyle-Width="180px">
                                                         <ItemTemplate>
-                                                            <asp:LinkButton ID="btnForceApprove" runat="server" CommandName="ForceApprove"
-                                                                CommandArgument='<%# Container.DataItemIndex %>' CssClass="btn btn-success btn-sm"
-                                                                OnClientClick="return confirm('WARNING: Are you sure you want to approve this visitor ON BEHALF of the host?');">
-                                                                <i class="fa fa-check"></i> Approve
-                                                            </asp:LinkButton>
+                                                            <asp:LinkButton ID="btnForceApprove" runat="server" CommandName="ForceApprove" CommandArgument='<%# Container.DataItemIndex %>' CssClass="btn btn-success btn-sm" OnClientClick="return confirm('Approve ON BEHALF of host?');"><i class="fa fa-check"></i> Approve</asp:LinkButton>
+                                                            <asp:LinkButton ID="btnSoftDelete" runat="server" CommandName="SoftDelete" CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-danger btn-sm" OnClientClick="return confirm('Delete this duplicate/invalid request?');"><i class="fa fa-trash"></i> Delete</asp:LinkButton>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
                                                 </Columns>
@@ -179,11 +221,16 @@
                                         <div class="table-responsive">
                                             <asp:GridView ID="gvAdminGateOverride" runat="server" AutoGenerateColumns="False"
                                                 CssClass="table table-striped table-bordered table-hover"
-                                                DataKeyNames="LogID,VisitorName"
+                                                DataKeyNames="LogID,VisitorName" OnRowCommand="gvAdminGateOverride_RowCommand"
                                                 EmptyDataText="No active visitors found."
                                                 EmptyDataRowStyle-CssClass="alert alert-success text-center">
                                                 <Columns>
-                                                    <asp:BoundField DataField="LogID" HeaderText="ID" ItemStyle-Width="50px" ItemStyle-Font-Bold="true" />
+                                                    <asp:TemplateField HeaderText="Log ID" ItemStyle-Width="60px" ItemStyle-CssClass="text-center">
+                                                        <ItemTemplate>
+                                                            <strong style="color: #d9534f;">#<%# Eval("LogID") %></strong><br />
+                                                            <asp:LinkButton ID="btnViewEmails" runat="server" CommandName="ViewEmails" CommandArgument='<%# Eval("LogID") %>' CssClass="btn btn-info btn-xs" ToolTip="View Email Logs" Style="margin-top: 5px;"><i class="fa fa-envelope"></i> Logs</asp:LinkButton>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
 
                                                     <asp:TemplateField HeaderText="Visitor Details" ItemStyle-Width="230px">
                                                         <ItemTemplate>
@@ -191,9 +238,7 @@
                                                                 <img src='<%# Eval("PhotoPath") != DBNull.Value && !string.IsNullOrEmpty(Eval("PhotoPath").ToString()) ? ResolveUrl(Eval("PhotoPath").ToString()) : ResolveUrl("~/Images/default-avatar.png") %>' class="visitor-photo" style="width: 40px; height: 40px;" />
                                                                 <div>
                                                                     <strong style="color: #1ABB9C; font-size: 14px;"><%# Eval("VisitorName") %></strong><br />
-                                                                    <span class='<%# Eval("VisitStatus").ToString() == "Scheduled" ? "label label-warning" : "label label-success" %>'>
-                                                                        <%# Eval("VisitStatus") %>
-                                                                    </span>
+                                                                    <span class='<%# Eval("VisitStatus").ToString() == "Scheduled" ? "label label-warning" : "label label-success" %>'><%# Eval("VisitStatus") %></span>
                                                                 </div>
                                                             </div>
                                                         </ItemTemplate>
@@ -206,7 +251,7 @@
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:TemplateField HeaderText="Host" ItemStyle-CssClass="grid-host">
+                                                    <asp:TemplateField HeaderText="Host" ItemStyle-CssClass="grid-host" ItemStyle-Width="120px">
                                                         <ItemTemplate>
                                                             <strong style="color: #555;"><%# Eval("HostName") %></strong>
                                                             <small><i class="fa fa-id-badge"></i>Code: <%# Eval("HostEmployeeCode") %></small>
@@ -221,36 +266,21 @@
 
                                                     <asp:TemplateField HeaderText="In-Time" ItemStyle-Width="150px">
                                                         <ItemTemplate>
-                                                            <asp:TextBox ID="txtInTime" runat="server" TextMode="DateTimeLocal" AutoPostBack="true"
-                                                                OnTextChanged="InlineEdit_TextChanged"
-                                                                Text='<%# Eval("ActualInTime") != DBNull.Value ? Convert.ToDateTime(Eval("ActualInTime")).ToString("yyyy-MM-ddTHH:mm") : "" %>'
-                                                                CssClass="form-control input-sm"></asp:TextBox>
-
-                                                            <%-- Smart Suggestion --%>
+                                                            <asp:TextBox ID="txtInTime" runat="server" TextMode="DateTimeLocal" AutoPostBack="true" OnTextChanged="InlineEdit_TextChanged" Text='<%# Eval("ActualInTime") != DBNull.Value ? Convert.ToDateTime(Eval("ActualInTime")).ToString("yyyy-MM-ddTHH:mm") : "" %>' CssClass="form-control input-sm"></asp:TextBox>
                                                             <%# RenderTimeSuggestion("IN", Eval("ActualInTime"), Eval("CreatedDate"), Eval("ApprovedOn"), Eval("ActualInTime")) %>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
                                                     <asp:TemplateField HeaderText="Out-Time" ItemStyle-Width="150px">
                                                         <ItemTemplate>
-                                                            <asp:TextBox ID="txtOutTime" runat="server" TextMode="DateTimeLocal" AutoPostBack="true"
-                                                                OnTextChanged="InlineEdit_TextChanged"
-                                                                Text='<%# Eval("ActualOutTime") != DBNull.Value ? Convert.ToDateTime(Eval("ActualOutTime")).ToString("yyyy-MM-ddTHH:mm") : "" %>'
-                                                                CssClass="form-control input-sm"></asp:TextBox>
-
-                                                            <%-- Smart Suggestion --%>
+                                                            <asp:TextBox ID="txtOutTime" runat="server" TextMode="DateTimeLocal" AutoPostBack="true" OnTextChanged="InlineEdit_TextChanged" Text='<%# Eval("ActualOutTime") != DBNull.Value ? Convert.ToDateTime(Eval("ActualOutTime")).ToString("yyyy-MM-ddTHH:mm") : "" %>' CssClass="form-control input-sm"></asp:TextBox>
                                                             <%# RenderTimeSuggestion("OUT", Eval("ActualOutTime"), Eval("CreatedDate"), Eval("ApprovedOn"), Eval("ActualInTime")) %>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
                                                     <asp:TemplateField HeaderText="Valid Upto" ItemStyle-Width="150px">
                                                         <ItemTemplate>
-                                                            <asp:TextBox ID="txtValidUpto" runat="server" TextMode="DateTimeLocal" AutoPostBack="true"
-                                                                OnTextChanged="InlineEdit_TextChanged"
-                                                                Text='<%# Eval("ValidUpto") != DBNull.Value ? Convert.ToDateTime(Eval("ValidUpto")).ToString("yyyy-MM-ddTHH:mm") : "" %>'
-                                                                CssClass="form-control input-sm"></asp:TextBox>
-
-                                                            <%-- Smart Suggestion --%>
+                                                            <asp:TextBox ID="txtValidUpto" runat="server" TextMode="DateTimeLocal" AutoPostBack="true" OnTextChanged="InlineEdit_TextChanged" Text='<%# Eval("ValidUpto") != DBNull.Value ? Convert.ToDateTime(Eval("ValidUpto")).ToString("yyyy-MM-ddTHH:mm") : "" %>' CssClass="form-control input-sm"></asp:TextBox>
                                                             <%# RenderTimeSuggestion("VALID", Eval("ValidUpto"), Eval("CreatedDate"), Eval("ApprovedOn"), Eval("ActualInTime")) %>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
@@ -258,7 +288,6 @@
                                             </asp:GridView>
                                         </div>
                                     </div>
-
                                 </div>
                             </ContentTemplate>
                         </asp:UpdatePanel>
@@ -267,4 +296,62 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="emailLogsModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: #34495E; color: white;">
+                    <button type="button" class="close" data-dismiss="modal" style="color: white;">&times;</button>
+                    <h4 class="modal-title"><i class="fa fa-envelope"></i>Email Delivery Logs</h4>
+                </div>
+                <div class="modal-body" style="background: #f4f6f9;">
+                    <asp:UpdatePanel ID="upEmailLogs" runat="server">
+                        <ContentTemplate>
+                            <asp:Repeater ID="rptEmailLogs" runat="server">
+                                <HeaderTemplate>
+                                    <ul class="list-group">
+                                </HeaderTemplate>
+                                <ItemTemplate>
+                                    <li class="list-group-item" style="margin-bottom: 10px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <strong>To:</strong> <span class="text-primary"><%# Eval("RecipientName") %></span> (<%# Eval("RecipientEmail") %>)<br />
+                                                <strong>Subject:</strong> <%# Eval("Subject") %>
+                                            </div>
+                                            <div class="col-md-5 text-right">
+                                                <span class='label <%# Eval("Status").ToString() == "Sent" || Eval("Status").ToString() == "Processed" ? "label-success" : (Eval("Status").ToString() == "Failed" ? "label-danger" : "label-warning") %>'>
+                                                    <%# Eval("Status") %>
+                                                </span>
+                                                <div style="margin-top: 8px; font-size: 11px; color: #73879C; text-align: right; line-height: 1.5;">
+                                                    <div><i class="fa fa-clock-o"></i>Queued: <b><%# Eval("CreatedOn", "{0:dd MMM yyyy, hh:mm tt}") %></b></div>
+                                                    <div><i class="fa fa-paper-plane"></i>Sent: <b><%# Eval("SentOn") != DBNull.Value ? Eval("SentOn", "{0:dd MMM yyyy, hh:mm tt}") : "<span style='color:#f0ad4e;'>Pending Dispatch...</span>" %></b></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="email-body-preview">
+                                            <%# Eval("Body") %>
+                                        </div>
+                                    </li>
+                                </ItemTemplate>
+                                <FooterTemplate></ul></FooterTemplate>
+                            </asp:Repeater>
+                            <asp:Label ID="lblNoEmails" runat="server" Visible="false" CssClass="alert alert-warning display-block text-center"><i class="fa fa-info-circle"></i> No emails found for this visit.</asp:Label>
+                        </ContentTemplate>
+                    </asp:UpdatePanel>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        function applySmartTime(element, isoValue) {
+            var container = element.closest('td');
+            var inputBox = container.querySelector('input[type="datetime-local"]');
+            if (inputBox) {
+                inputBox.value = isoValue;
+                inputBox.style.backgroundColor = "#e0f7fa";
+                setTimeout(function () { inputBox.style.backgroundColor = ""; }, 1000);
+            }
+        }
+    </script>
 </asp:Content>
