@@ -91,6 +91,7 @@
     </asp:ContentPlaceHolder>
 
     <script src="Resources/Scripts/jquery-1.7.2.min.js"></script>
+
     <script type="text/javascript">
         var idleTimeout;
         var logoutTime;
@@ -98,7 +99,7 @@
         function startIdleTimer() {
             idleTimeout = setTimeout(function () {
                 location.href = 'login.aspx';
-            }, 10 * 60 * 1000); // 5 minutes in milliseconds
+            }, 10 * 60 * 1000); // 10 minutes in milliseconds
 
             // Calculate the logout time
             logoutTime = new Date();
@@ -456,9 +457,6 @@
             }, 60000); // 1 minute
         })();
     </script>
-
-
-
 
 </head>
 <body class="nav-sm footer_fixed">

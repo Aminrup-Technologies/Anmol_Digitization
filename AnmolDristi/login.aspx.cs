@@ -9,6 +9,8 @@ using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Configuration;
+using System.Net.Mail;
+using System.Net;
 
 namespace AnmolDristi
 {
@@ -949,6 +951,701 @@ namespace AnmolDristi
                 cmd.ExecuteNonQuery();
             }
         }
+
+        #region First Time Login & OTP Flow
+
+        protected void lnkForgotPassword_Click(object sender, EventArgs e)
+        {
+            SwitchPanel(pnlRequestOTP);
+        }
+
+        protected void lnkBackToLogin_Click(object sender, EventArgs e)
+        {
+            Session.Remove("Reset_OTP");
+            Session.Remove("Reset_EmpCode");
+            SwitchPanel(pnlLogin);
+        }
+
+        protected void btnSendOTP_Click(object sender, EventArgs e)
+        {
+            string empCode = txtResetEmpCode.Text.Trim();
+            if (string.IsNullOrEmpty(empCode)) return;
+
+            string query = "SELECT Email, Mobile, EmployeeName FROM MST_UserMaster WHERE EmployeeCode = @EmpCode AND EmployeeStatus = 'Active'";
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand(query, con))
+            {
+                cmd.Parameters.AddWithValue("@EmpCode", empCode);
+                SqlDataAdapter da = new SqlDataAdapter(cmd);
+                DataTable dtUser = new DataTable();
+                da.Fill(dtUser);
+
+                if (dtUser.Rows.Count > 0)
+                {
+                    string email = dtUser.Rows[0]["Email"].ToString();
+                    string mobile = dtUser.Rows[0]["Mobile"].ToString();
+                    string name = dtUser.Rows[0]["EmployeeName"].ToString();
+
+                    if (string.IsNullOrEmpty(mobile))
+                    {
+                        ShowAlert("No registered mobile number found for this user. Please contact HR/IT.");
+                        return;
+                    }
+
+                    // Generate 6-digit OTP
+                    string otp = new Random().Next(100000, 999999).ToString();
+
+                    // Store securely in session with a 10 min expiry
+                    Session["Reset_OTP"] = otp;
+                    Session["Reset_EmpCode"] = empCode;
+                    Session["Reset_OTP_Expiry"] = DateTime.Now.AddMinutes(10);
+
+                    // Send SMS
+                    SendOtpSms(mobile, otp);
+
+                    // Note: If you want to send Email AND SMS, you can uncomment your previous SendEmailOTP method here.
+                    SendEmailOTP(email, name, otp); 
+
+                    // Update UI securely
+                    lblMaskedContact.Text = $"OTP sent successfully to Mobile ending in {MaskMobile(mobile)}";
+                    SwitchPanel(pnlVerifyOTP);
+                }
+                else
+                {
+                    ShowAlert("Invalid Employee Code or User is Inactive.");
+                }
+            }
+        }
+
+        protected void lnkNeedToUpdateContact_Click(object sender, EventArgs e)
+        {
+            // Pre-fill the employee code if they already typed it
+            txtVerifyEmpCode.Text = txtResetEmpCode.Text;
+            SwitchPanel(pnlSelfVerify);
+        }
+
+        protected void txtVerifyEmpCode_TextChanged(object sender, EventArgs e)
+        {
+            string empCode = txtVerifyEmpCode.Text.Trim();
+            if (string.IsNullOrEmpty(empCode))
+            {
+                lblFetchedEmpName.Text = "";
+                return;
+            }
+
+            string query = "SELECT EmployeeName, EmployeeStatus FROM MST_UserMaster WHERE EmployeeCode = @EmpCode";
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand(query, con))
+            {
+                cmd.Parameters.AddWithValue("@EmpCode", empCode);
+                con.Open();
+                using (SqlDataReader rd = cmd.ExecuteReader())
+                {
+                    if (rd.Read())
+                    {
+                        if (rd["EmployeeStatus"].ToString().Equals("Active", StringComparison.OrdinalIgnoreCase))
+                        {
+                            lblFetchedEmpName.Text = "✔ " + rd["EmployeeName"].ToString();
+                            lblFetchedEmpName.CssClass = "small mt-1 d-block text-success font-weight-bold";
+                            txtVerifyManagerCode.Focus(); // Auto-move to next field
+                        }
+                        else
+                        {
+                            lblFetchedEmpName.Text = "✖ Account is Inactive. Contact HR.";
+                            lblFetchedEmpName.CssClass = "small mt-1 d-block text-danger font-weight-bold";
+                        }
+                    }
+                    else
+                    {
+                        lblFetchedEmpName.Text = "✖ Employee Code not found.";
+                        lblFetchedEmpName.CssClass = "small mt-1 d-block text-danger font-weight-bold";
+                    }
+                }
+            }
+        }
+
+        protected void txtVerifyManagerCode_TextChanged(object sender, EventArgs e)
+        {
+            string mgrCode = txtVerifyManagerCode.Text.Trim();
+            if (string.IsNullOrEmpty(mgrCode))
+            {
+                lblFetchedManagerName.Text = "";
+                return;
+            }
+
+            // Since Managers are also employees in MST_UserMaster, we check the same table
+            string query = "SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = @MgrCode AND EmployeeStatus = 'Active'";
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (SqlCommand cmd = new SqlCommand(query, con))
+            {
+                cmd.Parameters.AddWithValue("@MgrCode", mgrCode);
+                con.Open();
+                object result = cmd.ExecuteScalar();
+
+                if (result != null)
+                {
+                    lblFetchedManagerName.Text = "✔ " + result.ToString();
+                    lblFetchedManagerName.CssClass = "small mt-1 d-block text-success font-weight-bold";
+                    txtVerifyDOB.Focus(); // Auto-move to next field
+                }
+                else
+                {
+                    lblFetchedManagerName.Text = "✖ Manager Code not found or inactive.";
+                    lblFetchedManagerName.CssClass = "small mt-1 d-block text-danger font-weight-bold";
+                }
+            }
+        }
+
+        protected void btnVerifyAndUpdate_Click(object sender, EventArgs e)
+        {
+            // 1. DPDP Compliance Enforcement
+            if (!chkDPDPConsent.Checked)
+            {
+                ShowAlert("DPDP Compliance: You must provide explicit consent to store your personal contact data before proceeding.");
+                return;
+            }
+
+            string empCode = txtVerifyEmpCode.Text.Trim();
+            string managerCodeInput = txtVerifyManagerCode.Text.Trim();
+            string dojInput = txtVerifyDOB.Text.Trim(); // Date of Joining
+            string newMobile = txtNewMobile.Text.Trim();
+            string newEmail = txtNewEmail.Text.Trim();
+
+            if (string.IsNullOrEmpty(empCode) || string.IsNullOrEmpty(managerCodeInput) || string.IsNullOrEmpty(newMobile))
+                return;
+
+            // 2. Fetch the user record based ONLY on EmployeeCode first (Smart Validation)
+            string fetchQuery = @"
+                SELECT EmployeeName, ReportingManagerCode, DOJ, EmployeeStatus 
+                FROM MST_UserMaster 
+                WHERE EmployeeCode = @EmpCode";
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(fetchQuery, con))
+                {
+                    cmd.Parameters.AddWithValue("@EmpCode", empCode);
+                    SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+
+                    // A. Check if Employee exists
+                    if (dt.Rows.Count == 0)
+                    {
+                        ShowAlert("Employee Code not found. If you recently joined, please allow 24-48 hours for HR data to sync.");
+                        return;
+                    }
+
+                    DataRow row = dt.Rows[0];
+                    string status = row["EmployeeStatus"].ToString();
+                    string dbManagerCode = row["ReportingManagerCode"].ToString();
+
+                    // Format DB DOJ to match HTML5 Date Picker (YYYY-MM-DD)
+                    string dbDoj = row["DOJ"] != DBNull.Value ? Convert.ToDateTime(row["DOJ"]).ToString("yyyy-MM-dd") : "";
+
+                    // B. Check if Employee is Active
+                    if (!status.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ShowAlert("This account is currently marked as Inactive. Please contact IT Helpdesk.");
+                        return;
+                    }
+
+                    // C. Check Manager Code match
+                    if (string.IsNullOrEmpty(dbManagerCode) || !dbManagerCode.Equals(managerCodeInput, StringComparison.OrdinalIgnoreCase))
+                    {
+                        ShowAlert("Manager Code mismatch. If your manager recently changed, your HR record may be outdated. Please contact IT Support.");
+                        return;
+                    }
+
+                    // D. Check Date of Joining match
+                    if (dbDoj != dojInput)
+                    {
+                        ShowAlert("Identity verification failed. Date of Joining mismatch.");
+                        return;
+                    }
+
+                    // --- IF ALL CHECKS PASS: Log DPDP Consent & Proceed with Update ---
+                    string employeeName = row["EmployeeName"].ToString();
+
+                    // Log the DPDP consent explicitly for audit purposes
+                    LogDebug($"DPDP Consent: User {empCode} ({employeeName}) explicitly agreed to contact data storage from IP {GetClientIP()} at {DateTime.Now}");
+
+                    string updateQuery = "UPDATE MST_UserMaster SET Mobile = @Mobile, Email = @Email WHERE EmployeeCode = @EmpCode";
+                    using (SqlCommand cmdUpdate = new SqlCommand(updateQuery, con))
+                    {
+                        // Note: Ensure column name here matches DB exactly. Often it's Mobile, but your old code had 'Mobile'. Adjust if needed.
+                        cmdUpdate.Parameters.AddWithValue("@Mobile", newMobile);
+                        cmdUpdate.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(newEmail) ? (object)DBNull.Value : newEmail);
+                        cmdUpdate.Parameters.AddWithValue("@EmpCode", empCode);
+                        con.Open();
+                        cmdUpdate.ExecuteNonQuery();
+                        con.Close();
+                    }
+
+                    // Generate OTP and send to the NEW number
+                    string otp = new Random().Next(100000, 999999).ToString();
+                    Session["Reset_OTP"] = otp;
+                    Session["Reset_EmpCode"] = empCode;
+                    Session["Reset_OTP_Expiry"] = DateTime.Now.AddMinutes(10);
+
+                    // Trigger SMS via SMSCountry
+                    SendOtpSms(newMobile, otp);
+
+                    // Fire the DPDP Legal notice if an email was provided
+                    if (!string.IsNullOrEmpty(newEmail))
+                    {
+                        SendDPDPConsentNotice(newEmail, employeeName, empCode, newMobile);
+                    }
+
+                    // Reset the UI fields
+                    chkDPDPConsent.Checked = false;
+                    lblFetchedEmpName.Text = "";
+                    lblFetchedManagerName.Text = "";
+
+                    // Switch panels
+                    lblMaskedContact.Text = $"Identity Confirmed! OTP sent to your new mobile ending in {MaskMobile(newMobile)}";
+                    SwitchPanel(pnlVerifyOTP);
+                }
+            }
+        }
+
+        private void SendDPDPConsentNotice(string toEmail, string employeeName, string employeeCode, string mobile)
+        {
+            if (string.IsNullOrEmpty(toEmail)) return;
+
+            try
+            {
+                string subject = "Notice of Consent - Data Protection Compliance";
+
+                // Safely extract last 4 digits of mobile
+                string maskedMobile = mobile.Length >= 4 ? mobile.Substring(mobile.Length - 4) : mobile;
+
+                string body = $@"
+            <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; max-width: 600px;'>
+                <h2 style='color: #1ABB9C;'>Anmol One Technology Portal</h2>
+                <p>Dear {employeeName} ({employeeCode}),</p>
+                <p>This is an automated confirmation that on <b>{DateTime.Now:dd-MMM-yyyy HH:mm:ss} (IST)</b>, you provided explicit consent for Anmol Industries Limited to collect, store, and process your personal contact details.</p>
+                
+                <div style='background: #f8f9fa; padding: 15px; border-left: 4px solid #1ABB9C; margin: 15px 0;'>
+                    <b>Data Registered:</b><br/>
+                    Mobile: ******{maskedMobile}<br/>
+                    Email: {toEmail}<br/><br/>
+                    <b>Purpose of Processing:</b><br/>
+                    System authentication (OTP generation) and critical official communications.
+                </div>
+
+                <p style='color: #777; font-size: 12px;'><i>If you wish to review, update, or withdraw this consent at any time, please contact the IT Helpdesk or your HR representative.</i></p>
+                <br/><p>Regards,<br/>IT & Cybersecurity Department<br/>Anmol Industries Limited</p>
+            </div>";
+
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                {
+                    string queueQuery = @"
+                INSERT INTO NotificationQueue 
+                (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) 
+                VALUES 
+                (0, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'DPDP_CONSENT')";
+
+                    using (SqlCommand cmd = new SqlCommand(queueQuery, con))
+                    {
+                        cmd.Parameters.AddWithValue("@Email", toEmail);
+                        cmd.Parameters.AddWithValue("@Name", employeeName ?? "User");
+                        cmd.Parameters.AddWithValue("@Subject", subject);
+                        cmd.Parameters.AddWithValue("@Body", body);
+
+                        con.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                LogDebug($"DPDP Notice Email queued successfully for {employeeCode}");
+            }
+            catch (Exception ex)
+            {
+                LogDebug("Failed to queue DPDP notice: " + ex.Message);
+            }
+        }
+
+        //private void SendDPDPConsentNotice(string toEmail, string employeeName, string employeeCode, string mobile)
+        //{
+        //    if (string.IsNullOrEmpty(toEmail)) return;
+
+        //    string subject = "Notice of Consent - Data Protection Compliance";
+        //    string body = $@"
+        //        Dear {employeeName} ({employeeCode}),<br/><br/>
+        //        This is an automated confirmation that on <b>{DateTime.Now:dd-MMM-yyyy HH:mm:ss} (IST)</b>, you provided explicit consent for Anmol Industries Limited to collect, store, and process your personal contact details.<br/><br/>
+        //        <b>Data Registered:</b><br/>
+        //        Mobile: ******{mobile.Substring(mobile.Length - 4)}<br/>
+        //        Email: {toEmail}<br/><br/>
+        //        <b>Purpose of Processing:</b><br/>
+        //        System authentication (OTP generation) and critical official communications.<br/><br/>
+        //        <i>If you wish to review, update, or withdraw this consent at any time, please contact the IT Helpdesk or your HR representative.</i><br/><br/>
+        //        Regards,<br/>
+        //        IT & Compliance Department<br/>
+        //        Anmol Industries Limited";
+
+        //    // Fire-and-forget asynchronous thread to prevent UI blocking
+        //    System.Threading.Tasks.Task.Run(() =>
+        //    {
+        //        try
+        //        {
+        //            MailMessage mail = new MailMessage();
+        //            mail.From = new MailAddress("sapsystem@anmolindustries.com", "Anmol IT Portal");
+        //            mail.To.Add(toEmail);
+        //            mail.Subject = subject;
+        //            mail.Body = body;
+        //            mail.IsBodyHtml = true;
+
+        //            using (SmtpClient smtp = new SmtpClient("smtp.office365.com", 587))
+        //            {
+        //                smtp.Credentials = new System.Net.NetworkCredential("sapsystem@anmolindustries.com", "Basis@2024");
+        //                smtp.EnableSsl = true;
+        //                smtp.Send(mail);
+        //            }
+
+        //            LogDebug($"DPDP Notice Email sent successfully to {toEmail} for {employeeCode}");
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            LogDebug($"Failed to send DPDP notice to {toEmail}: {ex.Message}");
+        //        }
+        //    });
+        //}
+
+        protected void btnVerifyAndUpdate_Click_OLD(object sender, EventArgs e)
+        {
+            string empCode = txtVerifyEmpCode.Text.Trim();
+            string managerCode = txtVerifyManagerCode.Text.Trim();
+            string dobStr = txtVerifyDOB.Text.Trim(); // Change this if using PAN/DOJ
+            string newMobile = txtNewMobile.Text.Trim();
+            string newEmail = txtNewEmail.Text.Trim();
+
+            if (string.IsNullOrEmpty(empCode) || string.IsNullOrEmpty(managerCode) || string.IsNullOrEmpty(newMobile)) return;
+
+            // 1. Verify Identity against MST_UserMaster
+            // IMPORTANT: Adjust 'DateOfBirth' to match your actual database column name (e.g., PANNo, DateOfJoining)
+            string verifyQuery = @"
+                SELECT EmployeeName 
+                FROM MST_UserMaster 
+                WHERE EmployeeCode = @EmpCode 
+                  AND ReportingManagerCode = @ManagerCode 
+                  AND DOJ = @DOJ 
+                  AND EmployeeStatus = 'Active'";
+
+            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(verifyQuery, con))
+                {
+                    cmd.Parameters.AddWithValue("@EmpCode", empCode);
+                    cmd.Parameters.AddWithValue("@ManagerCode", managerCode);
+                    cmd.Parameters.AddWithValue("@DOJ", dobStr);
+
+                    con.Open();
+                    object result = cmd.ExecuteScalar();
+
+                    if (result != null) // Identity Confirmed!
+                    {
+                        string employeeName = result.ToString();
+
+                        // 2. Update the Contact Info in the Database
+                        string updateQuery = @"UPDATE MST_UserMaster 
+                           SET Mobile = @Mobile, 
+                               Email = @Email, 
+                               DPDPConsentGiven = 1, 
+                               DPDPConsentDate = GETDATE() 
+                           WHERE EmployeeCode = @EmpCode";
+
+                        using (SqlCommand cmdUpdate = new SqlCommand(updateQuery, con))
+                        {
+                            cmdUpdate.Parameters.AddWithValue("@Mobile", newMobile);
+                            cmdUpdate.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(newEmail) ? (object)DBNull.Value : newEmail);
+                            cmdUpdate.Parameters.AddWithValue("@EmpCode", empCode);
+                            con.Open();
+                            cmdUpdate.ExecuteNonQuery();
+                            con.Close();
+                        }
+
+                        // 3. Generate OTP and send to the NEW number
+                        string otp = new Random().Next(100000, 999999).ToString();
+
+                        Session["Reset_OTP"] = otp;
+                        Session["Reset_EmpCode"] = empCode;
+                        Session["Reset_OTP_Expiry"] = DateTime.Now.AddMinutes(10);
+
+                        // Trigger SMS
+                        SendOtpSms(newMobile, otp);
+
+                        // NEW: Fire the legal notice if an email was provided
+                        if (!string.IsNullOrEmpty(newEmail))
+                        {
+                            SendDPDPConsentNotice(newEmail, employeeName, empCode, newMobile);
+                        }
+
+                        // Update UI
+                        lblMaskedContact.Text = $"Details Updated! OTP sent to Mobile ending in {MaskMobile(newMobile)}";
+                        SwitchPanel(pnlVerifyOTP);
+                    }
+                    else
+                    {
+                        // Security failed
+                        ShowAlert("Verification failed. The details provided do not match our HR records.");
+                    }
+                }
+            }
+        }
+
+        // --- Core SMS Gateway Integration ---
+        private void SendOtpSms(string mobile, string otp)
+        {
+            try
+            {
+                // 1. SMSCountry Account Credentials
+                string username = "anmolb"; // Replace with your actual API User
+                string password = "Support@2023"; // Replace with your actual API Password
+
+                // 2. DLT Approved Header (Sender ID)
+                string senderId = "ANMOLB";
+
+                // 3. DLT Approved Template ID (Often required by Indian gateways to bypass DLT scrubbers)
+                string dltTemplateId = "1007583097816273950";
+
+                // 4. Construct Exact Message (Replacing {#VAR} with the 6-digit OTP)
+                // CRITICAL: Do not add extra spaces, line breaks, or punctuation that are not in the approved template.
+                string rawMessage = $"OTP to login into your Anmol CRM Portal is {otp}. Thanks Team ANMOL INDUSTRIES LTD";
+
+                // URL Encode the message to safely transmit spaces and special characters via HTTP GET
+                string encodedMessage = HttpUtility.UrlEncode(rawMessage);
+
+                // 5. Construct the SMSCountry HTTP API URL
+                string url = $"http://api.smscountry.com/SMSCwebservice_bulk.aspx" +
+                             $"?User={username}" +
+                             $"&passwd={password}" +
+                             $"&mobilenumber={mobile}" +
+                             $"&message={encodedMessage}" +
+                             $"&sid={senderId}" +
+                             $"&mtype=N" + // N = Normal Text
+                             $"&DR=Y";    // Y = Delivery Report Required
+
+                // 6. Execute the HTTP Request
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.Method = "GET";
+
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                {
+                    using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                    {
+                        // The responseString will contain the SMS_JOB_NO (e.g., "OK: 123456789")
+                        string responseString = reader.ReadToEnd();
+
+                        // Optional: Log this responseString to a DB table to track delivery statuses
+                        LogDebug($"SMS Sent Successfully. Response: {responseString}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log any connectivity issues without crashing the web page
+                LogDebug($"SMS API Error: {ex.Message}");
+            }
+        }
+
+        protected void btnVerifyOTP_Click(object sender, EventArgs e)
+        {
+            string enteredOTP = txtOTP.Text.Trim();
+
+            if (Session["Reset_OTP"] != null && Session["Reset_OTP_Expiry"] != null)
+            {
+                DateTime expiry = (DateTime)Session["Reset_OTP_Expiry"];
+                if (DateTime.Now > expiry)
+                {
+                    ShowAlert("OTP has expired. Please request a new one.");
+                    SwitchPanel(pnlRequestOTP);
+                    return;
+                }
+
+                if (enteredOTP == Session["Reset_OTP"].ToString())
+                {
+                    // OTP is valid!
+                    SwitchPanel(pnlSetPassword);
+                }
+                else
+                {
+                    ShowAlert("Invalid OTP entered. Try again.");
+                }
+            }
+            else
+            {
+                ShowAlert("Session expired. Please start over.");
+                SwitchPanel(pnlRequestOTP);
+            }
+        }
+
+        protected void btnSavePassword_Click(object sender, EventArgs e)
+        {
+            string newPassword = txtNewPassword.Text.Trim();
+            string empCode = Session["Reset_EmpCode"] as string;
+
+            if (string.IsNullOrEmpty(empCode) || string.IsNullOrEmpty(newPassword))
+            {
+                ShowAlert("Session expired. Please restart the process.");
+                SwitchPanel(pnlLogin);
+                return;
+            }
+
+            try
+            {
+                // Utilize existing PasswordHasher to maintain enterprise security
+                var hashData = PasswordHasher.CreateHash(newPassword, PasswordHasher.DefaultIterations);
+                string newHash = hashData.Item1;
+                string newSalt = hashData.Item2;
+                int newIterations = hashData.Item3;
+
+                string updateSql = @"UPDATE MST_UserMaster 
+                                     SET PasswordHash = @PasswordHash, 
+                                         PasswordSalt = @PasswordSalt, 
+                                         PasswordIterations = @Iterations, 
+                                         Password = NULL 
+                                     WHERE EmployeeCode = @EmpCode";
+
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                using (SqlCommand cmd = new SqlCommand(updateSql, con))
+                {
+                    cmd.Parameters.AddWithValue("@PasswordHash", newHash);
+                    cmd.Parameters.AddWithValue("@PasswordSalt", newSalt);
+                    cmd.Parameters.AddWithValue("@Iterations", newIterations);
+                    cmd.Parameters.AddWithValue("@EmpCode", empCode);
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                // Clean up session OTP variables
+                Session.Remove("Reset_OTP");
+                Session.Remove("Reset_EmpCode");
+                Session.Remove("Reset_OTP_Expiry");
+
+                // Auto-Login the user by tricking the main login function
+                txt_loginid.Text = empCode;
+                txt_password.Text = newPassword;
+                CredentialCheckerSecure_Debug(); // Calls your existing authentication and redirect
+            }
+            catch (Exception ex)
+            {
+                LogDebug("Password Reset Error: " + ex.Message);
+                ShowAlert("Error updating password. Please contact support.");
+            }
+        }
+
+        // --- Helper Methods ---
+
+        private void SwitchPanel(System.Web.UI.WebControls.Panel targetPanel)
+        {
+            pnlLogin.Visible = false;
+            pnlRequestOTP.Visible = false;
+            pnlSelfVerify.Visible = false; // <-- Add this
+            pnlVerifyOTP.Visible = false;
+            pnlSetPassword.Visible = false;
+
+            targetPanel.Visible = true;
+        }
+
+
+        private bool SendEmailOTP(string toEmail, string name, string otp)
+        {
+            if (string.IsNullOrEmpty(toEmail)) return false;
+
+            try
+            {
+                string subject = "Your Account Setup / Reset OTP";
+                string body = $@"
+            <div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; max-width: 600px;'>
+                <h2 style='color: #1ABB9C;'>Anmol IT Portal</h2>
+                <p>Dear {name},</p>
+                <p>Your One Time Password (OTP) for account setup/recovery is:</p>
+                <h1 style='letter-spacing: 5px; color: #333; background: #f4f4f4; padding: 10px; text-align: center; border-radius: 5px;'>{otp}</h1>
+                <p style='color: #777; font-size: 12px;'>This OTP is valid for 10 minutes. Please do not share this with anyone.</p>
+                <br/><p>Regards,<br/>IT Department<br/>Anmol Industries Limited</p>
+            </div>";
+
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                {
+                    string queueQuery = @"
+                INSERT INTO NotificationQueue 
+                (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) 
+                VALUES 
+                (0, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'AUTH_OTP')";
+
+                    using (SqlCommand cmd = new SqlCommand(queueQuery, con))
+                    {
+                        cmd.Parameters.AddWithValue("@Email", toEmail);
+                        cmd.Parameters.AddWithValue("@Name", name ?? "User");
+                        cmd.Parameters.AddWithValue("@Subject", subject);
+                        cmd.Parameters.AddWithValue("@Body", body);
+
+                        con.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                LogDebug($"OTP Email successfully queued for {toEmail}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogDebug("Email Queue Error (OTP): " + ex.ToString());
+                return false;
+            }
+        }
+
+        //private bool SendEmailOTP(string toEmail, string name, string otp)
+        //{
+        //    try
+        //    {
+        //        // Configure this with your actual SMTP details in Web.config or hardcode temporarily
+        //        MailMessage mail = new MailMessage();
+        //        mail.From = new MailAddress("sapsystem@anmolindustries.com", "Anmol IT Portal");
+        //        mail.To.Add(toEmail);
+        //        mail.Subject = "Your Account Setup / Reset OTP";
+        //        mail.Body = $"Dear {name},<br/><br/>Your One Time Password (OTP) for account setup/recovery is: <b>{otp}</b>.<br/><br/>This OTP is valid for 10 minutes. Please do not share this with anyone.<br/><br/>Regards,<br/>IT Department";
+        //        mail.IsBodyHtml = true;
+
+        //        using (SmtpClient smtp = new SmtpClient("smtp.office365.com", 587))
+        //        {
+        //            smtp.Credentials = new System.Net.NetworkCredential("sapsystem@anmolindustries.com", "Basis@2024");
+        //            smtp.EnableSsl = true;
+        //            smtp.Send(mail); // Executing the email send
+        //        }
+
+        //        return true;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        LogDebug("Email Send Error: " + ex.ToString());
+        //        return false;
+        //    }
+        //}
+
+        private string MaskEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email) || !email.Contains("@")) return email;
+            string[] parts = email.Split('@');
+            string username = parts[0];
+            if (username.Length > 2)
+            {
+                username = username.Substring(0, 2) + new String('*', username.Length - 2);
+            }
+            return username + "@" + parts[1];
+        }
+
+        private string MaskMobile(string mobile)
+        {
+            if (string.IsNullOrEmpty(mobile) || mobile.Length < 4) return mobile;
+            return new string('*', mobile.Length - 4) + mobile.Substring(mobile.Length - 4);
+        }
+
+        
+
+        #endregion
 
     }
 }

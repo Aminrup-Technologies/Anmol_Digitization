@@ -165,6 +165,110 @@ namespace AnmolDristi
                 ratePerKm = 2.75M; // Fallback default
             }
 
+            string sessionUserName = Session["USERNAME"] != null ? Session["USERNAME"].ToString() : null;
+            string processedBy = string.IsNullOrWhiteSpace(txtProcessedBy.Text)
+                                 ? sessionUserName
+                                 : txtProcessedBy.Text.Trim();
+
+            bool allowOverwrite = chkAllowOverwrite.Checked;
+
+            // 1. Execute the Main Stored Procedure (Staging -> Final)
+            string message;
+            var dt = ExecuteProcessWithAudit(importBatchId, ratePerKm, processedBy, allowOverwrite, out message);
+
+            if (dt != null)
+            {
+                // =========================================================================
+                // 2. INJECTED HIERARCHY SYNC: Run only if the main process succeeds
+                // =========================================================================
+                try
+                {
+                    int updatedRows = SyncHierarchyForBatch(importBatchId);
+                    message += string.Format(" | Hierarchy Synced ({0} levels updated).", updatedRows);
+                }
+                catch (Exception ex)
+                {
+                    // We append the error but don't fail the whole process since the data did import
+                    message += " | Hierarchy Sync Failed: " + ex.Message;
+                }
+                // =========================================================================
+
+                gvResult.DataSource = dt;
+                gvResult.DataBind();
+                ShowRunMessage(message ?? "Process Completed Successfully.", false);
+            }
+            else
+            {
+                gvResult.DataSource = null;
+                gvResult.DataBind();
+                ShowRunMessage(message ?? "Procedure failed or returned no result.", true);
+            }
+
+            // Refresh the grid to show updated processed/error row counts
+            BindBatches();
+        }
+
+        private int SyncHierarchyForBatch(Guid importBatchId)
+        {
+            int totalRowsAffected = 0;
+
+            using (var cn = new SqlConnection(ConnString))
+            using (var cmd = new SqlCommand("dbo.usp_SyncHierarchyForBatch", cn))
+            {
+                // Tell ADO.NET we are executing a Stored Procedure, not a raw query
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 120; // 2-minute buffer for large batches
+
+                // Pass the required parameter matching the SP signature
+                cmd.Parameters.Add(new SqlParameter("@TargetBatchId", SqlDbType.UniqueIdentifier) { Value = importBatchId });
+
+                cn.Open();
+
+                // ExecuteNonQuery returns the total number of rows affected by all UPDATE statements in the SP
+                totalRowsAffected = cmd.ExecuteNonQuery();
+            }
+
+            return totalRowsAffected;
+        }
+
+        protected void btnRun_Click_OLD(object sender, EventArgs e)
+        {
+            string batchIdRaw = hfSelectedBatch.Value;
+            Guid importBatchId;
+
+            // C# 5.0 compatible out variable extraction
+            if (string.IsNullOrWhiteSpace(batchIdRaw) || !Guid.TryParse(batchIdRaw, out importBatchId))
+            {
+                ShowRunMessage("Please select a valid Batch from the grid.", true);
+                return;
+            }
+
+            // Server-side guard against concurrent/duplicate runs
+            var state = GetBatchState(importBatchId);
+
+            if (state == BatchState.InProgress)
+            {
+                ShowRunMessage("Cannot run: This batch is currently processing in the background.", true);
+                return;
+            }
+            if (state == BatchState.Completed)
+            {
+                ShowRunMessage("Cannot run: This batch has already been successfully completed.", true);
+                return;
+            }
+            if (state == BatchState.Unknown)
+            {
+                ShowRunMessage("Batch has an unknown previous state. Please check the Audit Logs. Aborting.", true);
+                return;
+            }
+
+            // Parse Inputs Safely
+            decimal ratePerKm;
+            if (!decimal.TryParse(txtRatePerKm.Text, out ratePerKm))
+            {
+                ratePerKm = 2.75M; // Fallback default
+            }
+
             // Null-safe check without the C# 6.0 ?. operator
             string sessionUserName = Session["USERNAME"] != null ? Session["USERNAME"].ToString() : null;
             string processedBy = string.IsNullOrWhiteSpace(txtProcessedBy.Text)

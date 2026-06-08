@@ -1021,6 +1021,29 @@ namespace AnmolDristi
 
             int activityId;
             if (hdnActivityId == null || !int.TryParse(hdnActivityId.Value, out activityId)) return;
+
+            bool isRouteBased = !string.IsNullOrWhiteSpace(HF_RouteWaypoints.Value);
+
+            if (isRouteBased)
+            {
+                decimal routeDistance;
+
+                if (decimal.TryParse(HF_RouteDistance.Value, out routeDistance))
+                {
+                    if (Math.Abs(routeDistance - newKm) > 0.01M)
+                    {
+                        ScriptManager.RegisterStartupScript(
+                            this,
+                            GetType(),
+                            "RouteKmMismatch",
+                            "showPNotify('Validation','Route distance and KM value do not match. Please recalculate route.','error'); $('#editKmModal').modal('show');",
+                            true);
+
+                        return;
+                    }
+                }
+            }
+
             // ====================================================================
             // SECURITY GATE: Prevent saving KMs if the month is already submitted
             // ====================================================================
@@ -1057,10 +1080,38 @@ namespace AnmolDristi
                     using (SqlCommand cmd = new SqlCommand("usp_UpdateActivityKM", con))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
+                        //cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                        //cmd.Parameters.AddWithValue("@NewKM", newKm);
+                        //cmd.Parameters.AddWithValue("@ModifiedBy", modifiedBy);
+                        //cmd.Parameters.AddWithValue("@Reason", reason);
                         cmd.Parameters.AddWithValue("@ActivityId", activityId);
                         cmd.Parameters.AddWithValue("@NewKM", newKm);
                         cmd.Parameters.AddWithValue("@ModifiedBy", modifiedBy);
                         cmd.Parameters.AddWithValue("@Reason", reason);
+
+                        cmd.Parameters.AddWithValue(
+                            "@RouteOriginName",
+                            string.IsNullOrWhiteSpace(HF_RouteOrigin.Value)
+                                ? (object)DBNull.Value
+                                : HF_RouteOrigin.Value.Trim());
+
+                        cmd.Parameters.AddWithValue(
+                            "@RouteDestinationName",
+                            string.IsNullOrWhiteSpace(HF_RouteDestination.Value)
+                                ? (object)DBNull.Value
+                                : HF_RouteDestination.Value.Trim());
+
+                        cmd.Parameters.AddWithValue(
+                            "@RouteWaypointsJSON",
+                            string.IsNullOrWhiteSpace(HF_RouteWaypoints.Value)
+                                ? (object)DBNull.Value
+                                : HF_RouteWaypoints.Value);
+
+                        cmd.Parameters.AddWithValue(
+                            "@TravelMode",
+                            string.IsNullOrWhiteSpace(HF_RouteTravelMode.Value)
+                                ? (object)DBNull.Value
+                                : HF_RouteTravelMode.Value);
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -1451,9 +1502,9 @@ namespace AnmolDristi
             {
                 if (daAmt <= 0m) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Invalid DA Amount. DA value is missing or 0."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (string.IsNullOrWhiteSpace(txtDaFromStr)) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Please enter From Place for DA."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
-                if (txtDaFromStr.Trim().Length > 100) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "From Place cannot exceed 100 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
+                if (txtDaFromStr.Trim().Length > 200) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "From Place cannot exceed 100 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (string.IsNullOrWhiteSpace(txtDaToStr)) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Please enter To Place for DA."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
-                if (txtDaToStr.Trim().Length > 100) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "To Place cannot exceed 100 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
+                if (txtDaToStr.Trim().Length > 200) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "To Place cannot exceed 100 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (string.Equals(txtDaFromStr.Trim(), txtDaToStr.Trim(), StringComparison.OrdinalIgnoreCase)) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "From Place and To Place cannot be the same for DA."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (string.IsNullOrWhiteSpace(txtTravDescStr)) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Remarks are required for DA."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (txtTravDescStr.Trim().Length < 5) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Remarks must be at least 5 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
@@ -2040,7 +2091,156 @@ namespace AnmolDristi
             if (TXT_HotelBillNo != null) TXT_HotelBillNo.Text = "";
             if (TXT_HotelPurpose != null) TXT_HotelPurpose.Text = "";
 
+            if (activityId > 0)
+            {
+                BindRouteData(activityId);
+            }
+
             return dt;
+        }
+
+        private void BindRouteData(int activityId)
+        {
+            using (SqlConnection con =
+                new SqlConnection(connString))
+            {
+                string sql = @"
+        SELECT
+            RouteOriginName,
+            RouteDestinationName,
+            RouteWaypointsJSON,
+            TravelMode,
+            TotalDistanceKM
+        FROM dbo.SalesDailyActivity
+        WHERE ActivityId=@ActivityId";
+
+                using (SqlCommand cmd =
+                    new SqlCommand(sql, con))
+                {
+                    cmd.Parameters.AddWithValue(
+                        "@ActivityId",
+                        activityId);
+
+                    con.Open();
+
+                    using (SqlDataReader dr =
+                        cmd.ExecuteReader())
+                    {
+                        if (!dr.Read())
+                            return;
+
+                        string origin =
+                            dr["RouteOriginName"] == DBNull.Value
+                            ? ""
+                            : dr["RouteOriginName"].ToString();
+
+                        string destination =
+                            dr["RouteDestinationName"] == DBNull.Value
+                            ? ""
+                            : dr["RouteDestinationName"].ToString();
+
+                        string waypoints =
+                            dr["RouteWaypointsJSON"] == DBNull.Value
+                            ? ""
+                            : dr["RouteWaypointsJSON"].ToString();
+
+                        string travelMode =
+                            dr["TravelMode"] == DBNull.Value
+                            ? "driving"
+                            : dr["TravelMode"].ToString();
+
+                        string distance =
+                            dr["TotalDistanceKM"] == DBNull.Value
+                            ? ""
+                            : Convert.ToDecimal(
+                                dr["TotalDistanceKM"])
+                                .ToString("0.00");
+
+                        // =====================================
+                        // DA Section
+                        // =====================================
+
+                        TXT_DAFromPlace.Text = origin;
+                        TXT_DAToPlace.Text = destination;
+
+                        // =====================================
+                        // Hidden Fields
+                        // =====================================
+
+                        HF_RouteOrigin.Value = origin;
+                        HF_RouteDestination.Value = destination;
+                        HF_RouteWaypoints.Value = waypoints;
+                        HF_RouteTravelMode.Value = travelMode;
+                        HF_RouteDistance.Value = distance;
+
+                        // =====================================
+                        // Route Summary Panel
+                        // =====================================
+
+                        RegisterRouteSummaryScript(
+                            origin,
+                            destination,
+                            waypoints,
+                            distance);
+                    }
+                }
+            }
+        }
+
+
+        private void RegisterRouteSummaryScript(
+    string origin,
+    string destination,
+    string waypointsJson,
+    string distance)
+        {
+            int stopCount = 0;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(
+                    waypointsJson))
+                {
+                    JArray arr =
+                        JArray.Parse(
+                            waypointsJson);
+
+                    stopCount = arr.Count;
+                }
+            }
+            catch
+            {
+            }
+
+            string js = string.Format(@"
+
+        $('#spRouteOrigin')
+            .text('{0}');
+
+        $('#spRouteDestination')
+            .text('{1}');
+
+        $('#spWaypointCount')
+            .text('{2}');
+
+        $('#spRouteDistance')
+            .text('{3}');
+
+        $('#routeSummaryPanel')
+            .show();
+
+    ",
+            origin.Replace("'", "\\'"),
+            destination.Replace("'", "\\'"),
+            stopCount,
+            distance);
+
+            ScriptManager.RegisterStartupScript(
+                this,
+                GetType(),
+                "RestoreRouteSummary",
+                js,
+                true);
         }
 
         private void UpdateExpenseTotals(DataTable dt)

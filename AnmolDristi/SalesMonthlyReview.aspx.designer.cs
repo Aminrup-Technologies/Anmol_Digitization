@@ -580,6 +580,60 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField HF_OwnArrangementDA;
         
         /// <summary>
+        /// HF_RouteActivityId control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_RouteActivityId;
+        
+        /// <summary>
+        /// HF_RouteOrigin control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_RouteOrigin;
+        
+        /// <summary>
+        /// HF_RouteDestination control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_RouteDestination;
+        
+        /// <summary>
+        /// HF_RouteWaypoints control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_RouteWaypoints;
+        
+        /// <summary>
+        /// HF_RouteDistance control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_RouteDistance;
+        
+        /// <summary>
+        /// HF_RouteTravelMode control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_RouteTravelMode;
+        
+        /// <summary>
         /// lbl_BeatTravelled control.
         /// </summary>
         /// <remarks>

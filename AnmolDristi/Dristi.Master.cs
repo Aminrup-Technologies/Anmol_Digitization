@@ -96,6 +96,12 @@ namespace AnmolDristi
                 //    }
                 //}
 
+                if (Session["USERID"] == null)
+                {
+                    Response.Redirect("~/login.aspx", true);
+                    return;
+                }
+
                 // emit LoginToken and ActiveSessionId to sessionStorage (client)
                 if (Session["LoginToken"] != null)
                 {

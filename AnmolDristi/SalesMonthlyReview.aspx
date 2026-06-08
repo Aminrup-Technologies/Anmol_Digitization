@@ -1,6 +1,8 @@
 ﻿<%@ Page Title="AIL | SO Claims Submission" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" MaintainScrollPositionOnPostback="true" CodeBehind="SalesMonthlyReview.aspx.cs" Inherits="AnmolDristi.SalesMonthlyReview" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style type="text/css">
         .grid-container {
             max-height: 65vh;
@@ -812,11 +814,29 @@
                         <asp:HiddenField ID="hdnOriginalKm" runat="server" />
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="txtModalKM">Distance Travelled (in KM)</label>
+                                <div class="input-group">
+
+                                    <asp:TextBox ID="txtModalKM"
+                                        runat="server"
+                                        CssClass="form-control"
+                                        Width="50px"
+                                        step="0.01" />
+                                    <label for="txtModalKM">
+                                        Distance Travelled (in KM)
+                                    </label>
                                     <span class="text-danger">*</span>
-                                    <asp:TextBox ID="txtModalKM" runat="server" CssClass="form-control" type="number" step="0.01" />
-                                    <span id="spClientKmError" class="text-danger" style="display: none;"></span>
+                                    <br />
+                                    <span class="input-group-btn">
+                                        <button type="button"
+                                            class="btn btn-info"
+                                            onclick="openRouteCalculator();">
+
+                                            <i class="fa fa-map-marker"></i>
+                                            Calculate Route
+
+                                        </button>
+                                    </span>
+
                                 </div>
 
                                 <div class="form-group">
@@ -824,6 +844,30 @@
                                 </div>
 
                                 <asp:Label ID="lblModalCurrentKm" runat="server" CssClass="text-muted"></asp:Label>
+
+                                <div id="routeSummaryPanel"
+                                    class="alert alert-info mt-2"
+                                    style="display: none;">
+
+                                    <div>
+                                        <strong>Origin:</strong>
+                                        <span id="spRouteOrigin"></span>
+                                    </div>
+
+                                    <div>
+                                        <strong>Destination:</strong>
+                                        <span id="spRouteDestination"></span>
+                                    </div>
+                                    <div>
+                                        <strong>Distance:</strong>
+                                        <span id="spRouteDistance"></span>KM
+                                    </div>
+                                    <div>
+                                        <strong>Stops:</strong>
+                                        <span id="spWaypointCount"></span>
+                                    </div>
+
+                                </div>
                             </div>
 
                             <div class="col-md-6">
@@ -861,6 +905,109 @@
             </div>
         </div>
 
+        <div id="routeDistanceModal" class="modal fade" tabindex="-1">
+            <div class="modal-dialog" style="width: 95%; max-width: 1200px;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Route Distance Calculator
+                        </h4>
+                        <button type="button"
+                            class="close"
+                            data-dismiss="modal">
+                            &times;
+
+                        </button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="row">
+
+                            <div class="col-md-4">
+
+                                <div class="form-group">
+
+                                    <label>Search Location</label>
+
+                                    <input type="text"
+                                        id="txtPlaceSearch"
+                                        class="form-control" />
+
+                                </div>
+
+                                <button type="button"
+                                    id="btnSearchLocation"
+                                    class="btn btn-primary btn-sm">
+                                    Search
+
+                                </button>
+
+                                <hr />
+
+                                <div id="searchResults"
+                                    class="list-group"
+                                    style="max-height: 180px; overflow-y: auto;">
+                                </div>
+
+                                <hr />
+
+                                <div class="form-group">
+
+                                    <label>Travel Mode</label>
+
+                                    <select id="ddlTravelMode"
+                                        class="form-control">
+
+                                        <option value="driving">Driving</option>
+                                        <option value="cycling">Bike</option>
+                                        <option value="foot">Walking</option>
+
+                                    </select>
+
+                                </div>
+
+                                <hr />
+
+                                <label>Selected Stops</label>
+
+                                <div id="waypointList"
+                                    class="list-group"
+                                    style="max-height: 250px; overflow-y: auto;">
+                                </div>
+
+                                <hr />
+
+                                <div class="alert alert-success">
+
+                                    <strong>Total Distance:</strong>
+
+                                    <span id="lblDistance">0.00</span>
+
+                                    KM
+
+                                </div>
+
+                            </div>
+
+                            <div class="col-md-8">
+                                <div id="routeMap"
+                                    style="height: 550px;">
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button"
+                            id="btnApplyRoute"
+                            class="btn btn-success">
+                            Apply Route
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="submitConfirmModal" tabindex="-1" role="dialog" aria-labelledby="submitConfirmModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
@@ -880,6 +1027,7 @@
                 </div>
             </div>
         </div>
+
 
         <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-hidden="true" id="expenseModal">
             <div class="modal-dialog modal-lg">
@@ -909,6 +1057,12 @@
                             <asp:HiddenField ID="HF_OutstationDA" runat="server" />
                             <asp:HiddenField ID="HF_OwnArrangementDA" runat="server" />
 
+                            <asp:HiddenField ID="HF_RouteActivityId" runat="server" />
+                            <asp:HiddenField ID="HF_RouteOrigin" runat="server" />
+                            <asp:HiddenField ID="HF_RouteDestination" runat="server" />
+                            <asp:HiddenField ID="HF_RouteWaypoints" runat="server" />
+                            <asp:HiddenField ID="HF_RouteDistance" runat="server" />
+                            <asp:HiddenField ID="HF_RouteTravelMode" runat="server" />
                             <div id="divKeyValueHeader">
                                 <div class="kv-row">
                                     <div class="kv-item">
@@ -988,11 +1142,11 @@
                                 </div>
                                 <div class="col-md-4 form-group">
                                     <label>From Place</label>
-                                    <asp:TextBox ID="TXT_DAFromPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="100" />
+                                    <asp:TextBox ID="TXT_DAFromPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="200" TextMode="MultiLine" />
                                 </div>
                                 <div class="col-md-4 form-group">
                                     <label>To Place</label>
-                                    <asp:TextBox ID="TXT_DAToPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="100" />
+                                    <asp:TextBox ID="TXT_DAToPlace" runat="server" CssClass="form-control form-control-sm" MaxLength="200" TextMode="MultiLine" />
                                 </div>
                                 <div class="col-md-8 form-group">
                                     <label>Remarks</label>
@@ -1500,7 +1654,7 @@
                     if (existingDA) {
                         allowed = [];
                         $ddl.find('option').prop('disabled', true).css('color', '#ccc');
-                        $ddl.val(''); 
+                        $ddl.val('');
                         if (sn) sn.innerHTML = 'HQ: DA already claimed. No further expenses allowed.' + lockWarningHtml;
                     } else {
                         allowed = ['DA'];
@@ -1568,9 +1722,9 @@
             window.__so_policy_pending_mode = null;
         };
 
-        document.addEventListener('policy.updated', function () { 
-            applyPolicyMode(); 
-            document.dispatchEvent(new CustomEvent('policy.visibility.refresh')); 
+        document.addEventListener('policy.updated', function () {
+            applyPolicyMode();
+            document.dispatchEvent(new CustomEvent('policy.visibility.refresh'));
         });
 
         // Visibility
@@ -1579,7 +1733,7 @@
 
         function updateVisibility() {
             var $ddl = $resolve('DDL_ExpenseType');
-            var type = $ddl.length ? $ddl.val() : null; 
+            var type = $ddl.length ? $ddl.val() : null;
 
             var $da = $resolve('divDASection'),
                 $ht = $resolve('divHotelSection'),
@@ -1641,9 +1795,9 @@
             var type = $resolve('DDL_ExpenseType').val() || 'DA';
 
             if (type === 'DA') {
-                var dAmt = parseNumber($resolve('TXT_DAAmount').val()), 
-                    fP = $resolve('TXT_DAFromPlace').val().trim(), 
-                    tP = $resolve('TXT_DAToPlace').val().trim(), 
+                var dAmt = parseNumber($resolve('TXT_DAAmount').val()),
+                    fP = $resolve('TXT_DAFromPlace').val().trim(),
+                    tP = $resolve('TXT_DAToPlace').val().trim(),
                     tD = $resolve('TXT_TravelDescription').val().trim();
 
                 if (isNaN(dAmt) || dAmt <= 0) { showInlineError($resolve('TXT_DAAmount'), 'DA Amount required'); return false; }
@@ -1724,14 +1878,16 @@
         }
 
         $(function () { initExpenseModal(); });
-        
+
         // Ensure UI resets correctly when modal opens
-        $('#expenseModal').on('shown.bs.modal', function() {
-             initExpenseModal();
-             // Extra safety to clear old errors
-             clearAllInlineErrors();
+        $('#expenseModal').on('shown.bs.modal', function () {
+            initExpenseModal();
+            // Extra safety to clear old errors
+            clearAllInlineErrors();
+            var activityId = $('#<%=hdnActivityId.ClientID%>').val();
+            restoreRouteDataToDAFields(activityId);
         });
-        
+
         if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
             Sys.WebForms.PageRequestManager.getInstance().add_endRequest(initExpenseModal);
         }
@@ -1739,6 +1895,7 @@
         // KM modal validation logic
         window.openEditKmModal = function (aid, cur, min, max) {
             $resolve('hdnActivityId').val(aid); $resolve('txtModalKM').val(cur);
+            $('#<%=HF_RouteActivityId.ClientID%>').val(aid);
             document.getElementById('spMinKm').innerText = min || '—'; document.getElementById('spMaxKm').innerText = max || '—';
             $resolve('lblModalCurrentKm').text('Current: ' + cur + ' km');
             $('#spClientKmError').hide(); $('#editKmModal').modal('show');
@@ -1796,6 +1953,591 @@
 
             $('#expenseModal').modal('show');
             initExpenseModal(); // Force init immediately
-        };
+        }; $('#lblDistance').text()
+
+
+        window.routeMap = null;
+        window.routeMapInitialized = false;
+        window.waypoints = [];
+        window.routeMarkers = [];
+        window.routePolyline = null;
+        window.totalRouteDistance = 0;
+
+        function initializeRouteMap() {
+
+            if (window.routeMap) return;
+
+            window.routeMap = L.map('routeMap')
+                .setView([22.5726, 88.3639], 12);
+
+            L.tileLayer(
+                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }
+            ).addTo(window.routeMap);
+        }
+
+        function openRouteCalculator() {
+
+            $('#routeDistanceModal').modal({
+                backdrop: 'static',
+                keyboard: false
+            });
+
+            setTimeout(function () {
+
+                if (!window.routeMapInitialized) {
+
+                    initializeRouteMap();
+
+                    window.routeMapInitialized = true;
+                }
+
+                if (window.routeMap) {
+
+                    window.routeMap.invalidateSize();
+                }
+
+                if ($('#<%=HF_RouteTravelMode.ClientID%>').val()) {
+
+                    $('#ddlTravelMode').val(
+                        $('#<%=HF_RouteTravelMode.ClientID%>').val()
+                    );
+                }
+
+            }, 300);
+
+            restoreSavedRoute();
+        }
+
+        function restoreSavedRoute() {
+
+            var savedJson =
+                $('#<%=HF_RouteWaypoints.ClientID%>').val();
+
+            if (!savedJson)
+                return;
+
+            try {
+
+                window.waypoints =
+                    JSON.parse(savedJson);
+
+                updateWaypointListUI();
+
+                calculateAndDrawRoute();
+
+            }
+            catch (e) {
+
+                console.log(e);
+            }
+        }
+
+        function searchLocation() {
+
+            var q =
+                $('#txtPlaceSearch')
+                    .val()
+                    .trim();
+
+            if (!q)
+                return;
+
+            $.getJSON(
+                'https://nominatim.openstreetmap.org/search',
+                {
+                    q: q,
+                    format: 'json',
+                    limit: 10
+                },
+                function (data) {
+
+                    var html = '';
+
+                    if (!data ||
+                        data.length === 0) {
+
+                        html =
+                            '<div class="list-group-item text-danger">' +
+                            'No locations found' +
+                            '</div>';
+
+                        $('#searchResults')
+                            .html(html);
+
+                        return;
+                    }
+
+                    data.forEach(function (item) {
+
+                        html +=
+                            '<a href="#" ' +
+                            'class="list-group-item route-search-item" ' +
+
+                            'data-lat="' +
+                            item.lat +
+                            '" ' +
+
+                            'data-lon="' +
+                            item.lon +
+                            '" ' +
+
+                            'data-name="' +
+                            item.display_name.replace(/"/g, '&quot;') +
+                            '">' +
+
+                            item.display_name +
+
+                            '</a>';
+                    });
+
+                    $('#searchResults')
+                        .html(html);
+                });
+        }
+
+        $(document).on(
+            'click',
+            '.route-search-item',
+            function (e) {
+
+                e.preventDefault();
+
+                addWaypoint(
+                    $(this).data('lat'),
+                    $(this).data('lon'),
+                    $(this).data('name')
+                );
+
+                $('#searchResults').empty();
+
+                $('#txtPlaceSearch').val('');
+            }
+        );
+
+        function addWaypoint(lat, lon, name) {
+
+            var exists =
+                window.waypoints.some(function (x) {
+
+                    return x.name === name;
+                });
+
+            if (exists) {
+
+                alert('Location already added.');
+                return;
+            }
+
+            window.waypoints.push({
+
+                lat: parseFloat(lat),
+
+                lon: parseFloat(lon),
+
+                name: name
+            });
+
+            updateWaypointListUI();
+
+            calculateAndDrawRoute();
+        }
+
+        function removeWaypoint(index) {
+
+            window.waypoints.splice(index, 1);
+
+            updateWaypointListUI();
+
+            calculateAndDrawRoute();
+        }
+
+        function moveWaypointUp(index) {
+
+            if (index <= 0)
+                return;
+
+            var temp =
+                window.waypoints[index];
+
+            window.waypoints[index] =
+                window.waypoints[index - 1];
+
+            window.waypoints[index - 1] =
+                temp;
+
+            updateWaypointListUI();
+
+            calculateAndDrawRoute();
+        }
+
+        function moveWaypointDown(index) {
+
+            if (index >= window.waypoints.length - 1)
+                return;
+
+            var temp =
+                window.waypoints[index];
+
+            window.waypoints[index] =
+                window.waypoints[index + 1];
+
+            window.waypoints[index + 1] =
+                temp;
+
+            updateWaypointListUI();
+
+            calculateAndDrawRoute();
+        }
+
+        function updateWaypointListUI() {
+
+            var html = '';
+
+            for (var i = 0; i < window.waypoints.length; i++) {
+
+                html += '<div class="list-group-item">';
+
+                html += '<strong>' + (i + 1) + '</strong> ';
+
+                html += window.waypoints[i].name;
+
+                html += '<br/>';
+
+                html += '<button type="button" ';
+                html += 'class="btn btn-xs btn-primary" ';
+                html += 'onclick="moveWaypointUp(' + i + ')">↑</button> ';
+
+                html += '<button type="button" ';
+                html += 'class="btn btn-xs btn-primary" ';
+                html += 'onclick="moveWaypointDown(' + i + ')">↓</button> ';
+
+                html += '<button type="button" ';
+                html += 'class="btn btn-xs btn-danger" ';
+                html += 'onclick="removeWaypoint(' + i + ')">Remove</button>';
+
+                html += '</div>';
+            }
+
+            $('#waypointList').html(html);
+        }
+
+        function clearRouteGraphics() {
+
+            if (window.routePolyline) {
+
+                window.routeMap.removeLayer(
+                    window.routePolyline
+                );
+
+                window.routePolyline = null;
+            }
+
+            if (window.routeMarkers) {
+
+                window.routeMarkers.forEach(
+                    function (m) {
+
+                        window.routeMap.removeLayer(m);
+                    });
+
+                window.routeMarkers = [];
+            }
+        }
+
+        function getDistanceKm(lat1, lon1, lat2, lon2) {
+
+            var R = 6371;
+
+            var dLat =
+                (lat2 - lat1) * Math.PI / 180;
+
+            var dLon =
+                (lon2 - lon1) * Math.PI / 180;
+
+            var a =
+                Math.sin(dLat / 2) *
+                Math.sin(dLat / 2) +
+
+                Math.cos(lat1 * Math.PI / 180) *
+                Math.cos(lat2 * Math.PI / 180) *
+
+                Math.sin(dLon / 2) *
+                Math.sin(dLon / 2);
+
+            var c =
+                2 * Math.atan2(
+                    Math.sqrt(a),
+                    Math.sqrt(1 - a)
+                );
+
+            return R * c;
+        }
+
+        function calculateAndDrawRoute() {
+
+            clearRouteGraphics();
+
+            if (!window.waypoints ||
+                window.waypoints.length < 2)
+                return;
+
+            var profile =
+                $('#ddlTravelMode')
+                    .val() || 'driving';
+
+            var coords =
+                window.waypoints
+                    .map(function (p) {
+
+                        return p.lon + ',' + p.lat;
+
+                    })
+                    .join(';');
+
+            var url =
+                'https://router.project-osrm.org/route/v1/' +
+                profile +
+                '/' +
+                coords +
+                '?overview=full&geometries=geojson';
+
+            $.getJSON(url)
+
+                .done(function (res) {
+
+                    if (!res.routes ||
+                        res.routes.length === 0)
+                        return;
+
+                    drawActualRoute(
+                        res.routes[0]
+                    );
+                })
+
+                .fail(function () {
+
+                    alert(
+                        'Unable to calculate route.'
+                    );
+                });
+        }
+
+        function drawActualRoute(route) {
+
+            clearRouteGraphics();
+
+            var latlngs =
+                route.geometry.coordinates
+                    .map(function (c) {
+
+                        return [
+                            c[1],
+                            c[0]
+                        ];
+                    });
+
+            window.routePolyline =
+                L.polyline(
+                    latlngs,
+                    {
+                        color: 'blue',
+                        weight: 5
+                    })
+                    .addTo(window.routeMap);
+
+            window.routeMap.fitBounds(
+                window.routePolyline.getBounds()
+            );
+
+            window.totalRouteDistance =
+                (route.distance / 1000)
+                    .toFixed(2);
+
+            $('#lblDistance')
+                .text(
+                    window.totalRouteDistance
+                );
+
+            drawWaypointMarkers();
+        }
+
+        function drawWaypointMarkers() {
+
+            if (!window.routeMarkers)
+                window.routeMarkers = [];
+
+            window.routeMarkers.forEach(function (m) {
+
+                window.routeMap.removeLayer(m);
+            });
+
+            window.routeMarkers = [];
+
+            window.waypoints.forEach(function (p, idx) {
+
+                var marker =
+                    L.marker(
+                        [p.lat, p.lon]
+                    )
+                        .addTo(window.routeMap)
+                        .bindPopup(
+                            (idx + 1) +
+                            '. ' +
+                            p.name
+                        );
+
+                window.routeMarkers.push(marker);
+            });
+        }
+
+        function applyRouteData(route) {
+            $('#<%=txtModalKM.ClientID%>')
+                .val(route.TotalDistanceKM);
+            $('#<%=TXT_DAFromPlace.ClientID%>')
+                .val(route.OriginName);
+            $('#<%=TXT_DAToPlace.ClientID%>')
+                .val(route.DestinationName);
+            $('#<%=HF_RouteOrigin.ClientID%>')
+                .val(route.OriginName);
+            $('#<%=HF_RouteDestination.ClientID%>')
+                .val(route.DestinationName);
+            $('#<%=HF_RouteWaypoints.ClientID%>')
+                .val(route.WaypointsJSON);
+            $('#<%=HF_RouteDistance.ClientID%>')
+                .val(route.TotalDistanceKM);
+            $('#<%=HF_RouteTravelMode.ClientID%>')
+                .val(route.TravelMode);
+            $('#spRouteDistance')
+                .text(route.TotalDistanceKM);
+            $('#spRouteOrigin')
+                .text(route.OriginName);
+            $('#spRouteDestination')
+                .text(route.DestinationName);
+            $('#spWaypointCount')
+                .text(JSON.parse(route.WaypointsJSON).length);
+            $('#routeSummaryPanel').show();
+            $('#routeDistanceModal').modal('hide');
+        }
+
+        $(document).on(
+            'click',
+            '#btnApplyRoute',
+            function () {
+
+                if (window.waypoints.length < 2) {
+
+                    alert(
+                        'Please select Origin and Destination.'
+                    );
+
+                    return;
+                }
+
+                var route = {
+
+                    OriginName:
+                        window.waypoints[0].name,
+
+                    DestinationName:
+                        window.waypoints[
+                            window.waypoints.length - 1
+                    ].name,
+
+                    TotalDistanceKM:
+                        window.totalRouteDistance,
+
+                    TravelMode:
+                        $('#ddlTravelMode').val(),
+
+                    WaypointsJSON:
+                        JSON.stringify(
+                            window.waypoints
+                        )
+                };
+
+                applyRouteData(route);
+            }
+        );
+
+        $(document).on(
+            'click',
+            '#btnSearchLocation',
+            function () {
+
+                searchLocation();
+            }
+        );
+
+        function initializeRouteMap() {
+
+            console.log('initializeRouteMap called');
+
+            if (window.routeMap)
+                return;
+
+            window.routeMap =
+                L.map('routeMap')
+                    .setView([22.5726, 88.3639], 12);
+
+            L.tileLayer(
+                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                {
+                    attribution:
+                        '&copy; OpenStreetMap contributors'
+                }
+            ).addTo(window.routeMap);
+        }
+
+        $(document).on(
+            'click',
+            '.route-search-item',
+            function (e) {
+
+                e.preventDefault();
+
+                addWaypoint(
+                    $(this).data('lat'),
+                    $(this).data('lon'),
+                    $(this).data('name')
+                );
+
+                $('#searchResults').empty();
+            }
+        );
+
+        $(document).on(
+            'change',
+            '#ddlTravelMode',
+            function () {
+
+                if (
+                    window.waypoints &&
+                    window.waypoints.length >= 2
+                ) {
+
+                    calculateAndDrawRoute();
+                }
+            }
+        );
+
+        function restoreRouteDataToDAFields(activityId) {
+
+            if (!window.routeCache)
+                return;
+
+            if (!window.routeCache[activityId])
+                return;
+
+            var route = window.routeCache[activityId];
+
+            $('#<%=TXT_DAFromPlace.ClientID%>')
+                .val(route.OriginName);
+
+            $('#<%=TXT_DAToPlace.ClientID%>')
+                .val(route.DestinationName);
+        }
     </script>
 </asp:Content>
