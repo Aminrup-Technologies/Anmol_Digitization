@@ -17,6 +17,23 @@ namespace AnmolDristi
         {
             if (!IsPostBack) // Only run on the very first page load
             {
+                // 🌟 FIX 1: THE SESSION KILL-SWITCH
+                // Destroy any lingering sessions from previous visitors on this device
+                Session.Clear();
+                Session.Abandon();
+
+                // 🌟 FIX 2: PREVENT MOBILE BROWSER CACHING
+                // Forces mobile WebViews to fetch a fresh page instead of a cached redirect
+                Response.Cache.SetCacheability(HttpCacheability.NoCache);
+                Response.Cache.SetExpires(DateTime.UtcNow.AddHours(-1));
+                Response.Cache.SetNoStore();
+
+                // Clear auth cookies if you are using Forms Authentication
+                if (Request.Cookies["ASP.NET_SessionId"] != null)
+                {
+                    Response.Cookies["ASP.NET_SessionId"].Expires = DateTime.Now.AddDays(-1);
+                }
+
                 if (Request.QueryString["BranchId"] != null)
                 {
                     string branchId = Request.QueryString["BranchId"].ToString();
@@ -36,6 +53,30 @@ namespace AnmolDristi
                 }
             }
         }
+
+        //protected void Page_Load(object sender, EventArgs e)
+        //{
+        //    if (!IsPostBack) // Only run on the very first page load
+        //    {
+        //        if (Request.QueryString["BranchId"] != null)
+        //        {
+        //            string branchId = Request.QueryString["BranchId"].ToString();
+
+        //            // Lock the ID into the hidden field so it survives postbacks
+        //            hfBranchId.Value = branchId;
+
+        //            // Fetch and Display the Branch Name dynamically
+        //            LoadBranchName(branchId);
+        //        }
+        //        else
+        //        {
+        //            // If they didn't scan the QR code properly, block them immediately
+        //            lblMessage.ForeColor = System.Drawing.Color.Red;
+        //            lblMessage.Text = "Invalid QR Code. Missing Location ID.";
+        //            pnlRequestOTP.Visible = false;
+        //        }
+        //    }
+        //}
 
         private void LoadBranchName(string branchId)
         {

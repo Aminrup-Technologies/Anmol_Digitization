@@ -485,7 +485,7 @@
                                 </div>
                                 <div class="profile_info">
                                     Hi,
-                                <asp:Label ID="lbl_loginusername1" runat="server" Text="Login_Name" Font-Bold="true"></asp:Label>
+                                <asp:Label ID="lbl_loginusername1" runat="server" Text="Unkown" Font-Bold="true"></asp:Label>
                                 </div>
                             </div>
                             <br />

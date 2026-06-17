@@ -96,10 +96,21 @@ namespace AnmolDristi
                 //    }
                 //}
 
-                if (Session["USERID"] == null)
+                // Get the current page name being accessed 
+                string currentPage = System.IO.Path.GetFileName(Request.Url.AbsolutePath).ToLower();
+
+                // List the pages that DO NOT require a logged-in employee (Public Visitor Pages)
+                if (currentPage != "vms_selflogin.aspx" &&
+                    currentPage != "vms_registration.aspx" &&
+                    currentPage != "vms_myvisits.aspx" &&  // <-- ADDED THIS!
+                    currentPage != "vms_gatescanner.aspx")
                 {
-                    Response.Redirect("~/login.aspx", true);
-                    return;
+                    // Standard employee security check
+                    if (Session["USERID"] == null)
+                    {
+                        Response.Redirect("~/login.aspx", true);
+                        return;
+                    }
                 }
 
                 // emit LoginToken and ActiveSessionId to sessionStorage (client)

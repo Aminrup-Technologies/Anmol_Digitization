@@ -1,4 +1,4 @@
-﻿<%@ Page Title="Visitor Check-In" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="VMS_SelfLogin.aspx.cs" Inherits="AnmolDristi.VMS_SelfLogin" %>
+﻿<%@ Page Title="Visitor Login" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="VMS_SelfLogin.aspx.cs" Inherits="AnmolDristi.VMS_SelfLogin" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style>

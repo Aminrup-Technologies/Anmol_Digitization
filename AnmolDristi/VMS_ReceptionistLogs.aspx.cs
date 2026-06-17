@@ -21,7 +21,7 @@ namespace AnmolDristi
                 BindBranches();
 
                 // Default Date Range: Last 7 Days to Today
-                txtFromDate.Text = DateTime.Now.AddDays(-7).ToString("yyyy-MM-dd");
+                txtFromDate.Text = DateTime.Now.AddDays(-3).ToString("yyyy-MM-dd");
                 txtToDate.Text = DateTime.Now.ToString("yyyy-MM-dd");
 
                 LoadDashboardData();
