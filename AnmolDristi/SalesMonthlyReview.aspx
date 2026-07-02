@@ -449,6 +449,13 @@
                 padding: 2px 5px;
                 border-radius: 4px;
             }
+
+        @media (min-width: 768px) {
+            .col-md-2-4 {
+                flex: 0 0 20%;
+                max-width: 20%;
+            }
+        }
     </style>
 </asp:Content>
 
@@ -663,6 +670,17 @@
                                                     </FooterTemplate>
                                                 </asp:TemplateField>
 
+                                                <asp:TemplateField HeaderText="Stationary (₹)">
+                                                    <ItemStyle HorizontalAlign="Right" Width="10%" />
+                                                    <FooterStyle HorizontalAlign="Right" />
+                                                    <ItemTemplate>
+                                                        <asp:Label ID="lblStationary" runat="server" Text='<%# Eval("StationaryAmount", "₹ {0:N2}") %>' CssClass="currency" />
+                                                    </ItemTemplate>
+                                                    <FooterTemplate>
+                                                        <asp:Label ID="lblFooterStationary" runat="server" CssClass="font-weight-bold currency" Text="₹ 0.00" />
+                                                    </FooterTemplate>
+                                                </asp:TemplateField>
+
                                                 <asp:TemplateField HeaderText="Total (₹)">
                                                     <ItemStyle HorizontalAlign="Right" Width="10%" />
                                                     <FooterStyle HorizontalAlign="Right" />
@@ -684,21 +702,35 @@
                 </div>
 
                 <div class="col-md-12 col-sm-12" id="Summary" runat="server" visible="false">
+
                     <div class="x_panel collapsed">
+
                         <div class="x_title">
+
                             <h2>Summary by status</h2>
+
                             <ul class="nav navbar-right panel_toolbox">
+
                                 <li><a class="collapse-link"><i class="fa fa-chevron-down"></i></a></li>
+
                             </ul>
+
                             <div class="clearfix"></div>
+
                         </div>
 
+
+
                         <div class="x_content" style="display: none;">
+
                             <div class="row">
+
                                 <div class="col-md-12 col-sm-12">
+
                                     <div class="mb-3">
+
                                         <div class="table-responsive">
-                                            <table class="table table-sm table-bordered" style="max-width: 1000px;">
+                                            <table class="table table-sm table-bordered" style="max-width: 1200px;">
                                                 <thead class="thead-light">
                                                     <tr>
                                                         <th>Status</th>
@@ -707,6 +739,7 @@
                                                         <th class="text-right">DA (₹)</th>
                                                         <th class="text-right">Hotel (₹)</th>
                                                         <th class="text-right">Travel (₹)</th>
+                                                        <th class="text-right">Stationary (₹)</th>
                                                         <th class="text-right">Expense (₹)</th>
                                                     </tr>
                                                 </thead>
@@ -724,6 +757,8 @@
                                                         <td class="text-right">
                                                             <asp:Label ID="lblDraft_Travel" runat="server" Text="₹ 0.00" /></td>
                                                         <td class="text-right">
+                                                            <asp:Label ID="lblDraft_Stationary" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
                                                             <asp:Label ID="lblDraft_Expense" runat="server" Text="₹ 0.00" /></td>
                                                     </tr>
                                                     <tr>
@@ -738,6 +773,8 @@
                                                             <asp:Label ID="lblSubmitted_Hotel" runat="server" Text="₹ 0.00" /></td>
                                                         <td class="text-right">
                                                             <asp:Label ID="lblSubmitted_Travel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblSubmitted_Stationary" runat="server" Text="₹ 0.00" /></td>
                                                         <td class="text-right">
                                                             <asp:Label ID="lblSubmitted_Expense" runat="server" Text="₹ 0.00" /></td>
                                                     </tr>
@@ -754,6 +791,8 @@
                                                         <td class="text-right">
                                                             <asp:Label ID="lblApproved_Travel" runat="server" Text="₹ 0.00" /></td>
                                                         <td class="text-right">
+                                                            <asp:Label ID="lblApproved_Stationary" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
                                                             <asp:Label ID="lblApproved_Expense" runat="server" Text="₹ 0.00" /></td>
                                                     </tr>
                                                     <tr>
@@ -768,6 +807,8 @@
                                                             <asp:Label ID="lblEditable_Hotel" runat="server" Text="₹ 0.00" /></td>
                                                         <td class="text-right">
                                                             <asp:Label ID="lblEditable_Travel" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
+                                                            <asp:Label ID="lblEditable_Stationary" runat="server" Text="₹ 0.00" /></td>
                                                         <td class="text-right">
                                                             <asp:Label ID="lblEditable_Expense" runat="server" Text="₹ 0.00" /></td>
                                                     </tr>
@@ -784,16 +825,24 @@
                                                         <td class="text-right">
                                                             <asp:Label ID="lblOther_Travel" runat="server" Text="₹ 0.00" /></td>
                                                         <td class="text-right">
+                                                            <asp:Label ID="lblOther_Stationary" runat="server" Text="₹ 0.00" /></td>
+                                                        <td class="text-right">
                                                             <asp:Label ID="lblOther_Expense" runat="server" Text="₹ 0.00" /></td>
                                                     </tr>
                                                 </tbody>
                                             </table>
                                         </div>
+
                                     </div>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
             </div>
         </div>
@@ -1129,6 +1178,7 @@
                                         <asp:ListItem Value="DA">DA</asp:ListItem>
                                         <asp:ListItem Value="Hotel">Hotel</asp:ListItem>
                                         <asp:ListItem Value="Travel">Travel</asp:ListItem>
+                                        <asp:ListItem Value="Stationary">Stationary</asp:ListItem>
                                     </asp:DropDownList>
                                     <small class="text-danger font-weight-bold mt-1 d-block" id="txtExpenseTypeHint" style="display: none;">
                                         <i class="fa fa-info-circle"></i>Restricted by selected Policy Mode.
@@ -1216,6 +1266,23 @@
                                 </div>
                             </div>
 
+                            <div id="divStationary" style="display: none;" class="expense-section">
+                                <div class="row">
+                                    <div class="col-md-6 form-group">
+                                        <label>Amount (₹) <span class="text-danger">*</span></label>
+                                        <asp:TextBox ID="TXT_StationaryAmount" runat="server" CssClass="form-control numeric-only"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label>Bill / Invoice No</label>
+                                        <asp:TextBox ID="TXT_StationaryBillNo" runat="server" CssClass="form-control"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-12 form-group">
+                                        <label>Description / Items Purchased <span class="text-danger">*</span></label>
+                                        <asp:TextBox ID="TXT_StationaryPurpose" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="2"></asp:TextBox>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-12 form-group" id="divFUContainer" runat="server">
                                     <label class="d-block">Attach Receipt</label>
@@ -1225,33 +1292,61 @@
                             </div>
 
                             <br />
-                            <div class="card mb-3 totals-card">
-                                <div class="card-body p-2">
-                                    <div class="row text-center">
-                                        <div class="col-6 col-md-3 border-right">
-                                            <div class="small text-muted">DA Total</div>
-                                            <div id="dvDA" runat="server" class="h6 mb-0">
-                                                <asp:Label ID="lblTotalDA" runat="server" Font-Bold="true" ForeColor="#0099ff" Text="0.00" />
+                            <div class="card shadow-sm mb-4 border-0">
+                                <div class="card-body p-3">
+                                    <div class="row text-center g-3">
+
+                                        <style>
+                                            .metric-box {
+                                                border-right: 1px solid #e9ecef;
+                                                transition: background 0.2s;
+                                            }
+
+                                                .metric-box:last-child {
+                                                    border-right: none;
+                                                }
+
+                                                .metric-box:hover {
+                                                    background-color: #f8f9fa;
+                                                    border-radius: 4px;
+                                                }
+                                        </style>
+
+                                        <div class="col-6 col-md-2-4 metric-box">
+                                            <div class="small text-muted text-uppercase font-weight-bold">DA Total</div>
+                                            <div id="dvDA" runat="server" class="h5 mb-0 font-weight-bold text-primary">
+                                                <asp:Label ID="lblTotalDA" runat="server" Text="0.00" />
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-3 border-right">
-                                            <div class="small text-muted">Hotel Total</div>
-                                            <div id="dvHotel" runat="server" class="h6 mb-0">
-                                                <asp:Label ID="lblTotalHotel" runat="server" Font-Bold="true" ForeColor="#0099ff" Text="0.00" />
+
+                                        <div class="col-6 col-md-2-4 metric-box">
+                                            <div class="small text-muted text-uppercase font-weight-bold">Hotel Total</div>
+                                            <div id="dvHotel" runat="server" class="h5 mb-0 font-weight-bold text-primary">
+                                                <asp:Label ID="lblTotalHotel" runat="server" Text="0.00" />
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-3 border-right">
-                                            <div class="small text-muted">Travel Total</div>
-                                            <div id="dvOther" runat="server" class="h6 mb-0">
-                                                <asp:Label ID="lblTotalOther" runat="server" Font-Bold="true" ForeColor="#0099ff" Text="0.00" />
+
+                                        <div class="col-6 col-md-2-4 metric-box">
+                                            <div class="small text-muted text-uppercase font-weight-bold">Travel Total</div>
+                                            <div id="dvOther" runat="server" class="h5 mb-0 font-weight-bold text-primary">
+                                                <asp:Label ID="lblTotalOther" runat="server" Text="0.00" />
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-3">
-                                            <div class="small text-muted">Day Total</div>
-                                            <div id="dvOverall" runat="server" class="h5 mb-0">
-                                                <asp:Label ID="lblOverallTotal" runat="server" Font-Bold="true" ForeColor="#0033cc" Text="0.00" />
+
+                                        <div class="col-6 col-md-2-4 metric-box">
+                                            <div class="small text-muted text-uppercase font-weight-bold">Stationary</div>
+                                            <div class="h5 mb-0 font-weight-bold text-dark">
+                                                <asp:Label ID="lblTotalStationary" runat="server" Text="0.00" />
                                             </div>
                                         </div>
+
+                                        <div class="col-6 col-md-2-4 metric-box">
+                                            <div class="small text-muted text-uppercase font-weight-bold">Day Total</div>
+                                            <div id="dvOverall" runat="server" class="h4 mb-0 font-weight-bold text-success">
+                                                <asp:Label ID="lblOverallTotal" runat="server" Text="0.00" />
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -1297,7 +1392,7 @@
                                      : (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "DA")
                                         ? String.Format("{0} -> {1} {2}", Eval("FromPlace") ?? "—", Eval("ToPlace") ?? "—", (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : ""))
                                      : (Eval("Purpose") ?? "—")
-                                ) %>'>
+                                        ) %>'>
                                                 <%# HttpUtility.HtmlEncode(
                                         (Eval("ExpenseType") != null && Eval("ExpenseType").ToString() == "Travel")
                                         ? String.Format("{0} {1} -> {2} {3}", Eval("TravelType") ?? "", Eval("FromPlace") ?? "", Eval("ToPlace") ?? "", (Eval("Purpose") != DBNull.Value && !String.IsNullOrWhiteSpace(Convert.ToString(Eval("Purpose"))) ? " | " + Convert.ToString(Eval("Purpose")) : ""))
@@ -1497,7 +1592,6 @@
             initTooltipsAndIcons();
         });
 
-        // Combined function to render tooltips and the attendance status icons
         function initTooltipsAndIcons() {
             $('[data-toggle="tooltip"]').tooltip();
 
@@ -1530,7 +1624,6 @@
             });
         }
 
-        // Hook into ScriptManager to re-apply UI behaviors after UpdatePanel postback
         if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
             Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () {
                 initTooltipsAndIcons();
@@ -1547,7 +1640,6 @@
         window.showPNotifyLocal = showPNotify;
         window.notify = function (t, m, y) { showPNotify(t, m, y); };
 
-        // DOM Resolution
         function resolve(id) {
             var el = document.getElementById(id);
             if (el) return el;
@@ -1567,7 +1659,6 @@
             return isNaN(n) ? '—' : n.toFixed(2);
         }
 
-        // Inline Errors CSS & Logic
         var css = ".so-err { border-color: #e55353 !important; box-shadow: 0 0 0 0.15rem rgba(229,83,83,0.15) !important; } .so-err-msg { color:#e55353; font-size:12px; margin-top:4px; } .so-toast-wrap { position: fixed; top: 16px; right: 16px; z-index: 2100; } .so-toast { background: #2b2f33; color: #fff; padding: 10px 14px; margin-bottom:8px; border-radius:4px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); min-width:260px; } .so-toast .so-toast-title { font-weight:600; margin-bottom:4px; } .so-toast.success { background:#1b7a3a; } .so-toast.error { background:#a81b1b; }";
         var s = document.createElement('style'); s.appendChild(document.createTextNode(css)); document.head.appendChild(s);
 
@@ -1589,8 +1680,6 @@
         function clearAllInlineErrors() { $('.so-err').removeClass('so-err'); $('.so-err-msg').remove(); }
         window.showInlineError = showInlineError; window.removeInlineError = removeInlineError; window.clearAllInlineErrors = clearAllInlineErrors;
 
-        // --- STRICT POLICY MODE LOGIC ---
-        // Use delegated event binding so it survives UpdatePanel partial postbacks
         $(document).off('change', '#SEL_PolicyMode').on('change', '#SEL_PolicyMode', function () {
             applyPolicyMode();
             updateAutoDADisplay();
@@ -1608,7 +1697,17 @@
             var $hf = $resolve('HF_ResolvedPolicyMode');
             if ($hf.length) $hf.val(mode);
 
-            var daVal = $resolve('HF_ResolvedDA').val() || $resolve('HF_OutstationDA').val() || $resolve('HF_OwnArrangementDA').val() || '—';
+            // --- DYNAMIC DA RESOLUTION FIX ---
+            var baseDA = $resolve('HF_ResolvedDA').val() || '—';
+            var daVal = baseDA; // Default for HQ and Ex-HQ
+
+            if (mode === 'Outstation') {
+                daVal = $resolve('HF_OutstationDA').val() || baseDA;
+            }
+            else if (mode === 'OwnArrangement') {
+                daVal = $resolve('HF_OwnArrangementDA').val() || baseDA;
+            }
+
             var hcVal = $resolve('HF_ResolvedHotelCap').val() || '—';
 
             var sd = document.getElementById('spDAValue');
@@ -1620,11 +1719,9 @@
             if (sh) sh.innerText = hcVal;
             if (sn) sn.innerHTML = '';
 
-            // --- Check if ANY expenses exist in the grid ---
             var existingDA = false;
             var totalExpenses = 0;
 
-            // Target the specific table created by the Repeater
             $('#expenseModal .table-responsive table tbody tr').each(function () {
                 var tp = $(this).find('.expense-type-badge').text().trim();
                 if (tp) {
@@ -1633,7 +1730,6 @@
                 }
             });
 
-            // --- LOCK MAIN POLICY MODE (Dropdown 1) IF ANY EXPENSES EXIST ---
             if (totalExpenses > 0) {
                 $sel.prop('disabled', true).css({ 'background-color': '#e9ecef', 'cursor': 'not-allowed' });
             } else {
@@ -1644,7 +1740,6 @@
             var $txtDA = $resolve('TXT_DAAmount');
 
             if ($ddl.length) {
-                // Reset all options
                 $ddl.find('option').prop('disabled', false).css('color', '#000');
 
                 var allowed = [];
@@ -1657,47 +1752,45 @@
                         $ddl.val('');
                         if (sn) sn.innerHTML = 'HQ: DA already claimed. No further expenses allowed.' + lockWarningHtml;
                     } else {
-                        allowed = ['DA'];
+                        allowed = ['DA', 'Stationary'];
                         $ddl.find('option[value="Hotel"], option[value="Travel"]').prop('disabled', true).css('color', '#ccc');
-                        if ($ddl.val() !== 'DA') $ddl.val('DA').trigger('change');
-                        if (sn) sn.innerHTML = 'HQ: Only standard DA claims are allowed.' + lockWarningHtml;
+                        if ($ddl.val() !== 'DA' && $ddl.val() !== 'Stationary') $ddl.val('DA').trigger('change');
+                        if (sn) sn.innerHTML = 'HQ: Only standard DA claims and Stationary are allowed.' + lockWarningHtml;
                         if ($txtDA.length) $txtDA.val($resolve('HF_ResolvedDA').val() || '');
                     }
                 } else if (mode === 'Ex-HQ') {
                     if (existingDA) {
-                        // Only Travel is allowed after DA is claimed
-                        allowed = ['Travel'];
+                        allowed = ['Travel', 'Stationary'];
                         $ddl.find('option[value="DA"], option[value="Hotel"]').prop('disabled', true).css('color', '#ccc');
-                        if ($ddl.val() !== 'Travel') $ddl.val('Travel').trigger('change');
-                        if (sn) sn.innerHTML = 'Ex-HQ: DA already claimed. Only Travel claims are allowed.' + lockWarningHtml;
+                        if ($ddl.val() !== 'Travel' && $ddl.val() !== 'Stationary') $ddl.val('Travel').trigger('change');
+                        if (sn) sn.innerHTML = 'Ex-HQ: DA already claimed. Only Travel and Stationary claims are allowed.' + lockWarningHtml;
                     } else {
-                        // Initial state: DA and Travel allowed, Hotel blocked
-                        allowed = ['DA', 'Travel'];
+                        allowed = ['DA', 'Travel', 'Stationary'];
                         $ddl.find('option[value="Hotel"]').prop('disabled', true).css('color', '#ccc');
                         if ($ddl.val() === 'Hotel') $ddl.val('DA').trigger('change');
-                        if (sn) sn.innerHTML = 'Ex-HQ: DA & Travel claims are allowed.' + lockWarningHtml;
+                        if (sn) sn.innerHTML = 'Ex-HQ: DA, Travel & Stationary claims are allowed.' + lockWarningHtml;
                         if ($txtDA.length) $txtDA.val($resolve('HF_ResolvedDA').val() || '');
                     }
                 } else if (mode === 'Outstation') {
-                    allowed = ['Hotel', 'Travel'];
+                    allowed = ['Hotel', 'Travel', 'Stationary'];
                     $ddl.find('option[value="DA"]').prop('disabled', true).css('color', '#ccc');
                     if ($ddl.val() === 'DA') $ddl.val('Hotel').trigger('change');
-                    if (sn) sn.innerHTML = 'Outstation: Hotel & Travel allowed. (Outstation DA is applied automatically on save).' + lockWarningHtml;
+                    if (sn) sn.innerHTML = 'Outstation: Hotel, Travel & Stationary allowed. (Outstation DA is auto-applied).' + lockWarningHtml;
                     if ($txtDA.length) $txtDA.val($resolve('HF_OutstationDA').val() || '');
 
                 } else if (mode === 'OwnArrangement') {
-                    allowed = ['Travel'];
+                    allowed = ['Travel', 'Stationary'];
                     $ddl.find('option[value="DA"], option[value="Hotel"]').prop('disabled', true).css('color', '#ccc');
-                    if ($ddl.val() !== 'Travel') $ddl.val('Travel').trigger('change');
-                    if (sn) sn.innerHTML = 'Own Arrangement: Only Travel allowed. (Own Arrangement DA is applied automatically on save).' + lockWarningHtml;
+                    if ($ddl.val() !== 'Travel' && $ddl.val() !== 'Stationary') $ddl.val('Travel').trigger('change');
+                    if (sn) sn.innerHTML = 'Own Arrangement: Only Travel & Stationary allowed. (Own Arrangement DA is auto-applied).' + lockWarningHtml;
                     if ($txtDA.length) $txtDA.val($resolve('HF_OwnArrangementDA').val() || '');
                 } else {
-                    allowed = ['DA', 'Hotel', 'Travel'];
+                    allowed = ['DA', 'Hotel', 'Travel', 'Stationary'];
                 }
 
                 if (sa) sa.innerText = 'Allowed: ' + (allowed.length > 0 ? allowed.join(', ') : 'None');
 
-                if (allowed.length < 3) {
+                if (allowed.length < 4) {
                     $('#txtExpenseTypeHint').show();
                 } else {
                     $('#txtExpenseTypeHint').hide();
@@ -1707,14 +1800,14 @@
 
         window.applyPolicyModeFromServer = function (mode) {
             window.__so_policy_pending_mode = mode;
-            mode = $.trim(mode) || 'HQ'; // Clean up any invisible spaces
+            mode = $.trim(mode) || 'HQ';
 
             var hf = document.getElementById('<%= HF_ResolvedPolicyMode.ClientID %>');
             if (hf) hf.value = mode;
 
             var sel = document.getElementById('SEL_PolicyMode');
             if (sel) {
-                sel.disabled = false; // FIX: Must explicitly unlock it to change the value programmatically!
+                sel.disabled = false;
                 sel.value = mode;
             }
 
@@ -1727,7 +1820,6 @@
             document.dispatchEvent(new CustomEvent('policy.visibility.refresh'));
         });
 
-        // Visibility
         function safeShow($el) { if ($el && $el.length) $el.show(); }
         function safeHide($el) { if ($el && $el.length) $el.hide(); }
 
@@ -1738,6 +1830,7 @@
             var $da = $resolve('divDASection'),
                 $ht = $resolve('divHotelSection'),
                 $tr = $resolve('divTravelSection'),
+                $st = $('#divStationary'),
                 $fu = $resolve('divFUContainer'),
                 $inv = $resolve('divTravelInvoiceNo'),
                 $chk = $resolve('CHK_TravelInvoice'),
@@ -1746,6 +1839,7 @@
             safeHide($da);
             safeHide($ht);
             safeHide($tr);
+            safeHide($st);
             safeHide($fu);
             safeHide($inv);
 
@@ -1772,6 +1866,11 @@
                     $resolve('FU_Attachment').prop('disabled', false);
                 }
             }
+            else if (type === 'Stationary') {
+                safeShow($st);
+                safeShow($fu); // ADDED: Show File Upload for Stationary
+                $resolve('FU_Attachment').prop('disabled', false); // ADDED: Enable File Upload
+            }
         }
 
         function updateAutoDADisplay() {
@@ -1789,7 +1888,6 @@
         $(document).on('change', '[id$="DDL_ExpenseType"]', function () { updateVisibility(); });
         $(document).on('change', '[id$="CHK_TravelInvoice"]', function () { updateVisibility(); });
 
-        // Validator wrapper
         window.validateExpenseForm = function () {
             clearAllInlineErrors();
             var type = $resolve('DDL_ExpenseType').val() || 'DA';
@@ -1825,17 +1923,25 @@
                     if (!$resolve('TXT_TravelInvoiceNo').val().trim()) { showInlineError($resolve('TXT_TravelInvoiceNo'), 'Required'); return false; }
                     var f2 = $resolve('FU_Attachment')[0].files; if (!f2 || f2.length === 0) { showInlineError($resolve('FU_Attachment'), 'Attachment required'); return false; }
                 }
+            } else if (type === 'Stationary') {
+                var stAmt = parseNumber($resolve('TXT_StationaryAmount').val()),
+                    stPurp = $resolve('TXT_StationaryPurpose').val().trim();
+
+                if (isNaN(stAmt) || stAmt <= 0) { showInlineError($resolve('TXT_StationaryAmount'), 'Amount required > 0'); return false; }
+                if (!stPurp) { showInlineError($resolve('TXT_StationaryPurpose'), 'Required'); return false; }
+
+                // ADDED: Require File Attachment for Stationary
+                var f3 = $resolve('FU_Attachment')[0].files;
+                if (!f3 || f3.length === 0) { showInlineError($resolve('FU_Attachment'), 'Invoice attachment is mandatory for Stationary'); return false; }
             }
             return true;
         };
 
         $(document).on('input change', '.so-err, input, select, textarea', function () { removeInlineError($(this)); });
 
-        // --- UPDATED: Page Init logic ---
         function initExpenseModal() {
             var $sel = $('#SEL_PolicyMode');
 
-            // Prioritize the absolute truth injected by openExpenseModalSafe
             var serverMode = window.__so_policy_pending_mode || $.trim($resolve('HF_SnapPolicyMode').val()) || $.trim($resolve('HF_ResolvedPolicyMode').val()) || 'HQ';
 
             if ($sel.length) {
@@ -1860,29 +1966,36 @@
                 });
             });
 
-            var dt = 0, ht = 0, ot = 0;
+            var dt = 0, ht = 0, ot = 0, st = 0;
             $('#expenseModal .table-responsive table tbody tr').each(function () {
                 var tp = $(this).find('.expense-type-badge').text().trim();
                 var a = parseFloat($(this).find('td:nth-child(4)').text().replace(/,/g, '')) || 0;
+
                 if (tp === 'DA') dt += a;
                 else if (tp === 'Hotel') ht += a;
                 else if (tp === 'Travel') ot += a;
+                else if (tp === 'Stationary') st += a; // Segregated Stationary
             });
 
             try {
                 $resolve('lblTotalDA').text(dt.toFixed(2));
                 $resolve('lblTotalHotel').text(ht.toFixed(2));
-                $resolve('lblTotalOther').text(ot.toFixed(2));
-                $resolve('lblOverallTotal').text((dt + ht + ot).toFixed(2));
-            } catch (e) { }
+                $resolve('lblTotalOther').text(ot.toFixed(2)); // This is now strictly Travel
+
+                // NEW: Update the Stationary Label
+                if ($resolve('lblTotalStationary').length) {
+                    $resolve('lblTotalStationary').text(st.toFixed(2));
+                }
+
+                // Grand Total includes all 4 buckets now
+                $resolve('lblOverallTotal').text((dt + ht + ot + st).toFixed(2));
+            } catch (e) { console.error("Error updating totals: ", e); }
         }
 
         $(function () { initExpenseModal(); });
 
-        // Ensure UI resets correctly when modal opens
         $('#expenseModal').on('shown.bs.modal', function () {
             initExpenseModal();
-            // Extra safety to clear old errors
             clearAllInlineErrors();
             var activityId = $('#<%=hdnActivityId.ClientID%>').val();
             restoreRouteDataToDAFields(activityId);
@@ -1892,7 +2005,6 @@
             Sys.WebForms.PageRequestManager.getInstance().add_endRequest(initExpenseModal);
         }
 
-        // KM modal validation logic
         window.openEditKmModal = function (aid, cur, min, max) {
             $resolve('hdnActivityId').val(aid); $resolve('txtModalKM').val(cur);
             $('#<%=HF_RouteActivityId.ClientID%>').val(aid);
@@ -1913,7 +2025,6 @@
             else { $t.removeClass("is-invalid"); $e.hide(); }
         });
 
-        // Submit & Loader functions
         window.showSubmitModal = function () { $('#submitConfirmModal').modal({ backdrop: 'static', keyboard: false }); return false; };
         window.performSubmitFromModal = function () {
             $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"], [id$="btn_save_draft"]').prop('disabled', true).css('opacity', '0.6');
@@ -1938,13 +2049,13 @@
             modal.find('select').prop('selectedIndex', 0);
             clearAllInlineErrors();
         }
-        // --- NEW: Safe opener that forces the DB policy mode before the modal even renders ---
+
         window.openExpenseModalSafe = function (activityId, savedMode) {
-            window.__so_policy_pending_mode = savedMode; // Lock truth in memory
+            window.__so_policy_pending_mode = savedMode;
 
             var $sel = $('#SEL_PolicyMode');
             if ($sel.length) {
-                $sel.prop('disabled', false); // Unlock to allow programmatic selection
+                $sel.prop('disabled', false);
                 $sel.val(savedMode);
             }
 
@@ -1952,9 +2063,8 @@
             if ($hf.length) $hf.val(savedMode);
 
             $('#expenseModal').modal('show');
-            initExpenseModal(); // Force init immediately
-        }; $('#lblDistance').text()
-
+            initExpenseModal();
+        };
 
         window.routeMap = null;
         window.routeMapInitialized = false;
@@ -1964,580 +2074,245 @@
         window.totalRouteDistance = 0;
 
         function initializeRouteMap() {
-
             if (window.routeMap) return;
 
-            window.routeMap = L.map('routeMap')
-                .setView([22.5726, 88.3639], 12);
+            window.routeMap = L.map('routeMap').setView([22.5726, 88.3639], 12);
 
-            L.tileLayer(
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                {
-                    attribution: '&copy; OpenStreetMap contributors'
-                }
-            ).addTo(window.routeMap);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(window.routeMap);
         }
 
         function openRouteCalculator() {
-
-            $('#routeDistanceModal').modal({
-                backdrop: 'static',
-                keyboard: false
-            });
+            $('#routeDistanceModal').modal({ backdrop: 'static', keyboard: false });
 
             setTimeout(function () {
-
                 if (!window.routeMapInitialized) {
-
                     initializeRouteMap();
-
                     window.routeMapInitialized = true;
                 }
 
                 if (window.routeMap) {
-
                     window.routeMap.invalidateSize();
                 }
 
                 if ($('#<%=HF_RouteTravelMode.ClientID%>').val()) {
-
-                    $('#ddlTravelMode').val(
-                        $('#<%=HF_RouteTravelMode.ClientID%>').val()
-                    );
+                    $('#ddlTravelMode').val($('#<%=HF_RouteTravelMode.ClientID%>').val());
                 }
-
             }, 300);
 
             restoreSavedRoute();
         }
 
         function restoreSavedRoute() {
-
-            var savedJson =
-                $('#<%=HF_RouteWaypoints.ClientID%>').val();
-
-            if (!savedJson)
-                return;
+            var savedJson = $('#<%=HF_RouteWaypoints.ClientID%>').val();
+            if (!savedJson) return;
 
             try {
-
-                window.waypoints =
-                    JSON.parse(savedJson);
-
+                window.waypoints = JSON.parse(savedJson);
                 updateWaypointListUI();
-
                 calculateAndDrawRoute();
-
             }
             catch (e) {
-
                 console.log(e);
             }
         }
 
         function searchLocation() {
+            var q = $('#txtPlaceSearch').val().trim();
+            if (!q) return;
 
-            var q =
-                $('#txtPlaceSearch')
-                    .val()
-                    .trim();
-
-            if (!q)
-                return;
-
-            $.getJSON(
-                'https://nominatim.openstreetmap.org/search',
-                {
-                    q: q,
-                    format: 'json',
-                    limit: 10
-                },
+            $.getJSON('https://nominatim.openstreetmap.org/search', { q: q, format: 'json', limit: 10 },
                 function (data) {
-
                     var html = '';
 
-                    if (!data ||
-                        data.length === 0) {
-
-                        html =
-                            '<div class="list-group-item text-danger">' +
-                            'No locations found' +
-                            '</div>';
-
-                        $('#searchResults')
-                            .html(html);
-
+                    if (!data || data.length === 0) {
+                        html = '<div class="list-group-item text-danger">No locations found</div>';
+                        $('#searchResults').html(html);
                         return;
                     }
 
                     data.forEach(function (item) {
-
-                        html +=
-                            '<a href="#" ' +
-                            'class="list-group-item route-search-item" ' +
-
-                            'data-lat="' +
-                            item.lat +
-                            '" ' +
-
-                            'data-lon="' +
-                            item.lon +
-                            '" ' +
-
-                            'data-name="' +
-                            item.display_name.replace(/"/g, '&quot;') +
-                            '">' +
-
-                            item.display_name +
-
-                            '</a>';
+                        html += '<a href="#" class="list-group-item route-search-item" data-lat="' + item.lat + '" data-lon="' + item.lon + '" data-name="' + item.display_name.replace(/"/g, '&quot;') + '">' + item.display_name + '</a>';
                     });
 
-                    $('#searchResults')
-                        .html(html);
+                    $('#searchResults').html(html);
                 });
         }
 
-        $(document).on(
-            'click',
-            '.route-search-item',
-            function (e) {
-
-                e.preventDefault();
-
-                addWaypoint(
-                    $(this).data('lat'),
-                    $(this).data('lon'),
-                    $(this).data('name')
-                );
-
-                $('#searchResults').empty();
-
-                $('#txtPlaceSearch').val('');
-            }
-        );
+        $(document).on('click', '.route-search-item', function (e) {
+            e.preventDefault();
+            addWaypoint($(this).data('lat'), $(this).data('lon'), $(this).data('name'));
+            $('#searchResults').empty();
+            $('#txtPlaceSearch').val('');
+        });
 
         function addWaypoint(lat, lon, name) {
-
-            var exists =
-                window.waypoints.some(function (x) {
-
-                    return x.name === name;
-                });
-
+            var exists = window.waypoints.some(function (x) { return x.name === name; });
             if (exists) {
-
                 alert('Location already added.');
                 return;
             }
 
-            window.waypoints.push({
-
-                lat: parseFloat(lat),
-
-                lon: parseFloat(lon),
-
-                name: name
-            });
-
+            window.waypoints.push({ lat: parseFloat(lat), lon: parseFloat(lon), name: name });
             updateWaypointListUI();
-
             calculateAndDrawRoute();
         }
 
         function removeWaypoint(index) {
-
             window.waypoints.splice(index, 1);
-
             updateWaypointListUI();
-
             calculateAndDrawRoute();
         }
 
         function moveWaypointUp(index) {
-
-            if (index <= 0)
-                return;
-
-            var temp =
-                window.waypoints[index];
-
-            window.waypoints[index] =
-                window.waypoints[index - 1];
-
-            window.waypoints[index - 1] =
-                temp;
-
+            if (index <= 0) return;
+            var temp = window.waypoints[index];
+            window.waypoints[index] = window.waypoints[index - 1];
+            window.waypoints[index - 1] = temp;
             updateWaypointListUI();
-
             calculateAndDrawRoute();
         }
 
         function moveWaypointDown(index) {
-
-            if (index >= window.waypoints.length - 1)
-                return;
-
-            var temp =
-                window.waypoints[index];
-
-            window.waypoints[index] =
-                window.waypoints[index + 1];
-
-            window.waypoints[index + 1] =
-                temp;
-
+            if (index >= window.waypoints.length - 1) return;
+            var temp = window.waypoints[index];
+            window.waypoints[index] = window.waypoints[index + 1];
+            window.waypoints[index + 1] = temp;
             updateWaypointListUI();
-
             calculateAndDrawRoute();
         }
 
         function updateWaypointListUI() {
-
             var html = '';
-
             for (var i = 0; i < window.waypoints.length; i++) {
-
                 html += '<div class="list-group-item">';
-
-                html += '<strong>' + (i + 1) + '</strong> ';
-
-                html += window.waypoints[i].name;
-
-                html += '<br/>';
-
-                html += '<button type="button" ';
-                html += 'class="btn btn-xs btn-primary" ';
-                html += 'onclick="moveWaypointUp(' + i + ')">↑</button> ';
-
-                html += '<button type="button" ';
-                html += 'class="btn btn-xs btn-primary" ';
-                html += 'onclick="moveWaypointDown(' + i + ')">↓</button> ';
-
-                html += '<button type="button" ';
-                html += 'class="btn btn-xs btn-danger" ';
-                html += 'onclick="removeWaypoint(' + i + ')">Remove</button>';
-
+                html += '<strong>' + (i + 1) + '</strong> ' + window.waypoints[i].name + '<br/>';
+                html += '<button type="button" class="btn btn-xs btn-primary" onclick="moveWaypointUp(' + i + ')">↑</button> ';
+                html += '<button type="button" class="btn btn-xs btn-primary" onclick="moveWaypointDown(' + i + ')">↓</button> ';
+                html += '<button type="button" class="btn btn-xs btn-danger" onclick="removeWaypoint(' + i + ')">Remove</button>';
                 html += '</div>';
             }
-
             $('#waypointList').html(html);
         }
 
         function clearRouteGraphics() {
-
             if (window.routePolyline) {
-
-                window.routeMap.removeLayer(
-                    window.routePolyline
-                );
-
+                window.routeMap.removeLayer(window.routePolyline);
                 window.routePolyline = null;
             }
-
             if (window.routeMarkers) {
-
-                window.routeMarkers.forEach(
-                    function (m) {
-
-                        window.routeMap.removeLayer(m);
-                    });
-
+                window.routeMarkers.forEach(function (m) { window.routeMap.removeLayer(m); });
                 window.routeMarkers = [];
             }
         }
 
         function getDistanceKm(lat1, lon1, lat2, lon2) {
-
             var R = 6371;
-
-            var dLat =
-                (lat2 - lat1) * Math.PI / 180;
-
-            var dLon =
-                (lon2 - lon1) * Math.PI / 180;
-
-            var a =
-                Math.sin(dLat / 2) *
-                Math.sin(dLat / 2) +
-
-                Math.cos(lat1 * Math.PI / 180) *
-                Math.cos(lat2 * Math.PI / 180) *
-
-                Math.sin(dLon / 2) *
-                Math.sin(dLon / 2);
-
-            var c =
-                2 * Math.atan2(
-                    Math.sqrt(a),
-                    Math.sqrt(1 - a)
-                );
-
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
         }
 
         function calculateAndDrawRoute() {
-
             clearRouteGraphics();
 
-            if (!window.waypoints ||
-                window.waypoints.length < 2)
-                return;
+            if (!window.waypoints || window.waypoints.length < 2) return;
 
-            var profile =
-                $('#ddlTravelMode')
-                    .val() || 'driving';
-
-            var coords =
-                window.waypoints
-                    .map(function (p) {
-
-                        return p.lon + ',' + p.lat;
-
-                    })
-                    .join(';');
-
-            var url =
-                'https://router.project-osrm.org/route/v1/' +
-                profile +
-                '/' +
-                coords +
-                '?overview=full&geometries=geojson';
+            var profile = $('#ddlTravelMode').val() || 'driving';
+            var coords = window.waypoints.map(function (p) { return p.lon + ',' + p.lat; }).join(';');
+            var url = 'https://router.project-osrm.org/route/v1/' + profile + '/' + coords + '?overview=full&geometries=geojson';
 
             $.getJSON(url)
-
                 .done(function (res) {
-
-                    if (!res.routes ||
-                        res.routes.length === 0)
-                        return;
-
-                    drawActualRoute(
-                        res.routes[0]
-                    );
+                    if (!res.routes || res.routes.length === 0) return;
+                    drawActualRoute(res.routes[0]);
                 })
-
                 .fail(function () {
-
-                    alert(
-                        'Unable to calculate route.'
-                    );
+                    alert('Unable to calculate route.');
                 });
         }
 
         function drawActualRoute(route) {
-
             clearRouteGraphics();
 
-            var latlngs =
-                route.geometry.coordinates
-                    .map(function (c) {
+            var latlngs = route.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
 
-                        return [
-                            c[1],
-                            c[0]
-                        ];
-                    });
-
-            window.routePolyline =
-                L.polyline(
-                    latlngs,
-                    {
-                        color: 'blue',
-                        weight: 5
-                    })
-                    .addTo(window.routeMap);
-
-            window.routeMap.fitBounds(
-                window.routePolyline.getBounds()
-            );
-
-            window.totalRouteDistance =
-                (route.distance / 1000)
-                    .toFixed(2);
-
-            $('#lblDistance')
-                .text(
-                    window.totalRouteDistance
-                );
+            window.routePolyline = L.polyline(latlngs, { color: 'blue', weight: 5 }).addTo(window.routeMap);
+            window.routeMap.fitBounds(window.routePolyline.getBounds());
+            window.totalRouteDistance = (route.distance / 1000).toFixed(2);
+            $('#lblDistance').text(window.totalRouteDistance);
 
             drawWaypointMarkers();
         }
 
         function drawWaypointMarkers() {
+            if (!window.routeMarkers) window.routeMarkers = [];
 
-            if (!window.routeMarkers)
-                window.routeMarkers = [];
-
-            window.routeMarkers.forEach(function (m) {
-
-                window.routeMap.removeLayer(m);
-            });
-
+            window.routeMarkers.forEach(function (m) { window.routeMap.removeLayer(m); });
             window.routeMarkers = [];
 
             window.waypoints.forEach(function (p, idx) {
-
-                var marker =
-                    L.marker(
-                        [p.lat, p.lon]
-                    )
-                        .addTo(window.routeMap)
-                        .bindPopup(
-                            (idx + 1) +
-                            '. ' +
-                            p.name
-                        );
-
+                var marker = L.marker([p.lat, p.lon]).addTo(window.routeMap).bindPopup((idx + 1) + '. ' + p.name);
                 window.routeMarkers.push(marker);
             });
         }
 
         function applyRouteData(route) {
-            $('#<%=txtModalKM.ClientID%>')
-                .val(route.TotalDistanceKM);
-            $('#<%=TXT_DAFromPlace.ClientID%>')
-                .val(route.OriginName);
-            $('#<%=TXT_DAToPlace.ClientID%>')
-                .val(route.DestinationName);
-            $('#<%=HF_RouteOrigin.ClientID%>')
-                .val(route.OriginName);
-            $('#<%=HF_RouteDestination.ClientID%>')
-                .val(route.DestinationName);
-            $('#<%=HF_RouteWaypoints.ClientID%>')
-                .val(route.WaypointsJSON);
-            $('#<%=HF_RouteDistance.ClientID%>')
-                .val(route.TotalDistanceKM);
-            $('#<%=HF_RouteTravelMode.ClientID%>')
-                .val(route.TravelMode);
-            $('#spRouteDistance')
-                .text(route.TotalDistanceKM);
-            $('#spRouteOrigin')
-                .text(route.OriginName);
-            $('#spRouteDestination')
-                .text(route.DestinationName);
-            $('#spWaypointCount')
-                .text(JSON.parse(route.WaypointsJSON).length);
+            $('#<%=txtModalKM.ClientID%>').val(route.TotalDistanceKM);
+            $('#<%=TXT_DAFromPlace.ClientID%>').val(route.OriginName);
+            $('#<%=TXT_DAToPlace.ClientID%>').val(route.DestinationName);
+            $('#<%=HF_RouteOrigin.ClientID%>').val(route.OriginName);
+            $('#<%=HF_RouteDestination.ClientID%>').val(route.DestinationName);
+            $('#<%=HF_RouteWaypoints.ClientID%>').val(route.WaypointsJSON);
+            $('#<%=HF_RouteDistance.ClientID%>').val(route.TotalDistanceKM);
+            $('#<%=HF_RouteTravelMode.ClientID%>').val(route.TravelMode);
+            $('#spRouteDistance').text(route.TotalDistanceKM);
+            $('#spRouteOrigin').text(route.OriginName);
+            $('#spRouteDestination').text(route.DestinationName);
+            $('#spWaypointCount').text(JSON.parse(route.WaypointsJSON).length);
             $('#routeSummaryPanel').show();
             $('#routeDistanceModal').modal('hide');
         }
 
-        $(document).on(
-            'click',
-            '#btnApplyRoute',
-            function () {
-
-                if (window.waypoints.length < 2) {
-
-                    alert(
-                        'Please select Origin and Destination.'
-                    );
-
-                    return;
-                }
-
-                var route = {
-
-                    OriginName:
-                        window.waypoints[0].name,
-
-                    DestinationName:
-                        window.waypoints[
-                            window.waypoints.length - 1
-                    ].name,
-
-                    TotalDistanceKM:
-                        window.totalRouteDistance,
-
-                    TravelMode:
-                        $('#ddlTravelMode').val(),
-
-                    WaypointsJSON:
-                        JSON.stringify(
-                            window.waypoints
-                        )
-                };
-
-                applyRouteData(route);
-            }
-        );
-
-        $(document).on(
-            'click',
-            '#btnSearchLocation',
-            function () {
-
-                searchLocation();
-            }
-        );
-
-        function initializeRouteMap() {
-
-            console.log('initializeRouteMap called');
-
-            if (window.routeMap)
+        $(document).on('click', '#btnApplyRoute', function () {
+            if (window.waypoints.length < 2) {
+                alert('Please select Origin and Destination.');
                 return;
-
-            window.routeMap =
-                L.map('routeMap')
-                    .setView([22.5726, 88.3639], 12);
-
-            L.tileLayer(
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                {
-                    attribution:
-                        '&copy; OpenStreetMap contributors'
-                }
-            ).addTo(window.routeMap);
-        }
-
-        $(document).on(
-            'click',
-            '.route-search-item',
-            function (e) {
-
-                e.preventDefault();
-
-                addWaypoint(
-                    $(this).data('lat'),
-                    $(this).data('lon'),
-                    $(this).data('name')
-                );
-
-                $('#searchResults').empty();
             }
-        );
 
-        $(document).on(
-            'change',
-            '#ddlTravelMode',
-            function () {
+            var route = {
+                OriginName: window.waypoints[0].name,
+                DestinationName: window.waypoints[window.waypoints.length - 1].name,
+                TotalDistanceKM: window.totalRouteDistance,
+                TravelMode: $('#ddlTravelMode').val(),
+                WaypointsJSON: JSON.stringify(window.waypoints)
+            };
 
-                if (
-                    window.waypoints &&
-                    window.waypoints.length >= 2
-                ) {
+            applyRouteData(route);
+        });
 
-                    calculateAndDrawRoute();
-                }
+        $(document).on('click', '#btnSearchLocation', function () {
+            searchLocation();
+        });
+
+        $(document).on('change', '#ddlTravelMode', function () {
+            if (window.waypoints && window.waypoints.length >= 2) {
+                calculateAndDrawRoute();
             }
-        );
+        });
 
         function restoreRouteDataToDAFields(activityId) {
-
-            if (!window.routeCache)
-                return;
-
-            if (!window.routeCache[activityId])
-                return;
+            if (!window.routeCache) return;
+            if (!window.routeCache[activityId]) return;
 
             var route = window.routeCache[activityId];
 
-            $('#<%=TXT_DAFromPlace.ClientID%>')
-                .val(route.OriginName);
-
-            $('#<%=TXT_DAToPlace.ClientID%>')
-                .val(route.DestinationName);
+            $('#<%=TXT_DAFromPlace.ClientID%>').val(route.OriginName);
+            $('#<%=TXT_DAToPlace.ClientID%>').val(route.DestinationName);
         }
     </script>
+
 </asp:Content>

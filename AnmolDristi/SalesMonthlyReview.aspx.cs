@@ -141,6 +141,7 @@ namespace AnmolDristi
 
                     if (!dt.Columns.Contains("CalculatedClaimAmount")) dt.Columns.Add("CalculatedClaimAmount", typeof(decimal));
                     if (!dt.Columns.Contains("RatePerKm")) dt.Columns.Add("RatePerKm", typeof(decimal));
+                    if (!dt.Columns.Contains("StationaryAmount")) dt.Columns.Add("StationaryAmount", typeof(decimal));
 
                     decimal defaultRate = 2.75m;
                     var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
@@ -256,7 +257,7 @@ namespace AnmolDristi
                 if (gvActivities.HeaderRow != null)
                     gvActivities.HeaderRow.TableSection = TableRowSection.TableHeader;
 
-                decimal grandCalc = 0m, grandDA = 0m, grandHotel = 0m, grandTravel = 0m, grandExpense = 0m, grandKM = 0m;
+                decimal grandCalc = 0m, grandDA = 0m, grandHotel = 0m, grandTravel = 0m, grandStationary = 0m, grandExpense = 0m, grandKM = 0m;
 
                 if (dt.Rows.Count > 0)
                 {
@@ -267,6 +268,7 @@ namespace AnmolDristi
                     if (dt.Columns.Contains("DAAmount")) { o = dt.Compute("SUM(DAAmount)", ""); grandDA = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
                     if (dt.Columns.Contains("HotelAmount")) { o = dt.Compute("SUM(HotelAmount)", ""); grandHotel = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
                     if (dt.Columns.Contains("TravelAmount")) { o = dt.Compute("SUM(TravelAmount)", ""); grandTravel = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
+                    if (dt.Columns.Contains("StationaryAmount")) { o = dt.Compute("SUM(StationaryAmount)", ""); grandStationary = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
                     if (dt.Columns.Contains("ExpenseTotal")) { o = dt.Compute("SUM(ExpenseTotal)", ""); grandExpense = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
                     if (dt.Columns.Contains("TotalDistanceKM")) { o = dt.Compute("SUM(TotalDistanceKM)", ""); grandKM = o != DBNull.Value ? Convert.ToDecimal(o) : 0m; }
                 }
@@ -277,6 +279,7 @@ namespace AnmolDristi
                     Label fDA = gvActivities.FooterRow.FindControl("lblFooterDA") as Label;
                     Label fHotel = gvActivities.FooterRow.FindControl("lblFooterHotel") as Label;
                     Label fTravel = gvActivities.FooterRow.FindControl("lblFooterTravel") as Label;
+                    Label fStationary = gvActivities.FooterRow.FindControl("lblFooterStationary") as Label;
                     Label fExpense = gvActivities.FooterRow.FindControl("lblFooterExpenseTotal") as Label;
                     Label lblFooterTotalKM = gvActivities.FooterRow.FindControl("lblFooterTotalKM") as Label;
 
@@ -284,18 +287,23 @@ namespace AnmolDristi
                     if (fDA != null) fDA.Text = "₹ " + grandDA.ToString("N2");
                     if (fHotel != null) fHotel.Text = "₹ " + grandHotel.ToString("N2");
                     if (fTravel != null) fTravel.Text = "₹ " + grandTravel.ToString("N2");
+                    if (fStationary != null) fStationary.Text = "₹ " + grandStationary.ToString("N2");
                     if (fExpense != null) fExpense.Text = "₹ " + grandExpense.ToString("N2");
                     if (lblFooterTotalKM != null) lblFooterTotalKM.Text = string.Format("{0:N2} km", grandKM);
 
-                    decimal grandOverall = grandCalc + grandDA + grandHotel + grandTravel;
-                    int lastCellIndex = Math.Max(0, gvActivities.FooterRow.Cells.Count - 5);
+                    // Grand Total Calculation - Now including Stationary
+                    decimal grandOverall = grandCalc + grandDA + grandHotel + grandTravel + grandStationary;
+
+                    // FIX: Changed from -5 to -6 to account for the new Stationary column
+                    int lastCellIndex = Math.Max(0, gvActivities.FooterRow.Cells.Count - 6);
+
                     if (lastCellIndex < gvActivities.FooterRow.Cells.Count)
                     {
                         gvActivities.FooterRow.Cells[lastCellIndex].Text = "₹ " + grandOverall.ToString("N2");
                         gvActivities.FooterRow.Cells[lastCellIndex].HorizontalAlign = HorizontalAlign.Center;
                         gvActivities.FooterRow.Cells[lastCellIndex].Font.Bold = true;
                         gvActivities.FooterRow.Cells[lastCellIndex].ForeColor = System.Drawing.Color.DarkBlue;
-                        gvActivities.FooterRow.Cells[lastCellIndex].ToolTip = "Grand Total of Claim + DA + Hotel + Travel";
+                        gvActivities.FooterRow.Cells[lastCellIndex].ToolTip = "Grand Total of Claim + DA + Hotel + Travel + Stationary";
                     }
                 }
 
@@ -356,6 +364,10 @@ namespace AnmolDristi
             if (HF_ActivityDate != null) HF_ActivityDate.Value = "";
             if (HF_SnapResolvedDA != null) HF_SnapResolvedDA.Value = "";
             if (HF_SnapPolicyMode != null) HF_SnapPolicyMode.Value = "";
+
+            if (TXT_StationaryAmount != null) { TXT_StationaryAmount.Text = string.Empty; TXT_StationaryAmount.ReadOnly = false; }
+            if (TXT_StationaryBillNo != null) { TXT_StationaryBillNo.Text = string.Empty; TXT_StationaryBillNo.ReadOnly = false; }
+            if (TXT_StationaryPurpose != null) { TXT_StationaryPurpose.Text = string.Empty; TXT_StationaryPurpose.ReadOnly = false; }
 
             string clearScript = string.Format("$('#{0}').val('');", FU_Attachment != null ? FU_Attachment.ClientID : "FU_Attachment");
             ScriptManager.RegisterStartupScript(this, this.GetType(), "clearFile", clearScript, true);
@@ -1388,6 +1400,14 @@ namespace AnmolDristi
             catch (Exception ex) { if (lbl_msg != null) { lbl_msg.ForeColor = System.Drawing.Color.Red; lbl_msg.Text = ex.Message; } }
         }
 
+        /*
+=======================================================================
+Script Name: Update_Stationary_Validation_Backend
+When: 2026-07-01
+Why: To enforce mandatory invoice attachments for Stationary expenses.
+What: Added file attachment validation block in BTN_SaveExpense_Click.
+=======================================================================
+*/
         protected void BTN_SaveExpense_Click(object sender, EventArgs e)
         {
             if (LBL_ExpenseMsg != null)
@@ -1435,7 +1455,7 @@ namespace AnmolDristi
                 string safeErr = "Cannot modify expenses. The claim for this month is currently " + currentStatus + ".";
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErr", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
-                return; // <--- This immediately stops the save process!
+                return;
             }
             // ====================================================================
 
@@ -1443,7 +1463,7 @@ namespace AnmolDristi
             if (DDL_ExpenseType != null && !string.IsNullOrWhiteSpace(DDL_ExpenseType.SelectedValue))
                 expenseType = DDL_ExpenseType.SelectedValue.Trim();
 
-            // Read from Request.Form to get values changed by JS (bypasses ReadOnly/Disabled ASP.NET behavior)
+            // Read from Request.Form to get values changed by JS
             string txtDaStr = Request.Form[TXT_DAAmount.UniqueID] ?? (TXT_DAAmount != null ? TXT_DAAmount.Text : "");
             decimal daAmt = 0m; decimal.TryParse(txtDaStr.Trim(), out daAmt);
 
@@ -1452,6 +1472,13 @@ namespace AnmolDristi
 
             string txtTravelAmtStr = Request.Form[TXT_TravelAmount.UniqueID] ?? (TXT_TravelAmount != null ? TXT_TravelAmount.Text : "");
             decimal travelAmt = 0m; decimal.TryParse(txtTravelAmtStr.Trim(), out travelAmt);
+
+            // Read Stationary Input values
+            string txtStationaryAmtStr = Request.Form[TXT_StationaryAmount.UniqueID] ?? (TXT_StationaryAmount != null ? TXT_StationaryAmount.Text : "");
+            decimal stationaryAmt = 0m; decimal.TryParse(txtStationaryAmtStr.Trim(), out stationaryAmt);
+
+            string txtStationaryBillStr = Request.Form[TXT_StationaryBillNo.UniqueID] ?? (TXT_StationaryBillNo != null ? TXT_StationaryBillNo.Text : "");
+            string txtStationaryPurpStr = Request.Form[TXT_StationaryPurpose.UniqueID] ?? (TXT_StationaryPurpose != null ? TXT_StationaryPurpose.Text : "");
 
             DateTime? travelDateNullable = null;
             string txtTravelDateStr = Request.Form[TXT_TravelDate.UniqueID] ?? (TXT_TravelDate != null ? TXT_TravelDate.Text : "");
@@ -1534,6 +1561,31 @@ namespace AnmolDristi
                 }
             }
 
+            // ==========================================
+            // STATIONARY VALIDATION LOGIC
+            // ==========================================
+            if (expenseType.Equals("Stationary", StringComparison.OrdinalIgnoreCase))
+            {
+                if (stationaryAmt <= 0m)
+                {
+                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Please enter a valid Stationary Amount.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(txtStationaryPurpStr))
+                {
+                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Please provide a description of the stationary items.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+                if (!(FU_Attachment != null && FU_Attachment.HasFile))
+                {
+                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Please attach a valid invoice/receipt for the Stationary expense.";
+                    ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                    return;
+                }
+            }
+
             bool anyFile = FU_Attachment != null && FU_Attachment.HasFile;
             if (expenseType.Equals("DA", StringComparison.OrdinalIgnoreCase) && daAmt <= 0m && !anyFile)
             {
@@ -1570,13 +1622,6 @@ namespace AnmolDristi
                     savedRelativePath = Path.Combine("UploadedFiles/ClaimsAttachment", year, month, savedFileName).Replace("\\", "/");
                 }
 
-                //string policyMode = (ResolveHiddenFieldValue("HF_ResolvedPolicyMode") ?? "").Trim();
-                //string hfDA = (ResolveHiddenFieldValue("HF_ResolvedDA") ?? "").Trim();
-                //string hfOutDA = (ResolveHiddenFieldValue("HF_OutstationDA") ?? "").Trim();
-                //string hfOwnDA = (ResolveHiddenFieldValue("HF_OwnArrangementDA") ?? "").Trim();
-                //string hfHotelCap = (ResolveHiddenFieldValue("HF_ResolvedHotelCap") ?? "").Trim();
-
-                // Read directly from the server control or Request.Form to ensure we catch JS modifications
                 string policyMode = Request.Form[HF_ResolvedPolicyMode.UniqueID] ?? (HF_ResolvedPolicyMode != null ? HF_ResolvedPolicyMode.Value : "");
                 string hfDA = Request.Form[HF_ResolvedDA.UniqueID] ?? (HF_ResolvedDA != null ? HF_ResolvedDA.Value : "");
                 string hfOutDA = Request.Form[HF_OutstationDA.UniqueID] ?? (HF_OutstationDA != null ? HF_OutstationDA.Value : "");
@@ -1614,7 +1659,6 @@ namespace AnmolDristi
                                 string fromPlace = txtDaFromStr.Trim();
                                 string toPlace = txtDaToStr.Trim();
 
-                                // --- ENFORCING SINGLE DA ENTRY RULE ---
                                 using (SqlCommand chkCmd = new SqlCommand("SELECT COUNT(1) FROM dbo.SalesDailyExpense WITH (UPDLOCK) WHERE ActivityId = @ActId AND ExpenseType = 'DA' AND IsDeleted = 0", con, tx))
                                 {
                                     chkCmd.Parameters.AddWithValue("@ActId", activityId);
@@ -1624,7 +1668,6 @@ namespace AnmolDristi
                                         throw new Exception("A DA expense has already been claimed for this activity. Please delete it first to re-enter.");
                                     }
                                 }
-                                // ---------------------------------------
 
                                 using (SqlCommand cmd = new SqlCommand("usp_SaveDailyExpense", con, tx))
                                 {
@@ -1725,9 +1768,9 @@ namespace AnmolDristi
                                 {
                                     decimal autoDA = 0m;
                                     if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase))
-                                        decimal.TryParse(hfOutDA, out autoDA); // Use the safe variable
+                                        decimal.TryParse(hfOutDA, out autoDA);
                                     else
-                                        decimal.TryParse(hfOwnDA, out autoDA); // Use the safe variable
+                                        decimal.TryParse(hfOwnDA, out autoDA);
 
                                     if (autoDA > 0m)
                                     {
@@ -1788,15 +1831,67 @@ namespace AnmolDristi
                                     {
                                         decimal autoDA = 0m;
                                         if (policyMode.Equals("Outstation", StringComparison.OrdinalIgnoreCase))
-                                            decimal.TryParse(hfOutDA, out autoDA); // Use the safe variable
+                                            decimal.TryParse(hfOutDA, out autoDA);
                                         else
-                                            decimal.TryParse(hfOwnDA, out autoDA); // Use the safe variable
+                                            decimal.TryParse(hfOwnDA, out autoDA);
 
                                         if (autoDA > 0m)
                                             EnsureAutoDA(activityId, travelDateNullable ?? DateTime.Now, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
                                     }
                                 }
                             }
+
+                            // ==========================================
+                            // STATIONARY SAVING LOGIC
+                            // ==========================================
+                            if (expenseType.Equals("Stationary", StringComparison.OrdinalIgnoreCase) && (stationaryAmt > 0m || savedFileName != null))
+                            {
+                                using (SqlCommand cmd = new SqlCommand("usp_SaveDailyExpense", con, tx))
+                                {
+                                    cmd.CommandType = CommandType.StoredProcedure;
+                                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                                    cmd.Parameters.AddWithValue("@ExpenseType", "Stationary");
+
+                                    DateTime expDate; DateTime? expDateNullable = null;
+                                    string hfActDateStr = HF_ActivityDate != null ? HF_ActivityDate.Value : "";
+                                    if (!string.IsNullOrWhiteSpace(hfActDateStr) && DateTime.TryParse(hfActDateStr.Trim(), out expDate))
+                                        expDateNullable = expDate.Date;
+
+                                    cmd.Parameters.AddWithValue("@ExpenseDate", expDateNullable.HasValue ? (object)expDateNullable.Value : DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@Amount", stationaryAmt);
+                                    cmd.Parameters.AddWithValue("@FromPlace", DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@ToPlace", DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@Purpose", txtStationaryPurpStr.Trim());
+                                    cmd.Parameters.AddWithValue("@BillNo", string.IsNullOrWhiteSpace(txtStationaryBillStr) ? DBNull.Value : (object)txtStationaryBillStr.Trim());
+
+                                    cmd.Parameters.AddWithValue("@AttachmentFileName", savedFileName ?? (object)DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@AttachmentPath", savedRelativePath ?? (object)DBNull.Value);
+                                    cmd.Parameters.Add("@AttachmentContent", SqlDbType.VarBinary, -1).Value = DBNull.Value;
+
+                                    cmd.Parameters.AddWithValue("@CreatedBy", GetCurrentUserLoginId());
+                                    cmd.Parameters.AddWithValue("@PolicyMode", string.IsNullOrWhiteSpace(policyMode) ? DBNull.Value : (object)policyMode);
+                                    cmd.Parameters.AddWithValue("@PolicySnapshot", string.IsNullOrWhiteSpace(policySnapshot) ? DBNull.Value : (object)policySnapshot);
+                                    cmd.Parameters.AddWithValue("@IsAutoDA", 0);
+                                    cmd.Parameters.AddWithValue("@CreatedByIP", string.IsNullOrWhiteSpace(createdByIp) ? DBNull.Value : (object)createdByIp);
+                                    cmd.Parameters.AddWithValue("@Source", "UI");
+
+                                    cmd.Parameters.AddWithValue("@ResolvedDA", DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@ResolvedOutstationDA", DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@ResolvedOwnArrangementDA", DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@ResolvedHotelCap", DBNull.Value);
+
+                                    var pErrCode = new SqlParameter("@ErrCode", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                                    var pErrMsg = new SqlParameter("@ErrMessage", SqlDbType.NVarChar, 400) { Direction = ParameterDirection.Output };
+                                    cmd.Parameters.Add(pErrCode);
+                                    cmd.Parameters.Add(pErrMsg);
+
+                                    cmd.ExecuteNonQuery();
+
+                                    int err = (pErrCode.Value == DBNull.Value) ? 0 : (int)pErrCode.Value;
+                                    if (err != 0) throw new Exception((pErrMsg.Value == DBNull.Value) ? "Action blocked by policy." : pErrMsg.Value.ToString());
+                                }
+                            }
+
                             tx.Commit();
                         }
                         catch (Exception innerEx)
@@ -1817,7 +1912,6 @@ namespace AnmolDristi
                     LBL_ExpenseMsg.Text = "Expense saved.";
                 }
 
-                // Retain explicit mode lock after save
                 string savedMode = "";
                 if (dtAfter != null && dtAfter.Rows.Count > 0 && dtAfter.Columns.Contains("PolicyMode") && dtAfter.Rows[0]["PolicyMode"] != DBNull.Value)
                     savedMode = dtAfter.Rows[0]["PolicyMode"].ToString().Trim();
@@ -2080,6 +2174,92 @@ namespace AnmolDristi
             UpdateExpenseTotals(dt);
             if (HF_ActivityId != null) HF_ActivityId.Value = activityId.ToString();
 
+            // Reset standard fields
+            if (DDL_TravelType != null) DDL_TravelType.SelectedIndex = 0;
+            if (TXT_FromPlace != null) TXT_FromPlace.Text = "";
+            if (TXT_ToPlace != null) TXT_ToPlace.Text = "";
+            if (TXT_TravelPurpose != null) TXT_TravelPurpose.Text = "";
+            if (TXT_TravelInvoiceNo != null) TXT_TravelInvoiceNo.Text = "";
+            if (CHK_TravelInvoice != null) CHK_TravelInvoice.Checked = false;
+            if (TXT_DAAmount != null) TXT_DAAmount.Text = "";
+            if (TXT_HotelAmount != null) TXT_HotelAmount.Text = "";
+            if (TXT_HotelBillNo != null) TXT_HotelBillNo.Text = "";
+            if (TXT_HotelPurpose != null) TXT_HotelPurpose.Text = "";
+
+            // NEW: Reset Stationary fields so they don't persist between modal opens
+            if (TXT_StationaryAmount != null) TXT_StationaryAmount.Text = "";
+            if (TXT_StationaryBillNo != null) TXT_StationaryBillNo.Text = "";
+            if (TXT_StationaryPurpose != null) TXT_StationaryPurpose.Text = "";
+
+            if (activityId > 0)
+            {
+                BindRouteData(activityId);
+            }
+
+            return dt;
+        }
+
+        protected DataTable LoadExpenseForActivity_OLD(string activityIdStr)
+        {
+            int activityId = 0;
+            int.TryParse(activityIdStr, out activityId);
+
+            DataTable dt = new DataTable();
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate, PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 ORDER BY ExpenseDate DESC, ExpenseId DESC", con))
+            using (var da = new SqlDataAdapter(cmd))
+            {
+                cmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
+                da.Fill(dt);
+            }
+
+            if (HF_SnapPolicyMode != null) HF_SnapPolicyMode.Value = "";
+            if (HF_SnapResolvedDA != null) HF_SnapResolvedDA.Value = "";
+            if (HF_SnapHotelCap != null) HF_SnapHotelCap.Value = "";
+            if (HF_SnapOutstationDA != null) HF_SnapOutstationDA.Value = "";
+            if (HF_SnapOwnArrangementDA != null) HF_SnapOwnArrangementDA.Value = "";
+
+            if (dt != null && dt.Rows.Count > 0)
+            {
+                foreach (DataRow r in dt.Rows)
+                {
+                    if (!dt.Columns.Contains("PolicySnapshot") || r["PolicySnapshot"] == DBNull.Value) continue;
+                    string json = Convert.ToString(r["PolicySnapshot"]).Trim();
+                    if (string.IsNullOrWhiteSpace(json)) continue;
+
+                    if (json.StartsWith("{"))
+                    {
+                        try
+                        {
+                            var jObj = JObject.Parse(json);
+                            if (HF_SnapPolicyMode != null) HF_SnapPolicyMode.Value = (string)jObj["PolicyMode"] ?? string.Empty;
+                            if (HF_SnapResolvedDA != null) HF_SnapResolvedDA.Value = (string)jObj["ResolvedDA"] ?? string.Empty;
+                            if (HF_SnapHotelCap != null) HF_SnapHotelCap.Value = (string)jObj["HotelCap"] ?? string.Empty;
+                            if (HF_SnapOutstationDA != null) HF_SnapOutstationDA.Value = (string)jObj["OutstationDA"] ?? string.Empty;
+                            if (HF_SnapOwnArrangementDA != null) HF_SnapOwnArrangementDA.Value = (string)jObj["OwnArrangementDA"] ?? string.Empty;
+                            break;
+                        }
+                        catch (Exception ex) { System.Diagnostics.Trace.TraceWarning("Parse fail: " + ex.Message); }
+                    }
+                }
+
+                // Ensure HF_SnapPolicyMode is accurately set from the DB column if JSON fails
+                if (HF_SnapPolicyMode != null && string.IsNullOrWhiteSpace(HF_SnapPolicyMode.Value) && dt.Columns.Contains("PolicyMode") && dt.Rows[0]["PolicyMode"] != DBNull.Value)
+                {
+                    HF_SnapPolicyMode.Value = dt.Rows[0]["PolicyMode"].ToString().Trim();
+                }
+            }
+            else
+            {
+                if (HF_SnapPolicyMode != null) HF_SnapPolicyMode.Value = "HQ";
+            }
+
+            rptExpenses.DataSource = dt;
+            rptExpenses.DataBind();
+
+            UpdateExpenseTotals(dt);
+            if (HF_ActivityId != null) HF_ActivityId.Value = activityId.ToString();
+
             if (DDL_TravelType != null) DDL_TravelType.SelectedIndex = 0;
             if (TXT_FromPlace != null) TXT_FromPlace.Text = "";
             if (TXT_ToPlace != null) TXT_ToPlace.Text = "";
@@ -2245,7 +2425,9 @@ namespace AnmolDristi
 
         private void UpdateExpenseTotals(DataTable dt)
         {
-            decimal daTotal = 0m, hotelTotal = 0m, otherTotal = 0m;
+            // Added stationaryTotal to segregate the math
+            decimal daTotal = 0m, hotelTotal = 0m, otherTotal = 0m, stationaryTotal = 0m;
+
             if (dt != null && dt.Rows.Count > 0)
             {
                 foreach (DataRow r in dt.Rows)
@@ -2254,15 +2436,24 @@ namespace AnmolDristi
                     if (r["Amount"] != DBNull.Value) amt = Convert.ToDecimal(r["Amount"]);
                     string type = r["ExpenseType"] != null ? r["ExpenseType"].ToString().Trim() : "";
 
-                    if (string.Equals(type, "DA", StringComparison.OrdinalIgnoreCase)) daTotal += amt;
-                    else if (string.Equals(type, "Hotel", StringComparison.OrdinalIgnoreCase)) hotelTotal += amt;
-                    else otherTotal += amt;
+                    if (string.Equals(type, "DA", StringComparison.OrdinalIgnoreCase))
+                        daTotal += amt;
+                    else if (string.Equals(type, "Hotel", StringComparison.OrdinalIgnoreCase))
+                        hotelTotal += amt;
+                    else if (string.Equals(type, "Stationary", StringComparison.OrdinalIgnoreCase))
+                        stationaryTotal += amt; // Caught and aggregated separately
+                    else
+                        otherTotal += amt; // Travel and any historical legacy types
                 }
             }
+
             if (lblTotalDA != null) lblTotalDA.Text = daTotal.ToString("0.##");
             if (lblTotalHotel != null) lblTotalHotel.Text = hotelTotal.ToString("0.##");
             if (lblTotalOther != null) lblTotalOther.Text = otherTotal.ToString("0.##");
-            if (lblOverallTotal != null) lblOverallTotal.Text = (daTotal + hotelTotal + otherTotal).ToString("0.##");
+            if (lblTotalStationary != null) lblTotalStationary.Text = stationaryTotal.ToString("0.##");
+
+            if (lblOverallTotal != null)
+                lblOverallTotal.Text = (daTotal + hotelTotal + otherTotal + stationaryTotal).ToString("0.##");
         }
 
         private string GetCurrentUserLoginId(bool redirectIfMissing = true)
@@ -3148,7 +3339,7 @@ namespace AnmolDristi
             }
         }
 
-        private void PopulateStatusSummary(DataTable dt)
+        private void PopulateStatusSummary_OLD(DataTable dt)
         {
             if (dt == null) return;
 
@@ -3238,6 +3429,110 @@ namespace AnmolDristi
             if (lblOther_DA != null) lblOther_DA.Text = "₹ " + o_da.ToString("N2");
             if (lblOther_Hotel != null) lblOther_Hotel.Text = "₹ " + o_hotel.ToString("N2");
             if (lblOther_Travel != null) lblOther_Travel.Text = "₹ " + o_travel.ToString("N2");
+            if (lblOther_Expense != null) lblOther_Expense.Text = "₹ " + o_exp.ToString("N2");
+            if (lblOther_KM != null) lblOther_KM.Text = o_km.ToString("N2");
+        }
+
+        private void PopulateStatusSummary(DataTable dt)
+        {
+            if (dt == null) return;
+
+            Func<string, Func<DataRow, bool>, decimal> SumMoney = (colName, predicate) =>
+            {
+                decimal sum = 0m;
+                if (!dt.Columns.Contains(colName)) return 0m;
+                foreach (DataRow r in dt.Rows)
+                {
+                    if (!predicate(r)) continue;
+                    if (r[colName] != DBNull.Value) { decimal val; if (decimal.TryParse(r[colName].ToString(), out val)) sum += val; }
+                }
+                return sum;
+            };
+
+            Func<Func<DataRow, bool>, decimal> SumKM = (predicate) =>
+            {
+                decimal sum = 0m;
+                if (!dt.Columns.Contains("TotalDistanceKM")) return 0m;
+                foreach (DataRow r in dt.Rows)
+                {
+                    if (!predicate(r)) continue;
+                    if (r["TotalDistanceKM"] != DBNull.Value) { decimal km; if (decimal.TryParse(r["TotalDistanceKM"].ToString(), out km)) sum += km; }
+                }
+                return sum;
+            };
+
+            Func<string, Func<DataRow, bool>> byClaimStatus = (status) =>
+            {
+                return (r) =>
+                {
+                    string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : string.Empty;
+                    if (string.Equals(status, "Submitted", StringComparison.OrdinalIgnoreCase)) return string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
+                    if (string.Equals(status, "Other", StringComparison.OrdinalIgnoreCase))
+                    {
+                        bool isDraft = string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
+                        bool isSubmitted = string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
+                        bool isApproved = string.Equals(claim, "Approved", StringComparison.OrdinalIgnoreCase);
+                        bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
+                        return !(isDraft || isSubmitted || isApproved || isEditable);
+                    }
+                    return string.Equals(claim, status, StringComparison.OrdinalIgnoreCase);
+                };
+            };
+
+            Func<DataRow, bool> isEditablePredicate = (r) =>
+            {
+                bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
+                string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : string.Empty;
+                return isEditable && !string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
+            };
+
+            // --- DRAFT ---
+            decimal d_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Draft")); decimal d_da = SumMoney("DAAmount", byClaimStatus("Draft")); decimal d_hotel = SumMoney("HotelAmount", byClaimStatus("Draft")); decimal d_travel = SumMoney("TravelAmount", byClaimStatus("Draft")); decimal d_stat = SumMoney("StationaryAmount", byClaimStatus("Draft")); decimal d_exp = SumMoney("ExpenseTotal", byClaimStatus("Draft")); decimal d_km = SumKM(byClaimStatus("Draft"));
+            if (lblDraft_TA != null) lblDraft_TA.Text = "₹ " + d_ta.ToString("N2");
+            if (lblDraft_DA != null) lblDraft_DA.Text = "₹ " + d_da.ToString("N2");
+            if (lblDraft_Hotel != null) lblDraft_Hotel.Text = "₹ " + d_hotel.ToString("N2");
+            if (lblDraft_Travel != null) lblDraft_Travel.Text = "₹ " + d_travel.ToString("N2");
+            if (lblDraft_Stationary != null) lblDraft_Stationary.Text = "₹ " + d_stat.ToString("N2"); // Added
+            if (lblDraft_Expense != null) lblDraft_Expense.Text = "₹ " + d_exp.ToString("N2");
+            if (lblDraft_KM != null) lblDraft_KM.Text = d_km.ToString("N2");
+
+            // --- SUBMITTED ---
+            decimal s_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Submitted")); decimal s_da = SumMoney("DAAmount", byClaimStatus("Submitted")); decimal s_hotel = SumMoney("HotelAmount", byClaimStatus("Submitted")); decimal s_travel = SumMoney("TravelAmount", byClaimStatus("Submitted")); decimal s_stat = SumMoney("StationaryAmount", byClaimStatus("Submitted")); decimal s_exp = SumMoney("ExpenseTotal", byClaimStatus("Submitted")); decimal s_km = SumKM(byClaimStatus("Submitted"));
+            if (lblSubmitted_TA != null) lblSubmitted_TA.Text = "₹ " + s_ta.ToString("N2");
+            if (lblSubmitted_DA != null) lblSubmitted_DA.Text = "₹ " + s_da.ToString("N2");
+            if (lblSubmitted_Hotel != null) lblSubmitted_Hotel.Text = "₹ " + s_hotel.ToString("N2");
+            if (lblSubmitted_Travel != null) lblSubmitted_Travel.Text = "₹ " + s_travel.ToString("N2");
+            if (lblSubmitted_Stationary != null) lblSubmitted_Stationary.Text = "₹ " + s_stat.ToString("N2"); // Added
+            if (lblSubmitted_Expense != null) lblSubmitted_Expense.Text = "₹ " + s_exp.ToString("N2");
+            if (lblSubmitted_KM != null) lblSubmitted_KM.Text = s_km.ToString("N2");
+
+            // --- APPROVED ---
+            decimal a_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Approved")); decimal a_da = SumMoney("DAAmount", byClaimStatus("Approved")); decimal a_hotel = SumMoney("HotelAmount", byClaimStatus("Approved")); decimal a_travel = SumMoney("TravelAmount", byClaimStatus("Approved")); decimal a_stat = SumMoney("StationaryAmount", byClaimStatus("Approved")); decimal a_exp = SumMoney("ExpenseTotal", byClaimStatus("Approved")); decimal a_km = SumKM(byClaimStatus("Approved"));
+            if (lblApproved_TA != null) lblApproved_TA.Text = "₹ " + a_ta.ToString("N2");
+            if (lblApproved_DA != null) lblApproved_DA.Text = "₹ " + a_da.ToString("N2");
+            if (lblApproved_Hotel != null) lblApproved_Hotel.Text = "₹ " + a_hotel.ToString("N2");
+            if (lblApproved_Travel != null) lblApproved_Travel.Text = "₹ " + a_travel.ToString("N2");
+            if (lblApproved_Stationary != null) lblApproved_Stationary.Text = "₹ " + a_stat.ToString("N2"); // Added
+            if (lblApproved_Expense != null) lblApproved_Expense.Text = "₹ " + a_exp.ToString("N2");
+            if (lblApproved_KM != null) lblApproved_KM.Text = a_km.ToString("N2");
+
+            // --- EDITABLE ---
+            decimal e_ta = SumMoney("CalculatedClaimAmount", isEditablePredicate); decimal e_da = SumMoney("DAAmount", isEditablePredicate); decimal e_hotel = SumMoney("HotelAmount", isEditablePredicate); decimal e_travel = SumMoney("TravelAmount", isEditablePredicate); decimal e_stat = SumMoney("StationaryAmount", isEditablePredicate); decimal e_exp = SumMoney("ExpenseTotal", isEditablePredicate); decimal e_km = SumKM(isEditablePredicate);
+            if (lblEditable_TA != null) lblEditable_TA.Text = "₹ " + e_ta.ToString("N2");
+            if (lblEditable_DA != null) lblEditable_DA.Text = "₹ " + e_da.ToString("N2");
+            if (lblEditable_Hotel != null) lblEditable_Hotel.Text = "₹ " + e_hotel.ToString("N2");
+            if (lblEditable_Travel != null) lblEditable_Travel.Text = "₹ " + e_travel.ToString("N2");
+            if (lblEditable_Stationary != null) lblEditable_Stationary.Text = "₹ " + e_stat.ToString("N2"); // Added
+            if (lblEditable_Expense != null) lblEditable_Expense.Text = "₹ " + e_exp.ToString("N2");
+            if (lblEditable_KM != null) lblEditable_KM.Text = e_km.ToString("N2");
+
+            // --- OTHER ---
+            decimal o_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Other")); decimal o_da = SumMoney("DAAmount", byClaimStatus("Other")); decimal o_hotel = SumMoney("HotelAmount", byClaimStatus("Other")); decimal o_travel = SumMoney("TravelAmount", byClaimStatus("Other")); decimal o_stat = SumMoney("StationaryAmount", byClaimStatus("Other")); decimal o_exp = SumMoney("ExpenseTotal", byClaimStatus("Other")); decimal o_km = SumKM(byClaimStatus("Other"));
+            if (lblOther_TA != null) lblOther_TA.Text = "₹ " + o_ta.ToString("N2");
+            if (lblOther_DA != null) lblOther_DA.Text = "₹ " + o_da.ToString("N2");
+            if (lblOther_Hotel != null) lblOther_Hotel.Text = "₹ " + o_hotel.ToString("N2");
+            if (lblOther_Travel != null) lblOther_Travel.Text = "₹ " + o_travel.ToString("N2");
+            if (lblOther_Stationary != null) lblOther_Stationary.Text = "₹ " + o_stat.ToString("N2"); // Added
             if (lblOther_Expense != null) lblOther_Expense.Text = "₹ " + o_exp.ToString("N2");
             if (lblOther_KM != null) lblOther_KM.Text = o_km.ToString("N2");
         }

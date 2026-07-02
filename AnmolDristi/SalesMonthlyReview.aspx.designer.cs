@@ -148,6 +148,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblDraft_Travel;
         
         /// <summary>
+        /// lblDraft_Stationary control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblDraft_Stationary;
+        
+        /// <summary>
         /// lblDraft_Expense control.
         /// </summary>
         /// <remarks>
@@ -200,6 +209,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSubmitted_Travel;
+        
+        /// <summary>
+        /// lblSubmitted_Stationary control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblSubmitted_Stationary;
         
         /// <summary>
         /// lblSubmitted_Expense control.
@@ -256,6 +274,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblApproved_Travel;
         
         /// <summary>
+        /// lblApproved_Stationary control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblApproved_Stationary;
+        
+        /// <summary>
         /// lblApproved_Expense control.
         /// </summary>
         /// <remarks>
@@ -310,6 +337,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblEditable_Travel;
         
         /// <summary>
+        /// lblEditable_Stationary control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblEditable_Stationary;
+        
+        /// <summary>
         /// lblEditable_Expense control.
         /// </summary>
         /// <remarks>
@@ -362,6 +398,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblOther_Travel;
+        
+        /// <summary>
+        /// lblOther_Stationary control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblOther_Stationary;
         
         /// <summary>
         /// lblOther_Expense control.
@@ -868,6 +913,33 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox TXT_TravelInvoiceNo;
         
         /// <summary>
+        /// TXT_StationaryAmount control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_StationaryAmount;
+        
+        /// <summary>
+        /// TXT_StationaryBillNo control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_StationaryBillNo;
+        
+        /// <summary>
+        /// TXT_StationaryPurpose control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TXT_StationaryPurpose;
+        
+        /// <summary>
         /// divFUContainer control.
         /// </summary>
         /// <remarks>
@@ -938,6 +1010,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblTotalOther;
+        
+        /// <summary>
+        /// lblTotalStationary control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblTotalStationary;
         
         /// <summary>
         /// dvOverall control.

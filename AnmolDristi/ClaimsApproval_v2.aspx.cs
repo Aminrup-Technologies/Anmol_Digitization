@@ -974,7 +974,7 @@ namespace AnmolDristi
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static object GetKMHistory(int activityId)
+        public static object GetKMHistory_OLD(int activityId)
         {
             try
             {
@@ -1036,6 +1036,63 @@ namespace AnmolDristi
                         }
                     }
                 }
+                return new { success = true, fromPlace = fromPlace, toPlace = toPlace, history = historyList };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, message = ex.Message };
+            }
+        }
+
+        [WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static object GetKMHistory(int activityId)
+        {
+            try
+            {
+                string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                // 1. Get Base Activity Info (for the Map)
+                string fromPlace = "";
+                string toPlace = "";
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmdInfo = new SqlCommand("SELECT RouteOriginName, RouteDestinationName FROM dbo.SalesDailyActivity WHERE ActivityId = @Id", con))
+                {
+                    cmdInfo.Parameters.AddWithValue("@Id", activityId);
+                    con.Open();
+                    using (SqlDataReader rdr = cmdInfo.ExecuteReader())
+                    {
+                        if (rdr.Read())
+                        {
+                            fromPlace = rdr["RouteOriginName"] != DBNull.Value ? rdr["RouteOriginName"].ToString() : "";
+                            toPlace = rdr["RouteDestinationName"] != DBNull.Value ? rdr["RouteDestinationName"].ToString() : "";
+                        }
+                    }
+                }
+
+                // 2. Get the History Array
+                var historyList = new List<object>();
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd = new SqlCommand(@"SELECT OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = @ActivityId ORDER BY HistoryId DESC", con))
+                {
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    con.Open();
+                    using (SqlDataReader rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            historyList.Add(new
+                            {
+                                OldKM = rdr["OldKM"],
+                                NewKM = rdr["NewKM"],
+                                ModifiedBy = rdr["ModifiedBy"],
+                                ModifiedDateTimeIST = rdr["ModifiedDateTime"] != DBNull.Value ? Convert.ToDateTime(rdr["ModifiedDateTime"]).ToString("dd-MM-yyyy HH:mm:ss") : "",
+                                Reason = rdr["Reason"]
+                            });
+                        }
+                    }
+                }
+
                 return new { success = true, fromPlace = fromPlace, toPlace = toPlace, history = historyList };
             }
             catch (Exception ex)

@@ -154,39 +154,78 @@
 
         /* Gatekeeper Warning Animations */
         @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.75); }
-            70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.75);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
         }
-        .pulse-warning { animation: pulse-red 2s infinite !important; font-weight: bold !important; border: 2px solid #dc3545 !important; }
+
+        .pulse-warning {
+            animation: pulse-red 2s infinite !important;
+            font-weight: bold !important;
+            border: 2px solid #dc3545 !important;
+        }
 
         /* NEW: Blue Pulse for "Open" Folder */
         @keyframes pulse-blue {
-            0% { box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.75); }
-            70% { box-shadow: 0 0 0 8px rgba(23, 162, 184, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(23, 162, 184, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(23, 162, 184, 0.75);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(23, 162, 184, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(23, 162, 184, 0);
+            }
         }
-        .pulse-info { animation: pulse-blue 2s infinite !important; font-weight: bold !important; border: 1px solid #17a2b8 !important; }
+
+        .pulse-info {
+            animation: pulse-blue 2s infinite !important;
+            font-weight: bold !important;
+            border: 1px solid #17a2b8 !important;
+        }
 
         /* NEW: Green Pulse for "Approve" Checkmark */
         @keyframes pulse-green {
-            0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.75); }
-            70% { box-shadow: 0 0 0 8px rgba(40, 167, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.75);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(40, 167, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+            }
         }
-        .pulse-success { animation: pulse-green 2s infinite !important; font-weight: bold !important; border: 1px solid #28a745 !important; }
+
+        .pulse-success {
+            animation: pulse-green 2s infinite !important;
+            font-weight: bold !important;
+            border: 1px solid #28a745 !important;
+        }
 
         /* =========================================================
            MOBILE & UI BUG FIXES
         ========================================================= */
-        
+
         /* 1. Prevent TextBoxes from squishing into multiple lines */
         #detailsModal .table-responsive input[type="text"] {
             min-width: 140px;
         }
 
         /* 2. Prevent Action Buttons from wrapping awkwardly */
-        #detailsModal .table-responsive td:last-child, 
+        #detailsModal .table-responsive td:last-child,
         #detailsModal .table-responsive td:nth-last-child(2) {
             white-space: nowrap;
             min-width: 90px;
@@ -205,6 +244,7 @@
             gap: 10px;
             width: 100%;
         }
+
         .dashboard-box {
             flex: 1 1 30%; /* Grow to fill space, but min 30% width */
             min-width: 115px;
@@ -218,7 +258,7 @@
                 flex-direction: column;
                 align-items: stretch !important;
             }
-            
+
             /* Center the error messages */
             #lblModalMessage {
                 text-align: center;
@@ -234,42 +274,44 @@
                 gap: 8px;
                 justify-content: center;
             }
-            .modal-action-buttons .btn {
-                margin: 0 !important;
-                flex: 1 1 45%; /* Buttons take half width */
-            }
+
+                .modal-action-buttons .btn {
+                    margin: 0 !important;
+                    flex: 1 1 45%; /* Buttons take half width */
+                }
 
             /* Make the Inner Unified Modal buttons full width */
             #unifiedDayModal .modal-footer {
                 flex-direction: column;
             }
-            #unifiedDayModal .modal-footer .btn {
-                width: 100%;
-                margin-bottom: 8px;
-            }
+
+                #unifiedDayModal .modal-footer .btn {
+                    width: 100%;
+                    margin-bottom: 8px;
+                }
         }
 
         /* =========================================================
            INNER GRID MOBILE SCROLLING FIX
             ========================================================= */
-        
-            /* 1. Force the table to stretch and trigger horizontal scroll */
-            #detailsModal .table-responsive .table th,
-            #detailsModal .table-responsive .table td {
-                white-space: nowrap;
-                vertical-align: middle;
-            }
 
-            /* 2. Give the headers a little breathing room */
-            #detailsModal .table-responsive .table th {
-                padding-left: 12px;
-                padding-right: 12px;
-            }
+        /* 1. Force the table to stretch and trigger horizontal scroll */
+        #detailsModal .table-responsive .table th,
+        #detailsModal .table-responsive .table td {
+            white-space: nowrap;
+            vertical-align: middle;
+        }
 
-            /* 3. Ensure the remarks box doesn't shrink to 0 */
-            #detailsModal .table-responsive input[type="text"] {
-                min-width: 160px; /* Forces enough width to read the text */
-            }
+        /* 2. Give the headers a little breathing room */
+        #detailsModal .table-responsive .table th {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        /* 3. Ensure the remarks box doesn't shrink to 0 */
+        #detailsModal .table-responsive input[type="text"] {
+            min-width: 160px; /* Forces enough width to read the text */
+        }
     </style>
 </asp:Content>
 
@@ -419,37 +461,95 @@
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:TemplateField HeaderText="Distance Travelled(KM)">
+                                            <asp:TemplateField HeaderText="Dist. (KM)">
                                                 <ItemTemplate>
                                                     <span class="km-value font-weight-bold font-md" data-activityid='<%# Eval("ActivityId") %>'>
                                                         <%# Eval("Snapshot_TotalDistanceKM", "{0:N2}") %>
                                                     </span>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
-                                            <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="Total Bike TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="Bike TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
-                                            <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Day Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
-                                            <asp:TemplateField HeaderText="Day Action" ItemStyle-HorizontalAlign="Center" HeaderStyle-Width="8%">
+                                            <asp:BoundField
+                                                DataField="Snapshot_StationaryAmount"
+                                                HeaderText="Stat. (₹)"
+                                                DataFormatString="{0:N2}"
+                                                ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="Snapshot_ExpenseTotal"
+                                                HeaderText="Day Total (₹)"
+                                                DataFormatString="{0:N2}"
+                                                ItemStyle-HorizontalAlign="Right" />
+                                            <asp:TemplateField HeaderText="Review">
+                                                <ItemStyle HorizontalAlign="Center" />
+
                                                 <ItemTemplate>
-                                                    <button type="button" runat="server" id="btnExp" class="btn btn-sm btn-info text-white btn-day-action shadow-sm"
+                                                    <asp:Label ID="lblClaimType" runat="server" CssClass="badge badge-pill badge-info" Text='<%# Eval("ClaimType") %>' />
+                                                    <br />
+                                                    <asp:Label ID="lblReviewMode"
+                                                        runat="server"
+                                                        CssClass='<%#
+                                                            Convert.ToBoolean(Eval("ManualReview"))
+                                                            ? "badge badge-danger"
+                                                            : "badge badge-success" %>'
+                                                        Text='<%#
+                                                            Convert.ToBoolean(Eval("ManualReview"))
+                                                            ? "Manual"
+                                                            : "Bulk" %>' />
+                                                    <asp:LinkButton
+                                                        ID="lnkReview"
+                                                        runat="server"
+                                                        CssClass="btn btn-sm btn-primary btn-day-action"
+                                                        OnClientClick="return false;"
+
                                                         data-activityid='<%# Eval("ActivityId") %>'
                                                         data-detailid='<%# Eval("ApprovalRequestDetailId") %>'
-                                                        data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts & Distance">
-                                                        <i class="fa fa-folder-open"></i>Open
-                                                    </button>
+                                                        data-expenses='<%# Eval("ExpensesJson") %>'
+
+                                                        data-activitydate='<%# Eval("ActivityDate","{0:dd-MMM-yyyy}") %>'
+                                                        data-day='<%# Eval("Day") %>'
+
+                                                        data-claimtype='<%# Eval("ClaimType") %>'
+                                                        data-status='<%# Eval("DetailStatus") %>'
+
+                                                        data-distance='<%# Eval("Snapshot_TotalDistanceKM") %>'
+                                                        data-ta='<%# Eval("Snapshot_CalculatedClaimAmount") %>'
+                                                        data-da='<%# Eval("Snapshot_DAAmount") %>'
+
+                                                        data-hotel='<%# Eval("Snapshot_HotelAmount") %>'
+                                                        data-travel='<%# Eval("Snapshot_TravelAmount") %>'
+                                                        data-stationary='<%# Eval("Snapshot_StationaryAmount") %>'
+
+                                                        data-total='<%# Eval("Snapshot_ExpenseTotal") %>'>
+
+                                                        <i class="fa fa-search"></i>
+                                                    </asp:LinkButton>
+
                                                 </ItemTemplate>
+
                                             </asp:TemplateField>
                                             <asp:TemplateField HeaderText="Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
                                                     <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' TextMode="MultiLine" Rows="2" CssClass="form-control form-control-sm" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
-                                            <asp:TemplateField HeaderText="Local TA Actions" HeaderStyle-Width="5%">
+                                            <asp:TemplateField HeaderText="Approval" HeaderStyle-Width="5%">
                                                 <ItemTemplate>
-                                                    <asp:Button ID="btnApproveRow" runat="server" CssClass="btn btn-sm btn-outline-success" Text="✔" CommandName="ApproveRow" CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
-                                                    <asp:Button ID="btnRejectRow" runat="server" CssClass="btn btn-sm btn-outline-danger" Text="✖" CommandName="RejectRow" CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
+                                                    <asp:Button
+                                                        ID="btnApproveRow"
+                                                        runat="server"
+                                                        CssClass="btn btn-success btn-sm"
+                                                        Text="Approve"
+                                                        CommandName="ApproveRow"
+                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
+                                                    <asp:Button
+                                                        ID="btnRejectRow"
+                                                        runat="server"
+                                                        CssClass="btn btn-danger btn-sm mt-1"
+                                                        Text="Return"
+                                                        CommandName="RejectRow"
+                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
                                         </Columns>
@@ -470,36 +570,45 @@
                             </div>
 
                             <div class="modal-footer bg-light d-flex justify-content-between align-items-end" style="border-top: 2px solid #dee2e6;">
-                                
+
                                 <div class="dashboard-container">
                                     <div class="dashboard-box bg-white border">
                                         <span class="dashboard-label text-muted">Original Claimed</span>
-                                        <h5 class="dashboard-value text-dark mb-0">₹ <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
+                                        <h5 class="dashboard-value text-dark mb-0">₹
+                                            <asp:Label ID="lblSummaryOriginal" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-muted d-block mt-1">
-                                            <i class="fa fa-road"></i> <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" /> KM
+                                            <i class="fa fa-road"></i>
+                                            <asp:Label ID="lblSummaryOriginalKM" runat="server" Text="0.00" />
+                                            KM
                                         </small>
                                     </div>
 
                                     <div class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
                                         <span class="dashboard-label text-danger">Total Deductions <i class="fa fa-info-circle ml-1"></i></span>
-                                        <h5 class="dashboard-value text-danger mb-0">(-) ₹ <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
+                                        <h5 class="dashboard-value text-danger mb-0">(-) ₹
+                                            <asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-danger d-block mt-1">
-                                            <i class="fa fa-road"></i>(-) <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" /> KM
+                                            <i class="fa fa-road"></i>(-)
+                                            <asp:Label ID="lblSummaryDeductedKM" runat="server" Text="0.00" />
+                                            KM
                                         </small>
                                     </div>
 
                                     <div class="dashboard-box bg-success text-white border border-success">
                                         <span class="dashboard-label text-white" style="opacity: 0.9">Net Approved</span>
-                                        <h5 class="dashboard-value text-white mb-0">₹ <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
+                                        <h5 class="dashboard-value text-white mb-0">₹
+                                            <asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
                                         <small class="font-weight-bold text-white d-block mt-1">
-                                            <i class="fa fa-road"></i> <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" /> KM
+                                            <i class="fa fa-road"></i>
+                                            <asp:Label ID="lblSummaryApprovedKM" runat="server" Text="0.00" />
+                                            KM
                                         </small>
                                     </div>
                                 </div>
 
                                 <div style="width: 100%;">
                                     <asp:Label ID="lblModalMessage" runat="server" CssClass="d-block mb-2 font-weight-bold text-right" />
-                                    
+
                                     <div class="modal-action-buttons">
                                         <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0" OnClick="btnRecalculate_Click" OnClientClick="showRecalculateSpinner(this);" ToolTip="Recalculate approved amounts">
                                             <i class="fa fa-refresh"></i> Re-Calculate
@@ -520,34 +629,36 @@
         <input type="hidden" id="km_modal_activityid_outer" />
 
         <div id="unifiedDayModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header bg-dark text-white p-2">
-                        <h6 class="modal-title m-0"><i class="fa fa-calendar-check-o mr-2"></i>Day Details & Actions</h6>
-                        <button type="button" class="close text-white" data-dismiss="modal">×</button>
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-dark text-white p-3 align-items-center">
+                        <h6 class="modal-title m-0 font-weight-bold text-uppercase" style="letter-spacing: 0.5px;">
+                            <i class="fa fa-calendar-check mr-2"></i>Day Details & Actions
+                        </h6>
+                        <button type="button" class="close text-white" data-dismiss="modal" style="opacity: 1;">×</button>
                     </div>
 
-                    <div class="modal-body p-0">
-                        <ul class="nav nav-tabs nav-justified bg-light m-0" id="dayModalTabs" role="tablist">
+                    <div class="modal-body p-0 bg-light">
+                        <ul class="nav nav-tabs nav-justified m-0 bg-white shadow-sm" id="dayModalTabs" role="tablist">
                             <li class="nav-item">
-                                <a class="nav-link active font-weight-bold text-dark py-3" id="receipts-tab" data-toggle="tab" href="#tab-receipts" role="tab">
-                                    <i class="fa fa-receipt text-info"></i>Expense Receipts
+                                <a class="nav-link active font-weight-bold text-dark py-3 border-0" id="receipts-tab" data-toggle="tab" href="#tab-receipts" role="tab">
+                                    <i class="fa fa-receipt text-info mr-2"></i>Expense Receipts
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link font-weight-bold text-dark py-3" id="distance-tab" data-toggle="tab" href="#tab-distance" role="tab">
-                                    <i class="fa fa-map-marker text-danger"></i>Distance (KM) & Map
+                            <li class="nav-item border-left">
+                                <a class="nav-link font-weight-bold text-dark py-3 border-0" id="distance-tab" data-toggle="tab" href="#tab-distance" role="tab">
+                                    <i class="fa fa-map-marker-alt text-danger mr-2"></i>Distance (KM) & Map
                                 </a>
                             </li>
                         </ul>
 
-                        <div class="tab-content p-3">
+                        <div class="tab-content p-4">
+
                             <div class="tab-pane active" id="tab-receipts" role="tabpanel">
                                 <div id="unifiedExpensesBody">
-                                    <div class="text-center py-4 text-muted">
-                                        <i class="fa fa-spinner fa-spin fa-2x"></i>
-                                        <br />
-                                        Loading receipts...
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="fa fa-spinner fa-spin fa-2x mb-3 text-primary"></i>
+                                        <h5>Loading day details...</h5>
                                     </div>
                                 </div>
                             </div>
@@ -555,56 +666,57 @@
                             <div class="tab-pane" id="tab-distance" role="tabpanel">
                                 <input type="hidden" id="km_modal_activityid" />
                                 <input type="hidden" id="km_modal_detailid" />
-                                <div class="alert alert-info border mb-3 py-2">
+
+                                <div class="alert alert-info border-info mb-4 shadow-sm">
                                     <div class="row align-items-center">
-                                        <div class="col-md-4"><strong>From:</strong> <span id="km_modal_fromplace" class="text-dark"></span></div>
-                                        <div class="col-md-4"><strong>To:</strong> <span id="km_modal_toplace" class="text-dark"></span></div>
-                                        <div class="col-md-4 text-right">
-                                            <a href="#" id="km_modal_maplink" target="_blank" class="btn btn-sm btn-primary shadow-sm" style="display: none;">
-                                                <i class="fa fa-map"></i>View on Map
+                                        <div class="col-md-5"><strong><i class="fa fa-play-circle text-success mr-1"></i>From:</strong> <span id="km_modal_fromplace" class="text-dark ml-1"></span></div>
+                                        <div class="col-md-5"><strong><i class="fa fa-stop-circle text-danger mr-1"></i>To:</strong> <span id="km_modal_toplace" class="text-dark ml-1"></span></div>
+                                        <div class="col-md-2 text-right">
+                                            <a href="#" id="km_modal_maplink" target="_blank" class="btn btn-sm btn-primary shadow-sm w-100" style="display: none;">
+                                                <i class="fa fa-map-marked-alt mr-1"></i>Map
                                             </a>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="row" id="divKmControls">
+                                <div class="row align-items-end mb-4" id="divKmControls">
                                     <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label class="font-weight-bold text-muted small mb-1">Current KM</label>
-                                            <input type="text" id="km_modal_current" class="form-control form-control-sm bg-light font-weight-bold" readonly />
+                                        <div class="form-group mb-0">
+                                            <label class="font-weight-bold text-muted small mb-1 text-uppercase">Current KM</label>
+                                            <input type="text" id="km_modal_current" class="form-control bg-white font-weight-bold text-center" readonly />
                                         </div>
                                     </div>
                                     <div class="col-md-3">
-                                        <div class="form-group">
-                                            <label class="font-weight-bold text-primary small mb-1">New KM</label>
-                                            <input type="number" step="0.01" id="km_modal_new" class="form-control form-control-sm border-primary" />
+                                        <div class="form-group mb-0">
+                                            <label class="font-weight-bold text-primary small mb-1 text-uppercase">Modify KM To</label>
+                                            <input type="number" step="0.01" id="km_modal_new" class="form-control border-primary text-center font-weight-bold" />
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label class="font-weight-bold text-muted small mb-1">Reason for change</label>
-                                            <div class="input-group input-group-sm">
+                                        <div class="form-group mb-0">
+                                            <label class="font-weight-bold text-muted small mb-1 text-uppercase">Reason for change</label>
+                                            <div class="input-group">
                                                 <input type="text" id="km_modal_reason" class="form-control" placeholder="Required if changing KM..." />
                                                 <div class="input-group-append">
-                                                    <button type="button" id="km_modal_save" class="btn btn-success" onclick="saveKM()"><i class="fa fa-save"></i>Save</button>
+                                                    <button type="button" id="km_modal_save" class="btn btn-primary shadow-sm" onclick="saveKM()"><i class="fa fa-save mr-1"></i>Save</button>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div id="km_modal_message" class="mb-2"></div>
+                                <div id="km_modal_message" class="mb-3"></div>
 
-                                <h6 class="text-secondary border-bottom pb-1 mt-3"><i class="fa fa-history"></i>Modification History</h6>
-                                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
-                                    <table class="table table-striped table-sm border" id="km_history_tbl">
-                                        <thead class="thead-light">
+                                <h6 class="text-secondary border-bottom pb-2 mt-4 font-weight-bold text-uppercase" style="font-size: 0.85rem;"><i class="fa fa-history mr-2"></i>Modification History</h6>
+                                <div class="table-responsive bg-white shadow-sm border rounded" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-striped table-hover table-sm mb-0" id="km_history_tbl">
+                                        <thead class="thead-light" style="position: sticky; top: 0; z-index: 10;">
                                             <tr>
-                                                <th>Date (IST)</th>
-                                                <th>Old KM</th>
-                                                <th>New KM</th>
-                                                <th>Changed By</th>
-                                                <th>Reason</th>
+                                                <th class="border-top-0">Date (IST)</th>
+                                                <th class="border-top-0 text-right">Old KM</th>
+                                                <th class="border-top-0 text-right">New KM</th>
+                                                <th class="border-top-0">Changed By</th>
+                                                <th class="border-top-0">Reason</th>
                                             </tr>
                                         </thead>
                                         <tbody></tbody>
@@ -614,11 +726,15 @@
                         </div>
                     </div>
 
-                    <div class="modal-footer bg-light d-flex justify-content-between">
-                        <div id="unified_modal_message" class="font-weight-bold"></div>
-                        <div>
-                            <button type="button" id="btnUnifiedApproveDay" class="btn btn-success" onclick="actionDayFromModal('APPROVE')">✔ Approve Entire Day</button>
-                            <button type="button" id="btnUnifiedRejectDay" class="btn btn-danger" onclick="actionDayFromModal('REJECT')">✖ Reject Entire Day</button>
+                    <div class="modal-footer bg-white border-top p-3 d-flex justify-content-between align-items-center">
+                        <div id="unified_modal_message" class="font-weight-bold small text-uppercase"></div>
+                        <div class="btn-group shadow-sm">
+                            <button type="button" id="btnCloseUnifiedModal"
+                                    class="btn btn-light border text-dark">
+                                Close
+                            </button>
+                            <button type="button" id="btnUnifiedRejectDay" class="btn btn-outline-danger" onclick="actionDayFromModal('REJECT')"><i class="fa fa-times mr-1"></i>Return Day</button>
+                            <button type="button" id="btnUnifiedApproveDay" class="btn btn-success" onclick="actionDayFromModal('APPROVE')"><i class="fa fa-check mr-1"></i>Approve Remaining</button>
                         </div>
                     </div>
 
@@ -663,14 +779,14 @@
     </div>
 
     <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>    
+    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.3/js/responsive.bootstrap4.min.js"></script>
     <script type="text/javascript">
         // Global variables
         var _refreshNeeded = false;
         var _currentUserLevel = <%= ViewState["CurrentUserLevel"] ?? 0 %>;
-
+        var reopenDetailsModal = false;
         function selectAllRows(chk) {
             $('.row-select-checkbox input').prop('checked', chk.checked);
         }
@@ -681,21 +797,46 @@
         $(document).on('click', '.btn-day-action', function(e) {
             e.preventDefault();
             var $row = $(this).closest('tr');
-            
-            // Extract Data safely
+    
+            // 1. Extract base data from grid
             var actId = $(this).data('activityid');
             var detailId = $(this).data('detailid'); 
             var currentKm = $row.find('.km-value').text().trim();
             var expensesJson = $(this).attr('data-expenses');
-            
+    
+            // 2. Extract Data for Phase 6 Summary Header
+            var details = {
+                ActivityDate: $(this).data('activitydate'),
+                Day: $(this).data('day'),
+                ClaimType: $(this).data('claimtype'),
+                ClaimStatus: $(this).data('status'),
+                StatusClass:
+                    ($(this).data('status') === 'Approved')
+                        ? 'success'
+                        : ($(this).data('status') === 'Rejected')
+                            ? 'danger'
+                            : 'warning',
+
+                TotalDistanceKM: $(this).data('distance'),
+                TotalTA: $(this).data('ta'),
+                TotalDA: $(this).data('da'),
+                Hotel: $(this).data('hotel'),
+                Travel: $(this).data('travel'),
+                Stationary: $(this).data('stationary'),
+                GrandTotal: $(this).data('total')
+            };
+    
             // CHECK LOCK STATE: Is this parent day already "✔ Done"?
-            // ASP.NET renders buttons as input type="submit", so we check .val()
             var $btnApproveRow = $row.find('input[id*="btnApproveRow"]');
             var isRowLocked = $btnApproveRow.length > 0 && $btnApproveRow.val().indexOf('Done') !== -1;
-            
+    
             // Set UI Controls based on user level AND row lock state
             var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
-            if ((activeLevel === 1 || activeLevel === 2) && !isRowLocked) {
+    
+            // FIX: Define canAction explicitly here
+            var canAction = (activeLevel === 1 || activeLevel === 2) && !isRowLocked; 
+
+            if (canAction) {
                 $('#divKmControls').show();
                 $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').show(); // Show Footer Actions
             } else {
@@ -711,20 +852,24 @@
             $('#km_modal_reason').val('');
             $('#km_modal_message').empty();
             $('#unified_modal_message').empty();
-            
+    
             loadKmHistory(actId);
-            
-            // Setup Receipts Tab (Pass the lock state!)
-            if (expensesJson && expensesJson.trim() !== "[]") {
-                var data = JSON.parse(expensesJson);
-                renderExpenses(data, isRowLocked);
-            } else {
-                $('#unifiedExpensesBody').html('<div class="alert alert-warning text-center mt-3"><i class="fa fa-folder-open-o fa-2x d-block mb-2"></i> No receipts attached for this day.</div>');
-                $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
-            }
-            
+    
+            // Setup Receipts Tab Using the Refactored Moduler Builder (canAction is now defined)
+            renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction);
+    
             // Show Modal
             $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
+            // We came from Details Modal
+            reopenDetailsModal = true;
+
+            // Hide parent modal
+            $('#detailsModal').modal('hide');
+
+            // Always open Receipts tab first
+            $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
+
+            // Open Unified Modal
             $('#unifiedDayModal').modal('show');
         });
 
@@ -791,6 +936,208 @@
             } else {
                 $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
             }
+        }
+
+        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction) {
+            let html = '';
+
+            // 1. Render Top Summaries
+            html += renderActivityAndTADASummary(details);
+
+            // 2. Parse the Line Items
+            let expenses = [];
+            try {
+                if (expensesJson && expensesJson.trim() !== '' && expensesJson.trim() !== '[]') {
+                    expenses = JSON.parse(expensesJson);
+                }
+            } catch (e) {
+                console.error("Error parsing expenses JSON:", e);
+            }
+
+            // 3. Render Individual Expense Cards
+            if (expenses.length > 0) {
+                html += '<h6 class="mt-4 mb-3 text-secondary font-weight-bold text-uppercase" style="font-size: 0.85rem;"><i class="fa fa-receipt mr-2"></i>Claimed Line Items</h6>';
+                html += '<div class="row">';
+        
+                let hasPending = false;
+
+                expenses.forEach(exp => {
+                    let type = (exp.ExpenseType || '').toUpperCase();
+            
+                    // Check for Gatekeeper
+                    if(exp.ClaimStatus !== 'Approved' && exp.ClaimStatus !== 'Rejected') {
+                        hasPending = true;
+                    }
+
+                    if (type === 'HOTEL') {
+                        html += renderExpenseCard('Hotel', 'fa-bed', 'bg-info', exp, canAction);
+                    } 
+                    else if (type === 'TRAVEL') {
+                        html += renderExpenseCard('Travel', 'fa-bus', 'bg-primary', exp, canAction);
+                    } 
+                    else if (type === 'STATIONARY') {
+                        html += renderExpenseCard('Stationary', 'fa-paperclip', 'bg-warning text-dark', exp, canAction);
+                    }
+                    else if (type === 'DA') {
+                        // Usually DA doesn't have an attachment, but we can render it if required by your flow
+                        html += renderExpenseCard('DA Entry', 'fa-utensils', 'bg-secondary', exp, canAction);
+                    }
+                });
+        
+                html += '</div>';
+
+                // THE GATEKEEPER: Lock/Unlock the "Approve Remaining" button
+                if (hasPending && !isRowLocked) {
+                    $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'You must approve or reject all individual line items above first.');
+                } else {
+                    $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
+                }
+
+            } else {
+                html += `
+        <div class="alert alert-light border mt-4 text-center text-muted shadow-sm py-4">
+            <i class="fa fa-folder-open fa-3x mb-3 d-block text-secondary opacity-50"></i>
+            <h6 class="mb-0">No additional line items (Hotel, Travel, Stationary) claimed for this day.</h6>
+        </div>`;
+                $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
+            }
+
+            // Inject into the DOM
+            $('#unifiedExpensesBody').html(html);
+        }
+
+
+        function renderActivityAndTADASummary(details) {
+            return `
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card summary-card border-left-primary h-100 bg-white shadow-sm border-0">
+                <div class="card-body p-3">
+                    <h6 class="text-primary text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
+                        <i class="fa fa-calendar-day mr-1"></i> Activity Summary
+                    </h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small font-weight-bold text-uppercase">Date:</span>
+                        <strong class="text-dark">${details.ActivityDate} <span class="text-muted font-weight-normal">(${details.Day})</span></strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small font-weight-bold text-uppercase">Claim Type:</span>
+                        <span class="badge badge-light border text-dark p-1">${details.ClaimType || 'Standard'}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small font-weight-bold text-uppercase">Status:</span>
+                        <span class="badge badge-${details.StatusClass} p-1 px-2">${details.ClaimStatus}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card summary-card border-left-success h-100 bg-white shadow-sm border-0">
+                <div class="card-body p-3">
+                    <h6 class="text-success text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
+                        <i class="fa fa-car mr-1"></i> TA / DA Summary
+                    </h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small font-weight-bold text-uppercase">Verified Distance:</span>
+                        <strong class="text-dark">${details.TotalDistanceKM}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted small font-weight-bold text-uppercase">Travel Allowance (TA):</span>
+                        <strong class="text-dark">₹ ${parseFloat(details.TotalTA).toFixed(2)}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted small font-weight-bold text-uppercase">Daily Allowance (DA):</span>
+                        <strong class="text-dark">₹ ${parseFloat(details.TotalDA).toFixed(2)}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+        }
+
+
+        function renderExpenseCard(title, iconClass, headerColorClass, exp, canAction) {
+            let amount = parseFloat(exp.Amount || 0).toFixed(2);
+            let billNo = exp.BillNo || 'N/A';
+            let remarks = exp.Purpose || '<em class="text-muted">No remarks provided.</em>';
+            let status = exp.ClaimStatus || 'Pending'; // Adjusted to match your DB column
+    
+            // File Attachment Logic
+            let attachmentHtml = '';
+            if (exp.AttachmentPath && exp.AttachmentPath.trim() !== '') {
+                let safePath = exp.AttachmentPath.replace(/\\/g, '/');
+                attachmentHtml = `
+            <a href="${safePath}" target="_blank" class="btn btn-sm btn-light border text-primary font-weight-bold" style="font-size: 0.75rem;">
+                <i class="fa fa-paperclip mr-1"></i> View Receipt
+            </a>`;
+            } else {
+                attachmentHtml = `<span class="text-muted" style="font-size: 0.75rem;"><i class="fa fa-exclamation-circle mr-1"></i> No Receipt attached</span>`;
+            }
+
+            // Status Badge & Action Buttons
+            let actionButtons = '';
+            let statusBadgeColor = 'warning text-dark';
+
+            if (canAction) {
+                if(status === 'Approved') {
+                    statusBadgeColor = 'success';
+                    actionButtons = `
+                <div class="w-100 d-flex align-items-center justify-content-between">
+                    <span class="badge badge-success px-2 py-1"><i class="fa fa-check mr-1"></i>Approved</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)" title="Change to Reject"><i class="fa fa-times"></i></button>
+                </div>`;
+                } else if(status === 'Rejected') {
+                    statusBadgeColor = 'danger';
+                    actionButtons = `
+                <div class="w-100 d-flex align-items-center justify-content-between">
+                    <span class="badge badge-danger px-2 py-1"><i class="fa fa-times mr-1"></i>Rejected</span>
+                    <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Approved', this)" title="Change to Approve"><i class="fa fa-check"></i></button>
+                </div>`;
+                } else {
+                    // Pending State
+                    statusBadgeColor = 'warning text-dark';
+                    actionButtons = `
+                <div class="d-flex w-100">
+                    <button type="button" class="btn btn-sm btn-success flex-fill mr-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Approved', this)"><i class="fa fa-check mr-1"></i>Approve</button>
+                    <button type="button" class="btn btn-sm btn-danger flex-fill ml-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)"><i class="fa fa-times mr-1"></i>Reject</button>
+                </div>`;
+                }
+            } else {
+                // READ ONLY (Row is locked or user has no rights)
+                statusBadgeColor = status === 'Approved' ? 'success' : (status === 'Rejected' ? 'danger' : 'warning text-dark');
+                actionButtons = `<div class="text-center w-100"><span class="badge badge-${statusBadgeColor} p-2 w-100" style="font-size: 0.8rem;">${status}</span></div>`;
+            }
+
+            return `
+            <div class="col-md-6 col-xl-4 mb-3">
+                <div class="card expense-card h-100 border-0 shadow-sm" style="border-radius: 8px;">
+                    <div class="card-header ${headerColorClass} d-flex justify-content-between align-items-center border-0" style="border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                        <span class="font-weight-bold"><i class="fa ${iconClass} mr-2"></i>${title}</span>
+                        <span class="badge badge-light text-dark shadow-sm" style="font-size: 0.85rem;">₹ ${amount}</span>
+                    </div>
+            
+                    <div class="card-body p-3 bg-white d-flex flex-column" style="font-size: 0.85rem;">
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Bill No:</span>
+                            <strong class="text-dark">${billNo}</strong>
+                        </div>
+                
+                        <div class="mb-3 flex-grow-1">
+                            <span class="text-muted font-weight-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Remarks:</span>
+                            <span class="text-dark text-truncate-2" title="${exp.Purpose || ''}">${remarks}</span>
+                        </div>
+                
+                        <div class="text-center pt-2 border-top mt-auto">
+                            ${attachmentHtml}
+                        </div>
+                    </div>
+            
+                    <div class="card-footer bg-light p-2 border-top d-flex align-items-center" style="border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; min-height: 48px;">
+                        ${actionButtons}
+                    </div>
+                </div>
+            </div>`;
         }
 
         // =========================================================
@@ -1120,6 +1467,18 @@
 
         $(document).ready(function () {
             initDataTablesSafe();
+            $('#btnCloseUnifiedModal').on('click', function () {
+
+                $('#unifiedDayModal').modal('hide');
+
+            });
+
+            $('#unifiedDayModal').on('hidden.bs.modal', function () {
+                if (reopenDetailsModal) {
+                    reopenDetailsModal = false;
+                    $('#detailsModal').modal('show');
+                }
+            });
         });
     </script>
 </asp:Content>

@@ -425,7 +425,7 @@ namespace AnmolDristi
         {
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                string q = "SELECT RecipientEmail, RecipientName, Subject, Body, Status, CreatedOn, SentOn FROM NotificationQueue WHERE FormSubmissionId = @LogId ORDER BY CreatedOn DESC";
+                string q = "SELECT RecipientEmail, RecipientName, Subject, Body, Status, CreatedOn, SentOn FROM NotificationQueue WHERE FormSubmissionId = @LogId and SourceModule like '%VMS_%' ORDER BY CreatedOn DESC";
                 using (SqlDataAdapter sda = new SqlDataAdapter(q, con))
                 {
                     sda.SelectCommand.Parameters.AddWithValue("@LogId", logId);
@@ -517,20 +517,78 @@ namespace AnmolDristi
             }
         }
 
+        // ==========================================
+        // TAB 2: ON-BEHALF LOGIC (DYNAMIC VALIDITY & APPROVED ON)
+        // ==========================================
         private void ApproveOnBehalf(int logId, string visEmail, string visName, string hostEmail, string hostName, string remarks, DateTime schedDate)
         {
             Guid qrToken = Guid.NewGuid();
-            DateTime newValidUpto = schedDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
+            DateTime validFrom = schedDate;
+            DateTime validUpto = schedDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 con.Open();
-                string updateQuery = @"UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', ValidFrom = @VisitDate, ValidUpto = @ValidUpto, QRToken = @Token, ApprovedOn = GETDATE(), ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + ' | ' + @Remarks, 250) WHERE LogID = @LogID";
+
+                // 1. Fetch the TargetBranchID for this specific Visit Log
+                int branchId = 0;
+                string branchQuery = "SELECT TargetBranchID FROM VMS_VisitLog WHERE LogID = @LogID";
+                using (SqlCommand cmdBranch = new SqlCommand(branchQuery, con))
+                {
+                    cmdBranch.Parameters.AddWithValue("@LogID", logId);
+                    object result = cmdBranch.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        branchId = Convert.ToInt32(result);
+                    }
+                }
+
+                // 2. Dynamic Validity Calculation (Office Closure Check)
+                if (branchId > 0)
+                {
+                    string dayOfWeek = schedDate.DayOfWeek.ToString();
+
+                    // FIX: Querying correct Branch_ID column
+                    string timingQuery = "SELECT CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchId AND DayOfWeek = @Day";
+                    using (SqlCommand cmdTiming = new SqlCommand(timingQuery, con))
+                    {
+                        cmdTiming.Parameters.AddWithValue("@BranchId", branchId);
+                        cmdTiming.Parameters.AddWithValue("@Day", dayOfWeek);
+                        object closeTimeObj = cmdTiming.ExecuteScalar();
+
+                        if (closeTimeObj != null && closeTimeObj != DBNull.Value)
+                        {
+                            TimeSpan closeTimeSpan;
+                            if (TimeSpan.TryParse(closeTimeObj.ToString(), out closeTimeSpan))
+                            {
+                                DateTime closureTime = schedDate.Date.Add(closeTimeSpan);
+
+                                if (schedDate <= closureTime.AddHours(-3))
+                                {
+                                    validUpto = closureTime;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                string updateQuery = @"
+                UPDATE VMS_VisitLog 
+                SET ApprovalStatus = 'Approved', 
+                    VisitStatus = 'Scheduled', 
+                    ValidFrom = @ValidFrom, 
+                    ValidUpto = @ValidUpto, 
+                    QRToken = @Token, 
+                    ApprovedOn = @ApprovedOn, 
+                    ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + ' | ' + @Remarks, 250) 
+                WHERE LogID = @LogID";
+
                 using (SqlCommand cmd = new SqlCommand(updateQuery, con))
                 {
-                    cmd.Parameters.AddWithValue("@VisitDate", schedDate);
-                    cmd.Parameters.AddWithValue("@ValidUpto", newValidUpto);
+                    cmd.Parameters.AddWithValue("@ValidFrom", validFrom);
+                    cmd.Parameters.AddWithValue("@ValidUpto", validUpto);
                     cmd.Parameters.AddWithValue("@Token", qrToken);
+                    cmd.Parameters.AddWithValue("@ApprovedOn", schedDate);
                     cmd.Parameters.AddWithValue("@Remarks", remarks);
                     cmd.Parameters.AddWithValue("@LogID", logId);
                     cmd.ExecuteNonQuery();
@@ -549,7 +607,7 @@ namespace AnmolDristi
                 }
             }
             lblMessage.ForeColor = System.Drawing.Color.Green;
-            lblMessage.Text = $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf.";
+            lblMessage.Text = $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf (Valid Upto: {validUpto:dd-MMM HH:mm}).";
         }
 
         private void QueueEmail(SqlConnection con, int logId, string email, string name, string subject, string body, string module)
