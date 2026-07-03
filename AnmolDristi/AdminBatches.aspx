@@ -110,7 +110,7 @@
                                             <div class="form-group row">
                                                 <label class="col-md-4 control-label">Rate Per Km</label>
                                                 <div class="col-md-4">
-                                                    <asp:TextBox ID="txtRatePerKm" runat="server" CssClass="form-control form-control-sm" Text="2.75" />
+                                                    <asp:TextBox ID="txtRatePerKm" runat="server" CssClass="form-control form-control-sm" Text="3.75" />
                                                 </div>
                                             </div>
 

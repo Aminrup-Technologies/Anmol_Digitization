@@ -162,7 +162,7 @@ namespace AnmolDristi
             decimal ratePerKm;
             if (!decimal.TryParse(txtRatePerKm.Text, out ratePerKm))
             {
-                ratePerKm = 2.75M; // Fallback default
+                ratePerKm = 3.75M; // Fallback default
             }
 
             string sessionUserName = Session["USERNAME"] != null ? Session["USERNAME"].ToString() : null;
@@ -266,7 +266,7 @@ namespace AnmolDristi
             decimal ratePerKm;
             if (!decimal.TryParse(txtRatePerKm.Text, out ratePerKm))
             {
-                ratePerKm = 2.75M; // Fallback default
+                ratePerKm = 3.75M; // Fallback default
             }
 
             // Null-safe check without the C# 6.0 ?. operator

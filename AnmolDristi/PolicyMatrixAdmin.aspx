@@ -153,7 +153,7 @@
                                         <div style="margin-top: 10px;">
                                             <label>Policy JSON</label>
                                             <asp:TextBox ID="txtPolicyJson" runat="server" TextMode="MultiLine" CssClass="form-control form-control-sm" Rows="6"></asp:TextBox>
-                                            <small class="text-muted">Example: {"MaxKM":100,"RatePerKm":2.75,"DA":100}</small>
+                                            <small class="text-muted">Example: {"MaxKM":100,"RatePerKm":3.75,"DA":225}</small>
                                         </div>
                                     </div>
                                     <div class="modal-footer">

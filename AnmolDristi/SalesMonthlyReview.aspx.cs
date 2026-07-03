@@ -143,7 +143,7 @@ namespace AnmolDristi
                     if (!dt.Columns.Contains("RatePerKm")) dt.Columns.Add("RatePerKm", typeof(decimal));
                     if (!dt.Columns.Contains("StationaryAmount")) dt.Columns.Add("StationaryAmount", typeof(decimal));
 
-                    decimal defaultRate = 2.75m;
+                    decimal defaultRate = 3.75m;
                     var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
                     decimal tmpCfg;
                     if (!string.IsNullOrWhiteSpace(cfg) && decimal.TryParse(cfg, out tmpCfg))
@@ -1378,7 +1378,7 @@ namespace AnmolDristi
                     if (found != null)
                     {
                         if (dt.Columns.Contains("TotalDistanceKM")) found["TotalDistanceKM"] = newKm;
-                        decimal rate = 2.75m;
+                        decimal rate = 3.75m;
                         decimal parsedRate = 0m;
                         if (dt.Columns.Contains("RatePerKm") && found["RatePerKm"] != DBNull.Value && decimal.TryParse(found["RatePerKm"].ToString(), out parsedRate)) rate = parsedRate;
                         decimal calc = Math.Round(rate * newKm, 2, MidpointRounding.AwayFromZero);
@@ -3080,7 +3080,7 @@ What: Added file attachment validation block in BTN_SaveExpense_Click.
             if (sessionDt == null) { errors.Add("Session data missing. Please refresh the page."); return tvp; }
 
             CultureInfo ci = CultureInfo.GetCultureInfo("en-IN");
-            decimal defaultRate = 2.75m;
+            decimal defaultRate = 3.75m;
             var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
             decimal tmpCfg;
             if (!string.IsNullOrWhiteSpace(cfg) && decimal.TryParse(cfg, out tmpCfg)) defaultRate = tmpCfg;

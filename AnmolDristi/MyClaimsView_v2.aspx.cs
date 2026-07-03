@@ -519,7 +519,7 @@ namespace AnmolDristi
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
                     WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = 'Rejected' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> 'Rejected'
                     UNION ALL
-                    SELECT CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 2.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
+                    SELECT CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
                            (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN (
@@ -721,7 +721,7 @@ namespace AnmolDristi
                             CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                             'KM Reduced (' + CAST(fk.ClaimedKM AS varchar) + ' to ' + CAST(d.Snapshot_TotalDistanceKM AS varchar) + ')' AS DeductionType,
                             ISNULL((SELECT TOP 1 Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = a.ActivityId ORDER BY ModifiedDateTime DESC), 'KM corrected') AS Reason,
-                            CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 2.75, 2) AS DECIMAL(18,2)) AS DeductedAmount
+                            CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount
                         FROM dbo.SalesApprovalRequestDetail d
                         INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                         INNER JOIN (

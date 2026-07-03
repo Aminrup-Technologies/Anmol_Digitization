@@ -1720,13 +1720,17 @@
             if (sn) sn.innerHTML = '';
 
             var existingDA = false;
+            var existingStationary = false;
             var totalExpenses = 0;
 
             $('#expenseModal .table-responsive table tbody tr').each(function () {
                 var tp = $(this).find('.expense-type-badge').text().trim();
                 if (tp) {
                     totalExpenses++;
-                    if (tp === 'DA') existingDA = true;
+                    if (tp === 'DA')
+                        existingDA = true;
+                    if (tp === 'Stationary')
+                        existingStationary = true;
                 }
             });
 
@@ -1746,18 +1750,50 @@
                 var lockWarningHtml = totalExpenses > 0 ? '<br/><span class="text-danger mt-1 d-block"><i class="fa fa-lock"></i> Policy Mode is locked. Delete existing claims to change mode.</span>' : '';
 
                 if (mode === 'HQ') {
-                    if (existingDA) {
-                        allowed = [];
-                        $ddl.find('option').prop('disabled', true).css('color', '#ccc');
-                        $ddl.val('');
-                        if (sn) sn.innerHTML = 'HQ: DA already claimed. No further expenses allowed.' + lockWarningHtml;
-                    } else {
-                        allowed = ['DA', 'Stationary'];
-                        $ddl.find('option[value="Hotel"], option[value="Travel"]').prop('disabled', true).css('color', '#ccc');
-                        if ($ddl.val() !== 'DA' && $ddl.val() !== 'Stationary') $ddl.val('DA').trigger('change');
-                        if (sn) sn.innerHTML = 'HQ: Only standard DA claims and Stationary are allowed.' + lockWarningHtml;
-                        if ($txtDA.length) $txtDA.val($resolve('HF_ResolvedDA').val() || '');
+
+                    allowed = [];
+
+                    if (!existingDA)
+                        allowed.push('DA');
+
+                    if (!existingStationary)
+                        allowed.push('Stationary');
+
+                    // Disable everything first
+                    $ddl.find('option')
+                        .prop('disabled', true)
+                        .css('color', '#ccc');
+
+                    // Enable only allowed options
+                    allowed.forEach(function (item) {
+                        $ddl.find('option[value="' + item + '"]')
+                            .prop('disabled', false)
+                            .css('color', '#000');
+                    });
+
+                    if (allowed.length > 0) {
+
+                        if (allowed.indexOf($ddl.val()) < 0) {
+                            $ddl.val(allowed[0]).trigger('change');
+                        }
+
+                        if (sn)
+                            sn.innerHTML =
+                                'HQ: Only standard DA claims and Stationary are allowed.' +
+                                lockWarningHtml;
                     }
+                    else {
+
+                        $ddl.val('');
+
+                        if (sn)
+                            sn.innerHTML =
+                                'HQ: All eligible expenses have already been claimed.' +
+                                lockWarningHtml;
+                    }
+
+                    if ($txtDA.length)
+                        $txtDA.val($resolve('HF_ResolvedDA').val() || '');
                 } else if (mode === 'Ex-HQ') {
                     if (existingDA) {
                         allowed = ['Travel', 'Stationary'];
@@ -2306,6 +2342,7 @@
 
         function restoreRouteDataToDAFields(activityId) {
             if (!window.routeCache) return;
+
             if (!window.routeCache[activityId]) return;
 
             var route = window.routeCache[activityId];

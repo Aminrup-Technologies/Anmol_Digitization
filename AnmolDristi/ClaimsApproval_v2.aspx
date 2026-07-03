@@ -502,25 +502,19 @@
                                                         runat="server"
                                                         CssClass="btn btn-sm btn-primary btn-day-action"
                                                         OnClientClick="return false;"
-
                                                         data-activityid='<%# Eval("ActivityId") %>'
                                                         data-detailid='<%# Eval("ApprovalRequestDetailId") %>'
                                                         data-expenses='<%# Eval("ExpensesJson") %>'
-
                                                         data-activitydate='<%# Eval("ActivityDate","{0:dd-MMM-yyyy}") %>'
                                                         data-day='<%# Eval("Day") %>'
-
                                                         data-claimtype='<%# Eval("ClaimType") %>'
                                                         data-status='<%# Eval("DetailStatus") %>'
-
                                                         data-distance='<%# Eval("Snapshot_TotalDistanceKM") %>'
                                                         data-ta='<%# Eval("Snapshot_CalculatedClaimAmount") %>'
                                                         data-da='<%# Eval("Snapshot_DAAmount") %>'
-
                                                         data-hotel='<%# Eval("Snapshot_HotelAmount") %>'
                                                         data-travel='<%# Eval("Snapshot_TravelAmount") %>'
                                                         data-stationary='<%# Eval("Snapshot_StationaryAmount") %>'
-
                                                         data-total='<%# Eval("Snapshot_ExpenseTotal") %>'>
 
                                                         <i class="fa fa-search"></i>
@@ -730,7 +724,7 @@
                         <div id="unified_modal_message" class="font-weight-bold small text-uppercase"></div>
                         <div class="btn-group shadow-sm">
                             <button type="button" id="btnCloseUnifiedModal"
-                                    class="btn btn-light border text-dark">
+                                class="btn btn-light border text-dark">
                                 Close
                             </button>
                             <button type="button" id="btnUnifiedRejectDay" class="btn btn-outline-danger" onclick="actionDayFromModal('REJECT')"><i class="fa fa-times mr-1"></i>Return Day</button>
@@ -786,7 +780,7 @@
         // Global variables
         var _refreshNeeded = false;
         var _currentUserLevel = <%= ViewState["CurrentUserLevel"] ?? 0 %>;
-        var reopenDetailsModal = false;
+
         function selectAllRows(chk) {
             $('.row-select-checkbox input').prop('checked', chk.checked);
         }
@@ -797,43 +791,33 @@
         $(document).on('click', '.btn-day-action', function(e) {
             e.preventDefault();
             var $row = $(this).closest('tr');
-    
+
             // 1. Extract base data from grid
             var actId = $(this).data('activityid');
             var detailId = $(this).data('detailid'); 
             var currentKm = $row.find('.km-value').text().trim();
             var expensesJson = $(this).attr('data-expenses');
-    
+
             // 2. Extract Data for Phase 6 Summary Header
             var details = {
-                ActivityDate: $(this).data('activitydate'),
-                Day: $(this).data('day'),
-                ClaimType: $(this).data('claimtype'),
-                ClaimStatus: $(this).data('status'),
-                StatusClass:
-                    ($(this).data('status') === 'Approved')
-                        ? 'success'
-                        : ($(this).data('status') === 'Rejected')
-                            ? 'danger'
-                            : 'warning',
-
-                TotalDistanceKM: $(this).data('distance'),
-                TotalTA: $(this).data('ta'),
-                TotalDA: $(this).data('da'),
-                Hotel: $(this).data('hotel'),
-                Travel: $(this).data('travel'),
-                Stationary: $(this).data('stationary'),
-                GrandTotal: $(this).data('total')
+                ActivityDate: $row.find('td:nth-child(2)').text().trim(),
+                Day: $row.find('td:nth-child(2) small').text().trim(),
+                ClaimType: $row.find('.claim-type-badge').text().trim(),
+                ClaimStatus: $row.find('.status-badge').text().trim(),
+                StatusClass: $row.find('.status-badge').hasClass('badge-success') ? 'success' : ($row.find('.status-badge').hasClass('badge-danger') ? 'danger' : 'warning'),
+                TotalDistanceKM: currentKm,
+                TotalTA: $row.find('td:nth-child(3)').text().replace(/[^0-9.]/g, ''),
+                TotalDA: $row.find('td:nth-child(4)').text().replace(/[^0-9.]/g, '')
             };
-    
+
             // CHECK LOCK STATE: Is this parent day already "✔ Done"?
             var $btnApproveRow = $row.find('input[id*="btnApproveRow"]');
             var isRowLocked = $btnApproveRow.length > 0 && $btnApproveRow.val().indexOf('Done') !== -1;
-    
+
             // Set UI Controls based on user level AND row lock state
             var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
-    
-            // FIX: Define canAction explicitly here
+        
+            // Define canAction scope
             var canAction = (activeLevel === 1 || activeLevel === 2) && !isRowLocked; 
 
             if (canAction) {
@@ -852,99 +836,27 @@
             $('#km_modal_reason').val('');
             $('#km_modal_message').empty();
             $('#unified_modal_message').empty();
-    
+
             loadKmHistory(actId);
-    
-            // Setup Receipts Tab Using the Refactored Moduler Builder (canAction is now defined)
+
+            // Setup Receipts Tab Using the Refactored Modular Builder
             renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction);
-    
+
             // Show Modal
             $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
-            // We came from Details Modal
-            reopenDetailsModal = true;
-
-            // Hide parent modal
-            $('#detailsModal').modal('hide');
-
-            // Always open Receipts tab first
-            $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
-
-            // Open Unified Modal
             $('#unifiedDayModal').modal('show');
         });
 
         // =========================================================
-        // 2. RENDER EXPENSES WITH SMART OVERRIDES
+        // 2. MODULAR RENDERING LOGIC (PHASE 6 & 7)
         // =========================================================
-        function renderExpenses(data, isRowLocked) {
-            var html = '<table class="table table-sm table-bordered table-striped table-hover mt-2"><thead class="bg-light">' +
-                       '<tr><th>Date</th><th>Type</th><th>Purpose</th><th>Bill No</th><th class="text-right">Amount</th><th class="text-center">Action</th></tr></thead><tbody>';
-            
-            var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
-            var canAction = (activeLevel === 1 || activeLevel === 2) && !isRowLocked;
-            var hasPending = false; 
-
-            $.each(data, function(i, item) {
-                var expDate = item.ExpenseDate ? new Date(item.ExpenseDate).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : '-';
-                var statusBadge = '';
-                
-                // Track Pending Status for the Gatekeeper
-                if(item.ClaimStatus !== 'Approved' && item.ClaimStatus !== 'Rejected') {
-                    hasPending = true;
-                }
-                
-                if (canAction) {
-                    // SMART OVERRIDE BUTTONS
-                    if(item.ClaimStatus === 'Approved') {
-                        statusBadge = '<span class="badge badge-success px-2 py-1 mr-2"><i class="fa fa-check"></i> Approved</span>' +
-                                      '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Rejected\', this)" title="Change to Reject"><i class="fa fa-times"></i> Reject</button>';
-                    } else if(item.ClaimStatus === 'Rejected') {
-                        statusBadge = '<span class="badge badge-danger px-2 py-1 mr-2"><i class="fa fa-times"></i> Rejected</span>' +
-                                      '<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Approved\', this)" title="Change to Approve"><i class="fa fa-check"></i> Approve</button>';
-                    } else {
-                        statusBadge = '<button type="button" class="btn btn-sm btn-success mr-1 py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Approved\', this)" title="Approve"><i class="fa fa-check"></i></button>' +
-                                      '<button type="button" class="btn btn-sm btn-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + item.ExpenseId + ',\'Rejected\', this)" title="Reject"><i class="fa fa-times"></i></button>';
-                    }
-                } else {
-                    // READ ONLY (Row is locked or user has no rights)
-                    if(item.ClaimStatus === 'Approved') {
-                        statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fa fa-check"></i> Approved</span>';
-                    } else if(item.ClaimStatus === 'Rejected') {
-                        statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fa fa-times"></i> Rejected</span>';
-                    } else {
-                        statusBadge = '<span class="badge badge-warning text-dark px-2 py-1">Pending</span>';
-                    }
-                }
-        
-                var billLink = item.AttachmentPath ? '<a href="' + item.AttachmentPath + '" target="_blank" class="text-primary font-weight-bold"><i class="fa fa-paperclip"></i> ' + (item.BillNo || 'View Bill') + '</a>' : (item.BillNo || '-');
-
-                html += '<tr>' +
-                        '<td>' + expDate + '</td>' +
-                        '<td><strong>' + (item.ExpenseType || '-') + '</strong></td>' +
-                        '<td><small>' + (item.Purpose || '-') + '</small></td>' +
-                        '<td>' + billLink + '</td>' +
-                        '<td class="text-right font-weight-bold text-dark">₹ ' + parseFloat(item.Amount).toFixed(2) + '</td>' +
-                        '<td class="text-center" style="min-width: 160px;">' + statusBadge + '</td>' +
-                        '</tr>';
-            });
-            html += '</tbody></table>';
-            $('#unifiedExpensesBody').html(html);
-
-            // THE GATEKEEPER: Lock/Unlock the "Approve Entire Day" button
-            if (hasPending) {
-                $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'You must approve or reject all receipts above first.');
-            } else {
-                $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
-            }
-        }
-
         function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction) {
             let html = '';
 
-            // 1. Render Top Summaries
+            // Render Top Summaries
             html += renderActivityAndTADASummary(details);
 
-            // 2. Parse the Line Items
+            // Parse Line Items
             let expenses = [];
             try {
                 if (expensesJson && expensesJson.trim() !== '' && expensesJson.trim() !== '[]') {
@@ -954,17 +866,16 @@
                 console.error("Error parsing expenses JSON:", e);
             }
 
-            // 3. Render Individual Expense Cards
+            // Render Individual Expense Cards
             if (expenses.length > 0) {
                 html += '<h6 class="mt-4 mb-3 text-secondary font-weight-bold text-uppercase" style="font-size: 0.85rem;"><i class="fa fa-receipt mr-2"></i>Claimed Line Items</h6>';
                 html += '<div class="row">';
-        
+            
                 let hasPending = false;
 
                 expenses.forEach(exp => {
                     let type = (exp.ExpenseType || '').toUpperCase();
-            
-                    // Check for Gatekeeper
+                
                     if(exp.ClaimStatus !== 'Approved' && exp.ClaimStatus !== 'Rejected') {
                         hasPending = true;
                     }
@@ -979,11 +890,10 @@
                         html += renderExpenseCard('Stationary', 'fa-paperclip', 'bg-warning text-dark', exp, canAction);
                     }
                     else if (type === 'DA') {
-                        // Usually DA doesn't have an attachment, but we can render it if required by your flow
                         html += renderExpenseCard('DA Entry', 'fa-utensils', 'bg-secondary', exp, canAction);
                     }
                 });
-        
+            
                 html += '</div>';
 
                 // THE GATEKEEPER: Lock/Unlock the "Approve Remaining" button
@@ -995,10 +905,10 @@
 
             } else {
                 html += `
-        <div class="alert alert-light border mt-4 text-center text-muted shadow-sm py-4">
-            <i class="fa fa-folder-open fa-3x mb-3 d-block text-secondary opacity-50"></i>
-            <h6 class="mb-0">No additional line items (Hotel, Travel, Stationary) claimed for this day.</h6>
-        </div>`;
+            <div class="alert alert-light border mt-4 text-center text-muted shadow-sm py-4">
+                <i class="fa fa-folder-open fa-3x mb-3 d-block text-secondary opacity-50"></i>
+                <h6 class="mb-0">No additional line items (Hotel, Travel, Stationary) claimed for this day.</h6>
+            </div>`;
                 $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
             }
 
@@ -1006,76 +916,72 @@
             $('#unifiedExpensesBody').html(html);
         }
 
-
         function renderActivityAndTADASummary(details) {
             return `
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <div class="card summary-card border-left-primary h-100 bg-white shadow-sm border-0">
-                <div class="card-body p-3">
-                    <h6 class="text-primary text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
-                        <i class="fa fa-calendar-day mr-1"></i> Activity Summary
-                    </h6>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted small font-weight-bold text-uppercase">Date:</span>
-                        <strong class="text-dark">${details.ActivityDate} <span class="text-muted font-weight-normal">(${details.Day})</span></strong>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted small font-weight-bold text-uppercase">Claim Type:</span>
-                        <span class="badge badge-light border text-dark p-1">${details.ClaimType || 'Standard'}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small font-weight-bold text-uppercase">Status:</span>
-                        <span class="badge badge-${details.StatusClass} p-1 px-2">${details.ClaimStatus}</span>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <div class="card summary-card border-left-primary h-100 bg-white shadow-sm border-0">
+                    <div class="card-body p-3">
+                        <h6 class="text-primary text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
+                            <i class="fa fa-calendar-day mr-1"></i> Activity Summary
+                        </h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small font-weight-bold text-uppercase">Date:</span>
+                            <strong class="text-dark">${details.ActivityDate} <span class="text-muted font-weight-normal">(${details.Day})</span></strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small font-weight-bold text-uppercase">Claim Type:</span>
+                            <span class="badge badge-light border text-dark p-1">${details.ClaimType || 'Standard'}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small font-weight-bold text-uppercase">Status:</span>
+                            <span class="badge badge-${details.StatusClass} p-1 px-2">${details.ClaimStatus}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-6 mb-3">
-            <div class="card summary-card border-left-success h-100 bg-white shadow-sm border-0">
-                <div class="card-body p-3">
-                    <h6 class="text-success text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
-                        <i class="fa fa-car mr-1"></i> TA / DA Summary
-                    </h6>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted small font-weight-bold text-uppercase">Verified Distance:</span>
-                        <strong class="text-dark">${details.TotalDistanceKM}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-muted small font-weight-bold text-uppercase">Travel Allowance (TA):</span>
-                        <strong class="text-dark">₹ ${parseFloat(details.TotalTA).toFixed(2)}</strong>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-muted small font-weight-bold text-uppercase">Daily Allowance (DA):</span>
-                        <strong class="text-dark">₹ ${parseFloat(details.TotalDA).toFixed(2)}</strong>
+            <div class="col-md-6 mb-3">
+                <div class="card summary-card border-left-success h-100 bg-white shadow-sm border-0">
+                    <div class="card-body p-3">
+                        <h6 class="text-success text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
+                            <i class="fa fa-car mr-1"></i> TA / DA Summary
+                        </h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small font-weight-bold text-uppercase">Verified Distance:</span>
+                            <strong class="text-dark">${details.TotalDistanceKM}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small font-weight-bold text-uppercase">Travel Allowance (TA):</span>
+                            <strong class="text-dark">₹ ${parseFloat(details.TotalTA).toFixed(2)}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small font-weight-bold text-uppercase">Daily Allowance (DA):</span>
+                            <strong class="text-dark">₹ ${parseFloat(details.TotalDA).toFixed(2)}</strong>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>`;
+        </div>`;
         }
-
 
         function renderExpenseCard(title, iconClass, headerColorClass, exp, canAction) {
             let amount = parseFloat(exp.Amount || 0).toFixed(2);
             let billNo = exp.BillNo || 'N/A';
             let remarks = exp.Purpose || '<em class="text-muted">No remarks provided.</em>';
-            let status = exp.ClaimStatus || 'Pending'; // Adjusted to match your DB column
-    
-            // File Attachment Logic
+            let status = exp.ClaimStatus || 'Pending'; 
+        
             let attachmentHtml = '';
             if (exp.AttachmentPath && exp.AttachmentPath.trim() !== '') {
                 let safePath = exp.AttachmentPath.replace(/\\/g, '/');
                 attachmentHtml = `
-            <a href="${safePath}" target="_blank" class="btn btn-sm btn-light border text-primary font-weight-bold" style="font-size: 0.75rem;">
-                <i class="fa fa-paperclip mr-1"></i> View Receipt
-            </a>`;
+                <a href="${safePath}" target="_blank" class="btn btn-sm btn-light border text-primary font-weight-bold" style="font-size: 0.75rem;">
+                    <i class="fa fa-paperclip mr-1"></i> View Receipt
+                </a>`;
             } else {
                 attachmentHtml = `<span class="text-muted" style="font-size: 0.75rem;"><i class="fa fa-exclamation-circle mr-1"></i> No Receipt attached</span>`;
             }
 
-            // Status Badge & Action Buttons
             let actionButtons = '';
             let statusBadgeColor = 'warning text-dark';
 
@@ -1083,83 +989,70 @@
                 if(status === 'Approved') {
                     statusBadgeColor = 'success';
                     actionButtons = `
-                <div class="w-100 d-flex align-items-center justify-content-between">
-                    <span class="badge badge-success px-2 py-1"><i class="fa fa-check mr-1"></i>Approved</span>
-                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)" title="Change to Reject"><i class="fa fa-times"></i></button>
-                </div>`;
+                    <div class="w-100 d-flex align-items-center justify-content-between">
+                        <span class="badge badge-success px-2 py-1"><i class="fa fa-check mr-1"></i>Approved</span>
+                        <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)" title="Change to Reject"><i class="fa fa-times"></i></button>
+                    </div>`;
                 } else if(status === 'Rejected') {
                     statusBadgeColor = 'danger';
                     actionButtons = `
-                <div class="w-100 d-flex align-items-center justify-content-between">
-                    <span class="badge badge-danger px-2 py-1"><i class="fa fa-times mr-1"></i>Rejected</span>
-                    <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Approved', this)" title="Change to Approve"><i class="fa fa-check"></i></button>
-                </div>`;
+                    <div class="w-100 d-flex align-items-center justify-content-between">
+                        <span class="badge badge-danger px-2 py-1"><i class="fa fa-times mr-1"></i>Rejected</span>
+                        <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Approved', this)" title="Change to Approve"><i class="fa fa-check"></i></button>
+                    </div>`;
                 } else {
-                    // Pending State
                     statusBadgeColor = 'warning text-dark';
                     actionButtons = `
-                <div class="d-flex w-100">
-                    <button type="button" class="btn btn-sm btn-success flex-fill mr-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Approved', this)"><i class="fa fa-check mr-1"></i>Approve</button>
-                    <button type="button" class="btn btn-sm btn-danger flex-fill ml-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)"><i class="fa fa-times mr-1"></i>Reject</button>
-                </div>`;
+                    <div class="d-flex w-100">
+                        <button type="button" class="btn btn-sm btn-success flex-fill mr-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Approved', this)"><i class="fa fa-check mr-1"></i>Approve</button>
+                        <button type="button" class="btn btn-sm btn-danger flex-fill ml-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)"><i class="fa fa-times mr-1"></i>Reject</button>
+                    </div>`;
                 }
             } else {
-                // READ ONLY (Row is locked or user has no rights)
                 statusBadgeColor = status === 'Approved' ? 'success' : (status === 'Rejected' ? 'danger' : 'warning text-dark');
                 actionButtons = `<div class="text-center w-100"><span class="badge badge-${statusBadgeColor} p-2 w-100" style="font-size: 0.8rem;">${status}</span></div>`;
             }
 
             return `
-            <div class="col-md-6 col-xl-4 mb-3">
-                <div class="card expense-card h-100 border-0 shadow-sm" style="border-radius: 8px;">
-                    <div class="card-header ${headerColorClass} d-flex justify-content-between align-items-center border-0" style="border-top-left-radius: 8px; border-top-right-radius: 8px;">
-                        <span class="font-weight-bold"><i class="fa ${iconClass} mr-2"></i>${title}</span>
-                        <span class="badge badge-light text-dark shadow-sm" style="font-size: 0.85rem;">₹ ${amount}</span>
+        <div class="col-md-6 col-xl-4 mb-3">
+            <div class="card expense-card h-100 border-0 shadow-sm" style="border-radius: 8px;">
+                <div class="card-header ${headerColorClass} d-flex justify-content-between align-items-center border-0" style="border-top-left-radius: 8px; border-top-right-radius: 8px;">
+                    <span class="font-weight-bold"><i class="fa ${iconClass} mr-2"></i>${title}</span>
+                    <span class="badge badge-light text-dark shadow-sm" style="font-size: 0.85rem;">₹ ${amount}</span>
+                </div>
+                <div class="card-body p-3 bg-white d-flex flex-column" style="font-size: 0.85rem;">
+                    <div class="mb-2 d-flex justify-content-between align-items-center">
+                        <span class="text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Bill No:</span>
+                        <strong class="text-dark">${billNo}</strong>
                     </div>
-            
-                    <div class="card-body p-3 bg-white d-flex flex-column" style="font-size: 0.85rem;">
-                        <div class="mb-2 d-flex justify-content-between align-items-center">
-                            <span class="text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Bill No:</span>
-                            <strong class="text-dark">${billNo}</strong>
-                        </div>
-                
-                        <div class="mb-3 flex-grow-1">
-                            <span class="text-muted font-weight-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Remarks:</span>
-                            <span class="text-dark text-truncate-2" title="${exp.Purpose || ''}">${remarks}</span>
-                        </div>
-                
-                        <div class="text-center pt-2 border-top mt-auto">
-                            ${attachmentHtml}
-                        </div>
+                    <div class="mb-3 flex-grow-1">
+                        <span class="text-muted font-weight-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Remarks:</span>
+                        <span class="text-dark text-truncate-2" title="${exp.Purpose || ''}">${remarks}</span>
                     </div>
-            
-                    <div class="card-footer bg-light p-2 border-top d-flex align-items-center" style="border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; min-height: 48px;">
-                        ${actionButtons}
+                    <div class="text-center pt-2 border-top mt-auto">
+                        ${attachmentHtml}
                     </div>
                 </div>
-            </div>`;
+                <div class="card-footer bg-light p-2 border-top d-flex align-items-center" style="border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; min-height: 48px;">
+                    ${actionButtons}
+                </div>
+            </div>
+        </div>`;
         }
 
         // =========================================================
         // 3. EXPENSE / KM AJAX ACTIONS
         // =========================================================
-        // =========================================================
-        // EXPENSE / KM AJAX ACTIONS (WITH MANDATORY REMARKS)
-        // =========================================================
         function updateExpense(id, status, btn) {
             var remark = "";
 
-            // 1. Enforce Remark on Rejection
             if (status === 'Rejected') {
                 remark = prompt('Please enter the reason for rejecting this receipt:');
-                
-                // If they click Cancel or leave it blank, abort the action completely
                 if (remark === null || remark.trim() === "") {
                     alert('⚠️ A valid reason is strictly required to reject an expense.');
                     return;
                 }
             } else {
-                // 2. Standard confirmation for Approval
                 if(!confirm('Mark this receipt as Approved?')) return;
             }
 
@@ -1168,24 +1061,21 @@
             $.ajax({
                 type: "POST",
                 url: "ClaimsApproval_v2.aspx/UpdateIndividualExpense",
-                // 3. NEW: We are now passing the 'remark' to the C# backend!
                 data: JSON.stringify({ expenseId: id, status: status, remark: remark.trim() }),
                 contentType: "application/json; charset=utf-8",
                 dataType: "json",
                 success: function(r) {
                     if(r.d && r.d.success) {
-                        // Re-render the HTML so the user can keep toggling if they made a mistake
                         var newHtml = '';
                         if(status === 'Approved') {
                             newHtml = '<span class="badge badge-success px-2 py-1 mr-2"><i class="fa fa-check"></i> Approved</span>' +
-                                      '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Rejected\', this)" title="Change to Reject"><i class="fa fa-times"></i> Reject</button>';
+                                      '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Rejected\', this)" title="Change to Reject"><i class="fa fa-times"></i></button>';
                         } else {
                             newHtml = '<span class="badge badge-danger px-2 py-1 mr-2" title="Reason: ' + remark + '"><i class="fa fa-times"></i> Rejected</span>' +
-                                      '<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Approved\', this)" title="Change to Approve"><i class="fa fa-check"></i> Approve</button>';
+                                      '<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Approved\', this)" title="Change to Approve"><i class="fa fa-check"></i></button>';
                         }
                         $(btn).parent().html(newHtml);
-                        
-                        // Trigger background calculation INSTANTLY
+                    
                         document.getElementById('btnRefreshCalculations').click();
                     } else {
                         alert(r.d.message);
@@ -1229,7 +1119,7 @@
                         $('#km_modal_reason').val('');
                         loadKmHistory(id);
                         document.getElementById('btnRefreshCalculations').click();
-                        
+                    
                         setTimeout(function() { 
                             $('#km_modal_message').fadeOut('fast', function() { $(this).empty().show(); }); 
                         }, 4000);
@@ -1245,7 +1135,7 @@
 
         function loadKmHistory(activityId) {
             $('#km_history_tbl tbody').empty().append('<tr><td colspan="5">Loading...</td></tr>');
-    
+ 
             $.ajax({
                 type: 'POST',
                 url: 'ClaimsApproval_v2.aspx/GetKMHistory', 
@@ -1261,7 +1151,7 @@
 
                 var fPlace = res.fromPlace || '';
                 var tPlace = res.toPlace || '';
-        
+ 
                 $('#km_modal_fromplace').text(fPlace || 'No data available');
                 $('#km_modal_toplace').text(tPlace || 'No data available');
 
@@ -1284,8 +1174,8 @@
                     $tbody.append(
                         '<tr>' +
                         '<td>' + (r.ModifiedDateTimeIST || '') + '</td>' +
-                        '<td>' + oldKm + '</td>' +
-                        '<td>' + newKm + '</td>' +
+                        '<td class="text-right">' + oldKm + '</td>' +
+                        '<td class="text-right">' + newKm + '</td>' +
                         '<td>' + (r.ModifiedBy || '') + '</td>' +
                         '<td>' + (r.Reason || '') + '</td>' +
                         '</tr>'
@@ -1303,9 +1193,9 @@
             var detailId = $('#km_modal_detailid').val();
             var reqId = document.getElementById('<%= hfActionRequestId.ClientID %>').value;
             var actionText = (action === 'APPROVE') ? 'approve' : 'reject';
-            
+        
             if(!confirm('Are you sure you want to ' + actionText + ' this entire day?')) return;
-            
+        
             $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').prop('disabled', true);
             $('#unified_modal_message').html('<span class="text-info"><i class="fa fa-spinner fa-spin"></i> Processing...</span>');
 
@@ -1409,10 +1299,10 @@
         // 6. ASP.NET AJAX UPDATEPANEL HOOKS & DATATABLES
         // =========================================================
         var _gridScrollTop = 0;
-        
+    
         if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
             var prm = Sys.WebForms.PageRequestManager.getInstance();
-            
+        
             prm.add_beginRequest(function (sender, args) {
                 var gridContainer = document.querySelector('#detailsModal .table-responsive');
                 if (gridContainer) { _gridScrollTop = gridContainer.scrollTop; }
@@ -1434,21 +1324,13 @@
                     "lengthMenu": [10, 15, 25, 50],  
                     "ordering": true,                
                     "searching": true,               
-                    "responsive": true,              // <-- This will now work!
+                    "responsive": true,              
                     "order": [[ 3, "desc" ]],        
                     "language": { "search": "Quick Filter:", "lengthMenu": "Show _MENU_ requests" },
                     "columnDefs": [
-                        // Disable sorting on Actions column
                         { "orderable": false, "targets": [7] }, 
-
-                        // MOBILE PRIORITIES:
-                        // Priority 1 (Never Hide): Employee Name [1], Total Claim [4], Actions [7]
                         { "responsivePriority": 1, "targets": [1, 4, 7] },
-                        
-                        // Priority 2 (Hide Last): ID [0], Stage [6]
                         { "responsivePriority": 2, "targets": [0, 6] },
-                        
-                        // Priority 3 (Hide First on small screens): Date [2], Month [3], Status [5]
                         { "responsivePriority": 3, "targets": [2, 3, 5] }
                     ]
                 });
@@ -1467,18 +1349,6 @@
 
         $(document).ready(function () {
             initDataTablesSafe();
-            $('#btnCloseUnifiedModal').on('click', function () {
-
-                $('#unifiedDayModal').modal('hide');
-
-            });
-
-            $('#unifiedDayModal').on('hidden.bs.modal', function () {
-                if (reopenDetailsModal) {
-                    reopenDetailsModal = false;
-                    $('#detailsModal').modal('show');
-                }
-            });
         });
     </script>
 </asp:Content>
