@@ -22,6 +22,7 @@ namespace AnmolDristi
         private decimal _totalDA = 0m;
         private decimal _totalHotel = 0m;
         private decimal _totalTravel = 0m;
+        private decimal _totalStationary = 0m; // <-- ADD THIS
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -344,6 +345,9 @@ namespace AnmolDristi
 
             hfCurrentUserLevel.Value = currentLvl.ToString();
 
+            int approvalRequestId = Convert.ToInt32(hfActionRequestId.Value);
+            SetFinalApproverFlag(approvalRequestId);
+
             // Intermediates (ASM/RSM/ZSM) get Forward Button
             btnForwardLevel.Visible = isIntermediate && !pendingActionExists && (unprocessedReceipts == 0);
 
@@ -504,6 +508,7 @@ namespace AnmolDristi
                 _totalHotel += (drv["Snapshot_HotelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_HotelAmount"]);
                 _totalTravel += (drv["Snapshot_TravelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_TravelAmount"]);
                 _totalSnapshot += (drv["Snapshot_ExpenseTotal"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_ExpenseTotal"]);
+                _totalStationary += (drv["Snapshot_StationaryAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_StationaryAmount"]);
 
                 int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
                 string detailStatus = drv["DetailStatus"].ToString();
@@ -605,7 +610,7 @@ namespace AnmolDristi
             {
                 string headerText = gvDetails.Columns[i].HeaderText ?? "";
 
-                if (headerText.Contains("Distance"))
+                if (headerText.Contains("Dist")) // Changed from "Distance" to "Dist"
                 {
                     footer.Cells[i].Text = "<strong>" + _totalDistance.ToString("N2") + "</strong>";
                     footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
@@ -628,6 +633,11 @@ namespace AnmolDristi
                 else if (headerText.Contains("Travel"))
                 {
                     footer.Cells[i].Text = "<strong>" + _totalTravel.ToString("N2") + "</strong>";
+                    footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
+                }
+                else if (headerText.Contains("Stat")) // <-- ADD THIS FOR STATIONARY FOOTER
+                {
+                    footer.Cells[i].Text = "<strong>" + _totalStationary.ToString("N2") + "</strong>";
                     footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
                 }
                 else if (headerText.Contains("Total"))
@@ -892,31 +902,86 @@ namespace AnmolDristi
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        // ADDED REMARK PARAMETER HERE!
-        public static object UpdateIndividualExpense(int expenseId, string status, string remark)
+        public static object UpdateIndividualExpense(int expenseId, string action, string remark)
         {
             try
             {
                 string user = HttpContext.Current.Session["workman"]?.ToString() ?? "System";
-                string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-                using (var con = new SqlConnection(conn))
-                using (var cmd = new SqlCommand("dbo.usp_UpdateSalesDailyExpenseStatus", con))
+
+                // Normalize Action
+                action = (action ?? "").Trim().ToUpperInvariant();
+
+                // Validate Action
+                if (action != "APPROVE" &&
+                    action != "RETURN" &&
+                    action != "REJECT")
+                {
+                    return new
+                    {
+                        success = false,
+                        message = "Invalid action."
+                    };
+                }
+
+                // Remarks mandatory for Return & Reject
+                if ((action == "RETURN" || action == "REJECT") &&
+                    string.IsNullOrWhiteSpace(remark))
+                {
+                    return new
+                    {
+                        success = false,
+                        message = "Remarks are mandatory."
+                    };
+                }
+
+                string formattedRemark = null;
+
+                if (!string.IsNullOrWhiteSpace(remark))
+                {
+                    formattedRemark = AppendUserToRemark(
+                                            remark.Trim(),
+                                            user);
+                }
+
+                string conn =
+                    ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                using (SqlConnection con = new SqlConnection(conn))
+                using (SqlCommand cmd =
+                    new SqlCommand(
+                        "dbo.usp_UpdateSalesDailyExpenseStatus",
+                        con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
+
                     cmd.Parameters.AddWithValue("@ExpenseId", expenseId);
-                    cmd.Parameters.AddWithValue("@NewStatus", status);
+                    cmd.Parameters.AddWithValue("@Action", action);
                     cmd.Parameters.AddWithValue("@ActionBy", user);
-                    // ADDED REMARK CAPTURE HERE!
-                    //cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remark) ? (object)DBNull.Value : remark);
-                    // Format the remark before sending to DB
-                    string formattedRemark = AppendUserToRemark(remark, user);
-                    cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(formattedRemark) ? (object)DBNull.Value : formattedRemark);
+
+                    cmd.Parameters.AddWithValue(
+                        "@Remarks",
+                        string.IsNullOrWhiteSpace(formattedRemark)
+                            ? (object)DBNull.Value
+                            : formattedRemark);
+
                     con.Open();
+
                     cmd.ExecuteNonQuery();
                 }
-                return new { success = true };
+
+                return new
+                {
+                    success = true
+                };
             }
-            catch (Exception ex) { return new { success = false, message = ex.Message }; }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    success = false,
+                    message = ex.Message
+                };
+            }
         }
 
         [WebMethod(EnableSession = true)]
@@ -944,6 +1009,58 @@ namespace AnmolDristi
                 return new { success = true };
             }
             catch (Exception ex) { return new { success = false, message = ex.Message }; }
+        }
+
+
+        private void SetFinalApproverFlag(int approvalRequestId)
+        {
+            string conn =
+                ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            using (SqlConnection con = new SqlConnection(conn))
+            {
+                con.Open();
+
+                string sql = @"
+                SELECT
+                    CurrentLevel =
+                        R.CurrentApproverLevel,
+                    MaxLevel =
+                    (
+                        SELECT MAX(ApproverLevel)
+                        FROM SalesApprovalRequestApprover
+                        WHERE ApprovalRequestId = R.ApprovalRequestId
+                          AND IsRequired = 1
+                    )
+                FROM SalesApprovalRequest R
+                WHERE ApprovalRequestId=@Id";
+
+                using (SqlCommand cmd = new SqlCommand(sql, con))
+                {
+                    cmd.Parameters.AddWithValue("@Id", approvalRequestId);
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            int current =
+                                dr["CurrentLevel"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["CurrentLevel"]);
+
+                            int max =
+                                dr["MaxLevel"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["MaxLevel"]);
+
+                            hfIsFinalApprover.Value =
+                                current == max
+                                ? "1"
+                                : "0";
+                        }
+                    }
+                }
+            }
         }
 
         // NEW ENGINE: DYNAMIC HIERARCHY IDENTIFIER
@@ -974,7 +1091,7 @@ namespace AnmolDristi
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static object GetKMHistory_OLD(int activityId)
+        public static object GetKMHistory(int activityId)
         {
             try
             {
@@ -984,45 +1101,80 @@ namespace AnmolDristi
                 string toPlace = "";
                 var historyList = new List<object>();
 
-                using (var con = new SqlConnection(connString))
+                using (SqlConnection con = new SqlConnection(connString))
                 {
                     con.Open();
 
+                    // -------------------------------------------------------
+                    // 1. Get Journey Details (From DA Claim)
+                    // -------------------------------------------------------
                     string sqlPlaces = @"
-                SELECT 
-                    (SELECT TOP 1 FromPlace FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND FromPlace IS NOT NULL ORDER BY ExpenseId ASC) as FromPlace,
-                    (SELECT TOP 1 ToPlace FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND ToPlace IS NOT NULL ORDER BY ExpenseId DESC) as ToPlace";
+                SELECT TOP (1)
+                    FromPlace,
+                    ToPlace
+                FROM dbo.SalesDailyExpense
+                WHERE ActivityId = @ActivityId
+                  AND ExpenseType = 'DA'
+                  AND IsDeleted = 0
+                ORDER BY ExpenseId DESC;";
 
-                    using (var cmd = new SqlCommand(sqlPlaces, con))
+                    using (SqlCommand cmd = new SqlCommand(sqlPlaces, con))
                     {
                         cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                        using (var rdr = cmd.ExecuteReader())
+
+                        using (SqlDataReader rdr = cmd.ExecuteReader())
                         {
                             if (rdr.Read())
                             {
-                                fromPlace = rdr["FromPlace"]?.ToString() ?? "";
-                                toPlace = rdr["ToPlace"]?.ToString() ?? "";
+                                fromPlace = rdr["FromPlace"] != DBNull.Value
+                                    ? rdr["FromPlace"].ToString()
+                                    : "";
+
+                                toPlace = rdr["ToPlace"] != DBNull.Value
+                                    ? rdr["ToPlace"].ToString()
+                                    : "";
                             }
                         }
                     }
 
+                    // -------------------------------------------------------
+                    // 2. Get KM Modification History
+                    // -------------------------------------------------------
                     string sqlHistory = @"
-                        SELECT HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason 
-                        FROM dbo.SalesDailyActivityKMHistory 
-                        WHERE ActivityId = @ActivityId 
-                        ORDER BY ModifiedDateTime DESC";
+                SELECT
+                    HistoryId,
+                    ActivityId,
+                    OldKM,
+                    NewKM,
+                    ModifiedBy,
+                    ModifiedDateTime,
+                    Reason
+                FROM dbo.SalesDailyActivityKMHistory
+                WHERE ActivityId = @ActivityId
+                ORDER BY ModifiedDateTime DESC;";
 
-                    using (var cmd = new SqlCommand(sqlHistory, con))
+                    using (SqlCommand cmd = new SqlCommand(sqlHistory, con))
                     {
                         cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                        using (var rdr = cmd.ExecuteReader())
+
+                        using (SqlDataReader rdr = cmd.ExecuteReader())
                         {
                             while (rdr.Read())
                             {
-                                DateTime utc = rdr.GetDateTime(rdr.GetOrdinal("ModifiedDateTime"));
+                                DateTime utc = Convert.ToDateTime(rdr["ModifiedDateTime"]);
+
                                 DateTime ist;
-                                try { ist = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(utc, "UTC", "India Standard Time"); }
-                                catch { ist = utc.AddHours(5).AddMinutes(30); }
+                                try
+                                {
+                                    ist = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(
+                                        utc,
+                                        "UTC",
+                                        "India Standard Time");
+                                }
+                                catch
+                                {
+                                    ist = utc.AddHours(5).AddMinutes(30);
+                                }
 
                                 historyList.Add(new
                                 {
@@ -1036,68 +1188,22 @@ namespace AnmolDristi
                         }
                     }
                 }
-                return new { success = true, fromPlace = fromPlace, toPlace = toPlace, history = historyList };
+
+                return new
+                {
+                    success = true,
+                    fromPlace = fromPlace,
+                    toPlace = toPlace,
+                    history = historyList
+                };
             }
             catch (Exception ex)
             {
-                return new { success = false, message = ex.Message };
-            }
-        }
-
-        [WebMethod]
-        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static object GetKMHistory(int activityId)
-        {
-            try
-            {
-                string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-
-                // 1. Get Base Activity Info (for the Map)
-                string fromPlace = "";
-                string toPlace = "";
-                using (SqlConnection con = new SqlConnection(connString))
-                using (SqlCommand cmdInfo = new SqlCommand("SELECT RouteOriginName, RouteDestinationName FROM dbo.SalesDailyActivity WHERE ActivityId = @Id", con))
+                return new
                 {
-                    cmdInfo.Parameters.AddWithValue("@Id", activityId);
-                    con.Open();
-                    using (SqlDataReader rdr = cmdInfo.ExecuteReader())
-                    {
-                        if (rdr.Read())
-                        {
-                            fromPlace = rdr["RouteOriginName"] != DBNull.Value ? rdr["RouteOriginName"].ToString() : "";
-                            toPlace = rdr["RouteDestinationName"] != DBNull.Value ? rdr["RouteDestinationName"].ToString() : "";
-                        }
-                    }
-                }
-
-                // 2. Get the History Array
-                var historyList = new List<object>();
-                using (SqlConnection con = new SqlConnection(connString))
-                using (SqlCommand cmd = new SqlCommand(@"SELECT OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = @ActivityId ORDER BY HistoryId DESC", con))
-                {
-                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                    con.Open();
-                    using (SqlDataReader rdr = cmd.ExecuteReader())
-                    {
-                        while (rdr.Read())
-                        {
-                            historyList.Add(new
-                            {
-                                OldKM = rdr["OldKM"],
-                                NewKM = rdr["NewKM"],
-                                ModifiedBy = rdr["ModifiedBy"],
-                                ModifiedDateTimeIST = rdr["ModifiedDateTime"] != DBNull.Value ? Convert.ToDateTime(rdr["ModifiedDateTime"]).ToString("dd-MM-yyyy HH:mm:ss") : "",
-                                Reason = rdr["Reason"]
-                            });
-                        }
-                    }
-                }
-
-                return new { success = true, fromPlace = fromPlace, toPlace = toPlace, history = historyList };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, message = ex.Message };
+                    success = false,
+                    message = ex.Message
+                };
             }
         }
 
@@ -1209,7 +1315,8 @@ namespace AnmolDristi
             SET 
                 Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
                 Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
+                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
+                Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Stationary' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
             FROM SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id;
 
             UPDATE SalesApprovalRequestDetail 
@@ -1222,7 +1329,8 @@ namespace AnmolDristi
                 ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
                 ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
                 ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected') 
+                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
+                Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0) + ISNULL(Snapshot_StationaryAmount, 0) 
             WHERE ApprovalRequestId = @Id;";
 
             using (var con = new SqlConnection(connString))
@@ -1240,49 +1348,75 @@ namespace AnmolDristi
         {
             try
             {
-                string user = HttpContext.Current.Session["workman"]?.ToString() ?? "System";
-                string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+                string user =
+                    HttpContext.Current.Session["workman"]?.ToString()
+                    ?? "System";
 
-                using (var con = new SqlConnection(conn))
+                string conn =
+                    ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                using (SqlConnection con = new SqlConnection(conn))
                 {
                     con.Open();
 
-                    // 1. Existing Parent Row SP Call
-                    using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
+                    using (SqlTransaction tran = con.BeginTransaction())
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
-                        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                        cmd.Parameters.AddWithValue("@Action", action);
-                        cmd.Parameters.AddWithValue("@ActionBy", user);
-                        cmd.Parameters.AddWithValue("@ActionRemarks", "Actioned via Day View Modal");
-                        cmd.ExecuteNonQuery();
-                    }
+                        try
+                        {
+                            using (SqlCommand cmd =
+                                new SqlCommand(
+                                    "dbo.usp_ProcessSalesApprovalRequestDetail",
+                                    con,
+                                    tran))
+                            {
+                                cmd.CommandType = CommandType.StoredProcedure;
 
-                    // 2. NEW: Cascade the decision down to any pending child receipts!
-                    string cascadeSql = @"
-                        UPDATE dbo.SalesDailyExpense 
-                        SET ClaimStatus = @ActionStatus, 
-                            ClaimProcessedBy = @ActionBy, 
-                            ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
-                            ModifiedBy = @ActionBy,
-                            ModifiedOn = SYSUTCDATETIME(),
-                            Remarks = ISNULL(Remarks, 'Actioned via Day View Modal')
-                        WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
-                          AND ClaimStatus NOT IN ('Approved', 'Rejected') 
-                          AND IsDeleted = 0;";
+                                cmd.Parameters.AddWithValue(
+                                    "@ApprovalRequestDetailId",
+                                    detailId);
 
-                    using (var cascadeCmd = new SqlCommand(cascadeSql, con))
-                    {
-                        cascadeCmd.Parameters.AddWithValue("@ActionStatus", action == "APPROVE" ? "Approved" : "Rejected");
-                        cascadeCmd.Parameters.AddWithValue("@ActionBy", user);
-                        cascadeCmd.Parameters.AddWithValue("@DetailId", detailId);
-                        cascadeCmd.ExecuteNonQuery();
+                                cmd.Parameters.AddWithValue(
+                                    "@ApprovalRequestId",
+                                    reqId);
+
+                                cmd.Parameters.AddWithValue(
+                                    "@Action",
+                                    action.ToUpper());
+
+                                cmd.Parameters.AddWithValue(
+                                    "@ActionBy",
+                                    user);
+
+                                cmd.Parameters.AddWithValue(
+                                    "@ActionRemarks",
+                                    "Processed via Unified Day Modal");
+
+                                cmd.ExecuteNonQuery();
+                            }
+
+                            tran.Commit();
+
+                            return new
+                            {
+                                success = true
+                            };
+                        }
+                        catch
+                        {
+                            tran.Rollback();
+                            throw;
+                        }
                     }
                 }
-                return new { success = true };
             }
-            catch (Exception ex) { return new { success = false, message = ex.Message }; }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    success = false,
+                    message = ex.Message
+                };
+            }
         }
 
         // =========================================================

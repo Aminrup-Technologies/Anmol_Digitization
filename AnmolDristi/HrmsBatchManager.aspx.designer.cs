@@ -103,22 +103,58 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblSelectedBatch;
         
         /// <summary>
-        /// txtProcessedBy control.
+        /// rblProcessingMode control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtProcessedBy;
+        protected global::System.Web.UI.WebControls.RadioButtonList rblProcessingMode;
         
         /// <summary>
-        /// chkAllowOverwrite control.
+        /// chkModules control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.CheckBox chkAllowOverwrite;
+        protected global::System.Web.UI.WebControls.CheckBoxList chkModules;
+        
+        /// <summary>
+        /// divOverwriteFields control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divOverwriteFields;
+        
+        /// <summary>
+        /// btnSelectAll control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnSelectAll;
+        
+        /// <summary>
+        /// btnClearAll control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnClearAll;
+        
+        /// <summary>
+        /// rptOverwriteFields control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Repeater rptOverwriteFields;
         
         /// <summary>
         /// btnRun control.

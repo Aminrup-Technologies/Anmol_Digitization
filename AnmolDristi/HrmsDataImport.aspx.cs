@@ -342,33 +342,118 @@ namespace AnmolDristi
             }
         }
 
+        //private void ProcessBatch(int batchId, bool allowOverwrite, string connectionString)
+        //{
+        //    int processedCount = 0, errorCount = 0, skippedCount = 0;
+
+        //    using (SqlConnection conn = new SqlConnection(connectionString))
+        //    {
+        //        using (SqlCommand cmd = new SqlCommand("dbo.usp_ProcessEmployeeBatch_V2", conn))
+        //        {
+        //            cmd.CommandType = CommandType.StoredProcedure;
+        //            cmd.CommandTimeout = 300;
+        //            cmd.Parameters.AddWithValue("@BatchId", batchId);
+        //            cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
+
+        //            conn.Open();
+        //            using (SqlDataReader reader = cmd.ExecuteReader())
+        //            {
+        //                if (reader.Read())
+        //                {
+        //                    processedCount = reader["ProcessedCount"] != DBNull.Value ? Convert.ToInt32(reader["ProcessedCount"]) : 0;
+        //                    errorCount = reader["ErrorCount"] != DBNull.Value ? Convert.ToInt32(reader["ErrorCount"]) : 0;
+        //                    skippedCount = reader["SkippedCount"] != DBNull.Value ? Convert.ToInt32(reader["SkippedCount"]) : 0;
+        //                }
+        //            }
+        //        }
+        //    }
+
+        //    ShowMessage(string.Format("Import Successful! Processed: {0}, Errors: {1}, Skipped: {2}", processedCount, errorCount, skippedCount), true);
+        //}
+
         private void ProcessBatch(int batchId, bool allowOverwrite, string connectionString)
         {
-            int processedCount = 0, errorCount = 0, skippedCount = 0;
+            // Temporary values until V2 is completed
+            int totalRecords = 0;
+            int insertedCount = 0;
+            int updatedCount = 0;
+            int skippedCount = 0;
+            int errorCount = 0;
 
             using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_RunHRMSSynchronization", conn))
             {
-                using (SqlCommand cmd = new SqlCommand("dbo.usp_ProcessEmployeeBatch", conn))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.CommandTimeout = 300;
-                    cmd.Parameters.AddWithValue("@BatchId", batchId);
-                    cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 300;
 
-                    conn.Open();
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                cmd.Parameters.AddWithValue("@BatchId", batchId);
+
+                // Legacy parameter (wrapper still accepts it)
+                cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
+
+                // New parameters
+                cmd.Parameters.AddWithValue("@ProcessingMode", 0);              // Insert Only
+                cmd.Parameters.AddWithValue("@Modules", "Employees");
+                cmd.Parameters.AddWithValue("@OverwriteFields", DBNull.Value);
+                cmd.Parameters.AddWithValue(
+                    "@ExecutedBy",
+                    Session["UserId"] != null
+                        ? Session["UserId"].ToString()
+                        : "SYSTEM");
+
+                conn.Open();
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    // Skip debug dataset (#EmployeeSource)
+                    while (reader.NextResult())
                     {
-                        if (reader.Read())
+                        if (reader.HasRows)
                         {
-                            processedCount = reader["ProcessedCount"] != DBNull.Value ? Convert.ToInt32(reader["ProcessedCount"]) : 0;
-                            errorCount = reader["ErrorCount"] != DBNull.Value ? Convert.ToInt32(reader["ErrorCount"]) : 0;
-                            skippedCount = reader["SkippedCount"] != DBNull.Value ? Convert.ToInt32(reader["SkippedCount"]) : 0;
+                            if (reader.Read())
+                            {
+                                if (HasColumn(reader, "TotalRecords"))
+                                    totalRecords = Convert.ToInt32(reader["TotalRecords"]);
+
+                                if (HasColumn(reader, "InsertedCount"))
+                                    insertedCount = Convert.ToInt32(reader["InsertedCount"]);
+
+                                if (HasColumn(reader, "UpdatedCount"))
+                                    updatedCount = Convert.ToInt32(reader["UpdatedCount"]);
+
+                                if (HasColumn(reader, "SkippedCount"))
+                                    skippedCount = Convert.ToInt32(reader["SkippedCount"]);
+
+                                if (HasColumn(reader, "ErrorCount"))
+                                    errorCount = Convert.ToInt32(reader["ErrorCount"]);
+                            }
+
+                            break;
                         }
                     }
                 }
             }
 
-            ShowMessage(string.Format("Import Successful! Processed: {0}, Errors: {1}, Skipped: {2}", processedCount, errorCount, skippedCount), true);
+            ShowMessage(
+                string.Format(
+                    "Import Completed. Total: {0}, Inserted: {1}, Updated: {2}, Errors: {3}, Skipped: {4}",
+                    totalRecords,
+                    insertedCount,
+                    updatedCount,
+                    errorCount,
+                    skippedCount),
+                true);
+        }
+
+        private bool HasColumn(IDataRecord reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
 
         private void ShowMessage(string message, bool isSuccess)

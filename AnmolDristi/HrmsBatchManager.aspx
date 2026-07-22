@@ -75,7 +75,7 @@
                                                         <asp:TemplateField HeaderText="Select">
                                                             <ItemTemplate>
                                                                 <asp:LinkButton ID="lnkSelect" runat="server" Text="Select"
-                                                                    OnClientClick='<%# string.Format("onRowSelect(this, \"{0}\"); return false;", Eval("ImportBatchId")) %>' 
+                                                                    OnClientClick='<%# string.Format("onRowSelect(this, \"{0}\"); return false;", Eval("ImportBatchId")) %>'
                                                                     CssClass="btn btn-info btn-sm m-0" />
                                                             </ItemTemplate>
                                                         </asp:TemplateField>
@@ -106,7 +106,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="form-group row">
+                                            <%--<div class="form-group row">
                                                 <label class="col-md-4 control-label">Processed By</label>
                                                 <div class="col-md-6">
                                                     <asp:TextBox ID="txtProcessedBy" runat="server" CssClass="form-control form-control-sm" placeholder="Optional User ID..." />
@@ -123,6 +123,157 @@
                                                         </label>
                                                     </div>
                                                 </div>
+                                            </div>--%>
+
+                                            <div class="x_panel">
+
+                                                <div class="x_title">
+                                                    <h2>Synchronization Configuration</h2>
+                                                    <div class="clearfix"></div>
+                                                </div>
+
+                                                <div class="x_content">
+
+                                                    <!-- Processing Mode -->
+
+                                                    <div class="form-group row">
+
+                                                        <label class="col-md-3 control-label">
+                                                            Processing Mode
+                                                        </label>
+
+                                                        <div class="col-md-9">
+
+                                                            <asp:RadioButtonList
+                                                                ID="rblProcessingMode"
+                                                                runat="server"
+                                                                RepeatDirection="Vertical"
+                                                                AutoPostBack="true"
+                                                                OnSelectedIndexChanged="rblProcessingMode_SelectedIndexChanged">
+
+                                                                <asp:ListItem Text="Insert New Employees Only" Value="0" />
+
+                                                                <asp:ListItem Text="Update All Existing Employees" Value="1" />
+
+                                                                <asp:ListItem Text="Update Selected Fields Only"
+                                                                    Value="2"
+                                                                    Selected="True" />
+
+                                                            </asp:RadioButtonList>
+
+                                                        </div>
+
+                                                    </div>
+
+                                                    <hr />
+
+                                                    <!-- Modules -->
+
+                                                    <div class="form-group row">
+
+                                                        <label class="col-md-3 control-label">
+                                                            Synchronization Modules
+                                                        </label>
+
+                                                        <div class="col-md-9">
+
+                                                            <asp:CheckBoxList
+                                                                ID="chkModules"
+                                                                runat="server"
+                                                                RepeatDirection="Vertical">
+
+                                                                <asp:ListItem
+                                                                    Text="Synchronize Masters"
+                                                                    Value="MASTER"
+                                                                    Selected="True" />
+
+                                                                <asp:ListItem
+                                                                    Text="Synchronize Employees"
+                                                                    Value="EMPLOYEE"
+                                                                    Selected="True" />
+
+                                                                <asp:ListItem
+                                                                    Text="Synchronize Reporting Hierarchy"
+                                                                    Value="HIERARCHY"
+                                                                    Selected="True" />
+
+                                                            </asp:CheckBoxList>
+
+                                                        </div>
+
+                                                    </div>
+
+                                                    <hr />
+
+                                                    <!-- Overwrite -->
+
+                                                    <div
+                                                        id="divOverwriteFields"
+                                                        runat="server">
+
+                                                        <div class="form-group row">
+
+                                                            <label class="col-md-3 control-label">
+                                                                Fields to Overwrite
+
+                                                            </label>
+
+                                                            <div class="col-md-9">
+
+                                                                <asp:Button
+                                                                    ID="btnSelectAll"
+                                                                    runat="server"
+                                                                    Text="Select All"
+                                                                    CssClass="btn btn-info btn-xs"
+                                                                    OnClick="btnSelectAll_Click" />
+
+                                                                <asp:Button
+                                                                    ID="btnClearAll"
+                                                                    runat="server"
+                                                                    Text="Clear"
+                                                                    CssClass="btn btn-warning btn-xs"
+                                                                    OnClick="btnClearAll_Click" />
+
+                                                                <hr />
+
+                                                                <asp:Repeater
+                                                                    ID="rptOverwriteFields"
+                                                                    runat="server">
+
+                                                                    <ItemTemplate>
+
+                                                                        <div class="checkbox">
+
+                                                                            <label>
+
+                                                                                <asp:CheckBox
+                                                                                    ID="chkField"
+                                                                                    runat="server"
+                                                                                    Checked='<%# Convert.ToBoolean(Eval("IsDefault")) %>' />
+
+                                                                                <%# Eval("DisplayName") %>
+
+                                                                                <asp:HiddenField
+                                                                                    ID="hfFieldCode"
+                                                                                    runat="server"
+                                                                                    Value='<%# Eval("FieldCode") %>' />
+
+                                                                            </label>
+
+                                                                        </div>
+
+                                                                    </ItemTemplate>
+
+                                                                </asp:Repeater>
+
+                                                            </div>
+
+                                                        </div>
+
+                                                    </div>
+
+                                                </div>
+
                                             </div>
 
                                             <div class="form-group">

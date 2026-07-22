@@ -430,7 +430,7 @@
                             <asp:HiddenField ID="hfActionRequestId" runat="server" />
                             <asp:HiddenField ID="hfReturnReason" runat="server" ClientIDMode="Static" />
                             <asp:HiddenField ID="hfCurrentUserLevel" runat="server" ClientIDMode="Static" />
-
+                            <asp:HiddenField ID="hfIsFinalApprover" runat="server" />
                             <div class="modal-header bg-light">
                                 <h5 class="modal-title font-weight-bold">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
                                 <div class="ml-auto">
@@ -514,9 +514,7 @@
                                                         data-da='<%# Eval("Snapshot_DAAmount") %>'
                                                         data-hotel='<%# Eval("Snapshot_HotelAmount") %>'
                                                         data-travel='<%# Eval("Snapshot_TravelAmount") %>'
-                                                        data-stationary='<%# Eval("Snapshot_StationaryAmount") %>'
-                                                        data-total='<%# Eval("Snapshot_ExpenseTotal") %>'>
-
+                                                        data-stationary='<%# Eval("Snapshot_StationaryAmount") %>'>
                                                         <i class="fa fa-search"></i>
                                                     </asp:LinkButton>
 
@@ -720,16 +718,75 @@
                         </div>
                     </div>
 
-                    <div class="modal-footer bg-white border-top p-3 d-flex justify-content-between align-items-center">
+                    <%--<div class="modal-footer bg-white border-top p-3 d-flex justify-content-between align-items-center">
                         <div id="unified_modal_message" class="font-weight-bold small text-uppercase"></div>
                         <div class="btn-group shadow-sm">
-                            <button type="button" id="btnCloseUnifiedModal"
-                                class="btn btn-light border text-dark">
+                            <button type="button"
+                                id="btnCloseUnifiedModal"
+                                class="btn btn-light border text-dark"
+                                data-dismiss="modal">
                                 Close
                             </button>
                             <button type="button" id="btnUnifiedRejectDay" class="btn btn-outline-danger" onclick="actionDayFromModal('REJECT')"><i class="fa fa-times mr-1"></i>Return Day</button>
                             <button type="button" id="btnUnifiedApproveDay" class="btn btn-success" onclick="actionDayFromModal('APPROVE')"><i class="fa fa-check mr-1"></i>Approve Remaining</button>
                         </div>
+                    </div>--%>
+
+                    <div class="modal-footer justify-content-between">
+
+                        <div id="unified_modal_message"
+                            class="text-muted small font-italic">
+                        </div>
+
+                        <div>
+
+                            <button
+                                type="button"
+                                class="btn btn-success"
+                                id="btnUnifiedApproveDay"
+                                onclick="actionDayFromModal('APPROVE')">
+
+                                <i class="fa fa-check mr-1"></i>
+
+                                Approve Day
+
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn btn-warning"
+                                id="btnUnifiedReturnDay"
+                                onclick="actionDayFromModal('RETURN')">
+
+                                <i class="fa fa-undo mr-1"></i>
+
+                                Return Day
+
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn btn-danger"
+                                id="btnUnifiedRejectDay"
+                                onclick="actionDayFromModal('REJECT')"
+                                style="display: none;">
+
+                                <i class="fa fa-ban mr-1"></i>
+
+                                Reject Day
+
+                            </button>
+
+                            <button
+                                type="button"
+                                class="btn btn-secondary"
+                                data-dismiss="modal">
+                                Close
+
+                            </button>
+
+                        </div>
+
                     </div>
 
                 </div>
@@ -802,12 +859,21 @@
             var details = {
                 ActivityDate: $row.find('td:nth-child(2)').text().trim(),
                 Day: $row.find('td:nth-child(2) small').text().trim(),
-                ClaimType: $row.find('.claim-type-badge').text().trim(),
-                ClaimStatus: $row.find('.status-badge').text().trim(),
-                StatusClass: $row.find('.status-badge').hasClass('badge-success') ? 'success' : ($row.find('.status-badge').hasClass('badge-danger') ? 'danger' : 'warning'),
-                TotalDistanceKM: currentKm,
-                TotalTA: $row.find('td:nth-child(3)').text().replace(/[^0-9.]/g, ''),
-                TotalDA: $row.find('td:nth-child(4)').text().replace(/[^0-9.]/g, '')
+                PolicyMode: $(this).data('policymode'),
+                Hotel: $(this).data('hotel'),
+                Travel: $(this).data('travel'),
+                Stationary: $(this).data('stationary'),
+                ClaimType: $(this).data('claimtype'),
+                ClaimStatus: $(this).data('status'),
+                StatusClass:
+                $row.find('.status-badge').hasClass('badge-success')
+                    ? 'success'
+                    : ($row.find('.status-badge').hasClass('badge-danger')
+                        ? 'danger'
+                        : 'warning'),
+                TotalDistanceKM: $(this).data('distance'),
+                TotalTA: $(this).data('ta'),
+                TotalDA: $(this).data('da'),
             };
 
             // CHECK LOCK STATE: Is this parent day already "✔ Done"?
@@ -815,17 +881,27 @@
             var isRowLocked = $btnApproveRow.length > 0 && $btnApproveRow.val().indexOf('Done') !== -1;
 
             // Set UI Controls based on user level AND row lock state
-            var activeLevel = parseInt(document.getElementById('hfCurrentUserLevel').value) || 0;
+            var activeLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(),10) || 0;
+            var canAction = activeLevel > 0 && !isRowLocked;
         
-            // Define canAction scope
-            var canAction = (activeLevel === 1 || activeLevel === 2) && !isRowLocked; 
+            var currentLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(), 10);
+            var finalLevel = parseInt($('#<%=hfIsFinalApprover.ClientID%>').val(), 10);
+            var isFinalApprover = $('#<%=hfIsFinalApprover.ClientID%>').val() === "1";
 
             if (canAction) {
                 $('#divKmControls').show();
-                $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').show(); // Show Footer Actions
+                $('#btnUnifiedApproveDay').show();
+                $('#btnUnifiedReturnDay').show();
+
+                if (isFinalApprover)
+                    $('#btnUnifiedRejectDay').show();
+                else
+                    $('#btnUnifiedRejectDay').hide();
             } else {
                 $('#divKmControls').hide();
-                $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').hide(); // Lock it down
+                $('#btnUnifiedApproveDay').hide();
+                $('#btnUnifiedReturnDay').hide();
+                $('#btnUnifiedRejectDay').hide();
             }
 
             // Setup Distance Tab & Hidden Fields
@@ -839,21 +915,77 @@
 
             loadKmHistory(actId);
 
-            // Setup Receipts Tab Using the Refactored Modular Builder
-            renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction);
+            renderUnifiedExpensesModal(
+                details,
+                expensesJson,
+                isRowLocked,
+                canAction,
+                isFinalApprover
+            );
 
             // Show Modal
             $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
+            setTimeout(function () {
+                document.getElementById('divKmControls')
+                    .scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 200);
             $('#unifiedDayModal').modal('show');
         });
+
+
+        function buildActivitySummary(details) {
+            return `
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-header bg-primary text-white py-2">
+                    <strong>
+                        <i class="fa fa-info-circle mr-2"></i>
+                        Activity Summary
+                    </strong>
+                </div>
+
+                <div class="card-body py-3">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <small class="text-muted d-block">Activity Date</small>
+                            <strong>${details.ActivityDate}</strong>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <small class="text-muted d-block">Day</small>
+                            <strong>${details.Day}</strong>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <small class="text-muted d-block">Claim Type</small>
+
+                            <span class="badge badge-info">
+                                ${details.ClaimType}
+                            </span>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <small class="text-muted d-block">Status</small>
+
+                            <span class="badge badge-${details.StatusClass}">
+                                ${details.ClaimStatus}
+                            </span>
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <small class="text-muted d-block">Policy</small>
+                            <strong>${details.PolicyMode || '-'}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          `;
+        }
 
         // =========================================================
         // 2. MODULAR RENDERING LOGIC (PHASE 6 & 7)
         // =========================================================
-        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction) {
+        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isFinalApprover) {
             let html = '';
 
             // Render Top Summaries
+            //html += buildActivitySummary(details);
+            //html += buildTADASummary(details);
             html += renderActivityAndTADASummary(details);
 
             // Parse Line Items
@@ -873,35 +1005,88 @@
             
                 let hasPending = false;
 
-                expenses.forEach(exp => {
-                    let type = (exp.ExpenseType || '').toUpperCase();
-                
-                    if(exp.ClaimStatus !== 'Approved' && exp.ClaimStatus !== 'Rejected') {
+                expenses.forEach(function (exp) {
+
+                    var type = (exp.ExpenseType || '').toUpperCase();
+
+                    if (exp.ClaimStatus !== 'Approved' &&
+                        exp.ClaimStatus !== 'Rejected') {
+
                         hasPending = true;
                     }
 
-                    if (type === 'HOTEL') {
-                        html += renderExpenseCard('Hotel', 'fa-bed', 'bg-info', exp, canAction);
-                    } 
-                    else if (type === 'TRAVEL') {
-                        html += renderExpenseCard('Travel', 'fa-bus', 'bg-primary', exp, canAction);
-                    } 
-                    else if (type === 'STATIONARY') {
-                        html += renderExpenseCard('Stationary', 'fa-paperclip', 'bg-warning text-dark', exp, canAction);
+                    switch (type) {
+
+                        case 'HOTEL':
+
+                            html += renderExpenseCard(
+                                'Hotel',
+                                'fa-bed',
+                                'bg-info',
+                                exp,
+                                canAction,isFinalApprover);
+
+                            break;
+
+                        case 'TRAVEL':
+
+                            html += renderExpenseCard(
+                                'Travel',
+                                'fa-bus',
+                                'bg-primary',
+                                exp,
+                                canAction,isFinalApprover);
+
+                            break;
+
+                        case 'STATIONARY':
+
+                            html += renderExpenseCard(
+                                'Stationary',
+                                'fa-paperclip',
+                                'bg-warning text-dark',
+                                exp,
+                                canAction,isFinalApprover);
+
+                            break;
+
+                        case 'DA':
+
+                            html += renderExpenseCard(
+                                'Daily Allowance',
+                                'fa-utensils',
+                                'bg-secondary',
+                                exp,
+                                canAction,isFinalApprover);
+
+                            break;
+
                     }
-                    else if (type === 'DA') {
-                        html += renderExpenseCard('DA Entry', 'fa-utensils', 'bg-secondary', exp, canAction);
-                    }
+
                 });
             
                 html += '</div>';
 
-                // THE GATEKEEPER: Lock/Unlock the "Approve Remaining" button
-                if (hasPending && !isRowLocked) {
-                    $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'You must approve or reject all individual line items above first.');
-                } else {
-                    $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
-                }
+                //// THE GATEKEEPER: Lock/Unlock the "Approve Remaining" button
+                //if (hasPending && !isRowLocked) {
+                //    $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'You must approve or reject all individual line items above first.');
+                //} else {
+                //    $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
+                //}
+
+                // Footer action is always available.
+                // Server will process ONLY the remaining pending line items.
+                $('#btnUnifiedApproveDay')
+                    .prop('disabled', !canAction)
+                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+
+                $('#btnUnifiedRejectDay')
+                    .prop('disabled', !canAction)
+                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+
+                $('#btnUnifiedApproveDay')
+                .prop('disabled', false)
+                .removeAttr('title');
 
             } else {
                 html += `
@@ -917,172 +1102,533 @@
         }
 
         function renderActivityAndTADASummary(details) {
-            return `
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <div class="card summary-card border-left-primary h-100 bg-white shadow-sm border-0">
-                    <div class="card-body p-3">
-                        <h6 class="text-primary text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
-                            <i class="fa fa-calendar-day mr-1"></i> Activity Summary
-                        </h6>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted small font-weight-bold text-uppercase">Date:</span>
-                            <strong class="text-dark">${details.ActivityDate} <span class="text-muted font-weight-normal">(${details.Day})</span></strong>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted small font-weight-bold text-uppercase">Claim Type:</span>
-                            <span class="badge badge-light border text-dark p-1">${details.ClaimType || 'Standard'}</span>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted small font-weight-bold text-uppercase">Status:</span>
-                            <span class="badge badge-${details.StatusClass} p-1 px-2">${details.ClaimStatus}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="col-md-6 mb-3">
-                <div class="card summary-card border-left-success h-100 bg-white shadow-sm border-0">
-                    <div class="card-body p-3">
-                        <h6 class="text-success text-uppercase font-weight-bold mb-3 border-bottom pb-2" style="font-size:0.75rem; letter-spacing: 0.5px;">
-                            <i class="fa fa-car mr-1"></i> TA / DA Summary
-                        </h6>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted small font-weight-bold text-uppercase">Verified Distance:</span>
-                            <strong class="text-dark">${details.TotalDistanceKM}</strong>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted small font-weight-bold text-uppercase">Travel Allowance (TA):</span>
-                            <strong class="text-dark">₹ ${parseFloat(details.TotalTA).toFixed(2)}</strong>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted small font-weight-bold text-uppercase">Daily Allowance (DA):</span>
-                            <strong class="text-dark">₹ ${parseFloat(details.TotalDA).toFixed(2)}</strong>
+            function amount(val) {
+                return parseFloat(val || 0).toFixed(2);
+            }
+
+            return `
+            <div class="row">
+
+                <!-- Activity Summary -->
+                <div class="col-md-6 mb-3">
+
+                    <div class="card summary-card border-left-primary shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <h6 class="text-primary text-uppercase font-weight-bold mb-3 border-bottom pb-2"
+                                style="font-size:0.75rem;letter-spacing:.5px;">
+
+                                <i class="fa fa-calendar mr-1"></i>
+
+                                Activity Summary
+
+                            </h6>
+
+                            <div class="d-flex justify-content-between mb-2">
+
+                                <span class="text-muted small font-weight-bold">
+                                    Activity Date
+                                </span>
+
+                                <strong>
+
+                                    ${details.ActivityDate}
+
+                                    <span class="text-muted">
+                                        (${details.Day})
+                                    </span>
+
+                                </strong>
+
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">
+                                    Claim Type
+                                </span>
+
+                                <span class="badge badge-info">
+                                    ${details.ClaimType || 'Standard'}
+                                </span>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small font-weight-bold">
+                                    Status
+                                </span>
+
+                                <span class="badge badge-${details.StatusClass}">
+
+                                    ${details.ClaimStatus}
+
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>`;
+
+
+                <!-- TA / DA Summary -->
+                <div class="col-md-6 mb-3">
+
+                    <div class="card summary-card border-left-success shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <h6 class="text-success text-uppercase font-weight-bold mb-3 border-bottom pb-2"
+                                style="font-size:0.75rem;letter-spacing:.5px;">
+
+                                <i class="fa fa-road mr-1"></i>
+
+                                TA / DA Summary
+
+                            </h6>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Verified Distance</span>
+                                <strong>${details.TotalDistanceKM} KM</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Bike TA</span>
+                                <strong>₹ ${amount(details.TotalTA)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Daily Allowance</span>
+                                <strong>₹ ${amount(details.TotalDA)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Hotel</span>
+                                <strong>₹ ${amount(details.Hotel)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Travel</span>
+                                <strong>₹ ${amount(details.Travel)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Stationary</span>
+                                <strong>₹ ${amount(details.Stationary)}</strong>
+                            </div>
+
+                            <hr class="my-2">
+
+                            <div class="d-flex justify-content-between align-items-center">
+
+                                <span class="font-weight-bold text-uppercase">
+                                    Grand Total
+                                </span>
+
+                                <span class="h5 text-success mb-0">
+
+                                    ₹ ${
+                                    amount(
+                                        parseFloat(details.TotalTA || 0) +
+                                        parseFloat(details.TotalDA || 0) +
+                                        parseFloat(details.Hotel || 0) +
+                                        parseFloat(details.Travel || 0) +
+                                        parseFloat(details.Stationary || 0)
+                                        )
+            }
+
+                                </span>
+
+                            </div>
+
+                            <div class="text-right mt-3">
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm"
+                                        onclick="$('#dayModalTabs a[href=\\'#tab-distance\\']').tab('show');">
+                                    <i class="fa fa-map-marker mr-1"></i>
+                                    View Route
+                                </button>
+                            </div>
+                       </div>
+                    </div>
+                </div>
+            </div>`;
         }
 
-        function renderExpenseCard(title, iconClass, headerColorClass, exp, canAction) {
+        function renderExpenseCard(title, iconClass, headerColorClass, exp, canAction, isFinalApprover) {
             let amount = parseFloat(exp.Amount || 0).toFixed(2);
             let billNo = exp.BillNo || 'N/A';
             let remarks = exp.Purpose || '<em class="text-muted">No remarks provided.</em>';
-            let status = exp.ClaimStatus || 'Pending'; 
-        
+            let status = (exp.ClaimStatus || 'Pending').trim();
+       
             let attachmentHtml = '';
             if (exp.AttachmentPath && exp.AttachmentPath.trim() !== '') {
                 let safePath = exp.AttachmentPath.replace(/\\/g, '/');
                 attachmentHtml = `
-                <a href="${safePath}" target="_blank" class="btn btn-sm btn-light border text-primary font-weight-bold" style="font-size: 0.75rem;">
-                    <i class="fa fa-paperclip mr-1"></i> View Receipt
-                </a>`;
-            } else {
-                attachmentHtml = `<span class="text-muted" style="font-size: 0.75rem;"><i class="fa fa-exclamation-circle mr-1"></i> No Receipt attached</span>`;
+                    <div class="text-center">
+                        <span class="badge badge-success mb-2 px-3 py-2">
+                            <i class="fa fa-check-circle mr-1"></i>
+                            Receipt Available
+                        </span>
+                        <br>
+                        <a href="${safePath}"
+                           target="_blank"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fa fa-eye mr-1"></i>
+                            Preview Receipt
+                        </a>
+                    </div>
+
+                `;
+
+            }
+            else {
+
+                attachmentHtml = `
+                    <div class="text-center">
+                        <span class="badge badge-warning text-dark px-3 py-2">
+                            <i class="fa fa-exclamation-triangle mr-1"></i>
+                            No Receipt Uploaded
+                        </span>
+                    </div>
+                `;
+
             }
 
             let actionButtons = '';
-            let statusBadgeColor = 'warning text-dark';
 
             if (canAction) {
-                if(status === 'Approved') {
-                    statusBadgeColor = 'success';
-                    actionButtons = `
-                    <div class="w-100 d-flex align-items-center justify-content-between">
-                        <span class="badge badge-success px-2 py-1"><i class="fa fa-check mr-1"></i>Approved</span>
-                        <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)" title="Change to Reject"><i class="fa fa-times"></i></button>
-                    </div>`;
-                } else if(status === 'Rejected') {
-                    statusBadgeColor = 'danger';
-                    actionButtons = `
-                    <div class="w-100 d-flex align-items-center justify-content-between">
-                        <span class="badge badge-danger px-2 py-1"><i class="fa fa-times mr-1"></i>Rejected</span>
-                        <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="updateExpense(${exp.ExpenseId},'Approved', this)" title="Change to Approve"><i class="fa fa-check"></i></button>
-                    </div>`;
-                } else {
-                    statusBadgeColor = 'warning text-dark';
-                    actionButtons = `
-                    <div class="d-flex w-100">
-                        <button type="button" class="btn btn-sm btn-success flex-fill mr-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Approved', this)"><i class="fa fa-check mr-1"></i>Approve</button>
-                        <button type="button" class="btn btn-sm btn-danger flex-fill ml-1 font-weight-bold" onclick="updateExpense(${exp.ExpenseId},'Rejected', this)"><i class="fa fa-times mr-1"></i>Reject</button>
-                    </div>`;
+
+                switch (status) {
+
+                    //-------------------------------------------------
+                    // Pending
+                    //-------------------------------------------------
+
+                    case "Pending":
+
+                        actionButtons = `
+                <small class="text-muted text-uppercase font-weight-bold d-block text-center mb-2">
+                    Review Decision
+                </small>
+
+                <div class="btn-group d-flex">
+
+                    <button
+                        type="button"
+                        class="btn btn-success btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'APPROVE',this)">
+                        <i class="fa fa-check mr-1"></i>
+                        Approve
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-warning btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'RETURN',this)">
+                        <i class="fa fa-undo mr-1"></i>
+                        Return
+                    </button>
+
+                    ${
+                                    isFinalApprover
+                                    ?
+                                    `
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm flex-fill"
+                            onclick="updateExpense(${exp.ExpenseId},'REJECT',this)">
+                            <i class="fa fa-ban mr-1"></i>
+                            Reject
+                        </button>
+                        `
+                                    :
+                                    ''
+                        }
+
+                </div>
+            `;
+                        break;
+
+                        //-------------------------------------------------
+                        // Returned
+                        //-------------------------------------------------
+
+                    case "Returned":
+
+                        actionButtons = `
+                <div class="alert alert-warning py-2 mb-2 text-center">
+                    <i class="fa fa-undo mr-1"></i>
+                    Returned for Correction
+                </div>
+
+                <div class="btn-group d-flex">
+
+                    <button
+                        type="button"
+                        class="btn btn-success btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'APPROVE',this)">
+                        <i class="fa fa-check mr-1"></i>
+                        Approve
+                    </button>
+
+                    ${
+                                    isFinalApprover
+                                    ?
+                                    `
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm flex-fill"
+                            onclick="updateExpense(${exp.ExpenseId},'REJECT',this)">
+                            <i class="fa fa-ban mr-1"></i>
+                            Reject
+                        </button>
+                        `
+                                    :
+                                    ''
+                        }
+
+                </div>
+            `;
+                        break;
+
+                        //-------------------------------------------------
+                        // Approved
+                        //-------------------------------------------------
+
+                    case "Approved":
+
+                        actionButtons = `
+                <div class="alert alert-success py-2 mb-2 text-center">
+                    <i class="fa fa-check-circle mr-1"></i>
+                    Expense Approved
+                </div>
+
+                <div class="btn-group d-flex">
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-warning btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'RETURN',this)">
+                        <i class="fa fa-undo mr-1"></i>
+                        Return
+                    </button>
+
+                    ${
+                                    isFinalApprover
+                                    ?
+                                    `
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm flex-fill"
+                            onclick="updateExpense(${exp.ExpenseId},'REJECT',this)">
+                            <i class="fa fa-ban mr-1"></i>
+                            Reject
+                        </button>
+                        `
+                                    :
+                                    ''
+                        }
+
+                </div>
+            `;
+                        break;
+
+                        //-------------------------------------------------
+                        // Permanently Rejected
+                        //-------------------------------------------------
+
+                    case "Rejected":
+
+                        actionButtons = `
+                            <div class="alert alert-danger text-center mb-0">
+                                <i class="fa fa-times-circle mr-1"></i>
+                                Permanently Rejected
+                            </div>
+                        `;
+                        break;
+
+                    default:
+
+                        actionButtons = `
+                        <div class="text-center">
+                            <span class="badge badge-secondary p-2">
+                                ${status}
+                            </span>
+                        </div>
+                    `;
                 }
-            } else {
-                statusBadgeColor = status === 'Approved' ? 'success' : (status === 'Rejected' ? 'danger' : 'warning text-dark');
-                actionButtons = `<div class="text-center w-100"><span class="badge badge-${statusBadgeColor} p-2 w-100" style="font-size: 0.8rem;">${status}</span></div>`;
+
+            }
+            else {
+
+                let badgeClass = "secondary";
+
+                switch(status){
+
+                    case "Approved":
+                        badgeClass="success";
+                        break;
+
+                    case "Returned":
+                        badgeClass="warning";
+                        break;
+
+                    case "Rejected":
+                        badgeClass="danger";
+                        break;
+
+                    default:
+                        badgeClass="secondary";
+                }
+
+                actionButtons = `
+                    <div class="text-center">
+                        <span class="badge badge-${badgeClass} p-2 px-3">
+                            ${status}
+                        </span>
+                    </div>
+                `;
             }
 
             return `
-        <div class="col-md-6 col-xl-4 mb-3">
-            <div class="card expense-card h-100 border-0 shadow-sm" style="border-radius: 8px;">
-                <div class="card-header ${headerColorClass} d-flex justify-content-between align-items-center border-0" style="border-top-left-radius: 8px; border-top-right-radius: 8px;">
-                    <span class="font-weight-bold"><i class="fa ${iconClass} mr-2"></i>${title}</span>
-                    <span class="badge badge-light text-dark shadow-sm" style="font-size: 0.85rem;">₹ ${amount}</span>
-                </div>
-                <div class="card-body p-3 bg-white d-flex flex-column" style="font-size: 0.85rem;">
-                    <div class="mb-2 d-flex justify-content-between align-items-center">
-                        <span class="text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Bill No:</span>
-                        <strong class="text-dark">${billNo}</strong>
+            <div class="col-md-6 col-xl-4 mb-3">
+                <div class="card expense-card h-100 border-0 shadow-sm" style="border-radius: 8px;">
+                    <div class="card-header ${headerColorClass} border-0" style="border-top-left-radius:8px;border-top-right-radius:8px;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="font-weight-bold text-uppercase">
+                                    <i class="fa ${iconClass} mr-2"></i>
+                                    ${title}
+                                </div>
+
+                                <small class="d-block mt-1">
+                                    Status :
+                                    <span class="badge badge-light text-dark">
+                                        ${status}
+                                    </span>
+                                </small>
+                            </div>
+
+                            <div class="text-right">
+                                <div class="h5 mb-0 font-weight-bold">
+                                    ₹ ${amount}
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
-                    <div class="mb-3 flex-grow-1">
-                        <span class="text-muted font-weight-bold text-uppercase d-block mb-1" style="font-size: 0.7rem;">Remarks:</span>
-                        <span class="text-dark text-truncate-2" title="${exp.Purpose || ''}">${remarks}</span>
+                    <div class="card-body p-3 bg-white d-flex flex-column" style="font-size: 0.85rem;">
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Bill No:</span>
+                            <span class="badge badge-light border text-dark">${billNo}</span>
+                        </div>
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted font-weight-bold text-uppercase"
+                                  style="font-size:0.7rem;">
+                                Expense Date
+                            </span>
+
+                            <strong class="text-dark">
+                                ${exp.ExpenseDate || '-'}
+                            </strong>
+                        </div>
+                        <div class="mb-3 flex-grow-1">
+                            <span class="text-muted font-weight-bold text-uppercase d-block mb-1"
+                                  style="font-size:0.7rem;">
+                                Purpose
+                            </span>
+                            <div class="border rounded bg-light p-2" style="min-height:60px;">
+                                <span class="text-dark">${remarks}</span>
+                            </div>
+                        </div>
+                        <hr class="my-3">
+                        <div class="border-top pt-3 mt-auto">
+                            <div class="text-muted text-uppercase font-weight-bold mb-2"
+                                 style="font-size:0.70rem;">
+                                <i class="fa fa-paperclip mr-1"></i>
+                                Receipt Verification
+                            </div>${attachmentHtml}</div>
                     </div>
-                    <div class="text-center pt-2 border-top mt-auto">
-                        ${attachmentHtml}
+                    <div class="card-footer bg-white border-top p-3" style="border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; min-height: 48px;">
+                        ${actionButtons}
                     </div>
                 </div>
-                <div class="card-footer bg-light p-2 border-top d-flex align-items-center" style="border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; min-height: 48px;">
-                    ${actionButtons}
-                </div>
-            </div>
-        </div>`;
+            </div>`;
         }
 
         // =========================================================
         // 3. EXPENSE / KM AJAX ACTIONS
         // =========================================================
-        function updateExpense(id, status, btn) {
+        function updateExpense(expenseId, action, btn) {
+
             var remark = "";
 
-            if (status === 'Rejected') {
-                remark = prompt('Please enter the reason for rejecting this receipt:');
-                if (remark === null || remark.trim() === "") {
-                    alert('⚠️ A valid reason is strictly required to reject an expense.');
-                    return;
-                }
-            } else {
-                if(!confirm('Mark this receipt as Approved?')) return;
+            switch (action) {
+
+                case "APPROVE":
+
+                    if (!confirm("Approve this expense?"))
+                        return;
+
+                    break;
+
+                case "RETURN":
+
+                    remark = prompt("Reason for returning this expense:");
+
+                    if (remark === null)
+                        return;
+
+                    if ($.trim(remark) === "") {
+                        alert("Return reason is mandatory.");
+                        return;
+                    }
+
+                    break;
+
+                case "REJECT":
+
+                    remark = prompt("Reason for rejecting this expense:");
+
+                    if (remark === null)
+                        return;
+
+                    if ($.trim(remark) === "") {
+                        alert("Reject reason is mandatory.");
+                        return;
+                    }
+
+                    break;
             }
 
-            $(btn).prop('disabled', true);
+            $(btn).prop("disabled", true);
 
             $.ajax({
                 type: "POST",
                 url: "ClaimsApproval_v2.aspx/UpdateIndividualExpense",
-                data: JSON.stringify({ expenseId: id, status: status, remark: remark.trim() }),
+                data: JSON.stringify({
+                    expenseId: expenseId,
+                    action: action,
+                    remark: remark
+                }),
                 contentType: "application/json; charset=utf-8",
                 dataType: "json",
-                success: function(r) {
-                    if(r.d && r.d.success) {
-                        var newHtml = '';
-                        if(status === 'Approved') {
-                            newHtml = '<span class="badge badge-success px-2 py-1 mr-2"><i class="fa fa-check"></i> Approved</span>' +
-                                      '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Rejected\', this)" title="Change to Reject"><i class="fa fa-times"></i></button>';
-                        } else {
-                            newHtml = '<span class="badge badge-danger px-2 py-1 mr-2" title="Reason: ' + remark + '"><i class="fa fa-times"></i> Rejected</span>' +
-                                      '<button type="button" class="btn btn-sm btn-outline-success py-0 px-2 shadow-sm" onclick="updateExpense(' + id + ',\'Approved\', this)" title="Change to Approve"><i class="fa fa-check"></i></button>';
-                        }
-                        $(btn).parent().html(newHtml);
-                    
-                        document.getElementById('btnRefreshCalculations').click();
-                    } else {
-                        alert(r.d.message);
-                        $(btn).prop('disabled', false);
+
+                success: function (r) {
+                    if (r.d && r.d.success) {
+                        document.getElementById("btnRefreshCalculations").click();
                     }
+                    else {
+                        alert(r.d.message || "Unable to update expense.");
+                        $(btn).prop("disabled", false);
+                    }
+                },
+                error: function () {
+                    alert("Server error.");
+                    $(btn).prop("disabled", false);
                 }
             });
+
         }
 
         function saveKM() {
@@ -1190,35 +1736,108 @@
         // 4. ACTION ENTIRE DAY FROM FOOTER
         // =========================================================
         function actionDayFromModal(action) {
+
             var detailId = $('#km_modal_detailid').val();
-            var reqId = document.getElementById('<%= hfActionRequestId.ClientID %>').value;
-            var actionText = (action === 'APPROVE') ? 'approve' : 'reject';
-        
-            if(!confirm('Are you sure you want to ' + actionText + ' this entire day?')) return;
-        
-            $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').prop('disabled', true);
-            $('#unified_modal_message').html('<span class="text-info"><i class="fa fa-spinner fa-spin"></i> Processing...</span>');
+            var reqId = $('#<%= hfActionRequestId.ClientID %>').val();
+
+            var actionText = "";
+
+            switch (action) {
+
+                case "APPROVE":
+                    actionText = "approve this day";
+                    break;
+
+                case "RETURN":
+                    actionText = "return this day";
+                    break;
+
+                case "REJECT":
+                    actionText = "permanently reject this day";
+                    break;
+
+                default:
+                    alert("Invalid action.");
+                    return;
+            }
+
+            if (!confirm("Are you sure you want to " + actionText + "?"))
+                return;
+
+            // Disable all footer buttons
+            $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
+                .prop('disabled', true);
+
+            $('#unified_modal_message').html(
+                '<span class="text-info">' +
+                '<i class="fa fa-spinner fa-spin mr-1"></i>' +
+                'Processing...' +
+                '</span>'
+            );
 
             $.ajax({
+
                 type: "POST",
+
                 url: "ClaimsApproval_v2.aspx/ActionDayRowSilent",
-                data: JSON.stringify({ detailId: parseInt(detailId), reqId: parseInt(reqId), action: action }),
+
+                data: JSON.stringify({
+
+                    detailId: parseInt(detailId),
+
+                    reqId: parseInt(reqId),
+
+                    action: action
+
+                }),
+
                 contentType: "application/json; charset=utf-8",
+
                 dataType: "json",
-                success: function(r) {
-                    if(r.d && r.d.success) {
+
+                success: function (r) {
+
+                    if (r.d && r.d.success) {
+
                         $('#unifiedDayModal').modal('hide');
+
                         document.getElementById('btnRefreshCalculations').click();
-                    } else {
-                        $('#unified_modal_message').html('<span class="text-danger font-weight-bold">Error: ' + r.d.message + '</span>');
-                        $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').prop('disabled', false);
+
+                        return;
                     }
+
+                    $('#unified_modal_message').html(
+
+                        '<span class="text-danger font-weight-bold">' +
+
+                        (r.d ? r.d.message : 'Unable to process request.') +
+
+                        '</span>'
+                    );
+
+                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
+                        .prop('disabled', false);
+
                 },
-                error: function() {
-                    $('#unified_modal_message').html('<span class="text-danger font-weight-bold">Server Error occurred.</span>');
-                    $('#btnUnifiedApproveDay, #btnUnifiedRejectDay').prop('disabled', false);
+
+                error: function () {
+
+                    $('#unified_modal_message').html(
+
+                        '<span class="text-danger font-weight-bold">' +
+
+                        'Server error occurred.' +
+
+                        '</span>'
+                    );
+
+                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
+                        .prop('disabled', false);
+
                 }
+
             });
+
         }
 
         // =========================================================
@@ -1349,6 +1968,16 @@
 
         $(document).ready(function () {
             initDataTablesSafe();
+        });
+
+        var reopenDetailsModal = false;
+        $('#unifiedDayModal').on('hidden.bs.modal', function () {
+
+            if (reopenDetailsModal) {
+                reopenDetailsModal = false;
+                $('#detailsModal').modal('show');
+            }
+
         });
     </script>
 </asp:Content>

@@ -4,6 +4,9 @@ using System.Data.SqlClient;
 using System.Configuration;
 using System.Text;
 using System.Web;
+using System.Linq;
+using System.Web.UI.WebControls;
+using System.Collections.Generic;
 
 namespace AnmolDristi
 {
@@ -27,6 +30,7 @@ namespace AnmolDristi
             if (!IsPostBack)
             {
                 LoadBatches();
+                LoadOverwriteFields();
             }
         }
 
@@ -96,6 +100,99 @@ namespace AnmolDristi
             }
         }
 
+        private void LoadOverwriteFields()
+        {
+            using (SqlConnection conn =
+                new SqlConnection(GetConnectionString()))
+            {
+                string sql =
+                @"SELECT *
+          FROM MST_HRMSImportField
+          WHERE IsVisible=1
+          ORDER BY Category,DisplayOrder";
+
+                SqlDataAdapter da =
+                    new SqlDataAdapter(sql, conn);
+
+                DataTable dt =
+                    new DataTable();
+
+                da.Fill(dt);
+
+                rptOverwriteFields.DataSource = dt;
+
+                rptOverwriteFields.DataBind();
+            }
+        }
+
+        protected void rblProcessingMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            divOverwriteFields.Visible =
+                rblProcessingMode.SelectedValue == "2";
+        }
+
+        protected void btnSelectAll_Click(object sender, EventArgs e)
+        {
+            foreach (RepeaterItem item in rptOverwriteFields.Items)
+            {
+                CheckBox chk =
+                    item.FindControl("chkField") as CheckBox;
+
+                if (chk != null)
+                    chk.Checked = true;
+            }
+        }
+
+        protected void btnClearAll_Click(object sender, EventArgs e)
+        {
+            foreach (RepeaterItem item in rptOverwriteFields.Items)
+            {
+                CheckBox chk =
+                    item.FindControl("chkField") as CheckBox;
+
+                if (chk != null)
+                    chk.Checked = false;
+            }
+        }
+
+        private string GetSelectedOverwriteFields()
+        {
+            List<string> fields = new List<string>();
+
+            foreach (RepeaterItem item in rptOverwriteFields.Items)
+            {
+                CheckBox chk =
+                    item.FindControl("chkField") as CheckBox;
+
+                HiddenField hf =
+                    item.FindControl("hfFieldCode") as HiddenField;
+
+                if (chk != null &&
+                    hf != null &&
+                    chk.Checked)
+                {
+                    fields.Add(hf.Value.Trim());
+                }
+            }
+
+            return string.Join("|", fields);
+        }
+
+        public class SyncExecutionContext
+        {
+            public int BatchId { get; set; }
+
+            public bool AllowOverwrite { get; set; }
+
+            public int ProcessingMode { get; set; }
+
+            public string Modules { get; set; }
+
+            public string OverwriteFields { get; set; }
+
+            public string ExecutedBy { get; set; }
+        }
+
         protected void btnFilter_Click(object sender, EventArgs e)
         {
             ClearSelection();
@@ -122,49 +219,82 @@ namespace AnmolDristi
 
         protected void btnRun_Click(object sender, EventArgs e)
         {
-            lblPageError.Text = string.Empty;
-            lblRunMessage.Text = string.Empty;
+            lblPageError.Text = "";
+            lblRunMessage.Text = "";
 
-            if (string.IsNullOrEmpty(hfSelectedBatch.Value))
+            if (string.IsNullOrWhiteSpace(hfSelectedBatch.Value))
             {
-                lblPageError.Text = "Please select a batch from the grid first.";
+                lblPageError.Text = "Please select a batch first.";
                 return;
             }
 
             int batchId = Convert.ToInt32(hfSelectedBatch.Value);
-            bool allowOverwrite = chkAllowOverwrite.Checked;
+
+            int processingMode = 0;
+            int.TryParse(rblProcessingMode.SelectedValue, out processingMode);
+
+            bool allowOverwrite = processingMode != 0;
+
+            string modules = GetSelectedModules();
+
+            string overwriteFields = GetSelectedOverwriteFields();
+
+            string executedBy =
+                Session["UserId"] == null
+                ? ""
+                : Session["UserId"].ToString();
 
             try
             {
-                using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+                using (SqlConnection conn =
+                    new SqlConnection(GetConnectionString()))
                 {
-                    using (SqlCommand cmd = new SqlCommand("dbo.usp_ProcessEmployeeBatch", conn))
+                    using (SqlCommand cmd =
+                        new SqlCommand("usp_RunHRMSSynchronization", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.CommandTimeout = 300; // Increase to 5 minutes to allow complex hierarchy syncing
+                        cmd.CommandTimeout = 300;
 
                         cmd.Parameters.AddWithValue("@BatchId", batchId);
                         cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
+                        cmd.Parameters.AddWithValue("@ProcessingMode", processingMode);
+                        cmd.Parameters.AddWithValue("@Modules", modules);
+                        cmd.Parameters.AddWithValue("@OverwriteFields", overwriteFields);
+                        cmd.Parameters.AddWithValue("@ExecutedBy", executedBy);
 
                         SqlDataAdapter da = new SqlDataAdapter(cmd);
-                        DataTable dtResult = new DataTable();
-                        da.Fill(dtResult); // Fills the DataGrid with the Output Table from your Stored Procedure
 
-                        // Bind the output summary to the Result GridView
-                        gvResult.DataSource = dtResult;
+                        DataTable dt = new DataTable();
+
+                        da.Fill(dt);
+
+                        gvResult.DataSource = dt;
                         gvResult.DataBind();
 
-                        lblRunMessage.Text = string.Format("Batch {0} executed successfully.", batchId);
+                        lblRunMessage.Text =
+                            "Synchronization completed successfully.";
                     }
                 }
 
-                // Refresh the master grid to update Processed/Waiting counts
                 LoadBatches();
             }
             catch (Exception ex)
             {
-                lblPageError.Text = string.Format("Error processing batch: {0}", ex.Message);
+                lblPageError.Text = ex.Message;
             }
+        }
+
+        private string GetSelectedModules()
+        {
+            List<string> modules = new List<string>();
+
+            foreach (ListItem item in chkModules.Items)
+            {
+                if (item.Selected)
+                    modules.Add(item.Value.Trim().ToUpper());
+            }
+
+            return string.Join("|", modules);
         }
 
         protected void btnExportReport_Click(object sender, EventArgs e)
