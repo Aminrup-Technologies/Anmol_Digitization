@@ -156,7 +156,7 @@
                                 <asp:Panel ID="pnlRequests" runat="server">
                                     <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
                                         ShowHeaderWhenEmpty="true" AutoGenerateColumns="false" AllowPaging="true" PageSize="20"
-                                        OnRowCommand="gvRequests_RowCommand" DataKeyNames="ApprovalRequestId" GridLines="None">
+                                        OnRowCommand="gvRequests_RowCommand" OnPageIndexChanging="gvRequests_PageIndexChanging" DataKeyNames="ApprovalRequestId" GridLines="None">
                                         <HeaderStyle CssClass="gentilia-table-header" />
                                         <RowStyle CssClass="gentilia-row" />
                                         <AlternatingRowStyle CssClass="gentilia-row-alt" />
@@ -252,18 +252,30 @@
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="Snapshot_StationaryAmount" HeaderText="Stat. (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
-
                                             <asp:TemplateField HeaderText="Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
                                                     <asp:Label ID="lblRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
-                                            <asp:TemplateField HeaderText="Receipts" ItemStyle-HorizontalAlign="Center">
+                                            <asp:TemplateField HeaderText="Day Details" ItemStyle-HorizontalAlign="Center">
                                                 <ItemTemplate>
-                                                    <button type="button" class="btn btn-sm btn-info text-white btn-expenses" data-expenses='<%# Eval("ExpensesJson") %>' title="View Receipts">
-                                                        <i class="fa fa-list-alt"></i>View
-                                                    </button>
+                                                    <asp:LinkButton ID="lnkViewDay" runat="server" CssClass="btn btn-sm btn-info btn-day-action"
+                                                        OnClientClick="return false;"
+                                                        data-activityid='<%# Eval("ActivityId") %>'
+                                                        data-detailid='<%# Eval("ApprovalRequestDetailId") %>'
+                                                        data-expenses='<%# Eval("ExpensesJson") %>'
+                                                        data-activitydate='<%# Eval("ActivityDate","{0:dd-MMM-yyyy}") %>'
+                                                        data-day='<%# Eval("Day") %>'
+                                                        data-distance='<%# Eval("Snapshot_TotalDistanceKM") %>'
+                                                        data-ta='<%# Eval("Snapshot_CalculatedClaimAmount") %>'
+                                                        data-da='<%# Eval("Snapshot_DAAmount") %>'
+                                                        data-hotel='<%# Eval("Snapshot_HotelAmount") %>'
+                                                        data-travel='<%# Eval("Snapshot_TravelAmount") %>'
+                                                        data-stationary='<%# Eval("Snapshot_StationaryAmount") %>'>
+                                                        <i class="fa fa-search"></i> View
+                                                    </asp:LinkButton>
                                                 </ItemTemplate>
                                             </asp:TemplateField>
                                         </Columns>
@@ -310,6 +322,65 @@
                         <div class="ml-4 text-right">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="unifiedDayModal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-dark text-white p-3 align-items-center">
+                        <h6 class="modal-title m-0 font-weight-bold text-uppercase"><i class="fa fa-calendar-check mr-2"></i>Day Details (Read-Only)</h6>
+                        <button type="button" class="close text-white" data-dismiss="modal">×</button>
+                    </div>
+                    <div class="modal-body p-0 bg-light">
+                        <ul class="nav nav-tabs nav-justified m-0 bg-white shadow-sm" id="dayModalTabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active font-weight-bold text-dark py-3 border-0" data-toggle="tab" href="#tab-receipts">
+                                    <i class="fa fa-receipt text-info mr-2"></i>Expense Receipts
+                                </a>
+                            </li>
+                            <li class="nav-item border-left">
+                                <a class="nav-link font-weight-bold text-dark py-3 border-0" data-toggle="tab" href="#tab-distance">
+                                    <i class="fa fa-map-marker-alt text-danger mr-2"></i>Distance & Map
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="tab-content p-4">
+                            <div class="tab-pane active" id="tab-receipts">
+                                <div id="unifiedExpensesBody"></div>
+                            </div>
+                            <div class="tab-pane" id="tab-distance">
+                                <div class="alert alert-info border-info mb-4 shadow-sm">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-5"><strong><i class="fa fa-play-circle text-success mr-1"></i>From:</strong> <span id="km_modal_fromplace" class="text-dark ml-1"></span></div>
+                                        <div class="col-md-5"><strong><i class="fa fa-stop-circle text-danger mr-1"></i>To:</strong> <span id="km_modal_toplace" class="text-dark ml-1"></span></div>
+                                        <div class="col-md-2 text-right">
+                                            <a href="#" id="km_modal_maplink" target="_blank" class="btn btn-sm btn-primary shadow-sm w-100" style="display: none;"><i class="fa fa-map-marked-alt mr-1"></i>Map</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <h6 class="text-secondary border-bottom pb-2 mt-4 font-weight-bold text-uppercase"><i class="fa fa-history mr-2"></i>Modification History</h6>
+                                <div class="table-responsive bg-white shadow-sm border rounded" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-striped table-hover table-sm mb-0" id="km_history_tbl">
+                                        <thead class="thead-light" style="position: sticky; top: 0;">
+                                            <tr>
+                                                <th>Date (IST)</th>
+                                                <th class="text-right">Old KM</th>
+                                                <th class="text-right">New KM</th>
+                                                <th>Changed By</th>
+                                                <th>Reason</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>
@@ -585,5 +656,615 @@
                 }
             });
         }
+
+        $(document).on('click', '.btn-day-action', function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+
+            var actId = $btn.data('activityid');
+            var expensesJson = $btn.attr('data-expenses');
+
+            var details = {
+                ActivityDate: $btn.data('activitydate'),
+                Day: $btn.data('day'),
+                TotalDistanceKM: $btn.data('distance'),
+                TotalTA: $btn.data('ta'),
+                TotalDA: $btn.data('da'),
+                Hotel: $btn.data('hotel'),
+                Travel: $btn.data('travel'),
+                Stationary: $btn.data('stationary'),
+                ClaimStatus: 'Finalized',
+                StatusClass: 'success'
+            };
+
+            // Load KM History automatically
+            loadKmHistory(actId);
+
+            // Call the exact same renderer from the Approval page, but force canAction = false!
+            renderUnifiedExpensesModal(details, expensesJson, true, false, false);
+
+            $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
+            $('#unifiedDayModal').modal('show');
+        });
+
+        // Copy/Paste the `renderUnifiedExpensesModal`, `renderActivityAndTADASummary`, 
+        // and `renderExpenseCard` JavaScript functions directly from ClaimsApproval_v2.aspx here.
+
+        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isFinalApprover) {
+            let html = '';
+
+            // Render Top Summaries
+            //html += buildActivitySummary(details);
+            //html += buildTADASummary(details);
+            html += renderActivityAndTADASummary(details);
+
+            // Parse Line Items
+            let expenses = [];
+            try {
+                if (expensesJson && expensesJson.trim() !== '' && expensesJson.trim() !== '[]') {
+                    expenses = JSON.parse(expensesJson);
+                }
+            } catch (e) {
+                console.error("Error parsing expenses JSON:", e);
+            }
+
+            // Render Individual Expense Cards
+            if (expenses.length > 0) {
+                html += '<h6 class="mt-4 mb-3 text-secondary font-weight-bold text-uppercase" style="font-size: 0.85rem;"><i class="fa fa-receipt mr-2"></i>Claimed Line Items</h6>';
+                html += '<div class="row">';
+
+                let hasPending = false;
+
+                expenses.forEach(function (exp) {
+
+                    var type = (exp.ExpenseType || '').toUpperCase();
+
+                    if (exp.ClaimStatus !== 'Approved' &&
+                        exp.ClaimStatus !== 'Rejected') {
+
+                        hasPending = true;
+                    }
+
+                    switch (type) {
+
+                        case 'HOTEL':
+
+                            html += renderExpenseCard(
+                                'Hotel',
+                                'fa-bed',
+                                'bg-info',
+                                exp,
+                                canAction, isFinalApprover);
+
+                            break;
+
+                        case 'TRAVEL':
+
+                            html += renderExpenseCard(
+                                'Travel',
+                                'fa-bus',
+                                'bg-primary',
+                                exp,
+                                canAction, isFinalApprover);
+
+                            break;
+
+                        case 'STATIONARY':
+
+                            html += renderExpenseCard(
+                                'Stationary',
+                                'fa-paperclip',
+                                'bg-warning text-dark',
+                                exp,
+                                canAction, isFinalApprover);
+
+                            break;
+
+                        case 'DA':
+
+                            html += renderExpenseCard(
+                                'Daily Allowance',
+                                'fa-utensils',
+                                'bg-secondary',
+                                exp,
+                                canAction, isFinalApprover);
+
+                            break;
+
+                    }
+
+                });
+
+                html += '</div>';
+
+                //// THE GATEKEEPER: Lock/Unlock the "Approve Remaining" button
+                //if (hasPending && !isRowLocked) {
+                //    $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'You must approve or reject all individual line items above first.');
+                //} else {
+                //    $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
+                //}
+
+                // Footer action is always available.
+                // Server will process ONLY the remaining pending line items.
+                $('#btnUnifiedApproveDay')
+                    .prop('disabled', !canAction)
+                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+
+                $('#btnUnifiedRejectDay')
+                    .prop('disabled', !canAction)
+                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+
+                $('#btnUnifiedApproveDay')
+                .prop('disabled', false)
+                .removeAttr('title');
+
+            } else {
+                html += `
+            <div class="alert alert-light border mt-4 text-center text-muted shadow-sm py-4">
+                <i class="fa fa-folder-open fa-3x mb-3 d-block text-secondary opacity-50"></i>
+                <h6 class="mb-0">No additional line items (Hotel, Travel, Stationary) claimed for this day.</h6>
+            </div>`;
+                $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
+            }
+
+            // Inject into the DOM
+            $('#unifiedExpensesBody').html(html);
+        }
+
+        function renderActivityAndTADASummary(details) {
+
+            function amount(val) {
+                return parseFloat(val || 0).toFixed(2);
+            }
+
+            return `
+            <div class="row">
+
+                <!-- Activity Summary -->
+                <div class="col-md-6 mb-3">
+
+                    <div class="card summary-card border-left-primary shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <h6 class="text-primary text-uppercase font-weight-bold mb-3 border-bottom pb-2"
+                                style="font-size:0.75rem;letter-spacing:.5px;">
+
+                                <i class="fa fa-calendar mr-1"></i>
+
+                                Activity Summary
+
+                            </h6>
+
+                            <div class="d-flex justify-content-between mb-2">
+
+                                <span class="text-muted small font-weight-bold">
+                                    Activity Date
+                                </span>
+
+                                <strong>
+
+                                    ${details.ActivityDate}
+
+                                    <span class="text-muted">
+                                        (${details.Day})
+                                    </span>
+
+                                </strong>
+
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">
+                                    Claim Type
+                                </span>
+
+                                <span class="badge badge-info">
+                                    ${details.ClaimType || 'Standard'}
+                                </span>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small font-weight-bold">
+                                    Status
+                                </span>
+
+                                <span class="badge badge-${details.StatusClass}">
+
+                                    ${details.ClaimStatus}
+
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- TA / DA Summary -->
+                <div class="col-md-6 mb-3">
+
+                    <div class="card summary-card border-left-success shadow-sm border-0 h-100">
+
+                        <div class="card-body">
+
+                            <h6 class="text-success text-uppercase font-weight-bold mb-3 border-bottom pb-2"
+                                style="font-size:0.75rem;letter-spacing:.5px;">
+
+                                <i class="fa fa-road mr-1"></i>
+
+                                TA / DA Summary
+
+                            </h6>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Verified Distance</span>
+                                <strong>${details.TotalDistanceKM} KM</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Bike TA</span>
+                                <strong>₹ ${amount(details.TotalTA)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Daily Allowance</span>
+                                <strong>₹ ${amount(details.TotalDA)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Hotel</span>
+                                <strong>₹ ${amount(details.Hotel)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Travel</span>
+                                <strong>₹ ${amount(details.Travel)}</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Stationary</span>
+                                <strong>₹ ${amount(details.Stationary)}</strong>
+                            </div>
+
+                            <hr class="my-2">
+
+                            <div class="d-flex justify-content-between align-items-center">
+
+                                <span class="font-weight-bold text-uppercase">
+                                    Grand Total
+                                </span>
+
+                                <span class="h5 text-success mb-0">
+
+                                    ₹ ${
+                                    amount(
+                                        parseFloat(details.TotalTA || 0) +
+                                        parseFloat(details.TotalDA || 0) +
+                                        parseFloat(details.Hotel || 0) +
+                                        parseFloat(details.Travel || 0) +
+                                        parseFloat(details.Stationary || 0)
+                                        )
+            }
+
+                                </span>
+
+                            </div>
+
+                            <div class="text-right mt-3">
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm"
+                                        onclick="$('#dayModalTabs a[href=\\'#tab-distance\\']').tab('show');">
+                                    <i class="fa fa-map-marker mr-1"></i>
+                                    View Route
+                                </button>
+                            </div>
+                       </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function renderExpenseCard(title, iconClass, headerColorClass, exp, canAction, isFinalApprover) {
+            let amount = parseFloat(exp.Amount || 0).toFixed(2);
+            let billNo = exp.BillNo || 'N/A';
+            let remarks = exp.Purpose || '<em class="text-muted">No remarks provided.</em>';
+            let status = (exp.ClaimStatus || 'Pending').trim();
+
+            let attachmentHtml = '';
+            if (exp.AttachmentPath && exp.AttachmentPath.trim() !== '') {
+                let safePath = exp.AttachmentPath.replace(/\\/g, '/');
+                attachmentHtml = `
+                    <div class="text-center">
+                        <span class="badge badge-success mb-2 px-3 py-2">
+                            <i class="fa fa-check-circle mr-1"></i>
+                            Receipt Available
+                        </span>
+                        <br>
+                        <a href="${safePath}"
+                           target="_blank"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="fa fa-eye mr-1"></i>
+                            Preview Receipt
+                        </a>
+                    </div>
+
+                `;
+
+            }
+            else {
+
+                attachmentHtml = `
+                    <div class="text-center">
+                        <span class="badge badge-warning text-dark px-3 py-2">
+                            <i class="fa fa-exclamation-triangle mr-1"></i>
+                            No Receipt Uploaded
+                        </span>
+                    </div>
+                `;
+
+            }
+
+            let actionButtons = '';
+
+            if (canAction) {
+
+                switch (status) {
+
+                    //-------------------------------------------------
+                    // Pending
+                    //-------------------------------------------------
+
+                    case "Pending":
+
+                        actionButtons = `
+                <small class="text-muted text-uppercase font-weight-bold d-block text-center mb-2">
+                    Review Decision
+                </small>
+
+                <div class="btn-group d-flex">
+
+                    <button
+                        type="button"
+                        class="btn btn-success btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'APPROVE',this)">
+                        <i class="fa fa-check mr-1"></i>
+                        Approve
+                    </button>
+
+                    <button
+                        type="button"
+                        class="btn btn-warning btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'RETURN',this)">
+                        <i class="fa fa-undo mr-1"></i>
+                        Return
+                    </button>
+
+                    ${
+                                    isFinalApprover
+                                    ?
+                                    `
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm flex-fill"
+                            onclick="updateExpense(${exp.ExpenseId},'REJECT',this)">
+                            <i class="fa fa-ban mr-1"></i>
+                            Reject
+                        </button>
+                        `
+                                    :
+                                    ''
+                        }
+
+                </div>
+            `;
+                        break;
+
+                        //-------------------------------------------------
+                        // Returned
+                        //-------------------------------------------------
+
+                    case "Returned":
+
+                        actionButtons = `
+                <div class="alert alert-warning py-2 mb-2 text-center">
+                    <i class="fa fa-undo mr-1"></i>
+                    Returned for Correction
+                </div>
+
+                <div class="btn-group d-flex">
+
+                    <button
+                        type="button"
+                        class="btn btn-success btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'APPROVE',this)">
+                        <i class="fa fa-check mr-1"></i>
+                        Approve
+                    </button>
+
+                    ${
+                                    isFinalApprover
+                                    ?
+                                    `
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm flex-fill"
+                            onclick="updateExpense(${exp.ExpenseId},'REJECT',this)">
+                            <i class="fa fa-ban mr-1"></i>
+                            Reject
+                        </button>
+                        `
+                                    :
+                                    ''
+                        }
+
+                </div>
+            `;
+                        break;
+
+                        //-------------------------------------------------
+                        // Approved
+                        //-------------------------------------------------
+
+                    case "Approved":
+
+                        actionButtons = `
+                <div class="alert alert-success py-2 mb-2 text-center">
+                    <i class="fa fa-check-circle mr-1"></i>
+                    Expense Approved
+                </div>
+
+                <div class="btn-group d-flex">
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-warning btn-sm flex-fill"
+                        onclick="updateExpense(${exp.ExpenseId},'RETURN',this)">
+                        <i class="fa fa-undo mr-1"></i>
+                        Return
+                    </button>
+
+                    ${
+                                    isFinalApprover
+                                    ?
+                                    `
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm flex-fill"
+                            onclick="updateExpense(${exp.ExpenseId},'REJECT',this)">
+                            <i class="fa fa-ban mr-1"></i>
+                            Reject
+                        </button>
+                        `
+                                    :
+                                    ''
+                        }
+
+                </div>
+            `;
+                        break;
+
+                        //-------------------------------------------------
+                        // Permanently Rejected
+                        //-------------------------------------------------
+
+                    case "Rejected":
+
+                        actionButtons = `
+                            <div class="alert alert-danger text-center mb-0">
+                                <i class="fa fa-times-circle mr-1"></i>
+                                Permanently Rejected
+                            </div>
+                        `;
+                        break;
+
+                    default:
+
+                        actionButtons = `
+                        <div class="text-center">
+                            <span class="badge badge-secondary p-2">
+                                ${status}
+                            </span>
+                        </div>
+                    `;
+                }
+
+            }
+            else {
+
+                let badgeClass = "secondary";
+
+                switch (status) {
+
+                    case "Approved":
+                        badgeClass = "success";
+                        break;
+
+                    case "Returned":
+                        badgeClass = "warning";
+                        break;
+
+                    case "Rejected":
+                        badgeClass = "danger";
+                        break;
+
+                    default:
+                        badgeClass = "secondary";
+                }
+
+                actionButtons = `
+                    <div class="text-center">
+                        <span class="badge badge-${badgeClass} p-2 px-3">
+                            ${status}
+                        </span>
+                    </div>
+                `;
+            }
+
+            return `
+            <div class="col-md-6 col-xl-4 mb-3">
+                <div class="card expense-card h-100 border-0 shadow-sm" style="border-radius: 8px;">
+                    <div class="card-header ${headerColorClass} border-0" style="border-top-left-radius:8px;border-top-right-radius:8px;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="font-weight-bold text-uppercase">
+                                    <i class="fa ${iconClass} mr-2"></i>
+                                    ${title}
+                                </div>
+
+                                <small class="d-block mt-1">
+                                    Status :
+                                    <span class="badge badge-light text-dark">
+                                        ${status}
+                                    </span>
+                                </small>
+                            </div>
+
+                            <div class="text-right">
+                                <div class="h5 mb-0 font-weight-bold">
+                                    ₹ ${amount}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="card-body p-3 bg-white d-flex flex-column" style="font-size: 0.85rem;">
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted font-weight-bold text-uppercase" style="font-size: 0.7rem;">Bill No:</span>
+                            <span class="badge badge-light border text-dark">${billNo}</span>
+                        </div>
+                        <div class="mb-2 d-flex justify-content-between align-items-center">
+                            <span class="text-muted font-weight-bold text-uppercase"
+                                  style="font-size:0.7rem;">
+                                Expense Date
+                            </span>
+
+                            <strong class="text-dark">
+                                ${exp.ExpenseDate || '-'}
+                            </strong>
+                        </div>
+                        <div class="mb-3 flex-grow-1">
+                            <span class="text-muted font-weight-bold text-uppercase d-block mb-1"
+                                  style="font-size:0.7rem;">
+                                Purpose
+                            </span>
+                            <div class="border rounded bg-light p-2" style="min-height:60px;">
+                                <span class="text-dark">${remarks}</span>
+                            </div>
+                        </div>
+                        <hr class="my-3">
+                        <div class="border-top pt-3 mt-auto">
+                            <div class="text-muted text-uppercase font-weight-bold mb-2"
+                                 style="font-size:0.70rem;">
+                                <i class="fa fa-paperclip mr-1"></i>
+                                Receipt Verification
+                            </div>${attachmentHtml}</div>
+                    </div>
+                    <div class="card-footer bg-white border-top p-3" style="border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; min-height: 48px;">
+                        ${actionButtons}
+                    </div>
+                </div>
+            </div>`;
+        }
+
     </script>
 </asp:Content>

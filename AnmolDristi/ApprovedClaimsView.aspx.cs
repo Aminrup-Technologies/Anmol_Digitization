@@ -24,6 +24,7 @@ namespace AnmolDristi
         private decimal _totalDA = 0m;
         private decimal _totalHotel = 0m;
         private decimal _totalTravel = 0m;
+        private decimal _totalStationary = 0m;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -112,6 +113,7 @@ namespace AnmolDristi
 
         protected void btnSearch_Click(object sender, EventArgs e)
         {
+            this.SelectedExportItems = new Dictionary<int, string>(); // Clear memory
             if (ddlSearchYear.SelectedValue != "0")
                 ViewState["FilterYear"] = Convert.ToInt32(ddlSearchYear.SelectedValue);
 
@@ -124,6 +126,8 @@ namespace AnmolDristi
 
         protected void btnReset_Click(object sender, EventArgs e)
         {
+            this.SelectedExportItems = new Dictionary<int, string>(); // Clear memory
+
             SetDefaultClaimMonth();
             BindRequestsGrid();
         }
@@ -271,6 +275,7 @@ namespace AnmolDristi
             _totalDA = 0m;
             _totalHotel = 0m;
             _totalTravel = 0m;
+            _totalStationary = 0m;
 
             DataTable dt = new DataTable();
             string requesterName = "";
@@ -395,6 +400,7 @@ namespace AnmolDristi
                 _totalHotel += (drv["Snapshot_HotelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_HotelAmount"]);
                 _totalTravel += (drv["Snapshot_TravelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_TravelAmount"]);
                 _totalSnapshot += (drv["Snapshot_ExpenseTotal"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_ExpenseTotal"]);
+                _totalStationary += (drv["Snapshot_StationaryAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_StationaryAmount"]);
 
                 string detailStatus = drv["DetailStatus"].ToString();
                 if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
@@ -440,6 +446,11 @@ namespace AnmolDristi
                 else if (headerText.Contains("Travel"))
                 {
                     footer.Cells[i].Text = "<strong>" + _totalTravel.ToString("N2") + "</strong>";
+                    footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
+                }
+                else if (headerText.Contains("Stat"))
+                {
+                    footer.Cells[i].Text = "<strong>" + _totalStationary.ToString("N2") + "</strong>";
                     footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
                 }
                 else if (headerText.Contains("Total"))
@@ -604,7 +615,24 @@ namespace AnmolDristi
             }
         }
 
-        protected void btnExportSelected_Click(object sender, EventArgs e)
+        //protected void gvRequests_PageIndexChanging(object sender, GridViewPageEventArgs e)
+        //{
+        //    // 1. Set the new page index
+        //    gvRequests.PageIndex = e.NewPageIndex;
+
+        //    // 2. Re-fetch the data and bind the grid to show the new page
+        //    BindRequestsGrid();
+        //}
+
+        protected void gvRequests_PageIndexChanging(object sender, GridViewPageEventArgs e)
+        {
+            SaveCurrentPageSelection();          // 1. Save current checkboxes
+            gvRequests.PageIndex = e.NewPageIndex; // 2. Change page
+            BindRequestsGrid();                  // 3. Fetch new data
+            RestorePageSelection();              // 4. Restore checkboxes for this page
+        }
+
+        protected void btnExportSelected_Click_OLD(object sender, EventArgs e)
         {
             List<int> selectedReqIds = new List<int>();
             Dictionary<int, string> reqEmpMap = new Dictionary<int, string>();
@@ -733,6 +761,171 @@ namespace AnmolDristi
                 else
                 {
                     ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('No exportable data found for the selected claims.');", true);
+                }
+            }
+        }
+
+        protected void btnExportSelected_Click(object sender, EventArgs e)
+        {
+            SaveCurrentPageSelection();
+            var itemsToExport = this.SelectedExportItems;
+
+            if (itemsToExport == null || itemsToExport.Count == 0)
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('Please select at least one claim to export.');", true);
+                return;
+            }
+
+            using (XLWorkbook wb = new XLWorkbook())
+            {
+                using (var con = new SqlConnection(connString))
+                {
+                    con.Open();
+                    foreach (var kvp in itemsToExport)
+                    {
+                        int reqId = kvp.Key;
+                        string empCode = kvp.Value;
+
+                        DataTable dtExport = new DataTable();
+                        using (var cmd = new SqlCommand("dbo.usp_Export_Auditor_Final_Excel", con))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                            using (var da = new SqlDataAdapter(cmd)) { da.Fill(dtExport); }
+                        }
+
+                        if (dtExport.Rows.Count > 0)
+                        {
+                            DataRow totalRow = dtExport.NewRow();
+                            totalRow["Claim No"] = DBNull.Value;
+                            totalRow["Employee Code"] = DBNull.Value;
+                            totalRow["Employee Name"] = DBNull.Value;
+                            totalRow["Date"] = DBNull.Value;
+                            totalRow["Day"] = "TOTAL:";
+                            totalRow["From Place"] = DBNull.Value;
+                            totalRow["To Place"] = DBNull.Value;
+
+                            totalRow["KM Claimed"] = dtExport.Compute("SUM([KM Claimed])", string.Empty);
+                            totalRow["TA Bill"] = dtExport.Compute("SUM([TA Bill])", string.Empty);
+                            totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
+                            totalRow["Hotel"] = dtExport.Compute("SUM([Hotel])", string.Empty);
+                            totalRow["Travel / OPA"] = dtExport.Compute("SUM([Travel / OPA])", string.Empty);
+                            totalRow["Stationary"] = dtExport.Compute("SUM([Stationary])", string.Empty); // NEW
+                            totalRow["Total Expenses (DA+Hotel+Trv+Stat)"] = dtExport.Compute("SUM([Total Expenses (DA+Hotel+Trv+Stat)])", string.Empty);
+                            totalRow["Final Approved Amount"] = dtExport.Compute("SUM([Final Approved Amount])", string.Empty);
+
+                            dtExport.Rows.Add(totalRow);
+
+                            string sheetName = $"ID_{reqId}_{empCode}";
+                            string finalSheetName = sheetName.Length > 31 ? sheetName.Substring(0, 31) : sheetName;
+
+                            int counter = 1;
+                            while (wb.Worksheets.Contains(finalSheetName))
+                            {
+                                string suffix = $"_{counter}";
+                                int allowedLength = 31 - suffix.Length;
+                                finalSheetName = $"{sheetName.Substring(0, Math.Min(sheetName.Length, allowedLength))}{suffix}";
+                                counter++;
+                            }
+
+                            var ws = wb.Worksheets.Add(dtExport, finalSheetName);
+                            var lastRow = ws.LastRowUsed();
+                            lastRow.Style.Font.Bold = true;
+                            lastRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+                            ws.Columns().AdjustToContents();
+                        }
+                    }
+                }
+
+                if (wb.Worksheets.Count > 0)
+                {
+                    string fileName = $"Bulk_Claims_Export_{DateTime.Now:ddMMMyyyy}.xlsx";
+                    Response.Clear();
+                    Response.Buffer = true;
+                    Response.Charset = "";
+                    Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    Response.AddHeader("content-disposition", "attachment;filename=" + fileName);
+
+                    using (MemoryStream memoryStream = new MemoryStream())
+                    {
+                        wb.SaveAs(memoryStream);
+                        memoryStream.WriteTo(Response.OutputStream);
+                        Response.Flush();
+                        Response.End();
+                    }
+                }
+                else
+                {
+                    ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('No exportable data found.');", true);
+                }
+            }
+        }
+
+        // This stores the Request ID (Key) and the Employee Code (Value) across page loads
+        private Dictionary<int, string> SelectedExportItems
+        {
+            get
+            {
+                if (ViewState["SelectedExportItems"] == null)
+                    ViewState["SelectedExportItems"] = new Dictionary<int, string>();
+                return (Dictionary<int, string>)ViewState["SelectedExportItems"];
+            }
+            set { ViewState["SelectedExportItems"] = value; }
+        }
+
+        private void SaveCurrentPageSelection()
+        {
+            Dictionary<int, string> selectedItems = this.SelectedExportItems;
+
+            foreach (GridViewRow row in gvRequests.Rows)
+            {
+                if (row.RowType == DataControlRowType.DataRow)
+                {
+                    CheckBox chk = row.FindControl("chkSelectReq") as CheckBox;
+                    HiddenField hfReqId = row.FindControl("hfReqId") as HiddenField;
+                    HiddenField hfEmpCode = row.FindControl("hfEmpCode") as HiddenField;
+
+                    if (chk != null && hfReqId != null && hfEmpCode != null)
+                    {
+                        int reqId = Convert.ToInt32(hfReqId.Value);
+                        string empCode = hfEmpCode.Value;
+
+                        if (chk.Checked)
+                        {
+                            if (!selectedItems.ContainsKey(reqId))
+                                selectedItems.Add(reqId, empCode); // Add to memory
+                        }
+                        else
+                        {
+                            if (selectedItems.ContainsKey(reqId))
+                                selectedItems.Remove(reqId); // Remove from memory if unchecked
+                        }
+                    }
+                }
+            }
+            this.SelectedExportItems = selectedItems;
+        }
+
+        private void RestorePageSelection()
+        {
+            Dictionary<int, string> selectedItems = this.SelectedExportItems;
+
+            foreach (GridViewRow row in gvRequests.Rows)
+            {
+                if (row.RowType == DataControlRowType.DataRow)
+                {
+                    HiddenField hfReqId = row.FindControl("hfReqId") as HiddenField;
+                    CheckBox chk = row.FindControl("chkSelectReq") as CheckBox;
+
+                    if (hfReqId != null && chk != null)
+                    {
+                        int reqId = Convert.ToInt32(hfReqId.Value);
+                        // If it's in our memory bank, re-check the box automatically
+                        if (selectedItems.ContainsKey(reqId))
+                        {
+                            chk.Checked = true;
+                        }
+                    }
                 }
             }
         }
