@@ -373,7 +373,7 @@ namespace AnmolDristi
 
                 if (monthLocked && !allowSubmission)
                 {
-                    lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for rows that were rejected by approver.";
+                    lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for returned days awaiting your correction.";
                     lbl_msg.ForeColor = System.Drawing.Color.Orange;
                     ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLocked", "showPNotify('Submitted for Approval', 'Monthly claims are submitted. Editing disabled except rejected rows.', 'info');", true);
                 }
@@ -419,6 +419,92 @@ namespace AnmolDristi
                 lbl_msg.Text = "An error occurred: " + ex.Message;
                 lbl_msg.ForeColor = System.Drawing.Color.Red;
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", "showPNotify('Error', '" + ex.Message.Replace("'", "\\'") + "', 'error');", true);
+            }
+        }
+
+        private void ApplyExpenseModalEditability(string activityId)
+        {
+            if (string.IsNullOrWhiteSpace(activityId)) return;
+
+            int actId;
+            if (!int.TryParse(activityId, out actId) || actId <= 0) return;
+
+            string claimStatus = "Draft";
+            string detailStatus = "Draft";
+
+            using (SqlConnection conStat = new SqlConnection(connString))
+            {
+                conStat.Open();
+
+                using (SqlCommand cmdStat = new SqlCommand(
+                    "SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                {
+                    cmdStat.Parameters.AddWithValue("@ActId", actId);
+                    object statObj = cmdStat.ExecuteScalar();
+                    if (statObj != null && statObj != DBNull.Value)
+                        claimStatus = statObj.ToString().Trim();
+                }
+
+                using (SqlCommand cmdDetail = new SqlCommand(
+                    @"SELECT TOP 1 ISNULL(DetailStatus, 'Draft')
+                      FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK)
+                      WHERE ActivityId = @ActId
+                      ORDER BY ApprovalRequestDetailId DESC", conStat))
+                {
+                    cmdDetail.Parameters.AddWithValue("@ActId", actId);
+                    object detailObj = cmdDetail.ExecuteScalar();
+                    if (detailObj != null && detailObj != DBNull.Value)
+                        detailStatus = detailObj.ToString().Trim();
+                }
+            }
+
+            bool isReturnedDay =
+                string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase);
+
+            bool isRejectedDay =
+                string.Equals(detailStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
+
+            bool isLockedDay = isRejectedDay ||
+                claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase);
+
+            if (!isReturnedDay && isLockedDay)
+            {
+                if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
+                if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
+                if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = false;
+
+                if (rptExpenses != null)
+                {
+                    foreach (RepeaterItem item in rptExpenses.Items)
+                    {
+                        if (item.ItemType != ListItemType.Item && item.ItemType != ListItemType.AlternatingItem)
+                            continue;
+
+                        LinkButton lnkDelete = item.FindControl("lnkDeleteExpense") as LinkButton;
+                        LinkButton lnkDisabled = item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
+                        if (lnkDelete != null) lnkDelete.Visible = false;
+                        if (lnkDisabled != null) lnkDisabled.Visible = true;
+                    }
+                }
+
+                if (LBL_ExpenseMsg != null)
+                {
+                    LBL_ExpenseMsg.Text = isRejectedDay
+                        ? "This day was rejected by the auditor. Expenses cannot be edited."
+                        : "This day is " + claimStatus + ". You are in view-only mode.";
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                }
+            }
+            else
+            {
+                if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = true;
+                if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = true;
+                if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = true;
+                if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = string.Empty;
             }
         }
 
@@ -702,72 +788,9 @@ namespace AnmolDristi
                     if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = string.Empty;
                 }
 
-                // ====================================================================
-                // UI LOCK: Expense Modal View-Only Mode
-                // ====================================================================
-                string claimStatus = "Draft";
-                string detailStatus = "Draft";
-                using (SqlConnection conStat = new SqlConnection(connString))
-                {
-                    conStat.Open();
-                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                    {
-                        cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                        object statObj = cmdStat.ExecuteScalar();
-                        if (statObj != null && statObj != DBNull.Value) claimStatus = statObj.ToString().Trim();
-                    }
+                ApplyExpenseModalEditability(activityId);
 
-                    using (SqlCommand cmdDetail = new SqlCommand(@"SELECT TOP 1 ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC", conStat))
-                    {
-                        cmdDetail.Parameters.AddWithValue("@ActId", activityId);
-                        object detailObj = cmdDetail.ExecuteScalar();
-                        if (detailObj != null && detailObj != DBNull.Value) detailStatus = detailObj.ToString().Trim();
-                    }
-                }
-
-                if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                    claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase);
-
-                if (!isReturnedDay && isLockedDay)
-                {
-                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
-                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
-                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = false;
-
-                    if (rptExpenses != null)
-                    {
-                        foreach (RepeaterItem item in rptExpenses.Items)
-                        {
-                            if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
-                            {
-                                LinkButton lnkDelete = item.FindControl("lnkDeleteExpense") as LinkButton;
-                                LinkButton lnkDisabled = item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
-
-                                if (lnkDelete != null) lnkDelete.Visible = false;
-                                if (lnkDisabled != null) lnkDisabled.Visible = true;
-                            }
-                        }
-                    }
-
-                    if (LBL_ExpenseMsg != null)
-                    {
-                        LBL_ExpenseMsg.Text = isRejectedDay
-                            ? "🔒 This day was rejected by the auditor. Expenses cannot be edited."
-                            : "🔒 This day is " + claimStatus + ". You are in View-Only mode.";
-                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                    }
-                }
-                else
-                {
-                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = true;
-                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = true;
-                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = true;
-                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "";
-                }
-                // ====================================================================
-
-                // ⬅️ NEW: Format the remark safely for JavaScript injection
+                // Format the remark safely for JavaScript injection
                 string safeRemark = remark.Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "");
 
                 // ⬅️ NEW: Pass {2} (safeRemark) into the openExpenseModalSafe function
@@ -936,9 +959,12 @@ namespace AnmolDristi
 
                     if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
                         currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                        currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                        currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
+                        currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                     {
-                        lbl_msg.Text = "Cannot edit row. This claim is " + currentStatus + ".";
+                        lbl_msg.Text = currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+                            ? "Cannot edit row. This day was rejected by the auditor."
+                            : "Cannot edit row. This claim is " + currentStatus + ".";
                         lbl_msg.ForeColor = System.Drawing.Color.Red;
                         return; // Blocks the inline edit entirely
                     }
@@ -974,9 +1000,12 @@ namespace AnmolDristi
 
                 if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
                     currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                    currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                    currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
+                    currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
-                    lbl_msg.Text = "Update blocked. This claim is " + currentStatus + ".";
+                    lbl_msg.Text = currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+                        ? "Update blocked. This day was rejected by the auditor."
+                        : "Update blocked. This claim is " + currentStatus + ".";
                     lbl_msg.ForeColor = System.Drawing.Color.Red;
                     gvActivities.EditIndex = -1; // Reset grid
                     BindGrid(false);

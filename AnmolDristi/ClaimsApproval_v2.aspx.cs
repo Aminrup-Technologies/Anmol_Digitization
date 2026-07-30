@@ -873,10 +873,17 @@ namespace AnmolDristi
         private void ApplyGatekeeperLogic(Button btnApprove, Button btnReturn, Button btnRejectDay, TextBox txtRemark, LinkButton lnkReview, bool hasPendingReceipts, bool isAuditor)
         {
             if (txtRemark != null) txtRemark.ReadOnly = false;
-            if (btnReject != null)
+
+            if (btnReturn != null)
             {
-                btnReject.Enabled = true;
-                btnReject.ToolTip = "Reject entire day";
+                btnReturn.Enabled = !isAuditor;
+                btnReturn.ToolTip = "Return entire day to employee for correction";
+            }
+
+            if (btnRejectDay != null)
+            {
+                btnRejectDay.Enabled = isAuditor;
+                btnRejectDay.ToolTip = "Permanently reject this day";
             }
 
             if (hasPendingReceipts)
