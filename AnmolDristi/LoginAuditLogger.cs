@@ -6,11 +6,15 @@ using NLog;
 namespace AnmolDristi
 {
     /// <summary>
-    /// Structured login/OTP audit logging via NLog with a file fallback.
+    /// Structured login/OTP audit logging. Uses NLog when available; always writes a file fallback.
+    /// Never throws — logging must not break the login page.
     /// </summary>
     public static class LoginAuditLogger
     {
-        private static readonly Logger Logger = LogManager.GetLogger("AnmolDristi.Login");
+        private static readonly object LoggerSync = new object();
+        private static Logger _nlogLogger;
+        private static bool _nlogInitAttempted;
+        private static bool _nlogAvailable;
 
         public static void Info(string message, HttpRequest request = null, string employeeCode = null)
         {
@@ -32,12 +36,53 @@ namespace AnmolDristi
             string context = BuildContext(request, employeeCode);
             string fullMessage = string.IsNullOrEmpty(context) ? message : message + " | " + context;
 
-            if (ex != null)
-                Logger.Log(level, ex, fullMessage);
-            else
-                Logger.Log(level, fullMessage);
-
+            TryWriteNLog(level, fullMessage, ex);
             WriteFileFallback(level, fullMessage, ex);
+        }
+
+        private static void TryWriteNLog(LogLevel level, string message, Exception ex)
+        {
+            try
+            {
+                Logger logger = GetNLogLogger();
+                if (logger == null) return;
+
+                if (ex != null)
+                    logger.Log(level, ex, message);
+                else
+                    logger.Log(level, message);
+            }
+            catch
+            {
+                // NLog misconfiguration must not affect login.
+                _nlogAvailable = false;
+            }
+        }
+
+        private static Logger GetNLogLogger()
+        {
+            if (_nlogInitAttempted)
+                return _nlogAvailable ? _nlogLogger : null;
+
+            lock (LoggerSync)
+            {
+                if (_nlogInitAttempted)
+                    return _nlogAvailable ? _nlogLogger : null;
+
+                _nlogInitAttempted = true;
+                try
+                {
+                    _nlogLogger = LogManager.GetLogger("AnmolDristi.Login");
+                    _nlogAvailable = _nlogLogger != null;
+                }
+                catch
+                {
+                    _nlogLogger = null;
+                    _nlogAvailable = false;
+                }
+            }
+
+            return _nlogAvailable ? _nlogLogger : null;
         }
 
         private static string BuildContext(HttpRequest request, string employeeCode)
