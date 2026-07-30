@@ -537,11 +537,18 @@
                                                         CommandName="ApproveRow"
                                                         CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
                                                     <asp:Button
-                                                        ID="btnRejectRow"
+                                                        ID="btnReturnRow"
                                                         runat="server"
                                                         CssClass="btn btn-warning btn-sm mt-1"
                                                         Text="Return"
-                                                        CommandName="RejectRow"
+                                                        CommandName="ReturnRow"
+                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
+                                                    <asp:Button
+                                                        ID="btnRejectDayRow"
+                                                        runat="server"
+                                                        CssClass="btn btn-danger btn-sm mt-1"
+                                                        Text="Reject"
+                                                        CommandName="RejectDayRow"
                                                         CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
@@ -555,7 +562,8 @@
                                     </div>
                                     <div class="col-md-6 text-right">
                                         <asp:Button ID="btnApproveSelected" runat="server" Text="Approve Selected" CssClass="btn btn-success btn-sm" OnClick="btnApproveSelected_Click" />
-                                        <asp:Button ID="btnRejectSelected" runat="server" Text="Return Selected" CssClass="btn btn-warning btn-sm" OnClick="btnRejectSelected_Click" />
+                                        <asp:Button ID="btnRejectSelected" runat="server" Text="Return Selected" CssClass="btn btn-warning btn-sm" OnClick="btnReturnSelected_Click" />
+                                        <asp:Button ID="btnRejectDaysSelected" runat="server" Text="Reject Selected" CssClass="btn btn-danger btn-sm" OnClick="btnRejectDaysSelected_Click" />
                                     </div>
                                 </div>
 
@@ -767,6 +775,19 @@
 
                             <button
                                 type="button"
+                                class="btn btn-danger"
+                                id="btnUnifiedRejectDay"
+                                onclick="actionDayFromModal('REJECT')"
+                                style="display: none;">
+
+                                <i class="fa fa-ban mr-1"></i>
+
+                                Reject Day
+
+                            </button>
+
+                            <button
+                                type="button"
                                 class="btn btn-secondary"
                                 data-dismiss="modal">
                                 Close
@@ -879,16 +900,18 @@
             if (canAction) {
                 $('#divKmControls').show();
                 $('#btnUnifiedApproveDay').show();
-                // Managers return days for employee correction; auditors approve only.
                 if (isAuditor) {
                     $('#btnUnifiedReturnDay').hide();
+                    $('#btnUnifiedRejectDay').show();
                 } else {
                     $('#btnUnifiedReturnDay').show();
+                    $('#btnUnifiedRejectDay').hide();
                 }
             } else {
                 $('#divKmControls').hide();
                 $('#btnUnifiedApproveDay').hide();
                 $('#btnUnifiedReturnDay').hide();
+                $('#btnUnifiedRejectDay').hide();
             }
 
             // Setup Distance Tab & Hidden Fields
@@ -1068,6 +1091,10 @@
                     .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
 
                 $('#btnUnifiedReturnDay')
+                    .prop('disabled', !canAction)
+                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+
+                $('#btnUnifiedRejectDay')
                     .prop('disabled', !canAction)
                     .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
 
@@ -1689,6 +1716,10 @@
                     actionText = "return this day to the employee for correction";
                     break;
 
+                case "REJECT":
+                    actionText = "permanently reject this day";
+                    break;
+
                 default:
                     alert("Invalid action.");
                     return;
@@ -1698,7 +1729,7 @@
                 return;
 
             // Disable all footer buttons
-            $('#btnUnifiedApproveDay,#btnUnifiedReturnDay')
+            $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
                 .prop('disabled', true);
 
             $('#unified_modal_message').html(
@@ -1748,7 +1779,7 @@
                         '</span>'
                     );
 
-                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay')
+                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
                         .prop('disabled', false);
 
                 },
@@ -1764,7 +1795,7 @@
                         '</span>'
                     );
 
-                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay')
+                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
                         .prop('disabled', false);
 
                 }

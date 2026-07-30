@@ -325,8 +325,15 @@ namespace AnmolDristi
             {
                 if (row.RowType == DataControlRowType.DataRow)
                 {
-                    var btnReject = row.FindControl("btnRejectRow") as Button;
-                    if (btnReject != null && btnReject.Enabled) { pendingDayRowsCount++; }
+                    var btnApprove = row.FindControl("btnApproveRow") as Button;
+                    var btnReturn = row.FindControl("btnReturnRow") as Button;
+                    var btnRejectDay = row.FindControl("btnRejectDayRow") as Button;
+                    if ((btnApprove != null && btnApprove.Enabled) ||
+                        (btnReturn != null && btnReturn.Enabled) ||
+                        (btnRejectDay != null && btnRejectDay.Enabled))
+                    {
+                        pendingDayRowsCount++;
+                    }
                 }
             }
 
@@ -402,7 +409,15 @@ namespace AnmolDristi
 
             btnApproveSelected.Visible = pendingActionExists;
             btnRejectSelected.Visible = pendingActionExists && !isAuditorCheck;
+            btnRejectDaysSelected.Visible = pendingActionExists && isAuditorCheck;
             txtBulkRemarks.Visible = pendingActionExists;
+        }
+
+        private enum DayDetailAction
+        {
+            Approve,
+            Return,
+            Reject
         }
 
         private bool IsCurrentUserAuditor()
@@ -714,21 +729,26 @@ namespace AnmolDristi
                 int approvedLevel = drv["DetailApprovedLevel"] == DBNull.Value ? 0 : Convert.ToInt32(drv["DetailApprovedLevel"]);
 
                 var btnApprove = (Button)e.Row.FindControl("btnApproveRow");
-                var btnReject = (Button)e.Row.FindControl("btnRejectRow");
+                var btnReturn = (Button)e.Row.FindControl("btnReturnRow");
+                var btnRejectDay = (Button)e.Row.FindControl("btnRejectDayRow");
                 var txtRemark = (TextBox)e.Row.FindControl("txtRowRemark");
                 var lnkReview = e.Row.FindControl("lnkReview") as LinkButton;
 
                 if (btnApprove != null) btnApprove.Enabled = false;
-                if (btnReject != null) btnReject.Enabled = false;
+                if (btnReturn != null) btnReturn.Enabled = false;
+                if (btnRejectDay != null) btnRejectDay.Enabled = false;
                 if (txtRemark != null) txtRemark.ReadOnly = true;
 
                 string expensesJson = drv["ExpensesJson"] != DBNull.Value ? drv["ExpensesJson"].ToString() : "";
                 bool hasPendingReceipts = HasPendingExpenseReceipts(expensesJson);
 
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase) ||
-                    detailStatus.Equals("Returned", StringComparison.OrdinalIgnoreCase))
+                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
                     e.Row.CssClass += " table-danger";
+                }
+                else if (detailStatus.Equals("Returned", StringComparison.OrdinalIgnoreCase))
+                {
+                    e.Row.CssClass += " table-warning";
                 }
                 else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel == currentLevel)
                 {
@@ -738,15 +758,17 @@ namespace AnmolDristi
                 else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel < currentLevel)
                 {
                     e.Row.CssClass += " table-warning";
-                    ApplyGatekeeperLogic(btnApprove, btnReject, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
+                    ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
                 }
                 else if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
                 {
-                    ApplyGatekeeperLogic(btnApprove, btnReject, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
+                    ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
                 }
 
-                if (btnReject != null && IsCurrentUserAuditor())
-                    btnReject.Visible = false;
+                if (btnReturn != null)
+                    btnReturn.Visible = !IsCurrentUserAuditor();
+                if (btnRejectDay != null)
+                    btnRejectDay.Visible = IsCurrentUserAuditor();
 
                 // DYNAMIC HIERARCHY AUDITOR CHECK
                 string currentRole = ViewState["CurrentUserRole"]?.ToString() ?? "";
@@ -770,16 +792,20 @@ namespace AnmolDristi
             }
         }
 
-        private void ApplyGatekeeperLogic(Button btnApprove, Button btnReject, TextBox txtRemark, LinkButton lnkReview, bool hasPendingReceipts, bool isAuditor)
+        private void ApplyGatekeeperLogic(Button btnApprove, Button btnReturn, Button btnRejectDay, TextBox txtRemark, LinkButton lnkReview, bool hasPendingReceipts, bool isAuditor)
         {
             if (txtRemark != null) txtRemark.ReadOnly = false;
 
-            if (btnReject != null)
+            if (btnReturn != null)
             {
-                btnReject.Enabled = !isAuditor;
-                btnReject.ToolTip = isAuditor
-                    ? "Managers return days for employee correction."
-                    : "Return entire day to employee for correction";
+                btnReturn.Enabled = !isAuditor;
+                btnReturn.ToolTip = "Return entire day to employee for correction";
+            }
+
+            if (btnRejectDay != null)
+            {
+                btnRejectDay.Enabled = isAuditor;
+                btnRejectDay.ToolTip = "Permanently reject this day";
             }
 
             if (hasPendingReceipts)
@@ -884,16 +910,19 @@ namespace AnmolDristi
 
         protected void gvDetails_RowCommand(object sender, GridViewCommandEventArgs e)
         {
-            if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
+            if (e.CommandName == "ApproveRow" || e.CommandName == "ReturnRow" || e.CommandName == "RejectDayRow")
             {
                 try
                 {
                     int detailId = Convert.ToInt32(e.CommandArgument);
-                    bool isApprove = (e.CommandName == "ApproveRow");
                     int reqId = Convert.ToInt32(hfActionRequestId.Value);
-
-                    if (!isApprove && IsCurrentUserAuditor())
-                        throw new Exception("Auditors cannot return days. Managers return days for employee correction.");
+                    DayDetailAction action;
+                    if (e.CommandName == "ApproveRow")
+                        action = DayDetailAction.Approve;
+                    else if (e.CommandName == "ReturnRow")
+                        action = DayDetailAction.Return;
+                    else
+                        action = DayDetailAction.Reject;
 
                     GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
                     TextBox txt = row.FindControl("txtRowRemark") as TextBox;
@@ -901,7 +930,7 @@ namespace AnmolDristi
                     string user = GetLoggedInEmployeeCode();
                     string remark = AppendUserToRemark(rawRemark, user);
 
-                    ProcessDayDetailAction(detailId, reqId, isApprove, remark);
+                    ProcessDayDetailAction(detailId, reqId, action, remark);
 
                     ExecuteRecalculationSQL(reqId);
                     BindDetailsGrid(reqId);
@@ -979,10 +1008,11 @@ namespace AnmolDristi
             }
         }
 
-        protected void btnApproveSelected_Click(object sender, EventArgs e) { ProcessBulkAction(true); }
-        protected void btnRejectSelected_Click(object sender, EventArgs e) { ProcessBulkAction(false); }
+        protected void btnApproveSelected_Click(object sender, EventArgs e) { ProcessBulkAction(DayDetailAction.Approve); }
+        protected void btnReturnSelected_Click(object sender, EventArgs e) { ProcessBulkAction(DayDetailAction.Return); }
+        protected void btnRejectDaysSelected_Click(object sender, EventArgs e) { ProcessBulkAction(DayDetailAction.Reject); }
 
-        private void ProcessBulkAction(bool isApprove)
+        private void ProcessBulkAction(DayDetailAction action)
         {
             try
             {
@@ -994,17 +1024,27 @@ namespace AnmolDristi
                 string remarks = AppendUserToRemark(rawRemarks, auditor);
                 int processedCount = 0;
 
-                if (!isApprove && IsCurrentUserAuditor())
+                if (action == DayDetailAction.Return && IsCurrentUserAuditor())
                 {
-                    lblModalMessage.Text = "Auditors cannot return days. Managers return days for employee correction.";
+                    lblModalMessage.Text = "Auditors cannot return days.";
                     lblModalMessage.CssClass = "text-warning font-weight-bold";
                     upDetails.Update();
                     return;
                 }
 
-                if (!isApprove && string.IsNullOrWhiteSpace(remarks))
+                if (action == DayDetailAction.Reject && !IsCurrentUserAuditor())
                 {
-                    lblModalMessage.Text = "Bulk return remarks are mandatory.";
+                    lblModalMessage.Text = "Only auditors can reject days.";
+                    lblModalMessage.CssClass = "text-warning font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
+
+                if (action != DayDetailAction.Approve && string.IsNullOrWhiteSpace(remarks))
+                {
+                    lblModalMessage.Text = action == DayDetailAction.Reject
+                        ? "Bulk reject remarks are mandatory."
+                        : "Bulk return remarks are mandatory.";
                     lblModalMessage.CssClass = "text-warning font-weight-bold";
                     upDetails.Update();
                     return;
@@ -1020,14 +1060,14 @@ namespace AnmolDristi
                     int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
                     string rowRemark = remarks;
 
-                    if (!isApprove)
+                    if (action != DayDetailAction.Approve)
                     {
                         var txtRowRemark = row.FindControl("txtRowRemark") as TextBox;
                         if (txtRowRemark != null && !string.IsNullOrWhiteSpace(txtRowRemark.Text))
                             rowRemark = AppendUserToRemark(txtRowRemark.Text.Trim(), auditor);
                     }
 
-                    ProcessDayDetailAction(detailId, reqId, isApprove, rowRemark);
+                    ProcessDayDetailAction(detailId, reqId, action, rowRemark);
                     processedCount++;
                 }
 
@@ -1035,8 +1075,13 @@ namespace AnmolDristi
                 {
                     ExecuteRecalculationSQL(reqId);
                     txtBulkRemarks.Text = "";
-                    lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {(isApprove ? "Approved" : "Returned")}.";
-                    lblModalMessage.CssClass = isApprove ? "text-success font-weight-bold" : "text-warning font-weight-bold";
+                    string resultLabel = action == DayDetailAction.Approve
+                        ? "Approved"
+                        : (action == DayDetailAction.Reject ? "Rejected" : "Returned");
+                    lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {resultLabel}.";
+                    lblModalMessage.CssClass = action == DayDetailAction.Approve
+                        ? "text-success font-weight-bold"
+                        : (action == DayDetailAction.Reject ? "text-danger font-weight-bold" : "text-warning font-weight-bold");
                 }
                 else
                 {
@@ -1159,31 +1204,55 @@ namespace AnmolDristi
             return (ctx.Session["WORKMAN"] ?? ctx.Session["workman"]) as string;
         }
 
-        private void ProcessDayDetailAction(int detailId, int reqId, bool isApprove, string remark)
+        private void ProcessDayDetailAction(int detailId, int reqId, DayDetailAction action, string remark)
         {
             string user = GetLoggedInEmployeeCode();
             if (string.IsNullOrWhiteSpace(user))
                 throw new Exception("User session expired. Please log in again.");
 
-            if (!isApprove && IsCurrentUserAuditor())
+            if (action == DayDetailAction.Return && IsCurrentUserAuditor())
                 throw new Exception("Auditors cannot return days. Managers return days for employee correction.");
 
-            if (!isApprove && string.IsNullOrWhiteSpace(remark))
-                throw new Exception("Remarks are required when returning a day.");
+            if (action == DayDetailAction.Reject && !IsCurrentUserAuditor())
+                throw new Exception("Only auditors can reject days.");
+
+            if (action != DayDetailAction.Approve && string.IsNullOrWhiteSpace(remark))
+                throw new Exception(action == DayDetailAction.Reject
+                    ? "Remarks are required when rejecting a day."
+                    : "Remarks are required when returning a day.");
 
             using (var con = new SqlConnection(connString))
             {
                 con.Open();
 
-                if (isApprove)
+                switch (action)
                 {
-                    ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con);
+                    case DayDetailAction.Approve:
+                        ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con);
+                        break;
+                    case DayDetailAction.Return:
+                        ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
+                        MarkActivityReturnedForCorrection(detailId, user, con);
+                        break;
+                    case DayDetailAction.Reject:
+                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con);
+                        MarkActivityRejectedForDay(detailId, user, con);
+                        break;
                 }
-                else
-                {
-                    ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
-                    MarkActivityReturnedForCorrection(detailId, user, con);
-                }
+            }
+        }
+
+        private static void ExecuteProcessSalesApprovalRequestDetail(int detailId, int reqId, string action, string remark, string user, SqlConnection con, SqlTransaction tran = null)
+        {
+            using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con, tran))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                cmd.Parameters.AddWithValue("@Action", action);
+                cmd.Parameters.AddWithValue("@ActionBy", user);
+                cmd.Parameters.AddWithValue("@ActionRemarks", string.IsNullOrWhiteSpace(remark) ? (object)DBNull.Value : remark);
+                cmd.ExecuteNonQuery();
             }
         }
 
@@ -1223,6 +1292,39 @@ namespace AnmolDristi
                     WHERE ActivityId = @ActivityId
                       AND IsDeleted = 0
                       AND ISNULL(ClaimStatus, '') <> 'Rejected';
+                END";
+
+            using (var cmd = new SqlCommand(sql, con))
+            {
+                cmd.Parameters.AddWithValue("@DetailId", detailId);
+                cmd.Parameters.AddWithValue("@User", user);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void MarkActivityRejectedForDay(int detailId, string user, SqlConnection con)
+        {
+            const string sql = @"
+                DECLARE @ActivityId INT;
+                SELECT @ActivityId = ActivityId
+                FROM dbo.SalesApprovalRequestDetail
+                WHERE ApprovalRequestDetailId = @DetailId;
+
+                IF @ActivityId IS NOT NULL
+                BEGIN
+                    UPDATE dbo.SalesDailyActivity
+                    SET ClaimStatus = 'Rejected',
+                        ModifiedByUserId = @User,
+                        ModifiedDateTime = DATEADD(MINUTE, 330, SYSUTCDATETIME())
+                    WHERE ActivityId = @ActivityId;
+
+                    UPDATE dbo.SalesDailyExpense
+                    SET ClaimStatus = 'Rejected',
+                        ModifiedBy = @User,
+                        ModifiedOn = SYSUTCDATETIME()
+                    WHERE ActivityId = @ActivityId
+                      AND IsDeleted = 0
+                      AND ISNULL(ClaimStatus, '') <> 'Approved';
                 END";
 
             using (var cmd = new SqlCommand(sql, con))
@@ -1919,30 +2021,42 @@ namespace AnmolDristi
                 string normalized = (action ?? "").Trim().ToUpperInvariant();
                 bool isApprove = normalized == "APPROVE";
                 bool isReturn = normalized == "RETURN";
+                bool isReject = normalized == "REJECT";
+                string approverRole = GetApproverRoleFromSession();
 
-                if (!isApprove && !isReturn)
-                    return new { success = false, message = "Day-level reject is not permitted. Managers may return days; auditors may approve days." };
+                if (!isApprove && !isReturn && !isReject)
+                    return new { success = false, message = "Invalid day action." };
 
-                if (isReturn && IsAuditorRole(GetApproverRoleFromSession()))
+                if (isReturn && IsAuditorRole(approverRole))
                     return new { success = false, message = "Auditors cannot return days. Managers return days for employee correction." };
 
+                if (isReject && !IsAuditorRole(approverRole))
+                    return new { success = false, message = "Only auditors can reject days." };
+
                 string remark = AppendUserToRemark(
-                    isReturn ? "Returned via Unified Day Modal" : "Approved via Unified Day Modal",
+                    isApprove
+                        ? "Approved via Unified Day Modal"
+                        : (isReject ? "Rejected via Unified Day Modal" : "Returned via Unified Day Modal"),
                     user);
                 string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
                 using (SqlConnection con = new SqlConnection(conn))
                 {
                     con.Open();
-                    ExecuteProcessApprovalAction(
-                        detailId,
-                        isApprove ? "APPROVE" : "RETURN",
-                        remark,
-                        user,
-                        con);
-
-                    if (isReturn)
+                    if (isApprove)
+                    {
+                        ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con);
+                    }
+                    else if (isReturn)
+                    {
+                        ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
                         MarkActivityReturnedForCorrection(detailId, user, con);
+                    }
+                    else
+                    {
+                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con);
+                        MarkActivityRejectedForDay(detailId, user, con);
+                    }
                 }
 
                 return new { success = true };
