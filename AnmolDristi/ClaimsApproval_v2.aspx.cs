@@ -28,11 +28,15 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                if (Session["USERID"] != null)
+                if (Session["USERID"] == null)
                 {
-                    PopulateFilters();
-                    BindRequestsGrid();
+                    Response.Redirect("~/Login.aspx", false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
                 }
+
+                PopulateFilters();
+                BindRequestsGrid();
             }
         }
 
@@ -67,7 +71,7 @@ namespace AnmolDristi
 
         protected void BindRequestsGrid()
         {
-            string employeeCode = Session["workman"]?.ToString() ?? "Guest";
+            string employeeCode = GetLoggedInEmployeeCode() ?? "Guest";
             DataTable dt = new DataTable();
 
             using (var con = new SqlConnection(connString))
@@ -238,7 +242,7 @@ namespace AnmolDristi
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') <> 'Rejected';
+                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') NOT IN ('Rejected', 'Returned');
 
                 SELECT 
                     ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
@@ -248,7 +252,7 @@ namespace AnmolDristi
                         CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
                         ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus = 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus IN ('Rejected', 'Returned')
         
                     UNION ALL
         
@@ -262,7 +266,10 @@ namespace AnmolDristi
                     UNION ALL
         
                     SELECT 
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
+                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
+                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
+                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
+                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount,
                         (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN (
@@ -617,18 +624,17 @@ namespace AnmolDristi
                 var btnApprove = (Button)e.Row.FindControl("btnApproveRow");
                 var btnReject = (Button)e.Row.FindControl("btnRejectRow");
                 var txtRemark = (TextBox)e.Row.FindControl("txtRowRemark");
-                var btnExp = e.Row.FindControl("btnExp") as System.Web.UI.HtmlControls.HtmlButton;
+                var lnkReview = e.Row.FindControl("lnkReview") as LinkButton;
 
                 if (btnApprove != null) btnApprove.Enabled = false;
                 if (btnReject != null) btnReject.Enabled = false;
                 if (txtRemark != null) txtRemark.ReadOnly = true;
 
                 string expensesJson = drv["ExpensesJson"] != DBNull.Value ? drv["ExpensesJson"].ToString() : "";
-                bool hasPendingReceipts = expensesJson.Contains("\"ClaimStatus\":\"Submitted\"") ||
-                                          expensesJson.Contains("\"ClaimStatus\":\"Draft\"") ||
-                                          expensesJson.Contains("\"ClaimStatus\":\"Pending\"");
+                bool hasPendingReceipts = HasPendingExpenseReceipts(expensesJson);
 
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase) ||
+                    detailStatus.Equals("Returned", StringComparison.OrdinalIgnoreCase))
                 {
                     e.Row.CssClass += " table-danger";
                 }
@@ -640,24 +646,26 @@ namespace AnmolDristi
                 else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel < currentLevel)
                 {
                     e.Row.CssClass += " table-warning";
-                    ApplyGatekeeperLogic(btnApprove, btnReject, txtRemark, btnExp, hasPendingReceipts);
+                    ApplyGatekeeperLogic(btnApprove, btnReject, txtRemark, lnkReview, hasPendingReceipts);
                 }
                 else if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
                 {
-                    ApplyGatekeeperLogic(btnApprove, btnReject, txtRemark, btnExp, hasPendingReceipts);
+                    ApplyGatekeeperLogic(btnApprove, btnReject, txtRemark, lnkReview, hasPendingReceipts);
                 }
 
                 // DYNAMIC HIERARCHY AUDITOR CHECK
                 string currentRole = ViewState["CurrentUserRole"]?.ToString() ?? "";
                 bool isAuditor = currentRole.Equals("Auditor", StringComparison.OrdinalIgnoreCase);
 
-                if (isAuditor && hasPendingReceipts && !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (isAuditor && hasPendingReceipts &&
+                    !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase) &&
+                    !detailStatus.Equals("Returned", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (btnExp != null)
+                    if (lnkReview != null)
                     {
-                        btnExp.Attributes["class"] = "btn btn-sm btn-danger text-white btn-day-action pulse-warning shadow-sm";
-                        btnExp.InnerText = "⚠️ Action";
-                        btnExp.Attributes["title"] = "Pending receipts require your approval or rejection!";
+                        lnkReview.CssClass = "btn btn-sm btn-danger text-white btn-day-action pulse-warning shadow-sm";
+                        lnkReview.Text = "<i class=\"fa fa-exclamation-triangle\"></i>";
+                        lnkReview.ToolTip = "Pending receipts require your approval or rejection!";
                     }
                 }
             }
@@ -667,7 +675,7 @@ namespace AnmolDristi
             }
         }
 
-        private void ApplyGatekeeperLogic(Button btnApprove, Button btnReject, TextBox txtRemark, System.Web.UI.HtmlControls.HtmlButton btnExp, bool hasPendingReceipts)
+        private void ApplyGatekeeperLogic(Button btnApprove, Button btnReject, TextBox txtRemark, LinkButton lnkReview, bool hasPendingReceipts)
         {
             if (txtRemark != null) txtRemark.ReadOnly = false;
             if (btnReject != null) btnReject.Enabled = true;
@@ -680,11 +688,10 @@ namespace AnmolDristi
                     btnApprove.ToolTip = "You must open the folder and action all receipts first.";
                     btnApprove.CssClass = "btn btn-sm btn-outline-secondary";
                 }
-                if (btnExp != null)
+                if (lnkReview != null)
                 {
-                    string currentClass = btnExp.Attributes["class"] ?? "";
-                    if (!currentClass.Contains("pulse-info"))
-                        btnExp.Attributes["class"] = currentClass + " pulse-info";
+                    if (!lnkReview.CssClass.Contains("pulse-info"))
+                        lnkReview.CssClass += " pulse-info";
                 }
             }
             else
@@ -695,12 +702,22 @@ namespace AnmolDristi
                     btnApprove.ToolTip = "Approve entire day";
                     btnApprove.CssClass = "btn btn-sm btn-success pulse-success text-white";
                 }
-                if (btnExp != null)
+                if (lnkReview != null)
                 {
-                    string currentClass = btnExp.Attributes["class"] ?? "";
-                    btnExp.Attributes["class"] = currentClass.Replace("pulse-info", "").Trim();
+                    lnkReview.CssClass = lnkReview.CssClass.Replace("pulse-info", "").Trim();
                 }
             }
+        }
+
+        private static bool HasPendingExpenseReceipts(string expensesJson)
+        {
+            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]")
+                return false;
+
+            return expensesJson.Contains("\"ClaimStatus\":\"Submitted\"") ||
+                   expensesJson.Contains("\"ClaimStatus\":\"Draft\"") ||
+                   expensesJson.Contains("\"ClaimStatus\":\"Pending\"") ||
+                   expensesJson.Contains("\"ClaimStatus\":\"Returned\"");
         }
 
         private void FillFooterTotals(GridViewRow footer)
@@ -767,75 +784,31 @@ namespace AnmolDristi
         {
             if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
             {
-                int detailId = Convert.ToInt32(e.CommandArgument);
-                bool isApprove = (e.CommandName == "ApproveRow");
-
-                GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
-                TextBox txt = row.FindControl("txtRowRemark") as TextBox;
-
-                string dbStatus = isApprove ? "Approved" : "Rejected";
-                string user = GetLoggedInEmployeeCode();
-                string rawRemark = txt != null ? txt.Text : "";
-                string remark = AppendUserToRemark(rawRemark, user);
-
-                int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
-                int reqId = Convert.ToInt32(hfActionRequestId.Value);
-
-                using (var con = new SqlConnection(connString))
+                try
                 {
-                    con.Open();
-                    using (var tran = con.BeginTransaction())
-                    {
-                        try
-                        {
-                            // 1. Level-Aware Inline SQL (Replaces the rigid SP)
-                            string sql = @"
-                        UPDATE dbo.SalesApprovalRequestDetail 
-                        SET DetailStatus = @Status, 
-                            DetailRemarks = ISNULL(@Remarks, DetailRemarks), 
-                            DetailApprovedBy = @ActionBy, 
-                            DetailApprovedOn = SYSUTCDATETIME(),
-                            DetailApprovedLevel = @Level
-                        WHERE ApprovalRequestDetailId = @DetailId AND ApprovalRequestId = @ReqId;
+                    int detailId = Convert.ToInt32(e.CommandArgument);
+                    bool isApprove = (e.CommandName == "ApproveRow");
+                    int reqId = Convert.ToInt32(hfActionRequestId.Value);
 
-                        -- 2. Cascade down to child receipts
-                        UPDATE dbo.SalesDailyExpense 
-                        SET ClaimStatus = @Status, 
-                            ClaimProcessedBy = @ActionBy, 
-                            ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
-                            ModifiedBy = @ActionBy,
-                            ModifiedOn = SYSUTCDATETIME(),
-                            Remarks = ISNULL(Remarks, @Remarks)
-                        WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
-                          AND ClaimStatus NOT IN ('Approved', 'Rejected') 
-                          AND IsDeleted = 0;";
+                    GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
+                    TextBox txt = row.FindControl("txtRowRemark") as TextBox;
+                    string rawRemark = txt != null ? txt.Text : "";
+                    string user = GetLoggedInEmployeeCode();
+                    string remark = AppendUserToRemark(rawRemark, user);
 
-                            using (var cmd = new SqlCommand(sql, con, tran))
-                            {
-                                cmd.Parameters.AddWithValue("@Status", dbStatus);
-                                cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remark) ? (object)DBNull.Value : remark);
-                                cmd.Parameters.AddWithValue("@ActionBy", user);
-                                cmd.Parameters.AddWithValue("@Level", currentLevel);
-                                cmd.Parameters.AddWithValue("@DetailId", detailId);
-                                cmd.Parameters.AddWithValue("@ReqId", reqId);
+                    ProcessDayDetailAction(detailId, reqId, isApprove, remark);
 
-                                cmd.ExecuteNonQuery();
-                            }
-
-                            tran.Commit();
-                        }
-                        catch (Exception ex)
-                        {
-                            tran.Rollback();
-                            throw new Exception("Inline action failed. Transaction rolled back.", ex);
-                        }
-                    }
+                    ExecuteRecalculationSQL(reqId);
+                    BindDetailsGrid(reqId);
+                    upDetails.Update();
+                    BindRequestsGrid();
                 }
-
-                ExecuteRecalculationSQL(reqId);
-                BindDetailsGrid(reqId);
-                upDetails.Update();
-                BindRequestsGrid();
+                catch (Exception ex)
+                {
+                    lblModalMessage.Text = ex.Message;
+                    lblModalMessage.CssClass = "text-danger font-weight-bold";
+                    upDetails.Update();
+                }
             }
         }
 
@@ -901,10 +874,10 @@ namespace AnmolDristi
             }
         }
 
-        protected void btnApproveSelected_Click(object sender, EventArgs e) { ProcessBulkAction("Approved"); }
-        protected void btnRejectSelected_Click(object sender, EventArgs e) { ProcessBulkAction("Rejected"); }
+        protected void btnApproveSelected_Click(object sender, EventArgs e) { ProcessBulkAction(true); }
+        protected void btnRejectSelected_Click(object sender, EventArgs e) { ProcessBulkAction(false); }
 
-        private void ProcessBulkAction(string newStatus)
+        private void ProcessBulkAction(bool isApprove)
         {
             try
             {
@@ -912,82 +885,45 @@ namespace AnmolDristi
 
                 int reqId = Convert.ToInt32(hfActionRequestId.Value);
                 string auditor = GetLoggedInEmployeeCode();
-                int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
                 string rawRemarks = txtBulkRemarks.Text.Trim();
                 string remarks = AppendUserToRemark(rawRemarks, auditor);
                 int processedCount = 0;
 
-                using (var con = new SqlConnection(connString))
+                if (!isApprove && string.IsNullOrWhiteSpace(remarks))
                 {
-                    con.Open();
-                    using (var tran = con.BeginTransaction())
+                    lblModalMessage.Text = "Bulk return remarks are mandatory.";
+                    lblModalMessage.CssClass = "text-warning font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
+
+                foreach (GridViewRow row in gvDetails.Rows)
+                {
+                    if (row.RowType != DataControlRowType.DataRow) continue;
+
+                    var chk = row.FindControl("chkSelect") as CheckBox;
+                    if (chk == null || !chk.Checked) continue;
+
+                    int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
+                    string rowRemark = remarks;
+
+                    if (!isApprove)
                     {
-                        try
-                        {
-                            foreach (GridViewRow row in gvDetails.Rows)
-                            {
-                                if (row.RowType == DataControlRowType.DataRow)
-                                {
-                                    var chk = row.FindControl("chkSelect") as CheckBox;
-                                    var hfActivityId = row.FindControl("hfActivityId") as HiddenField;
-
-                                    if (chk != null && chk.Checked && hfActivityId != null && !string.IsNullOrEmpty(hfActivityId.Value))
-                                    {
-                                        int activityId = Convert.ToInt32(hfActivityId.Value);
-
-                                        string sql = @"
-                                    UPDATE dbo.SalesApprovalRequestDetail 
-                                    SET DetailStatus = @Status, 
-                                        DetailRemarks = @Remarks, 
-                                        DetailApprovedBy = @ActionBy, 
-                                        DetailApprovedOn = GETDATE(),
-                                        DetailApprovedLevel = @Level
-                                    WHERE ActivityId = @ActivityId AND ApprovalRequestId = @ReqId;
-
-                                    UPDATE dbo.SalesDailyExpense
-                                    SET ClaimStatus = @Status,
-                                        ClaimProcessedBy = @ActionBy,
-                                        ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
-                                        ModifiedBy = @ActionBy,
-                                        ModifiedOn = SYSUTCDATETIME(),
-                                        Remarks = ISNULL(Remarks, @Remarks)
-                                    WHERE ActivityId = @ActivityId 
-                                      AND ClaimStatus NOT IN ('Approved', 'Rejected') 
-                                      AND IsDeleted = 0;";
-
-                                        using (var cmd = new SqlCommand(sql, con, tran))
-                                        {
-                                            cmd.Parameters.AddWithValue("@Status", newStatus);
-                                            cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remarks) ? (object)DBNull.Value : remarks);
-                                            cmd.Parameters.AddWithValue("@ActionBy", auditor);
-                                            cmd.Parameters.AddWithValue("@Level", currentLevel);
-                                            cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                                            cmd.Parameters.AddWithValue("@ReqId", reqId);
-
-                                            cmd.ExecuteNonQuery();
-                                            processedCount++;
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Commit only if all selected rows were successfully updated
-                            tran.Commit();
-                        }
-                        catch (Exception ex)
-                        {
-                            tran.Rollback();
-                            throw new Exception("Bulk update failed. Transaction rolled back.", ex);
-                        }
+                        var txtRowRemark = row.FindControl("txtRowRemark") as TextBox;
+                        if (txtRowRemark != null && !string.IsNullOrWhiteSpace(txtRowRemark.Text))
+                            rowRemark = AppendUserToRemark(txtRowRemark.Text.Trim(), auditor);
                     }
+
+                    ProcessDayDetailAction(detailId, reqId, isApprove, rowRemark);
+                    processedCount++;
                 }
 
                 if (processedCount > 0)
                 {
                     ExecuteRecalculationSQL(reqId);
                     txtBulkRemarks.Text = "";
-                    lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {newStatus}.";
-                    lblModalMessage.CssClass = newStatus == "Approved" ? "text-success font-weight-bold" : "text-danger font-weight-bold";
+                    lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {(isApprove ? "Approved" : "Returned")}.";
+                    lblModalMessage.CssClass = isApprove ? "text-success font-weight-bold" : "text-warning font-weight-bold";
                 }
                 else
                 {
@@ -1100,7 +1036,87 @@ namespace AnmolDristi
 
         private string GetLoggedInEmployeeCode()
         {
-            return Session["WORKMAN"] as string;
+            return (Session["WORKMAN"] ?? Session["workman"]) as string;
+        }
+
+        private static string GetLoggedInEmployeeCodeFromSession()
+        {
+            var ctx = HttpContext.Current;
+            if (ctx?.Session == null) return null;
+            return (ctx.Session["WORKMAN"] ?? ctx.Session["workman"]) as string;
+        }
+
+        private void ProcessDayDetailAction(int detailId, int reqId, bool isApprove, string remark)
+        {
+            string user = GetLoggedInEmployeeCode();
+            if (string.IsNullOrWhiteSpace(user))
+                throw new Exception("User session expired. Please log in again.");
+
+            string action = isApprove ? "APPROVE" : "REJECT";
+            if (!isApprove && string.IsNullOrWhiteSpace(remark))
+                throw new Exception("Remarks are required when returning a day.");
+
+            using (var con = new SqlConnection(connString))
+            {
+                con.Open();
+                using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                    cmd.Parameters.AddWithValue("@Action", action);
+                    cmd.Parameters.AddWithValue("@ActionBy", user);
+                    cmd.Parameters.AddWithValue("@ActionRemarks", string.IsNullOrWhiteSpace(remark) ? (object)DBNull.Value : remark);
+                    cmd.ExecuteNonQuery();
+                }
+
+                if (!isApprove)
+                    MarkActivityReturnedForCorrection(detailId, user, con);
+            }
+        }
+
+        private static void MarkActivityReturnedForCorrection(int detailId, string user, SqlConnection con)
+        {
+            const string sql = @"
+                DECLARE @ActivityId INT;
+                SELECT @ActivityId = ActivityId
+                FROM dbo.SalesApprovalRequestDetail
+                WHERE ApprovalRequestDetailId = @DetailId;
+
+                IF @ActivityId IS NOT NULL
+                BEGIN
+                    UPDATE dbo.SalesDailyActivity
+                    SET ClaimStatus = 'Returned',
+                        ModifiedByUserId = @User,
+                        ModifiedDateTime = DATEADD(MINUTE, 330, SYSUTCDATETIME())
+                    WHERE ActivityId = @ActivityId;
+
+                    UPDATE dbo.SalesDailyExpense
+                    SET ClaimStatus = 'Returned',
+                        ModifiedBy = @User,
+                        ModifiedOn = SYSUTCDATETIME()
+                    WHERE ActivityId = @ActivityId
+                      AND IsDeleted = 0
+                      AND ISNULL(ClaimStatus, '') NOT IN ('Approved', 'Rejected');
+                END";
+
+            using (var cmd = new SqlCommand(sql, con))
+            {
+                cmd.Parameters.AddWithValue("@DetailId", detailId);
+                cmd.Parameters.AddWithValue("@User", user);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static string MapExpenseActionToClaimStatus(string action)
+        {
+            switch ((action ?? "").Trim().ToUpperInvariant())
+            {
+                case "APPROVE": return "Approved";
+                case "RETURN": return "Returned";
+                case "REJECT": return "Rejected";
+                default: throw new ArgumentException("Invalid expense action.");
+            }
         }
 
         protected void btnMarkReadyForPayment_Click_OLD(object sender, EventArgs e)
@@ -1217,9 +1233,9 @@ namespace AnmolDristi
                         SET 
                             Status = 'Approved', 
                             ActionBy = @AuditorId, 
-                            ActionDate = GETDATE() 
+                            ActionDate = SYSUTCDATETIME() 
                         WHERE ApprovalRequestId = @Id 
-                          AND ApproverLevel = 2 
+                          AND ApproverRole = 'Auditor'
                           AND Status = 'Pending'";
 
                             using (var cmdWorkflow = new SqlCommand(sqlWorkflow, con, tran))
@@ -1270,7 +1286,7 @@ namespace AnmolDristi
         {
             try
             {
-                string user = HttpContext.Current.Session["workman"]?.ToString() ?? "System";
+                string user = GetLoggedInEmployeeCodeFromSession() ?? "System";
 
                 // Normalize Action
                 action = (action ?? "").Trim().ToUpperInvariant();
@@ -1307,6 +1323,8 @@ namespace AnmolDristi
                                             user);
                 }
 
+                string newStatus = MapExpenseActionToClaimStatus(action);
+
                 string conn =
                     ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
@@ -1319,7 +1337,7 @@ namespace AnmolDristi
                     cmd.CommandType = CommandType.StoredProcedure;
 
                     cmd.Parameters.AddWithValue("@ExpenseId", expenseId);
-                    cmd.Parameters.AddWithValue("@Action", action);
+                    cmd.Parameters.AddWithValue("@NewStatus", newStatus);
                     cmd.Parameters.AddWithValue("@ActionBy", user);
 
                     cmd.Parameters.AddWithValue(
@@ -1354,7 +1372,7 @@ namespace AnmolDristi
         {
             try
             {
-                string user = HttpContext.Current.Session["workman"]?.ToString() ?? "System";
+                string user = GetLoggedInEmployeeCodeFromSession() ?? "System";
                 string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
                 using (var con = new SqlConnection(conn))
                 using (var cmd = new SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
@@ -1430,7 +1448,7 @@ namespace AnmolDristi
         // NEW ENGINE: DYNAMIC HIERARCHY IDENTIFIER
         private void SetCurrentUserApproverDetails(int reqId)
         {
-            string user = Session["workman"]?.ToString();
+            string user = GetLoggedInEmployeeCode();
             using (var con = new SqlConnection(connString))
             using (var cmd = new SqlCommand("SELECT TOP 1 ApproverLevel, ApproverRole FROM SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User AND Status='Pending'", con))
             {
@@ -1609,7 +1627,7 @@ namespace AnmolDristi
                         CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus = 'Rejected'
+                    WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus IN ('Rejected', 'Returned')
 
                     UNION ALL
 
@@ -1632,7 +1650,10 @@ namespace AnmolDristi
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                         'KM Reduced (' + CAST(fk.ClaimedKM AS varchar) + ' to ' + CAST(d.Snapshot_TotalDistanceKM AS varchar) + ')' AS DeductionType,
                         ISNULL((SELECT TOP 1 Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = a.ActivityId ORDER BY ModifiedDateTime DESC), 'KM corrected') AS Reason,
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount
+                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
+                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
+                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
+                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                     INNER JOIN (
@@ -1693,11 +1714,11 @@ namespace AnmolDristi
             -- 3. Update the header table (SalesApprovalRequest)
             UPDATE dbo.SalesApprovalRequest
             SET 
-                ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected') 
+                ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
+                ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
+                ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
+                ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
+                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')) 
             WHERE ApprovalRequestId = @Id;";
 
             using (var con = new SqlConnection(connString))
@@ -1749,75 +1770,40 @@ namespace AnmolDristi
         {
             try
             {
-                string user = HttpContext.Current.Session["workman"]?.ToString() ?? "System";
-                string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+                string user = GetLoggedInEmployeeCodeFromSession();
+                if (string.IsNullOrWhiteSpace(user))
+                    return new { success = false, message = "User session expired. Please log in again." };
 
-                // Normalize action to Match DB Statuses
-                string dbStatus = action.ToUpper() == "APPROVE" ? "Approved" :
-                                  (action.ToUpper() == "REJECT" ? "Rejected" : "Returned");
+                string normalized = (action ?? "").Trim().ToUpperInvariant();
+                bool isApprove = normalized == "APPROVE";
+                bool isReturn = normalized == "RETURN" || normalized == "REJECT";
+
+                if (!isApprove && !isReturn)
+                    return new { success = false, message = "Invalid action." };
+
+                string remark = AppendUserToRemark("Processed via Unified Day Modal", user);
+                string spAction = isApprove ? "APPROVE" : "REJECT";
+                string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
                 using (SqlConnection con = new SqlConnection(conn))
                 {
                     con.Open();
-                    using (SqlTransaction tran = con.BeginTransaction())
+                    using (var cmd = new SqlCommand("dbo.usp_ProcessSalesApprovalRequestDetail", con))
                     {
-                        try
-                        {
-                            // 1. Get the Current Approver Level dynamically (since this is a static method)
-                            int currentLevel = 0;
-                            string levelSql = "SELECT TOP 1 ApproverLevel FROM dbo.SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User AND Status='Pending'";
-                            using (SqlCommand lvlCmd = new SqlCommand(levelSql, con, tran))
-                            {
-                                lvlCmd.Parameters.AddWithValue("@Id", reqId);
-                                lvlCmd.Parameters.AddWithValue("@User", user);
-                                object lvlObj = lvlCmd.ExecuteScalar();
-                                if (lvlObj != null && lvlObj != DBNull.Value) currentLevel = Convert.ToInt32(lvlObj);
-                            }
-
-                            // 2. Level-Aware Update (Replaces the strict SP)
-                            string sql = @"
-                                UPDATE dbo.SalesApprovalRequestDetail 
-                                SET DetailStatus = @Status, 
-                                    DetailRemarks = ISNULL(@Remarks, DetailRemarks), 
-                                    DetailApprovedBy = @ActionBy, 
-                                    DetailApprovedOn = SYSUTCDATETIME(),
-                                    DetailApprovedLevel = @Level
-                                WHERE ApprovalRequestDetailId = @DetailId AND ApprovalRequestId = @ReqId;
-
-                                -- 3. Cascade to child receipts
-                                UPDATE dbo.SalesDailyExpense 
-                                SET ClaimStatus = @Status, 
-                                    ClaimProcessedBy = @ActionBy, 
-                                    ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
-                                    ModifiedBy = @ActionBy,
-                                    ModifiedOn = SYSUTCDATETIME(),
-                                    Remarks = ISNULL(Remarks, @Remarks)
-                                WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
-                                  AND ClaimStatus NOT IN ('Approved', 'Rejected') 
-                                  AND IsDeleted = 0;";
-
-                            using (SqlCommand cmd = new SqlCommand(sql, con, tran))
-                            {
-                                cmd.Parameters.AddWithValue("@Status", dbStatus);
-                                cmd.Parameters.AddWithValue("@Remarks", "Processed via Unified Day Modal - " + user);
-                                cmd.Parameters.AddWithValue("@ActionBy", user);
-                                cmd.Parameters.AddWithValue("@Level", currentLevel);
-                                cmd.Parameters.AddWithValue("@DetailId", detailId);
-                                cmd.Parameters.AddWithValue("@ReqId", reqId);
-
-                                cmd.ExecuteNonQuery();
-                            }
-
-                            tran.Commit();
-                            return new { success = true };
-                        }
-                        catch
-                        {
-                            tran.Rollback();
-                            throw;
-                        }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                        cmd.Parameters.AddWithValue("@Action", spAction);
+                        cmd.Parameters.AddWithValue("@ActionBy", user);
+                        cmd.Parameters.AddWithValue("@ActionRemarks", remark);
+                        cmd.ExecuteNonQuery();
                     }
+
+                    if (!isApprove)
+                        MarkActivityReturnedForCorrection(detailId, user, con);
                 }
+
+                return new { success = true };
             }
             catch (Exception ex)
             {

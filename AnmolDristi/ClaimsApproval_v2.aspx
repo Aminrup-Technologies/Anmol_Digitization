@@ -1080,13 +1080,9 @@
                     .prop('disabled', !canAction)
                     .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
 
-                $('#btnUnifiedRejectDay')
+                $('#btnUnifiedReturnDay')
                     .prop('disabled', !canAction)
                     .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
-
-                $('#btnUnifiedApproveDay')
-                .prop('disabled', false)
-                .removeAttr('title');
 
             } else {
                 html += `
@@ -1094,7 +1090,7 @@
                 <i class="fa fa-folder-open fa-3x mb-3 d-block text-secondary opacity-50"></i>
                 <h6 class="mb-0">No additional line items (Hotel, Travel, Stationary) claimed for this day.</h6>
             </div>`;
-                $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
+                $('#btnUnifiedApproveDay').prop('disabled', !canAction).attr('title', canAction ? '' : 'You are not authorized to perform this action.');
             }
 
             // Inject into the DOM

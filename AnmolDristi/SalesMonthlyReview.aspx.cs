@@ -231,7 +231,8 @@ namespace AnmolDristi
                                     {
                                         int aid = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
                                         string detail = rdr["DetailStatus"] != DBNull.Value ? rdr["DetailStatus"].ToString() : null;
-                                        if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase))
+                                        if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                                            string.Equals(detail, "Returned", StringComparison.OrdinalIgnoreCase))
                                             editableActivityIds.Add(aid);
                                     }
                                 }
