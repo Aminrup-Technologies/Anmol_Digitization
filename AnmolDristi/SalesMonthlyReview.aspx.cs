@@ -239,6 +239,9 @@ namespace AnmolDristi
                                         int aid = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
                                         string detail = rdr["DetailStatus"] != DBNull.Value ? rdr["DetailStatus"].ToString() : null;
 
+                                        if (aid > 0 && !string.IsNullOrWhiteSpace(detail))
+                                            detailStatusByActivity[aid] = detail;
+
                                         // ⬅️ 2. Add "Returned" to the Line Item check
                                         if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase) ||
                                             string.Equals(detail, "Returned", StringComparison.OrdinalIgnoreCase))
@@ -3036,7 +3039,6 @@ namespace AnmolDristi
 
                                 if (autoIds.Count > 0)
                                 {
-                                    string inList = string.Join(",", autoIds.Select(n => n.ToString()).ToArray());
                                     string delAutoSql = BuildSoftDeleteExpenseBatchSql(autoIds);
                                     using (var delAuto = new SqlCommand(delAutoSql, con, tx))
                                     {
@@ -3245,7 +3247,6 @@ namespace AnmolDristi
 
                                 if (autoIds.Count > 0)
                                 {
-                                    string inList = string.Join(",", autoIds.Select(n => n.ToString()).ToArray());
                                     string delAutoSql = BuildSoftDeleteExpenseBatchSql(autoIds);
                                     using (var delAuto = new SqlCommand(delAutoSql, con, tx))
                                     {
@@ -3524,6 +3525,84 @@ namespace AnmolDristi
             return updatedRows;
         }
 
+        private bool TryGetPartialResubmitReturnedActivityIds(int year, int month, out HashSet<int> returnedActivityIds)
+        {
+            returnedActivityIds = new HashSet<int>();
+            string loginId = GetCurrentUserLoginId();
+
+            using (SqlConnection con = new SqlConnection(connString))
+            {
+                con.Open();
+                int? requestId = null;
+                string requestStatus = null;
+
+                using (SqlCommand cmd = new SqlCommand(
+                    @"SELECT TOP 1 ApprovalRequestId, Status
+                      FROM dbo.SalesApprovalRequest
+                      WHERE RequesterLoginId = @LoginId AND YearNo = @Year AND MonthNo = @Month
+                      ORDER BY RequestDate DESC", con))
+                {
+                    cmd.Parameters.AddWithValue("@LoginId", loginId);
+                    cmd.Parameters.AddWithValue("@Year", year);
+                    cmd.Parameters.AddWithValue("@Month", month);
+                    using (SqlDataReader rdr = cmd.ExecuteReader())
+                    {
+                        if (!rdr.Read()) return false;
+                        requestId = rdr["ApprovalRequestId"] != DBNull.Value
+                            ? (int?)Convert.ToInt32(rdr["ApprovalRequestId"])
+                            : null;
+                        requestStatus = rdr["Status"] != DBNull.Value ? rdr["Status"].ToString().Trim() : null;
+                    }
+                }
+
+                if (!requestId.HasValue) return false;
+
+                if (string.Equals(requestStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(requestStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(requestStatus, "Returned", StringComparison.OrdinalIgnoreCase))
+                    return false;
+
+                using (SqlCommand cmd = new SqlCommand(
+                    @"SELECT DISTINCT d.ActivityId
+                      FROM dbo.SalesApprovalRequestDetail d
+                      INNER JOIN dbo.SalesDailyActivity a ON a.ActivityId = d.ActivityId
+                      WHERE d.ApprovalRequestId = @Id
+                        AND (
+                            d.DetailStatus = 'Returned'
+                            OR a.ClaimStatus = 'Returned'
+                        )", con))
+                {
+                    cmd.Parameters.AddWithValue("@Id", requestId.Value);
+                    using (SqlDataReader rdr = cmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            if (rdr["ActivityId"] != DBNull.Value)
+                                returnedActivityIds.Add(Convert.ToInt32(rdr["ActivityId"]));
+                        }
+                    }
+                }
+            }
+
+            return returnedActivityIds.Count > 0;
+        }
+
+        private static DataTable FilterActivityUpdatesToReturnedOnly(DataTable source, HashSet<int> returnedActivityIds)
+        {
+            if (source == null || returnedActivityIds == null || returnedActivityIds.Count == 0)
+                return source;
+
+            DataTable filtered = source.Clone();
+            foreach (DataRow row in source.Rows)
+            {
+                if (row["ActivityId"] == DBNull.Value) continue;
+                int activityId = Convert.ToInt32(row["ActivityId"]);
+                if (returnedActivityIds.Contains(activityId))
+                    filtered.ImportRow(row);
+            }
+            return filtered;
+        }
+
         private int ExecuteSubmitForApproval(DataTable tvp, int year, int month, string remarks)
         {
             if (Session["RONE_CODE"] == null) throw new Exception("Approval hierarchy not loaded in session.");
@@ -3688,6 +3767,20 @@ namespace AnmolDristi
                     lbl_msg.Text = "No activity rows found to submit."; lbl_msg.ForeColor = System.Drawing.Color.Red;
                     ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitNoRows", "showPNotify('Nothing to submit', 'No activity rows found.', 'warning');", true);
                     return;
+                }
+
+                HashSet<int> returnedActivityIds;
+                if (TryGetPartialResubmitReturnedActivityIds(year, month, out returnedActivityIds))
+                {
+                    tvp = FilterActivityUpdatesToReturnedOnly(tvp, returnedActivityIds);
+                    if (tvp.Rows.Count == 0)
+                    {
+                        lbl_msg.Text = "No returned activities found to resubmit.";
+                        lbl_msg.ForeColor = System.Drawing.Color.Red;
+                        ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitNoReturned",
+                            "showPNotify('Nothing to resubmit', 'Please correct returned day(s) before submitting.', 'warning');", true);
+                        return;
+                    }
                 }
 
                 int approvalRequestId = ExecuteSubmitForApproval(tvp, year, month, "Submitted via UI");
