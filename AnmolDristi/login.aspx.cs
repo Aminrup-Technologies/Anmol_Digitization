@@ -43,7 +43,7 @@ namespace AnmolDristi
             Exception ex = Server.GetLastError();
             if (ex == null) return;
 
-            LoginAuditLogger.Error("Unhandled login page error.", ex, Request);
+            LogLoginError("Unhandled login page error.", ex);
             Server.ClearError();
             ShowLoginMessage(GenericErrorMessage, isError: true);
         }
@@ -69,12 +69,12 @@ namespace AnmolDristi
             }
             catch (SqlException sqlEx)
             {
-                LoginAuditLogger.Error(operation + " database error.", sqlEx, Request, txt_loginid?.Text);
+                LogLoginError(operation + " database error.", sqlEx, txt_loginid?.Text);
                 ShowLoginMessage("A database error occurred. Please try again later.", isError: true);
             }
             catch (Exception ex)
             {
-                LoginAuditLogger.Error(operation + " failed.", ex, Request, txt_loginid?.Text);
+                LogLoginError(operation + " failed.", ex, txt_loginid?.Text);
                 ShowLoginMessage(GenericErrorMessage, isError: true);
             }
         }
@@ -108,7 +108,51 @@ namespace AnmolDristi
 
         private void LogDebug(string text)
         {
-            LoginAuditLogger.Info(text, Request, txt_loginid?.Text?.Trim());
+            LogLogin("INFO", text);
+        }
+
+        private void LogLogin(string level, string message, Exception ex = null, string employeeCode = null)
+        {
+            try
+            {
+                var parts = new List<string> { "IP=" + GetClientIP() };
+                string emp = employeeCode ?? txt_loginid?.Text?.Trim();
+                if (!string.IsNullOrWhiteSpace(emp))
+                    parts.Add("Emp=" + emp);
+                if (Request?.UserAgent != null)
+                    parts.Add("UA=" + Request.UserAgent);
+
+                string fullMessage = message + " | " + string.Join("; ", parts);
+                string baseDir = Server.MapPath("~/Logs/");
+                if (!Directory.Exists(baseDir))
+                    Directory.CreateDirectory(baseDir);
+
+                string path = Path.Combine(baseDir, "login_" + DateTime.Now.ToString("yyyy-MM-dd") + ".log");
+                string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " [" + level + "] " + fullMessage;
+                if (ex != null)
+                    line += Environment.NewLine + ex;
+
+                File.AppendAllText(path, line + Environment.NewLine);
+            }
+            catch
+            {
+                // Never throw from logging.
+            }
+        }
+
+        private void LogLoginError(string message, Exception ex = null, string employeeCode = null)
+        {
+            LogLogin("ERROR", message, ex, employeeCode);
+        }
+
+        private void LogLoginWarn(string message, string employeeCode = null)
+        {
+            LogLogin("WARN", message, null, employeeCode);
+        }
+
+        private void LogLoginInfo(string message, string employeeCode = null)
+        {
+            LogLogin("INFO", message, null, employeeCode);
         }
 
         private void ProcessSignIn()
@@ -131,14 +175,14 @@ namespace AnmolDristi
             }
             catch (Exception exAuth)
             {
-                LoginAuditLogger.Error("Authentication failed.", exAuth, Request, id);
+                LogLoginError("Authentication failed.", exAuth, id);
                 ShowAlert("Sign-in failed. Please verify your credentials and try again.");
                 return;
             }
 
             if (row == null)
             {
-                LoginAuditLogger.Warn("Invalid credentials.", Request, id);
+                LogLoginWarn("Invalid credentials.", id);
                 ShowAlert("Unknown user or password.");
                 txt_loginid.Text = string.Empty;
                 return;
@@ -149,7 +193,7 @@ namespace AnmolDristi
 
             if (!workStatus.Equals("Active", StringComparison.OrdinalIgnoreCase))
             {
-                LoginAuditLogger.Warn("Inactive user sign-in blocked. Status=" + workStatus, Request, id);
+                LogLoginWarn("Inactive user sign-in blocked. Status=" + workStatus, id);
                 ShowAlert("Your account is inactive (" + workStatus + "). Please contact HR/IT.");
                 txt_loginid.Text = string.Empty;
                 return;
@@ -361,7 +405,7 @@ namespace AnmolDristi
 
             // Redirect - use CompleteRequest to ensure redirect completes without ThreadAbortException
             string target = "~/home.aspx";
-            LoginAuditLogger.Info("Sign-in successful. Redirecting to home.", Request, workman);
+            LogLoginInfo("Sign-in successful. Redirecting to home.", workman);
             Response.Redirect(target, false);
             HttpContext.Current.ApplicationInstance.CompleteRequest();
         }
@@ -754,7 +798,7 @@ namespace AnmolDristi
 
         private void HandleException(Exception ex)
         {
-            LoginAuditLogger.Error("Legacy login handler exception.", ex, Request, txt_loginid?.Text);
+            LogLoginError("Legacy login handler exception.", ex, txt_loginid?.Text);
             ShowLoginMessage(GenericErrorMessage, isError: true);
         }
 
@@ -911,7 +955,16 @@ namespace AnmolDristi
 
         private string GetClientIP()
         {
-            return LoginAuditLogger.GetClientIp(Request);
+            string ip = Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
+            if (!string.IsNullOrWhiteSpace(ip))
+            {
+                int comma = ip.IndexOf(',');
+                if (comma > 0) ip = ip.Substring(0, comma);
+                return ip.Trim();
+            }
+
+            ip = Request.ServerVariables["REMOTE_ADDR"];
+            return string.IsNullOrWhiteSpace(ip) ? "Unknown" : ip.Trim();
         }
 
         // Call this after successful credential check (right before redirect)
@@ -1002,7 +1055,7 @@ namespace AnmolDristi
 
                     if (dtUser.Rows.Count == 0)
                     {
-                        LoginAuditLogger.Warn("OTP request for unknown/inactive employee.", Request, empCode);
+                        LogLoginWarn("OTP request for unknown/inactive employee.", empCode);
                         ShowAlert("Invalid employee code or inactive user.");
                         return;
                     }
@@ -1025,7 +1078,7 @@ namespace AnmolDristi
                     SendOtpSms(mobile, otp);
                     SendEmailOTP(email, name, otp);
 
-                    LoginAuditLogger.Info("OTP sent for password recovery.", Request, empCode);
+                    LogLoginInfo("OTP sent for password recovery.", empCode);
                     lblMaskedContact.Text = "OTP sent successfully to mobile ending in " + MaskMobile(mobile);
                     SwitchPanel(pnlVerifyOTP);
                 }
@@ -1470,7 +1523,7 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
-                LoginAuditLogger.Error("SMS API error while sending OTP.", ex, Request);
+                LogLoginError("SMS API error while sending OTP.", ex);
             }
         }
 
@@ -1497,12 +1550,12 @@ namespace AnmolDristi
 
                 if (enteredOTP == Session["Reset_OTP"].ToString())
                 {
-                    LoginAuditLogger.Info("OTP verified successfully.", Request, Session["Reset_EmpCode"] as string);
+                    LogLoginInfo("OTP verified successfully.", Session["Reset_EmpCode"] as string);
                     SwitchPanel(pnlSetPassword);
                 }
                 else
                 {
-                    LoginAuditLogger.Warn("Invalid OTP entered.", Request, Session["Reset_EmpCode"] as string);
+                    LogLoginWarn("Invalid OTP entered.", Session["Reset_EmpCode"] as string);
                     ShowAlert("Invalid OTP entered. Try again.");
                 }
             });
@@ -1551,7 +1604,7 @@ namespace AnmolDristi
                 Session.Remove("Reset_EmpCode");
                 Session.Remove("Reset_OTP_Expiry");
 
-                LoginAuditLogger.Info("Password reset completed. Auto sign-in starting.", Request, empCode);
+                LogLoginInfo("Password reset completed. Auto sign-in starting.", empCode);
                 txt_loginid.Text = empCode;
                 txt_password.Text = newPassword;
                 ProcessSignIn();
