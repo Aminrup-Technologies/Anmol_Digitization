@@ -119,6 +119,29 @@
                                                     <asp:TextBox ID="txtAddress" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="4" placeholder="Enter the full physical address of this plant..."></asp:TextBox>
                                                 </div>
                                             </div>
+
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3 col-sm-3 col-xs-12">Pre-configured Default Hosts</label>
+                                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                                    <asp:TextBox ID="txtPreconfiguredHosts" runat="server" CssClass="form-control" placeholder="e.g. AIL0102, AIL0405"></asp:TextBox>
+                                                    <span class="help-block">Enter comma-separated Employee Codes to display as quick-select hosts for this branch.</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3 col-sm-3 col-xs-12">Escalation Email Addresses</label>
+                                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                                    <asp:TextBox ID="txtEscalationEmails" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="2" placeholder="e.g. plant.hr@anmolindustries.com, security.head@anmolindustries.com"></asp:TextBox>
+                                                    <span class="help-block">Comma-separated email addresses to notify when pending visit approvals exceed the escalation threshold.</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="control-label col-md-3 col-sm-3 col-xs-12">Escalation Threshold (Minutes)</label>
+                                                <div class="col-md-3 col-sm-3 col-xs-12">
+                                                    <asp:TextBox ID="txtEscalationTimeout" runat="server" CssClass="form-control" TextMode="Number" Text="15"></asp:TextBox>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 

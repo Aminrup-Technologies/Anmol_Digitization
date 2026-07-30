@@ -190,7 +190,7 @@ namespace AnmolDristi
             lblMessage.Text = $"[DEV] Mobile OTP: {mobileOTP} | Email OTP: {emailOTP}";
         }
 
-        protected void btnVerifyOTP_Click(object sender, EventArgs e)
+        protected void btnVerifyOTP_Click_OLD(object sender, EventArgs e)
         {
             string mobile = txtMobile.Text.Trim();
             string email = txtEmail.Text.Trim();
@@ -303,6 +303,118 @@ namespace AnmolDristi
             {
                 lblMessage.ForeColor = System.Drawing.Color.Red;
                 lblMessage.Text = "Invalid OTPs or session expired. Please check both codes and try again.";
+            }
+        }
+
+        protected void btnVerifyOTP_Click(object sender, EventArgs e)
+        {
+            // 1. Anti Brute-Force Rate Limiter
+            int attempts = Session["OTPAttempts"] != null ? Convert.ToInt32(Session["OTPAttempts"]) : 0;
+            if (attempts >= 5)
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = "Too many failed attempts. Please request new verification codes.";
+                return;
+            }
+
+            string mobile = txtMobile.Text.Trim();
+            string email = txtEmail.Text.Trim();
+            string enteredMobileOTP = txtMobileOTP.Text.Trim();
+            string enteredEmailOTP = txtEmailOTP.Text.Trim();
+
+            bool isValid = false;
+            string otpTrackingId = "";
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                string query = @"
+            SELECT Id FROM VMS_OTPTracking 
+            WHERE MobileNo = @Mobile 
+              AND EmailAddress = @Email
+              AND MobileOTP = @MobileOTP 
+              AND EmailOTP = @EmailOTP
+              AND IsVerified = 0 
+              AND ExpiresAt > GETDATE()";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Mobile", mobile);
+                    cmd.Parameters.AddWithValue("@Email", email);
+                    cmd.Parameters.AddWithValue("@MobileOTP", enteredMobileOTP);
+                    cmd.Parameters.AddWithValue("@EmailOTP", string.IsNullOrEmpty(email) ? "N/A" : enteredEmailOTP);
+
+                    object result = cmd.ExecuteScalar();
+                    if (result != null)
+                    {
+                        isValid = true;
+                        otpTrackingId = result.ToString();
+
+                        string updateQuery = "UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = @Id";
+                        using (SqlCommand updateCmd = new SqlCommand(updateQuery, con))
+                        {
+                            updateCmd.Parameters.AddWithValue("@Id", otpTrackingId);
+                            updateCmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+
+            if (isValid)
+            {
+                Session.Remove("OTPAttempts");
+                Session["VerifiedMobile"] = mobile;
+                Session["VerifiedEmail"] = email;
+
+                string branchId = hfBranchId.Value;
+                if (string.IsNullOrEmpty(branchId))
+                {
+                    lblMessage.ForeColor = Color.Red;
+                    lblMessage.Text = "Session lost. Please scan the physical QR code again.";
+                    return;
+                }
+
+                // Duplicate Check Query with strict Email logic
+                bool hasActiveVisit = false;
+                using (SqlConnection con = new SqlConnection(connStr))
+                {
+                    string checkQuery = @"
+                SELECT TOP 1 LogID FROM VMS_VisitLog 
+                WHERE (VisitorMobile = @Mobile OR (@Email <> '' AND VisitorEmail = @Email))
+                  AND TargetBranchID = @BranchId
+                  AND ApprovalStatus IN ('Pending', 'Approved')
+                  AND ISNULL(VisitStatus, '') != 'Checked-Out'
+                  AND ValidUpto >= GETDATE()";
+
+                    using (SqlCommand cmdCheck = new SqlCommand(checkQuery, con))
+                    {
+                        cmdCheck.Parameters.AddWithValue("@Mobile", mobile);
+                        cmdCheck.Parameters.AddWithValue("@Email", email);
+                        cmdCheck.Parameters.AddWithValue("@BranchId", branchId);
+
+                        con.Open();
+                        if (cmdCheck.ExecuteScalar() != null)
+                        {
+                            hasActiveVisit = true;
+                        }
+                    }
+                }
+
+                if (hasActiveVisit)
+                {
+                    Response.Redirect("VMS_MyVisits.aspx", false);
+                }
+                else
+                {
+                    Response.Redirect($"VMS_Registration.aspx?BranchId={branchId}", false);
+                }
+                Context.ApplicationInstance.CompleteRequest();
+            }
+            else
+            {
+                Session["OTPAttempts"] = attempts + 1;
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = $"Invalid verification codes. Attempt {attempts + 1} of 5.";
             }
         }
 

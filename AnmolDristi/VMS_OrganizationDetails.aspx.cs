@@ -135,6 +135,81 @@ namespace AnmolDristi
             pdfDoc.Add(address);
         }
 
+        private void GenerateReceptionQRPdf_OLD(string branchId, string aliasName, string fullAddress, string branchName)
+        {
+            string baseUrl = "https://apps.anmolindustries.com/VMS_SelfLogin.aspx";
+            string kioskUrl = $"{baseUrl}?BranchId={branchId}";
+
+            QRCodeGenerator qrGenerator = new QRCodeGenerator();
+            QRCodeData qrCodeData = qrGenerator.CreateQrCode(kioskUrl, QRCodeGenerator.ECCLevel.Q);
+            QRCode qrCode = new QRCode(qrCodeData);
+
+            //Bitmap qrBitmap = qrCode.GetGraphic(20);
+            using (Bitmap qrBitmap = qrCode.GetGraphic(20))
+            {
+                Document pdfDoc = new Document(PageSize.A4, 30f, 30f, 40f, 30f);
+                MemoryStream memStream = new MemoryStream();
+                PdfWriter.GetInstance(pdfDoc, memStream);
+                pdfDoc.Open();
+
+                try
+                {
+                    string logoPath = Server.MapPath("~/WebData/anmol_logo_GPTW.jpg");
+                    if (File.Exists(logoPath))
+                    {
+                        iTextSharp.text.Image logoImg = iTextSharp.text.Image.GetInstance(logoPath);
+                        logoImg.Alignment = Element.ALIGN_CENTER;
+                        logoImg.ScaleToFit(150f, 80f);
+                        logoImg.SpacingAfter = 10f;
+                        pdfDoc.Add(logoImg);
+                    }
+                }
+                catch (Exception) { }
+
+                iTextSharp.text.Font titleFont = FontFactory.GetFont("Arial", 36, iTextSharp.text.Font.BOLD);
+                iTextSharp.text.Font subTitleFont = FontFactory.GetFont("Arial", 16, iTextSharp.text.Font.NORMAL);
+                iTextSharp.text.Font footerFont = FontFactory.GetFont("Arial", 10, iTextSharp.text.Font.ITALIC, BaseColor.GRAY);
+
+                Paragraph title = new Paragraph("WELCOME VISITORS", titleFont);
+                title.Alignment = Element.ALIGN_CENTER;
+                title.SpacingAfter = 5f;
+                pdfDoc.Add(title);
+
+                Paragraph subTitle = new Paragraph("Scan the QR & generate your pass", subTitleFont);
+                subTitle.Alignment = Element.ALIGN_CENTER;
+                subTitle.SpacingAfter = 20f;
+                pdfDoc.Add(subTitle);
+
+                using (MemoryStream imgStream = new MemoryStream())
+                {
+                    qrBitmap.Save(imgStream, System.Drawing.Imaging.ImageFormat.Png);
+                    iTextSharp.text.Image pdfImg = iTextSharp.text.Image.GetInstance(imgStream.ToArray());
+                    pdfImg.Alignment = Element.ALIGN_CENTER;
+                    pdfImg.ScaleToFit(300f, 300f);
+                    pdfDoc.Add(pdfImg);
+                }
+
+                AddCompanyDetailsToPDF(pdfDoc, aliasName, branchName, fullAddress);
+
+                Paragraph footer = new Paragraph("Powered by Anmol-IT", footerFont);
+                footer.Alignment = Element.ALIGN_CENTER;
+                pdfDoc.Add(footer);
+
+                pdfDoc.Close();
+                byte[] bytes = memStream.ToArray();
+                memStream.Close();
+
+                Response.Clear();
+                Response.ContentType = "application/pdf";
+                Response.AddHeader("content-disposition", $"attachment;filename=ReceptionQR_{branchId}.pdf");
+                Response.Buffer = true;
+                Response.Cache.SetCacheability(HttpCacheability.NoCache);
+                Response.BinaryWrite(bytes);
+                Response.End();
+            }
+        }
+
+        // Refactored PDF Generation logic
         private void GenerateReceptionQRPdf(string branchId, string aliasName, string fullAddress, string branchName)
         {
             string baseUrl = "https://apps.anmolindustries.com/VMS_SelfLogin.aspx";
@@ -144,67 +219,64 @@ namespace AnmolDristi
             QRCodeData qrCodeData = qrGenerator.CreateQrCode(kioskUrl, QRCodeGenerator.ECCLevel.Q);
             QRCode qrCode = new QRCode(qrCodeData);
 
-            Bitmap qrBitmap = qrCode.GetGraphic(20);
-
-            Document pdfDoc = new Document(PageSize.A4, 30f, 30f, 40f, 30f);
-            MemoryStream memStream = new MemoryStream();
-            PdfWriter.GetInstance(pdfDoc, memStream);
-            pdfDoc.Open();
-
-            try
+            using (Bitmap qrBitmap = qrCode.GetGraphic(20))
             {
-                string logoPath = Server.MapPath("~/WebData/anmol_logo_GPTW.jpg");
-                if (File.Exists(logoPath))
+                using (MemoryStream memStream = new MemoryStream())
                 {
-                    iTextSharp.text.Image logoImg = iTextSharp.text.Image.GetInstance(logoPath);
-                    logoImg.Alignment = Element.ALIGN_CENTER;
-                    logoImg.ScaleToFit(150f, 80f);
-                    logoImg.SpacingAfter = 10f;
-                    pdfDoc.Add(logoImg);
+                    Document pdfDoc = new Document(PageSize.A4, 30f, 30f, 40f, 30f);
+                    PdfWriter.GetInstance(pdfDoc, memStream);
+                    pdfDoc.Open();
+
+                    try
+                    {
+                        string logoPath = Server.MapPath("~/WebData/anmol_logo_GPTW.jpg");
+                        if (File.Exists(logoPath))
+                        {
+                            iTextSharp.text.Image logoImg = iTextSharp.text.Image.GetInstance(logoPath);
+                            logoImg.Alignment = Element.ALIGN_CENTER;
+                            logoImg.ScaleToFit(150f, 80f);
+                            logoImg.SpacingAfter = 10f;
+                            pdfDoc.Add(logoImg);
+                        }
+                    }
+                    catch (Exception) { }
+
+                    iTextSharp.text.Font titleFont = FontFactory.GetFont("Arial", 36, iTextSharp.text.Font.BOLD);
+                    iTextSharp.text.Font subTitleFont = FontFactory.GetFont("Arial", 16, iTextSharp.text.Font.NORMAL);
+                    iTextSharp.text.Font footerFont = FontFactory.GetFont("Arial", 10, iTextSharp.text.Font.ITALIC, BaseColor.GRAY);
+
+                    Paragraph title = new Paragraph("WELCOME VISITORS", titleFont) { Alignment = Element.ALIGN_CENTER, SpacingAfter = 5f };
+                    pdfDoc.Add(title);
+
+                    Paragraph subTitle = new Paragraph("Scan the QR & generate your pass", subTitleFont) { Alignment = Element.ALIGN_CENTER, SpacingAfter = 20f };
+                    pdfDoc.Add(subTitle);
+
+                    using (MemoryStream imgStream = new MemoryStream())
+                    {
+                        qrBitmap.Save(imgStream, System.Drawing.Imaging.ImageFormat.Png);
+                        iTextSharp.text.Image pdfImg = iTextSharp.text.Image.GetInstance(imgStream.ToArray());
+                        pdfImg.Alignment = Element.ALIGN_CENTER;
+                        pdfImg.ScaleToFit(300f, 300f);
+                        pdfDoc.Add(pdfImg);
+                    }
+
+                    AddCompanyDetailsToPDF(pdfDoc, aliasName, branchName, fullAddress);
+
+                    Paragraph footer = new Paragraph("Powered by Anmol-IT", footerFont) { Alignment = Element.ALIGN_CENTER };
+                    pdfDoc.Add(footer);
+
+                    pdfDoc.Close();
+                    byte[] bytes = memStream.ToArray();
+
+                    Response.Clear();
+                    Response.ContentType = "application/pdf";
+                    Response.AddHeader("content-disposition", $"attachment;filename=ReceptionQR_{branchId}.pdf");
+                    Response.Buffer = true;
+                    Response.Cache.SetCacheability(HttpCacheability.NoCache);
+                    Response.BinaryWrite(bytes);
+                    Response.End();
                 }
             }
-            catch (Exception) { }
-
-            iTextSharp.text.Font titleFont = FontFactory.GetFont("Arial", 36, iTextSharp.text.Font.BOLD);
-            iTextSharp.text.Font subTitleFont = FontFactory.GetFont("Arial", 16, iTextSharp.text.Font.NORMAL);
-            iTextSharp.text.Font footerFont = FontFactory.GetFont("Arial", 10, iTextSharp.text.Font.ITALIC, BaseColor.GRAY);
-
-            Paragraph title = new Paragraph("WELCOME VISITORS", titleFont);
-            title.Alignment = Element.ALIGN_CENTER;
-            title.SpacingAfter = 5f;
-            pdfDoc.Add(title);
-
-            Paragraph subTitle = new Paragraph("Scan the QR & generate your pass", subTitleFont);
-            subTitle.Alignment = Element.ALIGN_CENTER;
-            subTitle.SpacingAfter = 20f;
-            pdfDoc.Add(subTitle);
-
-            using (MemoryStream imgStream = new MemoryStream())
-            {
-                qrBitmap.Save(imgStream, System.Drawing.Imaging.ImageFormat.Png);
-                iTextSharp.text.Image pdfImg = iTextSharp.text.Image.GetInstance(imgStream.ToArray());
-                pdfImg.Alignment = Element.ALIGN_CENTER;
-                pdfImg.ScaleToFit(300f, 300f);
-                pdfDoc.Add(pdfImg);
-            }
-
-            AddCompanyDetailsToPDF(pdfDoc, aliasName, branchName, fullAddress);
-
-            Paragraph footer = new Paragraph("Powered by Anmol-IT", footerFont);
-            footer.Alignment = Element.ALIGN_CENTER;
-            pdfDoc.Add(footer);
-
-            pdfDoc.Close();
-            byte[] bytes = memStream.ToArray();
-            memStream.Close();
-
-            Response.Clear();
-            Response.ContentType = "application/pdf";
-            Response.AddHeader("content-disposition", $"attachment;filename=ReceptionQR_{branchId}.pdf");
-            Response.Buffer = true;
-            Response.Cache.SetCacheability(HttpCacheability.NoCache);
-            Response.BinaryWrite(bytes);
-            Response.End();
         }
 
         private void GenerateGateQRPdf(string branchId, string aliasName, string fullAddress, string branchName)
@@ -309,6 +381,9 @@ namespace AnmolDristi
                             txtAlias.Text = currentAlias;
                             txtAddress.Text = dt.Rows[0]["FullAddress"].ToString();
                             txtPolicy.Text = dt.Rows[0]["VisitorPolicyText"].ToString();
+                            txtPreconfiguredHosts.Text = dt.Rows[0]["PreconfiguredHostCodes"] != DBNull.Value ? dt.Rows[0]["PreconfiguredHostCodes"].ToString() : "";
+                            txtEscalationEmails.Text = dt.Rows[0]["EscalationEmailList"] != DBNull.Value ? dt.Rows[0]["EscalationEmailList"].ToString() : "";
+                            txtEscalationTimeout.Text = dt.Rows[0]["EscalationTimeoutMinutes"] != DBNull.Value ? dt.Rows[0]["EscalationTimeoutMinutes"].ToString() : "15";
 
                             if (ddlTimeZone.Items.FindByValue(dt.Rows[0]["TimeZone"].ToString()) != null)
                             {
@@ -392,19 +467,27 @@ namespace AnmolDristi
             string empCode = Session["EmployeeCode"] != null ? Session["EmployeeCode"].ToString() : "Admin";
 
             string query = @"
-                IF EXISTS (SELECT 1 FROM VMS_OfficeSettings WHERE Branch_ID = @BranchID)
-                BEGIN
-                    UPDATE VMS_OfficeSettings 
-                    SET AliasName = @AliasName, FullAddress = @FullAddress, 
-                        VisitorPolicyText = @Policy, TimeZone = @TimeZone, 
-                        UpdatedAt = GETDATE(), UpdatedBy = @EmpCode
-                    WHERE Branch_ID = @BranchID
-                END
-                ELSE
-                BEGIN
-                    INSERT INTO VMS_OfficeSettings (Branch_ID, AliasName, FullAddress, VisitorPolicyText, TimeZone, UpdatedBy)
-                    VALUES (@BranchID, @AliasName, @FullAddress, @Policy, @TimeZone, @EmpCode)
-                END";
+            IF EXISTS (SELECT 1 FROM VMS_OfficeSettings WHERE Branch_ID = @BranchID)
+            BEGIN
+                UPDATE VMS_OfficeSettings 
+                SET AliasName = @AliasName, 
+                    FullAddress = @FullAddress, 
+                    VisitorPolicyText = @Policy, 
+                    TimeZone = @TimeZone, 
+                    PreconfiguredHostCodes = @PreconfiguredHosts,
+                    EscalationEmailList = @EscalationEmails,
+                    EscalationTimeoutMinutes = @EscalationTimeout,
+                    UpdatedAt = GETDATE(), 
+                    UpdatedBy = @EmpCode
+                WHERE Branch_ID = @BranchID
+            END
+            ELSE
+            BEGIN
+                INSERT INTO VMS_OfficeSettings 
+                (Branch_ID, AliasName, FullAddress, VisitorPolicyText, TimeZone, PreconfiguredHostCodes, EscalationEmailList, EscalationTimeoutMinutes, UpdatedBy)
+                VALUES 
+                (@BranchID, @AliasName, @FullAddress, @Policy, @TimeZone, @PreconfiguredHosts, @EscalationEmails, @EscalationTimeout, @EmpCode)
+            END";
 
             try
             {
@@ -418,7 +501,9 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@Policy", txtPolicy.Text.Trim());
                         cmd.Parameters.AddWithValue("@TimeZone", ddlTimeZone.SelectedValue);
                         cmd.Parameters.AddWithValue("@EmpCode", empCode);
-
+                        cmd.Parameters.AddWithValue("@PreconfiguredHosts", txtPreconfiguredHosts.Text.Trim());
+                        cmd.Parameters.AddWithValue("@EscalationEmails", txtEscalationEmails.Text.Trim());
+                        cmd.Parameters.AddWithValue("@EscalationTimeout", string.IsNullOrEmpty(txtEscalationTimeout.Text) ? 15 : Convert.ToInt32(txtEscalationTimeout.Text));
                         con.Open();
                         cmd.ExecuteNonQuery();
                         con.Close();

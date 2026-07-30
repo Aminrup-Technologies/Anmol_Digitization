@@ -185,36 +185,80 @@ namespace AnmolDristi
             string requesterName = "";
             string requesterCode = "";
 
+            //using (var con = new SqlConnection(connString))
+            //{
+            //    using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequestDetails", con))
+            //    {
+            //        cmd.CommandType = CommandType.StoredProcedure;
+            //        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+            //        using (var da = new SqlDataAdapter(cmd)) { da.Fill(dt); }
+            //    }
+
+            //    string sql = @"
+            //        SELECT 
+            //            ISNULL(OriginalClaimAmount, ISNULL(TotalClaimAmount,0) + ISNULL(TotalExpenseAmount,0)) as OrigTotal,
+            //            Status,
+            //            RequesterLoginId,
+            //            (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName
+            //        FROM SalesApprovalRequest r 
+            //        WHERE ApprovalRequestId = @Id";
+
+            //    using (var cmd = new SqlCommand(sql, con))
+            //    {
+            //        cmd.Parameters.AddWithValue("@Id", reqId);
+            //        con.Open();
+            //        using (var rdr = cmd.ExecuteReader())
+            //        {
+            //            if (rdr.Read())
+            //            {
+            //                originalClaimed = Convert.ToDecimal(rdr["OrigTotal"]);
+            //                status = rdr["Status"].ToString();
+            //                requesterName = rdr["EmpName"].ToString();
+            //                requesterCode = rdr["RequesterLoginId"].ToString();
+            //            }
+            //        }
+            //    }
+            //}
+
             using (var con = new SqlConnection(connString))
             {
+                // Details
                 using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequestDetails", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                    using (var da = new SqlDataAdapter(cmd)) { da.Fill(dt); }
+
+                    using (var da = new SqlDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
                 }
 
-                string sql = @"
-                    SELECT 
-                        ISNULL(OriginalClaimAmount, ISNULL(TotalClaimAmount,0) + ISNULL(TotalExpenseAmount,0)) as OrigTotal,
-                        Status,
-                        RequesterLoginId,
-                        (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName
-                    FROM SalesApprovalRequest r 
-                    WHERE ApprovalRequestId = @Id";
-
-                using (var cmd = new SqlCommand(sql, con))
+                // Header
+                using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequest", con))
                 {
-                    cmd.Parameters.AddWithValue("@Id", reqId);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+
                     con.Open();
-                    using (var rdr = cmd.ExecuteReader())
+
+                    using (SqlDataReader rdr = cmd.ExecuteReader())
                     {
                         if (rdr.Read())
                         {
-                            originalClaimed = Convert.ToDecimal(rdr["OrigTotal"]);
-                            status = rdr["Status"].ToString();
-                            requesterName = rdr["EmpName"].ToString();
-                            requesterCode = rdr["RequesterLoginId"].ToString();
+                            originalClaimed =
+                                rdr["OriginalClaimAmount"] == DBNull.Value
+                                    ? 0
+                                    : Convert.ToDecimal(rdr["OriginalClaimAmount"]);
+
+                            status =
+                                rdr["Status"].ToString();
+
+                            requesterCode =
+                                rdr["RequesterLoginId"].ToString();
+
+                            requesterName =
+                                rdr["RequesterName"].ToString();
                         }
                     }
                 }
@@ -509,74 +553,104 @@ namespace AnmolDristi
                 EnsureCanFinalizeRequest(reqId);
                 ExecuteRecalculationSQL(reqId); // Keep this outside the main workflow transaction
 
-                using (var con = new SqlConnection(connString))
+                //using (var con = new SqlConnection(connString))
+                //{
+                //    // Start the Transaction
+                //    using (var tran = con.BeginTransaction())
+                //    {
+                //        try
+                //        {
+                //            //    string sqlWorkflow = @"
+                //            //UPDATE dbo.SalesApprovalRequestApprover 
+                //            //SET Status = 'Approved', ActionBy = @User, ActionDate = SYSUTCDATETIME() 
+                //            //WHERE ApprovalRequestId = @Id AND ApproverLevel = @Level AND Status = 'Pending';
+
+                //            //DECLARE @NextLevel INT, @NextLogin NVARCHAR(100), @NextRole NVARCHAR(100);
+
+                //            //SELECT TOP 1 
+                //            //    @NextLevel = ApproverLevel, 
+                //            //    @NextLogin = ApproverLoginId, 
+                //            //    @NextRole = ApproverRole
+                //            //FROM dbo.SalesApprovalRequestApprover
+                //            //WHERE ApprovalRequestId = @Id AND ApproverLevel > @Level AND Status = 'Pending'
+                //            //ORDER BY ApproverLevel ASC;
+
+                //            //IF @NextLevel IS NOT NULL
+                //            //BEGIN
+                //            //    UPDATE dbo.SalesApprovalRequest
+                //            //    SET 
+                //            //        CurrentApproverLevel = @NextLevel,
+                //            //        CurrentApproverLoginId = @NextLogin,
+                //            //        ModifiedBy = @User,
+                //            //        ModifiedOn = SYSUTCDATETIME()
+                //            //    WHERE ApprovalRequestId = @Id;
+
+                //            //    INSERT INTO dbo.ApprovalRequestStatusHistory 
+                //            //    (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
+                //            //    VALUES 
+                //            //    (@Id, 'Pending', 'Pending', @User, CONCAT('Level ', @Level, ' approved. Forwarded to ', @NextRole, ' (', ISNULL(@NextLogin, 'Audit Pool'), ')'));
+                //            //END
+                //            //ELSE
+                //            //BEGIN
+                //            //    UPDATE dbo.SalesApprovalRequest
+                //            //    SET Status = 'Completed', ModifiedBy = @User, ModifiedOn = SYSUTCDATETIME()
+                //            //    WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+
+                //            //    INSERT INTO dbo.ApprovalRequestStatusHistory 
+                //            //    (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
+                //            //    VALUES 
+                //            //    (@Id, 'Pending', 'Completed', @User, 'All approval levels finished. Awaiting Payment.');
+                //            //END";
+
+                //            //    using (var cmd = new SqlCommand(sqlWorkflow, con, tran)) // Pass the transaction to the command
+                //            //    {
+                //            //        cmd.Parameters.AddWithValue("@Id", reqId);
+                //            //        cmd.Parameters.AddWithValue("@User", user);
+                //            //        cmd.Parameters.AddWithValue("@Level", currentLevel);
+                //            //        cmd.ExecuteNonQuery();
+                //            //    }
+
+                //            using (SqlCommand cmd = new SqlCommand("dbo.usp_ForwardApprovalRequest", con, tran))
+                //            {
+                //                cmd.CommandType = CommandType.StoredProcedure;
+
+                //                cmd.Parameters.AddWithValue(
+                //                    "@ApprovalRequestId",
+                //                    reqId);
+
+                //                cmd.Parameters.AddWithValue(
+                //                    "@ActionBy",
+                //                    user);
+
+                //                con.Open();
+
+                //                cmd.ExecuteNonQuery();
+                //            }
+
+                //            // If we reach here, no errors occurred. Commit everything!
+                //            tran.Commit();
+                //        }
+                //        catch (Exception ex)
+                //        {
+                //            // An error occurred during the SQL execution. Roll everything back!
+                //            tran.Rollback();
+                //            throw new Exception("Workflow update failed. Transaction rolled back.", ex);
+                //        }
+                //    }
+                //}
+
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd =
+                    new SqlCommand("dbo.usp_ForwardApprovalRequest", con))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                    cmd.Parameters.AddWithValue("@ActionBy", user);
+
                     con.Open();
-                    // Start the Transaction
-                    using (var tran = con.BeginTransaction())
-                    {
-                        try
-                        {
-                            string sqlWorkflow = @"
-                        UPDATE dbo.SalesApprovalRequestApprover 
-                        SET Status = 'Approved', ActionBy = @User, ActionDate = SYSUTCDATETIME() 
-                        WHERE ApprovalRequestId = @Id AND ApproverLevel = @Level AND Status = 'Pending';
 
-                        DECLARE @NextLevel INT, @NextLogin NVARCHAR(100), @NextRole NVARCHAR(100);
-                        
-                        SELECT TOP 1 
-                            @NextLevel = ApproverLevel, 
-                            @NextLogin = ApproverLoginId, 
-                            @NextRole = ApproverRole
-                        FROM dbo.SalesApprovalRequestApprover
-                        WHERE ApprovalRequestId = @Id AND ApproverLevel > @Level AND Status = 'Pending'
-                        ORDER BY ApproverLevel ASC;
-
-                        IF @NextLevel IS NOT NULL
-                        BEGIN
-                            UPDATE dbo.SalesApprovalRequest
-                            SET 
-                                CurrentApproverLevel = @NextLevel,
-                                CurrentApproverLoginId = @NextLogin,
-                                ModifiedBy = @User,
-                                ModifiedOn = SYSUTCDATETIME()
-                            WHERE ApprovalRequestId = @Id;
-
-                            INSERT INTO dbo.ApprovalRequestStatusHistory 
-                            (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
-                            VALUES 
-                            (@Id, 'Pending', 'Pending', @User, CONCAT('Level ', @Level, ' approved. Forwarded to ', @NextRole, ' (', ISNULL(@NextLogin, 'Audit Pool'), ')'));
-                        END
-                        ELSE
-                        BEGIN
-                            UPDATE dbo.SalesApprovalRequest
-                            SET Status = 'Completed', ModifiedBy = @User, ModifiedOn = SYSUTCDATETIME()
-                            WHERE ApprovalRequestId = @Id AND Status = 'Pending';
-
-                            INSERT INTO dbo.ApprovalRequestStatusHistory 
-                            (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
-                            VALUES 
-                            (@Id, 'Pending', 'Completed', @User, 'All approval levels finished. Awaiting Payment.');
-                        END";
-
-                            using (var cmd = new SqlCommand(sqlWorkflow, con, tran)) // Pass the transaction to the command
-                            {
-                                cmd.Parameters.AddWithValue("@Id", reqId);
-                                cmd.Parameters.AddWithValue("@User", user);
-                                cmd.Parameters.AddWithValue("@Level", currentLevel);
-                                cmd.ExecuteNonQuery();
-                            }
-
-                            // If we reach here, no errors occurred. Commit everything!
-                            tran.Commit();
-                        }
-                        catch (Exception ex)
-                        {
-                            // An error occurred during the SQL execution. Roll everything back!
-                            tran.Rollback();
-                            throw new Exception("Workflow update failed. Transaction rolled back.", ex);
-                        }
-                    }
+                    cmd.ExecuteNonQuery();
                 }
 
                 BindRequestsGrid();
@@ -740,7 +814,11 @@ namespace AnmolDristi
                 if (txtRemark != null) txtRemark.ReadOnly = true;
 
                 string expensesJson = drv["ExpensesJson"] != DBNull.Value ? drv["ExpensesJson"].ToString() : "";
-                bool hasPendingReceipts = HasPendingExpenseReceipts(expensesJson);
+                //bool hasPendingReceipts = expensesJson.Contains("\"ClaimStatus\":\"Submitted\"") ||
+                //                          expensesJson.Contains("\"ClaimStatus\":\"Draft\"") ||
+                //                          expensesJson.Contains("\"ClaimStatus\":\"Pending\"");
+
+                bool hasPendingReceipts = expensesJson.Contains("\"ClaimStatus\":\"Pending\"") || expensesJson.Contains("\"ClaimStatus\":\"Returned\"");
 
                 if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
                 {
@@ -795,17 +873,10 @@ namespace AnmolDristi
         private void ApplyGatekeeperLogic(Button btnApprove, Button btnReturn, Button btnRejectDay, TextBox txtRemark, LinkButton lnkReview, bool hasPendingReceipts, bool isAuditor)
         {
             if (txtRemark != null) txtRemark.ReadOnly = false;
-
-            if (btnReturn != null)
+            if (btnReject != null)
             {
-                btnReturn.Enabled = !isAuditor;
-                btnReturn.ToolTip = "Return entire day to employee for correction";
-            }
-
-            if (btnRejectDay != null)
-            {
-                btnRejectDay.Enabled = isAuditor;
-                btnRejectDay.ToolTip = "Permanently reject this day";
+                btnReject.Enabled = true;
+                btnReject.ToolTip = "Reject entire day";
             }
 
             if (hasPendingReceipts)
@@ -912,36 +983,137 @@ namespace AnmolDristi
         {
             if (e.CommandName == "ApproveRow" || e.CommandName == "ReturnRow" || e.CommandName == "RejectDayRow")
             {
-                try
+                int detailId = Convert.ToInt32(e.CommandArgument);
+                bool isApprove = (e.CommandName == "ApproveRow");
+
+                GridViewRow row =
+                    (GridViewRow)((Control)e.CommandSource).NamingContainer;
+
+                TextBox txt =
+                    row.FindControl("txtRowRemark") as TextBox;
+
+                string user = GetLoggedInEmployeeCode();
+
+                string rawRemark =
+                    txt != null ? txt.Text : "";
+
+                string remark =
+                    AppendUserToRemark(rawRemark, user);
+
+                int reqId =
+                    Convert.ToInt32(hfActionRequestId.Value);
+
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd =
+                    new SqlCommand("dbo.usp_ProcessApprovalAction", con))
                 {
-                    int detailId = Convert.ToInt32(e.CommandArgument);
-                    int reqId = Convert.ToInt32(hfActionRequestId.Value);
-                    DayDetailAction action;
-                    if (e.CommandName == "ApproveRow")
-                        action = DayDetailAction.Approve;
-                    else if (e.CommandName == "ReturnRow")
-                        action = DayDetailAction.Return;
-                    else
-                        action = DayDetailAction.Reject;
+                    cmd.CommandType = CommandType.StoredProcedure;
 
-                    GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
-                    TextBox txt = row.FindControl("txtRowRemark") as TextBox;
-                    string rawRemark = txt != null ? txt.Text : "";
-                    string user = GetLoggedInEmployeeCode();
-                    string remark = AppendUserToRemark(rawRemark, user);
+                    cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                    cmd.Parameters.AddWithValue("@Action", isApprove ? "APPROVE" : "REJECT");
+                    cmd.Parameters.AddWithValue("@ActionBy", user);
+                    cmd.Parameters.AddWithValue(
+                        "@Remarks",
+                        string.IsNullOrWhiteSpace(remark)
+                            ? (object)DBNull.Value
+                            : remark);
 
-                    ProcessDayDetailAction(detailId, reqId, action, remark);
-
-                    ExecuteRecalculationSQL(reqId);
-                    BindDetailsGrid(reqId);
-                    upDetails.Update();
-                    BindRequestsGrid();
+                    con.Open();
+                    cmd.ExecuteNonQuery();
                 }
-                catch (Exception ex)
+
+                ExecuteRecalculationSQL(reqId);
+
+                BindDetailsGrid(reqId);
+                upDetails.Update();
+                BindRequestsGrid();
+            }
+        }
+
+        protected void gvDetails_RowCommand_OLD300726(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
+            {
+                int detailId = Convert.ToInt32(e.CommandArgument);
+                bool isApprove = (e.CommandName == "ApproveRow");
+
+                GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
+                TextBox txt = row.FindControl("txtRowRemark") as TextBox;
+
+                string dbStatus = isApprove ? "Approved" : "Rejected";
+                string user = GetLoggedInEmployeeCode();
+                string rawRemark = txt != null ? txt.Text : "";
+                string remark = AppendUserToRemark(rawRemark, user);
+
+                int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+                int reqId = Convert.ToInt32(hfActionRequestId.Value);
+
+                //using (var con = new SqlConnection(connString))
+                //{
+                //    con.Open();
+                //    using (var tran = con.BeginTransaction())
+                //    {
+                //        try
+                //        {
+                //            // 1. Level-Aware Inline SQL (Replaces the rigid SP)
+                //            string sql = @"
+                //        UPDATE dbo.SalesApprovalRequestDetail 
+                //        SET DetailStatus = @Status, 
+                //            DetailRemarks = ISNULL(@Remarks, DetailRemarks), 
+                //            DetailApprovedBy = @ActionBy, 
+                //            DetailApprovedOn = SYSUTCDATETIME(),
+                //            DetailApprovedLevel = @Level
+                //        WHERE ApprovalRequestDetailId = @DetailId AND ApprovalRequestId = @ReqId;
+
+                //        -- 2. Cascade down to child receipts
+                //        UPDATE dbo.SalesDailyExpense 
+                //        SET ClaimStatus = @Status, 
+                //            ClaimProcessedBy = @ActionBy, 
+                //            ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                //            ModifiedBy = @ActionBy,
+                //            ModifiedOn = SYSUTCDATETIME(),
+                //            Remarks = ISNULL(Remarks, @Remarks)
+                //        WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
+                //          AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                //          AND IsDeleted = 0;";
+
+                //            using (var cmd = new SqlCommand(sql, con, tran))
+                //            {
+                //                cmd.Parameters.AddWithValue("@Status", dbStatus);
+                //                cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remark) ? (object)DBNull.Value : remark);
+                //                cmd.Parameters.AddWithValue("@ActionBy", user);
+                //                cmd.Parameters.AddWithValue("@Level", currentLevel);
+                //                cmd.Parameters.AddWithValue("@DetailId", detailId);
+                //                cmd.Parameters.AddWithValue("@ReqId", reqId);
+
+                //                cmd.ExecuteNonQuery();
+                //            }
+
+                //            tran.Commit();
+                //        }
+                //        catch (Exception ex)
+                //        {
+                //            tran.Rollback();
+                //            throw new Exception("Inline action failed. Transaction rolled back.", ex);
+                //        }
+                //    }
+                //}
+
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_ProcessApprovalAction", con))
                 {
-                    lblModalMessage.Text = ex.Message;
-                    lblModalMessage.CssClass = "text-danger font-weight-bold";
-                    upDetails.Update();
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                    cmd.Parameters.AddWithValue("@Action", isApprove ? "APPROVE" : "REJECT");
+                    cmd.Parameters.AddWithValue("@ActionBy", user);
+                    cmd.Parameters.AddWithValue("@Remarks",
+                        string.IsNullOrWhiteSpace(remark)
+                            ? (object)DBNull.Value
+                            : remark);
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
                 }
             }
         }
@@ -1026,36 +1198,88 @@ namespace AnmolDristi
 
                 if (action == DayDetailAction.Return && IsCurrentUserAuditor())
                 {
-                    lblModalMessage.Text = "Auditors cannot return days.";
-                    lblModalMessage.CssClass = "text-warning font-weight-bold";
-                    upDetails.Update();
-                    return;
-                }
+                    con.Open();
+                    using (var tran = con.BeginTransaction())
+                    {
+                        try
+                        {
+                            foreach (GridViewRow row in gvDetails.Rows)
+                            {
+                                if (row.RowType == DataControlRowType.DataRow)
+                                {
+                                    var chk = row.FindControl("chkSelect") as CheckBox;
+                                    //var hfActivityId = row.FindControl("hfActivityId") as HiddenField;
 
-                if (action == DayDetailAction.Reject && !IsCurrentUserAuditor())
-                {
-                    lblModalMessage.Text = "Only auditors can reject days.";
-                    lblModalMessage.CssClass = "text-warning font-weight-bold";
-                    upDetails.Update();
-                    return;
-                }
+                                    //if (chk != null && chk.Checked && hfActivityId != null && !string.IsNullOrEmpty(hfActivityId.Value))
+                                    //{
+                                    //    int activityId = Convert.ToInt32(hfActivityId.Value);
 
-                if (action != DayDetailAction.Approve && string.IsNullOrWhiteSpace(remarks))
-                {
-                    lblModalMessage.Text = action == DayDetailAction.Reject
-                        ? "Bulk reject remarks are mandatory."
-                        : "Bulk return remarks are mandatory.";
-                    lblModalMessage.CssClass = "text-warning font-weight-bold";
-                    upDetails.Update();
-                    return;
-                }
+                                    var hfDetailId = row.FindControl("hfApprovalRequestDetailId") as HiddenField;
 
-                foreach (GridViewRow row in gvDetails.Rows)
-                {
-                    if (row.RowType != DataControlRowType.DataRow) continue;
+                                    if (chk != null && chk.Checked &&
+                                        hfDetailId != null &&
+                                        !string.IsNullOrEmpty(hfDetailId.Value))
+                                    {
+                                        int detailId = Convert.ToInt32(hfDetailId.Value);
 
-                    var chk = row.FindControl("chkSelect") as CheckBox;
-                    if (chk == null || !chk.Checked) continue;
+                                        //string sql = @"
+                                        //    DECLARE @ActivityId INT;
+
+                                        //    SELECT @ActivityId = ActivityId
+                                        //    FROM dbo.SalesApprovalRequestDetail
+                                        //    WHERE ApprovalRequestDetailId = @DetailId;
+
+                                        //    UPDATE dbo.SalesApprovalRequestDetail
+                                        //    SET DetailStatus        = @Status,
+                                        //        DetailRemarks       = @Remarks,
+                                        //        DetailApprovedBy    = @ActionBy,
+                                        //        DetailApprovedOn    = GETDATE(),
+                                        //        DetailApprovedLevel = @Level
+                                        //    WHERE ApprovalRequestDetailId = @DetailId
+                                        //      AND ApprovalRequestId = @ReqId;
+
+                                        //    UPDATE dbo.SalesDailyExpense
+                                        //    SET ClaimStatus        = @Status,
+                                        //        ClaimProcessedBy   = @ActionBy,
+                                        //        ClaimProcessedDate = DATEADD(MINUTE,330,SYSUTCDATETIME()),
+                                        //        ModifiedBy         = @ActionBy,
+                                        //        ModifiedOn         = SYSUTCDATETIME(),
+                                        //        Remarks            = ISNULL(Remarks,@Remarks)
+                                        //    WHERE ActivityId = @ActivityId
+                                        //      AND ClaimStatus NOT IN ('Approved','Rejected')
+                                        //      AND IsDeleted = 0;";
+
+                                        //using (var cmd = new SqlCommand(sql, con, tran))
+                                        //{
+                                        //    cmd.Parameters.AddWithValue("@Status", newStatus);
+                                        //    cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remarks) ? (object)DBNull.Value : remarks);
+                                        //    cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                                        //    cmd.Parameters.AddWithValue("@Level", currentLevel);
+                                        //    cmd.Parameters.AddWithValue("@DetailId", detailId);
+                                        //    cmd.Parameters.AddWithValue("@ReqId", reqId);
+
+                                        //    int affected = cmd.ExecuteNonQuery();
+
+                                        //    if (affected > 0)
+                                        //    {
+                                        //        processedCount++;
+                                        //    }
+                                        //}
+
+                                        using (SqlCommand cmd = new SqlCommand("dbo.usp_ProcessApprovalAction", con, tran))
+                                        {
+                                            cmd.CommandType = CommandType.StoredProcedure;
+                                            cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
+                                            cmd.Parameters.AddWithValue("@Action", newStatus == "Approved" ? "APPROVE" : "REJECT");
+                                            cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                                            cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrWhiteSpace(remarks) ? (object)DBNull.Value : remarks);
+                                            cmd.ExecuteNonQuery();
+
+                                            processedCount++;
+                                        }
+                                    }
+                                }
+                            }
 
                     int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
                     string rowRemark = remarks;
@@ -1434,65 +1658,73 @@ namespace AnmolDristi
 
                 using (var con = new SqlConnection(connString))
                 {
-                    con.Open();
-                    using (var tran = con.BeginTransaction())
+                    using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
                     {
-                        try
-                        {
-                            string fixStatusSql = @"
-                        UPDATE dbo.SalesApprovalRequest 
-                        SET Status = 'Completed' 
-                        WHERE ApprovalRequestId = @Id AND Status = 'Pending';
-
-                        IF @@ROWCOUNT > 0
-                        BEGIN
-                            INSERT INTO dbo.ApprovalRequestStatusHistory 
-                            (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
-                            VALUES 
-                            (@Id, 'Pending', 'Completed', @AuditorId, 'Auditor finalized all rows and synced calculations.');
-                        END";
-
-                            using (var cmdFix = new SqlCommand(fixStatusSql, con, tran))
-                            {
-                                cmdFix.Parameters.AddWithValue("@Id", reqId);
-                                cmdFix.Parameters.AddWithValue("@AuditorId", auditor);
-                                cmdFix.ExecuteNonQuery();
-                            }
-
-                            string sqlWorkflow = @"
-                        UPDATE dbo.SalesApprovalRequestApprover 
-                        SET 
-                            Status = 'Approved', 
-                            ActionBy = @AuditorId, 
-                            ActionDate = SYSUTCDATETIME() 
-                        WHERE ApprovalRequestId = @Id 
-                          AND ApproverRole = 'Auditor'
-                          AND Status = 'Pending'";
-
-                            using (var cmdWorkflow = new SqlCommand(sqlWorkflow, con, tran))
-                            {
-                                cmdWorkflow.Parameters.AddWithValue("@Id", reqId);
-                                cmdWorkflow.Parameters.AddWithValue("@AuditorId", auditor);
-                                cmdWorkflow.ExecuteNonQuery();
-                            }
-
-                            using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con, tran))
-                            {
-                                cmd.CommandType = CommandType.StoredProcedure;
-                                cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                                cmd.Parameters.AddWithValue("@ActionBy", auditor);
-                                cmd.ExecuteNonQuery();
-                            }
-
-                            // Commit the transaction
-                            tran.Commit();
-                        }
-                        catch (Exception ex)
-                        {
-                            tran.Rollback();
-                            throw new Exception("Finalization failed. Transaction rolled back.", ex);
-                        }
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                        cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                        cmd.ExecuteNonQuery();
                     }
+
+                    //con.Open();
+                    //using (var tran = con.BeginTransaction())
+                    //{
+                    //    try
+                    //    {
+                    //        //    string fixStatusSql = @"
+                    //        //UPDATE dbo.SalesApprovalRequest 
+                    //        //SET Status = 'Completed' 
+                    //        //WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+
+                    //        //IF @@ROWCOUNT > 0
+                    //        //BEGIN
+                    //        //    INSERT INTO dbo.ApprovalRequestStatusHistory 
+                    //        //    (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
+                    //        //    VALUES 
+                    //        //    (@Id, 'Pending', 'Completed', @AuditorId, 'Auditor finalized all rows and synced calculations.');
+                    //        //END";
+
+                    //        //    using (var cmdFix = new SqlCommand(fixStatusSql, con, tran))
+                    //        //    {
+                    //        //        cmdFix.Parameters.AddWithValue("@Id", reqId);
+                    //        //        cmdFix.Parameters.AddWithValue("@AuditorId", auditor);
+                    //        //        cmdFix.ExecuteNonQuery();
+                    //        //    }
+
+                    //        //    string sqlWorkflow = @"
+                    //        //UPDATE dbo.SalesApprovalRequestApprover 
+                    //        //SET 
+                    //        //    Status = 'Approved', 
+                    //        //    ActionBy = @AuditorId, 
+                    //        //    ActionDate = GETDATE() 
+                    //        //WHERE ApprovalRequestId = @Id 
+                    //        //  AND ApproverLevel = 2 
+                    //        //  AND Status = 'Pending'";
+
+                    //        //    using (var cmdWorkflow = new SqlCommand(sqlWorkflow, con, tran))
+                    //        //    {
+                    //        //        cmdWorkflow.Parameters.AddWithValue("@Id", reqId);
+                    //        //        cmdWorkflow.Parameters.AddWithValue("@AuditorId", auditor);
+                    //        //        cmdWorkflow.ExecuteNonQuery();
+                    //        //    }
+
+                    //        using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con, tran))
+                    //        {
+                    //            cmd.CommandType = CommandType.StoredProcedure;
+                    //            cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                    //            cmd.Parameters.AddWithValue("@ActionBy", auditor);
+                    //            cmd.ExecuteNonQuery();
+                    //        }
+
+                    //        // Commit the transaction
+                    //        tran.Commit();
+                    //    }
+                    //    catch (Exception ex)
+                    //    {
+                    //        tran.Rollback();
+                    //        throw new Exception("Finalization failed. Transaction rolled back.", ex);
+                    //    }
+                    //}
                 }
 
                 lblModalMessage.Text = "Calculated & Marked Ready for Payment.";
@@ -1524,84 +1756,51 @@ namespace AnmolDristi
                 action = (action ?? "").Trim().ToUpperInvariant();
 
                 // Validate Action
-                if (action != "APPROVE" && action != "REJECT")
+                if (action != "APPROVE" && action != "RETURN" && action != "REJECT")
                 {
-                    return new
-                    {
-                        success = false,
-                        message = "Invalid action."
-                    };
+                    return new { success = false, message = "Invalid action." };
                 }
 
-                if (action == "REJECT" && !IsAuditorRole(approverRole))
+                // Remarks mandatory for Return & Reject
+                if ((action == "RETURN" || action == "REJECT") && string.IsNullOrWhiteSpace(remark))
                 {
-                    return new
-                    {
-                        success = false,
-                        message = "Only auditors can reject individual expense lines."
-                    };
-                }
-
-                // Remarks mandatory for reject
-                if (action == "REJECT" &&
-                    string.IsNullOrWhiteSpace(remark))
-                {
-                    return new
-                    {
-                        success = false,
-                        message = "Remarks are mandatory."
-                    };
+                    return new { success = false, message = "Remarks are mandatory." };
                 }
 
                 string formattedRemark = null;
-
                 if (!string.IsNullOrWhiteSpace(remark))
                 {
-                    formattedRemark = AppendUserToRemark(
-                                            remark.Trim(),
-                                            user);
+                    formattedRemark = AppendUserToRemark(remark.Trim(), user);
                 }
 
-                string newStatus = MapExpenseActionToClaimStatus(action);
+                // 🟢 NEW: Map the action command to the correct Database Status Word
+                string dbStatus = "Pending";
+                if (action == "APPROVE") dbStatus = "Approved";
+                else if (action == "REJECT") dbStatus = "Rejected";
+                else if (action == "RETURN") dbStatus = "Returned";
 
-                string conn =
-                    ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+                string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
                 using (SqlConnection con = new SqlConnection(conn))
-                using (SqlCommand cmd =
-                    new SqlCommand(
-                        "dbo.usp_UpdateSalesDailyExpenseStatus",
-                        con))
+                using (SqlCommand cmd = new SqlCommand("dbo.usp_UpdateSalesDailyExpenseStatus", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 
+                    // 🟢 FIXED: Parameter names now exactly match your updated Stored Procedure
                     cmd.Parameters.AddWithValue("@ExpenseId", expenseId);
-                    cmd.Parameters.AddWithValue("@NewStatus", newStatus);
+                    cmd.Parameters.AddWithValue("@NewStatus", dbStatus);
                     cmd.Parameters.AddWithValue("@ActionBy", user);
-
-                    cmd.Parameters.AddWithValue(
-                        "@Remarks",
-                        string.IsNullOrWhiteSpace(formattedRemark)
-                            ? (object)DBNull.Value
-                            : formattedRemark);
+                    cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrWhiteSpace(formattedRemark) ? (object)DBNull.Value : formattedRemark);
 
                     con.Open();
-
                     cmd.ExecuteNonQuery();
                 }
 
-                return new
-                {
-                    success = true
-                };
+                return new { success = true };
             }
             catch (Exception ex)
             {
-                return new
-                {
-                    success = false,
-                    message = ex.Message
-                };
+                return new { success = false, message = ex.Message };
             }
         }
 
@@ -1632,8 +1831,39 @@ namespace AnmolDristi
             catch (Exception ex) { return new { success = false, message = ex.Message }; }
         }
 
-
         private void SetFinalApproverFlag(int approvalRequestId)
+        {
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd =
+                new SqlCommand("dbo.usp_GetApprovalRequest", con))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
+
+                con.Open();
+
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    if (dr.Read())
+                    {
+                        int current =
+                            dr["CurrentApproverLevel"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["CurrentApproverLevel"]);
+
+                        int max =
+                            dr["MaxApproverLevel"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(dr["MaxApproverLevel"]);
+
+                        hfIsFinalApprover.Value =
+                            (current == max) ? "1" : "0";
+                    }
+                }
+            }
+        }
+
+        private void SetFinalApproverFlag_OLD(int approvalRequestId)
         {
             string conn =
                 ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -2045,17 +2275,84 @@ namespace AnmolDristi
                     con.Open();
                     if (isApprove)
                     {
-                        ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con);
-                    }
-                    else if (isReturn)
-                    {
-                        ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
-                        MarkActivityReturnedForCorrection(detailId, user, con);
-                    }
-                    else
-                    {
-                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con);
-                        MarkActivityRejectedForDay(detailId, user, con);
+                        try
+                        {
+                            // 1. Get the Current Approver Level dynamically (since this is a static method)
+                            int currentLevel = 0;
+                            string levelSql = "SELECT TOP 1 ApproverLevel FROM dbo.SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User AND Status='Pending'";
+                            using (SqlCommand lvlCmd = new SqlCommand(levelSql, con, tran))
+                            {
+                                lvlCmd.Parameters.AddWithValue("@Id", reqId);
+                                lvlCmd.Parameters.AddWithValue("@User", user);
+                                object lvlObj = lvlCmd.ExecuteScalar();
+                                if (lvlObj != null && lvlObj != DBNull.Value) currentLevel = Convert.ToInt32(lvlObj);
+                            }
+
+                            //// 2. Level-Aware Update (Replaces the strict SP)
+                            //string sql = @"
+                            //    UPDATE dbo.SalesApprovalRequestDetail 
+                            //    SET DetailStatus = @Status, 
+                            //        DetailRemarks = ISNULL(@Remarks, DetailRemarks), 
+                            //        DetailApprovedBy = @ActionBy, 
+                            //        DetailApprovedOn = SYSUTCDATETIME(),
+                            //        DetailApprovedLevel = @Level
+                            //    WHERE ApprovalRequestDetailId = @DetailId AND ApprovalRequestId = @ReqId;
+
+                            //    -- 3. Cascade to child receipts
+                            //    UPDATE dbo.SalesDailyExpense 
+                            //    SET ClaimStatus = @Status, 
+                            //        ClaimProcessedBy = @ActionBy, 
+                            //        ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                            //        ModifiedBy = @ActionBy,
+                            //        ModifiedOn = SYSUTCDATETIME(),
+                            //        Remarks = ISNULL(Remarks, @Remarks)
+                            //    WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
+                            //      AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                            //      AND IsDeleted = 0;";
+
+                            //using (SqlCommand cmd = new SqlCommand(sql, con, tran))
+                            //{
+                            //    cmd.Parameters.AddWithValue("@Status", dbStatus);
+                            //    cmd.Parameters.AddWithValue("@Remarks", "Processed via Unified Day Modal - " + user);
+                            //    cmd.Parameters.AddWithValue("@ActionBy", user);
+                            //    cmd.Parameters.AddWithValue("@Level", currentLevel);
+                            //    cmd.Parameters.AddWithValue("@DetailId", detailId);
+                            //    cmd.Parameters.AddWithValue("@ReqId", reqId);
+
+                            //    cmd.ExecuteNonQuery();
+                            //}
+
+                            using (SqlCommand cmd =new SqlCommand("dbo.usp_ProcessApprovalAction",con,tran))
+                            {
+                                cmd.CommandType = CommandType.StoredProcedure;
+
+                                cmd.Parameters.AddWithValue(
+                                    "@ApprovalRequestDetailId",
+                                    detailId);
+
+                                cmd.Parameters.AddWithValue(
+                                    "@Action",
+                                    action.ToUpper());
+
+                                cmd.Parameters.AddWithValue(
+                                    "@ActionBy",
+                                    user);
+
+                                cmd.Parameters.AddWithValue(
+                                    "@Remarks",
+                                    "Processed via Unified Day Modal");
+
+                                cmd.ExecuteNonQuery();
+                            }
+
+                            tran.Commit();
+                            return new { success = true };
+                        }
+                        catch
+                        {
+                            tran.Rollback();
+                            throw;
+                        }
                     }
                 }
 
