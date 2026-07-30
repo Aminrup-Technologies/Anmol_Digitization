@@ -2214,91 +2214,26 @@ namespace AnmolDristi
                         ? "Approved via Unified Day Modal"
                         : (isReject ? "Rejected via Unified Day Modal" : "Returned via Unified Day Modal"),
                     user);
+
                 string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
                 using (SqlConnection con = new SqlConnection(conn))
                 {
                     con.Open();
+
                     if (isApprove)
                     {
-                        try
-                        {
-                            // 1. Get the Current Approver Level dynamically (since this is a static method)
-                            int currentLevel = 0;
-                            string levelSql = "SELECT TOP 1 ApproverLevel FROM dbo.SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User AND Status='Pending'";
-                            using (SqlCommand lvlCmd = new SqlCommand(levelSql, con, tran))
-                            {
-                                lvlCmd.Parameters.AddWithValue("@Id", reqId);
-                                lvlCmd.Parameters.AddWithValue("@User", user);
-                                object lvlObj = lvlCmd.ExecuteScalar();
-                                if (lvlObj != null && lvlObj != DBNull.Value) currentLevel = Convert.ToInt32(lvlObj);
-                            }
-
-                            //// 2. Level-Aware Update (Replaces the strict SP)
-                            //string sql = @"
-                            //    UPDATE dbo.SalesApprovalRequestDetail 
-                            //    SET DetailStatus = @Status, 
-                            //        DetailRemarks = ISNULL(@Remarks, DetailRemarks), 
-                            //        DetailApprovedBy = @ActionBy, 
-                            //        DetailApprovedOn = SYSUTCDATETIME(),
-                            //        DetailApprovedLevel = @Level
-                            //    WHERE ApprovalRequestDetailId = @DetailId AND ApprovalRequestId = @ReqId;
-
-                            //    -- 3. Cascade to child receipts
-                            //    UPDATE dbo.SalesDailyExpense 
-                            //    SET ClaimStatus = @Status, 
-                            //        ClaimProcessedBy = @ActionBy, 
-                            //        ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
-                            //        ModifiedBy = @ActionBy,
-                            //        ModifiedOn = SYSUTCDATETIME(),
-                            //        Remarks = ISNULL(Remarks, @Remarks)
-                            //    WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
-                            //      AND ClaimStatus NOT IN ('Approved', 'Rejected') 
-                            //      AND IsDeleted = 0;";
-
-                            //using (SqlCommand cmd = new SqlCommand(sql, con, tran))
-                            //{
-                            //    cmd.Parameters.AddWithValue("@Status", dbStatus);
-                            //    cmd.Parameters.AddWithValue("@Remarks", "Processed via Unified Day Modal - " + user);
-                            //    cmd.Parameters.AddWithValue("@ActionBy", user);
-                            //    cmd.Parameters.AddWithValue("@Level", currentLevel);
-                            //    cmd.Parameters.AddWithValue("@DetailId", detailId);
-                            //    cmd.Parameters.AddWithValue("@ReqId", reqId);
-
-                            //    cmd.ExecuteNonQuery();
-                            //}
-
-                            using (SqlCommand cmd =new SqlCommand("dbo.usp_ProcessApprovalAction",con,tran))
-                            {
-                                cmd.CommandType = CommandType.StoredProcedure;
-
-                                cmd.Parameters.AddWithValue(
-                                    "@ApprovalRequestDetailId",
-                                    detailId);
-
-                                cmd.Parameters.AddWithValue(
-                                    "@Action",
-                                    action.ToUpper());
-
-                                cmd.Parameters.AddWithValue(
-                                    "@ActionBy",
-                                    user);
-
-                                cmd.Parameters.AddWithValue(
-                                    "@Remarks",
-                                    "Processed via Unified Day Modal");
-
-                                cmd.ExecuteNonQuery();
-                            }
-
-                            tran.Commit();
-                            return new { success = true };
-                        }
-                        catch
-                        {
-                            tran.Rollback();
-                            throw;
-                        }
+                        ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con);
+                    }
+                    else if (isReturn)
+                    {
+                        ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
+                        MarkActivityReturnedForCorrection(detailId, user, con);
+                    }
+                    else
+                    {
+                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con);
+                        MarkActivityRejectedForDay(detailId, user, con);
                     }
                 }
 
