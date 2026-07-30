@@ -588,30 +588,7 @@
 
                                                 <asp:TemplateField HeaderText="Status" ItemStyle-Width="5%" ItemStyle-HorizontalAlign="Center">
                                                     <ItemTemplate>
-                                                        <span data-toggle="tooltip"
-                                                            title='<%# 
-                                                                Eval("ClaimStatus").ToString() == "Draft" ? "Draft – not submitted yet" :
-                                                                Eval("ClaimStatus").ToString() == "Submitted" ? "Submitted – awaiting approval" :
-                                                                Eval("ClaimStatus").ToString() == "Approved" ? "Approved by manager" :
-                                                                Eval("ClaimStatus").ToString() == "Rejected" ? "Rejected – please review" :
-                                                                Eval("ClaimStatus").ToString() == "Processed" ? "Processed in accounts" :
-                                                                "Unknown status" %>'
-                                                            class='<%# 
-                                                                Eval("ClaimStatus").ToString() == "Draft" ? "badge badge-warning" :
-                                                                Eval("ClaimStatus").ToString() == "Submitted" ? "badge badge-info" :
-                                                                Eval("ClaimStatus").ToString() == "Approved" ? "badge badge-success" :
-                                                                Eval("ClaimStatus").ToString() == "Rejected" ? "badge badge-danger" :
-                                                                Eval("ClaimStatus").ToString() == "Processed" ? "badge badge-primary" :
-                                                                "badge badge-secondary" %>'>
-
-                                                            <i class='<%# 
-                                                                Eval("ClaimStatus").ToString() == "Draft" ? "fa fa-pencil-square-o" :
-                                                                Eval("ClaimStatus").ToString() == "Submitted" ? "fa fa-paper-plane" :
-                                                                Eval("ClaimStatus").ToString() == "Approved" ? "fa fa-check-circle" :
-                                                                Eval("ClaimStatus").ToString() == "Rejected" ? "fa fa-times-circle" :
-                                                                Eval("ClaimStatus").ToString() == "Processed" ? "fa fa-cogs" :
-                                                                "fa fa-clock-o" %>'></i>
-                                                        </span>
+                                                        <asp:Label ID="lblClaimStatus" runat="server" />
                                                     </ItemTemplate>
                                                 </asp:TemplateField>
 
@@ -703,9 +680,9 @@
                     </div>
                 </div>
 
-                <div class="col-md-12 col-sm-12" id="Summary" runat="server" visible="false">
+                <div class="col-md-12 col-sm-12" id="Summary" runat="server" visible="true">
 
-                    <div class="x_panel collapsed">
+                    <div class="x_panel">
 
                         <div class="x_title">
 
@@ -713,7 +690,7 @@
 
                             <ul class="nav navbar-right panel_toolbox">
 
-                                <li><a class="collapse-link"><i class="fa fa-chevron-down"></i></a></li>
+                                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
 
                             </ul>
 
@@ -723,7 +700,7 @@
 
 
 
-                        <div class="x_content" style="display: none;">
+                        <div class="x_content">
 
                             <div class="row">
 
@@ -1592,6 +1569,7 @@
             });
 
             initTooltipsAndIcons();
+            keepSummaryPanelExpanded();
         });
 
         function initTooltipsAndIcons() {
@@ -1629,7 +1607,23 @@
         if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
             Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () {
                 initTooltipsAndIcons();
+                keepSummaryPanelExpanded();
             });
+        }
+
+        function keepSummaryPanelExpanded() {
+            var summaryRoot = document.getElementById('<%= Summary.ClientID %>');
+            if (!summaryRoot) return;
+            var panel = summaryRoot.querySelector('.x_panel');
+            if (!panel) return;
+            panel.classList.remove('collapsed');
+            var content = panel.querySelector('.x_content');
+            if (content) content.style.display = '';
+            var icon = panel.querySelector('.collapse-link i');
+            if (icon) {
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
         }
 
         function showPNotify(title, message, type) {
