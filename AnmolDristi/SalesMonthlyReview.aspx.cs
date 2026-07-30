@@ -1531,6 +1531,42 @@ namespace AnmolDristi
             return false;
         }
 
+        private const string SoftDeleteExpenseSql = @"
+            UPDATE dbo.SalesDailyExpense
+            SET IsDeleted = 1,
+                ClaimStatus = 'Draft',
+                ModifiedBy = @User,
+                ModifiedOn = SYSUTCDATETIME(),
+                DeletedBy = @User,
+                DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                DeleteReason = @Reason
+            WHERE ExpenseId = @ExpenseId
+              AND IsDeleted = 0
+              AND ClaimStatus IN ('Draft', 'Returned')";
+
+        private static string BuildSoftDeleteExpenseBatchSql(IEnumerable<int> expenseIds)
+        {
+            string inList = string.Join(",", expenseIds.Select(id => id.ToString()).ToArray());
+            return string.Format(@"
+                UPDATE dbo.SalesDailyExpense
+                SET IsDeleted = 1,
+                    ClaimStatus = 'Draft',
+                    ModifiedBy = @User,
+                    ModifiedOn = SYSUTCDATETIME(),
+                    DeletedBy = @User,
+                    DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+                    DeleteReason = @Reason
+                WHERE ExpenseId IN ({0})
+                  AND IsDeleted = 0
+                  AND ClaimStatus IN ('Draft', 'Returned')", inList);
+        }
+
+        private static void AddSoftDeleteParameters(SqlCommand cmd, string user, string reason)
+        {
+            cmd.Parameters.AddWithValue("@User", user);
+            cmd.Parameters.AddWithValue("@Reason", reason);
+        }
+
         private void PopulateKmTolerance(System.Data.DataRowView drv, GridViewRow row)
         {
             decimal totalKm = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]) : 0m;
@@ -2955,7 +2991,7 @@ namespace AnmolDristi
                                 bool isFirstForType = false;
                                 if (matchFrom != DateTime.MinValue)
                                 {
-                                    string firstSql = @"SELECT TOP 1 ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND LOWER(ISNULL(ExpenseType,'')) = LOWER(ISNULL(@ExpenseType,'')) AND CAST(ISNULL(ExpenseDate, GETDATE()) AS DATE) = @MatchDate ORDER BY CASE WHEN ExpenseSeq IS NULL THEN 2147483647 ELSE ExpenseSeq END ASC, ISNULL(CreatedDateTime, '1900-01-01') ASC, ExpenseId ASC";
+                                    string firstSql = @"SELECT TOP 1 ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND LOWER(ISNULL(ExpenseType,'')) = LOWER(ISNULL(@ExpenseType,'')) AND CAST(ISNULL(ExpenseDate, GETDATE()) AS DATE) = @MatchDate ORDER BY CASE WHEN ExpenseSeq IS NULL THEN 2147483647 ELSE ExpenseSeq END ASC, ISNULL(CreatedDateTime, '1900-01-01') ASC, ExpenseId ASC";
                                     using (var firstCmd = new SqlCommand(firstSql, con, tx))
                                     {
                                         firstCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
@@ -2981,10 +3017,10 @@ namespace AnmolDristi
                                     }
                                 }
 
-                                using (var del = new SqlCommand(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'User removed editable expense' WHERE ExpenseId = @ExpenseId AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", con, tx))
+                                using (var del = new SqlCommand(SoftDeleteExpenseSql, con, tx))
                                 {
                                     del.Parameters.AddWithValue("@ExpenseId", expenseId);
-                                    del.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
+                                    AddSoftDeleteParameters(del, Session["WORKMAN"].ToString(), "User removed editable expense");
                                     if (del.ExecuteNonQuery() <= 0)
                                     {
                                         tx.Rollback();
@@ -3001,10 +3037,10 @@ namespace AnmolDristi
                                 if (autoIds.Count > 0)
                                 {
                                     string inList = string.Join(",", autoIds.Select(n => n.ToString()).ToArray());
-                                    string delAutoSql = string.Format(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'Auto-DA reversed due to primary expense deletion' WHERE ExpenseId IN ({0}) AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", inList);
+                                    string delAutoSql = BuildSoftDeleteExpenseBatchSql(autoIds);
                                     using (var delAuto = new SqlCommand(delAutoSql, con, tx))
                                     {
-                                        delAuto.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
+                                        AddSoftDeleteParameters(delAuto, Session["WORKMAN"].ToString(), "Auto-DA reversed due to primary expense deletion");
                                         delAuto.ExecuteNonQuery();
                                     }
                                 }
@@ -3165,7 +3201,7 @@ namespace AnmolDristi
                                 bool isFirstForType = false;
                                 if (matchFrom != DateTime.MinValue)
                                 {
-                                    string firstSql = @"SELECT TOP 1 ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND LOWER(ISNULL(ExpenseType,'')) = LOWER(ISNULL(@ExpenseType,'')) AND CAST(ISNULL(ExpenseDate, GETDATE()) AS DATE) = @MatchDate ORDER BY CASE WHEN ExpenseSeq IS NULL THEN 2147483647 ELSE ExpenseSeq END ASC, ISNULL(CreatedDateTime, '1900-01-01') ASC, ExpenseId ASC";
+                                    string firstSql = @"SELECT TOP 1 ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND LOWER(ISNULL(ExpenseType,'')) = LOWER(ISNULL(@ExpenseType,'')) AND CAST(ISNULL(ExpenseDate, GETDATE()) AS DATE) = @MatchDate ORDER BY CASE WHEN ExpenseSeq IS NULL THEN 2147483647 ELSE ExpenseSeq END ASC, ISNULL(CreatedDateTime, '1900-01-01') ASC, ExpenseId ASC";
                                     using (var firstCmd = new SqlCommand(firstSql, con, tx))
                                     {
                                         firstCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
@@ -3190,10 +3226,10 @@ namespace AnmolDristi
                                     }
                                 }
 
-                                using (var del = new SqlCommand(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'User removed editable expense' WHERE ExpenseId = @ExpenseId AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", con, tx))
+                                using (var del = new SqlCommand(SoftDeleteExpenseSql, con, tx))
                                 {
                                     del.Parameters.AddWithValue("@ExpenseId", expenseId);
-                                    del.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
+                                    AddSoftDeleteParameters(del, Session["WORKMAN"].ToString(), "User removed editable expense");
                                     if (del.ExecuteNonQuery() <= 0)
                                     {
                                         tx.Rollback();
@@ -3210,10 +3246,10 @@ namespace AnmolDristi
                                 if (autoIds.Count > 0)
                                 {
                                     string inList = string.Join(",", autoIds.Select(n => n.ToString()).ToArray());
-                                    string delAutoSql = string.Format(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'Auto-DA reversed due to primary expense deletion' WHERE ExpenseId IN ({0}) AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", inList);
+                                    string delAutoSql = BuildSoftDeleteExpenseBatchSql(autoIds);
                                     using (var delAuto = new SqlCommand(delAutoSql, con, tx))
                                     {
-                                        delAuto.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
+                                        AddSoftDeleteParameters(delAuto, Session["WORKMAN"].ToString(), "Auto-DA reversed due to primary expense deletion");
                                         delAuto.ExecuteNonQuery();
                                     }
                                 }
