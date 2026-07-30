@@ -210,7 +210,9 @@ namespace AnmolDristi
                     else
                     {
                         string s = (approvalStatus ?? "").Trim();
-                        if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase) || string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase))
+                        if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(s, "Returned", StringComparison.OrdinalIgnoreCase))
                         {
                             monthLocked = false;
                             allowSubmission = true;
@@ -242,6 +244,9 @@ namespace AnmolDristi
                                 int actId = row["ActivityId"] != DBNull.Value ? Convert.ToInt32(row["ActivityId"]) : 0;
                                 row["IsEditable"] = editableActivityIds.Contains(actId);
                             }
+
+                            if (editableActivityIds.Count > 0)
+                                allowSubmission = true;
                         }
                     }
                 }
@@ -1951,7 +1956,10 @@ What: Added file attachment validation block in BTN_SaveExpense_Click.
             Literal litBadges = e.Item.FindControl("litPolicyBadges") as Literal;
 
             bool canDelete = true;
-            if (!string.IsNullOrWhiteSpace(claimStatus) && (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) || claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase)))
+            if (!string.IsNullOrWhiteSpace(claimStatus) && (
+                claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                claimStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)))
                 canDelete = false;
             if (isAuto) canDelete = false;
 

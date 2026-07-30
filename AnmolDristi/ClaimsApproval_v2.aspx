@@ -431,6 +431,7 @@
                             <asp:HiddenField ID="hfReturnReason" runat="server" ClientIDMode="Static" />
                             <asp:HiddenField ID="hfCurrentUserLevel" runat="server" ClientIDMode="Static" />
                             <asp:HiddenField ID="hfIsFinalApprover" runat="server" />
+                            <asp:HiddenField ID="hfIsAuditor" runat="server" ClientIDMode="Static" Value="0" />
                             <div class="modal-header bg-light">
                                 <h5 class="modal-title font-weight-bold">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
                                 <div class="ml-auto">
@@ -538,7 +539,7 @@
                                                     <asp:Button
                                                         ID="btnRejectRow"
                                                         runat="server"
-                                                        CssClass="btn btn-danger btn-sm mt-1"
+                                                        CssClass="btn btn-warning btn-sm mt-1"
                                                         Text="Return"
                                                         CommandName="RejectRow"
                                                         CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
@@ -554,7 +555,7 @@
                                     </div>
                                     <div class="col-md-6 text-right">
                                         <asp:Button ID="btnApproveSelected" runat="server" Text="Approve Selected" CssClass="btn btn-success btn-sm" OnClick="btnApproveSelected_Click" />
-                                        <asp:Button ID="btnRejectSelected" runat="server" Text="Reject Selected" CssClass="btn btn-danger btn-sm" OnClick="btnRejectSelected_Click" />
+                                        <asp:Button ID="btnRejectSelected" runat="server" Text="Return Selected" CssClass="btn btn-warning btn-sm" OnClick="btnRejectSelected_Click" />
                                     </div>
                                 </div>
 
@@ -766,19 +767,6 @@
 
                             <button
                                 type="button"
-                                class="btn btn-danger"
-                                id="btnUnifiedRejectDay"
-                                onclick="actionDayFromModal('REJECT')"
-                                style="display: none;">
-
-                                <i class="fa fa-ban mr-1"></i>
-
-                                Reject Day
-
-                            </button>
-
-                            <button
-                                type="button"
                                 class="btn btn-secondary"
                                 data-dismiss="modal">
                                 Close
@@ -886,22 +874,21 @@
         
             var currentLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(), 10);
             var finalLevel = parseInt($('#<%=hfIsFinalApprover.ClientID%>').val(), 10);
-            var isFinalApprover = $('#<%=hfIsFinalApprover.ClientID%>').val() === "1";
+            var isAuditor = $('#hfIsAuditor').val() === "1";
 
             if (canAction) {
                 $('#divKmControls').show();
                 $('#btnUnifiedApproveDay').show();
-                $('#btnUnifiedReturnDay').show();
-
-                if (isFinalApprover)
-                    $('#btnUnifiedRejectDay').show();
-                else
-                    $('#btnUnifiedRejectDay').hide();
+                // Managers return days for employee correction; auditors approve only.
+                if (isAuditor) {
+                    $('#btnUnifiedReturnDay').hide();
+                } else {
+                    $('#btnUnifiedReturnDay').show();
+                }
             } else {
                 $('#divKmControls').hide();
                 $('#btnUnifiedApproveDay').hide();
                 $('#btnUnifiedReturnDay').hide();
-                $('#btnUnifiedRejectDay').hide();
             }
 
             // Setup Distance Tab & Hidden Fields
@@ -920,7 +907,7 @@
                 expensesJson,
                 isRowLocked,
                 canAction,
-                isFinalApprover
+                isAuditor
             );
 
             // Show Modal
@@ -980,7 +967,7 @@
         // =========================================================
         // 2. MODULAR RENDERING LOGIC (PHASE 6 & 7)
         // =========================================================
-        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isFinalApprover) {
+        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isAuditor) {
             let html = '';
 
             // Render Top Summaries
@@ -1024,7 +1011,7 @@
                                 'fa-bed',
                                 'bg-info',
                                 exp,
-                                canAction,isFinalApprover);
+                                canAction,isAuditor);
 
                             break;
 
@@ -1035,7 +1022,7 @@
                                 'fa-bus',
                                 'bg-primary',
                                 exp,
-                                canAction,isFinalApprover);
+                                canAction,isAuditor);
 
                             break;
 
@@ -1046,7 +1033,7 @@
                                 'fa-paperclip',
                                 'bg-warning text-dark',
                                 exp,
-                                canAction,isFinalApprover);
+                                canAction,isAuditor);
 
                             break;
 
@@ -1057,7 +1044,7 @@
                                 'fa-utensils',
                                 'bg-secondary',
                                 exp,
-                                canAction,isFinalApprover);
+                                canAction,isAuditor);
 
                             break;
 
@@ -1250,7 +1237,7 @@
             </div>`;
         }
 
-        function renderExpenseCard(title, iconClass, headerColorClass, exp, canAction, isFinalApprover) {
+        function renderExpenseCard(title, iconClass, headerColorClass, exp, canAction, isAuditor) {
             let amount = parseFloat(exp.Amount || 0).toFixed(2);
             let billNo = exp.BillNo || 'N/A';
             let remarks = exp.Purpose || '<em class="text-muted">No remarks provided.</em>';
@@ -1317,16 +1304,8 @@
                         Approve
                     </button>
 
-                    <button
-                        type="button"
-                        class="btn btn-warning btn-sm flex-fill"
-                        onclick="updateExpense(${exp.ExpenseId},'RETURN',this)">
-                        <i class="fa fa-undo mr-1"></i>
-                        Return
-                    </button>
-
                     ${
-                                    isFinalApprover
+                                    isAuditor
                                     ?
                                     `
                         <button
@@ -1346,7 +1325,7 @@
                         break;
 
                         //-------------------------------------------------
-                        // Returned
+                        // Returned (awaiting employee correction)
                         //-------------------------------------------------
 
                     case "Returned":
@@ -1354,35 +1333,7 @@
                         actionButtons = `
                 <div class="alert alert-warning py-2 mb-2 text-center">
                     <i class="fa fa-undo mr-1"></i>
-                    Returned for Correction
-                </div>
-
-                <div class="btn-group d-flex">
-
-                    <button
-                        type="button"
-                        class="btn btn-success btn-sm flex-fill"
-                        onclick="updateExpense(${exp.ExpenseId},'APPROVE',this)">
-                        <i class="fa fa-check mr-1"></i>
-                        Approve
-                    </button>
-
-                    ${
-                                    isFinalApprover
-                                    ?
-                                    `
-                        <button
-                            type="button"
-                            class="btn btn-danger btn-sm flex-fill"
-                            onclick="updateExpense(${exp.ExpenseId},'REJECT',this)">
-                            <i class="fa fa-ban mr-1"></i>
-                            Reject
-                        </button>
-                        `
-                                    :
-                                    ''
-                        }
-
+                    Returned for Employee Correction
                 </div>
             `;
                         break;
@@ -1399,20 +1350,11 @@
                     Expense Approved
                 </div>
 
-                <div class="btn-group d-flex">
-
-                    <button
-                        type="button"
-                        class="btn btn-outline-warning btn-sm flex-fill"
-                        onclick="updateExpense(${exp.ExpenseId},'RETURN',this)">
-                        <i class="fa fa-undo mr-1"></i>
-                        Return
-                    </button>
-
-                    ${
-                                    isFinalApprover
+                ${
+                                    isAuditor
                                     ?
                                     `
+                <div class="btn-group d-flex">
                         <button
                             type="button"
                             class="btn btn-danger btn-sm flex-fill"
@@ -1420,12 +1362,11 @@
                             <i class="fa fa-ban mr-1"></i>
                             Reject
                         </button>
+                </div>
                         `
                                     :
                                     ''
                         }
-
-                </div>
             `;
                         break;
 
@@ -1745,11 +1686,7 @@
                     break;
 
                 case "RETURN":
-                    actionText = "return this day";
-                    break;
-
-                case "REJECT":
-                    actionText = "permanently reject this day";
+                    actionText = "return this day to the employee for correction";
                     break;
 
                 default:
@@ -1761,7 +1698,7 @@
                 return;
 
             // Disable all footer buttons
-            $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
+            $('#btnUnifiedApproveDay,#btnUnifiedReturnDay')
                 .prop('disabled', true);
 
             $('#unified_modal_message').html(
@@ -1811,7 +1748,7 @@
                         '</span>'
                     );
 
-                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
+                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay')
                         .prop('disabled', false);
 
                 },
@@ -1827,7 +1764,7 @@
                         '</span>'
                     );
 
-                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
+                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay')
                         .prop('disabled', false);
 
                 }

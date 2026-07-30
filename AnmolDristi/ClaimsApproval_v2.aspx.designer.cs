@@ -157,6 +157,11 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField hfCurrentUserLevel;
         
         /// <summary>
+        /// hfIsAuditor control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.HiddenField hfIsAuditor;
+
+        /// <summary>
         /// hfIsFinalApprover control.
         /// </summary>
         /// <remarks>
