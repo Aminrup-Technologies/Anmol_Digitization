@@ -210,7 +210,11 @@ namespace AnmolDristi
                     else
                     {
                         string s = (approvalStatus ?? "").Trim();
-                        if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase) || string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase))
+
+                        // ⬅️ 1. Add "Returned" to the overall status check
+                        if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(s, "Returned", StringComparison.OrdinalIgnoreCase))
                         {
                             monthLocked = false;
                             allowSubmission = true;
@@ -231,8 +235,13 @@ namespace AnmolDristi
                                     {
                                         int aid = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
                                         string detail = rdr["DetailStatus"] != DBNull.Value ? rdr["DetailStatus"].ToString() : null;
-                                        if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase))
+
+                                        // ⬅️ 2. Add "Returned" to the Line Item check
+                                        if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                                            string.Equals(detail, "Returned", StringComparison.OrdinalIgnoreCase))
+                                        {
                                             editableActivityIds.Add(aid);
+                                        }
                                     }
                                 }
                             }
@@ -241,8 +250,50 @@ namespace AnmolDristi
                                 int actId = row["ActivityId"] != DBNull.Value ? Convert.ToInt32(row["ActivityId"]) : 0;
                                 row["IsEditable"] = editableActivityIds.Contains(actId);
                             }
+
+                            // ⬅️ 3. NEW: If there are returned/rejected rows, UNLOCK the Submit button!
+                            if (editableActivityIds.Count > 0)
+                            {
+                                allowSubmission = true;
+                            }
                         }
                     }
+                    //else
+                    //{
+                    //    string s = (approvalStatus ?? "").Trim();
+                    //    if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase) || string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase))
+                    //    {
+                    //        monthLocked = false;
+                    //        allowSubmission = true;
+                    //        foreach (DataRow row in dt.Rows) row["IsEditable"] = true;
+                    //    }
+                    //    else
+                    //    {
+                    //        monthLocked = true;
+                    //        allowSubmission = false;
+
+                    //        var editableActivityIds = new HashSet<int>();
+                    //        using (SqlCommand cmd2 = new SqlCommand("SELECT ActivityId, DetailStatus FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id", con))
+                    //        {
+                    //            cmd2.Parameters.AddWithValue("@Id", approvalRequestId.Value);
+                    //            using (SqlDataReader rdr = cmd2.ExecuteReader())
+                    //            {
+                    //                while (rdr.Read())
+                    //                {
+                    //                    int aid = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
+                    //                    string detail = rdr["DetailStatus"] != DBNull.Value ? rdr["DetailStatus"].ToString() : null;
+                    //                    if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase))
+                    //                        editableActivityIds.Add(aid);
+                    //                }
+                    //            }
+                    //        }
+                    //        foreach (DataRow row in dt.Rows)
+                    //        {
+                    //            int actId = row["ActivityId"] != DBNull.Value ? Convert.ToInt32(row["ActivityId"]) : 0;
+                    //            row["IsEditable"] = editableActivityIds.Contains(actId);
+                    //        }
+                    //    }
+                    //}
                 }
                 ViewState["MonthLocked"] = monthLocked;
                 ViewState["AllowSubmission"] = allowSubmission;
@@ -307,15 +358,23 @@ namespace AnmolDristi
                     }
                 }
 
-                Actionable.Visible = gvActivities.Rows.Count > 0 && !monthLocked;
-                btn_save_draft.Enabled = !monthLocked;
+                // ⬅️ 4. Ensure the panel is visible if submissions are allowed
+                Actionable.Visible = gvActivities.Rows.Count > 0 && (!monthLocked || allowSubmission);
+                btn_save_draft.Enabled = !monthLocked || allowSubmission;
                 btn_submit.Enabled = allowSubmission;
 
-                if (monthLocked)
+                if (monthLocked && !allowSubmission)
                 {
                     lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for rows that were rejected by approver.";
                     lbl_msg.ForeColor = System.Drawing.Color.Orange;
                     ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLocked", "showPNotify('Submitted for Approval', 'Monthly claims are submitted. Editing disabled except rejected rows.', 'info');", true);
+                }
+                else if (monthLocked && allowSubmission)
+                {
+                    // ⬅️ 5. NEW: Bold warning telling the SO to fix and Submit
+                    lbl_msg.Text = "⚠️ Action Required: You have Returned/Rejected claims. Please edit the highlighted rows and click 'Submit' below to re-send them for approval.";
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyAction", "showPNotify('Action Required', 'Please fix your Returned claims and hit Submit.', 'error');", true);
                 }
                 else
                 {
@@ -326,6 +385,26 @@ namespace AnmolDristi
                         ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySuccess", "showPNotify('Success', 'Process executed successfully.', 'success');", true);
                     }
                 }
+
+                //Actionable.Visible = gvActivities.Rows.Count > 0 && !monthLocked;
+                //btn_save_draft.Enabled = !monthLocked;
+                //btn_submit.Enabled = allowSubmission;
+
+                //if (monthLocked)
+                //{
+                //    lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for rows that were rejected by approver.";
+                //    lbl_msg.ForeColor = System.Drawing.Color.Orange;
+                //    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLocked", "showPNotify('Submitted for Approval', 'Monthly claims are submitted. Editing disabled except rejected rows.', 'info');", true);
+                //}
+                //else
+                //{
+                //    if (showNotification)
+                //    {
+                //        lbl_msg.Text = "Action executed successfully.";
+                //        lbl_msg.ForeColor = System.Drawing.Color.Green;
+                //        ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySuccess", "showPNotify('Success', 'Process executed successfully.', 'success');", true);
+                //    }
+                //}
             }
             catch (Exception ex)
             {
@@ -531,6 +610,9 @@ namespace AnmolDristi
                 if (lbl_DistributorName != null) lbl_DistributorName.Text = (parts.Length > 3 && !string.IsNullOrWhiteSpace(parts[3])) ? parts[3] : "-";
                 if (lbl_HQTravelDistance != null) lbl_HQTravelDistance.Text = (parts.Length > 4 && !string.IsNullOrWhiteSpace(parts[4])) ? parts[4] : "-";
 
+                // ⬅️ NEW: Safely extract and decode the remark from the 6th argument
+                string remark = parts.Length > 5 ? HttpUtility.HtmlDecode(parts[5]) : "";
+
                 if (HF_ActivityId != null) HF_ActivityId.Value = activityId;
                 if (HF_ActivityDate != null) HF_ActivityDate.Value = activityDate;
 
@@ -627,19 +709,14 @@ namespace AnmolDristi
                     }
                 }
 
-                // ====================================================================
-                // UI LOCK: Expense Modal View-Only Mode
-                // ====================================================================
                 if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
                     claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
                     claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 1. Hide the Save and KM Modify buttons
                     if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
                     if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
                     if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = false;
 
-                    // 2. Loop through the Repeater to swap the Delete icon for the Lock icon
                     if (rptExpenses != null)
                     {
                         foreach (RepeaterItem item in rptExpenses.Items)
@@ -649,8 +726,8 @@ namespace AnmolDristi
                                 LinkButton lnkDelete = item.FindControl("lnkDeleteExpense") as LinkButton;
                                 LinkButton lnkDisabled = item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
 
-                                if (lnkDelete != null) lnkDelete.Visible = false; // Hide trash can
-                                if (lnkDisabled != null) lnkDisabled.Visible = true; // Show padlock
+                                if (lnkDelete != null) lnkDelete.Visible = false;
+                                if (lnkDisabled != null) lnkDisabled.Visible = true;
                             }
                         }
                     }
@@ -663,19 +740,22 @@ namespace AnmolDristi
                 }
                 else
                 {
-                    // It is a Draft - unlock everything!
                     if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = true;
                     if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = true;
                     if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = true;
-
                     if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "";
-
-                    // (Note: We don't need to manually unlock the repeater items here because 
-                    // your rptExpenses_ItemDataBound method will handle re-binding them correctly for Drafts).
                 }
                 // ====================================================================
 
-                string script = string.Format("if(typeof openExpenseModalSafe === 'function') openExpenseModalSafe('{0}', '{1}'); else $('#expenseModal').modal('show');", activityId, explicitMode.Replace("'", "\\'"));
+                // ⬅️ NEW: Format the remark safely for JavaScript injection
+                string safeRemark = remark.Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "");
+
+                // ⬅️ NEW: Pass {2} (safeRemark) into the openExpenseModalSafe function
+                string script = string.Format("if(typeof openExpenseModalSafe === 'function') openExpenseModalSafe('{0}', '{1}', '{2}'); else $('#expenseModal').modal('show');",
+                    activityId,
+                    explicitMode.Replace("'", "\\'"),
+                    safeRemark);
+
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "openExpenseModalSafe_" + activityId, script, true);
             }
             else if (e.CommandName == "OpenEditModal")
@@ -704,40 +784,108 @@ namespace AnmolDristi
 
                 BindKmHistory(activityId);
 
+                //// ====================================================================
+                //// UI LOCK: KM Modal View-Only Mode
+                //// ====================================================================
+                //string claimStatus = "Draft";
+                //using (SqlConnection conStat = new SqlConnection(connString))
+                //{
+                //    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                //    {
+                //        cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                //        conStat.Open();
+                //        object statObj = cmdStat.ExecuteScalar();
+                //        if (statObj != null && statObj != DBNull.Value) claimStatus = statObj.ToString().Trim();
+                //    }
+                //}
+
                 // ====================================================================
-                // UI LOCK: KM Modal View-Only Mode
+                // UI LOCK: Expense Modal View-Only Mode
                 // ====================================================================
-                string claimStatus = "Draft";
+                string detailStatus = "Draft"; // Default to Draft
+
                 using (SqlConnection conStat = new SqlConnection(connString))
                 {
-                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                    // ⬅️ NEW: Query the specific LINE ITEM status, not the overall month status
+                    string query = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+                    string query1 = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+                    using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
                     {
                         cmdStat.Parameters.AddWithValue("@ActId", activityId);
                         conStat.Open();
                         object statObj = cmdStat.ExecuteScalar();
-                        if (statObj != null && statObj != DBNull.Value) claimStatus = statObj.ToString().Trim();
+                        if (statObj != null && statObj != DBNull.Value)
+                        {
+                            detailStatus = statObj.ToString().Trim();
+                        }
                     }
                 }
 
-                if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                    claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                // ⬅️ NEW: Check if the SPECIFIC LINE ITEM is locked. 
+                // If it is 'Returned' or 'Rejected' or 'Draft', it stays unlocked!
+                if (detailStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                    detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                    detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (btnSaveKm != null) btnSaveKm.Visible = false;
-                    if (txtModalKM != null) txtModalKM.Enabled = false;
-                    if (txtKmReason != null) txtKmReason.Enabled = false;
+                    // 1. Hide the Save and KM Modify buttons
+                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
+                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
+                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = false;
 
-                    if (lblModalCurrentKm != null)
+                    // 2. Loop through the Repeater to swap the Delete icon for the Lock icon
+                    if (rptExpenses != null)
                     {
-                        lblModalCurrentKm.Text += "<br/><span style='color:red;'>🔒 <b>This month is " + claimStatus + ". You are in View-Only mode.</b></span>";
+                        foreach (RepeaterItem item in rptExpenses.Items)
+                        {
+                            if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
+                            {
+                                LinkButton lnkDelete = item.FindControl("lnkDeleteExpense") as LinkButton;
+                                LinkButton lnkDisabled = item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
+
+                                if (lnkDelete != null) lnkDelete.Visible = false; // Hide trash can
+                                if (lnkDisabled != null) lnkDisabled.Visible = true; // Show padlock
+                            }
+                        }
+                    }
+
+                    if (LBL_ExpenseMsg != null)
+                    {
+                        LBL_ExpenseMsg.Text = "🔒 This day is " + detailStatus + ". You are in View-Only mode.";
+                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
                     }
                 }
                 else
                 {
-                    if (btnSaveKm != null) btnSaveKm.Visible = true;
-                    if (txtModalKM != null) txtModalKM.Enabled = true;
-                    if (txtKmReason != null) txtKmReason.Enabled = true;
+                    // It is Draft, Returned, or Rejected - unlock everything!
+                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = true;
+                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = true;
+                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = true;
+
+                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "";
+
+                    // Unlocking repeater items is handled by rptExpenses_ItemDataBound natively
                 }
+                // ====================================================================
+
+                //if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                //    claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                //    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                //{
+                //    if (btnSaveKm != null) btnSaveKm.Visible = false;
+                //    if (txtModalKM != null) txtModalKM.Enabled = false;
+                //    if (txtKmReason != null) txtKmReason.Enabled = false;
+
+                //    if (lblModalCurrentKm != null)
+                //    {
+                //        lblModalCurrentKm.Text += "<br/><span style='color:red;'>🔒 <b>This month is " + claimStatus + ". You are in View-Only mode.</b></span>";
+                //    }
+                //}
+                //else
+                //{
+                //    if (btnSaveKm != null) btnSaveKm.Visible = true;
+                //    if (txtModalKM != null) txtModalKM.Enabled = true;
+                //    if (txtKmReason != null) txtKmReason.Enabled = true;
+                //}
                 // ====================================================================
 
                 string modalId = "editKmModal";
@@ -1064,7 +1212,9 @@ namespace AnmolDristi
 
             using (SqlConnection conStat = new SqlConnection(connString))
             {
-                using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                string query1 = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+                //using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
                 {
                     cmdStat.Parameters.AddWithValue("@ActId", activityId);
                     conStat.Open();
@@ -1084,6 +1234,16 @@ namespace AnmolDristi
             // ====================================================================
             string modifiedBy = GetCurrentUserLoginId();
 
+
+            // Inside btnSaveKm_Click and gvActivities_RowUpdating before executing the update:
+            decimal allowedMin = 0m, allowedMax = 499m; // Fetch these via SQL from SalesDailyActivity
+
+            if (newKm < allowedMin || newKm > allowedMax)
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "kmOutOfBounds",
+                    $"showPNotify('Validation', 'KM value {newKm} is outside the allowed policy range.', 'error');", true);
+                return; // Block the save!
+            }
             try
             {
                 using (SqlConnection con = new SqlConnection(connString))
@@ -1206,11 +1366,48 @@ namespace AnmolDristi
 
         protected void gvActivities_RowDataBound(object sender, GridViewRowEventArgs e)
         {
-            if (e.Row.RowType != DataControlRowType.DataRow) return;
-            var drv = e.Row.DataItem as System.Data.DataRowView;
-            if (drv == null) return;
-            PopulateKmTolerance(drv, e.Row);
-            ApplyApprovalEditability(drv, e.Row);
+            // Inside gvActivities_RowDataBound
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                DataRowView drv = e.Row.DataItem as DataRowView;
+                if (drv != null)
+                {
+                    string status = drv["ClaimStatus"].ToString();
+
+                    // ⬅️ 1. Safely extract the new remark column
+                    string remark = "";
+                    if (drv.Row.Table.Columns.Contains("DetailRemarks") && drv["DetailRemarks"] != DBNull.Value)
+                    {
+                        remark = drv["DetailRemarks"].ToString();
+                    }
+
+                    Label lblStatus = (Label)e.Row.FindControl("lblClaimStatus");
+                    if (lblStatus != null)
+                    {
+                        if (status == "Draft")
+                            lblStatus.Text = "<span class='badge badge-secondary'><i class='fa fa-pencil mr-1'></i>Draft</span>";
+                        else if (status == "Submitted")
+                            lblStatus.Text = "<span class='badge badge-info'><i class='fa fa-paper-plane mr-1'></i>Submitted</span>";
+                        else if (status == "Approved")
+                            lblStatus.Text = "<span class='badge badge-success'><i class='fa fa-check mr-1'></i>Approved</span>";
+
+                        // ⬅️ 2. Inject the remark into the title attribute for Hover Tooltips
+                        else if (status == "Returned")
+                            lblStatus.Text = $"<span class='badge badge-warning text-dark' title='{HttpUtility.HtmlEncode(remark)}'><i class='fa fa-undo mr-1'></i>Returned</span>";
+                        else if (status == "Rejected")
+                            lblStatus.Text = $"<span class='badge badge-danger' title='{HttpUtility.HtmlEncode(remark)}'><i class='fa fa-times mr-1'></i>Rejected</span>";
+                    }
+
+                    // ... Keep the rest of your RowDataBound logic ...
+                    //if (e.Row.RowType != DataControlRowType.DataRow) return;
+                    //var drv = e.Row.DataItem as System.Data.DataRowView;
+                    //if (drv == null) return;
+                    PopulateKmTolerance(drv, e.Row);
+                    ApplyApprovalEditability(drv, e.Row);
+                }
+            }
+
+           
         }
 
         private void PopulateKmTolerance(System.Data.DataRowView drv, GridViewRow row)
@@ -1355,6 +1552,16 @@ namespace AnmolDristi
             CultureInfo ci = CultureInfo.GetCultureInfo("en-IN");
             if (!decimal.TryParse(txtKM.Text.Trim(), NumberStyles.AllowDecimalPoint, ci, out newKm)) { if (lbl_msg != null) { lbl_msg.Text = "Enter valid KM value."; lbl_msg.ForeColor = System.Drawing.Color.Red; } return; }
 
+            // Inside btnSaveKm_Click and gvActivities_RowUpdating before executing the update:
+            decimal allowedMin = 0m, allowedMax = 499m; // Fetch these via SQL from SalesDailyActivity
+
+            if (newKm < allowedMin || newKm > allowedMax)
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "kmOutOfBounds",
+                    $"showPNotify('Validation', 'KM value {newKm} is outside the allowed policy range.', 'error');", true);
+                return; // Block the save!
+            }
+
             try
             {
                 using (SqlConnection con = new SqlConnection(connString))
@@ -1401,13 +1608,13 @@ namespace AnmolDristi
         }
 
         /*
-=======================================================================
-Script Name: Update_Stationary_Validation_Backend
-When: 2026-07-01
-Why: To enforce mandatory invoice attachments for Stationary expenses.
-What: Added file attachment validation block in BTN_SaveExpense_Click.
-=======================================================================
-*/
+        =======================================================================
+        Script Name: Update_Stationary_Validation_Backend
+        When: 2026-07-01
+        Why: To enforce mandatory invoice attachments for Stationary expenses.
+        What: Added file attachment validation block in BTN_SaveExpense_Click.
+        =======================================================================
+        */
         protected void BTN_SaveExpense_Click(object sender, EventArgs e)
         {
             if (LBL_ExpenseMsg != null)
@@ -1431,7 +1638,10 @@ What: Added file attachment validation block in BTN_SaveExpense_Click.
             string currentStatus = "Draft";
             using (SqlConnection conStat = new SqlConnection(connString))
             {
-                using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                string query1 = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+
+                //using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
                 {
                     cmdStat.Parameters.AddWithValue("@ActId", activityId);
                     conStat.Open();

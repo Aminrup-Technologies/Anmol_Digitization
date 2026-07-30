@@ -85,6 +85,33 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox txtAddress;
         
         /// <summary>
+        /// txtPreconfiguredHosts control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtPreconfiguredHosts;
+        
+        /// <summary>
+        /// txtEscalationEmails control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtEscalationEmails;
+        
+        /// <summary>
+        /// txtEscalationTimeout control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtEscalationTimeout;
+        
+        /// <summary>
         /// txtPolicy control.
         /// </summary>
         /// <remarks>

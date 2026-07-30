@@ -619,7 +619,9 @@
                                                     <ItemStyle HorizontalAlign="Center" />
                                                     <ItemTemplate>
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
-                                                            CommandName="OpenExpenses" CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") + "|" + Eval("Planned_Beat") + "|" + Eval("Order_Distributor_Name") + "|" + Eval("TotalDistanceKM") %>' CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
+                                                            CommandName="OpenExpenses" 
+                                                            CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") + "|" + Eval("Planned_Beat") + "|" + Eval("Order_Distributor_Name") + "|" + Eval("TotalDistanceKM") + "|" + HttpUtility.HtmlEncode(Eval("DetailRemarks").ToString()) %>' 
+                                                            CssClass="btn btn-sm btn-primary" ToolTip="View / Add Expenses">
                                                             <i class="fa fa-briefcase"></i>
                                                         </asp:LinkButton>
                                                     </ItemTemplate>
@@ -1870,7 +1872,8 @@
                 $fu = $resolve('divFUContainer'),
                 $inv = $resolve('divTravelInvoiceNo'),
                 $chk = $resolve('CHK_TravelInvoice'),
-                $btnSave = $resolve('BTN_SaveExpense');
+                $btnSave = $resolve('BTN_SaveExpense'),
+                $fuInput = $resolve('FU_Attachment'); // ⬅️ 1. Target the file input
 
             safeHide($da);
             safeHide($ht);
@@ -1878,6 +1881,11 @@
             safeHide($st);
             safeHide($fu);
             safeHide($inv);
+
+            // ⬅️ 2. NEW: Force disable the file input by default to prevent "Ghost Uploads"
+            if ($fuInput.length) {
+                $fuInput.prop('disabled', true);
+            }
 
             if (!type) {
                 if ($btnSave.length) $btnSave.prop('disabled', true);
@@ -1892,20 +1900,20 @@
             else if (type === 'Hotel') {
                 safeShow($ht);
                 safeShow($fu);
-                $resolve('FU_Attachment').prop('disabled', false);
+                $fuInput.prop('disabled', false); // ⬅️ 3. Re-enable only when needed
             }
             else if (type === 'Travel') {
                 safeShow($tr);
                 if ($chk.length && $chk.prop('checked')) {
                     safeShow($fu);
                     safeShow($inv);
-                    $resolve('FU_Attachment').prop('disabled', false);
+                    $fuInput.prop('disabled', false); // ⬅️ 3. Re-enable only when needed
                 }
             }
             else if (type === 'Stationary') {
                 safeShow($st);
-                safeShow($fu); // ADDED: Show File Upload for Stationary
-                $resolve('FU_Attachment').prop('disabled', false); // ADDED: Enable File Upload
+                safeShow($fu);
+                $fuInput.prop('disabled', false); // ⬅️ 3. Re-enable only when needed
             }
         }
 
@@ -2086,7 +2094,8 @@
             clearAllInlineErrors();
         }
 
-        window.openExpenseModalSafe = function (activityId, savedMode) {
+        window.openExpenseModalSafe = function (activityId, savedMode, remark) {
+            // 1. Handle Policy Modes
             window.__so_policy_pending_mode = savedMode;
 
             var $sel = $('#SEL_PolicyMode');
@@ -2098,8 +2107,20 @@
             var $hf = $resolve('HF_ResolvedPolicyMode');
             if ($hf.length) $hf.val(savedMode);
 
+            // 2. ⬅️ NEW: Handle Manager's Remarks
+            if (remark && remark.trim() !== '') {
+                $('#managerRemarkText').text(remark);
+                $('#managerRemarkBanner').slideDown(200);
+            } else {
+                $('#managerRemarkBanner').hide();
+            }
+
+            // 3. Show Modal
             $('#expenseModal').modal('show');
-            initExpenseModal();
+
+            if (typeof initExpenseModal === 'function') {
+                initExpenseModal();
+            }
         };
 
         window.routeMap = null;

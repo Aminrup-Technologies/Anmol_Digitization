@@ -451,6 +451,7 @@
                                                 <ItemTemplate>
                                                     <asp:CheckBox ID="chkSelect" runat="server" CssClass="row-select-checkbox" />
                                                     <asp:HiddenField ID="hfActivityId" runat="server" Value='<%# Eval("ActivityId") %>' />
+                                                    <asp:HiddenField ID="hfApprovalRequestDetailId" runat="server" Value='<%# Eval("ApprovalRequestDetailId") %>' />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
@@ -634,7 +635,7 @@
                         <ul class="nav nav-tabs nav-justified m-0 bg-white shadow-sm" id="dayModalTabs" role="tablist">
                             <li class="nav-item">
                                 <a class="nav-link active font-weight-bold text-dark py-3 border-0" id="receipts-tab" data-toggle="tab" href="#tab-receipts" role="tab">
-                                    <i class="fa fa-receipt text-info mr-2"></i>Expense Receipts
+                                    <i class="fa fa-receipt text-info mr-2"> </i>Expense Receipts
                                 </a>
                             </li>
                             <li class="nav-item border-left">
