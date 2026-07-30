@@ -16,10 +16,11 @@ namespace AnmolDristi
 {
     public partial class login : System.Web.UI.Page
     {
+        private const string GenericErrorMessage = "We could not complete your request right now. Please try again or contact IT support.";
+
         DB_Utility_OH4Y dbcl = new DB_Utility_OH4Y();
         DataTable dt = new DataTable();
         static string User_Photo = string.Empty;
-        // Default folders
         static readonly string rootFolder = @"C:\";
         static readonly string localFolder = @"D:\";
 
@@ -33,73 +34,126 @@ namespace AnmolDristi
                 lbl_compfooter.Text = "Anmol Industries Limited";
                 lbl_owner.Text = "IT Department";
                 txt_loginid.Focus();
+                ClearLoginMessage();
             }
+        }
+
+        protected void Page_Error(object sender, EventArgs e)
+        {
+            Exception ex = Server.GetLastError();
+            if (ex == null) return;
+
+            LoginAuditLogger.Error("Unhandled login page error.", ex, Request);
+            Server.ClearError();
+            ShowLoginMessage(GenericErrorMessage, isError: true);
         }
 
         protected void btn_signin_Click(object sender, EventArgs e)
         {
-            //Response.Redirect("home.aspx");
-
-            try
+            RunSafe("SignIn", () =>
             {
-                //CredentialChecker1();
-                CredentialCheckerSecure_Debug();
-            }
-            catch (ThreadAbortException)
-            {
-                // Ignore the ThreadAbortException as it's expected after Response.Redirect
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex);
-            }
+                ClearLoginMessage();
+                ProcessSignIn();
+            });
         }
 
-        private void CredentialCheckerSecure_Debug()
+        private void RunSafe(string operation, Action action)
         {
             try
             {
-                string id = txt_loginid.Text.Trim();
-                string pass = txt_password.Text;
-                if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(pass))
-                {
-                    ShowAlert("Missing credentials");
-                    return;
-                }
+                action();
+            }
+            catch (ThreadAbortException)
+            {
+                // Expected after Response.Redirect
+            }
+            catch (SqlException sqlEx)
+            {
+                LoginAuditLogger.Error(operation + " database error.", sqlEx, Request, txt_loginid?.Text);
+                ShowLoginMessage("A database error occurred. Please try again later.", isError: true);
+            }
+            catch (Exception ex)
+            {
+                LoginAuditLogger.Error(operation + " failed.", ex, Request, txt_loginid?.Text);
+                ShowLoginMessage(GenericErrorMessage, isError: true);
+            }
+        }
 
-                // instantiate db + auth service
-                DB_Utility_OH4Y db = new DB_Utility_OH4Y();
-                UserAuthService auth = new UserAuthService(db);
+        private void ClearLoginMessage()
+        {
+            if (pnlLoginMessage != null) pnlLoginMessage.Visible = false;
+            if (lblLoginMessage != null) lblLoginMessage.Text = string.Empty;
+        }
 
-                DataRow row = null;
-                try
-                {
-                    row = auth.AuthenticateAndMigrateIfNeeded(id, pass);
-                }
-                catch (Exception exAuth)
-                {
-                    LogDebug("Authenticate failed: " + exAuth.ToString());
-                    ShowAlert("Auth error: " + exAuth.Message);
-                    return;
-                }
+        private void ShowLoginMessage(string message, bool isError)
+        {
+            if (string.IsNullOrWhiteSpace(message)) return;
 
-                if (row == null)
-                {
-                    LogDebug("Authenticate returned NULL for EmployeeCode=" + id);
-                    ShowAlert("Unknown user / password.");
-                    txt_loginid.Text = "";
-                    return;
-                }
+            if (pnlLoginMessage != null)
+            {
+                pnlLoginMessage.Visible = true;
+                pnlLoginMessage.CssClass = isError ? "alert alert-danger mb-3" : "alert alert-success mb-3";
+            }
+            if (lblLoginMessage != null)
+                lblLoginMessage.Text = HttpUtility.HtmlEncode(message);
+        }
 
-                string workStatus = row["EmployeeStatus"] == DBNull.Value ? "" : row["EmployeeStatus"].ToString();
-                LogDebug("EmployeeStatus for " + id + " = " + workStatus);
+        private void ShowAlert(string message, bool isError = true)
+        {
+            ShowLoginMessage(message, isError);
+            string safe = HttpUtility.JavaScriptStringEncode(message ?? string.Empty);
+            string script = "if (typeof alert === 'function') { alert('" + safe + "'); }";
+            ScriptManager.RegisterStartupScript(this, GetType(), "loginAlert_" + Guid.NewGuid().ToString("N"), script, true);
+        }
 
-                if (!workStatus.Equals("Active", StringComparison.OrdinalIgnoreCase))
-                {
-                    ShowAlert("User ID is InActive: " + workStatus);
-                    txt_loginid.Text = "";
-                    return;
-                }
+        private void LogDebug(string text)
+        {
+            LoginAuditLogger.Info(text, Request, txt_loginid?.Text?.Trim());
+        }
+
+        private void ProcessSignIn()
+        {
+            string id = txt_loginid.Text.Trim();
+            string pass = txt_password.Text;
+            if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(pass))
+            {
+                ShowAlert("Please enter your employee code and password.");
+                return;
+            }
+
+            DB_Utility_OH4Y db = new DB_Utility_OH4Y();
+            UserAuthService auth = new UserAuthService(db);
+
+            DataRow row = null;
+            try
+            {
+                row = auth.AuthenticateAndMigrateIfNeeded(id, pass);
+            }
+            catch (Exception exAuth)
+            {
+                LoginAuditLogger.Error("Authentication failed.", exAuth, Request, id);
+                ShowAlert("Sign-in failed. Please verify your credentials and try again.");
+                return;
+            }
+
+            if (row == null)
+            {
+                LoginAuditLogger.Warn("Invalid credentials.", Request, id);
+                ShowAlert("Unknown user or password.");
+                txt_loginid.Text = string.Empty;
+                return;
+            }
+
+            string workStatus = row["EmployeeStatus"] == DBNull.Value ? "" : row["EmployeeStatus"].ToString();
+            LogDebug("EmployeeStatus for " + id + " = " + workStatus);
+
+            if (!workStatus.Equals("Active", StringComparison.OrdinalIgnoreCase))
+            {
+                LoginAuditLogger.Warn("Inactive user sign-in blocked. Status=" + workStatus, Request, id);
+                ShowAlert("Your account is inactive (" + workStatus + "). Please contact HR/IT.");
+                txt_loginid.Text = string.Empty;
+                return;
+            }
 
                 // after successful login and fetched fields:
                 int userId = Convert.ToInt32(row["Id"]);
@@ -305,17 +359,16 @@ namespace AnmolDristi
                 try { UpdateUserLastLogin(userId); }
                 catch (Exception exLast) { LogDebug("UpdateUserLastLogin failed: " + exLast.ToString()); }
 
-                // Redirect - use CompleteRequest to ensure redirect completes without ThreadAbortException
-                string target = "~/home.aspx";
-                LogDebug("Redirecting to " + target);
-                Response.Redirect(target, false);
-                HttpContext.Current.ApplicationInstance.CompleteRequest();
-            }
-            catch (Exception ex)
-            {
-                LogDebug("CredentialCheckerSecure_Debug top-level exception: " + ex.ToString());
-                ShowAlert("Unexpected error: " + ex.Message);
-            }
+            // Redirect - use CompleteRequest to ensure redirect completes without ThreadAbortException
+            string target = "~/home.aspx";
+            LoginAuditLogger.Info("Sign-in successful. Redirecting to home.", Request, workman);
+            Response.Redirect(target, false);
+            HttpContext.Current.ApplicationInstance.CompleteRequest();
+        }
+
+        private void CredentialCheckerSecure_Debug()
+        {
+            ProcessSignIn();
         }
 
 
@@ -634,51 +687,6 @@ namespace AnmolDristi
         }
 
 
-        // small helper to write a debug line to disk (use a path your app can write to)
-        private void LogDebug_OLD(string text)
-        {
-            try
-            {
-                string path = Server.MapPath("~/Logs/login_debug.log");
-                string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " - " + text + Environment.NewLine;
-                System.IO.File.AppendAllText(path, line);
-            }
-            catch { /* swallow to avoid interfering with auth flow */ }
-        }
-
-        private void LogDebug(string text)
-        {
-            try
-            {
-                // Ensure Logs folder exists
-                string logFolder = Server.MapPath("~/Logs/");
-                if (!System.IO.Directory.Exists(logFolder))
-                {
-                    System.IO.Directory.CreateDirectory(logFolder);
-                }
-
-                // Create daily log file: login_YYYY-MM-DD.log
-                string fileName = "login_" + DateTime.Now.ToString("yyyy-MM-dd") + ".log";
-                string path = System.IO.Path.Combine(logFolder, fileName);
-
-                // Create log line with timestamp
-                string line = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " - " + text + Environment.NewLine;
-
-                // Append to file
-                System.IO.File.AppendAllText(path, line);
-            }
-            catch
-            {
-                // swallow any logging errors to avoid interrupting the login process
-            }
-        }
-
-
-        private void ShowAlert(string message)
-        {
-            ClientScript.RegisterStartupScript(typeof(Page), "AlertMessage", "<script>alert('" + HttpUtility.JavaScriptStringEncode(message) + "');</script>");
-        }
-
         private void CredentialCheckerSecure()
         {
             string id = txt_loginid.Text.Trim();
@@ -746,9 +754,8 @@ namespace AnmolDristi
 
         private void HandleException(Exception ex)
         {
-            string title = "Notifications :";
-            string body = ex.Message;
-            ClientScript.RegisterStartupScript(this.GetType(), "Popup", "ShowPopup('" + title + "', '" + body + "');", true);
+            LoginAuditLogger.Error("Legacy login handler exception.", ex, Request, txt_loginid?.Text);
+            ShowLoginMessage(GenericErrorMessage, isError: true);
         }
 
         private void CredentialChecker1()
@@ -902,12 +909,9 @@ namespace AnmolDristi
             }
         }
 
-        // helper to get client IP (basic)
         private string GetClientIP()
         {
-            string ip = Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
-            if (string.IsNullOrEmpty(ip)) ip = Request.ServerVariables["REMOTE_ADDR"];
-            return ip ?? "Unknown";
+            return LoginAuditLogger.GetClientIp(Request);
         }
 
         // Call this after successful credential check (right before redirect)
@@ -956,32 +960,53 @@ namespace AnmolDristi
 
         protected void lnkForgotPassword_Click(object sender, EventArgs e)
         {
-            SwitchPanel(pnlRequestOTP);
+            RunSafe("ForgotPassword", () =>
+            {
+                ClearLoginMessage();
+                SwitchPanel(pnlRequestOTP);
+            });
         }
 
         protected void lnkBackToLogin_Click(object sender, EventArgs e)
         {
-            Session.Remove("Reset_OTP");
-            Session.Remove("Reset_EmpCode");
-            SwitchPanel(pnlLogin);
+            RunSafe("BackToLogin", () =>
+            {
+                Session.Remove("Reset_OTP");
+                Session.Remove("Reset_EmpCode");
+                Session.Remove("Reset_OTP_Expiry");
+                ClearLoginMessage();
+                SwitchPanel(pnlLogin);
+            });
         }
 
         protected void btnSendOTP_Click(object sender, EventArgs e)
         {
-            string empCode = txtResetEmpCode.Text.Trim();
-            if (string.IsNullOrEmpty(empCode)) return;
-
-            string query = "SELECT Email, Mobile, EmployeeName FROM MST_UserMaster WHERE EmployeeCode = @EmpCode AND EmployeeStatus = 'Active'";
-            using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
-            using (SqlCommand cmd = new SqlCommand(query, con))
+            RunSafe("SendOTP", () =>
             {
-                cmd.Parameters.AddWithValue("@EmpCode", empCode);
-                SqlDataAdapter da = new SqlDataAdapter(cmd);
-                DataTable dtUser = new DataTable();
-                da.Fill(dtUser);
-
-                if (dtUser.Rows.Count > 0)
+                ClearLoginMessage();
+                string empCode = txtResetEmpCode.Text.Trim();
+                if (string.IsNullOrEmpty(empCode))
                 {
+                    ShowAlert("Please enter your employee code.");
+                    return;
+                }
+
+                string query = "SELECT Email, Mobile, EmployeeName FROM MST_UserMaster WHERE EmployeeCode = @EmpCode AND EmployeeStatus = 'Active'";
+                using (SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@EmpCode", empCode);
+                    SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    DataTable dtUser = new DataTable();
+                    da.Fill(dtUser);
+
+                    if (dtUser.Rows.Count == 0)
+                    {
+                        LoginAuditLogger.Warn("OTP request for unknown/inactive employee.", Request, empCode);
+                        ShowAlert("Invalid employee code or inactive user.");
+                        return;
+                    }
+
                     string email = dtUser.Rows[0]["Email"].ToString();
                     string mobile = dtUser.Rows[0]["Mobile"].ToString();
                     string name = dtUser.Rows[0]["EmployeeName"].ToString();
@@ -992,40 +1017,34 @@ namespace AnmolDristi
                         return;
                     }
 
-                    // Generate 6-digit OTP
                     string otp = new Random().Next(100000, 999999).ToString();
-
-                    // Store securely in session with a 10 min expiry
                     Session["Reset_OTP"] = otp;
                     Session["Reset_EmpCode"] = empCode;
                     Session["Reset_OTP_Expiry"] = DateTime.Now.AddMinutes(10);
 
-                    // Send SMS
                     SendOtpSms(mobile, otp);
+                    SendEmailOTP(email, name, otp);
 
-                    // Note: If you want to send Email AND SMS, you can uncomment your previous SendEmailOTP method here.
-                    SendEmailOTP(email, name, otp); 
-
-                    // Update UI securely
-                    lblMaskedContact.Text = $"OTP sent successfully to Mobile ending in {MaskMobile(mobile)}";
+                    LoginAuditLogger.Info("OTP sent for password recovery.", Request, empCode);
+                    lblMaskedContact.Text = "OTP sent successfully to mobile ending in " + MaskMobile(mobile);
                     SwitchPanel(pnlVerifyOTP);
                 }
-                else
-                {
-                    ShowAlert("Invalid Employee Code or User is Inactive.");
-                }
-            }
+            });
         }
 
         protected void lnkNeedToUpdateContact_Click(object sender, EventArgs e)
         {
-            // Pre-fill the employee code if they already typed it
-            txtVerifyEmpCode.Text = txtResetEmpCode.Text;
-            SwitchPanel(pnlSelfVerify);
+            RunSafe("NeedToUpdateContact", () =>
+            {
+                txtVerifyEmpCode.Text = txtResetEmpCode.Text;
+                SwitchPanel(pnlSelfVerify);
+            });
         }
 
         protected void txtVerifyEmpCode_TextChanged(object sender, EventArgs e)
         {
+            RunSafe("VerifyEmpCodeLookup", () =>
+            {
             string empCode = txtVerifyEmpCode.Text.Trim();
             if (string.IsNullOrEmpty(empCode))
             {
@@ -1062,10 +1081,13 @@ namespace AnmolDristi
                     }
                 }
             }
+            });
         }
 
         protected void txtVerifyManagerCode_TextChanged(object sender, EventArgs e)
         {
+            RunSafe("VerifyManagerCodeLookup", () =>
+            {
             string mgrCode = txtVerifyManagerCode.Text.Trim();
             if (string.IsNullOrEmpty(mgrCode))
             {
@@ -1094,10 +1116,13 @@ namespace AnmolDristi
                     lblFetchedManagerName.CssClass = "small mt-1 d-block text-danger font-weight-bold";
                 }
             }
+            });
         }
 
         protected void btnVerifyAndUpdate_Click(object sender, EventArgs e)
         {
+            RunSafe("VerifyAndUpdateContact", () =>
+            {
             // 1. DPDP Compliance Enforcement
             if (!chkDPDPConsent.Checked)
             {
@@ -1203,10 +1228,11 @@ namespace AnmolDristi
                     lblFetchedManagerName.Text = "";
 
                     // Switch panels
-                    lblMaskedContact.Text = $"Identity Confirmed! OTP sent to your new mobile ending in {MaskMobile(newMobile)}";
+                    lblMaskedContact.Text = "Identity confirmed. OTP sent to your new mobile ending in " + MaskMobile(newMobile);
                     SwitchPanel(pnlVerifyOTP);
                 }
             }
+            });
         }
 
         private void SendDPDPConsentNotice(string toEmail, string employeeName, string employeeCode, string mobile)
@@ -1444,17 +1470,23 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
-                // Log any connectivity issues without crashing the web page
-                LogDebug($"SMS API Error: {ex.Message}");
+                LoginAuditLogger.Error("SMS API error while sending OTP.", ex, Request);
             }
         }
 
         protected void btnVerifyOTP_Click(object sender, EventArgs e)
         {
-            string enteredOTP = txtOTP.Text.Trim();
-
-            if (Session["Reset_OTP"] != null && Session["Reset_OTP_Expiry"] != null)
+            RunSafe("VerifyOTP", () =>
             {
+                string enteredOTP = txtOTP.Text.Trim();
+
+                if (Session["Reset_OTP"] == null || Session["Reset_OTP_Expiry"] == null)
+                {
+                    ShowAlert("Session expired. Please start over.");
+                    SwitchPanel(pnlRequestOTP);
+                    return;
+                }
+
                 DateTime expiry = (DateTime)Session["Reset_OTP_Expiry"];
                 if (DateTime.Now > expiry)
                 {
@@ -1465,36 +1497,31 @@ namespace AnmolDristi
 
                 if (enteredOTP == Session["Reset_OTP"].ToString())
                 {
-                    // OTP is valid!
+                    LoginAuditLogger.Info("OTP verified successfully.", Request, Session["Reset_EmpCode"] as string);
                     SwitchPanel(pnlSetPassword);
                 }
                 else
                 {
+                    LoginAuditLogger.Warn("Invalid OTP entered.", Request, Session["Reset_EmpCode"] as string);
                     ShowAlert("Invalid OTP entered. Try again.");
                 }
-            }
-            else
-            {
-                ShowAlert("Session expired. Please start over.");
-                SwitchPanel(pnlRequestOTP);
-            }
+            });
         }
 
         protected void btnSavePassword_Click(object sender, EventArgs e)
         {
-            string newPassword = txtNewPassword.Text.Trim();
-            string empCode = Session["Reset_EmpCode"] as string;
-
-            if (string.IsNullOrEmpty(empCode) || string.IsNullOrEmpty(newPassword))
+            RunSafe("SavePassword", () =>
             {
-                ShowAlert("Session expired. Please restart the process.");
-                SwitchPanel(pnlLogin);
-                return;
-            }
+                string newPassword = txtNewPassword.Text.Trim();
+                string empCode = Session["Reset_EmpCode"] as string;
 
-            try
-            {
-                // Utilize existing PasswordHasher to maintain enterprise security
+                if (string.IsNullOrEmpty(empCode) || string.IsNullOrEmpty(newPassword))
+                {
+                    ShowAlert("Session expired. Please restart the process.");
+                    SwitchPanel(pnlLogin);
+                    return;
+                }
+
                 var hashData = PasswordHasher.CreateHash(newPassword, PasswordHasher.DefaultIterations);
                 string newHash = hashData.Item1;
                 string newSalt = hashData.Item2;
@@ -1516,24 +1543,19 @@ namespace AnmolDristi
                     cmd.Parameters.AddWithValue("@EmpCode", empCode);
 
                     con.Open();
-                    cmd.ExecuteNonQuery();
+                    if (cmd.ExecuteNonQuery() <= 0)
+                        throw new InvalidOperationException("Password update affected zero rows for employee " + empCode);
                 }
 
-                // Clean up session OTP variables
                 Session.Remove("Reset_OTP");
                 Session.Remove("Reset_EmpCode");
                 Session.Remove("Reset_OTP_Expiry");
 
-                // Auto-Login the user by tricking the main login function
+                LoginAuditLogger.Info("Password reset completed. Auto sign-in starting.", Request, empCode);
                 txt_loginid.Text = empCode;
                 txt_password.Text = newPassword;
-                CredentialCheckerSecure_Debug(); // Calls your existing authentication and redirect
-            }
-            catch (Exception ex)
-            {
-                LogDebug("Password Reset Error: " + ex.Message);
-                ShowAlert("Error updating password. Please contact support.");
-            }
+                ProcessSignIn();
+            });
         }
 
         // --- Helper Methods ---
