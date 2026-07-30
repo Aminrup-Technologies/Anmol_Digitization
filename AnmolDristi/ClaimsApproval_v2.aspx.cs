@@ -991,7 +991,6 @@ namespace AnmolDristi
             if (e.CommandName == "ApproveRow" || e.CommandName == "ReturnRow" || e.CommandName == "RejectDayRow")
             {
                 int detailId = Convert.ToInt32(e.CommandArgument);
-                bool isApprove = (e.CommandName == "ApproveRow");
 
                 GridViewRow row =
                     (GridViewRow)((Control)e.CommandSource).NamingContainer;
@@ -1000,40 +999,32 @@ namespace AnmolDristi
                     row.FindControl("txtRowRemark") as TextBox;
 
                 string user = GetLoggedInEmployeeCode();
+                string rawRemark = txt != null ? txt.Text : "";
+                string remark = AppendUserToRemark(rawRemark, user);
+                int reqId = Convert.ToInt32(hfActionRequestId.Value);
 
-                string rawRemark =
-                    txt != null ? txt.Text : "";
+                DayDetailAction action;
+                if (e.CommandName == "ApproveRow")
+                    action = DayDetailAction.Approve;
+                else if (e.CommandName == "ReturnRow")
+                    action = DayDetailAction.Return;
+                else
+                    action = DayDetailAction.Reject;
 
-                string remark =
-                    AppendUserToRemark(rawRemark, user);
-
-                int reqId =
-                    Convert.ToInt32(hfActionRequestId.Value);
-
-                using (SqlConnection con = new SqlConnection(connString))
-                using (SqlCommand cmd =
-                    new SqlCommand("dbo.usp_ProcessApprovalAction", con))
+                try
                 {
-                    cmd.CommandType = CommandType.StoredProcedure;
-
-                    cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
-                    cmd.Parameters.AddWithValue("@Action", isApprove ? "APPROVE" : "REJECT");
-                    cmd.Parameters.AddWithValue("@ActionBy", user);
-                    cmd.Parameters.AddWithValue(
-                        "@Remarks",
-                        string.IsNullOrWhiteSpace(remark)
-                            ? (object)DBNull.Value
-                            : remark);
-
-                    con.Open();
-                    cmd.ExecuteNonQuery();
+                    ProcessDayDetailAction(detailId, reqId, action, remark);
+                    ExecuteRecalculationSQL(reqId);
+                    BindDetailsGrid(reqId);
+                    upDetails.Update();
+                    BindRequestsGrid();
                 }
-
-                ExecuteRecalculationSQL(reqId);
-
-                BindDetailsGrid(reqId);
-                upDetails.Update();
-                BindRequestsGrid();
+                catch (Exception ex)
+                {
+                    lblModalMessage.Text = ex.Message;
+                    lblModalMessage.CssClass = "text-danger font-weight-bold";
+                    upDetails.Update();
+                }
             }
         }
 
@@ -1205,88 +1196,36 @@ namespace AnmolDristi
 
                 if (action == DayDetailAction.Return && IsCurrentUserAuditor())
                 {
-                    con.Open();
-                    using (var tran = con.BeginTransaction())
-                    {
-                        try
-                        {
-                            foreach (GridViewRow row in gvDetails.Rows)
-                            {
-                                if (row.RowType == DataControlRowType.DataRow)
-                                {
-                                    var chk = row.FindControl("chkSelect") as CheckBox;
-                                    //var hfActivityId = row.FindControl("hfActivityId") as HiddenField;
+                    lblModalMessage.Text = "Auditors cannot return days.";
+                    lblModalMessage.CssClass = "text-warning font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
 
-                                    //if (chk != null && chk.Checked && hfActivityId != null && !string.IsNullOrEmpty(hfActivityId.Value))
-                                    //{
-                                    //    int activityId = Convert.ToInt32(hfActivityId.Value);
+                if (action == DayDetailAction.Reject && !IsCurrentUserAuditor())
+                {
+                    lblModalMessage.Text = "Only auditors can reject days.";
+                    lblModalMessage.CssClass = "text-warning font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
 
-                                    var hfDetailId = row.FindControl("hfApprovalRequestDetailId") as HiddenField;
+                if (action != DayDetailAction.Approve && string.IsNullOrWhiteSpace(remarks))
+                {
+                    lblModalMessage.Text = action == DayDetailAction.Reject
+                        ? "Bulk reject remarks are mandatory."
+                        : "Bulk return remarks are mandatory.";
+                    lblModalMessage.CssClass = "text-warning font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
 
-                                    if (chk != null && chk.Checked &&
-                                        hfDetailId != null &&
-                                        !string.IsNullOrEmpty(hfDetailId.Value))
-                                    {
-                                        int detailId = Convert.ToInt32(hfDetailId.Value);
+                foreach (GridViewRow row in gvDetails.Rows)
+                {
+                    if (row.RowType != DataControlRowType.DataRow) continue;
 
-                                        //string sql = @"
-                                        //    DECLARE @ActivityId INT;
-
-                                        //    SELECT @ActivityId = ActivityId
-                                        //    FROM dbo.SalesApprovalRequestDetail
-                                        //    WHERE ApprovalRequestDetailId = @DetailId;
-
-                                        //    UPDATE dbo.SalesApprovalRequestDetail
-                                        //    SET DetailStatus        = @Status,
-                                        //        DetailRemarks       = @Remarks,
-                                        //        DetailApprovedBy    = @ActionBy,
-                                        //        DetailApprovedOn    = GETDATE(),
-                                        //        DetailApprovedLevel = @Level
-                                        //    WHERE ApprovalRequestDetailId = @DetailId
-                                        //      AND ApprovalRequestId = @ReqId;
-
-                                        //    UPDATE dbo.SalesDailyExpense
-                                        //    SET ClaimStatus        = @Status,
-                                        //        ClaimProcessedBy   = @ActionBy,
-                                        //        ClaimProcessedDate = DATEADD(MINUTE,330,SYSUTCDATETIME()),
-                                        //        ModifiedBy         = @ActionBy,
-                                        //        ModifiedOn         = SYSUTCDATETIME(),
-                                        //        Remarks            = ISNULL(Remarks,@Remarks)
-                                        //    WHERE ActivityId = @ActivityId
-                                        //      AND ClaimStatus NOT IN ('Approved','Rejected')
-                                        //      AND IsDeleted = 0;";
-
-                                        //using (var cmd = new SqlCommand(sql, con, tran))
-                                        //{
-                                        //    cmd.Parameters.AddWithValue("@Status", newStatus);
-                                        //    cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remarks) ? (object)DBNull.Value : remarks);
-                                        //    cmd.Parameters.AddWithValue("@ActionBy", auditor);
-                                        //    cmd.Parameters.AddWithValue("@Level", currentLevel);
-                                        //    cmd.Parameters.AddWithValue("@DetailId", detailId);
-                                        //    cmd.Parameters.AddWithValue("@ReqId", reqId);
-
-                                        //    int affected = cmd.ExecuteNonQuery();
-
-                                        //    if (affected > 0)
-                                        //    {
-                                        //        processedCount++;
-                                        //    }
-                                        //}
-
-                                        using (SqlCommand cmd = new SqlCommand("dbo.usp_ProcessApprovalAction", con, tran))
-                                        {
-                                            cmd.CommandType = CommandType.StoredProcedure;
-                                            cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", detailId);
-                                            cmd.Parameters.AddWithValue("@Action", newStatus == "Approved" ? "APPROVE" : "REJECT");
-                                            cmd.Parameters.AddWithValue("@ActionBy", auditor);
-                                            cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrWhiteSpace(remarks) ? (object)DBNull.Value : remarks);
-                                            cmd.ExecuteNonQuery();
-
-                                            processedCount++;
-                                        }
-                                    }
-                                }
-                            }
+                    var chk = row.FindControl("chkSelect") as CheckBox;
+                    if (chk == null || !chk.Checked) continue;
 
                     int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
                     string rowRemark = remarks;
