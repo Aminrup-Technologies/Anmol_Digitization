@@ -1483,6 +1483,7 @@
     <Compile Include="SalesMonthlyReview.aspx.designer.cs">
       <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
     </Compile>
+    <Compile Include="SalesApprovalDetailVersionHelper.cs" />
     <Compile Include="SessionHelper.cs" />
     <Compile Include="SubmitClaim.aspx.cs">
       <DependentUpon>SubmitClaim.aspx</DependentUpon>

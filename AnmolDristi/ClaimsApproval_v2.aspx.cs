@@ -234,6 +234,8 @@ namespace AnmolDristi
                     }
                 }
 
+                dt = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(dt);
+
                 // Header
                 using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequest", con))
                 {
@@ -289,7 +291,9 @@ namespace AnmolDristi
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') NOT IN ('Rejected', 'Returned');
+                WHERE d.ApprovalRequestId = @Id
+                  AND ISNULL(d.DetailStatus, '') NOT IN ('Rejected', 'Returned')
+                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
 
                 SELECT 
                     ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
@@ -299,7 +303,9 @@ namespace AnmolDristi
                         CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
                         ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus IN ('Rejected', 'Returned')
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.DetailStatus IN ('Rejected', 'Returned')
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
         
                     UNION ALL
         
@@ -308,6 +314,7 @@ namespace AnmolDristi
                         0 AS DeductedKM
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                    " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                     WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = 'Rejected' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> 'Rejected'
         
                     UNION ALL
@@ -327,6 +334,7 @@ namespace AnmolDristi
                     WHERE d.ApprovalRequestId = @Id 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM 
                       AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                 ) x;
             ";
 
@@ -391,6 +399,7 @@ namespace AnmolDristi
                 SELECT COUNT(1) 
                 FROM dbo.SalesDailyExpense e
                 INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                 WHERE d.ApprovalRequestId = @Id 
                   AND e.IsDeleted = 0 
                   AND ISNULL(e.ClaimStatus, '') NOT IN ('Approved', 'Rejected')";
@@ -488,15 +497,17 @@ namespace AnmolDristi
 
         private int GetReturnedItemCount(int reqId)
         {
-            const string sql = @"
+            string sql = @"
                 SELECT
                     (SELECT COUNT(1)
-                     FROM dbo.SalesApprovalRequestDetail
-                     WHERE ApprovalRequestId = @Id
-                       AND DetailStatus = 'Returned')
+                     FROM dbo.SalesApprovalRequestDetail d
+                     WHERE d.ApprovalRequestId = @Id
+                       AND d.DetailStatus = 'Returned'
+                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @")
                   + (SELECT COUNT(1)
                      FROM dbo.SalesDailyExpense e
                      INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                     " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                      WHERE d.ApprovalRequestId = @Id
                        AND e.IsDeleted = 0
                        AND e.ClaimStatus = 'Returned')";
@@ -515,15 +526,17 @@ namespace AnmolDristi
             if (GetReturnedItemCount(reqId) > 0)
                 throw new Exception("Cannot finalize while returned days or expenses are awaiting employee correction.");
 
-            const string sql = @"
+            string sql = @"
                 SELECT
                     (SELECT COUNT(1)
-                     FROM dbo.SalesApprovalRequestDetail
-                     WHERE ApprovalRequestId = @Id
-                       AND ISNULL(DetailStatus, 'Pending') NOT IN ('Approved', 'Rejected'))
+                     FROM dbo.SalesApprovalRequestDetail d
+                     WHERE d.ApprovalRequestId = @Id
+                       AND ISNULL(d.DetailStatus, 'Pending') NOT IN ('Approved', 'Rejected')
+                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @")
                   + (SELECT COUNT(1)
                      FROM dbo.SalesDailyExpense e
                      INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                     " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                      WHERE d.ApprovalRequestId = @Id
                        AND e.IsDeleted = 0
                        AND ISNULL(e.ClaimStatus, '') NOT IN ('Approved', 'Rejected'))";
@@ -801,6 +814,17 @@ namespace AnmolDristi
                 string detailStatus = drv["DetailStatus"].ToString();
                 if (string.IsNullOrEmpty(detailStatus)) detailStatus = "Pending";
                 int approvedLevel = drv["DetailApprovedLevel"] == DBNull.Value ? 0 : Convert.ToInt32(drv["DetailApprovedLevel"]);
+
+                if (drv.Row.Table.Columns.Contains("DetailVersion") && drv["DetailVersion"] != DBNull.Value)
+                {
+                    int detailVersion = Convert.ToInt32(drv["DetailVersion"]);
+                    if (detailVersion > 1)
+                    {
+                        var lblVersion = e.Row.FindControl("lblDetailVersion") as Label;
+                        if (lblVersion != null)
+                            lblVersion.Text = "v" + detailVersion;
+                    }
+                }
 
                 var btnApprove = (Button)e.Row.FindControl("btnApproveRow");
                 var btnReturn = (Button)e.Row.FindControl("btnReturnRow");
@@ -2047,7 +2071,9 @@ namespace AnmolDristi
                         CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus IN ('Rejected', 'Returned')
+                    WHERE d.ApprovalRequestId = @ReqId
+                      AND d.DetailStatus IN ('Rejected', 'Returned')
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
 
                     UNION ALL
 
@@ -2058,6 +2084,7 @@ namespace AnmolDristi
                         CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                    " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId 
                       AND e.ClaimStatus = 'Rejected' 
@@ -2083,7 +2110,8 @@ namespace AnmolDristi
                     ) fk ON d.ActivityId = fk.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'        
+                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"        
                     ORDER BY ActivityDate ASC;";
 
                 using (var con = new SqlConnection(connString))
@@ -2116,7 +2144,7 @@ namespace AnmolDristi
         private void ExecuteRecalculationSQL(int reqId)
         {
             string sqlRecalculate = @"
-            -- 1. Update individual category totals
+            -- 1. Update individual category totals (latest detail version per day only)
             UPDATE d
             SET 
                 Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
@@ -2124,21 +2152,34 @@ namespace AnmolDristi
                 Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
                 Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Stationary' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
             FROM dbo.SalesApprovalRequestDetail d 
-            WHERE d.ApprovalRequestId = @Id;
+            WHERE d.ApprovalRequestId = @Id
+              AND d.ApprovalRequestDetailId IN (
+                    SELECT MAX(ApprovalRequestDetailId)
+                    FROM dbo.SalesApprovalRequestDetail
+                    WHERE ApprovalRequestId = @Id
+                    GROUP BY ActivityId
+              );
 
-            -- 2. Update the daily grand total
-            UPDATE dbo.SalesApprovalRequestDetail 
-            SET Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0) + ISNULL(Snapshot_StationaryAmount, 0) 
-            WHERE ApprovalRequestId = @Id;
+            -- 2. Update the daily grand total (latest versions only)
+            UPDATE d
+            SET Snapshot_ExpenseTotal = ISNULL(d.Snapshot_DAAmount, 0) + ISNULL(d.Snapshot_HotelAmount, 0) + ISNULL(d.Snapshot_TravelAmount, 0) + ISNULL(d.Snapshot_StationaryAmount, 0) 
+            FROM dbo.SalesApprovalRequestDetail d
+            WHERE d.ApprovalRequestId = @Id
+              AND d.ApprovalRequestDetailId IN (
+                    SELECT MAX(ApprovalRequestDetailId)
+                    FROM dbo.SalesApprovalRequestDetail
+                    WHERE ApprovalRequestId = @Id
+                    GROUP BY ActivityId
+              );
 
-            -- 3. Update the header table (SalesApprovalRequest)
+            -- 3. Update the header table using latest detail rows only
             UPDATE dbo.SalesApprovalRequest
             SET 
-                ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
-                ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
-                ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
-                ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')),
-                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') NOT IN ('Rejected', 'Returned')) 
+                ApprovedKM = (SELECT ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedClaimAmount = (SELECT ISNULL(SUM(d.Snapshot_CalculatedClaimAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedDAAmount = (SELECT ISNULL(SUM(d.Snapshot_DAAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedHotelAmount = (SELECT ISNULL(SUM(d.Snapshot_HotelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedTravelAmount = (SELECT ISNULL(SUM(d.Snapshot_TravelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @") 
             WHERE ApprovalRequestId = @Id;";
 
             using (var con = new SqlConnection(connString))

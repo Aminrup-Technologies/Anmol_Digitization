@@ -229,7 +229,18 @@ namespace AnmolDristi
 
                             var editableActivityIds = new HashSet<int>();
                             var detailStatusByActivity = new Dictionary<int, string>();
-                            using (SqlCommand cmd2 = new SqlCommand("SELECT ActivityId, DetailStatus FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id", con))
+                            using (SqlCommand cmd2 = new SqlCommand(@"
+                                SELECT ActivityId, DetailStatus
+                                FROM (
+                                    SELECT ActivityId, DetailStatus,
+                                           ROW_NUMBER() OVER (
+                                               PARTITION BY ActivityId
+                                               ORDER BY ISNULL(DetailVersion, 1) DESC, ApprovalRequestDetailId DESC
+                                           ) AS rn
+                                    FROM dbo.SalesApprovalRequestDetail
+                                    WHERE ApprovalRequestId = @Id
+                                ) x
+                                WHERE rn = 1", con))
                             {
                                 cmd2.Parameters.AddWithValue("@Id", approvalRequestId.Value);
                                 using (SqlDataReader rdr = cmd2.ExecuteReader())
@@ -3569,10 +3580,17 @@ namespace AnmolDristi
 
                 var returnedActivityIds = new HashSet<int>();
                 using (SqlCommand cmd = new SqlCommand(
-                    @"SELECT DISTINCT ActivityId
-                      FROM dbo.SalesApprovalRequestDetail
-                      WHERE ApprovalRequestId = @Id
-                        AND DetailStatus = 'Returned'", con))
+                    @"SELECT ActivityId
+                      FROM (
+                          SELECT ActivityId, DetailStatus,
+                                 ROW_NUMBER() OVER (
+                                     PARTITION BY ActivityId
+                                     ORDER BY ISNULL(DetailVersion, 1) DESC, ApprovalRequestDetailId DESC
+                                 ) AS rn
+                          FROM dbo.SalesApprovalRequestDetail
+                          WHERE ApprovalRequestId = @Id
+                      ) x
+                      WHERE rn = 1 AND DetailStatus = 'Returned'", con))
                 {
                     cmd.Parameters.AddWithValue("@Id", requestId.Value);
                     using (SqlDataReader rdr = cmd.ExecuteReader())

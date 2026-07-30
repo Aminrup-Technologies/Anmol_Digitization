@@ -309,6 +309,8 @@ namespace AnmolDristi
                     }
                 }
 
+                dt = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(dt);
+
                 // 🚩 NEW: Fetch Header Status alongside Employee Name
                 string sql = "SELECT (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName, Status FROM SalesApprovalRequest r WHERE ApprovalRequestId = @Id";
                 using (var cmd = new SqlCommand(sql, con))
@@ -490,21 +492,24 @@ namespace AnmolDristi
             decimal totalDeductedAmount = 0m;
 
             string sqlDashboard = @"
-                -- 1. Original Totals (Regardless of status)
+                -- 1. Original Totals (latest version per day)
                 SELECT 
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS OriginalKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS OriginalAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id;
+                WHERE d.ApprovalRequestId = @Id
+                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
 
-                -- 2. Approved Totals
+                -- 2. Approved Totals (latest version per day)
                 SELECT 
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') <> 'Rejected';
+                WHERE d.ApprovalRequestId = @Id
+                  AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
 
-                -- 3. Deduction Totals
+                -- 3. Deduction Totals (latest version per day)
                 SELECT 
                     ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
                     ISNULL(SUM(DeductedKM), 0) AS DeductedKM
@@ -512,11 +517,14 @@ namespace AnmolDristi
                     SELECT CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
                            ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus = 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.DetailStatus = 'Rejected'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                     UNION ALL
                     SELECT CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount, 0 AS DeductedKM
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                    " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                     WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = 'Rejected' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> 'Rejected'
                     UNION ALL
                     SELECT CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
@@ -526,7 +534,10 @@ namespace AnmolDristi
                         SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
                         FROM dbo.SalesDailyActivityKMHistory GROUP BY ActivityId
                     ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id
+                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
+                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                 ) x;";
 
             using (var con = new SqlConnection(connString))
@@ -699,6 +710,12 @@ namespace AnmolDristi
                         FROM dbo.SalesApprovalRequestDetail d
                         INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                         WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus = 'Rejected'
+                          AND d.ApprovalRequestDetailId IN (
+                              SELECT MAX(ApprovalRequestDetailId)
+                              FROM dbo.SalesApprovalRequestDetail
+                              WHERE ApprovalRequestId = @ReqId
+                              GROUP BY ActivityId
+                          )
 
                         UNION ALL
 
@@ -709,6 +726,12 @@ namespace AnmolDristi
                             CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount
                         FROM dbo.SalesDailyExpense e
                         INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                        INNER JOIN (
+                            SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
+                            FROM dbo.SalesApprovalRequestDetail
+                            WHERE ApprovalRequestId = @ReqId
+                            GROUP BY ActivityId
+                        ) _latestDetail ON d.ApprovalRequestDetailId = _latestDetail.LatestDetailId
                         INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                         WHERE d.ApprovalRequestId = @ReqId 
                           AND e.ClaimStatus = 'Rejected' 
@@ -731,7 +754,13 @@ namespace AnmolDristi
                         ) fk ON d.ActivityId = fk.ActivityId
                         WHERE d.ApprovalRequestId = @ReqId 
                           AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
-                          AND ISNULL(d.DetailStatus, '') <> 'Rejected'        
+                          AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                          AND d.ApprovalRequestDetailId IN (
+                              SELECT MAX(ApprovalRequestDetailId)
+                              FROM dbo.SalesApprovalRequestDetail
+                              WHERE ApprovalRequestId = @ReqId
+                              GROUP BY ActivityId
+                          )        
                         ORDER BY ActivityDate ASC;
                     END";
 
