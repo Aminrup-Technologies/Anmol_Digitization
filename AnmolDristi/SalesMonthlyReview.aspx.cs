@@ -31,6 +31,8 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            Summary.Visible = true;
+
             if (!IsPostBack)
             {
                 if (Session["USERID"] != null && Session["USERNAME"] != null)
@@ -1415,48 +1417,118 @@ namespace AnmolDristi
 
         protected void gvActivities_RowDataBound(object sender, GridViewRowEventArgs e)
         {
-            // Inside gvActivities_RowDataBound
             if (e.Row.RowType == DataControlRowType.DataRow)
             {
                 DataRowView drv = e.Row.DataItem as DataRowView;
                 if (drv != null)
                 {
-                    string status = drv["ClaimStatus"].ToString();
+                    string claimStatus = drv.Row.Table.Columns.Contains("ClaimStatus") && drv["ClaimStatus"] != DBNull.Value
+                        ? drv["ClaimStatus"].ToString().Trim()
+                        : string.Empty;
+                    string detailStatus = drv.Row.Table.Columns.Contains("DetailStatus") && drv["DetailStatus"] != DBNull.Value
+                        ? drv["DetailStatus"].ToString().Trim()
+                        : string.Empty;
 
-                    // ⬅️ 1. Safely extract the new remark column
                     string remark = "";
                     if (drv.Row.Table.Columns.Contains("DetailRemarks") && drv["DetailRemarks"] != DBNull.Value)
-                    {
                         remark = drv["DetailRemarks"].ToString();
-                    }
 
-                    Label lblStatus = (Label)e.Row.FindControl("lblClaimStatus");
+                    string effectiveStatus = ResolveEffectiveRowStatus(claimStatus, detailStatus, drv);
+
+                    Label lblStatus = e.Row.FindControl("lblClaimStatus") as Label;
                     if (lblStatus != null)
                     {
-                        if (status == "Draft")
-                            lblStatus.Text = "<span class='badge badge-secondary'><i class='fa fa-pencil mr-1'></i>Draft</span>";
-                        else if (status == "Submitted")
-                            lblStatus.Text = "<span class='badge badge-info'><i class='fa fa-paper-plane mr-1'></i>Submitted</span>";
-                        else if (status == "Approved")
-                            lblStatus.Text = "<span class='badge badge-success'><i class='fa fa-check mr-1'></i>Approved</span>";
-
-                        // ⬅️ 2. Inject the remark into the title attribute for Hover Tooltips
-                        else if (status == "Returned")
-                            lblStatus.Text = $"<span class='badge badge-warning text-dark' title='{HttpUtility.HtmlEncode(remark)}'><i class='fa fa-undo mr-1'></i>Returned</span>";
-                        else if (status == "Rejected")
-                            lblStatus.Text = $"<span class='badge badge-danger' title='{HttpUtility.HtmlEncode(remark)}'><i class='fa fa-times mr-1'></i>Rejected</span>";
+                        string encodedRemark = HttpUtility.HtmlEncode(remark);
+                        switch (effectiveStatus.ToLowerInvariant())
+                        {
+                            case "draft":
+                                lblStatus.Text = "<span class='badge badge-warning' data-toggle='tooltip' title='Draft – not submitted yet'><i class='fa fa-pencil-square-o'></i></span>";
+                                break;
+                            case "submitted":
+                                lblStatus.Text = "<span class='badge badge-info' data-toggle='tooltip' title='Submitted – awaiting approval'><i class='fa fa-paper-plane'></i></span>";
+                                break;
+                            case "approved":
+                                lblStatus.Text = "<span class='badge badge-success' data-toggle='tooltip' title='Approved by manager'><i class='fa fa-check-circle'></i></span>";
+                                break;
+                            case "returned":
+                                lblStatus.Text = $"<span class='badge badge-warning text-dark' data-toggle='tooltip' title='Returned for correction{(string.IsNullOrWhiteSpace(encodedRemark) ? "" : " – " + encodedRemark)}'><i class='fa fa-undo'></i></span>";
+                                break;
+                            case "rejected":
+                                lblStatus.Text = $"<span class='badge badge-danger' data-toggle='tooltip' title='Rejected – please review{(string.IsNullOrWhiteSpace(encodedRemark) ? "" : " – " + encodedRemark)}'><i class='fa fa-times-circle'></i></span>";
+                                break;
+                            case "processed":
+                                lblStatus.Text = "<span class='badge badge-primary' data-toggle='tooltip' title='Processed in accounts'><i class='fa fa-cogs'></i></span>";
+                                break;
+                            default:
+                                lblStatus.Text = $"<span class='badge badge-secondary' data-toggle='tooltip' title='{HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(effectiveStatus) ? "Unknown status" : effectiveStatus)}'><i class='fa fa-clock-o'></i></span>";
+                                break;
+                        }
                     }
 
-                    // ... Keep the rest of your RowDataBound logic ...
-                    //if (e.Row.RowType != DataControlRowType.DataRow) return;
-                    //var drv = e.Row.DataItem as System.Data.DataRowView;
-                    //if (drv == null) return;
                     PopulateKmTolerance(drv, e.Row);
                     ApplyApprovalEditability(drv, e.Row);
                 }
             }
+        }
 
-           
+        private static string ResolveEffectiveRowStatus(string claimStatus, string detailStatus, DataRowView drv)
+        {
+            if (string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase))
+                return "Returned";
+
+            if (string.Equals(detailStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+                return "Rejected";
+
+            if (!string.IsNullOrWhiteSpace(claimStatus))
+                return claimStatus;
+
+            bool isEditable = drv.Row.Table.Columns.Contains("IsEditable") &&
+                              drv["IsEditable"] != DBNull.Value &&
+                              Convert.ToBoolean(drv["IsEditable"]);
+            return isEditable ? "Returned" : "Unknown";
+        }
+
+        private static bool IsRemovableExpenseStatus(string claimStatus)
+        {
+            return string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsActivityEditableForExpenseDelete(int activityId)
+        {
+            if (activityId <= 0) return false;
+
+            string claimStatus = "Draft";
+            string detailStatus = string.Empty;
+
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand(
+                @"SELECT a.ClaimStatus,
+                         (SELECT TOP 1 ISNULL(d.DetailStatus, '')
+                          FROM dbo.SalesApprovalRequestDetail d
+                          WHERE d.ActivityId = a.ActivityId
+                          ORDER BY d.ApprovalRequestDetailId DESC) AS DetailStatus
+                  FROM dbo.SalesDailyActivity a WITH (NOLOCK)
+                  WHERE a.ActivityId = @ActId", con))
+            {
+                cmd.Parameters.AddWithValue("@ActId", activityId);
+                con.Open();
+                using (SqlDataReader rdr = cmd.ExecuteReader())
+                {
+                    if (!rdr.Read()) return false;
+                    if (rdr["ClaimStatus"] != DBNull.Value) claimStatus = rdr["ClaimStatus"].ToString().Trim();
+                    if (rdr["DetailStatus"] != DBNull.Value) detailStatus = rdr["DetailStatus"].ToString().Trim();
+                }
+            }
+
+            if (string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
         }
 
         private void PopulateKmTolerance(System.Data.DataRowView drv, GridViewRow row)
@@ -2229,11 +2301,11 @@ namespace AnmolDristi
             LinkButton lnkDeleteDisabled = e.Item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
             Literal litBadges = e.Item.FindControl("litPolicyBadges") as Literal;
 
-            bool canDelete = true;
-            if (!string.IsNullOrWhiteSpace(claimStatus) && (
-                claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                claimStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)))
+            bool canDelete = IsRemovableExpenseStatus(claimStatus);
+            if (!string.IsNullOrWhiteSpace(claimStatus) &&
+                (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                 claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                 claimStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)))
                 canDelete = false;
             if (isAuto) canDelete = false;
 
@@ -2245,7 +2317,15 @@ namespace AnmolDristi
                 var sb = new System.Text.StringBuilder();
                 if (!string.IsNullOrWhiteSpace(policyMode)) sb.AppendFormat("<span class='badge badge-info mr-1'>{0}</span>", HttpUtility.HtmlEncode(policyMode));
                 if (isAuto) sb.Append("<span class='badge badge-warning mr-1'>AUTO</span>");
-                if (!string.IsNullOrWhiteSpace(claimStatus)) sb.AppendFormat("<span class='badge badge-secondary'>{0}</span>", HttpUtility.HtmlEncode(claimStatus));
+                if (!string.IsNullOrWhiteSpace(claimStatus))
+                {
+                    string badgeClass = string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase)
+                        ? "badge badge-warning text-dark"
+                        : (string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase)
+                            ? "badge badge-danger"
+                            : "badge badge-secondary");
+                    sb.AppendFormat("<span class='{0} mr-1'>{1}</span>", badgeClass, HttpUtility.HtmlEncode(claimStatus));
+                }
                 litBadges.Text = sb.ToString();
             }
 
@@ -2786,29 +2866,13 @@ namespace AnmolDristi
                 int activityIdFromArg = 0; if (parts.Length > 2) int.TryParse(parts[2], out activityIdFromArg);
 
                 // ====================================================================
-                // SECURITY GATE: Prevent Deleting if the month is already submitted
+                // SECURITY GATE: Prevent deleting when the day is locked for editing
                 // ====================================================================
-                string currentStatus = "Draft";
-                // Assuming connString is defined elsewhere in your class
-                using (SqlConnection conStat = new SqlConnection(connString))
+                if (!IsActivityEditableForExpenseDelete(activityIdFromArg))
                 {
-                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                    {
-                        // Use activityIdFromArg as it's extracted from the CommandArgument
-                        cmdStat.Parameters.AddWithValue("@ActId", activityIdFromArg);
-                        conStat.Open();
-                        object statObj = cmdStat.ExecuteScalar();
-                        if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
-                    }
-                }
-
-                if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                    currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                    currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
-                {
-                    string safeErr = "Cannot delete this expense. The claim for this month is currently " + currentStatus + ".";
+                    string safeErr = "Cannot delete this expense. This day is not open for editing.";
                     ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrDel", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
-                    return; // <--- Instantly blocks the deletion!
+                    return;
                 }
                 // ====================================================================
 
@@ -2847,12 +2911,12 @@ namespace AnmolDristi
                             }
                         }
 
-                        if (!string.Equals(expenseClaimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                        if (!IsRemovableExpenseStatus(expenseClaimStatus))
                         {
                             if (LBL_ExpenseMsg != null)
                             {
                                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
-                                LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                                LBL_ExpenseMsg.Text = "Only draft or returned expenses can be removed.";
                             }
                             ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                             return;
@@ -2907,7 +2971,7 @@ namespace AnmolDristi
                                 if (isFirstForType && matchFrom != DateTime.MinValue)
                                 {
                                     // Make sure to add AND IsDeleted = 0 to this query as well!
-                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus = 'Draft' AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
                                     using (var findCmd = new SqlCommand(findAutoSql, con, tx))
                                     {
                                         findCmd.Parameters.AddWithValue("@ActivityId", activityId);
@@ -2917,7 +2981,7 @@ namespace AnmolDristi
                                     }
                                 }
 
-                                using (var del = new SqlCommand(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'User removed draft expense' WHERE ExpenseId = @ExpenseId AND ClaimStatus = 'Draft' AND IsDeleted = 0", con, tx))
+                                using (var del = new SqlCommand(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'User removed editable expense' WHERE ExpenseId = @ExpenseId AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", con, tx))
                                 {
                                     del.Parameters.AddWithValue("@ExpenseId", expenseId);
                                     del.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
@@ -2927,7 +2991,7 @@ namespace AnmolDristi
                                         if (LBL_ExpenseMsg != null)
                                         {
                                             LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                                            LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                                            LBL_ExpenseMsg.Text = "Only draft or returned expenses can be removed.";
                                         }
                                         ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                                         return;
@@ -2937,7 +3001,7 @@ namespace AnmolDristi
                                 if (autoIds.Count > 0)
                                 {
                                     string inList = string.Join(",", autoIds.Select(n => n.ToString()).ToArray());
-                                    string delAutoSql = string.Format(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'Auto-DA reversed due to primary expense deletion' WHERE ExpenseId IN ({0}) AND ClaimStatus = 'Draft' AND IsDeleted = 0", inList);
+                                    string delAutoSql = string.Format(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'Auto-DA reversed due to primary expense deletion' WHERE ExpenseId IN ({0}) AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", inList);
                                     using (var delAuto = new SqlCommand(delAutoSql, con, tx))
                                     {
                                         delAuto.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
@@ -3057,12 +3121,12 @@ namespace AnmolDristi
                             }
                         }
 
-                        if (!string.Equals(expenseClaimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                        if (!IsRemovableExpenseStatus(expenseClaimStatus))
                         {
                             if (LBL_ExpenseMsg != null)
                             {
                                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Orange;
-                                LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                                LBL_ExpenseMsg.Text = "Only draft or returned expenses can be removed.";
                             }
                             ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                             return;
@@ -3116,7 +3180,7 @@ namespace AnmolDristi
                                 var autoIds = new List<int>();
                                 if (isFirstForType && matchFrom != DateTime.MinValue)
                                 {
-                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus = 'Draft' AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
                                     using (var findCmd = new SqlCommand(findAutoSql, con, tx))
                                     {
                                         findCmd.Parameters.AddWithValue("@ActivityId", activityId);
@@ -3126,7 +3190,7 @@ namespace AnmolDristi
                                     }
                                 }
 
-                                using (var del = new SqlCommand(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'User removed draft expense' WHERE ExpenseId = @ExpenseId AND ClaimStatus = 'Draft' AND IsDeleted = 0", con, tx))
+                                using (var del = new SqlCommand(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'User removed editable expense' WHERE ExpenseId = @ExpenseId AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", con, tx))
                                 {
                                     del.Parameters.AddWithValue("@ExpenseId", expenseId);
                                     del.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
@@ -3136,7 +3200,7 @@ namespace AnmolDristi
                                         if (LBL_ExpenseMsg != null)
                                         {
                                             LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                                            LBL_ExpenseMsg.Text = "Only draft expenses can be removed.";
+                                            LBL_ExpenseMsg.Text = "Only draft or returned expenses can be removed.";
                                         }
                                         ScriptManager.RegisterStartupScript(this, GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                                         return;
@@ -3146,7 +3210,7 @@ namespace AnmolDristi
                                 if (autoIds.Count > 0)
                                 {
                                     string inList = string.Join(",", autoIds.Select(n => n.ToString()).ToArray());
-                                    string delAutoSql = string.Format(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'Auto-DA reversed due to primary expense deletion' WHERE ExpenseId IN ({0}) AND ClaimStatus = 'Draft' AND IsDeleted = 0", inList);
+                                    string delAutoSql = string.Format(@"UPDATE dbo.SalesDailyExpense SET IsDeleted = 1, DeletedBy = @User, DeletedOn = DATEADD(MINUTE, 330, SYSUTCDATETIME()), DeleteReason = 'Auto-DA reversed due to primary expense deletion' WHERE ExpenseId IN ({0}) AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0", inList);
                                     using (var delAuto = new SqlCommand(delAutoSql, con, tx))
                                     {
                                         delAuto.Parameters.AddWithValue("@User", Session["WORKMAN"].ToString());
