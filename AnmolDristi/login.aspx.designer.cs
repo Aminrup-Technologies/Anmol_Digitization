@@ -56,6 +56,16 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_companyname;
+
+        /// <summary>
+        /// pnlLoginMessage control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlLoginMessage;
+
+        /// <summary>
+        /// lblLoginMessage control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblLoginMessage;
         
         /// <summary>
         /// pnlLogin control.

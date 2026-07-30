@@ -32,6 +32,10 @@
                             <h1>
                                 <asp:Label ID="lbl_companyname" runat="server" Text="NA"></asp:Label></h1>
 
+                            <asp:Panel ID="pnlLoginMessage" runat="server" Visible="false" CssClass="alert mb-3" role="alert">
+                                <asp:Label ID="lblLoginMessage" runat="server" />
+                            </asp:Panel>
+
                             <asp:Panel ID="pnlLogin" runat="server">
                                 <div class="form-horizontal">
                                     <div class="form-group row">

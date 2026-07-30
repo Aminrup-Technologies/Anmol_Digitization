@@ -868,6 +868,7 @@
     <Compile Include="login.aspx.designer.cs">
       <DependentUpon>login.aspx</DependentUpon>
     </Compile>
+    <Compile Include="LoginAuditLogger.cs" />
     <Compile Include="LoginNotifier.cs" />
     <Compile Include="LogoutHandler.ashx.cs">
       <DependentUpon>LogoutHandler.ashx</DependentUpon>
