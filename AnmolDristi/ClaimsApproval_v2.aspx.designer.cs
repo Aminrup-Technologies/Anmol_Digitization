@@ -157,6 +157,11 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField hfCurrentUserLevel;
         
         /// <summary>
+        /// hfIsAuditor control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.HiddenField hfIsAuditor;
+
+        /// <summary>
         /// hfIsFinalApprover control.
         /// </summary>
         /// <remarks>
@@ -210,6 +215,11 @@ namespace AnmolDristi {
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnApproveSelected;
         
+        /// <summary>
+        /// btnRejectDaysSelected control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Button btnRejectDaysSelected;
+
         /// <summary>
         /// btnRejectSelected control.
         /// </summary>

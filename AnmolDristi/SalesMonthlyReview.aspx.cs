@@ -226,6 +226,7 @@ namespace AnmolDristi
                             allowSubmission = false;
 
                             var editableActivityIds = new HashSet<int>();
+                            var detailStatusByActivity = new Dictionary<int, string>();
                             using (SqlCommand cmd2 = new SqlCommand("SELECT ActivityId, DetailStatus FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id", con))
                             {
                                 cmd2.Parameters.AddWithValue("@Id", approvalRequestId.Value);
@@ -245,10 +246,17 @@ namespace AnmolDristi
                                     }
                                 }
                             }
+
+                            if (!dt.Columns.Contains("DetailStatus"))
+                                dt.Columns.Add("DetailStatus", typeof(string));
+
                             foreach (DataRow row in dt.Rows)
                             {
                                 int actId = row["ActivityId"] != DBNull.Value ? Convert.ToInt32(row["ActivityId"]) : 0;
                                 row["IsEditable"] = editableActivityIds.Contains(actId);
+                                row["DetailStatus"] = detailStatusByActivity.ContainsKey(actId)
+                                    ? detailStatusByActivity[actId]
+                                    : (object)DBNull.Value;
                             }
 
                             // ⬅️ 3. NEW: If there are returned/rejected rows, UNLOCK the Submit button!
@@ -698,20 +706,30 @@ namespace AnmolDristi
                 // UI LOCK: Expense Modal View-Only Mode
                 // ====================================================================
                 string claimStatus = "Draft";
+                string detailStatus = "Draft";
                 using (SqlConnection conStat = new SqlConnection(connString))
                 {
+                    conStat.Open();
                     using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
                     {
                         cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                        conStat.Open();
                         object statObj = cmdStat.ExecuteScalar();
                         if (statObj != null && statObj != DBNull.Value) claimStatus = statObj.ToString().Trim();
+                    }
+
+                    using (SqlCommand cmdDetail = new SqlCommand(@"SELECT TOP 1 ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC", conStat))
+                    {
+                        cmdDetail.Parameters.AddWithValue("@ActId", activityId);
+                        object detailObj = cmdDetail.ExecuteScalar();
+                        if (detailObj != null && detailObj != DBNull.Value) detailStatus = detailObj.ToString().Trim();
                     }
                 }
 
                 if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
                     claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase);
+
+                if (!isReturnedDay && isLockedDay)
                 {
                     if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
                     if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
@@ -734,7 +752,9 @@ namespace AnmolDristi
 
                     if (LBL_ExpenseMsg != null)
                     {
-                        LBL_ExpenseMsg.Text = "🔒 This month is " + claimStatus + ". You are in View-Only mode.";
+                        LBL_ExpenseMsg.Text = isRejectedDay
+                            ? "🔒 This day was rejected by the auditor. Expenses cannot be edited."
+                            : "🔒 This day is " + claimStatus + ". You are in View-Only mode.";
                         LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
                     }
                 }
@@ -1454,11 +1474,21 @@ namespace AnmolDristi
             LinkButton lnkCancel = row.FindControl("lnkCancel") as LinkButton;
 
             string claimStatus = drv.Row.Table.Columns.Contains("ClaimStatus") && drv["ClaimStatus"] != DBNull.Value ? drv["ClaimStatus"].ToString().Trim() : string.Empty;
+            string detailStatus = drv.Row.Table.Columns.Contains("DetailStatus") && drv["DetailStatus"] != DBNull.Value ? drv["DetailStatus"].ToString().Trim() : string.Empty;
 
             string effectiveVisualStatus;
-            if (string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase)) effectiveVisualStatus = "Draft";
-            else if (isEditable) effectiveVisualStatus = "Rejected";
-            else effectiveVisualStatus = !string.IsNullOrEmpty(claimStatus) ? claimStatus : "Unknown";
+            if (string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase))
+                effectiveVisualStatus = "Returned";
+            else if (string.Equals(detailStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+                effectiveVisualStatus = "Rejected";
+            else if (string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                effectiveVisualStatus = "Draft";
+            else if (isEditable)
+                effectiveVisualStatus = "Returned";
+            else
+                effectiveVisualStatus = !string.IsNullOrEmpty(claimStatus) ? claimStatus : "Unknown";
 
             Func<string, string, string> IconHtml = delegate (string iconClass, string clrClass) { return string.Format("<i class='{0} {1}' aria-hidden='true'></i>", iconClass, clrClass); };
 
@@ -1466,7 +1496,8 @@ namespace AnmolDristi
 
             switch (effectiveVisualStatus.ToLowerInvariant())
             {
-                case "rejected": colorClass = "text-danger"; editIconHtml = IconHtml("fa fa-pencil", colorClass); expenseIconHtml = IconHtml("fa fa-exclamation-triangle", colorClass); break;
+                case "returned": colorClass = "text-warning"; editIconHtml = IconHtml("fa fa-undo", colorClass); expenseIconHtml = IconHtml("fa fa-briefcase", colorClass); break;
+                case "rejected": colorClass = "text-danger"; editIconHtml = IconHtml("fa fa-ban", colorClass); expenseIconHtml = IconHtml("fa fa-ban", colorClass); break;
                 case "draft": colorClass = "text-primary"; editIconHtml = IconHtml("fa fa-pencil", colorClass); expenseIconHtml = IconHtml("fa fa-briefcase", colorClass); break;
                 case "submitted": colorClass = "text-warning"; editIconHtml = IconHtml("fa fa-paper-plane", colorClass); expenseIconHtml = IconHtml("fa fa-briefcase", colorClass); break;
                 case "approved": colorClass = "text-success"; editIconHtml = IconHtml("fa fa-check-circle", colorClass); expenseIconHtml = IconHtml("fa fa-briefcase", colorClass); break;
@@ -1477,26 +1508,36 @@ namespace AnmolDristi
 
             if (lnkEdit != null)
             {
-                bool showEdit = isEditable || string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase);
+                bool showEdit = isEditable && !string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
+                if (!showEdit && string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                    showEdit = true;
+
                 lnkEdit.Visible = showEdit; lnkEdit.Enabled = showEdit; lnkEdit.CssClass = neutralBtnClass;
                 lnkEdit.Text = editIconHtml; lnkEdit.ToolTip = showEdit ? "Edit" : "Edit (disabled)";
             }
 
             if (lnkExpenses != null)
             {
-                lnkExpenses.Visible = true; lnkExpenses.Enabled = true; lnkExpenses.CssClass = neutralBtnClass;
-                lnkExpenses.Text = expenseIconHtml; lnkExpenses.ToolTip = "View / Add Expenses";
+                bool canOpenExpenses = !string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
+                lnkExpenses.Visible = true; lnkExpenses.Enabled = canOpenExpenses; lnkExpenses.CssClass = neutralBtnClass;
+                lnkExpenses.Text = expenseIconHtml;
+                lnkExpenses.ToolTip = canOpenExpenses ? "View / Add Expenses" : "Rejected days cannot be edited";
             }
 
-            if (txtKM != null) { txtKM.ReadOnly = !isEditable; txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
-            if (lnkUpdate != null) lnkUpdate.Enabled = isEditable;
+            if (txtKM != null) { txtKM.ReadOnly = !isEditable || string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase); txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
+            if (lnkUpdate != null) lnkUpdate.Enabled = isEditable && !string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
             if (lnkCancel != null) lnkCancel.Enabled = true;
             if (lblKM != null) { lblKM.Text = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]).ToString("N2") + " km" : "—"; lblKM.Visible = true; }
 
-            if (string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(effectiveVisualStatus, "Returned", StringComparison.OrdinalIgnoreCase))
+            {
+                row.CssClass = (row.CssClass + " row-returned").Trim();
+                row.ToolTip = "Returned for correction. Edit this day and resubmit.";
+            }
+            else if (string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
             {
                 row.CssClass = (row.CssClass + " row-rejected").Trim();
-                row.ToolTip = (row.ToolTip != null ? row.ToolTip : "") + " Editable (reopened by approver).";
+                row.ToolTip = "Rejected by auditor. This day cannot be edited.";
             }
 
             bool monthLocked = ViewState["MonthLocked"] != null && (bool)ViewState["MonthLocked"];
@@ -2160,7 +2201,10 @@ namespace AnmolDristi
             Literal litBadges = e.Item.FindControl("litPolicyBadges") as Literal;
 
             bool canDelete = true;
-            if (!string.IsNullOrWhiteSpace(claimStatus) && (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) || claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase)))
+            if (!string.IsNullOrWhiteSpace(claimStatus) && (
+                claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
+                claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
+                claimStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)))
                 canDelete = false;
             if (isAuto) canDelete = false;
 
