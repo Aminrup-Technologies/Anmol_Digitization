@@ -3525,9 +3525,10 @@ namespace AnmolDristi
             return updatedRows;
         }
 
-        private bool TryGetPartialResubmitReturnedActivityIds(int year, int month, out HashSet<int> returnedActivityIds)
+        private bool TryPreparePartialResubmission(int year, int month, DataTable tvp, out DataTable filteredTvp, out string message)
         {
-            returnedActivityIds = new HashSet<int>();
+            filteredTvp = tvp;
+            message = null;
             string loginId = GetCurrentUserLoginId();
 
             using (SqlConnection con = new SqlConnection(connString))
@@ -3547,7 +3548,9 @@ namespace AnmolDristi
                     cmd.Parameters.AddWithValue("@Month", month);
                     using (SqlDataReader rdr = cmd.ExecuteReader())
                     {
-                        if (!rdr.Read()) return false;
+                        if (!rdr.Read())
+                            return false;
+
                         requestId = rdr["ApprovalRequestId"] != DBNull.Value
                             ? (int?)Convert.ToInt32(rdr["ApprovalRequestId"])
                             : null;
@@ -3555,22 +3558,21 @@ namespace AnmolDristi
                     }
                 }
 
-                if (!requestId.HasValue) return false;
+                if (!requestId.HasValue)
+                    return false;
 
+                // Whole-request reopen: submit all rows as a normal submission.
                 if (string.Equals(requestStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(requestStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(requestStatus, "Returned", StringComparison.OrdinalIgnoreCase))
                     return false;
 
+                var returnedActivityIds = new HashSet<int>();
                 using (SqlCommand cmd = new SqlCommand(
-                    @"SELECT DISTINCT d.ActivityId
-                      FROM dbo.SalesApprovalRequestDetail d
-                      INNER JOIN dbo.SalesDailyActivity a ON a.ActivityId = d.ActivityId
-                      WHERE d.ApprovalRequestId = @Id
-                        AND (
-                            d.DetailStatus = 'Returned'
-                            OR a.ClaimStatus = 'Returned'
-                        )", con))
+                    @"SELECT DISTINCT ActivityId
+                      FROM dbo.SalesApprovalRequestDetail
+                      WHERE ApprovalRequestId = @Id
+                        AND DetailStatus = 'Returned'", con))
                 {
                     cmd.Parameters.AddWithValue("@Id", requestId.Value);
                     using (SqlDataReader rdr = cmd.ExecuteReader())
@@ -3582,9 +3584,48 @@ namespace AnmolDristi
                         }
                     }
                 }
-            }
 
-            return returnedActivityIds.Count > 0;
+                if (returnedActivityIds.Count == 0)
+                {
+                    message = "This month already has a pending approval request, and there are no returned days to resubmit.";
+                    filteredTvp = tvp.Clone();
+                    return true;
+                }
+
+                // SP validates SalesDailyActivity.ClaimStatus = 'Returned'. Editing/soft-delete
+                // can leave ClaimStatus as Draft while DetailStatus stays Returned — sync first.
+                string idList = string.Join(",", returnedActivityIds.Select(id => id.ToString()).ToArray());
+                string syncSql = string.Format(@"
+                    UPDATE dbo.SalesDailyActivity
+                    SET ClaimStatus = 'Returned',
+                        ModifiedByUserId = @User,
+                        ModifiedDateTime = DATEADD(MINUTE, 330, SYSUTCDATETIME())
+                    WHERE ActivityId IN ({0})
+                      AND ISNULL(ClaimStatus, '') <> 'Returned';
+
+                    UPDATE dbo.SalesDailyExpense
+                    SET ClaimStatus = 'Returned',
+                        ModifiedBy = @User,
+                        ModifiedOn = SYSUTCDATETIME()
+                    WHERE ActivityId IN ({0})
+                      AND IsDeleted = 0
+                      AND ISNULL(ClaimStatus, '') NOT IN ('Returned', 'Rejected', 'Approved');", idList);
+
+                using (SqlCommand syncCmd = new SqlCommand(syncSql, con))
+                {
+                    syncCmd.Parameters.AddWithValue("@User", loginId);
+                    syncCmd.ExecuteNonQuery();
+                }
+
+                filteredTvp = FilterActivityUpdatesToReturnedOnly(tvp, returnedActivityIds);
+                if (filteredTvp.Rows.Count == 0)
+                {
+                    message = "No returned activities were found in the current grid to resubmit. Refresh and try again.";
+                    return true;
+                }
+
+                return true;
+            }
         }
 
         private static DataTable FilterActivityUpdatesToReturnedOnly(DataTable source, HashSet<int> returnedActivityIds)
@@ -3769,18 +3810,20 @@ namespace AnmolDristi
                     return;
                 }
 
-                HashSet<int> returnedActivityIds;
-                if (TryGetPartialResubmitReturnedActivityIds(year, month, out returnedActivityIds))
+                DataTable submitTvp;
+                string partialMessage;
+                if (TryPreparePartialResubmission(year, month, tvp, out submitTvp, out partialMessage))
                 {
-                    tvp = FilterActivityUpdatesToReturnedOnly(tvp, returnedActivityIds);
-                    if (tvp.Rows.Count == 0)
+                    if (!string.IsNullOrWhiteSpace(partialMessage) || submitTvp == null || submitTvp.Rows.Count == 0)
                     {
-                        lbl_msg.Text = "No returned activities found to resubmit.";
+                        string msg = partialMessage ?? "No returned activities found to resubmit.";
+                        lbl_msg.Text = msg;
                         lbl_msg.ForeColor = System.Drawing.Color.Red;
                         ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitNoReturned",
-                            "showPNotify('Nothing to resubmit', 'Please correct returned day(s) before submitting.', 'warning');", true);
+                            "showPNotify('Nothing to resubmit', '" + msg.Replace("'", "\\'") + "', 'warning');", true);
                         return;
                     }
+                    tvp = submitTvp;
                 }
 
                 int approvalRequestId = ExecuteSubmitForApproval(tvp, year, month, "Submitted via UI");
