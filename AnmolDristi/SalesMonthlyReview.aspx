@@ -1448,7 +1448,7 @@
                                             <asp:Label ID="lblPolicyEmployeeCode" runat="server" Text="—"></asp:Label>
                                         </div>
                                     </div>
-                                    <div class="col-sm-5 text-sm-right">
+                                    <div class="col-sm-5 text-right">
                                         <asp:Label ID="lblPolicyIsActive" runat="server" CssClass="badge badge-success">—</asp:Label>
                                         <asp:Label ID="lblPolicySource" runat="server" CssClass="badge badge-info" style="margin-left:4px;">—</asp:Label>
                                         <asp:Label ID="lblPolicyPriority" runat="server" CssClass="badge badge-secondary" style="margin-left:4px;">—</asp:Label>
@@ -1458,25 +1458,25 @@
                         </div>
 
                         <ul class="nav nav-tabs" role="tablist">
-                            <li role="presentation" class="active">
-                                <a href="#policyDetailsTab" aria-controls="policyDetailsTab" role="tab" data-toggle="tab">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link active" href="#policyDetailsTab" id="policyDetailsTabLink" aria-controls="policyDetailsTab" role="tab" data-toggle="tab" aria-selected="true">
                                     <i class="fa fa-info-circle"></i> Policy Details
                                 </a>
                             </li>
-                            <li role="presentation">
-                                <a href="#claimLimitsTab" aria-controls="claimLimitsTab" role="tab" data-toggle="tab">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" href="#claimLimitsTab" id="claimLimitsTabLink" aria-controls="claimLimitsTab" role="tab" data-toggle="tab" aria-selected="false">
                                     <i class="fa fa-calculator"></i> Claim Limits
                                 </a>
                             </li>
-                            <li role="presentation">
-                                <a href="#approvalHierarchyTab" aria-controls="approvalHierarchyTab" role="tab" data-toggle="tab">
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" href="#approvalHierarchyTab" id="approvalHierarchyTabLink" aria-controls="approvalHierarchyTab" role="tab" data-toggle="tab" aria-selected="false">
                                     <i class="fa fa-user-check"></i> Approval Hierarchy
                                 </a>
                             </li>
                         </ul>
 
                         <div class="tab-content bg-white border border-top-0 rounded-bottom p-3 mb-2">
-                            <div role="tabpanel" class="tab-pane fade in active" id="policyDetailsTab">
+                            <div role="tabpanel" class="tab-pane fade show active" id="policyDetailsTab" aria-labelledby="policyDetailsTabLink">
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label class="small text-secondary mb-1">Record ID</label>
@@ -1514,7 +1514,7 @@
                                 </div>
                             </div>
 
-                            <div role="tabpanel" class="tab-pane fade" id="claimLimitsTab">
+                            <div role="tabpanel" class="tab-pane fade" id="claimLimitsTab" aria-labelledby="claimLimitsTabLink">
                                 <div class="card border-0 bg-light mb-0">
                                     <div class="card-body p-2">
                                         <asp:PlaceHolder ID="phClaimLimits" runat="server"></asp:PlaceHolder>
@@ -1522,7 +1522,7 @@
                                 </div>
                             </div>
 
-                            <div role="tabpanel" class="tab-pane fade" id="approvalHierarchyTab">
+                            <div role="tabpanel" class="tab-pane fade" id="approvalHierarchyTab" aria-labelledby="approvalHierarchyTabLink">
                                 <asp:PlaceHolder ID="phApproverHierarchy" runat="server"></asp:PlaceHolder>
                             </div>
                         </div>
@@ -2036,8 +2036,28 @@
             restoreRouteDataToDAFields(activityId);
         });
 
+        function activatePolicyModalFirstTab() {
+            var $modal = $('#policyModal');
+            if (!$modal.length) return;
+
+            var $firstTabLink = $modal.find('.nav-tabs a[data-toggle="tab"]').first();
+            if ($firstTabLink.length) {
+                $firstTabLink.tab('show');
+            } else {
+                $modal.find('.tab-pane').removeClass('show active');
+                $modal.find('#policyDetailsTab').addClass('show active');
+            }
+        }
+
+        $('#policyModal').on('shown.bs.modal', function () {
+            activatePolicyModalFirstTab();
+        });
+
         if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
-            Sys.WebForms.PageRequestManager.getInstance().add_endRequest(initExpenseModal);
+            Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () {
+                initExpenseModal();
+                activatePolicyModalFirstTab();
+            });
         }
 
         window.openEditKmModal = function (aid, cur, min, max) {
