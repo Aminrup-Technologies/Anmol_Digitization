@@ -564,20 +564,104 @@ namespace AnmolDristi
 
         protected void BindPolicyApprovers()
         {
-            string rOneName = (Session["RONE_NAME"] != null) ? Session["RONE_NAME"].ToString().Trim() : string.Empty;
-            string rOneCode = (Session["RONE_CODE"] != null) ? Session["RONE_CODE"].ToString().Trim() : string.Empty;
-            string rTwoName = (Session["RTWO_NAME"] != null) ? Session["RTWO_NAME"].ToString().Trim() : string.Empty;
-            string rTwoCode = (Session["RTWO_CODE"] != null) ? Session["RTWO_CODE"].ToString().Trim() : string.Empty;
-            string auditorName = (Session["AUDITOR_NAME"] != null) ? Session["AUDITOR_NAME"].ToString().Trim() : string.Empty;
-            string auditorCode = (Session["AUDITOR_CODE"] != null) ? Session["AUDITOR_CODE"].ToString().Trim() : string.Empty;
+            string rOneName = GetSessionValue("RONE_NAME");
+            string rOneCode = GetSessionValue("RONE_CODE");
+            string rTwoName = GetSessionValue("RTWO_NAME");
+            string rTwoCode = GetSessionValue("RTWO_CODE");
+            string rThreeName = GetSessionValue("RTHREE_NAME");
+            string rThreeCode = GetSessionValue("RTHREE_CODE");
+            string auditorName = GetSessionValue("AUDITOR_NAME");
+            string auditorCode = GetSessionValue("AUDITOR_CODE");
 
-            if (lblApproverL1 != null) lblApproverL1.Text = ComposeNameWithCode(rOneName, rOneCode);
-            if (lblApproverL2 != null) lblApproverL2.Text = ComposeNameWithCode(rTwoName, rTwoCode);
-            if (lblApproverAuditor != null) lblApproverAuditor.Text = ComposeNameWithCode(auditorName, auditorCode);
+            if (string.IsNullOrEmpty(rOneName) && !string.IsNullOrEmpty(rOneCode))
+                rOneName = GetEmployeeNameByCode(rOneCode);
+            if (string.IsNullOrEmpty(rTwoName) && !string.IsNullOrEmpty(rTwoCode))
+                rTwoName = GetEmployeeNameByCode(rTwoCode);
+            if (string.IsNullOrEmpty(rThreeName) && !string.IsNullOrEmpty(rThreeCode))
+                rThreeName = GetEmployeeNameByCode(rThreeCode);
+            if (string.IsNullOrEmpty(auditorName) && !string.IsNullOrEmpty(auditorCode))
+                auditorName = GetEmployeeNameByCode(auditorCode);
 
-            if (approverL1Container != null) approverL1Container.Visible = !string.IsNullOrEmpty(rOneName) || !string.IsNullOrEmpty(rOneCode);
-            if (approverL2Container != null) approverL2Container.Visible = !string.IsNullOrEmpty(rTwoName) || !string.IsNullOrEmpty(rTwoCode);
-            if (approverAuditorContainer != null) approverAuditorContainer.Visible = !string.IsNullOrEmpty(auditorName) || !string.IsNullOrEmpty(auditorCode);
+            var levels = new List<ApproverDisplayLevel>();
+            TryAddApproverLevel(levels, "Manager (L1)", rOneName, rOneCode);
+            TryAddApproverLevel(levels, "Regional Manager (L2)", rTwoName, rTwoCode);
+            TryAddApproverLevel(levels, "Zonal Manager (L3)", rThreeName, rThreeCode);
+            TryAddApproverLevel(levels, "Auditor", auditorName, auditorCode);
+
+            RenderApproverHierarchy(levels);
+        }
+
+        private sealed class ApproverDisplayLevel
+        {
+            public string Title { get; set; }
+            public string Name { get; set; }
+            public string Code { get; set; }
+        }
+
+        private static string GetSessionValue(string key)
+        {
+            return HttpContext.Current != null && HttpContext.Current.Session != null && HttpContext.Current.Session[key] != null
+                ? HttpContext.Current.Session[key].ToString().Trim()
+                : string.Empty;
+        }
+
+        private static void TryAddApproverLevel(List<ApproverDisplayLevel> levels, string title, string name, string code)
+        {
+            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(code)) return;
+            levels.Add(new ApproverDisplayLevel
+            {
+                Title = title,
+                Name = string.IsNullOrWhiteSpace(name) ? string.Empty : name.Trim(),
+                Code = string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim()
+            });
+        }
+
+        private string GetEmployeeNameByCode(string employeeCode)
+        {
+            if (string.IsNullOrWhiteSpace(employeeCode)) return string.Empty;
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand("SELECT TOP 1 EmployeeName FROM dbo.MST_UserMaster WITH (NOLOCK) WHERE EmployeeCode = @EmployeeCode", con))
+            {
+                cmd.Parameters.AddWithValue("@EmployeeCode", employeeCode.Trim());
+                con.Open();
+                object result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value ? result.ToString().Trim() : string.Empty;
+            }
+        }
+
+        private void RenderApproverHierarchy(List<ApproverDisplayLevel> levels)
+        {
+            if (phApproverHierarchy == null) return;
+
+            phApproverHierarchy.Controls.Clear();
+            if (levels == null || levels.Count == 0)
+            {
+                phApproverHierarchy.Controls.Add(new Literal { Text = "<div class=\"text-muted small\">No approvers configured for this employee.</div>" });
+                return;
+            }
+
+            for (int i = 0; i < levels.Count; i++)
+            {
+                ApproverDisplayLevel level = levels[i];
+                string nameHtml = string.IsNullOrEmpty(level.Name)
+                    ? string.Empty
+                    : string.Format("<div class=\"font-weight-bold text-dark\">{0}</div>", HttpUtility.HtmlEncode(level.Name));
+                string codeHtml = string.IsNullOrEmpty(level.Code)
+                    ? string.Empty
+                    : string.Format("<div class=\"text-muted small\">{0}</div>", HttpUtility.HtmlEncode(level.Code));
+
+                phApproverHierarchy.Controls.Add(new Literal
+                {
+                    Text = string.Format(
+                        "<div class=\"card border shadow-sm mb-0\"><div class=\"card-body py-2 px-3\"><div class=\"small text-uppercase text-muted font-weight-bold mb-1\">{0}</div>{1}{2}</div></div>",
+                        HttpUtility.HtmlEncode(level.Title),
+                        nameHtml,
+                        codeHtml)
+                });
+
+                if (i < levels.Count - 1)
+                    phApproverHierarchy.Controls.Add(new Literal { Text = "<div class=\"text-center text-muted py-1\"><i class=\"fa fa-arrow-down\"></i></div>" });
+            }
         }
 
         private string ComposeNameWithCode(string name, string code)
@@ -592,49 +676,49 @@ namespace AnmolDristi
         {
             if (policy == null) return;
 
-            if (lblPolicyEmployeeCode != null) lblPolicyEmployeeCode.Text = HttpUtility.HtmlEncode(!string.IsNullOrEmpty(policy.EmployeeCode) ? policy.EmployeeCode : GetLoggedInEmployeeCode());
+            string employeeCode = !string.IsNullOrEmpty(policy.EmployeeCode) ? policy.EmployeeCode : GetLoggedInEmployeeCode();
+            if (lblPolicyEmployeeCode != null) lblPolicyEmployeeCode.Text = HttpUtility.HtmlEncode(employeeCode);
             if (lblPolicySource != null) lblPolicySource.Text = HttpUtility.HtmlEncode(!string.IsNullOrEmpty(policy.Source) ? policy.Source : "HR-SOP");
             if (lblPolicyRowId != null) lblPolicyRowId.Text = policy.RowId.HasValue ? policy.RowId.Value.ToString() : "—";
-            if (lblPolicyPriority != null) lblPolicyPriority.Text = policy.Priority.HasValue ? policy.Priority.Value.ToString() : "—";
+            if (lblPolicyPriority != null)
+                lblPolicyPriority.Text = policy.Priority.HasValue ? string.Format("Priority {0}", policy.Priority.Value) : "—";
 
             string regionName = GetNameFromMaster("MST_Region", "Id", "Region_Description", policy.RegionId) ?? "All Regions";
             string branchName = GetNameFromMaster("MST_Branch", "Id", "Branch_Description", policy.BranchId) ?? "All Branches";
             string gradeName = GetNameFromMaster("MST_Grade", "Id", "Grade_Description", policy.GradeId) ?? "All Grades";
             string desigName = GetNameFromMaster("MST_Designation", "Id", "Designation_Description", policy.DesignationId) ?? "All Designations";
 
-            if (lblPolicySpecificity != null) lblPolicySpecificity.Text = string.Format("{0} / {1} / {2} / {3}", regionName, branchName, gradeName, desigName);
+            if (lblPolicySpecificity != null) lblPolicySpecificity.Text = BuildSpecificityChain(regionName, branchName, gradeName, desigName);
+            if (lblPolicyDesignation != null) lblPolicyDesignation.Text = HttpUtility.HtmlEncode(desigName);
+            if (lblPolicyGrade != null) lblPolicyGrade.Text = HttpUtility.HtmlEncode(gradeName);
 
-            var effFrom = policy.EffectiveFrom.HasValue ? policy.EffectiveFrom.Value.ToString("dd-MM-yyyy") : "—";
-            var effTo = policy.EffectiveTo.HasValue ? policy.EffectiveTo.Value.ToString("dd-MM-yyyy") : "—";
-            if (lblPolicyEffective != null) lblPolicyEffective.Text = string.Format("{0} to {1}", effFrom, effTo);
-            if (lblPolicyIsActive != null) lblPolicyIsActive.Text = policy.IsActive.HasValue ? (policy.IsActive.Value ? "Yes" : "No") : "—";
+            if (lblPolicyEffective != null)
+            {
+                string effFrom = policy.EffectiveFrom.HasValue ? policy.EffectiveFrom.Value.ToString("dd-MMM-yyyy") : "—";
+                string effTo = policy.EffectiveTo.HasValue ? policy.EffectiveTo.Value.ToString("dd-MMM-yyyy") : "—";
+                lblPolicyEffective.Text = string.Format("{0} to {1}", effFrom, effTo);
+            }
 
-            string desigIdStr = policy.DesignationId.HasValue ? policy.DesignationId.Value.ToString() : "—";
-            string gradeIdStr = policy.GradeId.HasValue ? policy.GradeId.Value.ToString() : "—";
-            if (lblPolicyDesigGrade != null) lblPolicyDesigGrade.Text = (policy.DesignationId.HasValue || policy.GradeId.HasValue) ? string.Format("{0} / {1}", desigIdStr, gradeIdStr) : "—";
+            if (lblPolicyIsActive != null)
+            {
+                bool isActive = policy.IsActive.HasValue && policy.IsActive.Value;
+                lblPolicyIsActive.Text = isActive ? "Active" : "Inactive";
+                lblPolicyIsActive.CssClass = isActive ? "badge badge-success" : "badge badge-secondary";
+            }
 
-            if (lblResolvedMaxKM != null) lblResolvedMaxKM.Text = policy.Resolved_MaxKM.HasValue ? policy.Resolved_MaxKM.Value.ToString("N2") : "—";
-            if (lblResolvedRatePerKm != null) lblResolvedRatePerKm.Text = policy.Resolved_RatePerKm.HasValue ? policy.Resolved_RatePerKm.Value.ToString("N2") : "—";
-            if (lblResolvedDA != null) lblResolvedDA.Text = policy.Resolved_DA.HasValue ? policy.Resolved_DA.Value.ToString("N2") : "—";
-            if (lblResolvedHotelCap != null) lblResolvedHotelCap.Text = policy.Resolved_HotelCap.HasValue ? policy.Resolved_HotelCap.Value.ToString("N2") : "—";
+            if (lblPolicyDesigGrade != null)
+            {
+                string desigIdStr = policy.DesignationId.HasValue ? policy.DesignationId.Value.ToString() : "—";
+                string gradeIdStr = policy.GradeId.HasValue ? policy.GradeId.Value.ToString() : "—";
+                lblPolicyDesigGrade.Text = (policy.DesignationId.HasValue || policy.GradeId.HasValue)
+                    ? string.Format("{0} / {1}", desigIdStr, gradeIdStr)
+                    : "—";
+            }
 
-            if (HF_Policy_RegionId != null) HF_Policy_RegionId.Value = policy.RegionId.HasValue ? policy.RegionId.Value.ToString() : string.Empty;
-            if (HF_Policy_BranchId != null) HF_Policy_BranchId.Value = policy.BranchId.HasValue ? policy.BranchId.Value.ToString() : string.Empty;
-            if (HF_Policy_GradeId != null) HF_Policy_GradeId.Value = policy.GradeId.HasValue ? policy.GradeId.Value.ToString() : string.Empty;
-            if (HF_Policy_DesignationId != null) HF_Policy_DesignationId.Value = policy.DesignationId.HasValue ? policy.DesignationId.Value.ToString() : string.Empty;
+            BindResolvedHiddenFields(policy);
+            BindResolvedClaimLimitsToModal(policy);
+            BindPolicyRemarks(policy);
 
-            if (HF_ResolvedHotelCap != null) HF_ResolvedHotelCap.Value = policy.Resolved_HotelCap.HasValue ? policy.Resolved_HotelCap.Value.ToString("F2") : "0";
-            if (HF_ResolvedDA != null) HF_ResolvedDA.Value = policy.Resolved_DA.HasValue ? policy.Resolved_DA.Value.ToString("F2") : "200";
-
-            var outstationVal = policy.Resolved_OutstationDA.HasValue ? policy.Resolved_OutstationDA.Value.ToString("F2") : "0";
-            var ownArrVal = policy.Resolved_OwnAllowance.HasValue ? policy.Resolved_OwnAllowance.Value.ToString("F2") : "0";
-
-            if (HF_OutstationDA != null) HF_OutstationDA.Value = policy.Resolved_OutstationDA.HasValue ? policy.Resolved_OutstationDA.Value.ToString("F2") : "350";
-            if (HF_OwnArrangementDA != null) HF_OwnArrangementDA.Value = policy.Resolved_OwnAllowance.HasValue ? policy.Resolved_OwnAllowance.Value.ToString("F2") : "750";
-            if (HF_ResolvedMaxKM != null) HF_ResolvedMaxKM.Value = policy.Resolved_MaxKM.HasValue ? policy.Resolved_MaxKM.Value.ToString("F2") : "0";
-            if (HF_ResolvedRatePerKm != null) HF_ResolvedRatePerKm.Value = policy.Resolved_RatePerKm.HasValue ? policy.Resolved_RatePerKm.Value.ToString("F2") : "0";
-
-            if (lblResolvedRemarks != null) lblResolvedRemarks.Text = HttpUtility.HtmlEncode(!string.IsNullOrEmpty(policy.Resolved_Remarks) ? policy.Resolved_Remarks : "Per Day Capping is Displayed");
             if (policyJsonRaw != null)
             {
                 policyJsonRaw.Text = policy.PolicyJson ?? "";
@@ -643,6 +727,98 @@ namespace AnmolDristi
 
             if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = string.Empty;
             BindPolicyApprovers();
+        }
+
+        private static string BuildSpecificityChain(params string[] parts)
+        {
+            if (parts == null || parts.Length == 0) return "—";
+            var filtered = parts.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).ToList();
+            return filtered.Count > 0 ? string.Join(" → ", filtered) : "—";
+        }
+
+        private void BindResolvedHiddenFields(PolicyResolved policy)
+        {
+            if (HF_Policy_RegionId != null) HF_Policy_RegionId.Value = policy.RegionId.HasValue ? policy.RegionId.Value.ToString() : string.Empty;
+            if (HF_Policy_BranchId != null) HF_Policy_BranchId.Value = policy.BranchId.HasValue ? policy.BranchId.Value.ToString() : string.Empty;
+            if (HF_Policy_GradeId != null) HF_Policy_GradeId.Value = policy.GradeId.HasValue ? policy.GradeId.Value.ToString() : string.Empty;
+            if (HF_Policy_DesignationId != null) HF_Policy_DesignationId.Value = policy.DesignationId.HasValue ? policy.DesignationId.Value.ToString() : string.Empty;
+
+            if (HF_ResolvedHotelCap != null) HF_ResolvedHotelCap.Value = policy.Resolved_HotelCap.HasValue ? policy.Resolved_HotelCap.Value.ToString("F2") : "0";
+            if (HF_ResolvedDA != null) HF_ResolvedDA.Value = policy.Resolved_DA.HasValue ? policy.Resolved_DA.Value.ToString("F2") : "200";
+            if (HF_OutstationDA != null) HF_OutstationDA.Value = policy.Resolved_OutstationDA.HasValue ? policy.Resolved_OutstationDA.Value.ToString("F2") : "350";
+            if (HF_OwnArrangementDA != null) HF_OwnArrangementDA.Value = policy.Resolved_OwnAllowance.HasValue ? policy.Resolved_OwnAllowance.Value.ToString("F2") : "750";
+            if (HF_ResolvedMaxKM != null) HF_ResolvedMaxKM.Value = policy.Resolved_MaxKM.HasValue ? policy.Resolved_MaxKM.Value.ToString("F2") : "0";
+            if (HF_ResolvedRatePerKm != null) HF_ResolvedRatePerKm.Value = policy.Resolved_RatePerKm.HasValue ? policy.Resolved_RatePerKm.Value.ToString("F2") : "0";
+
+            if (lblResolvedMaxKM != null) lblResolvedMaxKM.Text = policy.Resolved_MaxKM.HasValue ? policy.Resolved_MaxKM.Value.ToString("N2") : "0";
+            if (lblResolvedRatePerKm != null) lblResolvedRatePerKm.Text = policy.Resolved_RatePerKm.HasValue ? policy.Resolved_RatePerKm.Value.ToString("N2") : "0";
+            if (lblResolvedDA != null) lblResolvedDA.Text = policy.Resolved_DA.HasValue ? policy.Resolved_DA.Value.ToString("N2") : "0";
+            if (lblResolvedHotelCap != null) lblResolvedHotelCap.Text = policy.Resolved_HotelCap.HasValue ? policy.Resolved_HotelCap.Value.ToString("N2") : "0";
+        }
+
+        private void BindResolvedClaimLimitsToModal(PolicyResolved policy)
+        {
+            if (phClaimLimits == null) return;
+
+            phClaimLimits.Controls.Clear();
+            bool hasAny = false;
+            hasAny |= AddClaimLimitRowIfPresent("Rate per KM", FormatCurrency(policy.Resolved_RatePerKm));
+            hasAny |= AddClaimLimitRowIfPresent("Head Office DA", FormatCurrency(policy.Resolved_DA));
+            hasAny |= AddClaimLimitRowIfPresent("Outstation DA", FormatCurrency(policy.Resolved_OutstationDA));
+            hasAny |= AddClaimLimitRowIfPresent("Own Arrangement", FormatCurrency(policy.Resolved_OwnAllowance));
+            hasAny |= AddClaimLimitRowIfPresent("Hotel Limit", FormatCurrency(policy.Resolved_HotelCap, "/night"));
+            hasAny |= AddClaimLimitRowIfPresent("Monthly KM Limit", FormatKmLimit(policy.Resolved_MaxKM));
+
+            if (!hasAny)
+            {
+                phClaimLimits.Controls.Add(new Literal
+                {
+                    Text = "<div class=\"alert alert-light border text-muted small mb-0\">No resolved claim limits are available for this policy.</div>"
+                });
+            }
+        }
+
+        private bool AddClaimLimitRowIfPresent(string label, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+
+            phClaimLimits.Controls.Add(new Literal
+            {
+                Text = string.Format(
+                    "<div class=\"row py-2 border-bottom\"><div class=\"col-xs-6 col-sm-5 text-muted\">{0}</div><div class=\"col-xs-6 col-sm-7\"><strong>{1}</strong></div></div>",
+                    HttpUtility.HtmlEncode(label),
+                    HttpUtility.HtmlEncode(value))
+            });
+            return true;
+        }
+
+        private static string FormatCurrency(decimal? amount, string suffix = null)
+        {
+            if (!amount.HasValue) return null;
+            string formatted = string.Format(CultureInfo.GetCultureInfo("en-IN"), "₹{0:N2}", amount.Value);
+            return string.IsNullOrEmpty(suffix) ? formatted : formatted + suffix;
+        }
+
+        private static string FormatKmLimit(decimal? km)
+        {
+            if (!km.HasValue) return null;
+            return string.Format(CultureInfo.InvariantCulture, "{0:N0} KM", km.Value);
+        }
+
+        private void BindPolicyRemarks(PolicyResolved policy)
+        {
+            if (lblResolvedRemarks == null) return;
+
+            if (!string.IsNullOrWhiteSpace(policy.Resolved_Remarks))
+            {
+                lblResolvedRemarks.Text = HttpUtility.HtmlEncode(policy.Resolved_Remarks);
+                if (policyRemarksSection != null) policyRemarksSection.Visible = true;
+            }
+            else
+            {
+                lblResolvedRemarks.Text = string.Empty;
+                if (policyRemarksSection != null) policyRemarksSection.Visible = false;
+            }
         }
 
         private string GetNameFromMaster(string tableName, string idColumn, string textColumn, int? id)
