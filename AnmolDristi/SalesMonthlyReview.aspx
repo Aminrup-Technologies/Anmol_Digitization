@@ -843,6 +843,7 @@
                     <div class="modal-body">
                         <asp:HiddenField ID="hdnActivityId" runat="server" />
                         <asp:HiddenField ID="hdnOriginalKm" runat="server" />
+                        <asp:HiddenField ID="HF_KmSaveWorkflow" runat="server" Value="Manual" />
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="input-group">
@@ -2051,7 +2052,9 @@
             $('#<%=HF_RouteActivityId.ClientID%>').val(aid);
             document.getElementById('spMinKm').innerText = min || '—'; document.getElementById('spMaxKm').innerText = max || '—';
             $resolve('lblModalCurrentKm').text('Current: ' + cur + ' km');
-            $('#spClientKmError').hide(); $('#editKmModal').modal('show');
+            $('#spClientKmError').hide();
+            if (typeof initializeKmModalSessionClient === 'function') initializeKmModalSessionClient(aid, true);
+            $('#editKmModal').modal('show');
         };
 
         window.validateGridBeforeSubmit = function () {
@@ -2127,6 +2130,47 @@
         window.routeMarkers = [];
         window.routePolyline = null;
         window.totalRouteDistance = 0;
+        window._kmApplyingRoute = false;
+
+        var KmSaveWorkflowManual = 'Manual';
+        var KmSaveWorkflowRoute = 'Route';
+
+        window.clearKmRouteMetadataFields = function () {
+            $('#<%=HF_RouteOrigin.ClientID%>').val('');
+            $('#<%=HF_RouteDestination.ClientID%>').val('');
+            $('#<%=HF_RouteWaypoints.ClientID%>').val('');
+            $('#<%=HF_RouteDistance.ClientID%>').val('');
+            $('#<%=HF_RouteTravelMode.ClientID%>').val('');
+            $('#spRouteOrigin, #spRouteDestination, #spRouteDistance, #spWaypointCount').text('');
+            $('#routeSummaryPanel').hide();
+            window.waypoints = [];
+            window.totalRouteDistance = 0;
+        };
+
+        window.setKmSaveWorkflowManual = function (clearRouteMetadata) {
+            $('#<%=HF_KmSaveWorkflow.ClientID%>').val(KmSaveWorkflowManual);
+            if (clearRouteMetadata) clearKmRouteMetadataFields();
+            else $('#routeSummaryPanel').hide();
+        };
+
+        window.setKmSaveWorkflowRoute = function () {
+            $('#<%=HF_KmSaveWorkflow.ClientID%>').val(KmSaveWorkflowRoute);
+        };
+
+        window.initializeKmModalSessionClient = function (activityId, hideRouteSummary) {
+            var prevActivity = $('#<%=HF_RouteActivityId.ClientID%>').val();
+            if (activityId && prevActivity && prevActivity !== String(activityId)) {
+                clearKmRouteMetadataFields();
+            }
+            if (activityId) $('#<%=HF_RouteActivityId.ClientID%>').val(activityId);
+            setKmSaveWorkflowManual(false);
+            if (hideRouteSummary) $('#routeSummaryPanel').hide();
+        };
+
+        $(document).on('input', '#<%=txtModalKM.ClientID%>', function () {
+            if (window._kmApplyingRoute) return;
+            setKmSaveWorkflowManual(true);
+        });
 
         function initializeRouteMap() {
             if (window.routeMap) return;
@@ -2316,6 +2360,7 @@
         }
 
         function applyRouteData(route) {
+            window._kmApplyingRoute = true;
             $('#<%=txtModalKM.ClientID%>').val(route.TotalDistanceKM);
             $('#<%=TXT_DAFromPlace.ClientID%>').val(route.OriginName);
             $('#<%=TXT_DAToPlace.ClientID%>').val(route.DestinationName);
@@ -2324,12 +2369,16 @@
             $('#<%=HF_RouteWaypoints.ClientID%>').val(route.WaypointsJSON);
             $('#<%=HF_RouteDistance.ClientID%>').val(route.TotalDistanceKM);
             $('#<%=HF_RouteTravelMode.ClientID%>').val(route.TravelMode);
+            var activityId = $('#<%=hdnActivityId.ClientID%>').val();
+            if (activityId) $('#<%=HF_RouteActivityId.ClientID%>').val(activityId);
+            setKmSaveWorkflowRoute();
             $('#spRouteDistance').text(route.TotalDistanceKM);
             $('#spRouteOrigin').text(route.OriginName);
             $('#spRouteDestination').text(route.DestinationName);
             $('#spWaypointCount').text(JSON.parse(route.WaypointsJSON).length);
             $('#routeSummaryPanel').show();
             $('#routeDistanceModal').modal('hide');
+            window._kmApplyingRoute = false;
         }
 
         $(document).on('click', '#btnApplyRoute', function () {
