@@ -113,9 +113,68 @@
             border-radius: 4px;
         }
 
-            .badge i {
-                margin-right: 3px;
+        .badge i {
+            margin-right: 3px;
+        }
+
+        .auto-save-indicator {
+            min-height: 1.5rem;
+        }
+
+        .auto-save-indicator .save-flash {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .monthly-summary-card .summary-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.35rem 0;
+            border-bottom: 1px dashed #e9ecef;
+        }
+
+        .monthly-summary-card .summary-line:last-child {
+            border-bottom: none;
+            font-size: 1.05rem;
+        }
+
+        .progress-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+        }
+
+        .progress-summary-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 0.5rem 0.65rem;
+            text-align: center;
+        }
+
+        .progress-summary-item .count {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #1a355e;
+        }
+
+        .submission-confidence-panel .check-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.88rem;
+        }
+
+        .submission-confidence-panel .check-item:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 767px) {
+            .progress-summary-grid {
+                grid-template-columns: 1fr;
             }
+        }
 
         button.btn i.fa-spinner {
             margin-right: 6px;
@@ -539,6 +598,21 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <asp:Label ID="lbl_msg" runat="server" Text="" />
+                                    <asp:Panel ID="pnlAutoSaveIndicator" runat="server" Visible="false" CssClass="auto-save-indicator mt-1">
+                                        <span id="spAutoSaveIcon"><i class="fa fa-check-circle text-success"></i></span>
+                                        <span id="spAutoSaveFlash" class="save-flash" style="display:none;">Changes Saved</span>
+                                        <span id="spAutoSaveMessage">Last Saved</span>
+                                        <strong id="spAutoSaveTime"><asp:Literal ID="litLastSavedTime" runat="server" /></strong>
+                                    </asp:Panel>
+                                </div>
+                                <div class="col-md-6">
+                                    <asp:Panel ID="pnlSubmissionConfidence" runat="server" Visible="false" CssClass="submission-confidence-panel card border-success mb-0">
+                                        <div class="card-body py-2 px-3">
+                                            <div class="font-weight-bold text-success mb-1">Ready to Submit?</div>
+                                            <div class="text-muted small mb-2">Review</div>
+                                            <asp:PlaceHolder ID="phSubmissionConfidence" runat="server" />
+                                        </div>
+                                    </asp:Panel>
                                 </div>
                             </div>
 
@@ -737,6 +811,69 @@
 
 
                         <div class="x_content">
+
+                            <div class="row mb-3">
+                                <div class="col-lg-7 mb-3 mb-lg-0">
+                                    <asp:Panel ID="pnlEnhancedMonthlySummary" runat="server" Visible="false" CssClass="card monthly-summary-card border-primary h-100">
+                                        <div class="card-header py-2 bg-white">
+                                            <strong class="text-primary">Monthly Claim Summary</strong>
+                                        </div>
+                                        <div class="card-body py-2">
+                                            <div class="summary-line">
+                                                <span>Travel</span>
+                                                <strong><asp:Label ID="lblSummaryTravel" runat="server" Text="₹ 0.00" /></strong>
+                                            </div>
+                                            <div class="summary-line">
+                                                <span>Daily Allowance</span>
+                                                <strong><asp:Label ID="lblSummaryDA" runat="server" Text="₹ 0.00" /></strong>
+                                            </div>
+                                            <div class="summary-line">
+                                                <span>Hotel</span>
+                                                <strong><asp:Label ID="lblSummaryHotel" runat="server" Text="₹ 0.00" /></strong>
+                                            </div>
+                                            <div class="summary-line">
+                                                <span>Other Expenses</span>
+                                                <strong><asp:Label ID="lblSummaryOther" runat="server" Text="₹ 0.00" /></strong>
+                                            </div>
+                                            <div class="summary-line font-weight-bold text-primary">
+                                                <span>Grand Total</span>
+                                                <strong><asp:Label ID="lblSummaryGrandTotal" runat="server" Text="₹ 0.00" /></strong>
+                                            </div>
+                                        </div>
+                                    </asp:Panel>
+                                </div>
+                                <div class="col-lg-5">
+                                    <asp:Panel ID="pnlProgressSummary" runat="server" Visible="false" CssClass="card border-light h-100">
+                                        <div class="card-header py-2 bg-white">
+                                            <strong>Progress Summary</strong>
+                                        </div>
+                                        <div class="card-body py-2">
+                                            <div class="progress-summary-grid">
+                                                <div class="progress-summary-item">
+                                                    <div class="small text-muted">Working Days</div>
+                                                    <div class="count"><asp:Label ID="lblProgressWorkingDays" runat="server" Text="0" /></div>
+                                                </div>
+                                                <div class="progress-summary-item">
+                                                    <div class="small text-muted">Completed</div>
+                                                    <div class="count text-success"><asp:Label ID="lblProgressCompleted" runat="server" Text="0" /></div>
+                                                </div>
+                                                <div class="progress-summary-item">
+                                                    <div class="small text-muted">Draft</div>
+                                                    <div class="count text-warning"><asp:Label ID="lblProgressDraft" runat="server" Text="0" /></div>
+                                                </div>
+                                                <div class="progress-summary-item">
+                                                    <div class="small text-muted">Returned</div>
+                                                    <div class="count text-danger"><asp:Label ID="lblProgressReturned" runat="server" Text="0" /></div>
+                                                </div>
+                                                <div class="progress-summary-item" style="grid-column: span 2;">
+                                                    <div class="small text-muted">Submitted</div>
+                                                    <div class="count text-info"><asp:Label ID="lblProgressSubmitted" runat="server" Text="0" /></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </asp:Panel>
+                                </div>
+                            </div>
 
                             <div class="row">
 
@@ -2239,6 +2376,52 @@
 
         // Deprecated: handleSaveDraftClick — Save as Draft button removed (auto-save model).
         // window.handleSaveDraftClick = function (btn) { btn.disabled = true; btn.value = "Saving..."; showPageLoader(); return true; };
+        window.showAutoSaveIndicator = function (timeLabel, saved, saving) {
+            var $panel = $('#<%= pnlAutoSaveIndicator.ClientID %>');
+            if (!$panel.length) return;
+
+            $panel.show();
+            var $flash = $('#spAutoSaveFlash');
+            var $message = $('#spAutoSaveMessage');
+            var $time = $('#spAutoSaveTime');
+            var $icon = $('#spAutoSaveIcon i');
+
+            if (saving) {
+                if ($icon.length) $icon.attr('class', 'fa fa-spinner fa-spin text-primary');
+                $flash.hide();
+                $message.text('Saving...');
+                $time.text('');
+                return;
+            }
+
+            if ($icon.length) $icon.attr('class', 'fa fa-check-circle text-success');
+            if (saved) {
+                $flash.stop(true, true).show();
+                $message.text('Last Saved');
+                if (timeLabel) $time.text(timeLabel);
+                setTimeout(function () { $flash.fadeOut(250); }, 2500);
+            }
+        };
+
+        window.markAutoSaveInProgress = function () {
+            if (typeof showAutoSaveIndicator === 'function') showAutoSaveIndicator(null, false, true);
+        };
+
+        $(document).on('click', '[id$="btnSaveKm"], [id$="BTN_SaveExpense"], a[id*="lnkUpdate"]', function () {
+            markAutoSaveInProgress();
+        });
+
+        if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+            Sys.WebForms.PageRequestManager.getInstance().add_beginRequest(function (sender, args) {
+                var el = args.get_postBackElement();
+                if (!el) return;
+                var id = (el.id || '').toLowerCase();
+                if (id.indexOf('btnsavekm') >= 0 || id.indexOf('btn_saveexpense') >= 0 || id.indexOf('lnkupdate') >= 0) {
+                    markAutoSaveInProgress();
+                }
+            });
+        }
+
         window.showPageLoader = function () { var e = document.getElementById("pageLoader"); if (e) e.style.display = "block"; };
         window.hidePageLoader = function () { var e = document.getElementById("pageLoader"); if (e) e.style.display = "none"; };
 

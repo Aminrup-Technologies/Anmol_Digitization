@@ -387,6 +387,8 @@ namespace AnmolDristi
                 // btn_save_draft.Enabled = !monthLocked || allowSubmission;
                 btn_submit.Enabled = allowSubmission;
 
+                BindMonthlyConfidenceUx(dt, monthLocked, allowSubmission, allowExecution, grandCalc, grandDA, grandHotel, grandTravel, grandStationary);
+
                 if (monthLocked && !allowSubmission)
                 {
                     lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for returned days awaiting your correction.";
@@ -1175,6 +1177,7 @@ namespace AnmolDristi
                 gvActivities.EditIndex = -1;
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false);
+                NotifyDraftChangeSaved();
                 lbl_msg.ForeColor = System.Drawing.Color.Green;
                 lbl_msg.Text = "KM updated.";
             }
@@ -1550,6 +1553,7 @@ namespace AnmolDristi
 
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false);
+                NotifyDraftChangeSaved();
                 BindKmHistory(activityId);
                 if (txtKmReason != null) txtKmReason.Text = string.Empty;
 
@@ -1954,6 +1958,7 @@ namespace AnmolDristi
                 gvActivities.EditIndex = -1;
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false, false);
+                NotifyDraftChangeSaved();
 
                 if (lbl_msg != null)
                 {
@@ -2018,6 +2023,7 @@ namespace AnmolDristi
             DataTable dtAfter = LoadExpenseForActivity(activityId.ToString());
             Session.Remove(GetCurrentSessionKey());
             BindGrid(false);
+            NotifyDraftChangeSaved();
 
             if (LBL_ExpenseMsg != null)
             {
@@ -3235,6 +3241,7 @@ namespace AnmolDristi
                                 DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
                                 Session.Remove(GetCurrentSessionKey());
                                 BindGrid(false);
+                                NotifyDraftChangeSaved();
 
                                 string currentMode = "";
                                 if (dtAfterDel != null && dtAfterDel.Rows.Count > 0 && dtAfterDel.Columns.Contains("PolicyMode") && dtAfterDel.Rows[0]["PolicyMode"] != DBNull.Value)
@@ -3442,6 +3449,7 @@ namespace AnmolDristi
                                 DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
                                 Session.Remove(GetCurrentSessionKey());
                                 BindGrid(false);
+                                NotifyDraftChangeSaved();
 
                                 string currentMode = "";
                                 if (dtAfterDel != null && dtAfterDel.Rows.Count > 0 && dtAfterDel.Columns.Contains("PolicyMode") && dtAfterDel.Rows[0]["PolicyMode"] != DBNull.Value)
@@ -4115,6 +4123,196 @@ namespace AnmolDristi
             catch (Exception ex)
             {
                 HandleSubmitException(ex);
+            }
+        }
+
+        private sealed class ActivityProgressCounts
+        {
+            public int WorkingDays { get; set; }
+            public int Completed { get; set; }
+            public int Draft { get; set; }
+            public int Returned { get; set; }
+            public int Submitted { get; set; }
+        }
+
+        private string GetLastSavedSessionKey()
+        {
+            return string.Format("SO_LastDraftSave_{0}_{1}_{2}", GetCurrentUserLoginId(), DDL_Year.SelectedValue, DDL_Month.SelectedValue);
+        }
+
+        private DateTime? GetLastDraftSaveTime()
+        {
+            object stored = Session[GetLastSavedSessionKey()];
+            return stored is DateTime ? (DateTime?)stored : null;
+        }
+
+        private void NotifyDraftChangeSaved()
+        {
+            DateTime savedAt = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.UtcNow,
+                TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"));
+            Session[GetLastSavedSessionKey()] = savedAt;
+
+            string timeLabel = savedAt.ToString("h:mm tt");
+            string script = string.Format(
+                "if (typeof showAutoSaveIndicator === 'function') showAutoSaveIndicator('{0}', true, false);",
+                timeLabel.Replace("'", "\\'"));
+            ScriptManager.RegisterStartupScript(this, GetType(), "autoSave_" + Guid.NewGuid().ToString("N"), script, true);
+        }
+
+        private static ActivityProgressCounts CountActivityProgress(DataTable dt)
+        {
+            var counts = new ActivityProgressCounts();
+            if (dt == null) return counts;
+
+            counts.WorkingDays = dt.Rows.Count;
+            foreach (DataRow row in dt.Rows)
+            {
+                string claimStatus = row.Table.Columns.Contains("ClaimStatus") && row["ClaimStatus"] != DBNull.Value
+                    ? row["ClaimStatus"].ToString().Trim()
+                    : string.Empty;
+                string detailStatus = row.Table.Columns.Contains("DetailStatus") && row["DetailStatus"] != DBNull.Value
+                    ? row["DetailStatus"].ToString().Trim()
+                    : string.Empty;
+                bool isEditable = row.Table.Columns.Contains("IsEditable")
+                    && row["IsEditable"] != DBNull.Value
+                    && Convert.ToBoolean(row["IsEditable"]);
+
+                string effectiveStatus = ClaimEditabilityHelper.ResolveEffectiveRowStatus(claimStatus, detailStatus, isEditable);
+
+                if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Draft))
+                    counts.Draft++;
+                else if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Returned))
+                    counts.Returned++;
+                else if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Submitted)
+                    || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending))
+                    counts.Submitted++;
+                else if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Approved)
+                    || ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Processed))
+                    counts.Completed++;
+                else
+                    counts.Submitted++;
+            }
+
+            return counts;
+        }
+
+        private void BindAutoSaveIndicator(DataTable dt)
+        {
+            if (pnlAutoSaveIndicator == null) return;
+
+            ActivityProgressCounts progress = CountActivityProgress(dt);
+            DateTime? lastSaved = GetLastDraftSaveTime();
+            bool showIndicator = progress.Draft > 0;
+
+            pnlAutoSaveIndicator.Visible = showIndicator;
+            if (!showIndicator) return;
+
+            if (litLastSavedTime != null)
+                litLastSavedTime.Text = lastSaved.HasValue ? lastSaved.Value.ToString("h:mm tt") : string.Empty;
+        }
+
+        private void BindEnhancedMonthlySummary(decimal grandTravel, decimal grandDA, decimal grandHotel, decimal grandOtherExpenses, decimal grandTotal)
+        {
+            if (pnlEnhancedMonthlySummary == null) return;
+
+            pnlEnhancedMonthlySummary.Visible = true;
+            if (lblSummaryTravel != null) lblSummaryTravel.Text = "₹ " + grandTravel.ToString("N2");
+            if (lblSummaryDA != null) lblSummaryDA.Text = "₹ " + grandDA.ToString("N2");
+            if (lblSummaryHotel != null) lblSummaryHotel.Text = "₹ " + grandHotel.ToString("N2");
+            if (lblSummaryOther != null) lblSummaryOther.Text = "₹ " + grandOtherExpenses.ToString("N2");
+            if (lblSummaryGrandTotal != null) lblSummaryGrandTotal.Text = "₹ " + grandTotal.ToString("N2");
+        }
+
+        private void BindProgressSummary(DataTable dt)
+        {
+            if (pnlProgressSummary == null) return;
+
+            ActivityProgressCounts progress = CountActivityProgress(dt);
+            bool hasActivities = dt != null && dt.Rows.Count > 0;
+            pnlProgressSummary.Visible = hasActivities;
+
+            if (!hasActivities) return;
+
+            if (lblProgressWorkingDays != null) lblProgressWorkingDays.Text = progress.WorkingDays.ToString();
+            if (lblProgressCompleted != null) lblProgressCompleted.Text = progress.Completed.ToString();
+            if (lblProgressDraft != null) lblProgressDraft.Text = progress.Draft.ToString();
+            if (lblProgressReturned != null) lblProgressReturned.Text = progress.Returned.ToString();
+            if (lblProgressSubmitted != null) lblProgressSubmitted.Text = progress.Submitted.ToString();
+        }
+
+        private void BindSubmissionConfidencePanel(DataTable dt, bool monthLocked, bool allowSubmission, bool allowExecution)
+        {
+            if (pnlSubmissionConfidence == null || phSubmissionConfidence == null) return;
+
+            bool hasActivities = dt != null && dt.Rows.Count > 0;
+            ActivityProgressCounts progress = CountActivityProgress(dt);
+
+            bool allActivitiesCompleted = hasActivities && progress.Draft == 0;
+            bool expensesReviewed = hasActivities && progress.Returned == 0;
+            bool policyLimitsSatisfied = allowExecution;
+            bool noReturnedActivities = progress.Returned == 0;
+
+            bool showPanel = hasActivities && (Actionable == null || Actionable.Visible);
+            pnlSubmissionConfidence.Visible = showPanel;
+
+            if (!showPanel)
+            {
+                phSubmissionConfidence.Controls.Clear();
+                return;
+            }
+
+            var items = new List<Tuple<string, bool>>
+            {
+                Tuple.Create("All activities completed", allActivitiesCompleted),
+                Tuple.Create("Expenses reviewed", expensesReviewed),
+                Tuple.Create("Policy limits satisfied", policyLimitsSatisfied),
+                Tuple.Create("No Returned activities", noReturnedActivities)
+            };
+
+            phSubmissionConfidence.Controls.Clear();
+            foreach (var item in items)
+            {
+                string iconClass = item.Item2 ? "fa-check-circle text-success" : "fa-times-circle text-muted";
+                phSubmissionConfidence.Controls.Add(new Literal
+                {
+                    Text = string.Format(
+                        "<div class=\"check-item\"><i class=\"fa {0}\"></i><span>{1}</span></div>",
+                        iconClass,
+                        HttpUtility.HtmlEncode(item.Item2 ? item.Item1 : item.Item1 + " — pending"))
+                });
+            }
+
+            if (!allowSubmission && monthLocked && progress.Returned > 0)
+            {
+                phSubmissionConfidence.Controls.Add(new Literal
+                {
+                    Text = "<div class=\"small text-warning mt-2 mb-0\"><i class=\"fa fa-info-circle\"></i> Correct returned days before resubmitting.</div>"
+                });
+            }
+        }
+
+        private void BindMonthlyConfidenceUx(DataTable dt, bool monthLocked, bool allowSubmission, bool allowExecution,
+            decimal grandTravel, decimal grandDA, decimal grandHotel, decimal grandTravelExpenses, decimal grandStationary)
+        {
+            decimal grandOther = grandTravelExpenses + grandStationary;
+            decimal grandTotal = grandTravel + grandDA + grandHotel + grandOther;
+
+            BindEnhancedMonthlySummary(grandTravel, grandDA, grandHotel, grandOther, grandTotal);
+            BindProgressSummary(dt);
+            BindSubmissionConfidencePanel(dt, monthLocked, allowSubmission, allowExecution);
+            BindAutoSaveIndicator(dt);
+
+            DateTime? lastSaved = GetLastDraftSaveTime();
+            if (lastSaved.HasValue && pnlAutoSaveIndicator != null && pnlAutoSaveIndicator.Visible)
+            {
+                string timeLabel = lastSaved.Value.ToString("h:mm tt");
+                ScriptManager.RegisterStartupScript(
+                    this,
+                    GetType(),
+                    "restoreAutoSave_" + Guid.NewGuid().ToString("N"),
+                    string.Format("if (typeof showAutoSaveIndicator === 'function') showAutoSaveIndicator('{0}', true, false);", timeLabel.Replace("'", "\\'")),
+                    true);
             }
         }
 
