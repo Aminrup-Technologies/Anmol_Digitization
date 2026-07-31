@@ -438,6 +438,9 @@
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
+    <None Include="Web.UAT.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
     <None Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -1545,6 +1548,7 @@
     <Compile Include="viewusers.aspx.designer.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>
     </Compile>
+    <Compile Include="VmsHelper.cs" />
     <Compile Include="VMS_AdminPending.aspx.cs">
       <DependentUpon>VMS_AdminPending.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
