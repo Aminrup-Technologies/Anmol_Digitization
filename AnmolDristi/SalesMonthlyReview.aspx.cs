@@ -330,8 +330,10 @@ namespace AnmolDristi
                 }
                 ViewState["MonthLocked"] = monthLocked;
                 ViewState["AllowSubmission"] = allowSubmission;
+                ViewState["PolicyWindowOpen"] = allowExecution;
 
                 PopulateStatusSummary(dt);
+                BindSubmissionChecklist(dt, allowSubmission, monthLocked, allowExecution);
                 Summary.Visible = true;
                 Activities.Visible = true;
                 gvActivities.DataSource = dt;
@@ -1513,33 +1515,165 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
         private void ConfigureKmModalDisplay(int activityId, decimal currentKm, EmployeeKmToleranceConfig tolerance)
         {
+            decimal originalKm = currentKm;
+            if (hdnOriginalKm != null && !string.IsNullOrWhiteSpace(hdnOriginalKm.Value))
+            {
+                decimal parsedOriginal;
+                if (decimal.TryParse(hdnOriginalKm.Value.Trim(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out parsedOriginal))
+                    originalKm = parsedOriginal;
+            }
+
+            BindKmPolicyInformation(activityId, originalKm, currentKm, tolerance);
+
             int usedCount = GetKmModificationCount(activityId);
+            bool canSave = usedCount < tolerance.MaxModificationCount;
+            if (btnSaveKm != null) btnSaveKm.Enabled = canSave;
+
             decimal? allowedMin;
             decimal? allowedMax;
             KmToleranceHelper.ComputeAllowedRange(currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance, out allowedMin, out allowedMax);
-
             string minText = allowedMin.HasValue ? allowedMin.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
             string maxText = allowedMax.HasValue ? allowedMax.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
-            string remaining = KmToleranceHelper.FormatRemaining(usedCount, tolerance.MaxModificationCount);
-            bool canSave = usedCount < tolerance.MaxModificationCount;
-
-            if (lblModalCurrentKm != null) lblModalCurrentKm.Text = currentKm.ToString("0.##", CultureInfo.InvariantCulture) + " km";
-            if (lblKmModLimit != null) lblKmModLimit.Text = tolerance.MaxModificationCount.ToString();
-            if (lblKmModRemaining != null) lblKmModRemaining.Text = remaining;
-            if (btnSaveKm != null) btnSaveKm.Enabled = canSave;
 
             string script = string.Format(
-                "setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').text('{3}'); $('#{4}').text('{5}'); $('#{6}').prop('disabled', {7}); }}, 150);",
+                "setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').prop('disabled', {3}); }}, 150);",
                 minText.Replace("'", "\\'"),
                 maxText.Replace("'", "\\'"),
-                lblKmModLimit != null ? lblKmModLimit.ClientID : string.Empty,
-                tolerance.MaxModificationCount,
-                lblKmModRemaining != null ? lblKmModRemaining.ClientID : string.Empty,
-                remaining.Replace("'", "\\'"),
                 btnSaveKm != null ? btnSaveKm.ClientID : string.Empty,
                 canSave ? "false" : "true");
 
             ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+        }
+
+        private void BindKmPolicyInformation(int activityId, decimal originalKm, decimal currentKm, EmployeeKmToleranceConfig tolerance)
+        {
+            decimal? allowedMin;
+            decimal? allowedMax;
+            KmToleranceHelper.ComputeAllowedRange(currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance, out allowedMin, out allowedMax);
+
+            int usedCount = GetKmModificationCount(activityId);
+            string remaining = KmToleranceHelper.FormatRemaining(usedCount, tolerance.MaxModificationCount);
+            bool hasPolicyInfo = allowedMin.HasValue || allowedMax.HasValue || tolerance.MaxModificationCount > 0;
+
+            if (pnlKmPolicyInfo != null)
+                pnlKmPolicyInfo.Visible = hasPolicyInfo;
+
+            if (lblModalOriginalKm != null)
+                lblModalOriginalKm.Text = originalKm.ToString("0.##", CultureInfo.InvariantCulture) + " km";
+            if (lblModalCurrentKm != null)
+                lblModalCurrentKm.Text = currentKm.ToString("0.##", CultureInfo.InvariantCulture) + " km";
+            if (lblModalAllowedRange != null)
+                lblModalAllowedRange.Text = hasPolicyInfo
+                    ? KmToleranceHelper.FormatRange(allowedMin, allowedMax) + " km"
+                    : "—";
+            if (lblKmModLimit != null)
+                lblKmModLimit.Text = tolerance.MaxModificationCount.ToString();
+            if (lblKmModRemaining != null)
+                lblKmModRemaining.Text = remaining;
+        }
+
+        private void BindSubmissionChecklist(DataTable dt, bool allowSubmission, bool monthLocked, bool policyWindowOpen)
+        {
+            if (pnlSubmissionChecklist == null || phSubmissionChecklist == null) return;
+
+            bool hasActivities = dt != null && dt.Rows.Count > 0;
+            bool policyEnabled = Convert.ToBoolean(ConfigurationManager.AppSettings["EnablePreviousMonthPolicy"]);
+            bool submissionWindowOpen = !policyEnabled || policyWindowOpen;
+
+            int draftCount = 0;
+            int returnedCorrectionCount = 0;
+
+            if (hasActivities)
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    string claimStatus = row.Table.Columns.Contains("ClaimStatus") && row["ClaimStatus"] != DBNull.Value
+                        ? row["ClaimStatus"].ToString().Trim()
+                        : string.Empty;
+                    string detailStatus = row.Table.Columns.Contains("DetailStatus") && row["DetailStatus"] != DBNull.Value
+                        ? row["DetailStatus"].ToString().Trim()
+                        : string.Empty;
+                    bool isEditable = row.Table.Columns.Contains("IsEditable")
+                        && row["IsEditable"] != DBNull.Value
+                        && Convert.ToBoolean(row["IsEditable"]);
+
+                    if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
+                        draftCount++;
+
+                    if (isEditable && (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned)))
+                        returnedCorrectionCount++;
+                }
+            }
+
+            bool activitiesReady = hasActivities;
+            bool approvalGateOpen = !monthLocked || allowSubmission;
+            bool submitReady = allowSubmission;
+
+            var items = new List<Tuple<string, bool, string>>();
+            items.Add(Tuple.Create(
+                activitiesReady ? "Daily activities loaded" : "Load daily activities for the selected month",
+                activitiesReady,
+                hasActivities ? string.Format("{0} working day(s) found", dt.Rows.Count) : "Click Search to load activities"));
+
+            items.Add(Tuple.Create(
+                submissionWindowOpen ? "Submission window is open" : "Submission window is closed",
+                submissionWindowOpen,
+                policyEnabled ? "Allowed between 1st and 15th for the previous month" : "Monthly processing policy is disabled"));
+
+            if (monthLocked && allowSubmission && returnedCorrectionCount > 0)
+            {
+                items.Add(Tuple.Create(
+                    string.Format("{0} returned day(s) awaiting correction", returnedCorrectionCount),
+                    false,
+                    "Edit highlighted rows and resubmit when ready"));
+            }
+            else if (monthLocked && !allowSubmission)
+            {
+                items.Add(Tuple.Create(
+                    "Monthly claim is with approvers",
+                    false,
+                    "Editing is disabled until approver action"));
+            }
+            else
+            {
+                items.Add(Tuple.Create(
+                    "No approval lock blocking submission",
+                    approvalGateOpen,
+                    approvalGateOpen ? "You may submit or continue editing" : "Submission is currently blocked"));
+            }
+
+            if (draftCount > 0 && !monthLocked)
+            {
+                items.Add(Tuple.Create(
+                    string.Format("{0} day(s) still in Draft", draftCount),
+                    true,
+                    "Draft days will be included when you submit"));
+            }
+
+            items.Add(Tuple.Create(
+                submitReady ? "Ready to submit for approval" : "Submit for approval is not available yet",
+                submitReady,
+                submitReady ? "Use the Submit for Approval button when you are done" : "Resolve the items above before submitting"));
+
+            phSubmissionChecklist.Controls.Clear();
+            foreach (var item in items)
+            {
+                string iconClass = item.Item2 ? "check-pass" : "check-fail";
+                string icon = item.Item2 ? "✓" : "✗";
+                string detail = string.IsNullOrWhiteSpace(item.Item3) ? string.Empty : string.Format(" <span class=\"text-muted\">— {0}</span>", HttpUtility.HtmlEncode(item.Item3));
+
+                phSubmissionChecklist.Controls.Add(new Literal
+                {
+                    Text = string.Format(
+                        "<div class=\"check-item\"><span class=\"check-icon {0}\">{1}</span><span><strong>{2}</strong>{3}</span></div>",
+                        iconClass,
+                        icon,
+                        HttpUtility.HtmlEncode(item.Item1),
+                        detail)
+                });
+            }
+
+            pnlSubmissionChecklist.Visible = hasActivities;
         }
 
         private bool TryValidateKmModification(

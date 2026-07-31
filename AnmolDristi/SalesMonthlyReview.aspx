@@ -456,6 +456,77 @@
                 max-width: 20%;
             }
         }
+
+        .claim-workflow-banner {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+
+        .claim-workflow-banner .workflow-title {
+            font-weight: 600;
+            color: #004085;
+            margin-bottom: 10px;
+        }
+
+        .claim-workflow-steps {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 10px;
+            font-size: 0.85rem;
+            color: #495057;
+        }
+
+        .claim-workflow-steps .step {
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 16px;
+            padding: 4px 10px;
+            white-space: nowrap;
+        }
+
+        .claim-workflow-steps .arrow {
+            color: #6c757d;
+            font-weight: bold;
+        }
+
+        .submission-checklist .check-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+        }
+
+        .submission-checklist .check-icon {
+            width: 1.25rem;
+            flex-shrink: 0;
+            font-weight: bold;
+        }
+
+        .submission-checklist .check-pass { color: #28a745; }
+        .submission-checklist .check-fail { color: #dc3545; }
+
+        .km-policy-panel .policy-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        .km-policy-panel .policy-label {
+            color: #6c757d;
+        }
+
+        @media (max-width: 767px) {
+            .claim-workflow-steps .arrow {
+                display: none;
+            }
+            .claim-workflow-steps .step {
+                width: 100%;
+            }
+        }
     </style>
 </asp:Content>
 
@@ -474,6 +545,21 @@
                         </div>
 
                         <div class="x_content">
+                            <asp:Panel ID="pnlWorkflowBanner" runat="server" CssClass="claim-workflow-banner" Visible="true">
+                                <div class="workflow-title">Monthly Claim Submission Process</div>
+                                <div class="claim-workflow-steps">
+                                    <span class="step">① Review Daily Activities</span>
+                                    <span class="arrow">↓</span>
+                                    <span class="step">② Update Travel / KM</span>
+                                    <span class="arrow">↓</span>
+                                    <span class="step">③ Add Expenses</span>
+                                    <span class="arrow">↓</span>
+                                    <span class="step">④ Review Monthly Summary</span>
+                                    <span class="arrow">↓</span>
+                                    <span class="step">⑤ Submit Monthly Claim</span>
+                                </div>
+                            </asp:Panel>
+
                             <div class="row">
                                 <div class="col-md-3">
                                     <div class="form-group">
@@ -679,6 +765,11 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <asp:Panel ID="pnlSubmissionChecklist" runat="server" Visible="false" CssClass="submission-checklist alert alert-light border mt-3 mb-0">
+                                <div class="font-weight-bold text-primary mb-2">Submission Readiness</div>
+                                <asp:PlaceHolder ID="phSubmissionChecklist" runat="server" />
+                            </asp:Panel>
                         </div>
                     </div>
                 </div>
@@ -844,6 +935,30 @@
                         <asp:HiddenField ID="hdnActivityId" runat="server" />
                         <asp:HiddenField ID="hdnOriginalKm" runat="server" />
                         <asp:HiddenField ID="HF_KmSaveWorkflow" runat="server" Value="Manual" />
+
+                        <asp:Panel ID="pnlKmPolicyInfo" runat="server" CssClass="km-policy-panel alert alert-info border mb-3">
+                            <div class="font-weight-bold text-primary mb-2">KM Policy Information</div>
+                            <div class="policy-row">
+                                <span class="policy-label">Original KM</span>
+                                <strong><asp:Label ID="lblModalOriginalKm" runat="server" Text="—" /></strong>
+                            </div>
+                            <div class="policy-row">
+                                <span class="policy-label">Current KM</span>
+                                <strong><asp:Label ID="lblModalCurrentKm" runat="server" Text="—" /></strong>
+                            </div>
+                            <div class="policy-row">
+                                <span class="policy-label">Allowed Range</span>
+                                <strong><asp:Label ID="lblModalAllowedRange" runat="server" Text="—" /></strong>
+                            </div>
+                            <div class="policy-row">
+                                <span class="policy-label">Remaining Changes</span>
+                                <strong><asp:Label ID="lblKmModRemaining" runat="server" Text="—" /></strong>
+                            </div>
+                            <asp:Label ID="lblKmModLimit" runat="server" Visible="false" />
+                            <span id="spMinKm" style="display:none;">—</span>
+                            <span id="spMaxKm" style="display:none;">—</span>
+                        </asp:Panel>
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="input-group">
@@ -872,12 +987,6 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <div class="alert alert-light border small mb-2">
-                                        <div><strong>Current KM:</strong> <asp:Label ID="lblModalCurrentKm" runat="server" CssClass="text-dark"></asp:Label></div>
-                                        <div><strong>Allowed Range:</strong> <span id="spMinKm">—</span> – <span id="spMaxKm">—</span> km</div>
-                                        <div><strong>Modification Limit:</strong> <asp:Label ID="lblKmModLimit" runat="server" Text="1"></asp:Label></div>
-                                        <div><strong>Remaining:</strong> <asp:Label ID="lblKmModRemaining" runat="server" Text="1 of 1"></asp:Label></div>
-                                    </div>
                                     <span id="spClientKmError" class="text-danger small" style="display:none;"></span>
                                 </div>
 
@@ -1171,6 +1280,13 @@
                                     <small class="text-danger font-weight-bold mt-1 d-block" id="txtExpenseTypeHint" style="display: none;">
                                         <i class="fa fa-info-circle"></i>Restricted by selected Policy Mode.
                                     </small>
+                                </div>
+                                <div class="col-md-7">
+                                    <div id="divExpensePolicyLimit" class="alert alert-light border small mb-0 h-100">
+                                        <div class="font-weight-bold text-muted mb-1">Applicable Policy Limit</div>
+                                        <div id="spExpensePolicyTitle" class="text-primary font-weight-bold">Select an expense type</div>
+                                        <div id="spExpensePolicyDetail" class="text-dark">Resolved policy limits will appear here.</div>
+                                    </div>
                                 </div>
                             </div>
                             <div id="divDASection" runat="server" class="row">
@@ -1717,6 +1833,8 @@
             if (sh) sh.innerText = hcVal;
             if (sn) sn.innerHTML = '';
 
+            if (typeof updateExpensePolicyLimit === 'function') updateExpensePolicyLimit();
+
             var existingDA = false;
             var existingStationary = false;
             var totalExpenses = 0;
@@ -1857,6 +1975,41 @@
         function safeShow($el) { if ($el && $el.length) $el.show(); }
         function safeHide($el) { if ($el && $el.length) $el.hide(); }
 
+        function updateExpensePolicyLimit() {
+            var $ddl = $resolve('DDL_ExpenseType');
+            var type = $ddl.length ? $ddl.val() : '';
+            var title = document.getElementById('spExpensePolicyTitle');
+            var detail = document.getElementById('spExpensePolicyDetail');
+            if (!title || !detail) return;
+
+            var mode = ($resolve('HF_ResolvedPolicyMode').val() || 'HQ');
+            var fmt = function (v) { return (v && v !== '0') ? ('₹ ' + parseFloat(v).toFixed(2)) : '—'; };
+
+            if (type === 'Travel') {
+                title.innerText = 'Travel';
+                var rate = $resolve('HF_ResolvedRatePerKm').val();
+                var fixed = $resolve('HF_FixedTravelAllowance').val();
+                var parts = ['Rate per KM: ' + fmt(rate)];
+                if (fixed && parseFloat(fixed) > 0) parts.push('Fixed travel allowance: ' + fmt(fixed) + ' (when travelled KM > 0)');
+                detail.innerText = parts.join(' | ');
+            } else if (type === 'Hotel') {
+                title.innerText = 'Hotel';
+                detail.innerText = 'Maximum hotel limit: ' + fmt($resolve('HF_ResolvedHotelCap').val()) + ' per night';
+            } else if (type === 'DA') {
+                title.innerText = 'Daily Allowance';
+                var daVal = $resolve('HF_ResolvedDA').val();
+                if (mode === 'Outstation') daVal = $resolve('HF_OutstationDA').val() || daVal;
+                else if (mode === 'OwnArrangement') daVal = $resolve('HF_OwnArrangementDA').val() || daVal;
+                detail.innerText = 'Daily allowance (' + mode + '): ' + fmt(daVal);
+            } else if (type === 'Stationary') {
+                title.innerText = 'Stationary';
+                detail.innerText = 'No specific policy cap configured for stationary expenses.';
+            } else {
+                title.innerText = 'Select an expense type';
+                detail.innerText = 'Resolved policy limits will appear here.';
+            }
+        }
+
         function updateVisibility() {
             var $ddl = $resolve('DDL_ExpenseType');
             var type = $ddl.length ? $ddl.val() : null;
@@ -1911,6 +2064,8 @@
                 safeShow($fu);
                 $fuInput.prop('disabled', false); // ⬅️ 3. Re-enable only when needed
             }
+
+            updateExpensePolicyLimit();
         }
 
         function updateAutoDADisplay() {
@@ -2067,10 +2222,13 @@
 
         window.openEditKmModal = function (aid, cur, min, max, modLimit, modRemaining) {
             $resolve('hdnActivityId').val(aid); $resolve('txtModalKM').val(cur);
+            $resolve('hdnOriginalKm').val(cur);
             $('#<%=HF_RouteActivityId.ClientID%>').val(aid);
             document.getElementById('spMinKm').innerText = min || '—';
             document.getElementById('spMaxKm').innerText = max || '—';
-            $resolve('lblModalCurrentKm').text(cur + ' km');
+            $resolve('lblModalOriginalKm').text((cur || '—') + ' km');
+            $resolve('lblModalCurrentKm').text((cur || '—') + ' km');
+            if (min && max) $resolve('lblModalAllowedRange').text(min + ' – ' + max + ' km');
             if (modLimit) $resolve('lblKmModLimit').text(modLimit);
             if (modRemaining) $resolve('lblKmModRemaining').text(modRemaining);
             var canSave = !modRemaining || modRemaining.indexOf('0 of') !== 0;
