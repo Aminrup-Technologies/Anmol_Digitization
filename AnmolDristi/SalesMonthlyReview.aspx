@@ -493,7 +493,10 @@
 
                                 <div id="Actionable" runat="server" visible="false" class="col-md-3 text-right align-self-end">
                                     <button type="button" id="btnViewPolicyAgain" class="btn btn-info btn-sm mb-3" onclick="$('#policyModal').modal('show');"><i class="fa fa-info-circle"></i>View Policy</button>
+                                    <%-- Deprecated: Save as Draft removed — application now auto-saves edits immediately.
+                                         Draft is a workflow status only, maintained until Submit Claim.
                                     <asp:Button ID="btn_save_draft" runat="server" CssClass="btn btn-secondary btn-sm mb-3" Text="Save as Draft" OnClick="btn_save_draft_Click" />
+                                    --%>
                                     <asp:Button ID="btn_submit" runat="server" CssClass="btn btn-success btn-sm mb-3" Text="Submit for Approval" OnClick="btn_submit_Click" OnClientClick="return showSubmitModal();" />
                                 </div>
                             </div>
@@ -2065,13 +2068,14 @@
 
         window.showSubmitModal = function () { $('#submitConfirmModal').modal({ backdrop: 'static', keyboard: false }); return false; };
         window.performSubmitFromModal = function () {
-            $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"], [id$="btn_save_draft"]').prop('disabled', true).css('opacity', '0.6');
+            $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"]').prop('disabled', true).css('opacity', '0.6');
             $('#submitConfirmModal').modal('hide'); showPageLoader();
             __doPostBack('<%= btn_submit.UniqueID %>', '');
         };
-        window.enableButtonsAfterModalClose = function () { $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"], [id$="btn_save_draft"]').prop('disabled', false).css('opacity', '1'); };
+        window.enableButtonsAfterModalClose = function () { $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"]').prop('disabled', false).css('opacity', '1'); };
 
-        window.handleSaveDraftClick = function (btn) { btn.disabled = true; btn.value = "Saving..."; showPageLoader(); return true; };
+        // Deprecated: handleSaveDraftClick — Save as Draft button removed (auto-save model).
+        // window.handleSaveDraftClick = function (btn) { btn.disabled = true; btn.value = "Saving..."; showPageLoader(); return true; };
         window.showPageLoader = function () { var e = document.getElementById("pageLoader"); if (e) e.style.display = "block"; };
         window.hidePageLoader = function () { var e = document.getElementById("pageLoader"); if (e) e.style.display = "none"; };
 

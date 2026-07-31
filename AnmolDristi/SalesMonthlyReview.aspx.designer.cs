@@ -52,10 +52,9 @@ namespace AnmolDristi {
         /// btn_save_draft control.
         /// </summary>
         /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
+        /// Deprecated: Save as Draft button removed from UI (auto-save model).
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btn_save_draft;
+        // protected global::System.Web.UI.WebControls.Button btn_save_draft;
         
         /// <summary>
         /// btn_submit control.

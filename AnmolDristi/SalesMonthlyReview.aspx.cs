@@ -383,7 +383,8 @@ namespace AnmolDristi
 
                 // ⬅️ 4. Ensure the panel is visible if submissions are allowed
                 Actionable.Visible = gvActivities.Rows.Count > 0 && (!monthLocked || allowSubmission);
-                btn_save_draft.Enabled = !monthLocked || allowSubmission;
+                // Deprecated: Save as Draft button removed — edits persist immediately via auto-save.
+                // btn_save_draft.Enabled = !monthLocked || allowSubmission;
                 btn_submit.Enabled = allowSubmission;
 
                 if (monthLocked && !allowSubmission)
@@ -3418,6 +3419,9 @@ namespace AnmolDristi
             return tvp;
         }
 
+        // Deprecated: legacy draft-save SP wrapper — was never wired to the UI button.
+        // Application now auto-saves activity/expense/KM edits on each operation.
+        /*
         private int ExecuteSaveDraft(DataTable tvp)
         {
             int updatedRows = 0;
@@ -3434,6 +3438,7 @@ namespace AnmolDristi
             }
             return updatedRows;
         }
+        */
 
         private bool TryPreparePartialResubmission(int year, int month, DataTable tvp, out DataTable filteredTvp, out string message)
         {
@@ -3596,6 +3601,13 @@ namespace AnmolDristi
             return approvalRequestId;
         }
 
+        // ============================================================================================
+        // Deprecated: Save as Draft — removed from UI.
+        // Application now uses auto-save. Draft is maintained automatically until Submit Claim.
+        // The handler below only persisted SalesMonthlyDraftSummary totals and refreshed the grid;
+        // it did not create approval requests or affect the submit workflow.
+        // ============================================================================================
+        /*
         protected void btn_save_draft_Click(object sender, EventArgs e)
         {
             try
@@ -3710,6 +3722,7 @@ namespace AnmolDristi
             string text = lbl.Text.Replace("km", "").Replace(",", "").Trim();
             decimal val; decimal.TryParse(text, out val); return val;
         }
+        */
 
         private bool TryValidateSubmitPolicy(int year, int month)
         {
