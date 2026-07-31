@@ -2345,7 +2345,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             switch (effectiveVisualStatus.ToLowerInvariant())
             {
-                case "returned": colorClass = "text-warning"; editIconHtml = IconHtml("fa fa-undo", colorClass); expenseIconHtml = IconHtml("fa fa-briefcase", colorClass); break;
+                case "returned": colorClass = "text-danger"; editIconHtml = IconHtml("fa fa-exclamation-circle", colorClass); expenseIconHtml = IconHtml("fa fa-exclamation-circle", colorClass); break;
                 case "rejected": colorClass = "text-danger"; editIconHtml = IconHtml("fa fa-ban", colorClass); expenseIconHtml = IconHtml("fa fa-ban", colorClass); break;
                 case "draft": colorClass = "text-primary"; editIconHtml = IconHtml("fa fa-pencil", colorClass); expenseIconHtml = IconHtml("fa fa-briefcase", colorClass); break;
                 case "submitted": colorClass = "text-warning"; editIconHtml = IconHtml("fa fa-paper-plane", colorClass); expenseIconHtml = IconHtml("fa fa-briefcase", colorClass); break;
@@ -2368,7 +2368,9 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 bool canOpenExpenses = ClaimEditabilityHelper.CanOpenExpensesForActivity(claimStatus, detailStatus);
                 lnkExpenses.Visible = true; lnkExpenses.Enabled = canOpenExpenses; lnkExpenses.CssClass = neutralBtnClass;
                 lnkExpenses.Text = expenseIconHtml;
-                lnkExpenses.ToolTip = canOpenExpenses ? "View / Add Expenses" : "Rejected days cannot be edited";
+                lnkExpenses.ToolTip = canOpenExpenses
+                    ? (ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Returned) ? "Requires attention – view / correct expenses" : "View / Add Expenses")
+                    : "Rejected days cannot be edited";
             }
 
             if (txtKM != null) { txtKM.ReadOnly = !ClaimEditabilityHelper.CanEditActivityKmInGrid(isEditable, claimStatus, detailStatus); txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
