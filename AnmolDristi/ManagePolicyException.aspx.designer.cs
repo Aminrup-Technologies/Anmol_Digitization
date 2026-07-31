@@ -12,12 +12,14 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.TextBox txtSearchEmployeeName;
         protected global::System.Web.UI.WebControls.DropDownList ddlSearchRegion;
         protected global::System.Web.UI.WebControls.DropDownList ddlSearchBranch;
+        protected global::System.Web.UI.WebControls.DropDownList ddlSearchGrade;
         protected global::System.Web.UI.WebControls.DropDownList ddlSearchDesignation;
         protected global::System.Web.UI.WebControls.DropDownList ddlSearchActive;
         protected global::System.Web.UI.WebControls.TextBox txtSearchEffectiveDate;
         protected global::System.Web.UI.WebControls.Button btnSearch;
         protected global::System.Web.UI.WebControls.Button btnClearSearch;
         protected global::System.Web.UI.WebControls.Button btnAddNew;
+        protected global::System.Web.UI.WebControls.Label lblPageMessage;
         protected global::System.Web.UI.WebControls.GridView gvExceptions;
         protected global::System.Web.UI.WebControls.Label lblModalTitle;
         protected global::System.Web.UI.WebControls.Panel pnlForm;
@@ -40,6 +42,7 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvEffectiveFrom;
         protected global::System.Web.UI.WebControls.TextBox txtEffectiveTo;
         protected global::System.Web.UI.WebControls.CheckBox chkIsActive;
+        protected global::System.Web.UI.WebControls.Label lblIsActiveNote;
         protected global::System.Web.UI.WebControls.TextBox txtMaxKM;
         protected global::System.Web.UI.WebControls.TextBox txtRatePerKm;
         protected global::System.Web.UI.WebControls.TextBox txtDA;

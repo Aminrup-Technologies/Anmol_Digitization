@@ -10,6 +10,12 @@ namespace AnmolDristi
     {
         private readonly PolicyExceptionService _service = new PolicyExceptionService();
 
+        private bool? LoadedIsActive
+        {
+            get { return ViewState["LoadedIsActive"] as bool?; }
+            set { ViewState["LoadedIsActive"] = value; }
+        }
+
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
@@ -23,6 +29,7 @@ namespace AnmolDristi
         {
             BindMasterDropdown(ddlSearchRegion, "region", true);
             BindMasterDropdown(ddlSearchBranch, "branch", true);
+            BindMasterDropdown(ddlSearchGrade, "grade", true);
             BindMasterDropdown(ddlSearchDesignation, "designation", true);
         }
 
@@ -49,6 +56,7 @@ namespace AnmolDristi
             int tmp;
             if (int.TryParse(ddlSearchRegion.SelectedValue, out tmp)) criteria.RegionId = tmp;
             if (int.TryParse(ddlSearchBranch.SelectedValue, out tmp)) criteria.BranchId = tmp;
+            if (int.TryParse(ddlSearchGrade.SelectedValue, out tmp)) criteria.GradeId = tmp;
             if (int.TryParse(ddlSearchDesignation.SelectedValue, out tmp)) criteria.DesignationId = tmp;
 
             if (!string.IsNullOrWhiteSpace(ddlSearchActive.SelectedValue))
@@ -69,6 +77,7 @@ namespace AnmolDristi
 
         protected void btnSearch_Click(object sender, EventArgs e)
         {
+            lblPageMessage.Text = string.Empty;
             BindGrid();
         }
 
@@ -78,9 +87,11 @@ namespace AnmolDristi
             txtSearchEmployeeName.Text = string.Empty;
             ddlSearchRegion.SelectedIndex = 0;
             ddlSearchBranch.SelectedIndex = 0;
+            ddlSearchGrade.SelectedIndex = 0;
             ddlSearchDesignation.SelectedIndex = 0;
             ddlSearchActive.SelectedIndex = 0;
             txtSearchEffectiveDate.Text = string.Empty;
+            lblPageMessage.Text = string.Empty;
             BindGrid();
         }
 
@@ -90,6 +101,7 @@ namespace AnmolDristi
             hfExceptionId.Value = "0";
             lblModalTitle.Text = "Add Policy Exception";
             pnlAuditInfo.Visible = false;
+            SetIsActiveForNewRecord();
             SetFormReadOnly(false);
             ShowModal();
         }
@@ -151,8 +163,7 @@ namespace AnmolDristi
             {
                 string error;
                 _service.SetActiveStatus(exceptionId, e.CommandName == "ActivateRow", GetCurrentUserLogin(), out error);
-                if (!string.IsNullOrEmpty(error))
-                    lblFormMessage.Text = error;
+                lblPageMessage.Text = !string.IsNullOrEmpty(error) ? error : string.Empty;
                 BindGrid();
             }
         }
@@ -183,6 +194,8 @@ namespace AnmolDristi
             txtEffectiveFrom.Text = record.EffectiveFrom.ToString("yyyy-MM-dd");
             txtEffectiveTo.Text = record.EffectiveTo.HasValue ? record.EffectiveTo.Value.ToString("yyyy-MM-dd") : string.Empty;
             chkIsActive.Checked = record.IsActive;
+            LoadedIsActive = record.IsActive;
+            lblIsActiveNote.Visible = false;
 
             PolicyExceptionDto dto = PolicyExceptionSerializer.Deserialize(record.PolicyJson);
             txtMaxKM.Text = FormatDecimal(dto.MaxKM);
@@ -240,15 +253,9 @@ namespace AnmolDristi
             {
                 ExceptionId = exceptionId,
                 EmployeeCode = txtEmployeeCode.Text.Trim(),
-                EmployeeName = txtEmployeeName.Text.Trim(),
-                RegionId = ParseNullableInt(hfRegionId.Value),
-                BranchId = ParseNullableInt(hfBranchId.Value),
-                GradeId = ParseNullableInt(hfGradeId.Value),
-                DesignationId = ParseNullableInt(hfDesignationId.Value),
                 Priority = priority,
                 EffectiveFrom = effectiveFrom.Date,
-                EffectiveTo = effectiveTo,
-                IsActive = chkIsActive.Checked
+                EffectiveTo = effectiveTo
             };
 
             var policyDto = new PolicyExceptionDto
@@ -271,6 +278,19 @@ namespace AnmolDristi
                 return;
             }
 
+            if (exceptionId > 0 && LoadedIsActive.HasValue && LoadedIsActive.Value != chkIsActive.Checked)
+            {
+                string statusError;
+                _service.SetActiveStatus(savedId, chkIsActive.Checked, GetCurrentUserLogin(), out statusError);
+                if (!string.IsNullOrEmpty(statusError))
+                {
+                    lblFormMessage.Text = "Record saved, but active status could not be updated: " + statusError;
+                    ShowModal();
+                    BindGrid();
+                    return;
+                }
+            }
+
             if (savedId > 0) hfExceptionId.Value = savedId.ToString();
 
             BindGrid();
@@ -291,9 +311,18 @@ namespace AnmolDristi
             txtEffectiveFrom.Text = DateTime.Today.ToString("yyyy-MM-dd");
             txtEffectiveTo.Text = string.Empty;
             chkIsActive.Checked = true;
+            LoadedIsActive = null;
             txtMaxKM.Text = txtRatePerKm.Text = txtDA.Text = txtOutstationDA.Text = txtOwnAllowance.Text = txtHotelCap.Text = txtRemarks.Text = string.Empty;
             txtEmployeeCode.ReadOnly = false;
             btnLoadEmployee.Enabled = true;
+            SetIsActiveForNewRecord();
+        }
+
+        private void SetIsActiveForNewRecord()
+        {
+            chkIsActive.Checked = true;
+            chkIsActive.Enabled = false;
+            lblIsActiveNote.Visible = true;
         }
 
         private void SetFormReadOnly(bool readOnly)
@@ -308,7 +337,13 @@ namespace AnmolDristi
             txtPriority.ReadOnly = readOnly;
             txtEffectiveFrom.ReadOnly = readOnly;
             txtEffectiveTo.ReadOnly = readOnly;
-            chkIsActive.Enabled = !readOnly;
+
+            int exceptionId;
+            if (!int.TryParse(hfExceptionId.Value, out exceptionId) || exceptionId <= 0)
+                SetIsActiveForNewRecord();
+            else
+                chkIsActive.Enabled = !readOnly;
+
             btnSave.Visible = !readOnly;
             ScriptManager.RegisterStartupScript(this, GetType(), "setReadOnly", "setPolicyExceptionReadOnly(" + (readOnly ? "true" : "false") + ");", true);
         }

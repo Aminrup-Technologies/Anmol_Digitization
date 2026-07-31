@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Data.SqlClient;
 using AnmolDristi.DAL;
 
 namespace AnmolDristi.BLL
@@ -68,17 +68,21 @@ namespace AnmolDristi.BLL
 
             record.PolicyJson = PolicyExceptionSerializer.Serialize(policyDto);
 
-            if (_dataAccess.HasOverlappingActiveException(
-                record.EmployeeCode.Trim(),
-                record.EffectiveFrom.Date,
-                record.EffectiveTo,
-                record.ExceptionId))
+            try
             {
-                errorMessage = "An active policy exception already exists for this employee during the selected effective period.";
+                if (record.ExceptionId > 0)
+                {
+                    _dataAccess.UpdatePolicyException(record, currentUser);
+                    return record.ExceptionId;
+                }
+
+                return _dataAccess.InsertPolicyException(record, currentUser);
+            }
+            catch (SqlException ex)
+            {
+                errorMessage = ex.Message;
                 return 0;
             }
-
-            return _dataAccess.SavePolicyException(record, currentUser);
         }
 
         public void SetActiveStatus(int exceptionId, bool isActive, string currentUser, out string errorMessage)
@@ -107,7 +111,14 @@ namespace AnmolDristi.BLL
                 return;
             }
 
-            _dataAccess.SetPolicyExceptionActiveStatus(exceptionId, isActive, currentUser);
+            try
+            {
+                _dataAccess.SetPolicyExceptionActiveStatus(exceptionId, isActive, currentUser);
+            }
+            catch (SqlException ex)
+            {
+                errorMessage = ex.Message;
+            }
         }
 
         public System.Data.DataTable GetMasterList(string masterType)

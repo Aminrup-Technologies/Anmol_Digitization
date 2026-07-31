@@ -39,6 +39,10 @@
                                     <asp:DropDownList ID="ddlSearchBranch" runat="server" CssClass="form-control form-control-sm" />
                                 </div>
                                 <div class="col-md-2 col-sm-6 form-group">
+                                    <label>Grade</label>
+                                    <asp:DropDownList ID="ddlSearchGrade" runat="server" CssClass="form-control form-control-sm" />
+                                </div>
+                                <div class="col-md-2 col-sm-6 form-group">
                                     <label>Designation</label>
                                     <asp:DropDownList ID="ddlSearchDesignation" runat="server" CssClass="form-control form-control-sm" />
                                 </div>
@@ -73,6 +77,7 @@
                             <div class="clearfix"></div>
                         </div>
                         <div class="x_content table-responsive">
+                            <asp:Label ID="lblPageMessage" runat="server" CssClass="text-danger" />
                             <asp:GridView ID="gvExceptions" runat="server" AutoGenerateColumns="False"
                                 CssClass="table table-striped table-hover table-bordered table-sm"
                                 DataKeyNames="ExceptionId"
@@ -84,6 +89,7 @@
                                     <asp:BoundField DataField="EmployeeName" HeaderText="Employee Name" />
                                     <asp:BoundField DataField="RegionName" HeaderText="Region" />
                                     <asp:BoundField DataField="BranchName" HeaderText="Branch" />
+                                    <asp:BoundField DataField="GradeName" HeaderText="Grade" />
                                     <asp:BoundField DataField="DesignationName" HeaderText="Designation" />
                                     <asp:BoundField DataField="Priority" HeaderText="Priority" ItemStyle-HorizontalAlign="Center" />
                                     <asp:BoundField DataField="EffectiveFrom" HeaderText="Effective From" DataFormatString="{0:yyyy-MM-dd}" />
@@ -193,6 +199,7 @@
                                     </div>
                                     <div class="col-md-3 form-group" style="padding-top: 28px;">
                                         <label><asp:CheckBox ID="chkIsActive" runat="server" Checked="true" /> Active</label>
+                                        <asp:Label ID="lblIsActiveNote" runat="server" CssClass="text-muted small d-block" Visible="false" Text="New exceptions are always created as active." />
                                     </div>
                                 </div>
                             </div>
