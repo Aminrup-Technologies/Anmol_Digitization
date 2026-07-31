@@ -33,7 +33,8 @@ namespace AnmolDristi
 
                 // 3. 🌟 NEW: Early-Rejection Check for Office Hours
                 int currentBranchId = Convert.ToInt32(hfBranchId.Value);
-                if (!VmsHelper.IsFacilityOpen(currentBranchId, out string closedMessage))
+                string closedMessage;
+                if (!VmsHelper.IsFacilityOpen(currentBranchId, out closedMessage))
                 {
                     lblMessage.ForeColor = System.Drawing.Color.Red;
                     lblMessage.Text = "Welcome to Anmol Industries. " + closedMessage;

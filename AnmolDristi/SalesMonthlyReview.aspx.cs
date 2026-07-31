@@ -29,7 +29,7 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapHotelCap;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOutstationDA;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOwnArrangementDA;
-        protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
+        //protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
         // --------------------------------------------------
 
         protected void Page_Load(object sender, EventArgs e)
