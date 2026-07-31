@@ -1475,6 +1475,7 @@
     <Compile Include="SalesMonthlyReview.aspx.designer.cs">
       <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
     </Compile>
+    <Compile Include="KmToleranceHelper.cs" />
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />

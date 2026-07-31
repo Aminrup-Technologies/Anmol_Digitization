@@ -568,7 +568,7 @@
                                                             <asp:Label ID="lblTolLower_Edit" runat="server" Text="-" CssClass="tol-lower" />
                                                             &nbsp; - &nbsp;
                                                             <asp:Label ID="lblTolUpper_Edit" runat="server" Text="-" CssClass="tol-upper" /><br />
-                                                            <span class="text-muted">(Current: <%# Eval("TotalDistanceKM") %> ; Min: <%# Eval("MinAllowedKM") ?? "—" %> ; Max: <%# Eval("MaxAllowedKM") ?? "—" %> )</span>
+                                                            <span class="text-muted">(Tolerance reduction: <%# Eval("MinAllowedKM") ?? "—" %> ; increase: <%# Eval("MaxAllowedKM") ?? "—" %> )</span>
                                                         </small>
                                                         <span class="text-danger km-error" style="display: none;">Value must be within allowed range.</span>
                                                     </EditItemTemplate>
@@ -872,10 +872,14 @@
                                 </div>
 
                                 <div class="form-group">
-                                    <small>Allowed range: <span id="spMinKm">—</span> to <span id="spMaxKm">—</span> km</small>
+                                    <div class="alert alert-light border small mb-2">
+                                        <div><strong>Current KM:</strong> <asp:Label ID="lblModalCurrentKm" runat="server" CssClass="text-dark"></asp:Label></div>
+                                        <div><strong>Allowed Range:</strong> <span id="spMinKm">—</span> – <span id="spMaxKm">—</span> km</div>
+                                        <div><strong>Modification Limit:</strong> <asp:Label ID="lblKmModLimit" runat="server" Text="1"></asp:Label></div>
+                                        <div><strong>Remaining:</strong> <asp:Label ID="lblKmModRemaining" runat="server" Text="1 of 1"></asp:Label></div>
+                                    </div>
+                                    <span id="spClientKmError" class="text-danger small" style="display:none;"></span>
                                 </div>
-
-                                <asp:Label ID="lblModalCurrentKm" runat="server" CssClass="text-muted"></asp:Label>
 
                                 <div id="routeSummaryPanel"
                                     class="alert alert-info mt-2"
@@ -2060,11 +2064,16 @@
             });
         }
 
-        window.openEditKmModal = function (aid, cur, min, max) {
+        window.openEditKmModal = function (aid, cur, min, max, modLimit, modRemaining) {
             $resolve('hdnActivityId').val(aid); $resolve('txtModalKM').val(cur);
             $('#<%=HF_RouteActivityId.ClientID%>').val(aid);
-            document.getElementById('spMinKm').innerText = min || '—'; document.getElementById('spMaxKm').innerText = max || '—';
-            $resolve('lblModalCurrentKm').text('Current: ' + cur + ' km');
+            document.getElementById('spMinKm').innerText = min || '—';
+            document.getElementById('spMaxKm').innerText = max || '—';
+            $resolve('lblModalCurrentKm').text(cur + ' km');
+            if (modLimit) $resolve('lblKmModLimit').text(modLimit);
+            if (modRemaining) $resolve('lblKmModRemaining').text(modRemaining);
+            var canSave = !modRemaining || modRemaining.indexOf('0 of') !== 0;
+            $resolve('btnSaveKm').prop('disabled', !canSave);
             $('#spClientKmError').hide();
             if (typeof initializeKmModalSessionClient === 'function') initializeKmModalSessionClient(aid, true);
             $('#editKmModal').modal('show');

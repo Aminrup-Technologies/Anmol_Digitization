@@ -1020,22 +1020,24 @@ namespace AnmolDristi
             if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
             if (txtModalKM != null) txtModalKM.Text = currentKm;
             if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
-            if (lblModalCurrentKm != null) lblModalCurrentKm.Text = "Current: " + currentKm + " km";
 
             InitializeKmModalSession(activityId);
-
-            string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
-                string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
-
-                BindKmHistory(activityId);
-
+            BindKmHistory(activityId);
             ApplyExpenseModalViewOnlyStateForKmModal(activityId);
 
-            string modalId = "editKmModal";
-                string script = string.Format("setTimeout(function(){{ $('#{0}').modal('show'); $('#spMinKm').text('{1}'); $('#spMaxKm').text('{2}'); }}, 50);",
-                    modalId, minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
+            decimal baselineKm;
+            if (!decimal.TryParse(currentKm, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out baselineKm))
+                baselineKm = 0m;
 
-            ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+            var tolerance = new EmployeeKmToleranceConfig();
+            decimal tmp;
+            if (!string.IsNullOrWhiteSpace(minKm) && decimal.TryParse(minKm, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out tmp))
+                tolerance.ReductionTolerance = tmp;
+            if (!string.IsNullOrWhiteSpace(maxKm) && decimal.TryParse(maxKm, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out tmp))
+                tolerance.IncreaseTolerance = tmp;
+            tolerance.MaxModificationCount = GetMaxModificationCountForEmployee(GetLoggedInEmployeeCode());
+
+            ConfigureKmModalDisplay(activityId, baselineKm, tolerance);
         }
 
         private void ApplyExpenseModalViewOnlyStateForKmModal(int activityId)
@@ -1254,27 +1256,19 @@ namespace AnmolDristi
             if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
                 totalKm = Convert.ToDecimal(row["TotalDistanceKM"]);
 
-            string currentKm = totalKm.ToString("0.##", CultureInfo.GetCultureInfo("en-IN"));
-            string minKm = row.Table.Columns.Contains("MinAllowedKM") && row["MinAllowedKM"] != DBNull.Value ? row["MinAllowedKM"].ToString() : "";
-            string maxKm = row.Table.Columns.Contains("MaxAllowedKM") && row["MaxAllowedKM"] != DBNull.Value ? row["MaxAllowedKM"].ToString() : "";
+            string currentKm = totalKm.ToString("0.##", CultureInfo.InvariantCulture);
             string activityDate = row.Table.Columns.Contains("ActivityDate") && row["ActivityDate"] != DBNull.Value ? Convert.ToDateTime(row["ActivityDate"]).ToString("dd-MM-yyyy") : "";
 
             if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
             if (txtModalKM != null) txtModalKM.Text = currentKm;
             if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
-            if (lblModalCurrentKm != null) lblModalCurrentKm.Text = "Current: " + currentKm + " km";
-            if (!string.IsNullOrEmpty(activityDate)) if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = activityDate;
+            if (!string.IsNullOrEmpty(activityDate) && lbl_kmmodal_date != null) lbl_kmmodal_date.Text = activityDate;
 
             InitializeKmModalSession(activityId);
-
-            string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
-            string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
-
             BindKmHistory(activityId);
 
-            string script = string.Format("setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); }}, 150);",
-                minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
-            ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+            var tolerance = ResolveToleranceForActivity(activityId, row);
+            ConfigureKmModalDisplay(activityId, totalKm, tolerance);
 
             string reopen = "$('#editKmModal').one('hidden.bs.modal', function(){ $('#expenseModal').modal('show'); });";
             ScriptManager.RegisterStartupScript(this, this.GetType(), "reopenExpenseModal_" + activityId, reopen, true);
@@ -1293,26 +1287,22 @@ namespace AnmolDristi
                 {
                     if (rdr.Read())
                     {
-                        string currentKm = rdr["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(rdr["TotalDistanceKM"]).ToString("0.##", CultureInfo.GetCultureInfo("en-IN")) : "0";
-                        string minKm = rdr["MinAllowedKM"] != DBNull.Value ? rdr["MinAllowedKM"].ToString() : "";
-                        string maxKm = rdr["MaxAllowedKM"] != DBNull.Value ? rdr["MaxAllowedKM"].ToString() : "";
+                        decimal totalKm = rdr["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(rdr["TotalDistanceKM"]) : 0m;
+                        string currentKm = totalKm.ToString("0.##", CultureInfo.InvariantCulture);
                         DateTime? aDate = rdr["ActivityDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rdr["ActivityDate"]) : null;
 
                         if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
                         if (txtModalKM != null) txtModalKM.Text = currentKm;
                         if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
-                        if (lblModalCurrentKm != null) lblModalCurrentKm.Text = "Current: " + currentKm + " km";
-                        if (aDate.HasValue) if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = aDate.Value.ToString("dd-MM-yyyy");
+                        if (aDate.HasValue && lbl_kmmodal_date != null) lbl_kmmodal_date.Text = aDate.Value.ToString("dd-MM-yyyy");
 
                         InitializeKmModalSession(activityId);
-
-                        string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
-                        string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
-
                         BindKmHistory(activityId);
 
-                        string script = string.Format("setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); }}, 150);", minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
-                        ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+                        var tolerance = ResolveToleranceForActivity(activityId, null);
+                        if (rdr["MinAllowedKM"] != DBNull.Value) tolerance.ReductionTolerance = Convert.ToDecimal(rdr["MinAllowedKM"]);
+                        if (rdr["MaxAllowedKM"] != DBNull.Value) tolerance.IncreaseTolerance = Convert.ToDecimal(rdr["MaxAllowedKM"]);
+                        ConfigureKmModalDisplay(activityId, totalKm, tolerance);
                         return;
                     }
                 }
@@ -1371,6 +1361,161 @@ namespace AnmolDristi
                 activityId,
                 hideSummary);
             ScriptManager.RegisterStartupScript(this, GetType(), "initKmModalSession_" + activityId, script, true);
+        }
+
+        private int GetKmModificationCount(int activityId)
+        {
+            if (activityId <= 0) return 0;
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand("SELECT COUNT(1) FROM dbo.SalesDailyActivityKMHistory WITH (NOLOCK) WHERE ActivityId = @ActivityId", con))
+            {
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                con.Open();
+                object result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+            }
+        }
+
+        private static void ApplyToleranceFromRow(DataRow row, EmployeeKmToleranceConfig config)
+        {
+            if (row == null || config == null) return;
+
+            if (row.Table.Columns.Contains("MinAllowedKM") && row["MinAllowedKM"] != DBNull.Value)
+                config.ReductionTolerance = Convert.ToDecimal(row["MinAllowedKM"]);
+            if (row.Table.Columns.Contains("MaxAllowedKM") && row["MaxAllowedKM"] != DBNull.Value)
+                config.IncreaseTolerance = Convert.ToDecimal(row["MaxAllowedKM"]);
+            if (row.Table.Columns.Contains("MaxKmModificationCount") && row["MaxKmModificationCount"] != DBNull.Value)
+                config.MaxModificationCount = Convert.ToInt32(row["MaxKmModificationCount"]);
+        }
+
+        private int GetMaxModificationCountForEmployee(string employeeCode)
+        {
+            if (string.IsNullOrWhiteSpace(employeeCode))
+                return KmToleranceHelper.DefaultMaxModificationCount;
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd = new SqlCommand(@"
+SELECT TOP 1 ISNULL(MaxKmModificationCount, 1)
+FROM dbo.MST_EmployeeTolerance WITH (NOLOCK)
+WHERE EmployeeCode = @EmployeeCode
+  AND IsActive = 1
+  AND (EffectiveFrom IS NULL OR EffectiveFrom <= CAST(GETDATE() AS DATE))
+  AND (EffectiveTo IS NULL OR EffectiveTo >= CAST(GETDATE() AS DATE))
+ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
+                {
+                    cmd.Parameters.AddWithValue("@EmployeeCode", employeeCode.Trim());
+                    con.Open();
+                    object result = cmd.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        int count = Convert.ToInt32(result);
+                        return count < 1 ? KmToleranceHelper.DefaultMaxModificationCount : count;
+                    }
+                }
+            }
+            catch
+            {
+                // Column or table may not be deployed yet; fall back to default.
+            }
+
+            return KmToleranceHelper.DefaultMaxModificationCount;
+        }
+
+        private EmployeeKmToleranceConfig ResolveToleranceForActivity(int activityId, DataRow row)
+        {
+            var config = new EmployeeKmToleranceConfig();
+
+            if (row != null)
+                ApplyToleranceFromRow(row, config);
+            else if (activityId > 0)
+            {
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd = new SqlCommand("SELECT TOP 1 MinAllowedKM, MaxAllowedKM FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActivityId", con))
+                {
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    con.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            if (reader["MinAllowedKM"] != DBNull.Value)
+                                config.ReductionTolerance = Convert.ToDecimal(reader["MinAllowedKM"]);
+                            if (reader["MaxAllowedKM"] != DBNull.Value)
+                                config.IncreaseTolerance = Convert.ToDecimal(reader["MaxAllowedKM"]);
+                        }
+                    }
+                }
+            }
+
+            bool hasModificationLimit = row != null
+                && row.Table.Columns.Contains("MaxKmModificationCount")
+                && row["MaxKmModificationCount"] != DBNull.Value;
+
+            if (!hasModificationLimit)
+                config.MaxModificationCount = GetMaxModificationCountForEmployee(GetLoggedInEmployeeCode());
+
+            return config;
+        }
+
+        private void ConfigureKmModalDisplay(int activityId, decimal currentKm, EmployeeKmToleranceConfig tolerance)
+        {
+            int usedCount = GetKmModificationCount(activityId);
+            decimal? allowedMin;
+            decimal? allowedMax;
+            KmToleranceHelper.ComputeAllowedRange(currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance, out allowedMin, out allowedMax);
+
+            string minText = allowedMin.HasValue ? allowedMin.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
+            string maxText = allowedMax.HasValue ? allowedMax.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
+            string remaining = KmToleranceHelper.FormatRemaining(usedCount, tolerance.MaxModificationCount);
+            bool canSave = usedCount < tolerance.MaxModificationCount;
+
+            if (lblModalCurrentKm != null) lblModalCurrentKm.Text = currentKm.ToString("0.##", CultureInfo.InvariantCulture) + " km";
+            if (lblKmModLimit != null) lblKmModLimit.Text = tolerance.MaxModificationCount.ToString();
+            if (lblKmModRemaining != null) lblKmModRemaining.Text = remaining;
+            if (btnSaveKm != null) btnSaveKm.Enabled = canSave;
+
+            string script = string.Format(
+                "setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').text('{3}'); $('#{4}').text('{5}'); $('#{6}').prop('disabled', {7}); }}, 150);",
+                minText.Replace("'", "\\'"),
+                maxText.Replace("'", "\\'"),
+                lblKmModLimit != null ? lblKmModLimit.ClientID : string.Empty,
+                tolerance.MaxModificationCount,
+                lblKmModRemaining != null ? lblKmModRemaining.ClientID : string.Empty,
+                remaining.Replace("'", "\\'"),
+                btnSaveKm != null ? btnSaveKm.ClientID : string.Empty,
+                canSave ? "false" : "true");
+
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+        }
+
+        private bool TryValidateKmModification(
+            int activityId,
+            decimal currentKm,
+            decimal newKm,
+            EmployeeKmToleranceConfig tolerance,
+            out string errorMessage)
+        {
+            errorMessage = null;
+            int usedCount = GetKmModificationCount(activityId);
+
+            if (usedCount >= tolerance.MaxModificationCount)
+            {
+                errorMessage = "You have already utilized the maximum allowed KM modifications for this activity.";
+                return false;
+            }
+
+            if (!KmToleranceHelper.IsKmWithinTolerance(newKm, currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance))
+            {
+                decimal? allowedMin;
+                decimal? allowedMax;
+                KmToleranceHelper.ComputeAllowedRange(currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance, out allowedMin, out allowedMax);
+                errorMessage = string.Format("KM value {0} is outside the allowed range ({1} km).", newKm.ToString("0.##"), KmToleranceHelper.FormatRange(allowedMin, allowedMax));
+                return false;
+            }
+
+            return true;
         }
 
         private void BindKmHistory(int activityId)
@@ -1483,16 +1628,31 @@ namespace AnmolDristi
             // ====================================================================
             string modifiedBy = GetCurrentUserLoginId();
 
-
-            // Inside btnSaveKm_Click and gvActivities_RowUpdating before executing the update:
-            decimal allowedMin = 0m, allowedMax = 499m; // Fetch these via SQL from SalesDailyActivity
-
-            if (newKm < allowedMin || newKm > allowedMax)
+            DataRow sessionRow = null;
+            DataTable sessionDt = Session[GetCurrentSessionKey()] as DataTable;
+            if (sessionDt != null)
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "kmOutOfBounds",
-                    $"showPNotify('Validation', 'KM value {newKm} is outside the allowed policy range.', 'error');", true);
-                return; // Block the save!
+                if (sessionDt.PrimaryKey != null && sessionDt.PrimaryKey.Length > 0)
+                    sessionRow = sessionDt.Rows.Find(activityId);
+                else
+                {
+                    foreach (DataRow r in sessionDt.Rows)
+                    {
+                        if (r["ActivityId"] != DBNull.Value && Convert.ToInt32(r["ActivityId"]) == activityId) { sessionRow = r; break; }
+                    }
+                }
             }
+
+            var tolerance = ResolveToleranceForActivity(activityId, sessionRow);
+            string validationError;
+            if (!TryValidateKmModification(activityId, origKm, newKm, tolerance, out validationError))
+            {
+                string safeErr = HttpUtility.JavaScriptStringEncode(validationError);
+                ScriptManager.RegisterStartupScript(this, GetType(), "kmValidationFailed",
+                    "showPNotify('Validation', '" + safeErr + "', 'error'); $('#editKmModal').modal('show');", true);
+                return;
+            }
+
             try
             {
                 using (SqlConnection con = new SqlConnection(connString))
@@ -1552,6 +1712,8 @@ namespace AnmolDristi
                 BindGrid(false);
                 BindKmHistory(activityId);
                 if (txtKmReason != null) txtKmReason.Text = string.Empty;
+                if (hdnOriginalKm != null) hdnOriginalKm.Value = newKm.ToString("0.##", CultureInfo.InvariantCulture);
+                if (txtModalKM != null) txtModalKM.Text = newKm.ToString("0.##", CultureInfo.InvariantCulture);
 
                 if (!isRouteBasedSave)
                 {
@@ -1560,8 +1722,7 @@ namespace AnmolDristi
                     ScriptManager.RegisterStartupScript(this, GetType(), "clearKmRouteAfterManualSave_" + activityId, resetRouteScript, true);
                 }
 
-                string modalScript = "setTimeout(function(){ $('#editKmModal').modal('show'); $('#spMinKm').text('—'); $('#spMaxKm').text('—'); }, 50);";
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "reopenEditKmModal_" + activityId, modalScript, true);
+                ConfigureKmModalDisplay(activityId, newKm, tolerance);
             }
             catch (SqlException sqlEx)
             {
@@ -1767,17 +1928,9 @@ namespace AnmolDristi
             decimal? minTol = drv.Row.Table.Columns.Contains("MinAllowedKM") && drv["MinAllowedKM"] != DBNull.Value ? (decimal?)Convert.ToDecimal(drv["MinAllowedKM"]) : null;
             decimal? maxTol = drv.Row.Table.Columns.Contains("MaxAllowedKM") && drv["MaxAllowedKM"] != DBNull.Value ? (decimal?)Convert.ToDecimal(drv["MaxAllowedKM"]) : null;
 
-            decimal? allowedLower = null, allowedUpper = null;
-            if (minTol.HasValue && maxTol.HasValue)
-            {
-                allowedLower = minTol.Value <= totalKm ? Math.Max(0, totalKm - minTol.Value) : minTol.Value;
-                allowedUpper = maxTol.Value <= (totalKm * 5) ? totalKm + maxTol.Value : maxTol.Value;
-            }
-            else
-            {
-                if (minTol.HasValue) allowedLower = Math.Max(0, totalKm - minTol.Value);
-                if (maxTol.HasValue) allowedUpper = totalKm + maxTol.Value;
-            }
+            decimal? allowedLower;
+            decimal? allowedUpper;
+            KmToleranceHelper.ComputeAllowedRange(totalKm, minTol, maxTol, out allowedLower, out allowedUpper);
 
             Label lblTolLower = row.FindControl("lblTolLower") as Label;
             Label lblTolUpper = row.FindControl("lblTolUpper") as Label;
@@ -1910,14 +2063,30 @@ namespace AnmolDristi
             CultureInfo ci = CultureInfo.GetCultureInfo("en-IN");
             if (!decimal.TryParse(txtKM.Text.Trim(), NumberStyles.AllowDecimalPoint, ci, out newKm)) { if (lbl_msg != null) { lbl_msg.Text = "Enter valid KM value."; lbl_msg.ForeColor = System.Drawing.Color.Red; } return; }
 
-            // Inside btnSaveKm_Click and gvActivities_RowUpdating before executing the update:
-            decimal allowedMin = 0m, allowedMax = 499m; // Fetch these via SQL from SalesDailyActivity
+            decimal currentKm = 0m;
+            DataTable sessionDt = Session[GetCurrentSessionKey()] as DataTable;
+            DataRow sessionRow = null;
+            if (sessionDt != null)
+            {
+                if (sessionDt.PrimaryKey != null && sessionDt.PrimaryKey.Length > 0)
+                    sessionRow = sessionDt.Rows.Find(activityId);
+                else
+                {
+                    DataRow[] arr = sessionDt.Select(string.Format("ActivityId = {0}", activityId));
+                    if (arr != null && arr.Length > 0) sessionRow = arr[0];
+                }
+            }
 
-            if (newKm < allowedMin || newKm > allowedMax)
+            if (sessionRow != null && sessionRow.Table.Columns.Contains("TotalDistanceKM") && sessionRow["TotalDistanceKM"] != DBNull.Value)
+                decimal.TryParse(sessionRow["TotalDistanceKM"].ToString(), NumberStyles.AllowDecimalPoint, ci, out currentKm);
+
+            var tolerance = ResolveToleranceForActivity(activityId, sessionRow);
+            string validationError;
+            if (!TryValidateKmModification(activityId, currentKm, newKm, tolerance, out validationError))
             {
                 ScriptManager.RegisterStartupScript(this, GetType(), "kmOutOfBounds",
-                    $"showPNotify('Validation', 'KM value {newKm} is outside the allowed policy range.', 'error');", true);
-                return; // Block the save!
+                    "showPNotify('Validation', '" + HttpUtility.JavaScriptStringEncode(validationError) + "', 'error');", true);
+                return;
             }
 
             try
@@ -3672,17 +3841,26 @@ namespace AnmolDristi
                 if (found.Table.Columns.Contains("TotalDistanceKM") && found["TotalDistanceKM"] != DBNull.Value)
                     decimal.TryParse(found["TotalDistanceKM"].ToString(), NumberStyles.AllowDecimalPoint, ci, out km);
 
-                decimal minAllowed = Decimal.MinValue, maxAllowed = Decimal.MaxValue, rate = defaultRate;
+                decimal? reductionTolerance = null;
+                decimal? increaseTolerance = null;
                 decimal tmp;
-                if (found.Table.Columns.Contains("MinAllowedKM") && found["MinAllowedKM"] != DBNull.Value && decimal.TryParse(found["MinAllowedKM"].ToString(), NumberStyles.AllowDecimalPoint, ci, out tmp)) minAllowed = tmp;
-                if (found.Table.Columns.Contains("MaxAllowedKM") && found["MaxAllowedKM"] != DBNull.Value && decimal.TryParse(found["MaxAllowedKM"].ToString(), NumberStyles.AllowDecimalPoint, ci, out tmp)) maxAllowed = tmp;
-                if (found.Table.Columns.Contains("RatePerKm") && found["RatePerKm"] != DBNull.Value && decimal.TryParse(found["RatePerKm"].ToString(), NumberStyles.AllowDecimalPoint, ci, out tmp)) rate = tmp;
+                if (found.Table.Columns.Contains("MinAllowedKM") && found["MinAllowedKM"] != DBNull.Value && decimal.TryParse(found["MinAllowedKM"].ToString(), NumberStyles.AllowDecimalPoint, ci, out tmp))
+                    reductionTolerance = tmp;
+                if (found.Table.Columns.Contains("MaxAllowedKM") && found["MaxAllowedKM"] != DBNull.Value && decimal.TryParse(found["MaxAllowedKM"].ToString(), NumberStyles.AllowDecimalPoint, ci, out tmp))
+                    increaseTolerance = tmp;
 
-                bool hasMin = (minAllowed != Decimal.MinValue);
-                bool hasMax = (maxAllowed != Decimal.MaxValue);
+                decimal? allowedMin;
+                decimal? allowedMax;
+                KmToleranceHelper.ComputeAllowedRange(km, reductionTolerance, increaseTolerance, out allowedMin, out allowedMax);
 
-                if (hasMin && km < minAllowed - 0.0001m) errors.Add(string.Format("Activity {0}: KM {1:N2} less than minimum {2:N2}.", activityId, km, minAllowed));
-                if (hasMax && km > maxAllowed + 0.0001m) errors.Add(string.Format("Activity {0}: KM {1:N2} greater than maximum {2:N2}.", activityId, km, maxAllowed));
+                if (allowedMin.HasValue && km < allowedMin.Value - 0.0001m)
+                    errors.Add(string.Format("Activity {0}: KM {1:N2} is below the allowed tolerance range ({2:N2}).", activityId, km, allowedMin.Value));
+                if (allowedMax.HasValue && km > allowedMax.Value + 0.0001m)
+                    errors.Add(string.Format("Activity {0}: KM {1:N2} is above the allowed tolerance range ({2:N2}).", activityId, km, allowedMax.Value));
+
+                decimal rate = defaultRate;
+                if (found.Table.Columns.Contains("RatePerKm") && found["RatePerKm"] != DBNull.Value && decimal.TryParse(found["RatePerKm"].ToString(), NumberStyles.AllowDecimalPoint, ci, out tmp))
+                    rate = tmp;
 
                 decimal calcClaim = Math.Round(rate * km, 2, MidpointRounding.AwayFromZero);
                 DataRow dr = tvp.NewRow(); dr["ActivityId"] = activityId; dr["TotalDistanceKM"] = km; dr["CalculatedClaimAmount"] = calcClaim;
