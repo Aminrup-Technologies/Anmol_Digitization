@@ -36,6 +36,51 @@ namespace AnmolDristi.DAL
             }
         }
 
+        /// <summary>
+        /// Returns the highest-priority active policy exception effective on the claim date.
+        /// </summary>
+        public PolicyExceptionRecord GetApplicablePolicyException(string employeeCode, DateTime claimDate)
+        {
+            if (string.IsNullOrWhiteSpace(employeeCode)) return null;
+
+            using (SqlConnection cn = new SqlConnection(_connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+SELECT TOP (1)
+      PE.ExceptionId
+    , PE.EmployeeCode
+    , UM.EmployeeName
+    , PE.RegionId
+    , PE.BranchId
+    , PE.GradeId
+    , PE.DesignationId
+    , PE.PolicyJson
+    , PE.Priority
+    , PE.EffectiveFrom
+    , PE.EffectiveTo
+    , PE.IsActive
+    , PE.CreatedBy
+    , PE.CreatedOn
+    , PE.ModifiedBy
+    , PE.ModifiedOn
+FROM dbo.PolicyException PE WITH (NOLOCK)
+LEFT JOIN dbo.MST_UserMaster UM WITH (NOLOCK) ON UM.EmployeeCode = PE.EmployeeCode
+WHERE PE.EmployeeCode = @EmployeeCode
+  AND PE.IsActive = 1
+  AND PE.EffectiveFrom <= @ClaimDate
+  AND (PE.EffectiveTo IS NULL OR PE.EffectiveTo >= @ClaimDate)
+ORDER BY PE.Priority ASC", cn))
+            {
+                cmd.Parameters.AddWithValue("@EmployeeCode", employeeCode.Trim());
+                cmd.Parameters.AddWithValue("@ClaimDate", claimDate.Date);
+                cn.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read()) return null;
+                    return MapRecord(reader);
+                }
+            }
+        }
+
         public PolicyExceptionRecord GetPolicyExceptionById(int exceptionId)
         {
             using (SqlConnection cn = new SqlConnection(_connectionString))

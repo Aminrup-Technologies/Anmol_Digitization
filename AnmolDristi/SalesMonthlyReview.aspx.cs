@@ -12,6 +12,7 @@ using System.Globalization;
 using Newtonsoft.Json;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using AnmolDristi.BLL;
 
 namespace AnmolDristi
 {
@@ -19,6 +20,7 @@ namespace AnmolDristi
     {
         private string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private const string SESSION_KEY_GV_ACTIVITIES = "gvActivities_DataTable";
+        private readonly PolicyResolutionService _policyResolutionService = new PolicyResolutionService();
 
         // --- FIX FOR BROKEN VISUAL STUDIO DESIGNER FILE ---
         // Explicitly declaring these so C# knows they exist even if the designer file failed to update.
@@ -117,7 +119,14 @@ namespace AnmolDristi
                     int? branchId = GetLoggedInBranchId();
                     int? gradeId = GetLoggedInGradeId();
                     int? designationId = GetLoggedInDesignationId();
-                    var policy = GetResolvedPolicy(employeeCode, regionId, branchId, gradeId, designationId);
+                    DateTime claimDate = new DateTime(year, month, DateTime.DaysInMonth(year, month));
+                    ResolvedPolicyDto policy = _policyResolutionService.ResolvePolicy(
+                        employeeCode,
+                        claimDate,
+                        regionId,
+                        branchId,
+                        gradeId,
+                        designationId);
 
                     if (policy != null)
                         BindPolicyToModal(policy);
@@ -672,13 +681,19 @@ namespace AnmolDristi
             return "—";
         }
 
-        private void BindPolicyToModal(PolicyResolved policy)
+        private void BindPolicyToModal(ResolvedPolicyDto policy)
         {
             if (policy == null) return;
 
             string employeeCode = !string.IsNullOrEmpty(policy.EmployeeCode) ? policy.EmployeeCode : GetLoggedInEmployeeCode();
             if (lblPolicyEmployeeCode != null) lblPolicyEmployeeCode.Text = HttpUtility.HtmlEncode(employeeCode);
-            if (lblPolicySource != null) lblPolicySource.Text = HttpUtility.HtmlEncode(!string.IsNullOrEmpty(policy.Source) ? policy.Source : "HR-SOP");
+            if (lblPolicySource != null)
+            {
+                string sourceLabel = !string.IsNullOrEmpty(policy.PolicySource)
+                    ? policy.PolicySource
+                    : (!string.IsNullOrEmpty(policy.Source) ? policy.Source : "HR-SOP");
+                lblPolicySource.Text = HttpUtility.HtmlEncode(sourceLabel);
+            }
             if (lblPolicyRowId != null) lblPolicyRowId.Text = policy.RowId.HasValue ? policy.RowId.Value.ToString() : "—";
             if (lblPolicyPriority != null)
                 lblPolicyPriority.Text = policy.Priority.HasValue ? string.Format("Priority {0}", policy.Priority.Value) : "—";
@@ -736,7 +751,7 @@ namespace AnmolDristi
             return filtered.Count > 0 ? string.Join(" → ", filtered) : "—";
         }
 
-        private void BindResolvedHiddenFields(PolicyResolved policy)
+        private void BindResolvedHiddenFields(ResolvedPolicyDto policy)
         {
             if (HF_Policy_RegionId != null) HF_Policy_RegionId.Value = policy.RegionId.HasValue ? policy.RegionId.Value.ToString() : string.Empty;
             if (HF_Policy_BranchId != null) HF_Policy_BranchId.Value = policy.BranchId.HasValue ? policy.BranchId.Value.ToString() : string.Empty;
@@ -756,7 +771,7 @@ namespace AnmolDristi
             if (lblResolvedHotelCap != null) lblResolvedHotelCap.Text = policy.Resolved_HotelCap.HasValue ? policy.Resolved_HotelCap.Value.ToString("N2") : "0";
         }
 
-        private void BindResolvedClaimLimitsToModal(PolicyResolved policy)
+        private void BindResolvedClaimLimitsToModal(ResolvedPolicyDto policy)
         {
             if (phClaimLimits == null) return;
 
@@ -805,7 +820,7 @@ namespace AnmolDristi
             return string.Format(CultureInfo.InvariantCulture, "{0:N0} KM", km.Value);
         }
 
-        private void BindPolicyRemarks(PolicyResolved policy)
+        private void BindPolicyRemarks(ResolvedPolicyDto policy)
         {
             if (lblResolvedRemarks == null) return;
 
@@ -3662,118 +3677,12 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             }
         }
 
-        public class PolicyResolved
-        {
-            public string Source { get; set; }
-            public int? RowId { get; set; }
-            public string EmployeeCode { get; set; }
-            public int? RegionId { get; set; }
-            public int? BranchId { get; set; }
-            public int? GradeId { get; set; }
-            public int? DesignationId { get; set; }
-            public string PolicyJson { get; set; }
-            public int? Priority { get; set; }
-            public DateTime? EffectiveFrom { get; set; }
-            public DateTime? EffectiveTo { get; set; }
-            public bool? IsActive { get; set; }
-            public int? Specificity { get; set; }
-            public decimal? Resolved_MaxKM { get; set; }
-            public decimal? Resolved_RatePerKm { get; set; }
-            public decimal? Resolved_DA { get; set; }
-            public decimal? Resolved_HotelCap { get; set; }
-            public decimal? Resolved_OutstationDA { get; set; }
-            public decimal? Resolved_OwnAllowance { get; set; }
-            public string Resolved_Remarks { get; set; }
-        }
-
-        private PolicyResolved GetResolvedPolicy(string employeeCode, int? regionId, int? branchId, int? gradeId, int? designationId)
-        {
-            PolicyResolved dto = null;
-            using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand("dbo.usp_GetResolvedPolicy", con))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add("@EmployeeCode", SqlDbType.VarChar, 50).Value = (object)employeeCode ?? DBNull.Value;
-                cmd.Parameters.Add("@RegionIdParam", SqlDbType.VarChar, 200).Value = regionId.HasValue ? (object)regionId.Value.ToString() : DBNull.Value;
-                cmd.Parameters.Add("@BranchIdParam", SqlDbType.VarChar, 200).Value = branchId.HasValue ? (object)branchId.Value.ToString() : DBNull.Value;
-                cmd.Parameters.Add("@GradeIdParam", SqlDbType.VarChar, 200).Value = gradeId.HasValue ? (object)gradeId.Value.ToString() : DBNull.Value;
-                cmd.Parameters.Add("@DesignationIdParam", SqlDbType.VarChar, 200).Value = designationId.HasValue ? (object)designationId.Value.ToString() : DBNull.Value;
-
-                con.Open();
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult))
-                {
-                    if (reader.Read())
-                    {
-                        dto = new PolicyResolved();
-                        Func<IDataRecord, string, bool> ColExists = (rec, colName) => { try { return rec.GetOrdinal(colName) >= 0; } catch (IndexOutOfRangeException) { return false; } };
-
-                        if (ColExists(reader, "Source")) dto.Source = reader["Source"] as string;
-                        if (ColExists(reader, "PolicyId")) dto.RowId = reader["PolicyId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["PolicyId"]) : null;
-                        if (ColExists(reader, "EmployeeCode")) dto.EmployeeCode = reader["EmployeeCode"] != DBNull.Value ? reader["EmployeeCode"].ToString() : null;
-                        if (ColExists(reader, "RegionId")) dto.RegionId = reader["RegionId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["RegionId"]) : null;
-                        if (ColExists(reader, "BranchId")) dto.BranchId = reader["BranchId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["BranchId"]) : null;
-                        if (ColExists(reader, "GradeId")) dto.GradeId = reader["GradeId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["GradeId"]) : null;
-                        if (ColExists(reader, "DesignationId")) dto.DesignationId = reader["DesignationId"] != DBNull.Value ? (int?)Convert.ToInt32(reader["DesignationId"]) : null;
-                        if (ColExists(reader, "PolicyJson")) dto.PolicyJson = reader["PolicyJson"] != DBNull.Value ? reader["PolicyJson"].ToString() : null;
-                        if (ColExists(reader, "Priority")) dto.Priority = reader["Priority"] != DBNull.Value ? (int?)Convert.ToInt32(reader["Priority"]) : null;
-                        if (ColExists(reader, "EffectiveFrom")) dto.EffectiveFrom = reader["EffectiveFrom"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["EffectiveFrom"]) : null;
-                        if (ColExists(reader, "EffectiveTo")) dto.EffectiveTo = reader["EffectiveTo"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["EffectiveTo"]) : null;
-                        if (ColExists(reader, "IsActive")) dto.IsActive = reader["IsActive"] != DBNull.Value ? (bool?)Convert.ToBoolean(reader["IsActive"]) : null;
-                        if (ColExists(reader, "Specificity")) dto.Specificity = reader["Specificity"] != DBNull.Value ? (int?)Convert.ToInt32(reader["Specificity"]) : null;
-                        if (ColExists(reader, "Resolved_MaxKM")) dto.Resolved_MaxKM = reader["Resolved_MaxKM"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_MaxKM"]) : null;
-                        if (ColExists(reader, "Resolved_RatePerKm")) dto.Resolved_RatePerKm = reader["Resolved_RatePerKm"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_RatePerKm"]) : null;
-                        if (ColExists(reader, "Resolved_DA")) dto.Resolved_DA = reader["Resolved_DA"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_DA"]) : null;
-                        if (ColExists(reader, "Resolved_HotelCap")) dto.Resolved_HotelCap = reader["Resolved_HotelCap"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_HotelCap"]) : null;
-                        if (ColExists(reader, "Resolved_OutstationDA")) dto.Resolved_OutstationDA = reader["Resolved_OutstationDA"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_OutstationDA"]) : null;
-                        if (ColExists(reader, "Resolved_OwnAllowance")) dto.Resolved_OwnAllowance = reader["Resolved_OwnAllowance"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["Resolved_OwnAllowance"]) : null;
-                        if (ColExists(reader, "Resolved_Remarks")) dto.Resolved_Remarks = reader["Resolved_Remarks"] != DBNull.Value ? reader["Resolved_Remarks"].ToString() : null;
-
-                        if ((dto.Resolved_MaxKM == null && dto.Resolved_RatePerKm == null && dto.Resolved_DA == null && dto.Resolved_OutstationDA == null && dto.Resolved_OwnAllowance == null) && !string.IsNullOrEmpty(dto.PolicyJson))
-                            TryParseJsonFallback(dto);
-                    }
-                }
-            }
-            return dto;
-        }
-
-        private void TryParseJsonFallback(PolicyResolved dto)
-        {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.PolicyJson)) return;
-            try
-            {
-                JObject json = JObject.Parse(dto.PolicyJson);
-                dto.Resolved_MaxKM = TryGetDecimal(json, "MaxKM") ?? dto.Resolved_MaxKM;
-                dto.Resolved_RatePerKm = TryGetDecimal(json, "RatePerKm") ?? dto.Resolved_RatePerKm;
-                dto.Resolved_DA = TryGetDecimal(json, "DA") ?? dto.Resolved_DA;
-                dto.Resolved_HotelCap = TryGetDecimal(json, "HotelCap") ?? dto.Resolved_HotelCap;
-
-                decimal? outstation = null;
-                outstation = outstation ?? TryGetDecimal(json, "OutstationDA"); outstation = outstation ?? TryGetDecimal(json, "Outstation_DA"); outstation = outstation ?? TryGetDecimal(json, "OutstationDa");
-                if (outstation.HasValue) dto.Resolved_OutstationDA = outstation;
-
-                decimal? ownArr = null;
-                ownArr = ownArr ?? TryGetDecimal(json, "OwnArrangementAllowance"); ownArr = ownArr ?? TryGetDecimal(json, "OwnArrangementDa"); ownArr = ownArr ?? TryGetDecimal(json, "OwnArrangement_DA"); ownArr = ownArr ?? TryGetDecimal(json, "OwnArrangementDA");
-                if (ownArr.HasValue) dto.Resolved_OwnAllowance = ownArr;
-
-                if (json["Remarks"] != null) dto.Resolved_Remarks = Convert.ToString(json["Remarks"]);
-                else if (json["resolved_remarks"] != null) dto.Resolved_Remarks = Convert.ToString(json["resolved_remarks"]);
-            }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine("TryParseJsonFallback error: " + ex.Message); }
-        }
-
-        private decimal? TryGetDecimal(JObject json, string key)
-        {
-            if (json[key] == null || json[key].Type == JTokenType.Null) return null;
-            decimal value;
-            if (decimal.TryParse(Convert.ToString(json[key]), out value)) return value;
-            return null;
-        }
-
-        private void ShowPolicyNotification(PolicyResolved policy)
+        private void ShowPolicyNotification(ResolvedPolicyDto policy)
         {
             if (policy == null) return;
             var sb = new StringBuilder();
-            sb.AppendFormat("<strong>Policy applied:</strong> {0}<br/>", policy.Source == "EX" ? "Employee Exception" : "Policy Matrix");
+            bool isException = policy.IsPolicyExceptionApplied || policy.Source == "EX";
+            sb.AppendFormat("<strong>Policy applied:</strong> {0}<br/>", isException ? "Employee Exception" : "Policy Matrix");
             sb.AppendFormat("<strong>Specificity:</strong> {0}<br/>", policy.Specificity ?? 0);
             if (policy.Resolved_RatePerKm != null) sb.AppendFormat("<strong>Rate/km:</strong> ₹{0:N2}<br/>", policy.Resolved_RatePerKm);
             if (policy.Resolved_MaxKM != null) sb.AppendFormat("<strong>Max KM (month):</strong> {0:N0}<br/>", policy.Resolved_MaxKM);
@@ -3783,10 +3692,10 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             if (policy.Resolved_HotelCap != null) sb.AppendFormat("<strong>Hotel Cap:</strong> ₹{0:N0}<br/>", policy.Resolved_HotelCap);
             if (!string.IsNullOrEmpty(policy.Resolved_Remarks)) sb.AppendFormat("<strong>Remarks:</strong> {0}<br/>", HttpUtility.JavaScriptStringEncode(policy.Resolved_Remarks));
 
-            string title = policy.Source == "EX" ? "Employee exception applied" : "Policy applied";
+            string title = isException ? "Employee exception applied" : "Policy applied";
             string safeTitle = HttpUtility.JavaScriptStringEncode(title);
             string safeText = HttpUtility.JavaScriptStringEncode(sb.ToString());
-            string notifyType = policy.Source == "EX" ? "warning" : "info";
+            string notifyType = isException ? "warning" : "info";
 
             string js = "(function() { try { if (typeof showPNotify === 'function') { showPNotify('" + safeTitle + "', '" + safeText + "', '" + notifyType + "'); } } catch(e) { } })();";
             ScriptManager.RegisterStartupScript(this.Page, this.Page.GetType(), "policyNotify_" + Guid.NewGuid().ToString("N"), js, true);

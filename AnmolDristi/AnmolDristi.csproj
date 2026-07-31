@@ -1484,10 +1484,13 @@
       <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
     </Compile>
     <Compile Include="KmToleranceHelper.cs" />
+    <Compile Include="ResolvedPolicyDto.cs" />
     <Compile Include="PolicyExceptionDto.cs" />
     <Compile Include="PolicyExceptionSerializer.cs" />
     <Compile Include="BLL\PolicyExceptionService.cs" />
+    <Compile Include="BLL\PolicyResolutionService.cs" />
     <Compile Include="DAL\PolicyExceptionDataAccess.cs" />
+    <Compile Include="DAL\PolicyResolutionDataAccess.cs" />
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />
