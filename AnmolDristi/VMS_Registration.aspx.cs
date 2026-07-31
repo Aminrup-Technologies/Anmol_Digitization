@@ -518,7 +518,7 @@ namespace AnmolDristi
                                         Convert.ToBase64String(plainTextBytes);
 
                                     string quickApproveLink =
-                                        $"https://apps.anmolindustries.com/VMS_HostQuickLogin.aspx?vid={newVisitId}&t={encodedEmpCode}";
+                                        VmsHelper.BuildHostQuickLoginUrl(newVisitId, encodedEmpCode);
 
                                     body = $@"
                                             <div style='font-family:Arial;padding:20px;'>
@@ -936,7 +936,7 @@ namespace AnmolDristi
                             byte[] plainTextBytes = System.Text.Encoding.UTF8.GetBytes(hostEmpCode);
                             string encodedEmpCode = Convert.ToBase64String(plainTextBytes);
 
-                            string quickApproveLink = $"https://apps.anmolindustries.com/VMS_HostQuickLogin.aspx?vid={newVisitId}&t={encodedEmpCode}";
+                            string quickApproveLink = VmsHelper.BuildHostQuickLoginUrl(newVisitId, encodedEmpCode);
 
                             string fallbackNote = isFallbackEmail
                                 ? $"<p style='color: red; font-size: 12px;'><em>System Note: This email was routed to the fallback address because no valid email was found in the database for Host Code: {hostEmpCode}.</em></p>"

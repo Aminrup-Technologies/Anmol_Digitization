@@ -1,6 +1,7 @@
 using System;
 using System.Configuration;
 using System.Data.SqlClient;
+using System.Web;
 
 namespace AnmolDristi
 {
@@ -10,8 +11,77 @@ namespace AnmolDristi
     /// </summary>
     public static class VmsHelper
     {
+        private const string DefaultProductionBaseUrl = "https://apps.anmolindustries.com";
+
         private static string ConnStr =>
             ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+        /// <summary>
+        /// Public site base URL for VMS links (emails, QR PDFs, SMS).
+        /// Configure via appSettings key VmsPublicBaseUrl:
+        /// - https://apps.anmolindustries.com (LIVE, default)
+        /// - https://appsuat.anmolindustries.com (UAT)
+        /// - auto (derive from the current HTTP request host)
+        /// </summary>
+        public static string GetPublicBaseUrl()
+        {
+            string configured = ConfigurationManager.AppSettings["VmsPublicBaseUrl"];
+
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                configured = configured.Trim();
+
+                if (configured.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    string fromRequest = GetBaseUrlFromCurrentRequest();
+                    if (!string.IsNullOrEmpty(fromRequest))
+                        return fromRequest;
+                }
+                else
+                {
+                    return configured.TrimEnd('/');
+                }
+            }
+
+            return DefaultProductionBaseUrl;
+        }
+
+        public static string BuildPublicUrl(string pageAndQuery)
+        {
+            if (string.IsNullOrWhiteSpace(pageAndQuery))
+                throw new ArgumentException("Page path is required.", nameof(pageAndQuery));
+
+            return $"{GetPublicBaseUrl()}/{pageAndQuery.TrimStart('/')}";
+        }
+
+        public static string BuildDigitalPassUrl(Guid qrToken)
+        {
+            return BuildPublicUrl($"VMS_DigitalPass.aspx?token={qrToken}");
+        }
+
+        public static string BuildHostQuickLoginUrl(int visitId, string encodedHostEmpCode)
+        {
+            return BuildPublicUrl($"VMS_HostQuickLogin.aspx?vid={visitId}&t={encodedHostEmpCode}");
+        }
+
+        public static string BuildSelfLoginUrl(int branchId)
+        {
+            return BuildPublicUrl($"VMS_SelfLogin.aspx?BranchId={branchId}");
+        }
+
+        public static string BuildGateScannerUrl(int branchId)
+        {
+            return BuildPublicUrl($"VMS_GateScanner.aspx?BranchId={branchId}");
+        }
+
+        private static string GetBaseUrlFromCurrentRequest()
+        {
+            HttpRequest request = HttpContext.Current?.Request;
+            if (request?.Url == null)
+                return null;
+
+            return $"{request.Url.Scheme}://{request.Url.Authority}";
+        }
 
         public static string NormalizeEmail(string email)
         {
@@ -241,7 +311,7 @@ namespace AnmolDristi
             string visitorEmail,
             string visitorMobile)
         {
-            string passUrl = $"https://apps.anmolindustries.com/VMS_DigitalPass.aspx?token={qrToken}";
+            string passUrl = BuildDigitalPassUrl(qrToken);
             string emailBody = $@"
                 <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>
                     <h2 style='color: #1ABB9C;'>Visit Approved</h2>

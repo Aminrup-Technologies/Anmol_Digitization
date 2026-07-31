@@ -178,7 +178,7 @@ namespace AnmolDristi
                 }
             }
 
-            string passUrl = $"https://apps.anmolindustries.com/VMS_DigitalPass.aspx?token={token}";
+            string passUrl = VmsHelper.BuildDigitalPassUrl(token);
 
             // 2. Dispatch Email (If provided and valid)
             if (!string.IsNullOrEmpty(visEmail) && visEmail != "N/A")
@@ -241,7 +241,7 @@ namespace AnmolDristi
 
             if (!string.IsNullOrEmpty(visEmail))
             {
-                string passUrl = $"https://apps.anmolindustries.com/VMS_DigitalPass.aspx?token={token}";
+                string passUrl = VmsHelper.BuildDigitalPassUrl(token);
                 string body = $@"
                     <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>
                         <h2 style='color: #1ABB9C;'>Visit Approved</h2>
