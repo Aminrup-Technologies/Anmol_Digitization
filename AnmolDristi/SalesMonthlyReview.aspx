@@ -527,6 +527,69 @@
                 width: 100%;
             }
         }
+
+        .returned-claims-banner {
+            border-left: 4px solid #f0ad4e;
+        }
+
+        .table-finance tr.returned-activity-row td {
+            background-color: #fff3cd !important;
+            border-color: #ffeeba;
+        }
+
+        .table-finance tr.returned-activity-detail-row td {
+            background-color: #fff8e1 !important;
+            border-top: none !important;
+            padding: 0 8px 8px 8px;
+        }
+
+        .returned-info-panel {
+            background: #fff;
+            border: 1px solid #f0ad4e;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 4px 0 2px 0;
+            font-size: 12px;
+        }
+
+        .returned-info-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .returned-info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .returned-info-label {
+            flex: 0 0 110px;
+            font-weight: 600;
+            color: #856404;
+        }
+
+        .returned-info-value {
+            flex: 1;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .returned-expense-row td {
+            background-color: #fff3cd !important;
+        }
+
+        .expense-approved-row td {
+            background-color: #d4edda !important;
+        }
+
+        .expense-return-remarks {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #856404;
+            font-style: italic;
+            word-break: break-word;
+        }
     </style>
 </asp:Content>
 
@@ -620,12 +683,22 @@
                         <div class="x_content">
                             <div class="row">
                                 <div class="col-md-12 col-sm-12">
+                                    <asp:Panel ID="pnlReturnedClaimsBanner" runat="server" Visible="false" CssClass="alert alert-warning returned-claims-banner mb-3" role="alert">
+                                        <div class="d-flex align-items-start">
+                                            <i class="fa fa-exclamation-triangle fa-lg mr-2 mt-1"></i>
+                                            <div>
+                                                <strong>Your monthly claim contains Returned items.</strong>
+                                                <div class="mt-1">Please review the highlighted activities below, make the requested corrections, and submit again.</div>
+                                            </div>
+                                        </div>
+                                    </asp:Panel>
+
                                     <div class="card-box table-responsive grid-container">
                                         <asp:GridView ID="gvActivities" runat="server" AutoGenerateColumns="false"
                                             CssClass="table table-bordered table-finance" HeaderStyle-CssClass="grid-header" FooterStyle-CssClass="grid-footer"
                                             DataKeyNames="ActivityId" OnRowCommand="gvActivities_RowCommand" OnRowEditing="gvActivities_RowEditing"
                                             OnRowCancelingEdit="gvActivities_RowCancelingEdit" OnRowUpdating="gvActivities_RowUpdating"
-                                            OnRowDataBound="gvActivities_RowDataBound" ShowFooter="true">
+                                            OnRowDataBound="gvActivities_RowDataBound" OnDataBound="gvActivities_DataBound" ShowFooter="true">
                                             <Columns>
 
                                                 <asp:TemplateField HeaderText="Date & Day (Status)" ItemStyle-Width="10%">
@@ -1476,7 +1549,7 @@
                                             <tbody>
                                 </HeaderTemplate>
                                 <ItemTemplate>
-                                    <tr>
+                                    <tr runat="server" id="trExpenseRow">
                                         <td>
                                             <span class="expense-type-badge badge badge-light">
                                                 <%# Eval("ExpenseType") %>
@@ -1507,6 +1580,7 @@
                                             : (Eval("Purpose") ?? "—")
                                         ) %>
                                             </span>
+                                            <asp:Literal ID="litExpenseReturnRemarks" runat="server" Visible="false" />
                                         </td>
                                         <td class="text-right font-weight-bold"><%# Eval("Amount", "{0:N2}") %></td>
                                         <td><%# Eval("BillNo") ?? "—" %></td>
