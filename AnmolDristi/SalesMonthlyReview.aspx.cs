@@ -254,8 +254,7 @@ namespace AnmolDristi
                                             detailStatusByActivity[aid] = detail;
 
                                         // ⬅️ 2. Add "Returned" to the Line Item check
-                                        if (ClaimStatuses.Equals(detail, ClaimStatuses.Rejected) ||
-                                            ClaimStatuses.Equals(detail, ClaimStatuses.Returned))
+                                        if (ClaimEditabilityHelper.IsDetailStatusEditableForCorrection(detail))
                                         {
                                             editableActivityIds.Add(aid);
                                         }
@@ -474,20 +473,9 @@ namespace AnmolDristi
                 }
             }
 
-            bool isReturnedDay =
-                ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned);
+            bool canEditExpense = ClaimEditabilityHelper.CanEditExpense(claimStatus, detailStatus);
 
-            bool isRejectedDay =
-                ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected);
-
-            bool isLockedDay = isRejectedDay ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Submitted) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending);
-
-            if (!isReturnedDay && isLockedDay)
+            if (!canEditExpense)
             {
                 if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
                 if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
@@ -509,7 +497,7 @@ namespace AnmolDristi
 
                 if (LBL_ExpenseMsg != null)
                 {
-                    LBL_ExpenseMsg.Text = isRejectedDay
+                    LBL_ExpenseMsg.Text = ClaimEditabilityHelper.IsRejectedDay(claimStatus, detailStatus)
                         ? "This day was rejected by the auditor. Expenses cannot be edited."
                         : "This day is " + claimStatus + ". You are in view-only mode.";
                     LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
@@ -882,9 +870,7 @@ namespace AnmolDristi
 
                 // ⬅️ NEW: Check if the SPECIFIC LINE ITEM is locked. 
                 // If it is 'Returned' or 'Rejected' or 'Draft', it stays unlocked!
-                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Submitted) ||
-                    ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) ||
-                    ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
+                if (!ClaimEditabilityHelper.CanEditExpenseByDetailStatus(detailStatus))
                 {
                     // 1. Hide the Save and KM Modify buttons
                     if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
@@ -973,10 +959,7 @@ namespace AnmolDristi
                         }
                     }
 
-                    if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
-                        ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
-                        ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending) ||
-                        ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected))
+                    if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
                     {
                         lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
                             ? "Cannot edit row. This day was rejected by the auditor."
@@ -1014,10 +997,7 @@ namespace AnmolDristi
                     }
                 }
 
-                if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
-                    ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
-                    ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending) ||
-                    ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected))
+                if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
                 {
                     lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
                         ? "Update blocked. This day was rejected by the auditor."
@@ -1115,9 +1095,7 @@ namespace AnmolDristi
                 }
             }
 
-            if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
-                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
-                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending))
+            if (!ClaimEditabilityHelper.CanEditActivityKm(currentStatus))
             {
                 string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
@@ -1288,9 +1266,7 @@ namespace AnmolDristi
                 }
             }
 
-            if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
-                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
-                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending))
+            if (!ClaimEditabilityHelper.CanEditActivityKm(currentStatus))
             {
                 string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
@@ -1487,27 +1463,10 @@ namespace AnmolDristi
 
         private static string ResolveEffectiveRowStatus(string claimStatus, string detailStatus, DataRowView drv)
         {
-            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned))
-                return ClaimStatuses.Returned;
-
-            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected))
-                return ClaimStatuses.Rejected;
-
-            if (!string.IsNullOrWhiteSpace(claimStatus))
-                return claimStatus;
-
             bool isEditable = drv.Row.Table.Columns.Contains("IsEditable") &&
                               drv["IsEditable"] != DBNull.Value &&
                               Convert.ToBoolean(drv["IsEditable"]);
-            return isEditable ? ClaimStatuses.Returned : ClaimStatuses.Unknown;
-        }
-
-        private static bool IsRemovableExpenseStatus(string claimStatus)
-        {
-            return ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft) ||
-                   ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned);
+            return ClaimEditabilityHelper.ResolveEffectiveRowStatus(claimStatus, detailStatus, isEditable);
         }
 
         private bool IsActivityEditableForExpenseDelete(int activityId)
@@ -1537,12 +1496,7 @@ namespace AnmolDristi
                 }
             }
 
-            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
-                return true;
-
-            return false;
+            return ClaimEditabilityHelper.CanDeleteExpenseForActivity(claimStatus, detailStatus);
         }
 
         private const string SoftDeleteExpenseSql = @"
@@ -1627,19 +1581,7 @@ namespace AnmolDristi
             string claimStatus = drv.Row.Table.Columns.Contains("ClaimStatus") && drv["ClaimStatus"] != DBNull.Value ? drv["ClaimStatus"].ToString().Trim() : string.Empty;
             string detailStatus = drv.Row.Table.Columns.Contains("DetailStatus") && drv["DetailStatus"] != DBNull.Value ? drv["DetailStatus"].ToString().Trim() : string.Empty;
 
-            string effectiveVisualStatus;
-            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
-                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned))
-                effectiveVisualStatus = ClaimStatuses.Returned;
-            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected) ||
-                     ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected))
-                effectiveVisualStatus = ClaimStatuses.Rejected;
-            else if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
-                effectiveVisualStatus = ClaimStatuses.Draft;
-            else if (isEditable)
-                effectiveVisualStatus = ClaimStatuses.Returned;
-            else
-                effectiveVisualStatus = !string.IsNullOrEmpty(claimStatus) ? claimStatus : ClaimStatuses.Unknown;
+            string effectiveVisualStatus = ClaimEditabilityHelper.ResolveEffectiveVisualStatus(claimStatus, detailStatus, isEditable);
 
             Func<string, string, string> IconHtml = delegate (string iconClass, string clrClass) { return string.Format("<i class='{0} {1}' aria-hidden='true'></i>", iconClass, clrClass); };
 
@@ -1659,9 +1601,7 @@ namespace AnmolDristi
 
             if (lnkEdit != null)
             {
-                bool showEdit = isEditable && !ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected);
-                if (!showEdit && ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
-                    showEdit = true;
+                bool showEdit = ClaimEditabilityHelper.CanEditActivity(claimStatus, detailStatus, isEditable);
 
                 lnkEdit.Visible = showEdit; lnkEdit.Enabled = showEdit; lnkEdit.CssClass = neutralBtnClass;
                 lnkEdit.Text = editIconHtml; lnkEdit.ToolTip = showEdit ? "Edit" : "Edit (disabled)";
@@ -1669,14 +1609,14 @@ namespace AnmolDristi
 
             if (lnkExpenses != null)
             {
-                bool canOpenExpenses = !ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected);
+                bool canOpenExpenses = ClaimEditabilityHelper.CanOpenExpensesForActivity(claimStatus, detailStatus);
                 lnkExpenses.Visible = true; lnkExpenses.Enabled = canOpenExpenses; lnkExpenses.CssClass = neutralBtnClass;
                 lnkExpenses.Text = expenseIconHtml;
                 lnkExpenses.ToolTip = canOpenExpenses ? "View / Add Expenses" : "Rejected days cannot be edited";
             }
 
-            if (txtKM != null) { txtKM.ReadOnly = !isEditable || ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected); txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
-            if (lnkUpdate != null) lnkUpdate.Enabled = isEditable && !ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected);
+            if (txtKM != null) { txtKM.ReadOnly = !ClaimEditabilityHelper.CanEditActivityKmInGrid(isEditable, claimStatus, detailStatus); txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
+            if (lnkUpdate != null) lnkUpdate.Enabled = ClaimEditabilityHelper.CanEditActivityKmInGrid(isEditable, claimStatus, detailStatus);
             if (lnkCancel != null) lnkCancel.Enabled = true;
             if (lblKM != null) { lblKM.Text = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]).ToString("N2") + " km" : "—"; lblKM.Visible = true; }
 
@@ -1845,9 +1785,7 @@ namespace AnmolDristi
                 }
             }
 
-            if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
-                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
-                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending))
+            if (!ClaimEditabilityHelper.CanEditExpenseByDetailStatus(currentStatus))
             {
                 if (LBL_ExpenseMsg != null)
                 {
@@ -2351,13 +2289,7 @@ namespace AnmolDristi
             LinkButton lnkDeleteDisabled = e.Item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
             Literal litBadges = e.Item.FindControl("litPolicyBadges") as Literal;
 
-            bool canDelete = IsRemovableExpenseStatus(claimStatus);
-            if (!string.IsNullOrWhiteSpace(claimStatus) &&
-                (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Submitted) ||
-                 ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved) ||
-                 ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected)))
-                canDelete = false;
-            if (isAuto) canDelete = false;
+            bool canDelete = ClaimEditabilityHelper.CanDeleteExpense(claimStatus, isAuto);
 
             if (lnkDelete != null) lnkDelete.Visible = canDelete;
             if (lnkDeleteDisabled != null) lnkDeleteDisabled.Visible = !canDelete;
@@ -2961,7 +2893,7 @@ namespace AnmolDristi
                             }
                         }
 
-                        if (!IsRemovableExpenseStatus(expenseClaimStatus))
+                        if (!ClaimEditabilityHelper.IsRemovableExpenseClaimStatus(expenseClaimStatus))
                         {
                             if (LBL_ExpenseMsg != null)
                             {
@@ -3170,7 +3102,7 @@ namespace AnmolDristi
                             }
                         }
 
-                        if (!IsRemovableExpenseStatus(expenseClaimStatus))
+                        if (!ClaimEditabilityHelper.IsRemovableExpenseClaimStatus(expenseClaimStatus))
                         {
                             if (LBL_ExpenseMsg != null)
                             {
