@@ -98,6 +98,11 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.GridView gvActivities;
 
         /// <summary>
+        /// pnlReturnedClaimsBanner control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlReturnedClaimsBanner;
+
+        /// <summary>
         /// pnlSubmissionChecklist control.
         /// </summary>
         protected global::System.Web.UI.WebControls.Panel pnlSubmissionChecklist;
