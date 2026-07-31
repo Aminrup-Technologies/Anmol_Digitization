@@ -286,6 +286,39 @@
             font-weight: 600;
         }
 
+        #expenseModal .expense-category-desc {
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        #expenseModal .expense-help-panel {
+            font-size: 0.85rem;
+        }
+
+        #expenseModal .expense-help-panel ul {
+            padding-left: 1.1rem;
+            margin-bottom: 0;
+        }
+
+        #expenseModal .expense-upload-guidance {
+            font-size: 0.82rem;
+            color: #495057;
+        }
+
+        #expenseModal .expense-upload-guidance ul {
+            margin-bottom: 0.25rem;
+            padding-left: 1.1rem;
+        }
+
+        #expenseModal .expense-upload-tip {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 0.5rem 0.65rem;
+            font-size: 0.82rem;
+            color: #6c757d;
+        }
+
         #expenseModal .form-control, #expenseModal .form-control-sm {
             padding: .28rem .46rem;
             font-size: .88rem;
@@ -1342,7 +1375,7 @@
                             </div>
 
                             <div class="row mb-3">
-                                <div class="col-md-5 form-group">
+                                <div class="col-md-5 form-group mb-md-0">
                                     <label class="font-weight-bold text-primary">2. Select Expense Type</label>
                                     <asp:DropDownList ID="DDL_ExpenseType" runat="server" ClientIDMode="Static" CssClass="form-control form-control-sm border-primary" Style="font-weight: 600;">
                                         <asp:ListItem Value="DA">DA</asp:ListItem>
@@ -1350,6 +1383,7 @@
                                         <asp:ListItem Value="Travel">Travel</asp:ListItem>
                                         <asp:ListItem Value="Stationary">Stationary</asp:ListItem>
                                     </asp:DropDownList>
+                                    <small id="spExpenseCategoryDesc" class="text-muted expense-category-desc mt-1 d-block" style="display: none;"></small>
                                     <small class="text-danger font-weight-bold mt-1 d-block" id="txtExpenseTypeHint" style="display: none;">
                                         <i class="fa fa-info-circle"></i>Restricted by selected Policy Mode.
                                     </small>
@@ -1462,9 +1496,31 @@
 
                             <div class="row">
                                 <div class="col-md-12 form-group" id="divFUContainer" runat="server">
-                                    <label class="d-block">Attach Receipt</label>
+                                    <label class="d-block">
+                                        Attach Receipt
+                                        <span id="spReceiptRequirement" class="badge badge-secondary ml-1">—</span>
+                                    </label>
                                     <asp:FileUpload ID="FU_Attachment" runat="server" CssClass="form-control-file" accept=".jpg,.jpeg,.png,.pdf" />
-                                    <small class="form-text text-muted">JPG, PNG, PDF. Max 5MB.</small>
+                                    <div id="divUploadGuidance" class="expense-upload-guidance mt-2" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-sm-6">
+                                                <strong>Accepted Formats</strong>
+                                                <ul>
+                                                    <li>PDF</li>
+                                                    <li>JPG</li>
+                                                    <li>PNG</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-sm-6">
+                                                <strong>Maximum Size</strong>
+                                                <div>5 MB</div>
+                                            </div>
+                                        </div>
+                                        <div class="expense-upload-tip mt-1">
+                                            <i class="fa fa-info-circle"></i>
+                                            Upload a clear image or PDF of the original receipt. Large or blurry files may delay claim approval.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -2112,10 +2168,13 @@
 
             if (!type) {
                 if ($btnSave.length) $btnSave.prop('disabled', true);
+                updateExpenseEntryGuidance(false);
                 return;
             } else {
                 if ($btnSave.length) $btnSave.prop('disabled', false);
             }
+
+            var uploadVisible = false;
 
             if (type === 'DA') {
                 safeShow($da);
@@ -2123,20 +2182,23 @@
             else if (type === 'Hotel') {
                 safeShow($ht);
                 safeShow($fu);
-                $fuInput.prop('disabled', false); // ⬅️ 3. Re-enable only when needed
+                $fuInput.prop('disabled', false);
+                uploadVisible = true;
             }
             else if (type === 'Travel') {
                 safeShow($tr);
                 if ($chk.length && $chk.prop('checked')) {
                     safeShow($fu);
                     safeShow($inv);
-                    $fuInput.prop('disabled', false); // ⬅️ 3. Re-enable only when needed
+                    $fuInput.prop('disabled', false);
+                    uploadVisible = true;
                 }
             }
             else if (type === 'Stationary') {
                 safeShow($st);
                 safeShow($fu);
-                $fuInput.prop('disabled', false); // ⬅️ 3. Re-enable only when needed
+                $fuInput.prop('disabled', false);
+                uploadVisible = true;
             }
 
             updateExpensePolicyLimit();
