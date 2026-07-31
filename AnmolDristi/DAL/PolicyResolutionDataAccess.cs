@@ -11,7 +11,10 @@ namespace AnmolDristi.DAL
 
         public PolicyResolutionDataAccess()
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            ConnectionStringSettings settings = ConfigurationManager.ConnectionStrings["DbConn"];
+            if (settings == null || string.IsNullOrWhiteSpace(settings.ConnectionString))
+                throw new InvalidOperationException("Connection string 'DbConn' is not configured.");
+            _connectionString = settings.ConnectionString;
         }
 
         /// <summary>

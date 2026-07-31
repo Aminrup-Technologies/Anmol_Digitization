@@ -29,6 +29,7 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapHotelCap;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOutstationDA;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOwnArrangementDA;
+        protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
         // --------------------------------------------------
 
         protected void Page_Load(object sender, EventArgs e)
@@ -441,9 +442,10 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
-                lbl_msg.Text = "An error occurred: " + ex.Message;
+                string message = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                lbl_msg.Text = "An error occurred: " + message;
                 lbl_msg.ForeColor = System.Drawing.Color.Red;
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", "showPNotify('Error', '" + ex.Message.Replace("'", "\\'") + "', 'error');", true);
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", "showPNotify('Error', '" + message.Replace("'", "\\'") + "', 'error');", true);
             }
         }
 
@@ -893,7 +895,8 @@ namespace AnmolDristi
             {
                 if (resolvedPolicy.Resolved_RatePerKm.HasValue)
                     ratePerKm = resolvedPolicy.Resolved_RatePerKm.Value;
-                fixedTravelAllowance = resolvedPolicy.FixedTravelAllowance;
+                if (resolvedPolicy.FixedTravelAllowance.HasValue)
+                    fixedTravelAllowance = resolvedPolicy.FixedTravelAllowance;
                 return;
             }
 

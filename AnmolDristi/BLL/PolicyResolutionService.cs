@@ -43,13 +43,15 @@ namespace AnmolDristi.BLL
 
         private static ResolvedPolicyDto ApplyExceptionOverride(ResolvedPolicyDto standard, PolicyExceptionRecord exception)
         {
+            if (standard == null || exception == null) return standard;
+
+            PolicyOverrideMergeHelper.ApplyPartialOverrides(standard, exception.PolicyJson ?? "{}");
+
             standard.IsPolicyExceptionApplied = true;
             standard.PolicyExceptionId = exception.ExceptionId;
             standard.PolicySource = "Employee Exception";
             standard.AppliedPriority = exception.Priority;
             standard.Source = "EX";
-
-            PolicyOverrideMergeHelper.ApplyPartialOverrides(standard, exception.PolicyJson);
             return standard;
         }
     }
