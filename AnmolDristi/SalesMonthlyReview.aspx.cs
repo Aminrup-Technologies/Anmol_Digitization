@@ -3600,7 +3600,9 @@ namespace AnmolDristi
         {
             try
             {
-                if (!TryGetDraftFooterTotals(out decimal totalKM, out decimal totalClaim)) return;
+                decimal totalKM;
+                decimal totalClaim;
+                if (!TryGetDraftFooterTotals(out totalKM, out totalClaim)) return;
 
                 int rowsUpserted = 0;
                 int expensesUpdated = 0;
