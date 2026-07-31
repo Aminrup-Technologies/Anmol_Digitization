@@ -30,6 +30,20 @@ namespace AnmolDristi
             return dto;
         }
 
+        public static void ApplyToResolvedPolicy(ResolvedPolicyDto dto, string policyJson)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(policyJson)) return;
+
+            PolicyExceptionDto parsed = Deserialize(policyJson);
+            dto.Resolved_MaxKM = parsed.MaxKM;
+            dto.Resolved_RatePerKm = parsed.RatePerKm;
+            dto.Resolved_DA = parsed.DA;
+            dto.Resolved_HotelCap = parsed.HotelCap;
+            dto.Resolved_OutstationDA = parsed.OutstationDA;
+            dto.Resolved_OwnAllowance = parsed.OwnAllowance;
+            dto.Resolved_Remarks = parsed.Remarks;
+        }
+
         public static string Serialize(PolicyExceptionDto dto)
         {
             if (dto == null) return "{}";
