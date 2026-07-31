@@ -58,6 +58,7 @@ namespace AnmolDristi
             txtLoginId.Text = "";
             txtMinKM.Text = "";
             txtMaxKM.Text = "";
+            txtMaxKmModificationCount.Text = "1";
             txtEffectiveFrom.Text = "";
             txtEffectiveTo.Text = "";
             chkIsActive.Checked = true;
@@ -118,6 +119,10 @@ namespace AnmolDristi
                         txtMinKM.Text = r["MinAllowedKM"] == DBNull.Value ? "" : Convert.ToDecimal(r["MinAllowedKM"]).ToString("0.##");
                         //txtMinKM.Text = r["MinKM"] == DBNull.Value ? "" : Convert.ToDecimal(r["MinKM"]).ToString("0.##");
                         txtMaxKM.Text = r["MaxAllowedKM"] == DBNull.Value ? "" : Convert.ToDecimal(r["MaxAllowedKM"]).ToString("0.##");
+                        if (HasColumn(r, "MaxKmModificationCount") && r["MaxKmModificationCount"] != DBNull.Value)
+                            txtMaxKmModificationCount.Text = Convert.ToInt32(r["MaxKmModificationCount"]).ToString();
+                        else
+                            txtMaxKmModificationCount.Text = "1";
                         txtEffectiveFrom.Text = r["EffectiveFrom"] == DBNull.Value ? "" : ((DateTime)r["EffectiveFrom"]).ToString("yyyy-MM-dd");
                         txtEffectiveTo.Text = r["EffectiveTo"] == DBNull.Value ? "" : ((DateTime)r["EffectiveTo"]).ToString("yyyy-MM-dd");
                         chkIsActive.Checked = r["IsActive"] == DBNull.Value ? true : Convert.ToBoolean(r["IsActive"]);
@@ -156,18 +161,19 @@ namespace AnmolDristi
 
             decimal? minKm = ParseDecimalOrNull(txtMinKM.Text);
             decimal? maxKm = ParseDecimalOrNull(txtMaxKM.Text);
+            int? maxKmModificationCount = ParseIntOrNull(txtMaxKmModificationCount.Text);
 
             DateTime? effFrom = ParseDateOrNull(txtEffectiveFrom.Text);
             DateTime? effTo = ParseDateOrNull(txtEffectiveTo.Text);
 
-            // business validation: if both min and max provided ensure min <= max
-            if (minKm.HasValue && maxKm.HasValue && minKm.Value > maxKm.Value)
+            if (!maxKmModificationCount.HasValue || maxKmModificationCount.Value < 1)
             {
-                lblFormMessage.Text = "Min KM cannot be greater than Max KM.";
+                lblFormMessage.Text = "Maximum KM Modifications must be at least 1.";
                 ScriptManager.RegisterStartupScript(this, GetType(), "showModal", "showToleranceModal();", true);
                 return;
             }
 
+            // reduction/increase tolerances are independent; no min <= max comparison
             // effective dates validation
             if (effFrom.HasValue && effTo.HasValue && effFrom.Value > effTo.Value)
             {
@@ -188,6 +194,7 @@ namespace AnmolDristi
                 cmd.Parameters.AddWithValue("@EmployeeCode", loginId);
                 cmd.Parameters.AddWithValue("@MinAllowedKM", (object)minKm ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@MaxAllowedKM", (object)maxKm ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@MaxKmModificationCount", maxKmModificationCount.Value);
                 cmd.Parameters.AddWithValue("@EffectiveFrom", (object)effFrom ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@EffectiveTo", (object)effTo ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@ModifiedBy", GetCurrentUserLogin());
@@ -197,6 +204,24 @@ namespace AnmolDristi
             BindGrid();
             // close modal via script
             ScriptManager.RegisterStartupScript(this, GetType(), "hideModal", "$('#modalEditTolerance').modal('hide');", true);
+        }
+
+        private int? ParseIntOrNull(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            int tmp;
+            if (int.TryParse(s, out tmp)) return tmp;
+            return null;
+        }
+
+        private static bool HasColumn(SqlDataReader reader, string columnName)
+        {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                if (string.Equals(reader.GetName(i), columnName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
 
         private decimal? ParseDecimalOrNull(string s)

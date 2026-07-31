@@ -470,6 +470,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblModalCurrentKm;
         
         /// <summary>
+        /// lblKmModLimit control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblKmModLimit;
+        
+        /// <summary>
+        /// lblKmModRemaining control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblKmModRemaining;
+        
+        /// <summary>
         /// txtKmReason control.
         /// </summary>
         /// <remarks>
