@@ -58,6 +58,7 @@ namespace AnmolDristi
         public string EmployeeName { get; set; }
         public int? RegionId { get; set; }
         public int? BranchId { get; set; }
+        public int? GradeId { get; set; }
         public int? DesignationId { get; set; }
         public bool? IsActive { get; set; }
         public DateTime? EffectiveDate { get; set; }
