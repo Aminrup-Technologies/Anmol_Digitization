@@ -1143,16 +1143,34 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblPolicyDesigGrade;
-        
+
         /// <summary>
-        /// MaxKM control.
+        /// lblPolicyDesignation control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl MaxKM;
-        
+        protected global::System.Web.UI.WebControls.Label lblPolicyDesignation;
+
+        /// <summary>
+        /// lblPolicyGrade control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyGrade;
+
+        /// <summary>
+        /// policyRemarksSection control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl policyRemarksSection;
+
         /// <summary>
         /// lblResolvedMaxKM control.
         /// </summary>
@@ -1179,16 +1197,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblResolvedDA;
-        
-        /// <summary>
-        /// HotelCap control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl HotelCap;
-        
+
         /// <summary>
         /// lblResolvedHotelCap control.
         /// </summary>
@@ -1197,7 +1206,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblResolvedHotelCap;
-        
+
         /// <summary>
         /// lblResolvedRemarks control.
         /// </summary>
@@ -1206,7 +1215,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblResolvedRemarks;
-        
+
         /// <summary>
         /// Toggler control.
         /// </summary>
@@ -1215,7 +1224,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl Toggler;
-        
+
         /// <summary>
         /// btnToggleRawJson control.
         /// </summary>
@@ -1224,7 +1233,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnToggleRawJson;
-        
+
         /// <summary>
         /// policyJsonRaw control.
         /// </summary>
@@ -1233,61 +1242,25 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox policyJsonRaw;
-        
+
         /// <summary>
-        /// approverL1Container control.
+        /// phClaimLimits control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl approverL1Container;
-        
+        protected global::System.Web.UI.WebControls.PlaceHolder phClaimLimits;
+
         /// <summary>
-        /// lblApproverL1 control.
+        /// phApproverHierarchy control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblApproverL1;
-        
-        /// <summary>
-        /// approverL2Container control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl approverL2Container;
-        
-        /// <summary>
-        /// lblApproverL2 control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblApproverL2;
-        
-        /// <summary>
-        /// approverAuditorContainer control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl approverAuditorContainer;
-        
-        /// <summary>
-        /// lblApproverAuditor control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblApproverAuditor;
-        
+        protected global::System.Web.UI.WebControls.PlaceHolder phApproverHierarchy;
+
         /// <summary>
         /// lnkCopyJson control.
         /// </summary>

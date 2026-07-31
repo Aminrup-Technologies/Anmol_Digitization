@@ -1433,113 +1433,106 @@
                     <div class="modal-header bg-primary text-white py-2">
                         <h5 class="modal-title mb-0">
                             <i class="fa fa-file-alt mr-2"></i>Resolved Policy
-                            <small class="text-light">(<asp:Label ID="lblPolicyEmployeeCode" runat="server" Text="—" CssClass="small"></asp:Label>)</small>
                         </h5>
                         <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" onclick="$('#policyModal').modal('hide');">
                             <span aria-hidden="true">×</span>
                         </button>
                     </div>
-                    <div class="modal-body bg-light px-4 pt-3 pb-1">
-                        <div class="row mb-3">
-                            <div class="col-md-4 col-sm-6 mb-2">
-                                <label class="small text-secondary mb-0">Source</label>
-                                <asp:Label ID="lblPolicySource" runat="server" CssClass="d-block font-weight-bold text-dark">—</asp:Label>
-                            </div>
-                            <div class="col-md-2 col-sm-6 mb-2">
-                                <label class="small text-secondary mb-0">Record ID</label>
-                                <asp:Label ID="lblPolicyRowId" runat="server" CssClass="d-block text-dark">—</asp:Label>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-2">
-                                <label class="small text-secondary mb-0">Priority</label>
-                                <asp:Label ID="lblPolicyPriority" runat="server" CssClass="d-block text-info font-weight-bold">—</asp:Label>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-2">
-                                <label class="small text-secondary mb-0">Specificity</label>
-                                <asp:Label ID="lblPolicySpecificity" runat="server" CssClass="d-block text-primary font-weight-bold">—</asp:Label>
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-6 col-sm-6 mb-2">
-                                <label class="small text-secondary mb-0">Effective</label>
-                                <asp:Label ID="lblPolicyEffective" runat="server" CssClass="d-block text-dark">—</asp:Label>
-                            </div>
-                            <div class="col-md-3 col-sm-6 mb-2">
-                                <label class="small text-secondary mb-0">Active</label>
-                                <asp:Label ID="lblPolicyIsActive" runat="server" CssClass="d-block text-success font-weight-bold">—</asp:Label>
-                            </div>
-                            <div class="col-md-3 col-sm-12 mb-2">
-                                <label class="small text-secondary mb-0">Designation / Grade</label>
-                                <asp:Label ID="lblPolicyDesigGrade" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
-                            </div>
-                        </div>
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header bg-gradient-primary text-black py-1 px-3">
-                                <strong><i class="fa fa-calculator mr-1"></i>Resolved Capping Limits</strong>
-                            </div>
-                            <div class="card-body bg-white p-3">
-                                <div class="row text-center">
-                                    <div class="col-6 col-md-3 mb-3 mb-md-0 border-md-right" id="MaxKM" runat="server" visible="false">
-                                        <div class="small text-muted">Max KM</div>
-                                        <div class="h6 font-weight-bold text-primary mb-0">
-                                            <asp:Label ID="lblResolvedMaxKM" runat="server" Text="—"></asp:Label>
+                    <div class="modal-body bg-light px-4 pt-3 pb-2">
+                        <div class="card border shadow-sm mb-3">
+                            <div class="card-body py-3">
+                                <div class="row">
+                                    <div class="col-sm-7 mb-2 mb-sm-0">
+                                        <div class="small text-muted text-uppercase">Resolved Policy</div>
+                                        <div class="h5 mb-0 text-dark font-weight-bold">
+                                            <asp:Label ID="lblPolicyEmployeeCode" runat="server" Text="—"></asp:Label>
                                         </div>
                                     </div>
-                                    <div class="col-6 col-md-3 mb-3 mb-md-0 border-md-right">
-                                        <div class="small text-muted">Rate / Km</div>
-                                        <div class="h6 font-weight-bold text-info mb-0">
-                                            <asp:Label ID="lblResolvedRatePerKm" runat="server" Text="—"></asp:Label>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-3 mb-3 mb-md-0 border-md-right">
-                                        <div class="small text-muted">D.A.</div>
-                                        <div class="h6 font-weight-bold text-success mb-0">
-                                            <asp:Label ID="lblResolvedDA" runat="server" Text="—"></asp:Label>
-                                        </div>
-                                    </div>
-                                    <div class="col-6 col-md-3" id="HotelCap" runat="server" visible="false">
-                                        <div class="small text-muted">Hotel Cap.</div>
-                                        <div class="h6 font-weight-bold text-danger mb-0">
-                                            <asp:Label ID="lblResolvedHotelCap" runat="server" Text="—"></asp:Label>
-                                        </div>
+                                    <div class="col-sm-5 text-sm-right">
+                                        <asp:Label ID="lblPolicyIsActive" runat="server" CssClass="badge badge-success">—</asp:Label>
+                                        <asp:Label ID="lblPolicySource" runat="server" CssClass="badge badge-info" style="margin-left:4px;">—</asp:Label>
+                                        <asp:Label ID="lblPolicyPriority" runat="server" CssClass="badge badge-secondary" style="margin-left:4px;">—</asp:Label>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="form-group mb-3">
-                            <label class="small text-secondary mb-1">Remarks</label>
-                            <asp:Label ID="lblResolvedRemarks" runat="server" CssClass="d-block text-dark bg-white border rounded p-2">—</asp:Label>
-                        </div>
-                        <div class="form-group" id="Toggler" runat="server" visible="false">
-                            <asp:Button ID="btnToggleRawJson" runat="server" CssClass="btn btn-sm btn-outline-dark mb-2" OnClientClick="$('#policyJsonRaw').toggle(); return false;" Text="Toggle Raw JSON" />
-                            <asp:TextBox ID="policyJsonRaw" runat="server" TextMode="MultiLine" Rows="6" CssClass="form-control form-control-sm font-monospace text-dark bg-light border border-secondary" Visible="false"></asp:TextBox>
                         </div>
 
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header bg-gradient-secondary text-black py-1 px-3">
-                                <strong><i class="fa fa-user-check mr-1"></i>Approvers</strong>
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li role="presentation" class="active">
+                                <a href="#policyDetailsTab" aria-controls="policyDetailsTab" role="tab" data-toggle="tab">
+                                    <i class="fa fa-info-circle"></i> Policy Details
+                                </a>
+                            </li>
+                            <li role="presentation">
+                                <a href="#claimLimitsTab" aria-controls="claimLimitsTab" role="tab" data-toggle="tab">
+                                    <i class="fa fa-calculator"></i> Claim Limits
+                                </a>
+                            </li>
+                            <li role="presentation">
+                                <a href="#approvalHierarchyTab" aria-controls="approvalHierarchyTab" role="tab" data-toggle="tab">
+                                    <i class="fa fa-user-check"></i> Approval Hierarchy
+                                </a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content bg-white border border-top-0 rounded-bottom p-3 mb-2">
+                            <div role="tabpanel" class="tab-pane fade in active" id="policyDetailsTab">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="small text-secondary mb-1">Record ID</label>
+                                        <asp:Label ID="lblPolicyRowId" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="small text-secondary mb-1">Effective Period</label>
+                                        <asp:Label ID="lblPolicyEffective" runat="server" CssClass="d-block text-dark">—</asp:Label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="small text-secondary mb-1">Specificity</label>
+                                    <asp:Label ID="lblPolicySpecificity" runat="server" CssClass="d-block text-primary font-weight-bold">—</asp:Label>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="small text-secondary mb-1">Designation</label>
+                                        <asp:Label ID="lblPolicyDesignation" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="small text-secondary mb-1">Grade</label>
+                                        <asp:Label ID="lblPolicyGrade" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                    </div>
+                                </div>
+                                <div class="mb-2" id="policyRemarksSection" runat="server" visible="false">
+                                    <label class="small text-secondary mb-1">Policy Remarks</label>
+                                    <div class="alert alert-info mb-0" style="white-space: pre-wrap; word-break: break-word;">
+                                        <i class="fa fa-info-circle mr-1"></i>
+                                        <asp:Label ID="lblResolvedRemarks" runat="server" Text=""></asp:Label>
+                                    </div>
+                                </div>
+                                <div class="form-group mb-0" id="Toggler" runat="server" visible="false">
+                                    <asp:Button ID="btnToggleRawJson" runat="server" CssClass="btn btn-sm btn-outline-dark mb-2" OnClientClick="$('#policyJsonRaw').toggle(); return false;" Text="Toggle Raw JSON" />
+                                    <asp:TextBox ID="policyJsonRaw" runat="server" TextMode="MultiLine" Rows="6" CssClass="form-control form-control-sm font-monospace text-dark bg-light border border-secondary" Visible="false"></asp:TextBox>
+                                </div>
                             </div>
-                            <div class="card-body bg-white p-3">
-                                <div class="row text-center">
-                                    <div class="col-12 col-md-4 mb-2" id="approverL1Container" runat="server" visible="false">
-                                        <div class="small text-muted">Approver - Level 1</div>
-                                        <div class="h6 font-weight-bold text-dark mb-0">
-                                            <asp:Label ID="lblApproverL1" runat="server" Text="—"></asp:Label>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 col-md-4 mb-2" id="approverL2Container" runat="server" visible="false">
-                                        <div class="small text-muted">Approver - Level 2</div>
-                                        <div class="h6 font-weight-bold text-dark mb-0">
-                                            <asp:Label ID="lblApproverL2" runat="server" Text="—"></asp:Label>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 col-md-4 mb-2" id="approverAuditorContainer" runat="server" visible="false">
-                                        <div class="small text-muted">Auditor / Final</div>
-                                        <div class="h6 font-weight-bold text-dark mb-0">
-                                            <asp:Label ID="lblApproverAuditor" runat="server" Text="—"></asp:Label>
-                                        </div>
+
+                            <div role="tabpanel" class="tab-pane fade" id="claimLimitsTab">
+                                <div class="card border-0 bg-light mb-0">
+                                    <div class="card-body p-2">
+                                        <asp:PlaceHolder ID="phClaimLimits" runat="server"></asp:PlaceHolder>
                                     </div>
                                 </div>
                             </div>
+
+                            <div role="tabpanel" class="tab-pane fade" id="approvalHierarchyTab">
+                                <asp:PlaceHolder ID="phApproverHierarchy" runat="server"></asp:PlaceHolder>
+                            </div>
+                        </div>
+
+                        <div class="hidden">
+                            <asp:Label ID="lblPolicyDesigGrade" runat="server" Text="—"></asp:Label>
+                            <asp:Label ID="lblResolvedMaxKM" runat="server" Text="0"></asp:Label>
+                            <asp:Label ID="lblResolvedRatePerKm" runat="server" Text="0"></asp:Label>
+                            <asp:Label ID="lblResolvedDA" runat="server" Text="0"></asp:Label>
+                            <asp:Label ID="lblResolvedHotelCap" runat="server" Text="0"></asp:Label>
                         </div>
                     </div>
 
