@@ -12,24 +12,33 @@ namespace AnmolDristi
     /// </summary>
     public static class PolicyOverrideMergeHelper
     {
-        private static readonly Dictionary<string, string> JsonKeyAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "MaxKM", "Resolved_MaxKM" },
-            { "RatePerKm", "Resolved_RatePerKm" },
-            { "DA", "Resolved_DA" },
-            { "HotelCap", "Resolved_HotelCap" },
-            { "OutstationDA", "Resolved_OutstationDA" },
-            { "Outstation_DA", "Resolved_OutstationDA" },
-            { "OutstationDa", "Resolved_OutstationDA" },
-            { "OwnArrangementDA", "Resolved_OwnAllowance" },
-            { "OwnArrangementAllowance", "Resolved_OwnAllowance" },
-            { "OwnArrangementDa", "Resolved_OwnAllowance" },
-            { "OwnArrangement_DA", "Resolved_OwnAllowance" },
-            { "Remarks", "Resolved_Remarks" },
-            { "resolved_remarks", "Resolved_Remarks" }
-        };
+        private static readonly Dictionary<string, string> JsonKeyAliases;
 
         private static readonly Type ResolvedPolicyType = typeof(ResolvedPolicyDto);
+
+        static PolicyOverrideMergeHelper()
+        {
+            JsonKeyAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            AddAlias("MaxKM", "Resolved_MaxKM");
+            AddAlias("RatePerKm", "Resolved_RatePerKm");
+            AddAlias("DA", "Resolved_DA");
+            AddAlias("HotelCap", "Resolved_HotelCap");
+            AddAlias("OutstationDA", "Resolved_OutstationDA");
+            AddAlias("Outstation_DA", "Resolved_OutstationDA");
+            AddAlias("OutstationDa", "Resolved_OutstationDA");
+            AddAlias("OwnArrangementDA", "Resolved_OwnAllowance");
+            AddAlias("OwnArrangementAllowance", "Resolved_OwnAllowance");
+            AddAlias("OwnArrangementDa", "Resolved_OwnAllowance");
+            AddAlias("OwnArrangement_DA", "Resolved_OwnAllowance");
+            AddAlias("Remarks", "Resolved_Remarks");
+            AddAlias("resolved_remarks", "Resolved_Remarks");
+        }
+
+        private static void AddAlias(string jsonKey, string propertyName)
+        {
+            if (!JsonKeyAliases.ContainsKey(jsonKey))
+                JsonKeyAliases[jsonKey] = propertyName;
+        }
 
         public static void ApplyPartialOverrides(ResolvedPolicyDto target, string overrideJson)
         {
