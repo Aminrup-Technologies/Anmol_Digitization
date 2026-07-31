@@ -604,8 +604,6 @@ namespace AnmolDristi
             //    }
             //}
 
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ClaimStatuses.Draft, ClaimStatuses.Submitted };
-
             int currentUserLevel = ViewState["CurrentUserLevel"] != null
                 ? Convert.ToInt32(ViewState["CurrentUserLevel"])
                 : 0;
@@ -615,9 +613,7 @@ namespace AnmolDristi
             bool isProcessed =
                 ClaimStatuses.Equals(claimStatus, ClaimStatuses.Processed);
 
-            bool canEditKM =
-                !isProcessed &&
-                (allowed.Contains(claimStatus) || isAuditor);
+            bool canEditKM = ClaimEditabilityHelper.CanEditKmAsApprover(claimStatus, isAuditor, isProcessed);
 
             var lnkEdit = row.FindControl("lnkEditKM") as LinkButton;
             if (lnkEdit != null)
@@ -721,13 +717,18 @@ namespace AnmolDristi
             string claimStatus = drv["ClaimStatus"] == DBNull.Value ? string.Empty : drv["ClaimStatus"].ToString().Trim();
 
             // Allowed statuses that can edit KM
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ClaimStatuses.Draft, ClaimStatuses.Submitted };
+            int currentUserLevel = ViewState["CurrentUserLevel"] != null
+                ? Convert.ToInt32(ViewState["CurrentUserLevel"])
+                : 0;
+            bool isAuditor = currentUserLevel == 2;
+            bool isProcessed = ClaimStatuses.Equals(claimStatus, ClaimStatuses.Processed);
+            bool canEditKm = ClaimEditabilityHelper.CanEditKmAsApprover(claimStatus, isAuditor, isProcessed);
 
             // Find edit control by ID (matches TemplateField LinkButton ID: lnkEditKM)
             var lnkEdit = row.FindControl("lnkEditKM") as LinkButton;
             if (lnkEdit != null)
             {
-                if (allowed.Contains(claimStatus))
+                if (canEditKm)
                 {
                     lnkEdit.Visible = true;
                     lnkEdit.Enabled = true;

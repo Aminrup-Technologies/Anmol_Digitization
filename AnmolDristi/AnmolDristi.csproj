@@ -1484,6 +1484,7 @@
       <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimStatuses.cs" />
+    <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />
     <Compile Include="SessionHelper.cs" />
     <Compile Include="SubmitClaim.aspx.cs">
