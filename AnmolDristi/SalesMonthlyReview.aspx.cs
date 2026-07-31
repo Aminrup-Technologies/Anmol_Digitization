@@ -693,13 +693,27 @@ namespace AnmolDristi
 
         protected void gvActivities_RowCommand(object sender, GridViewCommandEventArgs e)
         {
-            // Global connection string reference (adjust if yours is named differently)
-            string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-
-            if (e.CommandName == "OpenExpenses")
+            switch (e.CommandName)
             {
-                ResetExpenseEntryFields();
-                string arg = e.CommandArgument.ToString();
+                case "OpenExpenses":
+                    HandleOpenExpensesCommand(e.CommandArgument.ToString());
+                    break;
+                case "OpenEditModal":
+                    HandleOpenEditModalCommand(Convert.ToString(e.CommandArgument));
+                    break;
+                case "EditRow":
+                    HandleEditRowCommand(e.CommandArgument.ToString());
+                    break;
+                case "UpdateRow":
+                    HandleUpdateRowCommand(e);
+                    break;
+            }
+        }
+
+        private void HandleOpenExpensesCommand(string commandArgument)
+        {
+            ResetExpenseEntryFields();
+            string arg = commandArgument;
                 var parts = arg.Split('|');
                 string activityId = parts[0];
                 string activityDate = parts.Length > 1 ? parts[1] : "";
@@ -803,11 +817,12 @@ namespace AnmolDristi
                     explicitMode.Replace("'", "\\'"),
                     safeRemark);
 
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "openExpenseModalSafe_" + activityId, script, true);
-            }
-            else if (e.CommandName == "OpenEditModal")
-            {
-                string arg = Convert.ToString(e.CommandArgument);
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "openExpenseModalSafe_" + activityId, script, true);
+        }
+
+        private void HandleOpenEditModalCommand(string commandArgument)
+        {
+            string arg = commandArgument;
                 string[] parts = arg.Split('|');
 
                 int activityId = 0;
@@ -831,218 +846,159 @@ namespace AnmolDristi
 
                 BindKmHistory(activityId);
 
-                //// ====================================================================
-                //// UI LOCK: KM Modal View-Only Mode
-                //// ====================================================================
-                //string claimStatus = ClaimStatuses.Draft;
-                //using (SqlConnection conStat = new SqlConnection(connString))
-                //{
-                //    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                //    {
-                //        cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                //        conStat.Open();
-                //        object statObj = cmdStat.ExecuteScalar();
-                //        if (statObj != null && statObj != DBNull.Value) claimStatus = statObj.ToString().Trim();
-                //    }
-                //}
+            ApplyExpenseModalViewOnlyStateForKmModal(activityId);
 
-                // ====================================================================
-                // UI LOCK: Expense Modal View-Only Mode
-                // ====================================================================
-                string detailStatus = ClaimStatuses.Draft; // Default to Draft
-
-                using (SqlConnection conStat = new SqlConnection(connString))
-                {
-                    // ⬅️ NEW: Query the specific LINE ITEM status, not the overall month status
-                    string query = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
-                    string query1 = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
-                    using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
-                    {
-                        cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                        conStat.Open();
-                        object statObj = cmdStat.ExecuteScalar();
-                        if (statObj != null && statObj != DBNull.Value)
-                        {
-                            detailStatus = statObj.ToString().Trim();
-                        }
-                    }
-                }
-
-                // ⬅️ NEW: Check if the SPECIFIC LINE ITEM is locked. 
-                // If it is 'Returned' or 'Rejected' or 'Draft', it stays unlocked!
-                if (!ClaimEditabilityHelper.CanEditExpenseByDetailStatus(detailStatus))
-                {
-                    // 1. Hide the Save and KM Modify buttons
-                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
-                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
-                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = false;
-
-                    // 2. Loop through the Repeater to swap the Delete icon for the Lock icon
-                    if (rptExpenses != null)
-                    {
-                        foreach (RepeaterItem item in rptExpenses.Items)
-                        {
-                            if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
-                            {
-                                LinkButton lnkDelete = item.FindControl("lnkDeleteExpense") as LinkButton;
-                                LinkButton lnkDisabled = item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
-
-                                if (lnkDelete != null) lnkDelete.Visible = false; // Hide trash can
-                                if (lnkDisabled != null) lnkDisabled.Visible = true; // Show padlock
-                            }
-                        }
-                    }
-
-                    if (LBL_ExpenseMsg != null)
-                    {
-                        LBL_ExpenseMsg.Text = "🔒 This day is " + detailStatus + ". You are in View-Only mode.";
-                        LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                    }
-                }
-                else
-                {
-                    // It is Draft, Returned, or Rejected - unlock everything!
-                    if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = true;
-                    if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = true;
-                    if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = true;
-
-                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "";
-
-                    // Unlocking repeater items is handled by rptExpenses_ItemDataBound natively
-                }
-                // ====================================================================
-
-                //if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Submitted) ||
-                //    ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved) ||
-                //    ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending))
-                //{
-                //    if (btnSaveKm != null) btnSaveKm.Visible = false;
-                //    if (txtModalKM != null) txtModalKM.Enabled = false;
-                //    if (txtKmReason != null) txtKmReason.Enabled = false;
-
-                //    if (lblModalCurrentKm != null)
-                //    {
-                //        lblModalCurrentKm.Text += "<br/><span style='color:red;'>🔒 <b>This month is " + claimStatus + ". You are in View-Only mode.</b></span>";
-                //    }
-                //}
-                //else
-                //{
-                //    if (btnSaveKm != null) btnSaveKm.Visible = true;
-                //    if (txtModalKM != null) txtModalKM.Enabled = true;
-                //    if (txtKmReason != null) txtKmReason.Enabled = true;
-                //}
-                // ====================================================================
-
-                string modalId = "editKmModal";
+            string modalId = "editKmModal";
                 string script = string.Format("setTimeout(function(){{ $('#{0}').modal('show'); $('#spMinKm').text('{1}'); $('#spMaxKm').text('{2}'); }}, 50);",
                     modalId, minDisplay.Replace("'", "\\'"), maxDisplay.Replace("'", "\\'"));
 
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
-            }
-            else if (e.CommandName == "EditRow")
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+        }
+
+        private void ApplyExpenseModalViewOnlyStateForKmModal(int activityId)
+        {
+            string detailStatus = GetActivityDetailStatus(activityId);
+
+            if (!ClaimEditabilityHelper.CanEditExpenseByDetailStatus(detailStatus))
             {
-                int activityId;
-                if (int.TryParse(e.CommandArgument.ToString(), out activityId))
+                if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
+                if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
+                if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = false;
+
+                if (rptExpenses != null)
                 {
-                    // ====================================================================
-                    // SECURITY GATE: Prevent Inline Editing if Submitted
-                    // ====================================================================
-                    string currentStatus = ClaimStatuses.Draft;
-                    using (SqlConnection conStat = new SqlConnection(connString))
+                    foreach (RepeaterItem item in rptExpenses.Items)
                     {
-                        using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+                        if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
                         {
-                            cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                            conStat.Open();
-                            object statObj = cmdStat.ExecuteScalar();
-                            if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
+                            LinkButton lnkDelete = item.FindControl("lnkDeleteExpense") as LinkButton;
+                            LinkButton lnkDisabled = item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
+
+                            if (lnkDelete != null) lnkDelete.Visible = false;
+                            if (lnkDisabled != null) lnkDisabled.Visible = true;
                         }
                     }
+                }
 
-                    if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
-                    {
-                        lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
-                            ? "Cannot edit row. This day was rejected by the auditor."
-                            : "Cannot edit row. This claim is " + currentStatus + ".";
-                        lbl_msg.ForeColor = System.Drawing.Color.Red;
-                        return; // Blocks the inline edit entirely
-                    }
-                    // ====================================================================
-
-                    int rowIndex = FindRowIndexByActivityId(activityId);
-                    if (rowIndex >= 0)
-                    {
-                        gvActivities.EditIndex = rowIndex;
-                        Session.Remove(GetCurrentSessionKey());
-                        BindGrid(false);
-                    }
+                if (LBL_ExpenseMsg != null)
+                {
+                    LBL_ExpenseMsg.Text = "🔒 This day is " + detailStatus + ". You are in View-Only mode.";
+                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
                 }
             }
-            else if (e.CommandName == "UpdateRow")
+            else
             {
-                int activityId = Convert.ToInt32(e.CommandArgument);
+                if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = true;
+                if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = true;
+                if (btnOpenEditKmFromExpense != null) btnOpenEditKmFromExpense.Visible = true;
 
-                // ====================================================================
-                // SECURITY GATE: Prevent Inline Updating if Submitted
-                // ====================================================================
-                string currentStatus = ClaimStatuses.Draft;
-                using (SqlConnection conStat = new SqlConnection(connString))
-                {
-                    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                    {
-                        cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                        conStat.Open();
-                        object statObj = cmdStat.ExecuteScalar();
-                        if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
-                    }
-                }
+                if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "";
+            }
+        }
 
-                if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
-                {
-                    lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
-                        ? "Update blocked. This day was rejected by the auditor."
-                        : "Update blocked. This claim is " + currentStatus + ".";
-                    lbl_msg.ForeColor = System.Drawing.Color.Red;
-                    gvActivities.EditIndex = -1; // Reset grid
-                    BindGrid(false);
-                    return;
-                }
-                // ====================================================================
+        private string GetActivityClaimStatus(int activityId)
+        {
+            string currentStatus = ClaimStatuses.Draft;
+            using (SqlConnection conStat = new SqlConnection(connString))
+            using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
+            {
+                cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                conStat.Open();
+                object statObj = cmdStat.ExecuteScalar();
+                if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
+            }
+            return currentStatus;
+        }
 
-                GridViewRow row = ((LinkButton)e.CommandSource).NamingContainer as GridViewRow;
-                TextBox txtKM = row.FindControl("txtKM") as TextBox;
-                if (txtKM == null) return;
+        private string GetActivityDetailStatus(int activityId)
+        {
+            string detailStatus = ClaimStatuses.Draft;
+            using (SqlConnection conStat = new SqlConnection(connString))
+            using (SqlCommand cmdStat = new SqlCommand(@"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC", conStat))
+            {
+                cmdStat.Parameters.AddWithValue("@ActId", activityId);
+                conStat.Open();
+                object statObj = cmdStat.ExecuteScalar();
+                if (statObj != null && statObj != DBNull.Value) detailStatus = statObj.ToString().Trim();
+            }
+            return detailStatus;
+        }
 
-                decimal newKm;
-                if (!decimal.TryParse(txtKM.Text.Trim(), out newKm))
-                {
-                    lbl_msg.Text = "Enter valid KM value.";
-                    return;
-                }
+        private void HandleEditRowCommand(string commandArgument)
+        {
+            int activityId;
+            if (!int.TryParse(commandArgument, out activityId)) return;
 
-                try
+            string currentStatus = GetActivityClaimStatus(activityId);
+
+            if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
+            {
+                lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
+                    ? "Cannot edit row. This day was rejected by the auditor."
+                    : "Cannot edit row. This claim is " + currentStatus + ".";
+                lbl_msg.ForeColor = System.Drawing.Color.Red;
+                return;
+            }
+
+            int rowIndex = FindRowIndexByActivityId(activityId);
+            if (rowIndex >= 0)
+            {
+                gvActivities.EditIndex = rowIndex;
+                Session.Remove(GetCurrentSessionKey());
+                BindGrid(false);
+            }
+        }
+
+        private void HandleUpdateRowCommand(GridViewCommandEventArgs e)
+        {
+            int activityId = Convert.ToInt32(e.CommandArgument);
+
+            string currentStatus = GetActivityClaimStatus(activityId);
+
+            if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
+            {
+                lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
+                    ? "Update blocked. This day was rejected by the auditor."
+                    : "Update blocked. This claim is " + currentStatus + ".";
+                lbl_msg.ForeColor = System.Drawing.Color.Red;
+                gvActivities.EditIndex = -1;
+                BindGrid(false);
+                return;
+            }
+
+            GridViewRow row = ((LinkButton)e.CommandSource).NamingContainer as GridViewRow;
+            TextBox txtKM = row.FindControl("txtKM") as TextBox;
+            if (txtKM == null) return;
+
+            decimal newKm;
+            if (!decimal.TryParse(txtKM.Text.Trim(), out newKm))
+            {
+                lbl_msg.Text = "Enter valid KM value.";
+                return;
+            }
+
+            try
+            {
+                using (SqlConnection con = new SqlConnection(connString))
+                using (SqlCommand cmd = new SqlCommand("usp_UpdateActivityKM", con))
                 {
-                    using (SqlConnection con = new SqlConnection(connString))
-                    using (SqlCommand cmd = new SqlCommand("usp_UpdateActivityKM", con))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                        cmd.Parameters.AddWithValue("@NewKM", newKm);
-                        cmd.Parameters.AddWithValue("@ModifiedBy", GetCurrentUserLoginId());
-                        con.Open();
-                        cmd.ExecuteNonQuery();
-                    }
-                    gvActivities.EditIndex = -1;
-                    Session.Remove(GetCurrentSessionKey());
-                    BindGrid(false);
-                    lbl_msg.ForeColor = System.Drawing.Color.Green;
-                    lbl_msg.Text = "KM updated.";
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    cmd.Parameters.AddWithValue("@NewKM", newKm);
+                    cmd.Parameters.AddWithValue("@ModifiedBy", GetCurrentUserLoginId());
+                    con.Open();
+                    cmd.ExecuteNonQuery();
                 }
-                catch (SqlException sqx)
-                {
-                    lbl_msg.ForeColor = System.Drawing.Color.Red;
-                    lbl_msg.Text = sqx.Message;
-                }
+                gvActivities.EditIndex = -1;
+                Session.Remove(GetCurrentSessionKey());
+                BindGrid(false);
+                lbl_msg.ForeColor = System.Drawing.Color.Green;
+                lbl_msg.Text = "KM updated.";
+            }
+            catch (SqlException sqx)
+            {
+                lbl_msg.ForeColor = System.Drawing.Color.Red;
+                lbl_msg.Text = sqx.Message;
             }
         }
 
@@ -1747,57 +1703,88 @@ namespace AnmolDristi
         What: Added file attachment validation block in BTN_SaveExpense_Click.
         =======================================================================
         */
-        protected void BTN_SaveExpense_Click(object sender, EventArgs e)
+        private void ResetExpenseSaveMessage()
         {
             if (LBL_ExpenseMsg != null)
             {
                 LBL_ExpenseMsg.Text = "";
                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
             }
+        }
+
+        private void ShowExpenseModal(string scriptKey = "showExpense")
+        {
+            ScriptManager.RegisterStartupScript(this, this.GetType(), scriptKey, "$('#expenseModal').modal('show');", true);
+        }
+
+        private bool TryGetExpenseSaveActivityId(out int activityId)
+        {
+            string hfAct = HF_ActivityId != null ? HF_ActivityId.Value : "";
+            if (int.TryParse(hfAct, out activityId)) return true;
+
+            if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Invalid activity.";
+            ShowExpenseModal();
+            return false;
+        }
+
+        private bool TryValidateExpenseSavePermission(int activityId, out string currentStatus)
+        {
+            currentStatus = GetActivityDetailStatus(activityId);
+            if (ClaimEditabilityHelper.CanEditExpenseByDetailStatus(currentStatus)) return true;
+
+            if (LBL_ExpenseMsg != null)
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                LBL_ExpenseMsg.Text = "Access Denied: You cannot modify expenses for a submitted claim.";
+            }
+            string safeErr = "Cannot modify expenses. The claim for this month is currently " + currentStatus + ".";
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErr", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
+            ShowExpenseModal();
+            return false;
+        }
+
+        private void CompleteExpenseSaveSuccess(int activityId, string policyMode)
+        {
+            DataTable dtAfter = LoadExpenseForActivity(activityId.ToString());
+            Session.Remove(GetCurrentSessionKey());
+            BindGrid(false);
+
+            if (LBL_ExpenseMsg != null)
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
+                LBL_ExpenseMsg.Text = "Expense saved.";
+            }
+
+            string savedMode = "";
+            if (dtAfter != null && dtAfter.Rows.Count > 0 && dtAfter.Columns.Contains("PolicyMode") && dtAfter.Rows[0]["PolicyMode"] != DBNull.Value)
+                savedMode = dtAfter.Rows[0]["PolicyMode"].ToString().Trim();
+            if (string.IsNullOrWhiteSpace(savedMode)) savedMode = policyMode;
+
+            string scriptSave = string.Format("if(typeof openExpenseModalSafe === 'function') openExpenseModalSafe('{0}', '{1}'); else $('#expenseModal').modal('show');", activityId, savedMode.Replace("'", "\\'"));
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpenseSaved", scriptSave, true);
+        }
+
+        private void HandleExpenseSaveException(Exception ex)
+        {
+            if (LBL_ExpenseMsg != null)
+            {
+                LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                LBL_ExpenseMsg.Text = ex.Message;
+            }
+            string safeMessage = ex.Message.Replace("'", "\\'").Replace(Environment.NewLine, " ");
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError2", "showPNotify('Error', '" + safeMessage + "', 'error');", true);
+            ShowExpenseModal();
+        }
+
+        protected void BTN_SaveExpense_Click(object sender, EventArgs e)
+        {
+            ResetExpenseSaveMessage();
 
             int activityId;
-            string hfAct = HF_ActivityId != null ? HF_ActivityId.Value : "";
-            if (!int.TryParse(hfAct, out activityId))
-            {
-                if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Invalid activity.";
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
-                return;
-            }
+            if (!TryGetExpenseSaveActivityId(out activityId)) return;
 
-            // ====================================================================
-            // SECURITY GATE: Prevent saving if the month is already submitted
-            // ====================================================================
-            string currentStatus = ClaimStatuses.Draft;
-            using (SqlConnection conStat = new SqlConnection(connString))
-            {
-                string query1 = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
-
-                //using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
-                {
-                    cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                    conStat.Open();
-                    object statObj = cmdStat.ExecuteScalar();
-                    if (statObj != null && statObj != DBNull.Value)
-                    {
-                        currentStatus = statObj.ToString().Trim();
-                    }
-                }
-            }
-
-            if (!ClaimEditabilityHelper.CanEditExpenseByDetailStatus(currentStatus))
-            {
-                if (LBL_ExpenseMsg != null)
-                {
-                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                    LBL_ExpenseMsg.Text = "Access Denied: You cannot modify expenses for a submitted claim.";
-                }
-                string safeErr = "Cannot modify expenses. The claim for this month is currently " + currentStatus + ".";
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErr", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
-                return;
-            }
-            // ====================================================================
+            string currentStatus;
+            if (!TryValidateExpenseSavePermission(activityId, out currentStatus)) return;
 
             string expenseType = "DA";
             if (DDL_ExpenseType != null && !string.IsNullOrWhiteSpace(DDL_ExpenseType.SelectedValue))
@@ -2242,34 +2229,11 @@ namespace AnmolDristi
                     }
                 }
 
-                DataTable dtAfter = LoadExpenseForActivity(activityId.ToString());
-                Session.Remove(GetCurrentSessionKey());
-                BindGrid(false);
-
-                if (LBL_ExpenseMsg != null)
-                {
-                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Green;
-                    LBL_ExpenseMsg.Text = "Expense saved.";
-                }
-
-                string savedMode = "";
-                if (dtAfter != null && dtAfter.Rows.Count > 0 && dtAfter.Columns.Contains("PolicyMode") && dtAfter.Rows[0]["PolicyMode"] != DBNull.Value)
-                    savedMode = dtAfter.Rows[0]["PolicyMode"].ToString().Trim();
-                if (string.IsNullOrWhiteSpace(savedMode)) savedMode = policyMode;
-
-                string scriptSave = string.Format("if(typeof openExpenseModalSafe === 'function') openExpenseModalSafe('{0}', '{1}'); else $('#expenseModal').modal('show');", activityId, savedMode.Replace("'", "\\'"));
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpenseSaved", scriptSave, true);
+                CompleteExpenseSaveSuccess(activityId, policyMode);
             }
             catch (Exception ex)
             {
-                if (LBL_ExpenseMsg != null)
-                {
-                    LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                    LBL_ExpenseMsg.Text = ex.Message;
-                }
-                string safeMessage = ex.Message.Replace("'", "\\'").Replace(Environment.NewLine, " ");
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError2", "showPNotify('Error', '" + safeMessage + "', 'error');", true);
-                ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                HandleExpenseSaveException(ex);
             }
         }
 
@@ -2828,7 +2792,11 @@ namespace AnmolDristi
         protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName == "DeleteExpense")
-            {
+                HandleDeleteExpenseCommand(e);
+        }
+
+        private void HandleDeleteExpenseCommand(RepeaterCommandEventArgs e)
+        {
                 var arg = e.CommandArgument != null ? e.CommandArgument.ToString() : "";
                 var parts = arg.Split(new[] { '|' }, 3);
 
@@ -3042,7 +3010,6 @@ namespace AnmolDristi
                     }
                     ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                 }
-            }
         }
 
         protected void rptExpenses_ItemCommand_OLD(object source, RepeaterCommandEventArgs e)
@@ -3633,30 +3600,13 @@ namespace AnmolDristi
         {
             try
             {
-                if (gvActivities.FooterRow == null) { ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyNoFooter", "showPNotify('Warning','No data to save as draft.','warning');", true); return; }
-                decimal totalKM = ParseDecimalFromLabel("lblFooterTotalKM");
-                decimal totalClaim = ParseCurrencyFromLabel("lblFooterCalculated");
+                if (!TryGetDraftFooterTotals(out decimal totalKM, out decimal totalClaim)) return;
 
                 int rowsUpserted = 0;
                 int expensesUpdated = 0;
                 ExecuteSaveMonthlySummary(totalKM, totalClaim, out rowsUpserted, out expensesUpdated);
 
-                DataTable dt = new DataTable();
-                using (SqlConnection con = new SqlConnection(connString))
-                using (SqlCommand cmd = new SqlCommand(@"SELECT TotalKM, TotalClaimAmount, CreatedOn FROM dbo.SalesMonthlyDraftSummary WHERE Login_Id=@Login AND YearNo=@Y AND MonthNo=@M", con))
-                {
-                    cmd.Parameters.AddWithValue("@Login", GetCurrentUserLoginId());
-                    cmd.Parameters.AddWithValue("@Y", int.Parse(DDL_Year.SelectedValue));
-                    cmd.Parameters.AddWithValue("@M", int.Parse(DDL_Month.SelectedValue));
-                    using (SqlDataAdapter da = new SqlDataAdapter(cmd)) da.Fill(dt);
-                }
-
-                if (dt.Rows.Count > 0)
-                {
-                    var row = dt.Rows[0];
-                    string msg = string.Format("showPNotify('Saved','Draft saved — KM: {0} Claim: ₹ {1}','success');", row["TotalKM"], row["TotalClaimAmount"]);
-                    ScriptManager.RegisterStartupScript(this, GetType(), "showSavedSummary", msg, true);
-                }
+                ShowDraftSaveNotification();
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(true, false);
 
@@ -3665,11 +3615,51 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
-                lbl_msg.Text = "Error saving draft: " + ex.Message;
-                lbl_msg.ForeColor = System.Drawing.Color.Red;
-                string safeErr = ex.Message.Replace("'", "\\'");
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyDraftErr", "showPNotify('Error','" + safeErr + "','error');", true);
+                HandleDraftSaveException(ex);
             }
+        }
+
+        private bool TryGetDraftFooterTotals(out decimal totalKM, out decimal totalClaim)
+        {
+            totalKM = 0m;
+            totalClaim = 0m;
+            if (gvActivities.FooterRow != null)
+            {
+                totalKM = ParseDecimalFromLabel("lblFooterTotalKM");
+                totalClaim = ParseCurrencyFromLabel("lblFooterCalculated");
+                return true;
+            }
+
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyNoFooter", "showPNotify('Warning','No data to save as draft.','warning');", true);
+            return false;
+        }
+
+        private void ShowDraftSaveNotification()
+        {
+            DataTable dt = new DataTable();
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand(@"SELECT TotalKM, TotalClaimAmount, CreatedOn FROM dbo.SalesMonthlyDraftSummary WHERE Login_Id=@Login AND YearNo=@Y AND MonthNo=@M", con))
+            {
+                cmd.Parameters.AddWithValue("@Login", GetCurrentUserLoginId());
+                cmd.Parameters.AddWithValue("@Y", int.Parse(DDL_Year.SelectedValue));
+                cmd.Parameters.AddWithValue("@M", int.Parse(DDL_Month.SelectedValue));
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd)) da.Fill(dt);
+            }
+
+            if (dt.Rows.Count > 0)
+            {
+                var row = dt.Rows[0];
+                string msg = string.Format("showPNotify('Saved','Draft saved — KM: {0} Claim: ₹ {1}','success');", row["TotalKM"], row["TotalClaimAmount"]);
+                ScriptManager.RegisterStartupScript(this, GetType(), "showSavedSummary", msg, true);
+            }
+        }
+
+        private void HandleDraftSaveException(Exception ex)
+        {
+            lbl_msg.Text = "Error saving draft: " + ex.Message;
+            lbl_msg.ForeColor = System.Drawing.Color.Red;
+            string safeErr = ex.Message.Replace("'", "\\'");
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyDraftErr", "showPNotify('Error','" + safeErr + "','error');", true);
         }
 
         private void ExecuteSaveMonthlySummary(decimal totalKM, decimal totalClaim, out int rowsUpserted, out int expensesUpdated)
@@ -3719,92 +3709,125 @@ namespace AnmolDristi
             decimal val; decimal.TryParse(text, out val); return val;
         }
 
+        private bool TryValidateSubmitPolicy(int year, int month)
+        {
+            bool isPolicyEnabled = Convert.ToBoolean(ConfigurationManager.AppSettings["EnablePreviousMonthPolicy"]);
+            if (!isPolicyEnabled) return true;
+
+            DateTime currentDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"));
+            int currentYear = currentDate.Year;
+            int currentMonth = currentDate.Month;
+            bool isAllowedWindow = currentDate.Day >= 1 && currentDate.Day <= 15;
+            bool isPreviousMonthSelected = (year == currentYear && month == currentMonth - 1) || (currentMonth == 1 && month == 12 && year == currentYear - 1);
+            if (isAllowedWindow && isPreviousMonthSelected) return true;
+
+            lbl_msg.Text = "You can submit previous month data only between 1st and 15th of the current month.";
+            lbl_msg.ForeColor = System.Drawing.Color.Red;
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyPolicyBlockSubmit", "showPNotify('Policy Restriction', 'Submission is allowed only between 1st and 15th for the previous month.', 'error');", true);
+            return false;
+        }
+
+        private bool TryCollectSubmitActivityData(out DataTable tvp)
+        {
+            List<string> errors;
+            tvp = CollectGridActivityUpdates(out errors);
+            if (!errors.Any()) return true;
+
+            string msg = "Unable to submit due to validation errors:<br/>" + string.Join("<br/>", errors.ToArray());
+            lbl_msg.Text = "Validation failed.";
+            lbl_msg.ForeColor = System.Drawing.Color.Red;
+            string safeErr = msg.Replace("'", "\\'");
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitErr", "showPNotify('Validation Error','" + safeErr + "', 'error');", true);
+            return false;
+        }
+
+        private bool TryResolveSubmitTvp(int year, int month, ref DataTable tvp)
+        {
+            if (tvp.Rows.Count == 0)
+            {
+                lbl_msg.Text = "No activity rows found to submit.";
+                lbl_msg.ForeColor = System.Drawing.Color.Red;
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitNoRows", "showPNotify('Nothing to submit', 'No activity rows found.', 'warning');", true);
+                return false;
+            }
+
+            DataTable submitTvp;
+            string partialMessage;
+            if (!TryPreparePartialResubmission(year, month, tvp, out submitTvp, out partialMessage)) return true;
+
+            if (!string.IsNullOrWhiteSpace(partialMessage) || submitTvp == null || submitTvp.Rows.Count == 0)
+            {
+                string msg = partialMessage ?? "No returned activities found to resubmit.";
+                lbl_msg.Text = msg;
+                lbl_msg.ForeColor = System.Drawing.Color.Red;
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitNoReturned",
+                    "showPNotify('Nothing to resubmit', '" + msg.Replace("'", "\\'") + "', 'warning');", true);
+                return false;
+            }
+
+            tvp = submitTvp;
+            return true;
+        }
+
+        private void CompleteSubmitSuccess(int approvalRequestId, DataTable tvp)
+        {
+            Session.Remove(GetCurrentSessionKey());
+            BindGrid(true);
+
+            if (approvalRequestId > 0)
+            {
+                lbl_msg.Text = string.Format("Submitted {0} rows for approval. Request Id: {1}", tvp.Rows.Count, approvalRequestId);
+                lbl_msg.ForeColor = System.Drawing.Color.Green;
+                string scriptMsg = string.Format("showPNotify('Submitted','Submitted for approval successfully. Request ID: {0}','success');", approvalRequestId);
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmit", scriptMsg, true);
+            }
+            else
+            {
+                lbl_msg.Text = "Submitted for approval (no request id returned).";
+                lbl_msg.ForeColor = System.Drawing.Color.Green;
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmit2", "showPNotify('Submitted','Submitted for approval successfully.','success');", true);
+            }
+        }
+
+        private void HandleSubmitSqlException(SqlException sqx)
+        {
+            lbl_msg.Text = "SQL Error while submitting: " + sqx.Message;
+            lbl_msg.ForeColor = System.Drawing.Color.Red;
+            string safeErr = sqx.Message.Replace("'", "\\'");
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitSqlErr", "showPNotify('SQL Error','" + safeErr + "','error');", true);
+        }
+
+        private void HandleSubmitException(Exception ex)
+        {
+            lbl_msg.Text = "Error during submit: " + ex.Message;
+            lbl_msg.ForeColor = System.Drawing.Color.Red;
+            string safeErr = ex.Message.Replace("'", "\\'");
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitErr2", "showPNotify('Error','" + safeErr + "','error');", true);
+        }
+
         protected void btn_submit_Click(object sender, EventArgs e)
         {
             try
             {
                 int year = int.Parse(DDL_Year.SelectedValue);
                 int month = int.Parse(DDL_Month.SelectedValue);
-                bool isPolicyEnabled = Convert.ToBoolean(ConfigurationManager.AppSettings["EnablePreviousMonthPolicy"]);
 
-                if (isPolicyEnabled)
-                {
-                    DateTime currentDate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"));
-                    int currentYear = currentDate.Year; int currentMonth = currentDate.Month;
-                    bool isAllowedWindow = currentDate.Day >= 1 && currentDate.Day <= 15;
-                    bool isPreviousMonthSelected = (year == currentYear && month == currentMonth - 1) || (currentMonth == 1 && month == 12 && year == currentYear - 1);
-                    if (!(isAllowedWindow && isPreviousMonthSelected))
-                    {
-                        lbl_msg.Text = "You can submit previous month data only between 1st and 15th of the current month.";
-                        lbl_msg.ForeColor = System.Drawing.Color.Red;
-                        ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyPolicyBlockSubmit", "showPNotify('Policy Restriction', 'Submission is allowed only between 1st and 15th for the previous month.', 'error');", true);
-                        return;
-                    }
-                }
+                if (!TryValidateSubmitPolicy(year, month)) return;
 
-                List<string> errors;
-                DataTable tvp = CollectGridActivityUpdates(out errors);
-                if (errors.Any())
-                {
-                    string msg = "Unable to submit due to validation errors:<br/>" + string.Join("<br/>", errors.ToArray());
-                    lbl_msg.Text = "Validation failed."; lbl_msg.ForeColor = System.Drawing.Color.Red;
-                    string safeErr = msg.Replace("'", "\\'");
-                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitErr", "showPNotify('Validation Error','" + safeErr + "', 'error');", true);
-                    return;
-                }
-
-                if (tvp.Rows.Count == 0)
-                {
-                    lbl_msg.Text = "No activity rows found to submit."; lbl_msg.ForeColor = System.Drawing.Color.Red;
-                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitNoRows", "showPNotify('Nothing to submit', 'No activity rows found.', 'warning');", true);
-                    return;
-                }
-
-                DataTable submitTvp;
-                string partialMessage;
-                if (TryPreparePartialResubmission(year, month, tvp, out submitTvp, out partialMessage))
-                {
-                    if (!string.IsNullOrWhiteSpace(partialMessage) || submitTvp == null || submitTvp.Rows.Count == 0)
-                    {
-                        string msg = partialMessage ?? "No returned activities found to resubmit.";
-                        lbl_msg.Text = msg;
-                        lbl_msg.ForeColor = System.Drawing.Color.Red;
-                        ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitNoReturned",
-                            "showPNotify('Nothing to resubmit', '" + msg.Replace("'", "\\'") + "', 'warning');", true);
-                        return;
-                    }
-                    tvp = submitTvp;
-                }
+                DataTable tvp;
+                if (!TryCollectSubmitActivityData(out tvp)) return;
+                if (!TryResolveSubmitTvp(year, month, ref tvp)) return;
 
                 int approvalRequestId = ExecuteSubmitForApproval(tvp, year, month, "Submitted via UI");
-                Session.Remove(GetCurrentSessionKey());
-                BindGrid(true);
-
-                if (approvalRequestId > 0)
-                {
-                    lbl_msg.Text = string.Format("Submitted {0} rows for approval. Request Id: {1}", tvp.Rows.Count, approvalRequestId);
-                    lbl_msg.ForeColor = System.Drawing.Color.Green;
-                    string scriptMsg = string.Format("showPNotify('Submitted','Submitted for approval successfully. Request ID: {0}','success');", approvalRequestId);
-                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmit", scriptMsg, true);
-                }
-                else
-                {
-                    lbl_msg.Text = "Submitted for approval (no request id returned).";
-                    lbl_msg.ForeColor = System.Drawing.Color.Green;
-                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmit2", "showPNotify('Submitted','Submitted for approval successfully.','success');", true);
-                }
+                CompleteSubmitSuccess(approvalRequestId, tvp);
             }
             catch (SqlException sqx)
             {
-                lbl_msg.Text = "SQL Error while submitting: " + sqx.Message; lbl_msg.ForeColor = System.Drawing.Color.Red;
-                string safeErr = sqx.Message.Replace("'", "\\'");
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitSqlErr", "showPNotify('SQL Error','" + safeErr + "','error');", true);
+                HandleSubmitSqlException(sqx);
             }
             catch (Exception ex)
             {
-                lbl_msg.Text = "Error during submit: " + ex.Message; lbl_msg.ForeColor = System.Drawing.Color.Red;
-                string safeErr = ex.Message.Replace("'", "\\'");
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitErr2", "showPNotify('Error','" + safeErr + "','error');", true);
+                HandleSubmitException(ex);
             }
         }
 
