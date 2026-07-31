@@ -621,6 +621,11 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedRatePerKm;
+
+        /// <summary>
+        /// HF_FixedTravelAllowance control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
         
         /// <summary>
         /// HF_ResolvedPolicyMode control.

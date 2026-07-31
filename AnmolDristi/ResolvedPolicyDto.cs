@@ -28,6 +28,7 @@ namespace AnmolDristi
         public decimal? Resolved_OutstationDA { get; set; }
         public decimal? Resolved_OwnAllowance { get; set; }
         public string Resolved_Remarks { get; set; }
+        public decimal? FixedTravelAllowance { get; set; }
 
         public bool IsPolicyExceptionApplied { get; set; }
         public int? PolicyExceptionId { get; set; }

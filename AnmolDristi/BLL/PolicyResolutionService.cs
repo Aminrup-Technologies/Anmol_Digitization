@@ -48,19 +48,8 @@ namespace AnmolDristi.BLL
             standard.PolicySource = "Employee Exception";
             standard.AppliedPriority = exception.Priority;
             standard.Source = "EX";
-            standard.RowId = exception.ExceptionId;
-            standard.EmployeeCode = exception.EmployeeCode;
-            standard.RegionId = exception.RegionId;
-            standard.BranchId = exception.BranchId;
-            standard.GradeId = exception.GradeId;
-            standard.DesignationId = exception.DesignationId;
-            standard.PolicyJson = exception.PolicyJson;
-            standard.Priority = exception.Priority;
-            standard.EffectiveFrom = exception.EffectiveFrom;
-            standard.EffectiveTo = exception.EffectiveTo;
-            standard.IsActive = exception.IsActive;
 
-            PolicyExceptionSerializer.ApplyToResolvedPolicy(standard, exception.PolicyJson);
+            PolicyOverrideMergeHelper.ApplyPartialOverrides(standard, exception.PolicyJson);
             return standard;
         }
     }

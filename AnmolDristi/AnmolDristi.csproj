@@ -1485,6 +1485,8 @@
     </Compile>
     <Compile Include="KmToleranceHelper.cs" />
     <Compile Include="ResolvedPolicyDto.cs" />
+    <Compile Include="PolicyOverrideMergeHelper.cs" />
+    <Compile Include="TravelAllowanceHelper.cs" />
     <Compile Include="PolicyExceptionDto.cs" />
     <Compile Include="PolicyExceptionSerializer.cs" />
     <Compile Include="BLL\PolicyExceptionService.cs" />

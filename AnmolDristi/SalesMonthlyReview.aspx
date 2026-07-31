@@ -1089,6 +1089,7 @@
                             <asp:HiddenField ID="HF_ResolvedDA" runat="server" />
                             <asp:HiddenField ID="HF_ResolvedMaxKM" runat="server" />
                             <asp:HiddenField ID="HF_ResolvedRatePerKm" runat="server" />
+                            <asp:HiddenField ID="HF_FixedTravelAllowance" runat="server" />
                             <asp:HiddenField ID="HF_ResolvedPolicyMode" runat="server" />
                             <asp:HiddenField ID="HF_OutstationDA" runat="server" />
                             <asp:HiddenField ID="HF_OwnArrangementDA" runat="server" />
