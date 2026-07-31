@@ -59,19 +59,19 @@ namespace AnmolDristi.DAL
 SELECT TOP 1
     u.EmployeeCode,
     u.EmployeeName,
-    TRY_CAST(u.RegionId AS INT) AS RegionId,
-    TRY_CAST(u.BranchId AS INT) AS BranchId,
-    TRY_CAST(u.GradeId AS INT) AS GradeId,
-    TRY_CAST(u.Designation_ID AS INT) AS DesignationId,
-    r.Region_Description AS RegionName,
-    b.Branch_Description AS BranchName,
-    g.Grade_Description AS GradeName,
-    d.Designation_Description AS DesignationName
+    r.Id AS RegionId,
+    b.Id AS BranchId,
+    g.Id AS GradeId,
+    d.Id AS DesignationId,
+    ISNULL(r.Region_Description, '') AS RegionName,
+    ISNULL(b.Branch_Description, '') AS BranchName,
+    ISNULL(g.Grade_Description, '') AS GradeName,
+    ISNULL(d.Designation_Description, '') AS DesignationName
 FROM dbo.MST_UserMaster u WITH (NOLOCK)
-LEFT JOIN dbo.MST_Region r WITH (NOLOCK) ON TRY_CAST(u.RegionId AS INT) = r.Id
-LEFT JOIN dbo.MST_Branch b WITH (NOLOCK) ON TRY_CAST(u.BranchId AS INT) = b.Id
-LEFT JOIN dbo.MST_Grade g WITH (NOLOCK) ON TRY_CAST(u.GradeId AS INT) = g.Id
-LEFT JOIN dbo.MST_Designation d WITH (NOLOCK) ON TRY_CAST(u.Designation_ID AS INT) = d.Id
+LEFT JOIN dbo.MST_Region r WITH (NOLOCK) ON CAST(u.RegionId AS VARCHAR(50)) = CAST(r.Region_ID AS VARCHAR(50))
+LEFT JOIN dbo.MST_Branch b WITH (NOLOCK) ON CAST(u.BranchId AS VARCHAR(50)) = CAST(b.Branch_ID AS VARCHAR(50))
+LEFT JOIN dbo.MST_Grade g WITH (NOLOCK) ON CAST(u.GradeId AS VARCHAR(50)) = CAST(g.Grade_ID AS VARCHAR(50))
+LEFT JOIN dbo.MST_Designation d WITH (NOLOCK) ON u.Designation_ID = d.Id
 WHERE u.EmployeeCode = @EmployeeCode", cn))
             {
                 cmd.Parameters.AddWithValue("@EmployeeCode", employeeCode.Trim());
