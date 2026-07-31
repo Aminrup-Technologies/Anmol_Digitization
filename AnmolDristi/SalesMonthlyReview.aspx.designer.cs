@@ -38,6 +38,11 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btn_fetch;
+
+        /// <summary>
+        /// pnlWorkflowBanner control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlWorkflowBanner;
         
         /// <summary>
         /// Actionable control.
@@ -91,6 +96,21 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.GridView gvActivities;
+
+        /// <summary>
+        /// pnlReturnedClaimsBanner control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlReturnedClaimsBanner;
+
+        /// <summary>
+        /// pnlSubmissionChecklist control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlSubmissionChecklist;
+
+        /// <summary>
+        /// phSubmissionChecklist control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.PlaceHolder phSubmissionChecklist;
         
         /// <summary>
         /// Summary control.
@@ -450,6 +470,21 @@ namespace AnmolDristi {
         /// Explicit KM save workflow: Manual | Route
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField HF_KmSaveWorkflow;
+
+        /// <summary>
+        /// pnlKmPolicyInfo control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlKmPolicyInfo;
+
+        /// <summary>
+        /// lblModalOriginalKm control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblModalOriginalKm;
+
+        /// <summary>
+        /// lblModalAllowedRange control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblModalAllowedRange;
         
         /// <summary>
         /// txtModalKM control.
@@ -468,6 +503,24 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblModalCurrentKm;
+        
+        /// <summary>
+        /// lblKmModLimit control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblKmModLimit;
+        
+        /// <summary>
+        /// lblKmModRemaining control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblKmModRemaining;
         
         /// <summary>
         /// txtKmReason control.
@@ -603,6 +656,11 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedRatePerKm;
+
+        /// <summary>
+        /// HF_FixedTravelAllowance control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
         
         /// <summary>
         /// HF_ResolvedPolicyMode control.

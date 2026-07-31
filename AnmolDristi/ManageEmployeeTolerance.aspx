@@ -34,8 +34,9 @@
                                 <Columns>
                                     <asp:BoundField DataField="ToleranceId" HeaderText="Id" Visible="false" />
                                     <asp:BoundField DataField="EmployeeCode" HeaderText="Employee (Code)" />
-                                    <asp:BoundField DataField="MinAllowedKM" HeaderText="Min KM" DataFormatString="{0:N2}" />
-                                    <asp:BoundField DataField="MaxAllowedKM" HeaderText="Max KM" DataFormatString="{0:N2}" />
+                                    <asp:BoundField DataField="MinAllowedKM" HeaderText="Reduction Tol." DataFormatString="{0:N2}" />
+                                    <asp:BoundField DataField="MaxAllowedKM" HeaderText="Increase Tol." DataFormatString="{0:N2}" />
+                                    <asp:BoundField DataField="MaxKmModificationCount" HeaderText="Max Mods" />
                                     <asp:BoundField DataField="EffectiveFrom" HeaderText="Effective From" DataFormatString="{0:yyyy-MM-dd}" />
                                     <asp:BoundField DataField="EffectiveTo" HeaderText="Effective To" DataFormatString="{0:yyyy-MM-dd}" />
                                     <asp:CheckBoxField DataField="IsActive" HeaderText="Active" />
@@ -73,12 +74,19 @@
                                                     <asp:RequiredFieldValidator ID="rfvLoginId" runat="server" ControlToValidate="txtLoginId" ErrorMessage="Required" CssClass="validation-error" Display="Dynamic" />
                                                 </div>
                                                 <div class="form-group">
-                                                    <label>Min KM</label>
+                                                    <label>Allowed KM Reduction (Tolerance)</label>
                                                     <asp:TextBox ID="txtMinKM" runat="server" CssClass="form-control" />
+                                                    <small class="text-muted">Maps to <code>MinAllowedKM</code>. KM may be reduced by up to this amount from the current saved value.</small>
                                                 </div>
                                                 <div class="form-group">
-                                                    <label>Max KM</label>
+                                                    <label>Allowed KM Increase (Tolerance)</label>
                                                     <asp:TextBox ID="txtMaxKM" runat="server" CssClass="form-control" />
+                                                    <small class="text-muted">Maps to <code>MaxAllowedKM</code>. KM may be increased by up to this amount from the current saved value.</small>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label>Maximum KM Modifications per Activity</label>
+                                                    <asp:TextBox ID="txtMaxKmModificationCount" runat="server" CssClass="form-control" Text="1" />
+                                                    <small class="text-muted">Must be at least 1. Counts successful KM history entries per activity.</small>
                                                 </div>
                                                 <div class="form-group">
                                                     <label>Effective From</label>

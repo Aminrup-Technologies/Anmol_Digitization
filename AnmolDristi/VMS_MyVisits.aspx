@@ -129,6 +129,10 @@
                                     <span class="detail-label">Purpose:</span>
                                     <span><%# Eval("PurposeOfVisit") %></span>
                                 </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Visit:</span>
+                                    <span><%# Eval("VisitStatus") %></span>
+                                </div>
                                 <div class="detail-row" style="margin-top: 12px;">
                                     <span class="detail-label">Status:</span>
                                     <asp:Label ID="lblStatus" runat="server" Text='<%# Eval("ApprovalStatus") %>'></asp:Label>
@@ -142,9 +146,11 @@
                                     <asp:Label ID="lblQRMessage" runat="server" Visible="false" CssClass="text-muted" Style="font-size: 12px; display: block; margin-top: 8px;"></asp:Label>
                                 </div>
 
-                                <a href='VMS_DigitalPass.aspx?token=<%# Eval("QRToken") %>' class="btn btn-pass" style="margin-top: 5px; display: inline-block;">
-                                    <i class="fa fa-qrcode"></i>Full Screen Pass
-                                </a>
+                                <asp:Panel ID="pnlPassLink" runat="server" Visible="false">
+                                    <a href='VMS_DigitalPass.aspx?token=<%# Eval("QRToken") %>' class="btn btn-pass" style="margin-top: 5px; display: inline-block;">
+                                        <i class="fa fa-qrcode"></i>Full Screen Pass
+                                    </a>
+                                </asp:Panel>
                             </asp:Panel>
 
                         </div>

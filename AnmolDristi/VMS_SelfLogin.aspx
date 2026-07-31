@@ -59,24 +59,18 @@
                                 <asp:TextBox ID="txtMobile" runat="server" CssClass="form-control" MaxLength="10" placeholder="10-digit mobile number" TextMode="Number"></asp:TextBox>
                             </div>
                         </div>
-                        <div class="form-group text-left">
-                            <label>Email Address *</label>
-                            <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" placeholder="name@company.com" TextMode="Email"></asp:TextBox>
-                        </div>
-                        <asp:Button ID="btnSendOTP" runat="server" CssClass="btn btn-success btn-mobile" Text="Send Verification Codes" OnClick="btnSendOTP_Click" />
+                        <asp:Button ID="btnSendOTP" runat="server" CssClass="btn btn-success btn-mobile" Text="Send Verification Code" OnClick="btnSendOTP_Click" />
                     </asp:Panel>
 
                     <asp:Panel ID="pnlVerifyOTP" runat="server" Visible="false">
                         <div class="alert alert-info" style="font-size: 12px; padding: 10px;">
-                            Codes sent to:<br />
-                            <strong>
-                                <asp:Label ID="lblDisplayMobile" runat="server"></asp:Label></strong><br />
-                            <strong>
-                                <asp:Label ID="lblDisplayEmail" runat="server"></asp:Label></strong>
+                            Code sent to:<br />
+                            <strong><asp:Label ID="lblDisplayMobile" runat="server"></asp:Label></strong>
+                            <asp:Label ID="lblDisplayEmail" runat="server" Visible="false"></asp:Label>
                         </div>
 
                         <div class="form-group text-left">
-                            <label>Mobile OTP *</label>
+                            <label>Verification Code *</label>
                             <asp:TextBox ID="txtMobileOTP" runat="server" CssClass="form-control otp-box" MaxLength="6" placeholder="• • • • • •" TextMode="Number"></asp:TextBox>
                         </div>
 
@@ -93,7 +87,7 @@
                         <asp:Button ID="btnVerifyOTP" runat="server" CssClass="btn btn-primary btn-mobile" Text="Verify & Proceed" OnClick="btnVerifyOTP_Click" />
 
                         <div style="margin-top: 15px;">
-                            <asp:LinkButton ID="lnkResend" runat="server" OnClick="lnkResend_Click" CssClass="text-muted">Didn't receive them? Resend Codes</asp:LinkButton>
+                            <asp:LinkButton ID="lnkResend" runat="server" OnClick="lnkResend_Click" CssClass="text-muted">Didn't receive it? Resend Code</asp:LinkButton>
                         </div>
                     </asp:Panel>
 

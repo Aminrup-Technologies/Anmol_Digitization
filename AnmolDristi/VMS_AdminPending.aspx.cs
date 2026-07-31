@@ -495,7 +495,7 @@ namespace AnmolDristi
                 {
                     string subject = $"[URGENT] Approval Needed: Visitor {visitorName} is waiting";
                     string encodedEmpCode = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(hostEmpCode));
-                    string quickApproveLink = $"https://apps.anmolindustries.com/VMS_HostQuickLogin.aspx?vid={logId}&t={encodedEmpCode}";
+                    string quickApproveLink = VmsHelper.BuildHostQuickLoginUrl(Convert.ToInt32(logId), encodedEmpCode);
 
                     string body = $@"<div style='padding:20px; border: 2px solid #f0ad4e; font-family: Arial, sans-serif;'>
                                      <h3 style='color:#f0ad4e;'>Reminder: Visitor Waiting</h3><p>Hello <b>{hostName}</b>,</p>
@@ -594,7 +594,7 @@ namespace AnmolDristi
                     cmd.ExecuteNonQuery();
                 }
 
-                string passUrl = $"https://apps.anmolindustries.com/VMS_DigitalPass.aspx?token={qrToken}";
+                string passUrl = VmsHelper.BuildDigitalPassUrl(qrToken);
                 if (!string.IsNullOrEmpty(visEmail))
                 {
                     string visBody = $"<div style='padding:20px;'><h2 style='color:#1ABB9C;'>Visit Approved</h2><p>Hi {visName}, your visit has been scheduled for {schedDate:dd-MMM yyyy HH:mm} and authorized by Administration.</p><a href='{passUrl}'>View Digital Pass</a></div>";
