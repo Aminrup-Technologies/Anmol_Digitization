@@ -543,6 +543,10 @@ namespace AnmolDristi
             if (HF_SnapResolvedDA != null) HF_SnapResolvedDA.Value = "";
             if (HF_SnapPolicyMode != null) HF_SnapPolicyMode.Value = "";
 
+            ClearRouteMetadataFields();
+            if (HF_RouteActivityId != null) HF_RouteActivityId.Value = string.Empty;
+            SetKmSaveWorkflow(KmSaveWorkflowManual);
+
             if (TXT_StationaryAmount != null) { TXT_StationaryAmount.Text = string.Empty; TXT_StationaryAmount.ReadOnly = false; }
             if (TXT_StationaryBillNo != null) { TXT_StationaryBillNo.Text = string.Empty; TXT_StationaryBillNo.ReadOnly = false; }
             if (TXT_StationaryPurpose != null) { TXT_StationaryPurpose.Text = string.Empty; TXT_StationaryPurpose.ReadOnly = false; }
@@ -837,12 +841,14 @@ namespace AnmolDristi
                 if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
                     if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = parsed.ToString("dd-MM-yyyy");
 
-                if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
-                if (txtModalKM != null) txtModalKM.Text = currentKm;
-                if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
-                if (lblModalCurrentKm != null) lblModalCurrentKm.Text = "Current: " + currentKm + " km";
+            if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
+            if (txtModalKM != null) txtModalKM.Text = currentKm;
+            if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
+            if (lblModalCurrentKm != null) lblModalCurrentKm.Text = "Current: " + currentKm + " km";
 
-                string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
+            InitializeKmModalSession(activityId);
+
+            string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
                 string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
 
                 BindKmHistory(activityId);
@@ -1083,6 +1089,8 @@ namespace AnmolDristi
             if (lblModalCurrentKm != null) lblModalCurrentKm.Text = "Current: " + currentKm + " km";
             if (!string.IsNullOrEmpty(activityDate)) if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = activityDate;
 
+            InitializeKmModalSession(activityId);
+
             string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
             string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
 
@@ -1120,6 +1128,8 @@ namespace AnmolDristi
                         if (lblModalCurrentKm != null) lblModalCurrentKm.Text = "Current: " + currentKm + " km";
                         if (aDate.HasValue) if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = aDate.Value.ToString("dd-MM-yyyy");
 
+                        InitializeKmModalSession(activityId);
+
                         string minDisplay = string.IsNullOrEmpty(minKm) ? "—" : minKm;
                         string maxDisplay = string.IsNullOrEmpty(maxKm) ? "—" : maxKm;
 
@@ -1132,6 +1142,59 @@ namespace AnmolDristi
                 }
             }
             RegisterClientNotification("Activity not found.", "warning");
+        }
+
+        private const string KmSaveWorkflowManual = "Manual";
+        private const string KmSaveWorkflowRoute = "Route";
+
+        private string GetKmSaveWorkflow()
+        {
+            string workflow = HF_KmSaveWorkflow != null ? HF_KmSaveWorkflow.Value : null;
+            if (string.IsNullOrWhiteSpace(workflow))
+            {
+                workflow = Request.Form[HF_KmSaveWorkflow != null ? HF_KmSaveWorkflow.UniqueID : string.Empty];
+            }
+            return string.IsNullOrWhiteSpace(workflow) ? KmSaveWorkflowManual : workflow.Trim();
+        }
+
+        private bool IsRouteBasedKmSave()
+        {
+            return string.Equals(GetKmSaveWorkflow(), KmSaveWorkflowRoute, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void SetKmSaveWorkflow(string workflow)
+        {
+            if (HF_KmSaveWorkflow != null) HF_KmSaveWorkflow.Value = workflow;
+        }
+
+        private void ClearRouteMetadataFields()
+        {
+            if (HF_RouteOrigin != null) HF_RouteOrigin.Value = string.Empty;
+            if (HF_RouteDestination != null) HF_RouteDestination.Value = string.Empty;
+            if (HF_RouteWaypoints != null) HF_RouteWaypoints.Value = string.Empty;
+            if (HF_RouteDistance != null) HF_RouteDistance.Value = string.Empty;
+            if (HF_RouteTravelMode != null) HF_RouteTravelMode.Value = string.Empty;
+        }
+
+        /// <summary>
+        /// Resets KM modal to manual-override workflow and clears stale route metadata when the activity changes.
+        /// </summary>
+        private void InitializeKmModalSession(int activityId)
+        {
+            string previousRouteActivity = HF_RouteActivityId != null ? HF_RouteActivityId.Value : string.Empty;
+            bool activityChanged = activityId > 0 && !string.Equals(previousRouteActivity, activityId.ToString(), StringComparison.Ordinal);
+
+            SetKmSaveWorkflow(KmSaveWorkflowManual);
+            if (activityChanged) ClearRouteMetadataFields();
+
+            if (HF_RouteActivityId != null) HF_RouteActivityId.Value = activityId.ToString();
+
+            string hideSummary = activityChanged ? "true" : "false";
+            string script = string.Format(
+                "if (typeof initializeKmModalSessionClient === 'function') initializeKmModalSessionClient({0}, {1});",
+                activityId,
+                hideSummary);
+            ScriptManager.RegisterStartupScript(this, GetType(), "initKmModalSession_" + activityId, script, true);
         }
 
         private void BindKmHistory(int activityId)
@@ -1182,26 +1245,38 @@ namespace AnmolDristi
             int activityId;
             if (hdnActivityId == null || !int.TryParse(hdnActivityId.Value, out activityId)) return;
 
-            bool isRouteBased = !string.IsNullOrWhiteSpace(HF_RouteWaypoints.Value);
+            bool isRouteBasedSave = IsRouteBasedKmSave();
 
-            if (isRouteBased)
+            if (isRouteBasedSave)
             {
                 decimal routeDistance;
 
-                if (decimal.TryParse(HF_RouteDistance.Value, out routeDistance))
+                if (!decimal.TryParse(HF_RouteDistance != null ? HF_RouteDistance.Value : string.Empty, out routeDistance))
                 {
-                    if (Math.Abs(routeDistance - newKm) > 0.01M)
-                    {
-                        ScriptManager.RegisterStartupScript(
-                            this,
-                            GetType(),
-                            "RouteKmMismatch",
-                            "showPNotify('Validation','Route distance and KM value do not match. Please recalculate route.','error'); $('#editKmModal').modal('show');",
-                            true);
-
-                        return;
-                    }
+                    ScriptManager.RegisterStartupScript(
+                        this,
+                        GetType(),
+                        "RouteKmMissing",
+                        "showPNotify('Validation','Route distance is missing. Please apply a calculated route before saving.','error'); $('#editKmModal').modal('show');",
+                        true);
+                    return;
                 }
+
+                if (Math.Abs(routeDistance - newKm) > 0.01M)
+                {
+                    ScriptManager.RegisterStartupScript(
+                        this,
+                        GetType(),
+                        "RouteKmMismatch",
+                        "showPNotify('Validation','Route distance and KM value do not match. Please recalculate route.','error'); $('#editKmModal').modal('show');",
+                        true);
+
+                    return;
+                }
+            }
+            else
+            {
+                ClearRouteMetadataFields();
             }
 
             // ====================================================================
@@ -1259,29 +1334,40 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@ModifiedBy", modifiedBy);
                         cmd.Parameters.AddWithValue("@Reason", reason);
 
-                        cmd.Parameters.AddWithValue(
-                            "@RouteOriginName",
-                            string.IsNullOrWhiteSpace(HF_RouteOrigin.Value)
-                                ? (object)DBNull.Value
-                                : HF_RouteOrigin.Value.Trim());
+                        if (isRouteBasedSave)
+                        {
+                            cmd.Parameters.AddWithValue(
+                                "@RouteOriginName",
+                                string.IsNullOrWhiteSpace(HF_RouteOrigin.Value)
+                                    ? (object)DBNull.Value
+                                    : HF_RouteOrigin.Value.Trim());
 
-                        cmd.Parameters.AddWithValue(
-                            "@RouteDestinationName",
-                            string.IsNullOrWhiteSpace(HF_RouteDestination.Value)
-                                ? (object)DBNull.Value
-                                : HF_RouteDestination.Value.Trim());
+                            cmd.Parameters.AddWithValue(
+                                "@RouteDestinationName",
+                                string.IsNullOrWhiteSpace(HF_RouteDestination.Value)
+                                    ? (object)DBNull.Value
+                                    : HF_RouteDestination.Value.Trim());
 
-                        cmd.Parameters.AddWithValue(
-                            "@RouteWaypointsJSON",
-                            string.IsNullOrWhiteSpace(HF_RouteWaypoints.Value)
-                                ? (object)DBNull.Value
-                                : HF_RouteWaypoints.Value);
+                            cmd.Parameters.AddWithValue(
+                                "@RouteWaypointsJSON",
+                                string.IsNullOrWhiteSpace(HF_RouteWaypoints.Value)
+                                    ? (object)DBNull.Value
+                                    : HF_RouteWaypoints.Value);
 
-                        cmd.Parameters.AddWithValue(
-                            "@TravelMode",
-                            string.IsNullOrWhiteSpace(HF_RouteTravelMode.Value)
-                                ? (object)DBNull.Value
-                                : HF_RouteTravelMode.Value);
+                            cmd.Parameters.AddWithValue(
+                                "@TravelMode",
+                                string.IsNullOrWhiteSpace(HF_RouteTravelMode.Value)
+                                    ? (object)DBNull.Value
+                                    : HF_RouteTravelMode.Value);
+                        }
+                        else
+                        {
+                            cmd.Parameters.AddWithValue("@RouteOriginName", DBNull.Value);
+                            cmd.Parameters.AddWithValue("@RouteDestinationName", DBNull.Value);
+                            cmd.Parameters.AddWithValue("@RouteWaypointsJSON", DBNull.Value);
+                            cmd.Parameters.AddWithValue("@TravelMode", DBNull.Value);
+                        }
+
                         cmd.ExecuteNonQuery();
                     }
                 }
@@ -1290,6 +1376,13 @@ namespace AnmolDristi
                 BindGrid(false);
                 BindKmHistory(activityId);
                 if (txtKmReason != null) txtKmReason.Text = string.Empty;
+
+                if (!isRouteBasedSave)
+                {
+                    SetKmSaveWorkflow(KmSaveWorkflowManual);
+                    string resetRouteScript = "if (typeof clearKmRouteMetadataFields === 'function') clearKmRouteMetadataFields();";
+                    ScriptManager.RegisterStartupScript(this, GetType(), "clearKmRouteAfterManualSave_" + activityId, resetRouteScript, true);
+                }
 
                 string modalScript = "setTimeout(function(){ $('#editKmModal').modal('show'); $('#spMinKm').text('—'); $('#spMaxKm').text('—'); }, 50);";
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "reopenEditKmModal_" + activityId, modalScript, true);
@@ -2662,6 +2755,9 @@ namespace AnmolDristi
                         HF_RouteWaypoints.Value = waypoints;
                         HF_RouteTravelMode.Value = travelMode;
                         HF_RouteDistance.Value = distance;
+                        if (HF_RouteActivityId != null) HF_RouteActivityId.Value = activityId.ToString();
+
+                        // Route metadata is loaded for display only; KM save workflow stays Manual until Apply Route.
 
                         // =====================================
                         // Route Summary Panel

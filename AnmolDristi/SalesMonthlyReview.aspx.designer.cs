@@ -442,6 +442,14 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hdnOriginalKm;
+
+        /// <summary>
+        /// HF_KmSaveWorkflow control.
+        /// </summary>
+        /// <remarks>
+        /// Explicit KM save workflow: Manual | Route
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField HF_KmSaveWorkflow;
         
         /// <summary>
         /// txtModalKM control.
