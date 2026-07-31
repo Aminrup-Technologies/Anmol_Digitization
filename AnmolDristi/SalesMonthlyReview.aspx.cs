@@ -112,6 +112,7 @@ namespace AnmolDristi
 
             try
             {
+                ResolvedPolicyDto resolvedPolicy = null;
                 if (policybinder == true)
                 {
                     string employeeCode = GetLoggedInEmployeeCode();
@@ -120,7 +121,7 @@ namespace AnmolDristi
                     int? gradeId = GetLoggedInGradeId();
                     int? designationId = GetLoggedInDesignationId();
                     DateTime claimDate = new DateTime(year, month, DateTime.DaysInMonth(year, month));
-                    ResolvedPolicyDto policy = _policyResolutionService.ResolvePolicy(
+                    resolvedPolicy = _policyResolutionService.ResolvePolicy(
                         employeeCode,
                         claimDate,
                         regionId,
@@ -128,8 +129,8 @@ namespace AnmolDristi
                         gradeId,
                         designationId);
 
-                    if (policy != null)
-                        BindPolicyToModal(policy);
+                    if (resolvedPolicy != null)
+                        BindPolicyToModal(resolvedPolicy);
                     else
                         RegisterClientNotification("No resolved policy found for the selected context.", "warning");
                 }
@@ -154,11 +155,10 @@ namespace AnmolDristi
                     if (!dt.Columns.Contains("RatePerKm")) dt.Columns.Add("RatePerKm", typeof(decimal));
                     if (!dt.Columns.Contains("StationaryAmount")) dt.Columns.Add("StationaryAmount", typeof(decimal));
 
-                    decimal defaultRate = 3.75m;
-                    var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
-                    decimal tmpCfg;
-                    if (!string.IsNullOrWhiteSpace(cfg) && decimal.TryParse(cfg, out tmpCfg))
-                        defaultRate = tmpCfg;
+                    decimal defaultRate = GetDefaultRatePerKm();
+                    decimal policyRate;
+                    decimal? fixedTravelAllowance;
+                    GetTravelAllowanceInputs(out policyRate, out fixedTravelAllowance, resolvedPolicy);
 
                     foreach (DataRow row in dt.Rows)
                     {
@@ -166,8 +166,8 @@ namespace AnmolDristi
                         if (row.Table.Columns.Contains("TotalDistanceKM") && row["TotalDistanceKM"] != DBNull.Value)
                             decimal.TryParse(row["TotalDistanceKM"].ToString(), out totalKm);
 
-                        decimal rate = GetRatePerKm(row, defaultRate);
-                        decimal claim = Math.Round(rate * totalKm, 2, MidpointRounding.AwayFromZero);
+                        decimal rate = GetRatePerKm(row, policyRate > 0 ? policyRate : defaultRate);
+                        decimal claim = TravelAllowanceHelper.CalculateAmount(totalKm, rate, fixedTravelAllowance);
                         row["CalculatedClaimAmount"] = claim;
 
                         if (row.Table.Columns.Contains("RatePerKm"))
@@ -764,6 +764,7 @@ namespace AnmolDristi
             if (HF_OwnArrangementDA != null) HF_OwnArrangementDA.Value = policy.Resolved_OwnAllowance.HasValue ? policy.Resolved_OwnAllowance.Value.ToString("F2") : "750";
             if (HF_ResolvedMaxKM != null) HF_ResolvedMaxKM.Value = policy.Resolved_MaxKM.HasValue ? policy.Resolved_MaxKM.Value.ToString("F2") : "0";
             if (HF_ResolvedRatePerKm != null) HF_ResolvedRatePerKm.Value = policy.Resolved_RatePerKm.HasValue ? policy.Resolved_RatePerKm.Value.ToString("F2") : "0";
+            if (HF_FixedTravelAllowance != null) HF_FixedTravelAllowance.Value = policy.FixedTravelAllowance.HasValue ? policy.FixedTravelAllowance.Value.ToString("F2") : string.Empty;
 
             if (lblResolvedMaxKM != null) lblResolvedMaxKM.Text = policy.Resolved_MaxKM.HasValue ? policy.Resolved_MaxKM.Value.ToString("N2") : "0";
             if (lblResolvedRatePerKm != null) lblResolvedRatePerKm.Text = policy.Resolved_RatePerKm.HasValue ? policy.Resolved_RatePerKm.Value.ToString("N2") : "0";
@@ -783,6 +784,7 @@ namespace AnmolDristi
             hasAny |= AddClaimLimitRowIfPresent("Own Arrangement", FormatCurrency(policy.Resolved_OwnAllowance));
             hasAny |= AddClaimLimitRowIfPresent("Hotel Limit", FormatCurrency(policy.Resolved_HotelCap, "/night"));
             hasAny |= AddClaimLimitRowIfPresent("Monthly KM Limit", FormatKmLimit(policy.Resolved_MaxKM));
+            hasAny |= AddClaimLimitRowIfPresent("Fixed Travel Allowance", FormatCurrency(policy.FixedTravelAllowance));
 
             if (!hasAny)
             {
@@ -870,6 +872,38 @@ namespace AnmolDristi
                 ScriptManager.RegisterStartupScript(this, this.GetType(), "policyNotify_" + Guid.NewGuid().ToString("N"), script, true);
             else
                 ClientScript.RegisterStartupScript(this.GetType(), "policyNotify_" + Guid.NewGuid().ToString("N"), script, true);
+        }
+
+        private decimal GetDefaultRatePerKm()
+        {
+            decimal defaultRate = 3.75m;
+            string cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
+            decimal tmpCfg;
+            if (!string.IsNullOrWhiteSpace(cfg) && decimal.TryParse(cfg, out tmpCfg))
+                defaultRate = tmpCfg;
+            return defaultRate;
+        }
+
+        private void GetTravelAllowanceInputs(out decimal ratePerKm, out decimal? fixedTravelAllowance, ResolvedPolicyDto resolvedPolicy = null)
+        {
+            ratePerKm = GetDefaultRatePerKm();
+            fixedTravelAllowance = null;
+
+            if (resolvedPolicy != null)
+            {
+                if (resolvedPolicy.Resolved_RatePerKm.HasValue)
+                    ratePerKm = resolvedPolicy.Resolved_RatePerKm.Value;
+                fixedTravelAllowance = resolvedPolicy.FixedTravelAllowance;
+                return;
+            }
+
+            decimal parsedRate;
+            if (HF_ResolvedRatePerKm != null && decimal.TryParse(HF_ResolvedRatePerKm.Value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out parsedRate) && parsedRate > 0)
+                ratePerKm = parsedRate;
+
+            decimal parsedFixed;
+            if (HF_FixedTravelAllowance != null && decimal.TryParse(HF_FixedTravelAllowance.Value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out parsedFixed))
+                fixedTravelAllowance = parsedFixed;
         }
 
         private decimal GetRatePerKm(DataRow row, decimal fallbackRate)
@@ -2127,10 +2161,13 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                     if (found != null)
                     {
                         if (dt.Columns.Contains("TotalDistanceKM")) found["TotalDistanceKM"] = newKm;
-                        decimal rate = 3.75m;
-                        decimal parsedRate = 0m;
-                        if (dt.Columns.Contains("RatePerKm") && found["RatePerKm"] != DBNull.Value && decimal.TryParse(found["RatePerKm"].ToString(), out parsedRate)) rate = parsedRate;
-                        decimal calc = Math.Round(rate * newKm, 2, MidpointRounding.AwayFromZero);
+                        decimal ratePerKm;
+                        decimal? fixedTravelAllowance;
+                        decimal parsedRate;
+                        GetTravelAllowanceInputs(out ratePerKm, out fixedTravelAllowance);
+                        if (dt.Columns.Contains("RatePerKm") && found["RatePerKm"] != DBNull.Value && decimal.TryParse(found["RatePerKm"].ToString(), out parsedRate))
+                            ratePerKm = parsedRate;
+                        decimal calc = TravelAllowanceHelper.CalculateAmount(newKm, ratePerKm, fixedTravelAllowance);
                         if (dt.Columns.Contains("CalculatedClaimAmount")) found["CalculatedClaimAmount"] = calc;
                     }
                 }
@@ -3725,10 +3762,9 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             if (sessionDt == null) { errors.Add("Session data missing. Please refresh the page."); return tvp; }
 
             CultureInfo ci = CultureInfo.GetCultureInfo("en-IN");
-            decimal defaultRate = 3.75m;
-            var cfg = ConfigurationManager.AppSettings["DefaultRatePerKm"];
-            decimal tmpCfg;
-            if (!string.IsNullOrWhiteSpace(cfg) && decimal.TryParse(cfg, out tmpCfg)) defaultRate = tmpCfg;
+            decimal policyRate;
+            decimal? fixedTravelAllowance;
+            GetTravelAllowanceInputs(out policyRate, out fixedTravelAllowance);
 
             for (int i = 0; i < gvActivities.Rows.Count; i++)
             {
@@ -3767,11 +3803,11 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 if (allowedMax.HasValue && km > allowedMax.Value + 0.0001m)
                     errors.Add(string.Format("Activity {0}: KM {1:N2} is above the allowed tolerance range ({2:N2}).", activityId, km, allowedMax.Value));
 
-                decimal rate = defaultRate;
+                decimal rate = policyRate;
                 if (found.Table.Columns.Contains("RatePerKm") && found["RatePerKm"] != DBNull.Value && decimal.TryParse(found["RatePerKm"].ToString(), NumberStyles.AllowDecimalPoint, ci, out tmp))
                     rate = tmp;
 
-                decimal calcClaim = Math.Round(rate * km, 2, MidpointRounding.AwayFromZero);
+                decimal calcClaim = TravelAllowanceHelper.CalculateAmount(km, rate, fixedTravelAllowance);
                 DataRow dr = tvp.NewRow(); dr["ActivityId"] = activityId; dr["TotalDistanceKM"] = km; dr["CalculatedClaimAmount"] = calcClaim;
                 tvp.Rows.Add(dr);
             }
