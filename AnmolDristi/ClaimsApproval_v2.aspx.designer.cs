@@ -157,11 +157,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField hfCurrentUserLevel;
         
         /// <summary>
-        /// hfIsAuditor control.
-        /// </summary>
-        protected global::System.Web.UI.WebControls.HiddenField hfIsAuditor;
-
-        /// <summary>
         /// hfIsFinalApprover control.
         /// </summary>
         /// <remarks>
@@ -169,6 +164,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfIsFinalApprover;
+        
+        /// <summary>
+        /// hfIsAuditor control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfIsAuditor;
         
         /// <summary>
         /// lblModalRequestId control.
@@ -216,11 +220,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button btnApproveSelected;
         
         /// <summary>
-        /// btnRejectDaysSelected control.
-        /// </summary>
-        protected global::System.Web.UI.WebControls.Button btnRejectDaysSelected;
-
-        /// <summary>
         /// btnRejectSelected control.
         /// </summary>
         /// <remarks>
@@ -228,6 +227,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnRejectSelected;
+        
+        /// <summary>
+        /// btnRejectDaysSelected control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnRejectDaysSelected;
         
         /// <summary>
         /// btnRefreshCalculations control.
