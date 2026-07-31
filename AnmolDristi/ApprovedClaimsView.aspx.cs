@@ -328,7 +328,7 @@ namespace AnmolDristi
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') <> 'Rejected';
+                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"';
 
                 SELECT 
                     ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
@@ -337,12 +337,12 @@ namespace AnmolDristi
                     SELECT CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
                            ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus = 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus = '" + ClaimStatuses.Rejected + @"'
                     UNION ALL
                     SELECT CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount, 0 AS DeductedKM
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
-                    WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = 'Rejected' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                     UNION ALL
                     SELECT CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
                            (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
@@ -351,7 +351,7 @@ namespace AnmolDristi
                         SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
                         FROM dbo.SalesDailyActivityKMHistory GROUP BY ActivityId
                     ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                 ) x;";
 
             using (var con = new SqlConnection(connString))
@@ -403,11 +403,11 @@ namespace AnmolDristi
                 _totalStationary += (drv["Snapshot_StationaryAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_StationaryAmount"]);
 
                 string detailStatus = drv["DetailStatus"].ToString();
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 {
                     e.Row.CssClass += " table-danger";
                 }
-                else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved))
                 {
                     e.Row.CssClass += " table-success";
                 }
@@ -480,7 +480,7 @@ namespace AnmolDristi
                         CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus = 'Rejected'
+                    WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus = '" + ClaimStatuses.Rejected + @"'
 
                     UNION ALL
 
@@ -493,9 +493,9 @@ namespace AnmolDristi
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId 
-                      AND e.ClaimStatus = 'Rejected' 
+                      AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' 
                       AND e.IsDeleted = 0
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
 
                     UNION ALL
 
@@ -513,7 +513,7 @@ namespace AnmolDristi
                     ) fk ON d.ActivityId = fk.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'        
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'        
                     ORDER BY ActivityDate ASC;";
 
                 using (var con = new SqlConnection(connString))

@@ -163,7 +163,7 @@ namespace AnmolDristi
                     string computedStatus = row.Table.Columns.Contains("ComputedApproverStatus") ? row["ComputedApproverStatus"].ToString() : "";
 
                     if (isCurrent) aprow.CssClass = "highlight-current";
-                    if (computedStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)) aprow.CssClass = "rejected-row";
+                    if (ClaimStatuses.Equals(computedStatus, ClaimStatuses.Rejected)) aprow.CssClass = "rejected-row";
                     bool isRequired = row.Table.Columns.Contains("IsRequired") && Convert.ToBoolean(row["IsRequired"]);
                     if (!isRequired && aprow.Cells.Count > 0) aprow.Cells[0].CssClass = "not-required";
                 }

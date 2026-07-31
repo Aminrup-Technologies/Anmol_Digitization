@@ -181,19 +181,19 @@ namespace AnmolDristi
 
                     if (lblStatus != null)
                     {
-                        if (status.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                        if (ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
                         {
                             lblStatus.CssClass = "badge badge-danger px-2 py-1";
                             e.Row.Style["background-color"] = "#fff5f5";
                             e.Row.CssClass += " text-muted";
                         }
-                        else if (status.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                                 status.Equals("Completed", StringComparison.OrdinalIgnoreCase) ||
-                                 status.Equals("ReadyForPayment", StringComparison.OrdinalIgnoreCase))
+                        else if (ClaimStatuses.Equals(status, ClaimStatuses.Approved) ||
+                                 ClaimStatuses.Equals(status, ClaimStatuses.Completed) ||
+                                 ClaimStatuses.Equals(status, ClaimStatuses.ReadyForPayment))
                         {
                             lblStatus.CssClass = "badge badge-success px-2 py-1";
                         }
-                        else if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                        else if (ClaimStatuses.Equals(status, ClaimStatuses.Pending))
                         {
                             lblStatus.CssClass = "badge badge-warning text-dark px-2 py-1";
                         }
@@ -309,6 +309,8 @@ namespace AnmolDristi
                     }
                 }
 
+                dt = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(dt);
+
                 // 🚩 NEW: Fetch Header Status alongside Employee Name
                 string sql = "SELECT (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName, Status FROM SalesApprovalRequest r WHERE ApprovalRequestId = @Id";
                 using (var cmd = new SqlCommand(sql, con))
@@ -336,7 +338,7 @@ namespace AnmolDristi
                     0 AS ApproverLevel,
                     'REQUESTER' AS ApproverRole,
                     ISNULL(um.EmployeeName, sar.RequesterLoginId) AS ApproverName,
-                    'Submitted' AS Status,
+                    '" + ClaimStatuses.Submitted + @"' AS Status,
                     sar.RequestDate AS ActionDate,
                     sar.RequestDate
                 FROM SalesApprovalRequest sar
@@ -389,21 +391,21 @@ namespace AnmolDristi
                 DateTime stepStartDate = previousDate;
 
                 // 1. Set Colors & Icons based on Status
-                if (status == "Submitted")
+                if (status == ClaimStatuses.Submitted)
                 {
                     row["BadgeColor"] = "#007bff";
                     row["LineColor"] = "#28a745";
                     row["Icon"] = "fa fa-paper-plane";
                     row["BootstrapColor"] = "primary";
                 }
-                else if (status == "Approved" || status == "Completed" || status == "ReadyForPayment" || status == "Processed")
+                else if (status == ClaimStatuses.Approved || status == ClaimStatuses.Completed || status == ClaimStatuses.ReadyForPayment || status == ClaimStatuses.Processed)
                 {
                     row["BadgeColor"] = "#28a745";
                     row["LineColor"] = "#28a745";
                     row["Icon"] = "fa fa-check";
                     row["BootstrapColor"] = "success";
                 }
-                else if (status == "Rejected")
+                else if (status == ClaimStatuses.Rejected)
                 {
                     row["BadgeColor"] = "#dc3545";
                     row["LineColor"] = "#dee2e6";
@@ -430,7 +432,7 @@ namespace AnmolDristi
                 {
                     row["ActionDateStr"] = actionDate.Value.ToString("dd-MMM yy, hh:mm tt");
 
-                    if (status == "Submitted")
+                    if (status == ClaimStatuses.Submitted)
                     {
                         row["DaysText"] = "Initial Submission";
                         row["DaysCssClass"] = "text-primary";
@@ -490,21 +492,24 @@ namespace AnmolDristi
             decimal totalDeductedAmount = 0m;
 
             string sqlDashboard = @"
-                -- 1. Original Totals (Regardless of status)
+                -- 1. Original Totals (latest version per day)
                 SELECT 
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS OriginalKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS OriginalAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id;
+                WHERE d.ApprovalRequestId = @Id
+                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
 
-                -- 2. Approved Totals
+                -- 2. Approved Totals (latest version per day)
                 SELECT 
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') <> 'Rejected';
+                WHERE d.ApprovalRequestId = @Id
+                  AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
+                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
 
-                -- 3. Deduction Totals
+                -- 3. Deduction Totals (latest version per day)
                 SELECT 
                     ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
                     ISNULL(SUM(DeductedKM), 0) AS DeductedKM
@@ -512,12 +517,15 @@ namespace AnmolDristi
                     SELECT CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
                            ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus = 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.DetailStatus = '" + ClaimStatuses.Rejected + @"'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                     UNION ALL
                     SELECT CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount, 0 AS DeductedKM
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
-                    WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = 'Rejected' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                    " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
+                    WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                     UNION ALL
                     SELECT CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
                            (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
@@ -526,7 +534,10 @@ namespace AnmolDristi
                         SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
                         FROM dbo.SalesDailyActivityKMHistory GROUP BY ActivityId
                     ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id
+                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                 ) x;";
 
             using (var con = new SqlConnection(connString))
@@ -558,7 +569,7 @@ namespace AnmolDristi
             }
 
             // 🚩 NEW: Force Math Override if Header is Rejected
-            if (_currentHeaderStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(_currentHeaderStatus, ClaimStatuses.Rejected))
             {
                 currentApprovedAmount = 0m;
                 currentApprovedKM = 0m;
@@ -592,27 +603,27 @@ namespace AnmolDristi
                 Label lblDetailStatus = e.Row.FindControl("lblDetailStatus") as Label;
 
                 // 🚩 NEW: Force Line Items to reflect overall Rejection
-                if (_currentHeaderStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(_currentHeaderStatus, ClaimStatuses.Rejected))
                 {
-                    detailStatus = "Rejected";
-                    if (lblDetailStatus != null) lblDetailStatus.Text = "Rejected";
+                    detailStatus = ClaimStatuses.Rejected;
+                    if (lblDetailStatus != null) lblDetailStatus.Text = ClaimStatuses.Rejected;
                 }
 
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 {
                     e.Row.CssClass += " table-danger text-muted";
                     if (lblDetailStatus != null) lblDetailStatus.CssClass = "badge badge-danger px-2 py-1";
                 }
-                else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved))
                 {
                     e.Row.CssClass += " table-success";
                     if (lblDetailStatus != null) lblDetailStatus.CssClass = "badge badge-success px-2 py-1";
                 }
-                else if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(detailStatus))
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending) || string.IsNullOrEmpty(detailStatus))
                 {
                     if (lblDetailStatus != null)
                     {
-                        lblDetailStatus.Text = string.IsNullOrEmpty(detailStatus) ? "Pending" : detailStatus;
+                        lblDetailStatus.Text = string.IsNullOrEmpty(detailStatus) ? ClaimStatuses.Pending : detailStatus;
                         lblDetailStatus.CssClass = "badge badge-warning text-dark px-2 py-1";
                     }
                 }
@@ -679,7 +690,7 @@ namespace AnmolDristi
                     DECLARE @HeaderStatus NVARCHAR(50);
                     SELECT @HeaderStatus = Status FROM dbo.SalesApprovalRequest WHERE ApprovalRequestId = @ReqId;
 
-                    IF @HeaderStatus = 'Rejected'
+                    IF @HeaderStatus = '" + ClaimStatuses.Rejected + @"'
                     BEGIN
                         SELECT 
                             CONVERT(varchar, a.RequestDate, 106) AS ActivityDate,
@@ -698,7 +709,13 @@ namespace AnmolDristi
                             CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount
                         FROM dbo.SalesApprovalRequestDetail d
                         INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                        WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus = 'Rejected'
+                        WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus = '" + ClaimStatuses.Rejected + @"'
+                          AND d.ApprovalRequestDetailId IN (
+                              SELECT MAX(ApprovalRequestDetailId)
+                              FROM dbo.SalesApprovalRequestDetail
+                              WHERE ApprovalRequestId = @ReqId
+                              GROUP BY ActivityId
+                          )
 
                         UNION ALL
 
@@ -709,11 +726,17 @@ namespace AnmolDristi
                             CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount
                         FROM dbo.SalesDailyExpense e
                         INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                        INNER JOIN (
+                            SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
+                            FROM dbo.SalesApprovalRequestDetail
+                            WHERE ApprovalRequestId = @ReqId
+                            GROUP BY ActivityId
+                        ) _latestDetail ON d.ApprovalRequestDetailId = _latestDetail.LatestDetailId
                         INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                         WHERE d.ApprovalRequestId = @ReqId 
-                          AND e.ClaimStatus = 'Rejected' 
+                          AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' 
                           AND e.IsDeleted = 0
-                          AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                          AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
 
                         UNION ALL
 
@@ -731,7 +754,13 @@ namespace AnmolDristi
                         ) fk ON d.ActivityId = fk.ActivityId
                         WHERE d.ApprovalRequestId = @ReqId 
                           AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
-                          AND ISNULL(d.DetailStatus, '') <> 'Rejected'        
+                          AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
+                          AND d.ApprovalRequestDetailId IN (
+                              SELECT MAX(ApprovalRequestDetailId)
+                              FROM dbo.SalesApprovalRequestDetail
+                              WHERE ApprovalRequestId = @ReqId
+                              GROUP BY ActivityId
+                          )        
                         ORDER BY ActivityDate ASC;
                     END";
 

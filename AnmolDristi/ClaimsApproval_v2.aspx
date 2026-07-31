@@ -460,6 +460,7 @@
                                                 <ItemTemplate>
                                                     <%# Eval("ActivityDate", "{0:dd-MMM-yyyy}") %><br />
                                                     <small class="text-muted"><%# Eval("Day") %></small>
+                                                    <asp:Label ID="lblDetailVersion" runat="server" CssClass="badge badge-secondary ml-1" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
