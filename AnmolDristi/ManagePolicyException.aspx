@@ -153,21 +153,21 @@
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-3 form-group">
-                                        <label>Region</label>
-                                        <asp:TextBox ID="txtRegionName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" />
+                                    <div class="col-md-3 col-sm-6 form-group">
+                                        <label class="font-weight-bold">Region</label>
+                                        <asp:TextBox ID="txtRegionName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" placeholder="Load employee to populate" />
                                     </div>
-                                    <div class="col-md-3 form-group">
-                                        <label>Branch</label>
-                                        <asp:TextBox ID="txtBranchName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" />
+                                    <div class="col-md-3 col-sm-6 form-group">
+                                        <label class="font-weight-bold">Branch</label>
+                                        <asp:TextBox ID="txtBranchName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" placeholder="Load employee to populate" />
                                     </div>
-                                    <div class="col-md-3 form-group">
-                                        <label>Grade</label>
-                                        <asp:TextBox ID="txtGradeName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" />
+                                    <div class="col-md-3 col-sm-6 form-group">
+                                        <label class="font-weight-bold">Grade</label>
+                                        <asp:TextBox ID="txtGradeName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" placeholder="Load employee to populate" />
                                     </div>
-                                    <div class="col-md-3 form-group">
-                                        <label>Designation</label>
-                                        <asp:TextBox ID="txtDesignationName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" />
+                                    <div class="col-md-3 col-sm-6 form-group">
+                                        <label class="font-weight-bold">Designation</label>
+                                        <asp:TextBox ID="txtDesignationName" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" placeholder="Load employee to populate" />
                                     </div>
                                 </div>
                             </div>
@@ -202,34 +202,74 @@
                             <div class="card-header"><strong>Policy Override</strong></div>
                             <div class="card-body">
                                 <p class="text-muted small">Enter at least one override value. Leave blank fields unchanged in the resolved policy.</p>
-                                <div class="row">
-                                    <div class="col-md-4 form-group">
-                                        <label>Maximum KM</label>
-                                        <asp:TextBox ID="txtMaxKM" runat="server" CssClass="form-control" />
+
+                                <div class="form-group row align-items-center">
+                                    <label class="col-md-4 col-form-label">HQ/Ex HQ DA</label>
+                                    <div class="col-md-8">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-addon">Rs.</span>
+                                            <asp:TextBox ID="txtDA" runat="server" CssClass="form-control" placeholder="Amount" />
+                                        </div>
                                     </div>
-                                    <div class="col-md-4 form-group">
-                                        <label>Rate Per KM</label>
-                                        <asp:TextBox ID="txtRatePerKm" runat="server" CssClass="form-control" />
+                                </div>
+
+                                <div class="form-group row align-items-center">
+                                    <label class="col-md-4 col-form-label">Outstation DA</label>
+                                    <div class="col-md-8">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-addon">Rs.</span>
+                                            <asp:TextBox ID="txtOutstationDA" runat="server" CssClass="form-control" placeholder="Amount" />
+                                        </div>
                                     </div>
-                                    <div class="col-md-4 form-group">
-                                        <label>Head Office DA</label>
-                                        <asp:TextBox ID="txtDA" runat="server" CssClass="form-control" />
+                                </div>
+
+                                <div class="form-group row align-items-center">
+                                    <label class="col-md-4 col-form-label">Own Arrangement</label>
+                                    <div class="col-md-8">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-addon">Rs.</span>
+                                            <asp:TextBox ID="txtOwnAllowance" runat="server" CssClass="form-control" placeholder="Amount" />
+                                        </div>
                                     </div>
-                                    <div class="col-md-4 form-group">
-                                        <label>Outstation DA</label>
-                                        <asp:TextBox ID="txtOutstationDA" runat="server" CssClass="form-control" />
+                                </div>
+
+                                <div class="form-group row align-items-center">
+                                    <label class="col-md-4 col-form-label">Hotel Cap</label>
+                                    <div class="col-md-8">
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-addon">Rs.</span>
+                                            <asp:TextBox ID="txtHotelCap" runat="server" CssClass="form-control" placeholder="Amount" />
+                                            <span class="input-group-addon">per night</span>
+                                        </div>
                                     </div>
-                                    <div class="col-md-4 form-group">
-                                        <label>Own Vehicle Allowance</label>
-                                        <asp:TextBox ID="txtOwnAllowance" runat="server" CssClass="form-control" />
+                                </div>
+
+                                <div class="form-group row align-items-center">
+                                    <label class="col-md-4 col-form-label">Bike Travel Allowance</label>
+                                    <div class="col-md-8">
+                                        <div class="row">
+                                            <div class="col-sm-6" style="margin-bottom: 6px;">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-addon">@ Rs.</span>
+                                                    <asp:TextBox ID="txtRatePerKm" runat="server" CssClass="form-control" placeholder="Rate" />
+                                                    <span class="input-group-addon">/km</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-6" style="margin-bottom: 6px;">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-addon">up to</span>
+                                                    <asp:TextBox ID="txtMaxKM" runat="server" CssClass="form-control" placeholder="KM" />
+                                                    <span class="input-group-addon">kms per month</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-md-4 form-group">
-                                        <label>Hotel Cap</label>
-                                        <asp:TextBox ID="txtHotelCap" runat="server" CssClass="form-control" />
-                                    </div>
-                                    <div class="col-md-12 form-group">
-                                        <label>Remarks</label>
-                                        <asp:TextBox ID="txtRemarks" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="2" />
+                                </div>
+
+                                <div class="form-group row">
+                                    <label class="col-md-4 col-form-label">Remarks</label>
+                                    <div class="col-md-8">
+                                        <asp:TextBox ID="txtRemarks" runat="server" CssClass="form-control form-control-sm" TextMode="MultiLine" Rows="2" />
                                     </div>
                                 </div>
                             </div>
