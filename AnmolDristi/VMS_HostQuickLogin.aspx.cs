@@ -101,31 +101,56 @@ namespace AnmolDristi
         private void ProcessApproval(string approvalStatus, string visitStatus)
         {
             string visitId = Request.QueryString["vid"];
-            Guid qrToken = Guid.NewGuid();
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                // 1. Update the Database
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
-                    cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
-                    cmd.Parameters.AddWithValue("@Token", qrToken);
-                    cmd.Parameters.AddWithValue("@LogID", visitId);
+                con.Open();
 
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                }
-
-                // 2. If Approved, dispatch the Digital Pass to the Visitor
                 if (approvalStatus == "Approved")
                 {
-                    DispatchVisitorEmail(con, visitId, qrToken);
+                    Guid qrToken = Guid.NewGuid();
+                    string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                    {
+                        cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
+                        cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
+                        cmd.Parameters.AddWithValue("@Token", qrToken);
+                        cmd.Parameters.AddWithValue("@LogID", visitId);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    string visEmail = "";
+                    string visMobile = "";
+                    string visName = "";
+                    using (SqlCommand lookupCmd = new SqlCommand("SELECT VisitorEmail, VisitorMobile, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID", con))
+                    {
+                        lookupCmd.Parameters.AddWithValue("@LogID", visitId);
+                        using (SqlDataReader sdr = lookupCmd.ExecuteReader())
+                        {
+                            if (sdr.Read())
+                            {
+                                visEmail = sdr["VisitorEmail"].ToString();
+                                visMobile = sdr["VisitorMobile"].ToString();
+                                visName = sdr["VisitorName"].ToString();
+                            }
+                        }
+                    }
+
+                    VmsHelper.QueueVisitorPassNotification(con, Convert.ToInt32(visitId), qrToken, visName, visEmail, visMobile);
+                }
+                else
+                {
+                    string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                    {
+                        cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
+                        cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
+                        cmd.Parameters.AddWithValue("@LogID", visitId);
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
 
-            // Hide action buttons and show success message
             pnlAction.Visible = false;
             lblMessage.Visible = true;
             lblMessage.CssClass = "success";
@@ -134,7 +159,7 @@ namespace AnmolDristi
                 : "Visitor request has been rejected.";
         }
 
-        private void DispatchVisitorNotification(SqlConnection con, string visitId, Guid token)
+        private void DispatchVisitorNotification_OBSOLETE(SqlConnection con, string visitId, Guid token)
         {
             string visEmail = "", visName = "", visMobile = "";
 

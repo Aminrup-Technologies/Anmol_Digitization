@@ -66,7 +66,7 @@
                         </div>
                         <div class="col-xs-6">
                             <label class="form-label">Email Address</label>
-                            <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" TextMode="Email" placeholder="Optional"></asp:TextBox>
+                            <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" TextMode="Email" placeholder="Optional — for gate pass link"></asp:TextBox>
                         </div>
                     </div>
 

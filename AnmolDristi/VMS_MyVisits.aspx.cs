@@ -20,7 +20,8 @@ namespace AnmolDristi
             if (!IsPostBack)
             {
                 // Security Check: Look for the NEW Dual-Auth session keys
-                if (Session["VerifiedMobile"] == null && Session["VerifiedEmail"] == null)
+                if (Session["VerifiedMobile"] == null ||
+                    string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
                 {
                     // Safe Redirect Pattern
                     Response.Redirect("VMS_SelfLogin.aspx", false);
@@ -34,16 +35,12 @@ namespace AnmolDristi
 
         private void LoadVisitorHistory()
         {
-            // Safely extract whichever contact method they verified with
-            string contact = "";
-            if (Session["VerifiedMobile"] != null && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
-            {
-                contact = Session["VerifiedMobile"].ToString();
-            }
-            else if (Session["VerifiedEmail"] != null && !string.IsNullOrEmpty(Session["VerifiedEmail"].ToString()))
-            {
-                contact = Session["VerifiedEmail"].ToString();
-            }
+            string mobile = Session["VerifiedMobile"] != null
+                ? Session["VerifiedMobile"].ToString()
+                : string.Empty;
+            string email = Session["VerifiedEmail"] != null
+                ? Session["VerifiedEmail"].ToString()
+                : string.Empty;
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
@@ -53,6 +50,7 @@ namespace AnmolDristi
                         v.CreatedDate,
                         v.PurposeOfVisit,
                         v.ApprovalStatus,
+                        v.VisitStatus,
                         v.QRToken,
                         ISNULL(o.AliasName, b.Branch_Description) AS AliasName,
                         u.EmployeeName AS HostName
@@ -65,14 +63,18 @@ namespace AnmolDristi
                     LEFT JOIN 
                         MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
                     WHERE 
-                        (v.VisitorMobile = @Contact OR v.VisitorEmail = @Contact)
+                        (
+                            (@Mobile <> '' AND v.VisitorMobile = @Mobile)
+                            OR (@Email <> '' AND @Email <> 'N/A' AND v.VisitorEmail = @Email)
+                        )
                         AND v.CreatedDate >= DATEADD(month, -6, GETDATE())
                     ORDER BY 
                         v.CreatedDate DESC";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
-                    cmd.Parameters.AddWithValue("@Contact", contact);
+                    cmd.Parameters.AddWithValue("@Mobile", VmsHelper.NormalizeMobile(mobile));
+                    cmd.Parameters.AddWithValue("@Email", VmsHelper.NormalizeEmail(email));
 
                     using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
                     {
@@ -146,15 +148,35 @@ namespace AnmolDristi
                                 lblQRMessage.Text = "Scan this at the security gate to check in.";
                                 lblQRMessage.Visible = true;
                             }
+
+                            Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
+                            if (pnlPassLink != null)
+                                pnlPassLink.Visible = true;
                         }
                     }
                 }
                 else
                 {
-                    // Ensure the footer remains hidden if it is still pending or rejected
                     if (pnlFooter != null)
+                        pnlFooter.Visible = true;
+
+                    Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
+                    if (pnlPassLink != null)
+                        pnlPassLink.Visible = false;
+
+                    Label lblQRMessage = (Label)e.Item.FindControl("lblQRMessage");
+                    if (lblQRMessage != null)
                     {
-                        pnlFooter.Visible = false;
+                        if (status == "pending")
+                        {
+                            lblQRMessage.Text = "Waiting for host approval. This page will show your gate pass once approved.";
+                            lblQRMessage.Visible = true;
+                        }
+                        else if (status == "rejected")
+                        {
+                            lblQRMessage.Text = "This visit request was rejected by the host.";
+                            lblQRMessage.Visible = true;
+                        }
                     }
                 }
             }

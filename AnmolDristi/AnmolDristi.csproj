@@ -1545,6 +1545,7 @@
     <Compile Include="viewusers.aspx.designer.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>
     </Compile>
+    <Compile Include="VmsHelper.cs" />
     <Compile Include="VMS_AdminPending.aspx.cs">
       <DependentUpon>VMS_AdminPending.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
