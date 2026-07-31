@@ -40,7 +40,7 @@ namespace AnmolDristi
         // ------------- BIND HEADER GRID ----------------
         protected void BindRequestsGrid_OLD()
         {
-            string sql = @"SELECT A.ApprovalRequestId, A.RequesterLoginId, UM.EmployeeName, A.RequestDate, A.YearNo, A.MonthNo, DATENAME(MONTH, DATEFROMPARTS(A.YearNo, A.MonthNo, 1)) AS MonthName, A.Status, A.TotalKM, A.TotalClaimAmount, A.TotalDAAmount, A.TotalHotelAmount, A.TotalTravelAmount, A.TotalExpenseAmount, A.RequestRemarks, A.CreatedOn, A.CreatedBy, A.ModifiedOn, A.ModifiedBy FROM dbo.SalesApprovalRequest A INNER JOIN MST_UserMaster UM ON A.RequesterLoginId = UM.EmployeeCode WHERE A.Status = 'Pending' ORDER BY A.RequestDate DESC;";
+            string sql = @"SELECT A.ApprovalRequestId, A.RequesterLoginId, UM.EmployeeName, A.RequestDate, A.YearNo, A.MonthNo, DATENAME(MONTH, DATEFROMPARTS(A.YearNo, A.MonthNo, 1)) AS MonthName, A.Status, A.TotalKM, A.TotalClaimAmount, A.TotalDAAmount, A.TotalHotelAmount, A.TotalTravelAmount, A.TotalExpenseAmount, A.RequestRemarks, A.CreatedOn, A.CreatedBy, A.ModifiedOn, A.ModifiedBy FROM dbo.SalesApprovalRequest A INNER JOIN MST_UserMaster UM ON A.RequesterLoginId = UM.EmployeeCode WHERE A.Status = '" + ClaimStatuses.Pending + @"' ORDER BY A.RequestDate DESC;";
 
             DataTable dt = new DataTable();
             using (var con = new SqlConnection(connString))
@@ -154,11 +154,11 @@ namespace AnmolDristi
 
                 // Example: highlight rows that are already processed
                 string detailStatus = drv["DetailStatus"] == DBNull.Value ? "" : drv["DetailStatus"].ToString();
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 {
                     e.Row.CssClass += " table-danger";
                 }
-                else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved))
                 {
                     e.Row.CssClass += " table-success";
                 }
@@ -167,10 +167,10 @@ namespace AnmolDristi
                 var btnApproveRow = e.Row.FindControl("btnApproveRow") as Button;
                 var btnRejectRow = e.Row.FindControl("btnRejectRow") as Button;
                 if (btnApproveRow != null)
-                    btnApproveRow.Enabled = !detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+                    btnApproveRow.Enabled = !ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved);
 
                 if (btnRejectRow != null)
-                    btnRejectRow.Enabled = !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase);
+                    btnRejectRow.Enabled = !ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected);
             }
             else if (e.Row.RowType == DataControlRowType.Footer)
             {
@@ -195,7 +195,7 @@ namespace AnmolDristi
             var chk = e.Row.FindControl("chkSelect") as CheckBox;
             if (chk != null)
             {
-                if (!string.Equals(detailStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+                if (!ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
                 {
                     chk.Enabled = false;
                     chk.InputAttributes["disabled"] = "disabled"; // ensure HTML shows disabled
@@ -208,7 +208,7 @@ namespace AnmolDristi
             var txtRowRemark = e.Row.FindControl("txtRowRemark") as TextBox;
             if (txtRowRemark != null)
             {
-                if (string.Equals(detailStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved))
                 {
                     txtRowRemark.ReadOnly = true;
                     txtRowRemark.CssClass += " bg-light";
@@ -290,16 +290,16 @@ namespace AnmolDristi
                 if (chkSelect != null) chkSelect.Enabled = false;
 
                 // 🔒 Rejected → locked forever
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                     return;
 
                 // 🔒 Approved by THIS user → locked
-                if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase)
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved)
                     && approvedLevel == currentUserLevel)
                     return;
 
                 // ✅ Approved by previous level → allow current user
-                if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase)
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved)
                     && approvedLevel < currentUserLevel)
                 {
                     if (btnApprove != null) btnApprove.Enabled = true;
@@ -314,7 +314,7 @@ namespace AnmolDristi
                 }
 
                 // ✅ Pending → allow current user
-                if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
                 {
                     if (btnApprove != null) btnApprove.Enabled = true;
                     if (btnReject != null) btnReject.Enabled = true;
@@ -376,14 +376,14 @@ namespace AnmolDristi
             }
 
 
-            if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 return;
 
-            if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase)
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved)
                 && approvedLevel == currentUserLevel)
                 return;
 
-            if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase)
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved)
                 && approvedLevel < currentUserLevel)
             {
                 btnApprove.Enabled = true;
@@ -394,7 +394,7 @@ namespace AnmolDristi
                 return;
             }
 
-            if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
             {
                 btnApprove.Enabled = true;
                 btnReject.Enabled = true;
@@ -420,7 +420,7 @@ namespace AnmolDristi
 
             // Handle NULLs safely
             string detailStatus = Convert.ToString(drv["DetailStatus"]);
-            if (string.IsNullOrWhiteSpace(detailStatus)) detailStatus = "Pending"; // ✅ FIX: Treat NULL as Pending
+            if (string.IsNullOrWhiteSpace(detailStatus)) detailStatus = ClaimStatuses.Pending; // ✅ FIX: Treat NULL as Pending
 
             int approvedLevel = drv["DetailApprovedLevel"] == DBNull.Value ? 0 : Convert.ToInt32(drv["DetailApprovedLevel"]);
 
@@ -438,14 +438,14 @@ namespace AnmolDristi
             chkSelect.Enabled = false;
 
             // 3️⃣ LOGIC: REJECTED (Dead End)
-            if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
             {
                 e.Row.CssClass += " table-danger"; // Make row red
                 return;
             }
 
             // 4️⃣ LOGIC: ALREADY DONE BY ME
-            if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel == currentUserLevel)
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentUserLevel)
             {
                 e.Row.CssClass += " table-success"; // Make row green
                 btnApprove.Text = "✔ Done"; // Visual feedback
@@ -453,7 +453,7 @@ namespace AnmolDristi
             }
 
             // 5️⃣ LOGIC: HANDOVER (Approved by Lower Level -> Needs Me)
-            if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel < currentUserLevel)
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel < currentUserLevel)
             {
                 // ✅ Enable controls
                 UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
@@ -465,7 +465,7 @@ namespace AnmolDristi
             }
 
             // 6️⃣ LOGIC: FRESH ITEM (Pending or Null)
-            if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
             {
                 // ✅ Enable controls
                 UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
@@ -498,7 +498,7 @@ namespace AnmolDristi
 
                 int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"]);
                 string detailStatus = Convert.ToString(drv["DetailStatus"]);
-                if (string.IsNullOrWhiteSpace(detailStatus)) detailStatus = "Pending";
+                if (string.IsNullOrWhiteSpace(detailStatus)) detailStatus = ClaimStatuses.Pending;
 
                 int approvedLevel = drv["DetailApprovedLevel"] == DBNull.Value ? 0 : Convert.ToInt32(drv["DetailApprovedLevel"]);
 
@@ -519,14 +519,14 @@ namespace AnmolDristi
                 if (chkSelect != null) chkSelect.Enabled = false;
 
                 // LOGIC: REJECTED (Dead End)
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 {
                     e.Row.CssClass += " table-danger";
                     return;
                 }
 
                 // LOGIC: ALREADY DONE BY ME
-                if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel == currentUserLevel)
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentUserLevel)
                 {
                     e.Row.CssClass += " table-success";
                     if (btnApprove != null) btnApprove.Text = "✔ Done";
@@ -534,7 +534,7 @@ namespace AnmolDristi
                 }
 
                 // LOGIC: HANDOVER (Approved by Lower Level -> Needs Me)
-                if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel < currentUserLevel)
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel < currentUserLevel)
                 {
                     UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
                     e.Row.CssClass += " table-warning";
@@ -543,7 +543,7 @@ namespace AnmolDristi
                 }
 
                 // LOGIC: FRESH ITEM (Pending or Null)
-                if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
                 {
                     UnlockControls(btnApprove, btnReject, txtRemark, chkSelect);
                 }
@@ -604,10 +604,7 @@ namespace AnmolDristi
             //    }
             //}
 
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "Draft", "Submitted"
-            };
+            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ClaimStatuses.Draft, ClaimStatuses.Submitted };
 
             int currentUserLevel = ViewState["CurrentUserLevel"] != null
                 ? Convert.ToInt32(ViewState["CurrentUserLevel"])
@@ -616,7 +613,7 @@ namespace AnmolDristi
             bool isAuditor = currentUserLevel == 2;
 
             bool isProcessed =
-                claimStatus.Equals("Processed", StringComparison.OrdinalIgnoreCase);
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Processed);
 
             bool canEditKM =
                 !isProcessed &&
@@ -639,9 +636,9 @@ namespace AnmolDristi
                 ? string.Empty
                 : drv["DetailStatus"].ToString().Trim();
 
-            if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 AddCssClass(row, "table-danger");
-            else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved))
                 AddCssClass(row, "table-success");
             else
                 RemoveCssClass(row, "table-danger table-success");
@@ -696,11 +693,11 @@ namespace AnmolDristi
                 string tooltip = "Unknown status";
                 switch (claimStatus)
                 {
-                    case "Draft": tooltip = "Draft – not submitted yet"; break;
-                    case "Submitted": tooltip = "Submitted – awaiting approval"; break;
-                    case "Approved": tooltip = "Approved by previous level"; break;
-                    case "Rejected": tooltip = "Rejected – please review"; break;
-                    case "Processed": tooltip = "Processed in accounts"; break;
+                    case ClaimStatuses.Draft: tooltip = "Draft – not submitted yet"; break;
+                    case ClaimStatuses.Submitted: tooltip = "Submitted – awaiting approval"; break;
+                    case ClaimStatuses.Approved: tooltip = "Approved by previous level"; break;
+                    case ClaimStatuses.Rejected: tooltip = "Rejected – please review"; break;
+                    case ClaimStatuses.Processed: tooltip = "Processed in accounts"; break;
                 }
 
                 var swc = statusCtrl as WebControl;
@@ -724,7 +721,7 @@ namespace AnmolDristi
             string claimStatus = drv["ClaimStatus"] == DBNull.Value ? string.Empty : drv["ClaimStatus"].ToString().Trim();
 
             // Allowed statuses that can edit KM
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ClaimStatuses.Draft, ClaimStatuses.Submitted };
 
             // Find edit control by ID (matches TemplateField LinkButton ID: lnkEditKM)
             var lnkEdit = row.FindControl("lnkEditKM") as LinkButton;
@@ -759,9 +756,9 @@ namespace AnmolDristi
             //string claimStatus = drv["ClaimStatus"] == DBNull.Value ? String.Empty : drv["ClaimStatus"].ToString();
 
             // Row styling
-            if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 AddCssClass(row, "table-danger");
-            else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved))
                 AddCssClass(row, "table-success");
             else
                 RemoveCssClass(row, "table-danger table-success");
@@ -770,9 +767,9 @@ namespace AnmolDristi
             var btnApprove = FindControlRecursive(row, "btnApproveRow") as Button;
             var btnReject = FindControlRecursive(row, "btnRejectRow") as Button;
             if (btnApprove != null)
-                btnApprove.Enabled = !detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+                btnApprove.Enabled = !ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved);
             if (btnReject != null)
-                btnReject.Enabled = !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase);
+                btnReject.Enabled = !ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected);
 
             // Expenses JSON
             string expensesJson = "[]";
@@ -834,11 +831,11 @@ namespace AnmolDristi
                 string tooltip = "Unknown status";
                 switch (claimStatus)
                 {
-                    case "Draft": tooltip = "Draft – not submitted yet"; break;
-                    case "Submitted": tooltip = "Submitted – awaiting approval"; break;
-                    case "Approved": tooltip = "Approved by manager"; break;
-                    case "Rejected": tooltip = "Rejected – please review"; break;
-                    case "Processed": tooltip = "Processed in accounts"; break;
+                    case ClaimStatuses.Draft: tooltip = "Draft – not submitted yet"; break;
+                    case ClaimStatuses.Submitted: tooltip = "Submitted – awaiting approval"; break;
+                    case ClaimStatuses.Approved: tooltip = "Approved by manager"; break;
+                    case ClaimStatuses.Rejected: tooltip = "Rejected – please review"; break;
+                    case ClaimStatuses.Processed: tooltip = "Processed in accounts"; break;
                 }
 
                 var swc = statusCtrl as WebControl;
@@ -859,7 +856,7 @@ namespace AnmolDristi
         FROM SalesApprovalRequestApprover
         WHERE ApprovalRequestId = @Id
           AND ApproverLoginId = @Login
-          AND Status = 'Pending'", con))
+          AND Status = '" + ClaimStatuses.Pending + @"'", con))
             {
                 cmd.Parameters.AddWithValue("@Id", approvalRequestId);
                 cmd.Parameters.AddWithValue("@Login", GetLoggedInEmployeeCode());
@@ -1006,7 +1003,7 @@ namespace AnmolDristi
             BindDetailsGrid(requestId);
 
             lblModalMessage.CssClass = "text-success";
-            lblModalMessage.Text = (newStatus == "Approved") ? "Selected rows approved." : "Selected rows rejected.";
+            lblModalMessage.Text = (newStatus == ClaimStatuses.Approved) ? "Selected rows approved." : "Selected rows rejected.";
         }
 
         // helper to fill footer totals by finding the column index by header text
@@ -1078,7 +1075,7 @@ namespace AnmolDristi
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@ApprovalRequestDetailId", approvalDetailId);
-                    cmd.Parameters.AddWithValue("@NewStatus", approve ? "Approved" : "Rejected");
+                    cmd.Parameters.AddWithValue("@NewStatus", approve ? ClaimStatuses.Approved : ClaimStatuses.Rejected);
                     cmd.Parameters.AddWithValue("@ManagerRemark", mgrRemark ?? string.Empty);
                     cmd.Parameters.AddWithValue("@ProcessedBy", User.Identity.Name ?? HttpContext.Current.User.Identity.Name ?? "system");
                     cmd.Parameters.AddWithValue("@ProcessedOn", DateTime.Now);
@@ -1130,7 +1127,7 @@ namespace AnmolDristi
                     return; // do not update DB
                 }
 
-                var newStatus = (e.CommandName == "ApproveRow") ? "Approved" : "Rejected";
+                var newStatus = (e.CommandName == "ApproveRow") ? ClaimStatuses.Approved : ClaimStatuses.Rejected;
 
                 int requestId = 0; int.TryParse(lblModalRequestId.Text, out requestId);
 
@@ -1156,7 +1153,7 @@ namespace AnmolDristi
                     ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "openDetailsModal();", true);
 
                     lblModalMessage.CssClass = "text-success";
-                    lblModalMessage.Text = (newStatus == "Approved") ? "Detail approved." : "Detail rejected.";
+                    lblModalMessage.Text = (newStatus == ClaimStatuses.Approved) ? "Detail approved." : "Detail rejected.";
                 }
                 catch (Exception ex)
                 {
@@ -1172,7 +1169,7 @@ namespace AnmolDristi
         {
             if (e.CommandName == "ApproveRow" || e.CommandName == "RejectRow")
             {
-                string newStatus = (e.CommandName == "ApproveRow") ? "Approved" : "Rejected";
+                string newStatus = (e.CommandName == "ApproveRow") ? ClaimStatuses.Approved : ClaimStatuses.Rejected;
                 int detailId = 0;
                 if (!int.TryParse(Convert.ToString(e.CommandArgument), out detailId)) return;
 
@@ -1211,7 +1208,7 @@ namespace AnmolDristi
                 upDetails.Update();
 
                 lblModalMessage.CssClass = "text-success";
-                lblModalMessage.Text = (newStatus == "Approved") ? "Detail approved." : "Detail rejected.";
+                lblModalMessage.Text = (newStatus == ClaimStatuses.Approved) ? "Detail approved." : "Detail rejected.";
             }
         }
 
@@ -1256,7 +1253,7 @@ namespace AnmolDristi
             }
 
             bool isApprove = e.CommandName == "ApproveRow";
-            string newStatus = isApprove ? "Approved" : "Rejected";
+            string newStatus = isApprove ? ClaimStatuses.Approved : ClaimStatuses.Rejected;
 
             string processedBy = GetLoggedInEmployeeCode();
 
@@ -1358,7 +1355,7 @@ namespace AnmolDristi
         //        return;
         //    }
 
-        //    string newStatus = (e.CommandName == "ApproveRow") ? "Approved" : "Rejected";
+        //    string newStatus = (e.CommandName == "ApproveRow") ? ClaimStatuses.Approved : ClaimStatuses.Rejected;
 
         //    int requestId = 0;
         //    int.TryParse(lblModalRequestId.Text, out requestId);
@@ -1399,7 +1396,7 @@ namespace AnmolDristi
         //        ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "openDetailsModal();", true);
 
         //        lblModalMessage.CssClass = "text-success";
-        //        lblModalMessage.Text = (newStatus == "Approved") ? "Detail approved." : "Detail rejected.";
+        //        lblModalMessage.Text = (newStatus == ClaimStatuses.Approved) ? "Detail approved." : "Detail rejected.";
         //        upDetails.Update();
         //    }
         //    catch (Exception ex)
@@ -1552,7 +1549,7 @@ namespace AnmolDristi
         //            Status = obj == DBNull.Value || obj == null ? null : obj.ToString();
         //        }
 
-        //        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+        //        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ClaimStatuses.Draft, ClaimStatuses.Submitted };
         //        if (!allowed.Contains(Status ?? string.Empty))
         //        {
         //            return new { success = false, message = $"KM cannot be edited when Status = '{Status ?? "Unknown"}'." };
@@ -1607,7 +1604,7 @@ namespace AnmolDristi
         //            claimStatus = obj == DBNull.Value || obj == null ? null : obj.ToString();
         //        }
 
-        //        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Draft", "Submitted" };
+        //        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ClaimStatuses.Draft, ClaimStatuses.Submitted };
         //        if (!allowed.Contains(claimStatus ?? string.Empty))
         //        {
         //            return new { success = false, message = $"KM cannot be edited when ClaimStatus = '{claimStatus ?? "Unknown"}'." };
@@ -1682,7 +1679,7 @@ namespace AnmolDristi
 
                     // Lock ONLY if Accounts has acted
                     if (!string.IsNullOrEmpty(accountsStatus) &&
-                        !accountsStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                        !ClaimStatuses.Equals(accountsStatus, ClaimStatuses.Pending))
                     {
                         canEdit = false;
                     }
@@ -1786,7 +1783,7 @@ namespace AnmolDristi
                     r.TotalExpenseAmount, 
                     r.Status,
                     r.RequesterLoginId,
-                    ISNULL(u.EmployeeName, 'Unknown') as EmployeeName
+                    ISNULL(u.EmployeeName, '" + ClaimStatuses.Unknown + @"') as EmployeeName
                 FROM dbo.SalesApprovalRequest r
                 LEFT JOIN dbo.MST_UserMaster u ON r.RequesterLoginId = u.EmployeeCode
                 WHERE r.ApprovalRequestId = @ApprovalRequestId";
@@ -1816,7 +1813,7 @@ namespace AnmolDristi
                         decimal grandTotal = taAmount + expAmount;
 
                         lblHeaderTotalClaim.Text = grandTotal.ToString("N2");
-                        lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? "Pending";
+                        lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? ClaimStatuses.Pending;
                     }
                 }
             }
@@ -1828,14 +1825,14 @@ namespace AnmolDristi
             // Reopen button logic
             btnReopenRequest.Visible = isAuditor && lblHeaderStatus.Text != null &&
             (
-                lblHeaderStatus.Text.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                lblHeaderStatus.Text.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+                lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Approved) ||
+                lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Rejected)
             );
 
             // Ready for Payment button logic
             // int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0); // (Not strictly needed here if purely Auditor check)
             btnMarkReadyForPayment.Visible = isAuditor && lblHeaderStatus.Text != null &&
-            lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
+            lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Completed);
 
             // Open modal safely
             ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
@@ -1856,7 +1853,7 @@ namespace AnmolDristi
                     r.TotalExpenseAmount, 
                     r.Status,
                     r.RequesterLoginId,
-                    ISNULL(u.EmployeeName, 'Unknown') as EmployeeName
+                    ISNULL(u.EmployeeName, '" + ClaimStatuses.Unknown + @"') as EmployeeName
                 FROM dbo.SalesApprovalRequest r
                 LEFT JOIN dbo.MST_UserMaster u ON r.RequesterLoginId = u.EmployeeCode
                 WHERE r.ApprovalRequestId = @ApprovalRequestId";
@@ -1881,7 +1878,7 @@ namespace AnmolDristi
                         decimal grandTotal = taAmount + expAmount;
 
                         lblHeaderTotalClaim.Text = grandTotal.ToString("N2");
-                        lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? "Pending";
+                        lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? ClaimStatuses.Pending;
                     }
                 }
             }
@@ -1892,13 +1889,13 @@ namespace AnmolDristi
 
             btnReopenRequest.Visible = isAuditor && lblHeaderStatus.Text != null &&
             (
-                lblHeaderStatus.Text.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                lblHeaderStatus.Text.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+                lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Approved) ||
+                lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Rejected)
             );
 
             int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
             btnMarkReadyForPayment.Visible = isAuditor && lblHeaderStatus.Text != null &&
-            lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
+            lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Completed);
 
             // open modal
             ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
@@ -1924,7 +1921,7 @@ namespace AnmolDristi
         //            if (rdr.Read())
         //            {
         //                lblHeaderTotalClaim.Text = rdr["TotalExpenseAmount"] == DBNull.Value ? "0.00" : Convert.ToDecimal(rdr["TotalExpenseAmount"]).ToString("N2");
-        //                lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? "Pending";
+        //                lblHeaderStatus.Text = rdr["Status"]?.ToString() ?? ClaimStatuses.Pending;
         //            }
         //        }
         //    }
@@ -1934,13 +1931,13 @@ namespace AnmolDristi
 
         //    btnReopenRequest.Visible = isAuditor && lblHeaderStatus.Text != null &&
         //    (
-        //        lblHeaderStatus.Text.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-        //        lblHeaderStatus.Text.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+        //        lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Approved) ||
+        //        lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Rejected)
         //    );
 
         //    int currentUserLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
         //    btnMarkReadyForPayment.Visible = isAuditor && lblHeaderStatus.Text != null &&
-        //    lblHeaderStatus.Text.Equals("Completed", StringComparison.OrdinalIgnoreCase);
+        //    lblHeaderStatus.ClaimStatuses.Equals(Text, ClaimStatuses.Completed);
 
         //    // open modal (partial postback safe)
         //    ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "$('#detailsModal').modal('show');", true);
@@ -2119,7 +2116,7 @@ namespace AnmolDristi
             var chk = e.Row.FindControl("chkSelect") as CheckBox;
             var txt = e.Row.FindControl("txtRowRemark") as TextBox;
 
-            if (!string.IsNullOrEmpty(detailStatus) && detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrEmpty(detailStatus) && ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved))
             {
                 if (chk != null) chk.Enabled = false;
                 if (txt != null) { txt.ReadOnly = true; txt.CssClass += " bg-light"; }
@@ -2562,7 +2559,7 @@ namespace AnmolDristi
             var txtRowRemark = e.Row.FindControl("txtRowRemark") as TextBox;
             var chk = e.Row.FindControl("chkSelect") as CheckBox;
 
-            if (detailStatus == "Approved")
+            if (detailStatus == ClaimStatuses.Approved)
             {
                 // disable remark edit and checkbox if already approved
                 if (txtRowRemark != null) txtRowRemark.Enabled = false;
@@ -2645,7 +2642,7 @@ namespace AnmolDristi
                 cmd.ExecuteNonQuery();
             }
 
-            lblHeaderStatus.Text = "ReadyForPayment";
+            lblHeaderStatus.Text = ClaimStatuses.ReadyForPayment;
             lblModalMessage.Text = "Request marked Ready for Payment.";
             lblModalMessage.CssClass = "text-success";
         }

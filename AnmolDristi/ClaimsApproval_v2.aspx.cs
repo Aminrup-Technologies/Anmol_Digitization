@@ -40,15 +40,6 @@ namespace AnmolDristi
             }
         }
 
-        public static class ClaimStatus
-        {
-            public const string Pending = "Pending";
-            public const string Approved = "Approved";
-            public const string Rejected = "Rejected";
-            public const string Returned = "Returned";
-            public const string Completed = "Completed";
-        }
-
         private const string SessionApproverRoleKey = "ClaimsApproval_ApproverRole";
 
         private void PopulateFilters()
@@ -181,7 +172,7 @@ namespace AnmolDristi
 
             DataTable dt = new DataTable();
             decimal originalClaimed = 0m;
-            string status = "Pending";
+            string status = ClaimStatuses.Pending;
             string requesterName = "";
             string requesterCode = "";
 
@@ -292,7 +283,7 @@ namespace AnmolDristi
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
                 FROM dbo.SalesApprovalRequestDetail d
                 WHERE d.ApprovalRequestId = @Id
-                  AND ISNULL(d.DetailStatus, '') NOT IN ('Rejected', 'Returned')
+                  AND ISNULL(d.DetailStatus, '') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
                   AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
 
                 SELECT 
@@ -304,7 +295,7 @@ namespace AnmolDristi
                         ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
                     WHERE d.ApprovalRequestId = @Id
-                      AND d.DetailStatus IN ('Rejected', 'Returned')
+                      AND d.DetailStatus IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
         
                     UNION ALL
@@ -315,7 +306,7 @@ namespace AnmolDristi
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
                     " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
-                    WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = 'Rejected' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                    WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
         
                     UNION ALL
         
@@ -333,7 +324,7 @@ namespace AnmolDristi
                     ) fk ON d.ActivityId = fk.ActivityId
                     WHERE d.ApprovalRequestId = @Id 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM 
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                 ) x;
             ";
@@ -402,7 +393,7 @@ namespace AnmolDristi
                 " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                 WHERE d.ApprovalRequestId = @Id 
                   AND e.IsDeleted = 0 
-                  AND ISNULL(e.ClaimStatus, '') NOT IN ('Approved', 'Rejected')";
+                  AND ISNULL(e.ClaimStatus, '') NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"')";
 
             using (var con = new SqlConnection(connString))
             using (var cmd = new SqlCommand(sqlCheckReceipts, con))
@@ -502,7 +493,7 @@ namespace AnmolDristi
                     (SELECT COUNT(1)
                      FROM dbo.SalesApprovalRequestDetail d
                      WHERE d.ApprovalRequestId = @Id
-                       AND d.DetailStatus = 'Returned'
+                       AND d.DetailStatus = '" + ClaimStatuses.Returned + @"'
                        AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @")
                   + (SELECT COUNT(1)
                      FROM dbo.SalesDailyExpense e
@@ -510,7 +501,7 @@ namespace AnmolDristi
                      " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                      WHERE d.ApprovalRequestId = @Id
                        AND e.IsDeleted = 0
-                       AND e.ClaimStatus = 'Returned')";
+                       AND e.ClaimStatus = '" + ClaimStatuses.Returned + @"')";
 
             using (var con = new SqlConnection(connString))
             using (var cmd = new SqlCommand(sql, con))
@@ -531,7 +522,7 @@ namespace AnmolDristi
                     (SELECT COUNT(1)
                      FROM dbo.SalesApprovalRequestDetail d
                      WHERE d.ApprovalRequestId = @Id
-                       AND ISNULL(d.DetailStatus, 'Pending') NOT IN ('Approved', 'Rejected')
+                       AND ISNULL(d.DetailStatus, '" + ClaimStatuses.Pending + @"') NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"')
                        AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @")
                   + (SELECT COUNT(1)
                      FROM dbo.SalesDailyExpense e
@@ -539,7 +530,7 @@ namespace AnmolDristi
                      " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                      WHERE d.ApprovalRequestId = @Id
                        AND e.IsDeleted = 0
-                       AND ISNULL(e.ClaimStatus, '') NOT IN ('Approved', 'Rejected'))";
+                       AND ISNULL(e.ClaimStatus, '') NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"'))";
 
             using (var con = new SqlConnection(connString))
             using (var cmd = new SqlCommand(sql, con))
@@ -575,8 +566,8 @@ namespace AnmolDristi
                 //        {
                 //            //    string sqlWorkflow = @"
                 //            //UPDATE dbo.SalesApprovalRequestApprover 
-                //            //SET Status = 'Approved', ActionBy = @User, ActionDate = SYSUTCDATETIME() 
-                //            //WHERE ApprovalRequestId = @Id AND ApproverLevel = @Level AND Status = 'Pending';
+                //            //SET Status = '" + ClaimStatuses.Approved + @"', ActionBy = @User, ActionDate = SYSUTCDATETIME() 
+                //            //WHERE ApprovalRequestId = @Id AND ApproverLevel = @Level AND Status = '" + ClaimStatuses.Pending + @"';
 
                 //            //DECLARE @NextLevel INT, @NextLogin NVARCHAR(100), @NextRole NVARCHAR(100);
 
@@ -585,7 +576,7 @@ namespace AnmolDristi
                 //            //    @NextLogin = ApproverLoginId, 
                 //            //    @NextRole = ApproverRole
                 //            //FROM dbo.SalesApprovalRequestApprover
-                //            //WHERE ApprovalRequestId = @Id AND ApproverLevel > @Level AND Status = 'Pending'
+                //            //WHERE ApprovalRequestId = @Id AND ApproverLevel > @Level AND Status = '" + ClaimStatuses.Pending + @"'
                 //            //ORDER BY ApproverLevel ASC;
 
                 //            //IF @NextLevel IS NOT NULL
@@ -601,13 +592,13 @@ namespace AnmolDristi
                 //            //    INSERT INTO dbo.ApprovalRequestStatusHistory 
                 //            //    (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
                 //            //    VALUES 
-                //            //    (@Id, 'Pending', 'Pending', @User, CONCAT('Level ', @Level, ' approved. Forwarded to ', @NextRole, ' (', ISNULL(@NextLogin, 'Audit Pool'), ')'));
+                //            //    (@Id, '" + ClaimStatuses.Pending + @"', '" + ClaimStatuses.Pending + @"', @User, CONCAT('Level ', @Level, ' approved. Forwarded to ', @NextRole, ' (', ISNULL(@NextLogin, 'Audit Pool'), ')'));
                 //            //END
                 //            //ELSE
                 //            //BEGIN
                 //            //    UPDATE dbo.SalesApprovalRequest
-                //            //    SET Status = 'Completed', ModifiedBy = @User, ModifiedOn = SYSUTCDATETIME()
-                //            //    WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+                //            //    SET Status = '" + ClaimStatuses.Completed + @"', ModifiedBy = @User, ModifiedOn = SYSUTCDATETIME()
+                //            //    WHERE ApprovalRequestId = @Id AND Status = '" + ClaimStatuses.Pending + @"';
 
                 //            //    INSERT INTO dbo.ApprovalRequestStatusHistory 
                 //            //    (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
@@ -692,8 +683,8 @@ namespace AnmolDristi
                     con.Open();
                     string sqlWorkflow = @"
                         UPDATE dbo.SalesApprovalRequestApprover 
-                        SET Status = 'Approved', ActionBy = @User, ActionDate = SYSUTCDATETIME() 
-                        WHERE ApprovalRequestId = @Id AND ApproverLevel = @Level AND Status = 'Pending';
+                        SET Status = '" + ClaimStatuses.Approved + @"', ActionBy = @User, ActionDate = SYSUTCDATETIME() 
+                        WHERE ApprovalRequestId = @Id AND ApproverLevel = @Level AND Status = '" + ClaimStatuses.Pending + @"';
 
                         DECLARE @NextLevel INT, @NextLogin NVARCHAR(100), @NextRole NVARCHAR(100);
                         
@@ -702,7 +693,7 @@ namespace AnmolDristi
                             @NextLogin = ApproverLoginId, 
                             @NextRole = ApproverRole
                         FROM dbo.SalesApprovalRequestApprover
-                        WHERE ApprovalRequestId = @Id AND ApproverLevel > @Level AND Status = 'Pending'
+                        WHERE ApprovalRequestId = @Id AND ApproverLevel > @Level AND Status = '" + ClaimStatuses.Pending + @"'
                         ORDER BY ApproverLevel ASC;
 
                         IF @NextLevel IS NOT NULL
@@ -718,18 +709,18 @@ namespace AnmolDristi
                             INSERT INTO dbo.ApprovalRequestStatusHistory 
                             (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
                             VALUES 
-                            (@Id, 'Pending', 'Pending', @User, CONCAT('Level ', @Level, ' approved. Forwarded to ', @NextRole, ' (', ISNULL(@NextLogin, 'Audit Pool'), ')'));
+                            (@Id, '" + ClaimStatuses.Pending + @"', '" + ClaimStatuses.Pending + @"', @User, CONCAT('Level ', @Level, ' approved. Forwarded to ', @NextRole, ' (', ISNULL(@NextLogin, 'Audit Pool'), ')'));
                         END
                         ELSE
                         BEGIN
                             UPDATE dbo.SalesApprovalRequest
-                            SET Status = 'Completed', ModifiedBy = @User, ModifiedOn = SYSUTCDATETIME()
-                            WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+                            SET Status = '" + ClaimStatuses.Completed + @"', ModifiedBy = @User, ModifiedOn = SYSUTCDATETIME()
+                            WHERE ApprovalRequestId = @Id AND Status = '" + ClaimStatuses.Pending + @"';
 
                             INSERT INTO dbo.ApprovalRequestStatusHistory 
                             (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
                             VALUES 
-                            (@Id, 'Pending', 'Completed', @User, 'All approval levels finished. Awaiting Payment.');
+                            (@Id, '" + ClaimStatuses.Pending + @"', '" + ClaimStatuses.Completed + @"', @User, 'All approval levels finished. Awaiting Payment.');
                         END";
 
                     using (var cmd = new SqlCommand(sqlWorkflow, con))
@@ -812,7 +803,7 @@ namespace AnmolDristi
 
                 int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
                 string detailStatus = drv["DetailStatus"].ToString();
-                if (string.IsNullOrEmpty(detailStatus)) detailStatus = "Pending";
+                if (string.IsNullOrEmpty(detailStatus)) detailStatus = ClaimStatuses.Pending;
                 int approvedLevel = drv["DetailApprovedLevel"] == DBNull.Value ? 0 : Convert.ToInt32(drv["DetailApprovedLevel"]);
 
                 if (drv.Row.Table.Columns.Contains("DetailVersion") && drv["DetailVersion"] != DBNull.Value)
@@ -844,25 +835,25 @@ namespace AnmolDristi
 
                 bool hasPendingReceipts = expensesJson.Contains("\"ClaimStatus\":\"Pending\"") || expensesJson.Contains("\"ClaimStatus\":\"Returned\"");
 
-                if (detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
                 {
                     e.Row.CssClass += " table-danger";
                 }
-                else if (detailStatus.Equals("Returned", StringComparison.OrdinalIgnoreCase))
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
                 {
                     e.Row.CssClass += " table-warning";
                 }
-                else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel == currentLevel)
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentLevel)
                 {
                     e.Row.CssClass += " table-success";
                     if (btnApprove != null) { btnApprove.Text = "✔ Done"; btnApprove.CssClass = "btn btn-sm btn-success"; }
                 }
-                else if (detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) && approvedLevel < currentLevel)
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel < currentLevel)
                 {
                     e.Row.CssClass += " table-warning";
                     ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
                 }
-                else if (detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
                 {
                     ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
                 }
@@ -877,8 +868,8 @@ namespace AnmolDristi
                 bool isAuditor = currentRole.Equals("Auditor", StringComparison.OrdinalIgnoreCase);
 
                 if (isAuditor && hasPendingReceipts &&
-                    !detailStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase) &&
-                    !detailStatus.Equals("Returned", StringComparison.OrdinalIgnoreCase))
+                    !ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected) &&
+                    !ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
                 {
                     if (lnkReview != null)
                     {
@@ -1062,7 +1053,7 @@ namespace AnmolDristi
                 GridViewRow row = (GridViewRow)((Control)e.CommandSource).NamingContainer;
                 TextBox txt = row.FindControl("txtRowRemark") as TextBox;
 
-                string dbStatus = isApprove ? "Approved" : "Rejected";
+                string dbStatus = isApprove ? ClaimStatuses.Approved : ClaimStatuses.Rejected;
                 string user = GetLoggedInEmployeeCode();
                 string rawRemark = txt != null ? txt.Text : "";
                 string remark = AppendUserToRemark(rawRemark, user);
@@ -1096,7 +1087,7 @@ namespace AnmolDristi
                 //            ModifiedOn = SYSUTCDATETIME(),
                 //            Remarks = ISNULL(Remarks, @Remarks)
                 //        WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
-                //          AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                //          AND ClaimStatus NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"') 
                 //          AND IsDeleted = 0;";
 
                 //            using (var cmd = new SqlCommand(sql, con, tran))
@@ -1181,12 +1172,12 @@ namespace AnmolDristi
                             ModifiedOn = SYSUTCDATETIME(),
                             Remarks = ISNULL(Remarks, @Remarks)
                         WHERE ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId) 
-                          AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                          AND ClaimStatus NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"') 
                           AND IsDeleted = 0;";
 
                     using (var cascadeCmd = new SqlCommand(cascadeSql, con))
                     {
-                        cascadeCmd.Parameters.AddWithValue("@ActionStatus", isApprove ? "Approved" : "Rejected");
+                        cascadeCmd.Parameters.AddWithValue("@ActionStatus", isApprove ? ClaimStatuses.Approved : ClaimStatuses.Rejected);
                         cascadeCmd.Parameters.AddWithValue("@ActionBy", user);
                         cascadeCmd.Parameters.AddWithValue("@DetailId", detailId);
                         cascadeCmd.Parameters.AddWithValue("@Remarks", string.IsNullOrEmpty(remark) ? (object)DBNull.Value : remark);
@@ -1270,8 +1261,8 @@ namespace AnmolDristi
                     ExecuteRecalculationSQL(reqId);
                     txtBulkRemarks.Text = "";
                     string resultLabel = action == DayDetailAction.Approve
-                        ? "Approved"
-                        : (action == DayDetailAction.Reject ? "Rejected" : "Returned");
+                        ? ClaimStatuses.Approved
+                        : (action == DayDetailAction.Reject ? ClaimStatuses.Rejected : ClaimStatuses.Returned);
                     lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {resultLabel}.";
                     lblModalMessage.CssClass = action == DayDetailAction.Approve
                         ? "text-success font-weight-bold"
@@ -1341,7 +1332,7 @@ namespace AnmolDristi
                                         ModifiedOn = SYSUTCDATETIME(),
                                         Remarks = ISNULL(Remarks, @Remarks)
                                     WHERE ActivityId = @ActivityId 
-                                      AND ClaimStatus NOT IN ('Approved', 'Rejected') 
+                                      AND ClaimStatus NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"') 
                                       AND IsDeleted = 0;";
 
                                 using (var cmd = new SqlCommand(sql, con))
@@ -1366,7 +1357,7 @@ namespace AnmolDristi
                     ExecuteRecalculationSQL(reqId);
                     txtBulkRemarks.Text = "";
                     lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {newStatus}.";
-                    lblModalMessage.CssClass = newStatus == "Approved" ? "text-success font-weight-bold" : "text-danger font-weight-bold";
+                    lblModalMessage.CssClass = newStatus == ClaimStatuses.Approved ? "text-success font-weight-bold" : "text-danger font-weight-bold";
                 }
                 else
                 {
@@ -1474,18 +1465,18 @@ namespace AnmolDristi
                 IF @ActivityId IS NOT NULL
                 BEGIN
                     UPDATE dbo.SalesDailyActivity
-                    SET ClaimStatus = 'Returned',
+                    SET ClaimStatus = '" + ClaimStatuses.Returned + @"',
                         ModifiedByUserId = @User,
                         ModifiedDateTime = DATEADD(MINUTE, 330, SYSUTCDATETIME())
                     WHERE ActivityId = @ActivityId;
 
                     UPDATE dbo.SalesDailyExpense
-                    SET ClaimStatus = 'Returned',
+                    SET ClaimStatus = '" + ClaimStatuses.Returned + @"',
                         ModifiedBy = @User,
                         ModifiedOn = SYSUTCDATETIME()
                     WHERE ActivityId = @ActivityId
                       AND IsDeleted = 0
-                      AND ISNULL(ClaimStatus, '') <> 'Rejected';
+                      AND ISNULL(ClaimStatus, '') <> '" + ClaimStatuses.Rejected + @"';
                 END";
 
             using (var cmd = new SqlCommand(sql, con))
@@ -1507,18 +1498,18 @@ namespace AnmolDristi
                 IF @ActivityId IS NOT NULL
                 BEGIN
                     UPDATE dbo.SalesDailyActivity
-                    SET ClaimStatus = 'Rejected',
+                    SET ClaimStatus = '" + ClaimStatuses.Rejected + @"',
                         ModifiedByUserId = @User,
                         ModifiedDateTime = DATEADD(MINUTE, 330, SYSUTCDATETIME())
                     WHERE ActivityId = @ActivityId;
 
                     UPDATE dbo.SalesDailyExpense
-                    SET ClaimStatus = 'Rejected',
+                    SET ClaimStatus = '" + ClaimStatuses.Rejected + @"',
                         ModifiedBy = @User,
                         ModifiedOn = SYSUTCDATETIME()
                     WHERE ActivityId = @ActivityId
                       AND IsDeleted = 0
-                      AND ISNULL(ClaimStatus, '') <> 'Approved';
+                      AND ISNULL(ClaimStatus, '') <> '" + ClaimStatuses.Approved + @"';
                 END";
 
             using (var cmd = new SqlCommand(sql, con))
@@ -1533,9 +1524,9 @@ namespace AnmolDristi
         {
             switch ((action ?? "").Trim().ToUpperInvariant())
             {
-                case "APPROVE": return "Approved";
-                case "RETURN": return "Returned";
-                case "REJECT": return "Rejected";
+                case "APPROVE": return ClaimStatuses.Approved;
+                case "RETURN": return ClaimStatuses.Returned;
+                case "REJECT": return ClaimStatuses.Rejected;
                 default: throw new ArgumentException("Invalid expense action.");
             }
         }
@@ -1555,15 +1546,15 @@ namespace AnmolDristi
 
                     string fixStatusSql = @"
                         UPDATE dbo.SalesApprovalRequest 
-                        SET Status = 'Completed' 
-                        WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+                        SET Status = '" + ClaimStatuses.Completed + @"' 
+                        WHERE ApprovalRequestId = @Id AND Status = '" + ClaimStatuses.Pending + @"';
 
                         IF @@ROWCOUNT > 0
                         BEGIN
                             INSERT INTO dbo.ApprovalRequestStatusHistory 
                             (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
                             VALUES 
-                            (@Id, 'Pending', 'Completed', @AuditorId, 'Auditor finalized all rows and synced calculations.');
+                            (@Id, '" + ClaimStatuses.Pending + @"', '" + ClaimStatuses.Completed + @"', @AuditorId, 'Auditor finalized all rows and synced calculations.');
                         END";
 
                     using (var cmdFix = new SqlCommand(fixStatusSql, con))
@@ -1576,12 +1567,12 @@ namespace AnmolDristi
                     string sqlWorkflow = @"
                         UPDATE dbo.SalesApprovalRequestApprover 
                         SET 
-                            Status = 'Approved', 
+                            Status = '" + ClaimStatuses.Approved + @"', 
                             ActionBy = @AuditorId, 
                             ActionDate = GETDATE() 
                         WHERE ApprovalRequestId = @Id 
                           AND ApproverLevel = 2 
-                          AND Status = 'Pending'";
+                          AND Status = '" + ClaimStatuses.Pending + @"'";
 
                     using (var cmdWorkflow = new SqlCommand(sqlWorkflow, con))
                     {
@@ -1643,8 +1634,8 @@ namespace AnmolDristi
                     //    {
                     //        //    string fixStatusSql = @"
                     //        //UPDATE dbo.SalesApprovalRequest 
-                    //        //SET Status = 'Completed' 
-                    //        //WHERE ApprovalRequestId = @Id AND Status = 'Pending';
+                    //        //SET Status = '" + ClaimStatuses.Completed + @"' 
+                    //        //WHERE ApprovalRequestId = @Id AND Status = '" + ClaimStatuses.Pending + @"';
 
                     //        //IF @@ROWCOUNT > 0
                     //        //BEGIN
@@ -1664,12 +1655,12 @@ namespace AnmolDristi
                     //        //    string sqlWorkflow = @"
                     //        //UPDATE dbo.SalesApprovalRequestApprover 
                     //        //SET 
-                    //        //    Status = 'Approved', 
+                    //        //    Status = '" + ClaimStatuses.Approved + @"', 
                     //        //    ActionBy = @AuditorId, 
                     //        //    ActionDate = GETDATE() 
                     //        //WHERE ApprovalRequestId = @Id 
                     //        //  AND ApproverLevel = 2 
-                    //        //  AND Status = 'Pending'";
+                    //        //  AND Status = '" + ClaimStatuses.Pending + @"'";
 
                     //        //    using (var cmdWorkflow = new SqlCommand(sqlWorkflow, con, tran))
                     //        //    {
@@ -1744,10 +1735,10 @@ namespace AnmolDristi
                 }
 
                 // 🟢 NEW: Map the action command to the correct Database Status Word
-                string dbStatus = "Pending";
-                if (action == "APPROVE") dbStatus = "Approved";
-                else if (action == "REJECT") dbStatus = "Rejected";
-                else if (action == "RETURN") dbStatus = "Returned";
+                string dbStatus = ClaimStatuses.Pending;
+                if (action == "APPROVE") dbStatus = ClaimStatuses.Approved;
+                else if (action == "REJECT") dbStatus = ClaimStatuses.Rejected;
+                else if (action == "RETURN") dbStatus = ClaimStatuses.Returned;
 
                 string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
@@ -1889,7 +1880,7 @@ namespace AnmolDristi
         {
             string user = GetLoggedInEmployeeCode();
             using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand("SELECT TOP 1 ApproverLevel, ApproverRole FROM SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User AND Status='Pending'", con))
+            using (var cmd = new SqlCommand("SELECT TOP 1 ApproverLevel, ApproverRole FROM SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User AND Status='" + ClaimStatuses.Pending + @"'", con))
             {
                 cmd.Parameters.AddWithValue("@Id", reqId);
                 cmd.Parameters.AddWithValue("@User", user);
@@ -2072,7 +2063,7 @@ namespace AnmolDristi
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId
-                      AND d.DetailStatus IN ('Rejected', 'Returned')
+                      AND d.DetailStatus IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
 
                     UNION ALL
@@ -2087,9 +2078,9 @@ namespace AnmolDristi
                     " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId 
-                      AND e.ClaimStatus = 'Rejected' 
+                      AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' 
                       AND e.IsDeleted = 0
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
 
                     UNION ALL
 
@@ -2110,7 +2101,7 @@ namespace AnmolDristi
                     ) fk ON d.ActivityId = fk.ActivityId
                     WHERE d.ApprovalRequestId = @ReqId 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
-                      AND ISNULL(d.DetailStatus, '') <> 'Rejected'
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"        
                     ORDER BY ActivityDate ASC;";
 
@@ -2147,10 +2138,10 @@ namespace AnmolDristi
             -- 1. Update individual category totals (latest detail version per day only)
             UPDATE d
             SET 
-                Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Stationary' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
+                Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Stationary' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0)
             FROM dbo.SalesApprovalRequestDetail d 
             WHERE d.ApprovalRequestId = @Id
               AND d.ApprovalRequestDetailId IN (
@@ -2175,11 +2166,11 @@ namespace AnmolDristi
             -- 3. Update the header table using latest detail rows only
             UPDATE dbo.SalesApprovalRequest
             SET 
-                ApprovedKM = (SELECT ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedClaimAmount = (SELECT ISNULL(SUM(d.Snapshot_CalculatedClaimAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedDAAmount = (SELECT ISNULL(SUM(d.Snapshot_DAAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedHotelAmount = (SELECT ISNULL(SUM(d.Snapshot_HotelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedTravelAmount = (SELECT ISNULL(SUM(d.Snapshot_TravelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('Rejected', 'Returned') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @") 
+                ApprovedKM = (SELECT ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedClaimAmount = (SELECT ISNULL(SUM(d.Snapshot_CalculatedClaimAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedDAAmount = (SELECT ISNULL(SUM(d.Snapshot_DAAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedHotelAmount = (SELECT ISNULL(SUM(d.Snapshot_HotelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
+                ApprovedTravelAmount = (SELECT ISNULL(SUM(d.Snapshot_TravelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @") 
             WHERE ApprovalRequestId = @Id;";
 
             using (var con = new SqlConnection(connString))
@@ -2196,10 +2187,10 @@ namespace AnmolDristi
             string sqlRecalculate = @"
             UPDATE d
             SET 
-                Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0),
-                Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Stationary' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> 'Rejected'), 0)
+                Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Stationary' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0)
             FROM SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id;
 
             UPDATE SalesApprovalRequestDetail 
@@ -2208,11 +2199,11 @@ namespace AnmolDristi
 
             UPDATE SalesApprovalRequest
             SET 
-                ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
-                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> 'Rejected'),
+                ApprovedKM = (SELECT ISNULL(SUM(Snapshot_TotalDistanceKM), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> '" + ClaimStatuses.Rejected + @"'),
+                ApprovedClaimAmount = (SELECT ISNULL(SUM(Snapshot_CalculatedClaimAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> '" + ClaimStatuses.Rejected + @"'),
+                ApprovedDAAmount = (SELECT ISNULL(SUM(Snapshot_DAAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> '" + ClaimStatuses.Rejected + @"'),
+                ApprovedHotelAmount = (SELECT ISNULL(SUM(Snapshot_HotelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> '" + ClaimStatuses.Rejected + @"'),
+                ApprovedTravelAmount = (SELECT ISNULL(SUM(Snapshot_TravelAmount), 0) FROM SalesApprovalRequestDetail WHERE ApprovalRequestId = @Id AND ISNULL(DetailStatus,'') <> '" + ClaimStatuses.Rejected + @"'),
                 Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0) + ISNULL(Snapshot_StationaryAmount, 0) 
             WHERE ApprovalRequestId = @Id;";
 

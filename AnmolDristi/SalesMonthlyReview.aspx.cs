@@ -214,9 +214,9 @@ namespace AnmolDristi
                         string s = (approvalStatus ?? "").Trim();
 
                         // ⬅️ 1. Add "Returned" to the overall status check
-                        if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(s, "Returned", StringComparison.OrdinalIgnoreCase))
+                        if (ClaimStatuses.Equals(s, ClaimStatuses.Draft) ||
+                            ClaimStatuses.Equals(s, ClaimStatuses.Rejected) ||
+                            ClaimStatuses.Equals(s, ClaimStatuses.Returned))
                         {
                             monthLocked = false;
                             allowSubmission = true;
@@ -254,8 +254,8 @@ namespace AnmolDristi
                                             detailStatusByActivity[aid] = detail;
 
                                         // ⬅️ 2. Add "Returned" to the Line Item check
-                                        if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase) ||
-                                            string.Equals(detail, "Returned", StringComparison.OrdinalIgnoreCase))
+                                        if (ClaimStatuses.Equals(detail, ClaimStatuses.Rejected) ||
+                                            ClaimStatuses.Equals(detail, ClaimStatuses.Returned))
                                         {
                                             editableActivityIds.Add(aid);
                                         }
@@ -285,7 +285,7 @@ namespace AnmolDristi
                     //else
                     //{
                     //    string s = (approvalStatus ?? "").Trim();
-                    //    if (string.Equals(s, "Draft", StringComparison.OrdinalIgnoreCase) || string.Equals(s, "Rejected", StringComparison.OrdinalIgnoreCase))
+                    //    if (ClaimStatuses.Equals(s, ClaimStatuses.Draft) || ClaimStatuses.Equals(s, ClaimStatuses.Rejected))
                     //    {
                     //        monthLocked = false;
                     //        allowSubmission = true;
@@ -306,7 +306,7 @@ namespace AnmolDristi
                     //                {
                     //                    int aid = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
                     //                    string detail = rdr["DetailStatus"] != DBNull.Value ? rdr["DetailStatus"].ToString() : null;
-                    //                    if (string.Equals(detail, "Rejected", StringComparison.OrdinalIgnoreCase))
+                    //                    if (ClaimStatuses.Equals(detail, ClaimStatuses.Rejected))
                     //                        editableActivityIds.Add(aid);
                     //                }
                     //            }
@@ -445,8 +445,8 @@ namespace AnmolDristi
             int actId;
             if (!int.TryParse(activityId, out actId) || actId <= 0) return;
 
-            string claimStatus = "Draft";
-            string detailStatus = "Draft";
+            string claimStatus = ClaimStatuses.Draft;
+            string detailStatus = ClaimStatuses.Draft;
 
             using (SqlConnection conStat = new SqlConnection(connString))
             {
@@ -462,7 +462,7 @@ namespace AnmolDristi
                 }
 
                 using (SqlCommand cmdDetail = new SqlCommand(
-                    @"SELECT TOP 1 ISNULL(DetailStatus, 'Draft')
+                    @"SELECT TOP 1 ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"')
                       FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK)
                       WHERE ActivityId = @ActId
                       ORDER BY ApprovalRequestDetailId DESC", conStat))
@@ -475,17 +475,17 @@ namespace AnmolDristi
             }
 
             bool isReturnedDay =
-                string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase);
+                ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned);
 
             bool isRejectedDay =
-                string.Equals(detailStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
+                ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected);
 
             bool isLockedDay = isRejectedDay ||
-                claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase);
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Submitted) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending);
 
             if (!isReturnedDay && isLockedDay)
             {
@@ -846,7 +846,7 @@ namespace AnmolDristi
                 //// ====================================================================
                 //// UI LOCK: KM Modal View-Only Mode
                 //// ====================================================================
-                //string claimStatus = "Draft";
+                //string claimStatus = ClaimStatuses.Draft;
                 //using (SqlConnection conStat = new SqlConnection(connString))
                 //{
                 //    using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
@@ -861,13 +861,13 @@ namespace AnmolDristi
                 // ====================================================================
                 // UI LOCK: Expense Modal View-Only Mode
                 // ====================================================================
-                string detailStatus = "Draft"; // Default to Draft
+                string detailStatus = ClaimStatuses.Draft; // Default to Draft
 
                 using (SqlConnection conStat = new SqlConnection(connString))
                 {
                     // ⬅️ NEW: Query the specific LINE ITEM status, not the overall month status
-                    string query = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
-                    string query1 = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+                    string query = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+                    string query1 = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
                     using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
                     {
                         cmdStat.Parameters.AddWithValue("@ActId", activityId);
@@ -882,9 +882,9 @@ namespace AnmolDristi
 
                 // ⬅️ NEW: Check if the SPECIFIC LINE ITEM is locked. 
                 // If it is 'Returned' or 'Rejected' or 'Draft', it stays unlocked!
-                if (detailStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                    detailStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                    detailStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Submitted) ||
+                    ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) ||
+                    ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
                 {
                     // 1. Hide the Save and KM Modify buttons
                     if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
@@ -926,9 +926,9 @@ namespace AnmolDristi
                 }
                 // ====================================================================
 
-                //if (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                //    claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                //    claimStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                //if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Submitted) ||
+                //    ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved) ||
+                //    ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending))
                 //{
                 //    if (btnSaveKm != null) btnSaveKm.Visible = false;
                 //    if (txtModalKM != null) txtModalKM.Enabled = false;
@@ -961,7 +961,7 @@ namespace AnmolDristi
                     // ====================================================================
                     // SECURITY GATE: Prevent Inline Editing if Submitted
                     // ====================================================================
-                    string currentStatus = "Draft";
+                    string currentStatus = ClaimStatuses.Draft;
                     using (SqlConnection conStat = new SqlConnection(connString))
                     {
                         using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
@@ -973,12 +973,12 @@ namespace AnmolDristi
                         }
                     }
 
-                    if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                        currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                        currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
-                        currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                    if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
+                        ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
+                        ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending) ||
+                        ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected))
                     {
-                        lbl_msg.Text = currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+                        lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
                             ? "Cannot edit row. This day was rejected by the auditor."
                             : "Cannot edit row. This claim is " + currentStatus + ".";
                         lbl_msg.ForeColor = System.Drawing.Color.Red;
@@ -1002,7 +1002,7 @@ namespace AnmolDristi
                 // ====================================================================
                 // SECURITY GATE: Prevent Inline Updating if Submitted
                 // ====================================================================
-                string currentStatus = "Draft";
+                string currentStatus = ClaimStatuses.Draft;
                 using (SqlConnection conStat = new SqlConnection(connString))
                 {
                     using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
@@ -1014,12 +1014,12 @@ namespace AnmolDristi
                     }
                 }
 
-                if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                    currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                    currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
-                    currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
+                    ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
+                    ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending) ||
+                    ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected))
                 {
-                    lbl_msg.Text = currentStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)
+                    lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
                         ? "Update blocked. This day was rejected by the auditor."
                         : "Update blocked. This claim is " + currentStatus + ".";
                     lbl_msg.ForeColor = System.Drawing.Color.Red;
@@ -1101,7 +1101,7 @@ namespace AnmolDristi
             // ====================================================================
             // SECURITY GATE: Prevent saving KMs if the month is already submitted
             // ====================================================================
-            string currentStatus = "Draft";
+            string currentStatus = ClaimStatuses.Draft;
             string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString; // Adjust if your variable is different
 
             using (SqlConnection conStat = new SqlConnection(connString))
@@ -1115,9 +1115,9 @@ namespace AnmolDristi
                 }
             }
 
-            if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
+                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
+                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending))
             {
                 string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
@@ -1272,12 +1272,12 @@ namespace AnmolDristi
             // ====================================================================
             // SECURITY GATE: Prevent saving KMs if the month is already submitted
             // ====================================================================
-            string currentStatus = "Draft";
+            string currentStatus = ClaimStatuses.Draft;
             string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString; // Adjust if your variable is different
 
             using (SqlConnection conStat = new SqlConnection(connString))
             {
-                string query1 = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+                string query1 = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
                 //using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
                 using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
                 {
@@ -1288,9 +1288,9 @@ namespace AnmolDristi
                 }
             }
 
-            if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
+                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
+                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending))
             {
                 string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
@@ -1487,13 +1487,13 @@ namespace AnmolDristi
 
         private static string ResolveEffectiveRowStatus(string claimStatus, string detailStatus, DataRowView drv)
         {
-            if (string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase))
-                return "Returned";
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned))
+                return ClaimStatuses.Returned;
 
-            if (string.Equals(detailStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
-                return "Rejected";
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected))
+                return ClaimStatuses.Rejected;
 
             if (!string.IsNullOrWhiteSpace(claimStatus))
                 return claimStatus;
@@ -1501,20 +1501,20 @@ namespace AnmolDristi
             bool isEditable = drv.Row.Table.Columns.Contains("IsEditable") &&
                               drv["IsEditable"] != DBNull.Value &&
                               Convert.ToBoolean(drv["IsEditable"]);
-            return isEditable ? "Returned" : "Unknown";
+            return isEditable ? ClaimStatuses.Returned : ClaimStatuses.Unknown;
         }
 
         private static bool IsRemovableExpenseStatus(string claimStatus)
         {
-            return string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase);
+            return ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft) ||
+                   ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned);
         }
 
         private bool IsActivityEditableForExpenseDelete(int activityId)
         {
             if (activityId <= 0) return false;
 
-            string claimStatus = "Draft";
+            string claimStatus = ClaimStatuses.Draft;
             string detailStatus = string.Empty;
 
             using (SqlConnection con = new SqlConnection(connString))
@@ -1537,9 +1537,9 @@ namespace AnmolDristi
                 }
             }
 
-            if (string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
                 return true;
 
             return false;
@@ -1548,7 +1548,7 @@ namespace AnmolDristi
         private const string SoftDeleteExpenseSql = @"
             UPDATE dbo.SalesDailyExpense
             SET IsDeleted = 1,
-                ClaimStatus = 'Draft',
+                ClaimStatus = '" + ClaimStatuses.Draft + @"',
                 ModifiedBy = @User,
                 ModifiedOn = SYSUTCDATETIME(),
                 DeletedBy = @User,
@@ -1556,7 +1556,7 @@ namespace AnmolDristi
                 DeleteReason = @Reason
             WHERE ExpenseId = @ExpenseId
               AND IsDeleted = 0
-              AND ClaimStatus IN ('Draft', 'Returned')";
+              AND ClaimStatus IN ('" + ClaimStatuses.Draft + @"', '" + ClaimStatuses.Returned + @"')";
 
         private static string BuildSoftDeleteExpenseBatchSql(IEnumerable<int> expenseIds)
         {
@@ -1564,7 +1564,7 @@ namespace AnmolDristi
             return string.Format(@"
                 UPDATE dbo.SalesDailyExpense
                 SET IsDeleted = 1,
-                    ClaimStatus = 'Draft',
+                    ClaimStatus = '" + ClaimStatuses.Draft + @"',
                     ModifiedBy = @User,
                     ModifiedOn = SYSUTCDATETIME(),
                     DeletedBy = @User,
@@ -1572,7 +1572,7 @@ namespace AnmolDristi
                     DeleteReason = @Reason
                 WHERE ExpenseId IN ({0})
                   AND IsDeleted = 0
-                  AND ClaimStatus IN ('Draft', 'Returned')", inList);
+                  AND ClaimStatus IN ('" + ClaimStatuses.Draft + @"', '" + ClaimStatuses.Returned + @"')", inList);
         }
 
         private static void AddSoftDeleteParameters(SqlCommand cmd, string user, string reason)
@@ -1628,18 +1628,18 @@ namespace AnmolDristi
             string detailStatus = drv.Row.Table.Columns.Contains("DetailStatus") && drv["DetailStatus"] != DBNull.Value ? drv["DetailStatus"].ToString().Trim() : string.Empty;
 
             string effectiveVisualStatus;
-            if (string.Equals(detailStatus, "Returned", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase))
-                effectiveVisualStatus = "Returned";
-            else if (string.Equals(detailStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
-                effectiveVisualStatus = "Rejected";
-            else if (string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
-                effectiveVisualStatus = "Draft";
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) ||
+                ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned))
+                effectiveVisualStatus = ClaimStatuses.Returned;
+            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected) ||
+                     ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected))
+                effectiveVisualStatus = ClaimStatuses.Rejected;
+            else if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
+                effectiveVisualStatus = ClaimStatuses.Draft;
             else if (isEditable)
-                effectiveVisualStatus = "Returned";
+                effectiveVisualStatus = ClaimStatuses.Returned;
             else
-                effectiveVisualStatus = !string.IsNullOrEmpty(claimStatus) ? claimStatus : "Unknown";
+                effectiveVisualStatus = !string.IsNullOrEmpty(claimStatus) ? claimStatus : ClaimStatuses.Unknown;
 
             Func<string, string, string> IconHtml = delegate (string iconClass, string clrClass) { return string.Format("<i class='{0} {1}' aria-hidden='true'></i>", iconClass, clrClass); };
 
@@ -1659,8 +1659,8 @@ namespace AnmolDristi
 
             if (lnkEdit != null)
             {
-                bool showEdit = isEditable && !string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
-                if (!showEdit && string.Equals(claimStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+                bool showEdit = isEditable && !ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected);
+                if (!showEdit && ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
                     showEdit = true;
 
                 lnkEdit.Visible = showEdit; lnkEdit.Enabled = showEdit; lnkEdit.CssClass = neutralBtnClass;
@@ -1669,23 +1669,23 @@ namespace AnmolDristi
 
             if (lnkExpenses != null)
             {
-                bool canOpenExpenses = !string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
+                bool canOpenExpenses = !ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected);
                 lnkExpenses.Visible = true; lnkExpenses.Enabled = canOpenExpenses; lnkExpenses.CssClass = neutralBtnClass;
                 lnkExpenses.Text = expenseIconHtml;
                 lnkExpenses.ToolTip = canOpenExpenses ? "View / Add Expenses" : "Rejected days cannot be edited";
             }
 
-            if (txtKM != null) { txtKM.ReadOnly = !isEditable || string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase); txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
-            if (lnkUpdate != null) lnkUpdate.Enabled = isEditable && !string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase);
+            if (txtKM != null) { txtKM.ReadOnly = !isEditable || ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected); txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
+            if (lnkUpdate != null) lnkUpdate.Enabled = isEditable && !ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected);
             if (lnkCancel != null) lnkCancel.Enabled = true;
             if (lblKM != null) { lblKM.Text = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]).ToString("N2") + " km" : "—"; lblKM.Visible = true; }
 
-            if (string.Equals(effectiveVisualStatus, "Returned", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Returned))
             {
                 row.CssClass = (row.CssClass + " row-returned").Trim();
                 row.ToolTip = "Returned for correction. Edit this day and resubmit.";
             }
-            else if (string.Equals(effectiveVisualStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+            else if (ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected))
             {
                 row.CssClass = (row.CssClass + " row-rejected").Trim();
                 row.ToolTip = "Rejected by auditor. This day cannot be edited.";
@@ -1827,10 +1827,10 @@ namespace AnmolDristi
             // ====================================================================
             // SECURITY GATE: Prevent saving if the month is already submitted
             // ====================================================================
-            string currentStatus = "Draft";
+            string currentStatus = ClaimStatuses.Draft;
             using (SqlConnection conStat = new SqlConnection(connString))
             {
-                string query1 = @"SELECT ISNULL(DetailStatus, 'Draft') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
+                string query1 = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
 
                 //using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
                 using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
@@ -1845,9 +1845,9 @@ namespace AnmolDristi
                 }
             }
 
-            if (currentStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                currentStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                currentStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+            if (ClaimStatuses.Equals(currentStatus, ClaimStatuses.Submitted) ||
+                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Approved) ||
+                ClaimStatuses.Equals(currentStatus, ClaimStatuses.Pending))
             {
                 if (LBL_ExpenseMsg != null)
                 {
@@ -2353,9 +2353,9 @@ namespace AnmolDristi
 
             bool canDelete = IsRemovableExpenseStatus(claimStatus);
             if (!string.IsNullOrWhiteSpace(claimStatus) &&
-                (claimStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) ||
-                 claimStatus.Equals("Approved", StringComparison.OrdinalIgnoreCase) ||
-                 claimStatus.Equals("Rejected", StringComparison.OrdinalIgnoreCase)))
+                (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Submitted) ||
+                 ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved) ||
+                 ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected)))
                 canDelete = false;
             if (isAuto) canDelete = false;
 
@@ -2369,9 +2369,9 @@ namespace AnmolDristi
                 if (isAuto) sb.Append("<span class='badge badge-warning mr-1'>AUTO</span>");
                 if (!string.IsNullOrWhiteSpace(claimStatus))
                 {
-                    string badgeClass = string.Equals(claimStatus, "Returned", StringComparison.OrdinalIgnoreCase)
+                    string badgeClass = ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned)
                         ? "badge badge-warning text-dark"
-                        : (string.Equals(claimStatus, "Rejected", StringComparison.OrdinalIgnoreCase)
+                        : (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected)
                             ? "badge badge-danger"
                             : "badge badge-secondary");
                     sb.AppendFormat("<span class='{0} mr-1'>{1}</span>", badgeClass, HttpUtility.HtmlEncode(claimStatus));
@@ -3021,7 +3021,7 @@ namespace AnmolDristi
                                 if (isFirstForType && matchFrom != DateTime.MinValue)
                                 {
                                     // Make sure to add AND IsDeleted = 0 to this query as well!
-                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus IN ('" + ClaimStatuses.Draft + @"', '" + ClaimStatuses.Returned + @"') AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
                                     using (var findCmd = new SqlCommand(findAutoSql, con, tx))
                                     {
                                         findCmd.Parameters.AddWithValue("@ActivityId", activityId);
@@ -3229,7 +3229,7 @@ namespace AnmolDristi
                                 var autoIds = new List<int>();
                                 if (isFirstForType && matchFrom != DateTime.MinValue)
                                 {
-                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus IN ('Draft', 'Returned') AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
+                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus IN ('" + ClaimStatuses.Draft + @"', '" + ClaimStatuses.Returned + @"') AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
                                     using (var findCmd = new SqlCommand(findAutoSql, con, tx))
                                     {
                                         findCmd.Parameters.AddWithValue("@ActivityId", activityId);
@@ -3573,9 +3573,9 @@ namespace AnmolDristi
                     return false;
 
                 // Whole-request reopen: submit all rows as a normal submission.
-                if (string.Equals(requestStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(requestStatus, "Rejected", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(requestStatus, "Returned", StringComparison.OrdinalIgnoreCase))
+                if (ClaimStatuses.Equals(requestStatus, ClaimStatuses.Draft) ||
+                    ClaimStatuses.Equals(requestStatus, ClaimStatuses.Rejected) ||
+                    ClaimStatuses.Equals(requestStatus, ClaimStatuses.Returned))
                     return false;
 
                 var returnedActivityIds = new HashSet<int>();
@@ -3590,7 +3590,7 @@ namespace AnmolDristi
                           FROM dbo.SalesApprovalRequestDetail
                           WHERE ApprovalRequestId = @Id
                       ) x
-                      WHERE rn = 1 AND DetailStatus = 'Returned'", con))
+                      WHERE rn = 1 AND DetailStatus = '" + ClaimStatuses.Returned + @"'", con))
                 {
                     cmd.Parameters.AddWithValue("@Id", requestId.Value);
                     using (SqlDataReader rdr = cmd.ExecuteReader())
@@ -3610,24 +3610,24 @@ namespace AnmolDristi
                     return true;
                 }
 
-                // SP validates SalesDailyActivity.ClaimStatus = 'Returned'. Editing/soft-delete
+                // SP validates SalesDailyActivity.ClaimStatus = '" + ClaimStatuses.Returned + @"'. Editing/soft-delete
                 // can leave ClaimStatus as Draft while DetailStatus stays Returned — sync first.
                 string idList = string.Join(",", returnedActivityIds.Select(id => id.ToString()).ToArray());
                 string syncSql = string.Format(@"
                     UPDATE dbo.SalesDailyActivity
-                    SET ClaimStatus = 'Returned',
+                    SET ClaimStatus = '" + ClaimStatuses.Returned + @"',
                         ModifiedByUserId = @User,
                         ModifiedDateTime = DATEADD(MINUTE, 330, SYSUTCDATETIME())
                     WHERE ActivityId IN ({0})
-                      AND ISNULL(ClaimStatus, '') <> 'Returned';
+                      AND ISNULL(ClaimStatus, '') <> '" + ClaimStatuses.Returned + @"';
 
                     UPDATE dbo.SalesDailyExpense
-                    SET ClaimStatus = 'Returned',
+                    SET ClaimStatus = '" + ClaimStatuses.Returned + @"',
                         ModifiedBy = @User,
                         ModifiedOn = SYSUTCDATETIME()
                     WHERE ActivityId IN ({0})
                       AND IsDeleted = 0
-                      AND ISNULL(ClaimStatus, '') NOT IN ('Returned', 'Rejected', 'Approved');", idList);
+                      AND ISNULL(ClaimStatus, '') NOT IN ('" + ClaimStatuses.Returned + @"', '" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Approved + @"');", idList);
 
                 using (SqlCommand syncCmd = new SqlCommand(syncSql, con))
                 {
@@ -3909,12 +3909,12 @@ namespace AnmolDristi
                 return (r) =>
                 {
                     string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : string.Empty;
-                    if (string.Equals(status, "Submitted", StringComparison.OrdinalIgnoreCase)) return string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
+                    if (ClaimStatuses.Equals(status, ClaimStatuses.Submitted)) return ClaimStatuses.Equals(claim, ClaimStatuses.Submitted) || ClaimStatuses.Equals(claim, ClaimStatuses.Pending);
                     if (string.Equals(status, "Other", StringComparison.OrdinalIgnoreCase))
                     {
-                        bool isDraft = string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
-                        bool isSubmitted = string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
-                        bool isApproved = string.Equals(claim, "Approved", StringComparison.OrdinalIgnoreCase);
+                        bool isDraft = ClaimStatuses.Equals(claim, ClaimStatuses.Draft);
+                        bool isSubmitted = ClaimStatuses.Equals(claim, ClaimStatuses.Submitted) || ClaimStatuses.Equals(claim, ClaimStatuses.Pending);
+                        bool isApproved = ClaimStatuses.Equals(claim, ClaimStatuses.Approved);
                         bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
                         return !(isDraft || isSubmitted || isApproved || isEditable);
                     }
@@ -3926,10 +3926,10 @@ namespace AnmolDristi
             {
                 bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
                 string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : string.Empty;
-                return isEditable && !string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
+                return isEditable && !ClaimStatuses.Equals(claim, ClaimStatuses.Draft);
             };
 
-            decimal d_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Draft")); decimal d_da = SumMoney("DAAmount", byClaimStatus("Draft")); decimal d_hotel = SumMoney("HotelAmount", byClaimStatus("Draft")); decimal d_travel = SumMoney("TravelAmount", byClaimStatus("Draft")); decimal d_exp = SumMoney("ExpenseTotal", byClaimStatus("Draft")); decimal d_km = SumKM(byClaimStatus("Draft"));
+            decimal d_ta = SumMoney("CalculatedClaimAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_da = SumMoney("DAAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_hotel = SumMoney("HotelAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_travel = SumMoney("TravelAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_exp = SumMoney("ExpenseTotal", byClaimStatus(ClaimStatuses.Draft)); decimal d_km = SumKM(byClaimStatus(ClaimStatuses.Draft));
             if (lblDraft_TA != null) lblDraft_TA.Text = "₹ " + d_ta.ToString("N2");
             if (lblDraft_DA != null) lblDraft_DA.Text = "₹ " + d_da.ToString("N2");
             if (lblDraft_Hotel != null) lblDraft_Hotel.Text = "₹ " + d_hotel.ToString("N2");
@@ -3937,7 +3937,7 @@ namespace AnmolDristi
             if (lblDraft_Expense != null) lblDraft_Expense.Text = "₹ " + d_exp.ToString("N2");
             if (lblDraft_KM != null) lblDraft_KM.Text = d_km.ToString("N2");
 
-            decimal s_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Submitted")); decimal s_da = SumMoney("DAAmount", byClaimStatus("Submitted")); decimal s_hotel = SumMoney("HotelAmount", byClaimStatus("Submitted")); decimal s_travel = SumMoney("TravelAmount", byClaimStatus("Submitted")); decimal s_exp = SumMoney("ExpenseTotal", byClaimStatus("Submitted")); decimal s_km = SumKM(byClaimStatus("Submitted"));
+            decimal s_ta = SumMoney("CalculatedClaimAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_da = SumMoney("DAAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_hotel = SumMoney("HotelAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_travel = SumMoney("TravelAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_exp = SumMoney("ExpenseTotal", byClaimStatus(ClaimStatuses.Submitted)); decimal s_km = SumKM(byClaimStatus(ClaimStatuses.Submitted));
             if (lblSubmitted_TA != null) lblSubmitted_TA.Text = "₹ " + s_ta.ToString("N2");
             if (lblSubmitted_DA != null) lblSubmitted_DA.Text = "₹ " + s_da.ToString("N2");
             if (lblSubmitted_Hotel != null) lblSubmitted_Hotel.Text = "₹ " + s_hotel.ToString("N2");
@@ -3945,7 +3945,7 @@ namespace AnmolDristi
             if (lblSubmitted_Expense != null) lblSubmitted_Expense.Text = "₹ " + s_exp.ToString("N2");
             if (lblSubmitted_KM != null) lblSubmitted_KM.Text = s_km.ToString("N2");
 
-            decimal a_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Approved")); decimal a_da = SumMoney("DAAmount", byClaimStatus("Approved")); decimal a_hotel = SumMoney("HotelAmount", byClaimStatus("Approved")); decimal a_travel = SumMoney("TravelAmount", byClaimStatus("Approved")); decimal a_exp = SumMoney("ExpenseTotal", byClaimStatus("Approved")); decimal a_km = SumKM(byClaimStatus("Approved"));
+            decimal a_ta = SumMoney("CalculatedClaimAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_da = SumMoney("DAAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_hotel = SumMoney("HotelAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_travel = SumMoney("TravelAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_exp = SumMoney("ExpenseTotal", byClaimStatus(ClaimStatuses.Approved)); decimal a_km = SumKM(byClaimStatus(ClaimStatuses.Approved));
             if (lblApproved_TA != null) lblApproved_TA.Text = "₹ " + a_ta.ToString("N2");
             if (lblApproved_DA != null) lblApproved_DA.Text = "₹ " + a_da.ToString("N2");
             if (lblApproved_Hotel != null) lblApproved_Hotel.Text = "₹ " + a_hotel.ToString("N2");
@@ -4003,12 +4003,12 @@ namespace AnmolDristi
                 return (r) =>
                 {
                     string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : string.Empty;
-                    if (string.Equals(status, "Submitted", StringComparison.OrdinalIgnoreCase)) return string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
+                    if (ClaimStatuses.Equals(status, ClaimStatuses.Submitted)) return ClaimStatuses.Equals(claim, ClaimStatuses.Submitted) || ClaimStatuses.Equals(claim, ClaimStatuses.Pending);
                     if (string.Equals(status, "Other", StringComparison.OrdinalIgnoreCase))
                     {
-                        bool isDraft = string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
-                        bool isSubmitted = string.Equals(claim, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(claim, "Pending", StringComparison.OrdinalIgnoreCase);
-                        bool isApproved = string.Equals(claim, "Approved", StringComparison.OrdinalIgnoreCase);
+                        bool isDraft = ClaimStatuses.Equals(claim, ClaimStatuses.Draft);
+                        bool isSubmitted = ClaimStatuses.Equals(claim, ClaimStatuses.Submitted) || ClaimStatuses.Equals(claim, ClaimStatuses.Pending);
+                        bool isApproved = ClaimStatuses.Equals(claim, ClaimStatuses.Approved);
                         bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
                         return !(isDraft || isSubmitted || isApproved || isEditable);
                     }
@@ -4020,11 +4020,11 @@ namespace AnmolDristi
             {
                 bool isEditable = r.Table.Columns.Contains("IsEditable") && r["IsEditable"] != DBNull.Value && Convert.ToBoolean(r["IsEditable"]);
                 string claim = r.Table.Columns.Contains("ClaimStatus") && r["ClaimStatus"] != DBNull.Value ? r["ClaimStatus"].ToString() : string.Empty;
-                return isEditable && !string.Equals(claim, "Draft", StringComparison.OrdinalIgnoreCase);
+                return isEditable && !ClaimStatuses.Equals(claim, ClaimStatuses.Draft);
             };
 
             // --- DRAFT ---
-            decimal d_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Draft")); decimal d_da = SumMoney("DAAmount", byClaimStatus("Draft")); decimal d_hotel = SumMoney("HotelAmount", byClaimStatus("Draft")); decimal d_travel = SumMoney("TravelAmount", byClaimStatus("Draft")); decimal d_stat = SumMoney("StationaryAmount", byClaimStatus("Draft")); decimal d_exp = SumMoney("ExpenseTotal", byClaimStatus("Draft")); decimal d_km = SumKM(byClaimStatus("Draft"));
+            decimal d_ta = SumMoney("CalculatedClaimAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_da = SumMoney("DAAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_hotel = SumMoney("HotelAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_travel = SumMoney("TravelAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_stat = SumMoney("StationaryAmount", byClaimStatus(ClaimStatuses.Draft)); decimal d_exp = SumMoney("ExpenseTotal", byClaimStatus(ClaimStatuses.Draft)); decimal d_km = SumKM(byClaimStatus(ClaimStatuses.Draft));
             if (lblDraft_TA != null) lblDraft_TA.Text = "₹ " + d_ta.ToString("N2");
             if (lblDraft_DA != null) lblDraft_DA.Text = "₹ " + d_da.ToString("N2");
             if (lblDraft_Hotel != null) lblDraft_Hotel.Text = "₹ " + d_hotel.ToString("N2");
@@ -4034,7 +4034,7 @@ namespace AnmolDristi
             if (lblDraft_KM != null) lblDraft_KM.Text = d_km.ToString("N2");
 
             // --- SUBMITTED ---
-            decimal s_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Submitted")); decimal s_da = SumMoney("DAAmount", byClaimStatus("Submitted")); decimal s_hotel = SumMoney("HotelAmount", byClaimStatus("Submitted")); decimal s_travel = SumMoney("TravelAmount", byClaimStatus("Submitted")); decimal s_stat = SumMoney("StationaryAmount", byClaimStatus("Submitted")); decimal s_exp = SumMoney("ExpenseTotal", byClaimStatus("Submitted")); decimal s_km = SumKM(byClaimStatus("Submitted"));
+            decimal s_ta = SumMoney("CalculatedClaimAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_da = SumMoney("DAAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_hotel = SumMoney("HotelAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_travel = SumMoney("TravelAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_stat = SumMoney("StationaryAmount", byClaimStatus(ClaimStatuses.Submitted)); decimal s_exp = SumMoney("ExpenseTotal", byClaimStatus(ClaimStatuses.Submitted)); decimal s_km = SumKM(byClaimStatus(ClaimStatuses.Submitted));
             if (lblSubmitted_TA != null) lblSubmitted_TA.Text = "₹ " + s_ta.ToString("N2");
             if (lblSubmitted_DA != null) lblSubmitted_DA.Text = "₹ " + s_da.ToString("N2");
             if (lblSubmitted_Hotel != null) lblSubmitted_Hotel.Text = "₹ " + s_hotel.ToString("N2");
@@ -4044,7 +4044,7 @@ namespace AnmolDristi
             if (lblSubmitted_KM != null) lblSubmitted_KM.Text = s_km.ToString("N2");
 
             // --- APPROVED ---
-            decimal a_ta = SumMoney("CalculatedClaimAmount", byClaimStatus("Approved")); decimal a_da = SumMoney("DAAmount", byClaimStatus("Approved")); decimal a_hotel = SumMoney("HotelAmount", byClaimStatus("Approved")); decimal a_travel = SumMoney("TravelAmount", byClaimStatus("Approved")); decimal a_stat = SumMoney("StationaryAmount", byClaimStatus("Approved")); decimal a_exp = SumMoney("ExpenseTotal", byClaimStatus("Approved")); decimal a_km = SumKM(byClaimStatus("Approved"));
+            decimal a_ta = SumMoney("CalculatedClaimAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_da = SumMoney("DAAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_hotel = SumMoney("HotelAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_travel = SumMoney("TravelAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_stat = SumMoney("StationaryAmount", byClaimStatus(ClaimStatuses.Approved)); decimal a_exp = SumMoney("ExpenseTotal", byClaimStatus(ClaimStatuses.Approved)); decimal a_km = SumKM(byClaimStatus(ClaimStatuses.Approved));
             if (lblApproved_TA != null) lblApproved_TA.Text = "₹ " + a_ta.ToString("N2");
             if (lblApproved_DA != null) lblApproved_DA.Text = "₹ " + a_da.ToString("N2");
             if (lblApproved_Hotel != null) lblApproved_Hotel.Text = "₹ " + a_hotel.ToString("N2");
