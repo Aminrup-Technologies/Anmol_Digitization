@@ -1416,8 +1416,8 @@ namespace AnmolDristi
                         ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con);
                         break;
                     case DayDetailAction.Return:
+                        // Activity/expense sync is handled inside usp_ProcessApprovalAction.
                         ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
-                        MarkActivityReturnedForCorrection(detailId, user, con);
                         break;
                     case DayDetailAction.Reject:
                         ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con);
@@ -1450,39 +1450,6 @@ namespace AnmolDristi
                 cmd.Parameters.AddWithValue("@Action", action);
                 cmd.Parameters.AddWithValue("@ActionBy", user);
                 cmd.Parameters.AddWithValue("@Remarks", string.IsNullOrWhiteSpace(remark) ? (object)DBNull.Value : remark);
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        private static void MarkActivityReturnedForCorrection(int detailId, string user, SqlConnection con)
-        {
-            const string sql = @"
-                DECLARE @ActivityId INT;
-                SELECT @ActivityId = ActivityId
-                FROM dbo.SalesApprovalRequestDetail
-                WHERE ApprovalRequestDetailId = @DetailId;
-
-                IF @ActivityId IS NOT NULL
-                BEGIN
-                    UPDATE dbo.SalesDailyActivity
-                    SET ClaimStatus = '" + ClaimStatuses.Returned + @"',
-                        ModifiedByUserId = @User,
-                        ModifiedDateTime = DATEADD(MINUTE, 330, SYSUTCDATETIME())
-                    WHERE ActivityId = @ActivityId;
-
-                    UPDATE dbo.SalesDailyExpense
-                    SET ClaimStatus = '" + ClaimStatuses.Returned + @"',
-                        ModifiedBy = @User,
-                        ModifiedOn = SYSUTCDATETIME()
-                    WHERE ActivityId = @ActivityId
-                      AND IsDeleted = 0
-                      AND ISNULL(ClaimStatus, '') <> '" + ClaimStatuses.Rejected + @"';
-                END";
-
-            using (var cmd = new SqlCommand(sql, con))
-            {
-                cmd.Parameters.AddWithValue("@DetailId", detailId);
-                cmd.Parameters.AddWithValue("@User", user);
                 cmd.ExecuteNonQuery();
             }
         }
@@ -2259,8 +2226,8 @@ namespace AnmolDristi
                     }
                     else if (isReturn)
                     {
+                        // Activity/expense sync is handled inside usp_ProcessApprovalAction.
                         ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
-                        MarkActivityReturnedForCorrection(detailId, user, con);
                     }
                     else
                     {
