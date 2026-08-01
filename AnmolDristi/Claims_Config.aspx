@@ -56,6 +56,12 @@
                                     <asp:Label ID="Label5" runat="server" Text="0" Visible="false"></asp:Label></span>
                                 <i class="fa fa-edit"></i>Policy Matrix
                             </a>
+
+                            <a class="btn btn-app" href="ManagePolicyException.aspx">
+                                <span class="badge bg-red">
+                                    <asp:Label ID="Label8" runat="server" Text="0" Visible="false"></asp:Label></span>
+                                <i class="fa fa-user"></i>Policy Exceptions
+                            </a>
                         </div>
                     </div>
                 </div>

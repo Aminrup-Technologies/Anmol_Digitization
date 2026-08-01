@@ -1,0 +1,80 @@
+using System;
+
+namespace AnmolDristi
+{
+    /// <summary>
+    /// Strongly typed policy override values serialized into PolicyException.PolicyJson.
+    /// Field names align with existing policy resolution JSON keys.
+    /// </summary>
+    public class PolicyExceptionDto
+    {
+        public decimal? MaxKM { get; set; }
+        public decimal? RatePerKm { get; set; }
+        public decimal? DA { get; set; }
+        public decimal? HotelCap { get; set; }
+        public decimal? OutstationDA { get; set; }
+        public decimal? OwnAllowance { get; set; }
+        public string Remarks { get; set; }
+
+        public bool HasAnyOverride()
+        {
+            return MaxKM.HasValue
+                || RatePerKm.HasValue
+                || DA.HasValue
+                || HotelCap.HasValue
+                || OutstationDA.HasValue
+                || OwnAllowance.HasValue
+                || !string.IsNullOrWhiteSpace(Remarks);
+        }
+    }
+
+    public class PolicyExceptionRecord
+    {
+        public int ExceptionId { get; set; }
+        public string EmployeeCode { get; set; }
+        public string EmployeeName { get; set; }
+        public int? RegionId { get; set; }
+        public int? BranchId { get; set; }
+        public int? GradeId { get; set; }
+        public int? DesignationId { get; set; }
+        public string RegionName { get; set; }
+        public string BranchName { get; set; }
+        public string GradeName { get; set; }
+        public string DesignationName { get; set; }
+        public string PolicyJson { get; set; }
+        public int Priority { get; set; }
+        public DateTime EffectiveFrom { get; set; }
+        public DateTime? EffectiveTo { get; set; }
+        public bool IsActive { get; set; }
+        public string CreatedBy { get; set; }
+        public DateTime? CreatedOn { get; set; }
+        public string ModifiedBy { get; set; }
+        public DateTime? ModifiedOn { get; set; }
+    }
+
+    public class PolicyExceptionSearchCriteria
+    {
+        public string EmployeeCode { get; set; }
+        public string EmployeeName { get; set; }
+        public int? RegionId { get; set; }
+        public int? BranchId { get; set; }
+        public int? GradeId { get; set; }
+        public int? DesignationId { get; set; }
+        public bool? IsActive { get; set; }
+        public DateTime? EffectiveDate { get; set; }
+    }
+
+    public class EmployeePolicyContext
+    {
+        public string EmployeeCode { get; set; }
+        public string EmployeeName { get; set; }
+        public int? RegionId { get; set; }
+        public int? BranchId { get; set; }
+        public int? GradeId { get; set; }
+        public int? DesignationId { get; set; }
+        public string RegionName { get; set; }
+        public string BranchName { get; set; }
+        public string GradeName { get; set; }
+        public string DesignationName { get; set; }
+    }
+}

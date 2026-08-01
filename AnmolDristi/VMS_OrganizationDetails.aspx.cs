@@ -137,8 +137,7 @@ namespace AnmolDristi
 
         private void GenerateReceptionQRPdf_OLD(string branchId, string aliasName, string fullAddress, string branchName)
         {
-            string baseUrl = "https://apps.anmolindustries.com/VMS_SelfLogin.aspx";
-            string kioskUrl = $"{baseUrl}?BranchId={branchId}";
+            string kioskUrl = VmsHelper.BuildSelfLoginUrl(Convert.ToInt32(branchId));
 
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
             QRCodeData qrCodeData = qrGenerator.CreateQrCode(kioskUrl, QRCodeGenerator.ECCLevel.Q);
@@ -212,8 +211,7 @@ namespace AnmolDristi
         // Refactored PDF Generation logic
         private void GenerateReceptionQRPdf(string branchId, string aliasName, string fullAddress, string branchName)
         {
-            string baseUrl = "https://apps.anmolindustries.com/VMS_SelfLogin.aspx";
-            string kioskUrl = $"{baseUrl}?BranchId={branchId}";
+            string kioskUrl = VmsHelper.BuildSelfLoginUrl(Convert.ToInt32(branchId));
 
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
             QRCodeData qrCodeData = qrGenerator.CreateQrCode(kioskUrl, QRCodeGenerator.ECCLevel.Q);
@@ -281,8 +279,7 @@ namespace AnmolDristi
 
         private void GenerateGateQRPdf(string branchId, string aliasName, string fullAddress, string branchName)
         {
-            string baseUrl = "https://apps.anmolindustries.com/VMS_GateScanner.aspx";
-            string gateUrl = $"{baseUrl}?BranchId={branchId}";
+            string gateUrl = VmsHelper.BuildGateScannerUrl(Convert.ToInt32(branchId));
 
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
             QRCodeData qrCodeData = qrGenerator.CreateQrCode(gateUrl, QRCodeGenerator.ECCLevel.Q);
@@ -432,11 +429,8 @@ namespace AnmolDristi
             lblPreviewVisitorAlias.Text = companyLine1;
             lblPreviewSecurityAlias.Text = companyLine1;
 
-            string baseUrlKiosk = "https://apps.anmolindustries.com/VMS_SelfLogin.aspx";
-            string kioskUrl = $"{baseUrlKiosk}?BranchId={branchId}";
-
-            string baseUrlGate = "https://apps.anmolindustries.com/VMS_GateScanner.aspx";
-            string gateUrl = $"{baseUrlGate}?BranchId={branchId}";
+            string kioskUrl = VmsHelper.BuildSelfLoginUrl(Convert.ToInt32(branchId));
+            string gateUrl = VmsHelper.BuildGateScannerUrl(Convert.ToInt32(branchId));
 
             imgPreviewVisitor.ImageUrl = GenerateBase64QR(kioskUrl);
             imgPreviewSecurity.ImageUrl = GenerateBase64QR(gateUrl);

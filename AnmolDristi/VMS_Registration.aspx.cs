@@ -17,7 +17,9 @@ namespace AnmolDristi
             if (!IsPostBack)
             {
                 // 1. Existing Security Check (Ensure they passed OTP)
-                if ((Session["VerifiedMobile"] == null && Session["VerifiedEmail"] == null) || Request.QueryString["BranchId"] == null)
+                if (Session["VerifiedMobile"] == null ||
+                    string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()) ||
+                    Request.QueryString["BranchId"] == null)
                 {
                     Response.Redirect("VMS_SelfLogin.aspx", false);
                     Context.ApplicationInstance.CompleteRequest();
@@ -31,10 +33,11 @@ namespace AnmolDristi
 
                 // 3. 🌟 NEW: Early-Rejection Check for Office Hours
                 int currentBranchId = Convert.ToInt32(hfBranchId.Value);
-                if (!IsFacilityOpen(currentBranchId))
+                string closedMessage;
+                if (!VmsHelper.IsFacilityOpen(currentBranchId, out closedMessage))
                 {
                     lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Welcome to Anmol Industries. Our visiting hours for today have concluded. Please coordinate with your host to schedule a visit for our next working day.";
+                    lblMessage.Text = "Welcome to Anmol Industries. " + closedMessage;
 
                     // Disable the form submission
                     btnSubmit.Visible = false;
@@ -53,16 +56,13 @@ namespace AnmolDristi
                     txtMobile.ReadOnly = true;
                 }
 
-                if (Session["VerifiedEmail"] != null && !string.IsNullOrEmpty(Session["VerifiedEmail"].ToString()))
-                {
-                    txtEmail.Text = Session["VerifiedEmail"].ToString();
-                    txtEmail.ReadOnly = true;
-                }
-                else
-                {
-                    txtEmail.Text = "";
-                    txtEmail.ReadOnly = false;
-                }
+                txtEmail.ReadOnly = false;
+
+                string today = DateTime.Now.ToString("yyyy-MM-dd");
+                txtVisitFromDate.Text = today;
+                txtVisitToDate.Text = today;
+                txtTimeFrom.Text = "09:00";
+                txtTimeTo.Text = "18:00";
             }
         }
 
@@ -72,38 +72,10 @@ namespace AnmolDristi
             string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
             int branchId = Convert.ToInt32(hfBranchId.Value);
 
-            using (SqlConnection con = new SqlConnection(connStr))
+            if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
             {
-                // Query checks for passes that are Pending/Approved AND haven't expired yet
-                string checkQuery = @"
-                SELECT COUNT(1) FROM VMS_VisitLog 
-                WHERE (VisitorMobile = @Mobile OR VisitorEmail = @Email) 
-                  AND TargetBranchID = @BranchId 
-                  AND ApprovalStatus IN ('Pending', 'Approved')
-                  AND ISNULL(VisitStatus, '') != 'Checked-Out'
-                  AND ValidUpto >= GETDATE()";
-
-                using (SqlCommand cmd = new SqlCommand(checkQuery, con))
-                {
-                    // Use "N/A" to prevent empty strings from accidentally matching bad database rows
-                    cmd.Parameters.AddWithValue("@Mobile", string.IsNullOrEmpty(visitorMobile) ? "N/A" : visitorMobile);
-                    cmd.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(visitorEmail) ? "N/A" : visitorEmail);
-                    cmd.Parameters.AddWithValue("@BranchId", branchId);
-
-                    con.Open();
-                    int activePassCount = Convert.ToInt32(cmd.ExecuteScalar());
-
-                    if (activePassCount > 0)
-                    {
-                        // An active pass already exists! 
-                        // Set the contact session required by MyVisits page
-                        Session["VerifiedContact"] = !string.IsNullOrEmpty(visitorMobile) ? visitorMobile : visitorEmail;
-
-                        // Instantly redirect them to their pass so they don't fill the form again
-                        Response.Redirect("VMS_MyVisits.aspx", false);
-                        Context.ApplicationInstance.CompleteRequest();
-                    }
-                }
+                Response.Redirect("VMS_MyVisits.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
             }
         }
 
@@ -161,8 +133,8 @@ namespace AnmolDristi
                 // ==========================================================
                 // 1. SESSION VALIDATION
                 // ==========================================================
-                if (Session["VerifiedMobile"] == null &&
-                    Session["VerifiedEmail"] == null)
+                if (Session["VerifiedMobile"] == null ||
+                    string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
                 {
                     Response.Redirect($"VMS_SelfLogin.aspx?BranchId={hfBranchId.Value}", false);
                     Context.ApplicationInstance.CompleteRequest();
@@ -172,71 +144,22 @@ namespace AnmolDristi
                 // ==========================================================
                 // 2. BASIC VARIABLES
                 // ==========================================================
-                string visitorMobile = Session["VerifiedMobile"] != null
-                    ? Session["VerifiedMobile"].ToString()
-                    : "";
-
+                string visitorMobile = Session["VerifiedMobile"].ToString();
                 if (visitorMobile.Length > 15)
                     visitorMobile = visitorMobile.Substring(0, 15);
 
-                string visitorEmail = txtEmail.Text.Trim();
-
-                if (string.IsNullOrWhiteSpace(visitorEmail) &&
-                    Session["VerifiedEmail"] != null)
-                {
-                    visitorEmail = Session["VerifiedEmail"].ToString();
-                }
-
-                if (string.IsNullOrWhiteSpace(visitorEmail))
-                    visitorEmail = "N/A";
+                string visitorEmail = VmsHelper.NormalizeEmail(txtEmail.Text.Trim());
 
                 int branchId = Convert.ToInt32(hfBranchId.Value);
 
                 // ==========================================================
                 // 3. DUPLICATE ACTIVE PASS CHECK
                 // ==========================================================
-                using (SqlConnection con = new SqlConnection(connStr))
+                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
                 {
-                    con.Open();
-
-                    string checkQuery = @"
-                    SELECT COUNT(1)
-                    FROM VMS_VisitLog
-                    WHERE
-                    (
-                        VisitorMobile=@Mobile
-                        OR VisitorEmail=@Email
-                    )
-                    AND TargetBranchID=@BranchId
-                    AND ApprovalStatus IN ('Pending','Approved')
-                    AND ISNULL(VisitStatus,'')<>'Checked-Out'
-                    AND ValidUpto>=GETDATE();";
-
-                    using (SqlCommand cmd = new SqlCommand(checkQuery, con))
-                    {
-                        cmd.Parameters.AddWithValue("@Mobile",
-                            string.IsNullOrEmpty(visitorMobile) ? "N/A" : visitorMobile);
-
-                        cmd.Parameters.AddWithValue("@Email",
-                            string.IsNullOrEmpty(visitorEmail) ? "N/A" : visitorEmail);
-
-                        cmd.Parameters.AddWithValue("@BranchId", branchId);
-
-                        int existingPass =
-                            Convert.ToInt32(cmd.ExecuteScalar());
-
-                        if (existingPass > 0)
-                        {
-                            Session["VerifiedContact"] =
-                                !string.IsNullOrEmpty(visitorMobile)
-                                ? visitorMobile
-                                : visitorEmail;
-
-                            Response.Redirect("VMS_MyVisits.aspx", false);
-                            Context.ApplicationInstance.CompleteRequest();
-                            return;
-                        }
-                    }
+                    Response.Redirect("VMS_MyVisits.aspx", false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
                 }
 
                 // ==========================================================
@@ -286,10 +209,14 @@ namespace AnmolDristi
                 string hostEmail = "";
                 string hostName = "";
 
+                string purposeOfVisit = ddlPurpose.SelectedItem != null
+                    ? ddlPurpose.SelectedItem.Text
+                    : ddlPurpose.SelectedValue;
+
                 string currentApprovalStatus = "Pending";
                 string currentVisitStatus = "Scheduled";
-
                 object actualInTime = DBNull.Value;
+                object approvedOn = DBNull.Value;
 
                 // ==========================================================
                 // 7. INTERNAL EMPLOYEE AUTO APPROVAL
@@ -335,8 +262,8 @@ namespace AnmolDristi
                                 }
 
                                 currentApprovalStatus = "Approved";
-                                currentVisitStatus = "Checked-In";
-                                actualInTime = DateTime.Now;
+                                currentVisitStatus = "Scheduled";
+                                approvedOn = DateTime.Now;
 
                                 fullName =
                                     dr["EmployeeName"].ToString();
@@ -361,6 +288,15 @@ namespace AnmolDristi
                     }
                 }
 
+                VisitScheduleRequest visitSchedule = VmsVisitScheduleHelper.ParseSchedule(
+                    ddlScheduleType.SelectedValue,
+                    txtVisitFromDate.Text,
+                    txtVisitToDate.Text,
+                    txtTimeFrom.Text,
+                    txtTimeTo.Text);
+
+                string scheduleSummary = VmsVisitScheduleHelper.FormatScheduleSummary(visitSchedule);
+
                 // ==========================================================
                 // 8. BEGIN DATABASE TRANSACTION
                 // ==========================================================
@@ -384,50 +320,12 @@ namespace AnmolDristi
                             // ==========================================================
                             // 9. VISITING HOURS VALIDATION
                             // ==========================================================
-                            DateTime validFrom = DateTime.Now;
-                            DateTime validUpto = validFrom.AddHours(8);
+                            DateTime validFrom = visitSchedule.RequestedValidFrom;
+                            DateTime validUpto = visitSchedule.RequestedValidUpto;
 
-                            string currentDay = validFrom.ToString("dddd");
-
-                            string timingQuery = @"
-                            SELECT CloseTime
-                            FROM VMS_PlantTimings
-                            WHERE Branch_ID=@BranchID
-                            AND DayOfWeek=@DayOfWeek";
-
-                            using (SqlCommand timeCmd =
-                                new SqlCommand(timingQuery, con, trans))
-                            {
-                                timeCmd.Parameters.AddWithValue("@BranchID", branchId);
-                                timeCmd.Parameters.AddWithValue("@DayOfWeek", currentDay);
-
-                                object closeTimeObj = timeCmd.ExecuteScalar();
-
-                                if (closeTimeObj != null &&
-                                    closeTimeObj != DBNull.Value)
-                                {
-                                    TimeSpan closingTime = (TimeSpan)closeTimeObj;
-
-                                    validUpto = new DateTime(
-                                        validFrom.Year,
-                                        validFrom.Month,
-                                        validFrom.Day,
-                                        closingTime.Hours,
-                                        closingTime.Minutes,
-                                        closingTime.Seconds);
-
-                                    if (validFrom >= validUpto)
-                                    {
-                                        throw new Exception(
-                                            $"Registration denied. The visiting hours for this facility ended at {validUpto:hh:mm tt}.");
-                                    }
-                                }
-                            }
-
-                            // ==========================================================
-                            // 10. GENERATE QR TOKEN
-                            // ==========================================================
-                            Guid newQrToken = Guid.NewGuid();
+                            object qrTokenParam = currentApprovalStatus == "Approved"
+                                ? (object)Guid.NewGuid()
+                                : DBNull.Value;
 
                             // ==========================================================
                             // 11. INSERT VISITOR RECORD
@@ -453,7 +351,15 @@ namespace AnmolDristi
                                 ValidUpto,
                                 QRToken,
                                 VisitStatus,
-                                ActualInTime
+                                ActualInTime,
+                                ApprovedOn,
+                                ScheduleType,
+                                RequestedValidFrom,
+                                RequestedValidUpto,
+                                DailyTimeFrom,
+                                DailyTimeTo,
+                                ApprovedValidFrom,
+                                ApprovedValidUpto
                                 )
                                 VALUES
                                 (
@@ -468,13 +374,21 @@ namespace AnmolDristi
                                 @PhotoPath,
                                 @BranchID,
                                 @HostCode,
-                                'General Visit',
+                                @Purpose,
                                 @ApprovalStatus,
                                 @ValidFrom,
                                 @ValidUpto,
                                 @QRToken,
                                 @VisitStatus,
-                                @ActualInTime
+                                @ActualInTime,
+                                @ApprovedOn,
+                                @ScheduleType,
+                                @RequestedValidFrom,
+                                @RequestedValidUpto,
+                                @DailyTimeFrom,
+                                @DailyTimeTo,
+                                @ApprovedValidFrom,
+                                @ApprovedValidUpto
                                 );
 
                                 SELECT SCOPE_IDENTITY();
@@ -516,6 +430,9 @@ namespace AnmolDristi
                                 cmd.Parameters.AddWithValue("@HostCode",
                                     hostEmpCode);
 
+                                cmd.Parameters.AddWithValue("@Purpose",
+                                    purposeOfVisit);
+
                                 cmd.Parameters.AddWithValue("@ApprovalStatus",
                                     currentApprovalStatus);
 
@@ -526,7 +443,7 @@ namespace AnmolDristi
                                     validUpto);
 
                                 cmd.Parameters.AddWithValue("@QRToken",
-                                    newQrToken);
+                                    qrTokenParam);
 
                                 cmd.Parameters.AddWithValue("@VisitStatus",
                                     currentVisitStatus);
@@ -534,9 +451,40 @@ namespace AnmolDristi
                                 cmd.Parameters.AddWithValue("@ActualInTime",
                                     actualInTime);
 
+                                cmd.Parameters.AddWithValue("@ApprovedOn",
+                                    approvedOn);
+
+                                cmd.Parameters.AddWithValue("@ScheduleType",
+                                    visitSchedule.ScheduleType);
+
+                                cmd.Parameters.AddWithValue("@RequestedValidFrom",
+                                    visitSchedule.RequestedValidFrom);
+
+                                cmd.Parameters.AddWithValue("@RequestedValidUpto",
+                                    visitSchedule.RequestedValidUpto);
+
+                                cmd.Parameters.AddWithValue("@DailyTimeFrom",
+                                    visitSchedule.TimeFrom);
+
+                                cmd.Parameters.AddWithValue("@DailyTimeTo",
+                                    visitSchedule.TimeTo);
+
+                                cmd.Parameters.AddWithValue("@ApprovedValidFrom",
+                                    currentApprovalStatus == "Approved" ? (object)validFrom : DBNull.Value);
+
+                                cmd.Parameters.AddWithValue("@ApprovedValidUpto",
+                                    currentApprovalStatus == "Approved" ? (object)validUpto : DBNull.Value);
+
                                 newVisitId =
                                     Convert.ToInt32(cmd.ExecuteScalar());
                             }
+
+                            VmsVisitScheduleHelper.CreateRequestedDayLogs(
+                                con,
+                                trans,
+                                newVisitId,
+                                visitSchedule,
+                                currentApprovalStatus == "Approved");
 
                             // ==========================================================
                             // 12. FETCH HOST DETAILS
@@ -627,7 +575,7 @@ namespace AnmolDristi
                                         Convert.ToBase64String(plainTextBytes);
 
                                     string quickApproveLink =
-                                        $"https://apps.anmolindustries.com/VMS_HostQuickLogin.aspx?vid={newVisitId}&t={encodedEmpCode}";
+                                        VmsHelper.BuildHostQuickLoginUrl(newVisitId, encodedEmpCode);
 
                                     body = $@"
                                             <div style='font-family:Arial;padding:20px;'>
@@ -642,7 +590,8 @@ namespace AnmolDristi
                                             <strong>{fullName}</strong>
                                             from
                                             <strong>{txtCompany.Text}</strong>
-                                            is waiting for your approval at the reception.
+                                            has requested a visit on:
+                                            <strong>{scheduleSummary}</strong>
                                             </p>
 
                                             <br/>
@@ -700,9 +649,9 @@ namespace AnmolDristi
 
                                         <em>
 
-                                        Their visitor pass has already been automatically approved and checked-in.
+                                        Their visitor pass has already been automatically approved.
 
-                                        No further action is required.
+                                        They will check in at the security gate using their digital pass.
 
                                         </em>
 
@@ -755,6 +704,17 @@ namespace AnmolDristi
                                 }
                             }
 
+                            if (currentApprovalStatus == "Approved" && qrTokenParam != DBNull.Value)
+                            {
+                                VmsHelper.QueueVisitorPassNotification(
+                                    con,
+                                    newVisitId,
+                                    (Guid)qrTokenParam,
+                                    fullName,
+                                    visitorEmail,
+                                    visitorMobile);
+                            }
+
                             // ==========================================================
                             // 15. COMMIT TRANSACTION
                             // ==========================================================
@@ -779,6 +739,7 @@ namespace AnmolDristi
                 // ==========================================================
                 // 16. SUCCESS
                 // ==========================================================
+                Session["VerifiedEmail"] = visitorEmail != "N/A" ? visitorEmail : string.Empty;
                 Response.Redirect("VMS_MyVisits.aspx", false);
                 Context.ApplicationInstance.CompleteRequest();
             }
@@ -1033,7 +994,7 @@ namespace AnmolDristi
                             byte[] plainTextBytes = System.Text.Encoding.UTF8.GetBytes(hostEmpCode);
                             string encodedEmpCode = Convert.ToBase64String(plainTextBytes);
 
-                            string quickApproveLink = $"https://apps.anmolindustries.com/VMS_HostQuickLogin.aspx?vid={newVisitId}&t={encodedEmpCode}";
+                            string quickApproveLink = VmsHelper.BuildHostQuickLoginUrl(newVisitId, encodedEmpCode);
 
                             string fallbackNote = isFallbackEmail
                                 ? $"<p style='color: red; font-size: 12px;'><em>System Note: This email was routed to the fallback address because no valid email was found in the database for Host Code: {hostEmpCode}.</em></p>"

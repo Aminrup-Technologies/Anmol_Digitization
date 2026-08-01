@@ -99,58 +99,38 @@ namespace AnmolDristi
 
         private void ApproveVisitor(int logId, string email, string mobile, string name)
         {
-            // 1. Generate the Secure QR Token
             Guid qrToken = Guid.NewGuid();
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                // Set VisitStatus to Scheduled along with ApprovalStatus
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@Token", qrToken);
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
-                }
-
-                // 2. Dispatch the Digital Pass to the Visitor
-                string passUrl = $"https://apps.anmolindustries.com/VMS_DigitalPass.aspx?token={qrToken}";
-
-                if (!string.IsNullOrEmpty(email))
-                {
-                    // Send Email Pass via Queue
-                    string body = $@"
-                        <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>
-                            <h2 style='color: #1ABB9C;'>Visit Approved</h2>
-                            <p>Hi {name}, your host has approved your visit.</p>
-                            <p>Click the link below to open your Digital Gate Pass and show it to the security guard.</p>
-                            <br/>
-                            <a href='{passUrl}' style='background-color: #1ABB9C; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>View Digital Pass</a>
-                        </div>";
-
-                    string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, 'Your Anmol Gate Pass', @Body, 'Email', 'Pending', 'VMS_PASS')";
-                    using (SqlCommand qCmd = new SqlCommand(qQuery, con))
+                    try
                     {
-                        qCmd.Parameters.AddWithValue("@LogId", logId);
-                        qCmd.Parameters.AddWithValue("@Email", email);
-                        qCmd.Parameters.AddWithValue("@Name", name);
-                        qCmd.Parameters.AddWithValue("@Body", body);
-                        con.Open();
-                        qCmd.ExecuteNonQuery();
-                        con.Close();
+                        string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                        using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
+                        {
+                            cmd.Parameters.AddWithValue("@Token", qrToken);
+                            cmd.Parameters.AddWithValue("@LogID", logId);
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, logId, null, null);
+                        VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile);
+                        trans.Commit();
                     }
-                }
-                else if (!string.IsNullOrEmpty(mobile))
-                {
-                    // TODO: Trigger SMS Gateway
+                    catch
+                    {
+                        trans.Rollback();
+                        throw;
+                    }
                 }
             }
 
             lblPendingMsg.ForeColor = Color.Green;
             lblPendingMsg.Text = "Visitor Approved! Digital pass sent.";
-            BindGrids(); // Refresh UI
+            BindGrids();
         }
 
         private void RejectVisitor(int logId)

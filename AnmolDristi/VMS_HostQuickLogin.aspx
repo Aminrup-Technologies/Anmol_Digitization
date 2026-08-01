@@ -33,6 +33,7 @@
                 <div class="visitor-details">
                     <b>Company:</b> <asp:Label ID="lblCompany" runat="server"></asp:Label><br />
                     <b>Purpose:</b> <asp:Label ID="lblPurpose" runat="server"></asp:Label><br />
+                    <b>Requested Schedule:</b> <asp:Label ID="lblSchedule" runat="server"></asp:Label><br />
                     <b>Contact:</b> <asp:Label ID="lblContact" runat="server"></asp:Label>
                 </div>
 

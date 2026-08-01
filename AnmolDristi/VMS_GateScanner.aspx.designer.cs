@@ -66,6 +66,8 @@ namespace AnmolDristi {
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfCurrentLogId;
         
+        protected global::System.Web.UI.WebControls.HiddenField hfCurrentDayLogId;
+        
         /// <summary>
         /// hfHostEmail control.
         /// </summary>
