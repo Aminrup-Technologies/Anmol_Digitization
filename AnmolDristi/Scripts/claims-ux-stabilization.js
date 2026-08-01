@@ -7,6 +7,15 @@
 
     function noop() { }
 
+    function get$() {
+        return window.jQuery;
+    }
+
+    function hasBootstrapModal() {
+        var $ = get$();
+        return $ && $.fn && typeof $.fn.modal === 'function';
+    }
+
     var stub = {
         dirty: false,
         suppressDirtyCheck: false,
@@ -36,8 +45,7 @@
 
     window.ClaimsUx = stub;
 
-    var $ = window.jQuery;
-    if (!$) {
+    if (!get$()) {
         return;
     }
 
@@ -50,20 +58,33 @@
         options: {},
 
         initOnce: function (options) {
-            options = options || {};
-            this.options = $.extend({
-                dirtySelector: '.claims-ux-track-dirty',
-                postbackButtonSelector: '.claims-ux-postback-btn',
-                modalSelector: '.modal'
-            }, options);
+            var self = this;
 
-            if (!this._handlersBound) {
-                this._bindDirtyTracking();
-                this._bindBeforeUnload();
-                this._bindModalGuards();
-                this._bindPostbackButtons();
-                this._bindProcessingPanel();
-                this._handlersBound = true;
+            function runInit() {
+                var $ = get$();
+                if (!$) return;
+
+                options = options || {};
+                self.options = $.extend({
+                    dirtySelector: '.claims-ux-track-dirty',
+                    postbackButtonSelector: '.claims-ux-postback-btn',
+                    modalSelector: '.modal'
+                }, options);
+
+                if (!self._handlersBound) {
+                    self._bindDirtyTracking();
+                    self._bindBeforeUnload();
+                    self._bindModalGuards();
+                    self._bindPostbackButtons();
+                    self._bindProcessingPanel();
+                    self._handlersBound = true;
+                }
+            }
+
+            if (hasBootstrapModal()) {
+                runInit();
+            } else {
+                window.addEventListener('load', runInit, { once: true });
             }
         },
 
@@ -104,6 +125,13 @@
 
         showConfirm: function (cfg) {
             cfg = cfg || {};
+
+            if (!hasBootstrapModal()) {
+                stub.showConfirm(cfg);
+                return;
+            }
+
+            var $ = get$();
             var $modal = $('#claimsUxConfirmModal');
             if (!$modal.length) {
                 $('body').append(
@@ -137,6 +165,7 @@
         },
 
         disableButton: function (btn, loadingText) {
+            var $ = get$();
             var $btn = $(btn);
             if (!$btn.length) return;
             if (!$btn.data('ux-original-html')) {
@@ -152,6 +181,7 @@
         },
 
         enableButton: function (btn) {
+            var $ = get$();
             var $btn = $(btn);
             if (!$btn.length) return;
             var original = $btn.data('ux-original-html');
@@ -163,6 +193,7 @@
         },
 
         showProcessing: function (message) {
+            var $ = get$();
             this.processingCount++;
             var $overlay = $('#claimsUxProcessingOverlay');
             if (!$overlay.length) {
@@ -181,6 +212,7 @@
         },
 
         hideProcessing: function () {
+            var $ = get$();
             this.processingCount = 0;
             $('#claimsUxProcessingOverlay').hide();
         },
@@ -217,6 +249,7 @@
 
         _resetPostbackButtons: function () {
             var self = this;
+            var $ = get$();
             $(this.options.postbackButtonSelector).each(function () {
                 self.enableButton(this);
             });
@@ -224,6 +257,7 @@
 
         _bindDirtyTracking: function () {
             var self = this;
+            var $ = get$();
             $(document).off('input.claimsUxDirty change.claimsUxDirty', this.options.dirtySelector);
             $(document).on('input.claimsUxDirty change.claimsUxDirty', this.options.dirtySelector, function () {
                 self.markDirty();
@@ -232,6 +266,7 @@
 
         _bindBeforeUnload: function () {
             var self = this;
+            var $ = get$();
             $(window).off('beforeunload.claimsUx').on('beforeunload.claimsUx', function (e) {
                 if (!self.dirty) return undefined;
                 var msg = 'You have unsaved review changes.';
@@ -241,7 +276,10 @@
         },
 
         _bindModalGuards: function () {
+            if (!hasBootstrapModal()) return;
+
             var self = this;
+            var $ = get$();
             $(this.options.modalSelector).off('hide.bs.modal.claimsUx').on('hide.bs.modal.claimsUx', function (e) {
                 if (self.suppressDirtyCheck || !self.dirty) return;
                 e.preventDefault();
@@ -256,6 +294,7 @@
 
         _bindPostbackButtons: function () {
             var self = this;
+            var $ = get$();
             $(document).off('click.claimsUxPostback', this.options.postbackButtonSelector);
             $(document).on('click.claimsUxPostback', this.options.postbackButtonSelector, function (e) {
                 var $btn = $(this);
@@ -269,7 +308,7 @@
                     if (typeof confirmCfg === 'string') {
                         try { confirmCfg = JSON.parse(confirmCfg); } catch (ex) { confirmCfg = { message: confirmCfg }; }
                     }
-                    self.showConfirm($.extend({
+                    self.showConfirm(get$().extend({
                         onConfirm: function () {
                             $btn.data('ux-skip-confirm', true);
                             $btn[0].click();
@@ -307,6 +346,7 @@
                 if (self._pendingProcessingMessage) {
                     self.showProcessing(self._pendingProcessingMessage);
                 }
+                var $ = get$();
                 $(self.options.postbackButtonSelector).each(function () {
                     if ($(this).data('ux-locked')) {
                         self.disableButton(this, $(this).data('ux-loading'));
