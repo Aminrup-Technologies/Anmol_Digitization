@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Linq;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -1039,6 +1040,213 @@ namespace AnmolDristi
                    expensesJson.Contains("\"ClaimStatus\":\"Returned\"");
         }
 
+        private static bool IsManualReviewDay(GridViewRow row)
+        {
+            var hf = row.FindControl("hfManualReview") as HiddenField;
+            if (hf == null || string.IsNullOrWhiteSpace(hf.Value))
+                return false;
+
+            return string.Equals(hf.Value, "true", StringComparison.OrdinalIgnoreCase)
+                || hf.Value == "1"
+                || string.Equals(hf.Value, "True", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string GetRowExpensesJson(GridViewRow row)
+        {
+            var hf = row.FindControl("hfExpensesJson") as HiddenField;
+            return hf != null ? (hf.Value ?? "[]") : "[]";
+        }
+
+        private static bool AreAllExpensesApproved(string expensesJson)
+        {
+            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]")
+                return true;
+
+            try
+            {
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                var list = serializer.Deserialize<List<Dictionary<string, object>>>(expensesJson);
+                if (list == null || list.Count == 0)
+                    return true;
+
+                foreach (var item in list)
+                {
+                    string status = item.ContainsKey("ClaimStatus")
+                        ? (item["ClaimStatus"]?.ToString() ?? string.Empty).Trim()
+                        : string.Empty;
+
+                    if (string.IsNullOrEmpty(status) || !ClaimStatuses.Equals(status, ClaimStatuses.Approved))
+                        return false;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string GetManualExpenseSkipReason(string expensesJson)
+        {
+            bool hasPending = false;
+            bool hasReturned = false;
+            bool hasDraftOrNull = false;
+
+            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]")
+                return "Manual expenses still require review.";
+
+            try
+            {
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                var list = serializer.Deserialize<List<Dictionary<string, object>>>(expensesJson);
+                if (list == null || list.Count == 0)
+                    return "Manual expenses still require review.";
+
+                foreach (var item in list)
+                {
+                    string status = item.ContainsKey("ClaimStatus")
+                        ? (item["ClaimStatus"]?.ToString() ?? string.Empty).Trim()
+                        : string.Empty;
+
+                    if (ClaimStatuses.Equals(status, ClaimStatuses.Approved) ||
+                        ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
+                    {
+                        continue;
+                    }
+
+                    if (ClaimStatuses.Equals(status, ClaimStatuses.Returned))
+                        hasReturned = true;
+                    else if (ClaimStatuses.Equals(status, ClaimStatuses.Pending) ||
+                             ClaimStatuses.Equals(status, ClaimStatuses.Submitted))
+                        hasPending = true;
+                    else
+                        hasDraftOrNull = true;
+                }
+            }
+            catch
+            {
+                return "Manual expenses still require review.";
+            }
+
+            int unresolvedCategories = 0;
+            if (hasReturned) unresolvedCategories++;
+            if (hasPending) unresolvedCategories++;
+            if (hasDraftOrNull) unresolvedCategories++;
+
+            if (unresolvedCategories > 1)
+                return "Mixed expense states";
+            if (hasReturned)
+                return "Returned expenses";
+            if (hasPending)
+                return "Pending manual expenses";
+            return "Manual expenses still require review.";
+        }
+
+        private bool CanBulkProcessRow(GridViewRow row, DayDetailAction action, out string skipReason)
+        {
+            skipReason = null;
+            var btnApprove = row.FindControl("btnApproveRow") as Button;
+            var btnReturn = row.FindControl("btnReturnRow") as Button;
+            var btnReject = row.FindControl("btnRejectDayRow") as Button;
+
+            switch (action)
+            {
+                case DayDetailAction.Approve:
+                    if (btnApprove != null &&
+                        btnApprove.Text != null &&
+                        btnApprove.Text.IndexOf("Done", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        skipReason = "Already processed";
+                        return false;
+                    }
+
+                    if (IsManualReviewDay(row))
+                    {
+                        string expensesJson = GetRowExpensesJson(row);
+                        if (!AreAllExpensesApproved(expensesJson))
+                        {
+                            skipReason = GetManualExpenseSkipReason(expensesJson);
+                            return false;
+                        }
+                    }
+
+                    if (btnApprove == null || !btnApprove.Enabled)
+                    {
+                        skipReason = HasPendingExpenseReceipts(GetRowExpensesJson(row))
+                            ? GetManualExpenseSkipReason(GetRowExpensesJson(row))
+                            : "Already processed";
+                        return false;
+                    }
+
+                    return true;
+
+                case DayDetailAction.Return:
+                    if (btnReturn == null || !btnReturn.Enabled)
+                    {
+                        skipReason = "Already processed";
+                        return false;
+                    }
+                    return true;
+
+                case DayDetailAction.Reject:
+                    if (btnReject == null || !btnReject.Enabled)
+                    {
+                        skipReason = "Already processed";
+                        return false;
+                    }
+                    return true;
+
+                default:
+                    skipReason = "Already processed";
+                    return false;
+            }
+        }
+
+        private static string BuildBulkResultSummary(DayDetailAction action, int processedCount, Dictionary<string, int> skipReasons)
+        {
+            int approved = action == DayDetailAction.Approve ? processedCount : 0;
+            int rejected = action == DayDetailAction.Reject ? processedCount : 0;
+            int returned = action == DayDetailAction.Return ? processedCount : 0;
+            int skipped = skipReasons.Values.Sum();
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendFormat("Approved: {0} | Rejected: {1} | Returned: {2} | Skipped: {3}",
+                approved, rejected, returned, skipped);
+
+            if (skipped > 0)
+            {
+                sb.Append("<br/><strong>Skipped Reasons</strong><br/>");
+                foreach (var entry in skipReasons.Where(x => x.Value > 0).OrderBy(x => x.Key))
+                    sb.AppendFormat("- {0}: {1}<br/>", entry.Key, entry.Value);
+            }
+
+            return sb.ToString();
+        }
+
+        private static Dictionary<string, int> CreateBulkSkipReasonMap()
+        {
+            return new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Already processed"] = 0,
+                ["Pending manual expenses"] = 0,
+                ["Returned expenses"] = 0,
+                ["Mixed expense states"] = 0,
+                ["Manual expenses still require review"] = 0
+            };
+        }
+
+        private static void RecordBulkSkip(Dictionary<string, int> skipReasons, string skipReason)
+        {
+            if (string.IsNullOrWhiteSpace(skipReason))
+                skipReason = "Already processed";
+
+            if (!skipReasons.ContainsKey(skipReason))
+                skipReasons[skipReason] = 0;
+
+            skipReasons[skipReason]++;
+        }
+
         private void FillFooterTotals(GridViewRow footer)
         {
             for (int i = 0; i < gvDetails.Columns.Count; i++)
@@ -1306,6 +1514,8 @@ namespace AnmolDristi
                 string rawRemarks = txtBulkRemarks.Text.Trim();
                 string remarks = AppendUserToRemark(rawRemarks, auditor);
                 int processedCount = 0;
+                var skipReasons = CreateBulkSkipReasonMap();
+                var rowsToProcess = new List<Tuple<int, string>>();
 
                 if (action == DayDetailAction.Return && IsCurrentUserAuditor())
                 {
@@ -1341,8 +1551,14 @@ namespace AnmolDristi
                     if (chk == null || !chk.Checked) continue;
 
                     int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
-                    string rowRemark = remarks;
+                    string skipReason;
+                    if (!CanBulkProcessRow(row, action, out skipReason))
+                    {
+                        RecordBulkSkip(skipReasons, skipReason);
+                        continue;
+                    }
 
+                    string rowRemark = remarks;
                     if (action != DayDetailAction.Approve)
                     {
                         var txtRowRemark = row.FindControl("txtRowRemark") as TextBox;
@@ -1350,26 +1566,52 @@ namespace AnmolDristi
                             rowRemark = AppendUserToRemark(txtRowRemark.Text.Trim(), auditor);
                     }
 
-                    ProcessDayDetailAction(detailId, reqId, action, rowRemark);
-                    processedCount++;
+                    rowsToProcess.Add(Tuple.Create(detailId, rowRemark));
                 }
 
-                if (processedCount > 0)
+                if (rowsToProcess.Count > 0)
                 {
+                    using (var con = new SqlConnection(connString))
+                    {
+                        con.Open();
+                        using (var tran = con.BeginTransaction())
+                        {
+                            try
+                            {
+                                foreach (var rowToProcess in rowsToProcess)
+                                {
+                                    ProcessDayDetailAction(rowToProcess.Item1, reqId, action, rowToProcess.Item2, con, tran);
+                                    processedCount++;
+                                }
+
+                                tran.Commit();
+                            }
+                            catch
+                            {
+                                tran.Rollback();
+                                throw;
+                            }
+                        }
+                    }
+
                     ExecuteRecalculationSQL(reqId);
                     txtBulkRemarks.Text = "";
-                    string resultLabel = action == DayDetailAction.Approve
-                        ? ClaimStatuses.Approved
-                        : (action == DayDetailAction.Reject ? ClaimStatuses.Rejected : ClaimStatuses.Returned);
-                    lblModalMessage.Text = $"{processedCount} row(s) successfully marked as {resultLabel}.";
-                    lblModalMessage.CssClass = action == DayDetailAction.Approve
-                        ? "text-success font-weight-bold"
-                        : (action == DayDetailAction.Reject ? "text-danger font-weight-bold" : "text-warning font-weight-bold");
                 }
-                else
+
+                int skippedCount = skipReasons.Values.Sum();
+                if (processedCount == 0 && skippedCount == 0)
                 {
                     lblModalMessage.Text = "Please select at least one row to apply the bulk action.";
                     lblModalMessage.CssClass = "text-warning font-weight-bold";
+                }
+                else
+                {
+                    lblModalMessage.Text = BuildBulkResultSummary(action, processedCount, skipReasons);
+                    lblModalMessage.CssClass = processedCount > 0
+                        ? (action == DayDetailAction.Approve
+                            ? "text-success font-weight-bold"
+                            : (action == DayDetailAction.Reject ? "text-danger font-weight-bold" : "text-warning font-weight-bold"))
+                        : "text-warning font-weight-bold";
                 }
 
                 BindDetailsGrid(reqId);
@@ -1487,7 +1729,7 @@ namespace AnmolDristi
             return (ctx.Session["WORKMAN"] ?? ctx.Session["workman"]) as string;
         }
 
-        private void ProcessDayDetailAction(int detailId, int reqId, DayDetailAction action, string remark)
+        private void ProcessDayDetailAction(int detailId, int reqId, DayDetailAction action, string remark, SqlConnection con = null, SqlTransaction tran = null)
         {
             string user = GetLoggedInEmployeeCode();
             if (string.IsNullOrWhiteSpace(user))
@@ -1504,24 +1746,34 @@ namespace AnmolDristi
                     ? "Remarks are required when rejecting a day."
                     : "Remarks are required when returning a day.");
 
-            using (var con = new SqlConnection(connString))
+            bool ownsConnection = con == null;
+            if (ownsConnection)
             {
+                con = new SqlConnection(connString);
                 con.Open();
+            }
 
+            try
+            {
                 switch (action)
                 {
                     case DayDetailAction.Approve:
-                        ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con);
+                        ExecuteProcessApprovalAction(detailId, "APPROVE", remark, user, con, tran);
                         break;
                     case DayDetailAction.Return:
                         // Activity/expense sync is handled inside usp_ProcessApprovalAction.
-                        ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con);
+                        ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con, tran);
                         break;
                     case DayDetailAction.Reject:
-                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con);
-                        MarkActivityRejectedForDay(detailId, user, con);
+                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con, tran);
+                        MarkActivityRejectedForDay(detailId, user, con, tran);
                         break;
                 }
+            }
+            finally
+            {
+                if (ownsConnection)
+                    con.Dispose();
             }
         }
 
@@ -1552,7 +1804,7 @@ namespace AnmolDristi
             }
         }
 
-        private static void MarkActivityRejectedForDay(int detailId, string user, SqlConnection con)
+        private static void MarkActivityRejectedForDay(int detailId, string user, SqlConnection con, SqlTransaction tran = null)
         {
             const string sql = @"
                 DECLARE @ActivityId INT;
@@ -1577,7 +1829,7 @@ namespace AnmolDristi
                       AND ISNULL(ClaimStatus, '') <> '" + ClaimStatuses.Approved + @"';
                 END";
 
-            using (var cmd = new SqlCommand(sql, con))
+            using (var cmd = new SqlCommand(sql, con, tran))
             {
                 cmd.Parameters.AddWithValue("@DetailId", detailId);
                 cmd.Parameters.AddWithValue("@User", user);

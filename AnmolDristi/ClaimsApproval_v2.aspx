@@ -578,6 +578,8 @@
                                                     <asp:CheckBox ID="chkSelect" runat="server" CssClass="row-select-checkbox" />
                                                     <asp:HiddenField ID="hfActivityId" runat="server" Value='<%# Eval("ActivityId") %>' />
                                                     <asp:HiddenField ID="hfApprovalRequestDetailId" runat="server" Value='<%# Eval("ApprovalRequestDetailId") %>' />
+                                                    <asp:HiddenField ID="hfManualReview" runat="server" Value='<%# Eval("ManualReview") %>' />
+                                                    <asp:HiddenField ID="hfExpensesJson" runat="server" Value='<%# Eval("ExpensesJson") %>' />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
