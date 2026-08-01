@@ -138,6 +138,7 @@
 
                                                 <asp:HiddenField ID="hfScannedToken" runat="server" />
                                                 <asp:HiddenField ID="hfCurrentLogId" runat="server" />
+                <asp:HiddenField ID="hfCurrentDayLogId" runat="server" />
                                                 <asp:HiddenField ID="hfHostEmail" runat="server" />
                                                 <asp:HiddenField ID="hfHostName" runat="server" />
                                                 <asp:HiddenField ID="hfVisName" runat="server" />
@@ -244,7 +245,7 @@
                                                                         
                                                                         <div style="padding: 10px 15px; background-color: #f9f9f9; border-top: 1px solid #eee;">
                                                                             <asp:LinkButton ID="btnForceCheckOut" runat="server" CommandName="ForceCheckOut" 
-                                                                                CommandArgument='<%# Eval("LogID") %>' 
+                                                                                CommandArgument='<%# Eval("LogID") + "|" + Eval("DayLogID") %>' 
                                                                                 CssClass='<%# GetButtonCss(Eval("ValidUpto")) %>' 
                                                                                 OnClientClick="return confirm('Are you sure you want to manually Check-Out this visitor?');">
                                                                                 <%# GetButtonText(Eval("ValidUpto")) %>

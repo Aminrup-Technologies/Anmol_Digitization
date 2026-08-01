@@ -57,6 +57,12 @@ namespace AnmolDristi
                 }
 
                 txtEmail.ReadOnly = false;
+
+                string today = DateTime.Now.ToString("yyyy-MM-dd");
+                txtVisitFromDate.Text = today;
+                txtVisitToDate.Text = today;
+                txtTimeFrom.Text = "09:00";
+                txtTimeTo.Text = "18:00";
             }
         }
 
@@ -282,6 +288,15 @@ namespace AnmolDristi
                     }
                 }
 
+                VisitScheduleRequest visitSchedule = VmsVisitScheduleHelper.ParseSchedule(
+                    ddlScheduleType.SelectedValue,
+                    txtVisitFromDate.Text,
+                    txtVisitToDate.Text,
+                    txtTimeFrom.Text,
+                    txtTimeTo.Text);
+
+                string scheduleSummary = VmsVisitScheduleHelper.FormatScheduleSummary(visitSchedule);
+
                 // ==========================================================
                 // 8. BEGIN DATABASE TRANSACTION
                 // ==========================================================
@@ -305,9 +320,8 @@ namespace AnmolDristi
                             // ==========================================================
                             // 9. VISITING HOURS VALIDATION
                             // ==========================================================
-                            DateTime validFrom = DateTime.Now;
-                            VmsHelper.ValidateWithinVisitingHours(branchId, validFrom, con, trans);
-                            DateTime validUpto = VmsHelper.CalculateValidUpto(branchId, validFrom, con, trans);
+                            DateTime validFrom = visitSchedule.RequestedValidFrom;
+                            DateTime validUpto = visitSchedule.RequestedValidUpto;
 
                             object qrTokenParam = currentApprovalStatus == "Approved"
                                 ? (object)Guid.NewGuid()
@@ -338,7 +352,14 @@ namespace AnmolDristi
                                 QRToken,
                                 VisitStatus,
                                 ActualInTime,
-                                ApprovedOn
+                                ApprovedOn,
+                                ScheduleType,
+                                RequestedValidFrom,
+                                RequestedValidUpto,
+                                DailyTimeFrom,
+                                DailyTimeTo,
+                                ApprovedValidFrom,
+                                ApprovedValidUpto
                                 )
                                 VALUES
                                 (
@@ -360,7 +381,14 @@ namespace AnmolDristi
                                 @QRToken,
                                 @VisitStatus,
                                 @ActualInTime,
-                                @ApprovedOn
+                                @ApprovedOn,
+                                @ScheduleType,
+                                @RequestedValidFrom,
+                                @RequestedValidUpto,
+                                @DailyTimeFrom,
+                                @DailyTimeTo,
+                                @ApprovedValidFrom,
+                                @ApprovedValidUpto
                                 );
 
                                 SELECT SCOPE_IDENTITY();
@@ -426,9 +454,37 @@ namespace AnmolDristi
                                 cmd.Parameters.AddWithValue("@ApprovedOn",
                                     approvedOn);
 
+                                cmd.Parameters.AddWithValue("@ScheduleType",
+                                    visitSchedule.ScheduleType);
+
+                                cmd.Parameters.AddWithValue("@RequestedValidFrom",
+                                    visitSchedule.RequestedValidFrom);
+
+                                cmd.Parameters.AddWithValue("@RequestedValidUpto",
+                                    visitSchedule.RequestedValidUpto);
+
+                                cmd.Parameters.AddWithValue("@DailyTimeFrom",
+                                    visitSchedule.TimeFrom);
+
+                                cmd.Parameters.AddWithValue("@DailyTimeTo",
+                                    visitSchedule.TimeTo);
+
+                                cmd.Parameters.AddWithValue("@ApprovedValidFrom",
+                                    currentApprovalStatus == "Approved" ? (object)validFrom : DBNull.Value);
+
+                                cmd.Parameters.AddWithValue("@ApprovedValidUpto",
+                                    currentApprovalStatus == "Approved" ? (object)validUpto : DBNull.Value);
+
                                 newVisitId =
                                     Convert.ToInt32(cmd.ExecuteScalar());
                             }
+
+                            VmsVisitScheduleHelper.CreateRequestedDayLogs(
+                                con,
+                                trans,
+                                newVisitId,
+                                visitSchedule,
+                                currentApprovalStatus == "Approved");
 
                             // ==========================================================
                             // 12. FETCH HOST DETAILS
@@ -534,7 +590,8 @@ namespace AnmolDristi
                                             <strong>{fullName}</strong>
                                             from
                                             <strong>{txtCompany.Text}</strong>
-                                            is waiting for your approval at the reception.
+                                            has requested a visit on:
+                                            <strong>{scheduleSummary}</strong>
                                             </p>
 
                                             <br/>

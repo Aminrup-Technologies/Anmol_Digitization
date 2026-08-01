@@ -132,9 +132,10 @@ namespace AnmolDristi
                     SELECT TOP 1 LogID
                     FROM VMS_VisitLog
                     WHERE TargetBranchID = @BranchId
-                      AND ApprovalStatus IN ('Pending', 'Approved')
-                      AND ISNULL(VisitStatus, '') <> 'Checked-Out'
-                      AND ValidUpto >= GETDATE()
+                      AND (
+                            (ApprovalStatus = 'Pending' AND ISNULL(RequestedValidUpto, ValidUpto) >= GETDATE())
+                            OR (ApprovalStatus = 'Approved' AND ValidUpto >= GETDATE() AND ISNULL(VisitStatus, '') <> 'Checked-Out')
+                          )
                       AND (
                             VisitorMobile = @Mobile
                             OR (@Email <> 'N/A' AND VisitorEmail = @Email)
