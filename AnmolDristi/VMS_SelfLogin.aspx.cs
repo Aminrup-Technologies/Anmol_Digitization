@@ -48,7 +48,8 @@ namespace AnmolDristi
         {
             try
             {
-                if (int.TryParse(branchId, out int parsedBranchId))
+                int parsedBranchId;
+                if (int.TryParse(branchId, out parsedBranchId))
                 {
                     lblBranchName.Text = VmsHelper.GetBranchDisplayName(parsedBranchId);
                 }
@@ -162,7 +163,8 @@ namespace AnmolDristi
             Session["VerifiedEmail"] = string.Empty;
 
             string branchId = hfBranchId.Value;
-            if (string.IsNullOrEmpty(branchId) || !int.TryParse(branchId, out int parsedBranchId))
+            int parsedBranchId;
+            if (string.IsNullOrEmpty(branchId) || !int.TryParse(branchId, out parsedBranchId))
             {
                 lblMessage.ForeColor = Color.Red;
                 lblMessage.Text = "Session lost. Please scan the physical QR code again.";

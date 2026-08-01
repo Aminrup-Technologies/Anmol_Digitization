@@ -38,6 +38,11 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btn_fetch;
+
+        /// <summary>
+        /// pnlWorkflowBanner control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlWorkflowBanner;
         
         /// <summary>
         /// Actionable control.
@@ -73,6 +78,26 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_msg;
+
+        /// <summary>
+        /// pnlAutoSaveIndicator control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlAutoSaveIndicator;
+
+        /// <summary>
+        /// litLastSavedTime control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Literal litLastSavedTime;
+
+        /// <summary>
+        /// pnlSubmissionConfidence control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlSubmissionConfidence;
+
+        /// <summary>
+        /// phSubmissionConfidence control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.PlaceHolder phSubmissionConfidence;
         
         /// <summary>
         /// Activities control.
@@ -91,6 +116,21 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.GridView gvActivities;
+
+        /// <summary>
+        /// pnlReturnedClaimsBanner control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlReturnedClaimsBanner;
+
+        /// <summary>
+        /// pnlSubmissionChecklist control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlSubmissionChecklist;
+
+        /// <summary>
+        /// phSubmissionChecklist control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.PlaceHolder phSubmissionChecklist;
         
         /// <summary>
         /// Summary control.
@@ -100,6 +140,66 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl Summary;
+
+        /// <summary>
+        /// pnlEnhancedMonthlySummary control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlEnhancedMonthlySummary;
+
+        /// <summary>
+        /// lblSummaryTravel control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblSummaryTravel;
+
+        /// <summary>
+        /// lblSummaryDA control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblSummaryDA;
+
+        /// <summary>
+        /// lblSummaryHotel control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblSummaryHotel;
+
+        /// <summary>
+        /// lblSummaryOther control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblSummaryOther;
+
+        /// <summary>
+        /// lblSummaryGrandTotal control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblSummaryGrandTotal;
+
+        /// <summary>
+        /// pnlProgressSummary control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlProgressSummary;
+
+        /// <summary>
+        /// lblProgressWorkingDays control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblProgressWorkingDays;
+
+        /// <summary>
+        /// lblProgressCompleted control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblProgressCompleted;
+
+        /// <summary>
+        /// lblProgressDraft control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblProgressDraft;
+
+        /// <summary>
+        /// lblProgressReturned control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblProgressReturned;
+
+        /// <summary>
+        /// lblProgressSubmitted control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblProgressSubmitted;
         
         /// <summary>
         /// lblDraft_KM control.
@@ -450,6 +550,21 @@ namespace AnmolDristi {
         /// Explicit KM save workflow: Manual | Route
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField HF_KmSaveWorkflow;
+
+        /// <summary>
+        /// pnlKmPolicyInfo control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlKmPolicyInfo;
+
+        /// <summary>
+        /// lblModalOriginalKm control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblModalOriginalKm;
+
+        /// <summary>
+        /// lblModalAllowedRange control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblModalAllowedRange;
         
         /// <summary>
         /// txtModalKM control.

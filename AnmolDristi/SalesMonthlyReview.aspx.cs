@@ -29,6 +29,7 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapHotelCap;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOutstationDA;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOwnArrangementDA;
+        //protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
         // --------------------------------------------------
 
         protected void Page_Load(object sender, EventArgs e)
@@ -238,10 +239,12 @@ namespace AnmolDristi
 
                             var editableActivityIds = new HashSet<int>();
                             var detailStatusByActivity = new Dictionary<int, string>();
+                            var detailRemarksByActivity = new Dictionary<int, string>();
+                            var detailApprovedByByActivity = new Dictionary<int, string>();
                             using (SqlCommand cmd2 = new SqlCommand(@"
-                                SELECT ActivityId, DetailStatus
+                                SELECT ActivityId, DetailStatus, DetailRemarks, DetailApprovedBy
                                 FROM (
-                                    SELECT ActivityId, DetailStatus,
+                                    SELECT ActivityId, DetailStatus, DetailRemarks, DetailApprovedBy,
                                            ROW_NUMBER() OVER (
                                                PARTITION BY ActivityId
                                                ORDER BY ISNULL(DetailVersion, 1) DESC, ApprovalRequestDetailId DESC
@@ -262,6 +265,20 @@ namespace AnmolDristi
                                         if (aid > 0 && !string.IsNullOrWhiteSpace(detail))
                                             detailStatusByActivity[aid] = detail;
 
+                                        if (aid > 0 && rdr["DetailRemarks"] != DBNull.Value)
+                                        {
+                                            string remarks = rdr["DetailRemarks"].ToString();
+                                            if (!string.IsNullOrWhiteSpace(remarks))
+                                                detailRemarksByActivity[aid] = remarks;
+                                        }
+
+                                        if (aid > 0 && rdr["DetailApprovedBy"] != DBNull.Value)
+                                        {
+                                            string approvedBy = rdr["DetailApprovedBy"].ToString();
+                                            if (!string.IsNullOrWhiteSpace(approvedBy))
+                                                detailApprovedByByActivity[aid] = approvedBy;
+                                        }
+
                                         // ⬅️ 2. Add "Returned" to the Line Item check
                                         if (ClaimEditabilityHelper.IsDetailStatusEditableForCorrection(detail))
                                         {
@@ -273,6 +290,10 @@ namespace AnmolDristi
 
                             if (!dt.Columns.Contains("DetailStatus"))
                                 dt.Columns.Add("DetailStatus", typeof(string));
+                            if (!dt.Columns.Contains("DetailRemarks"))
+                                dt.Columns.Add("DetailRemarks", typeof(string));
+                            if (!dt.Columns.Contains("DetailApprovedBy"))
+                                dt.Columns.Add("DetailApprovedBy", typeof(string));
 
                             foreach (DataRow row in dt.Rows)
                             {
@@ -281,6 +302,12 @@ namespace AnmolDristi
                                 row["DetailStatus"] = detailStatusByActivity.ContainsKey(actId)
                                     ? detailStatusByActivity[actId]
                                     : (object)DBNull.Value;
+
+                                if (detailRemarksByActivity.ContainsKey(actId))
+                                    row["DetailRemarks"] = detailRemarksByActivity[actId];
+
+                                if (detailApprovedByByActivity.ContainsKey(actId))
+                                    row["DetailApprovedBy"] = detailApprovedByByActivity[actId];
                             }
 
                             // ⬅️ 3. NEW: If there are returned/rejected rows, UNLOCK the Submit button!
@@ -329,8 +356,11 @@ namespace AnmolDristi
                 }
                 ViewState["MonthLocked"] = monthLocked;
                 ViewState["AllowSubmission"] = allowSubmission;
+                ViewState["PolicyWindowOpen"] = allowExecution;
 
                 PopulateStatusSummary(dt);
+                BindReturnedClaimsBanner(dt);
+                BindSubmissionChecklist(dt, allowSubmission, monthLocked, allowExecution);
                 Summary.Visible = true;
                 Activities.Visible = true;
                 gvActivities.DataSource = dt;
@@ -396,6 +426,8 @@ namespace AnmolDristi
                 // btn_save_draft.Enabled = !monthLocked || allowSubmission;
                 btn_submit.Enabled = allowSubmission;
 
+                BindMonthlyConfidenceUx(dt, monthLocked, allowSubmission, allowExecution, grandCalc, grandDA, grandHotel, grandTravel, grandStationary);
+
                 if (monthLocked && !allowSubmission)
                 {
                     lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for returned days awaiting your correction.";
@@ -441,9 +473,10 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
-                lbl_msg.Text = "An error occurred: " + ex.Message;
+                string message = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                lbl_msg.Text = "An error occurred: " + message;
                 lbl_msg.ForeColor = System.Drawing.Color.Red;
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", "showPNotify('Error', '" + ex.Message.Replace("'", "\\'") + "', 'error');", true);
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyError", "showPNotify('Error', '" + message.Replace("'", "\\'") + "', 'error');", true);
             }
         }
 
@@ -893,7 +926,8 @@ namespace AnmolDristi
             {
                 if (resolvedPolicy.Resolved_RatePerKm.HasValue)
                     ratePerKm = resolvedPolicy.Resolved_RatePerKm.Value;
-                fixedTravelAllowance = resolvedPolicy.FixedTravelAllowance;
+                if (resolvedPolicy.FixedTravelAllowance.HasValue)
+                    fixedTravelAllowance = resolvedPolicy.FixedTravelAllowance;
                 return;
             }
 
@@ -1226,6 +1260,7 @@ namespace AnmolDristi
                 gvActivities.EditIndex = -1;
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false);
+                NotifyDraftChangeSaved();
                 lbl_msg.ForeColor = System.Drawing.Color.Green;
                 lbl_msg.Text = "KM updated.";
             }
@@ -1510,33 +1545,267 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
         private void ConfigureKmModalDisplay(int activityId, decimal currentKm, EmployeeKmToleranceConfig tolerance)
         {
+            decimal originalKm = currentKm;
+            if (hdnOriginalKm != null && !string.IsNullOrWhiteSpace(hdnOriginalKm.Value))
+            {
+                decimal parsedOriginal;
+                if (decimal.TryParse(hdnOriginalKm.Value.Trim(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out parsedOriginal))
+                    originalKm = parsedOriginal;
+            }
+
+            BindKmPolicyInformation(activityId, originalKm, currentKm, tolerance);
+
             int usedCount = GetKmModificationCount(activityId);
+            bool canSave = usedCount < tolerance.MaxModificationCount;
+            if (btnSaveKm != null) btnSaveKm.Enabled = canSave;
+
             decimal? allowedMin;
             decimal? allowedMax;
             KmToleranceHelper.ComputeAllowedRange(currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance, out allowedMin, out allowedMax);
-
             string minText = allowedMin.HasValue ? allowedMin.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
             string maxText = allowedMax.HasValue ? allowedMax.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
-            string remaining = KmToleranceHelper.FormatRemaining(usedCount, tolerance.MaxModificationCount);
-            bool canSave = usedCount < tolerance.MaxModificationCount;
-
-            if (lblModalCurrentKm != null) lblModalCurrentKm.Text = currentKm.ToString("0.##", CultureInfo.InvariantCulture) + " km";
-            if (lblKmModLimit != null) lblKmModLimit.Text = tolerance.MaxModificationCount.ToString();
-            if (lblKmModRemaining != null) lblKmModRemaining.Text = remaining;
-            if (btnSaveKm != null) btnSaveKm.Enabled = canSave;
 
             string script = string.Format(
-                "setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').text('{3}'); $('#{4}').text('{5}'); $('#{6}').prop('disabled', {7}); }}, 150);",
+                "setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').prop('disabled', {3}); }}, 150);",
                 minText.Replace("'", "\\'"),
                 maxText.Replace("'", "\\'"),
-                lblKmModLimit != null ? lblKmModLimit.ClientID : string.Empty,
-                tolerance.MaxModificationCount,
-                lblKmModRemaining != null ? lblKmModRemaining.ClientID : string.Empty,
-                remaining.Replace("'", "\\'"),
                 btnSaveKm != null ? btnSaveKm.ClientID : string.Empty,
                 canSave ? "false" : "true");
 
             ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
+        }
+
+        private void BindKmPolicyInformation(int activityId, decimal originalKm, decimal currentKm, EmployeeKmToleranceConfig tolerance)
+        {
+            decimal? allowedMin;
+            decimal? allowedMax;
+            KmToleranceHelper.ComputeAllowedRange(currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance, out allowedMin, out allowedMax);
+
+            int usedCount = GetKmModificationCount(activityId);
+            string remaining = KmToleranceHelper.FormatRemaining(usedCount, tolerance.MaxModificationCount);
+            bool hasPolicyInfo = allowedMin.HasValue || allowedMax.HasValue || tolerance.MaxModificationCount > 0;
+
+            if (pnlKmPolicyInfo != null)
+                pnlKmPolicyInfo.Visible = hasPolicyInfo;
+
+            if (lblModalOriginalKm != null)
+                lblModalOriginalKm.Text = originalKm.ToString("0.##", CultureInfo.InvariantCulture) + " km";
+            if (lblModalCurrentKm != null)
+                lblModalCurrentKm.Text = currentKm.ToString("0.##", CultureInfo.InvariantCulture) + " km";
+            if (lblModalAllowedRange != null)
+                lblModalAllowedRange.Text = hasPolicyInfo
+                    ? KmToleranceHelper.FormatRange(allowedMin, allowedMax) + " km"
+                    : "—";
+            if (lblKmModLimit != null)
+                lblKmModLimit.Text = tolerance.MaxModificationCount.ToString();
+            if (lblKmModRemaining != null)
+                lblKmModRemaining.Text = remaining;
+        }
+
+        private void BindReturnedClaimsBanner(DataTable dt)
+        {
+            if (pnlReturnedClaimsBanner == null) return;
+            pnlReturnedClaimsBanner.Visible = CountReturnedActivities(dt) > 0;
+        }
+
+        private static int CountReturnedActivities(DataTable dt)
+        {
+            if (dt == null || dt.Rows.Count == 0) return 0;
+
+            int count = 0;
+            foreach (DataRow row in dt.Rows)
+            {
+                string claimStatus = row.Table.Columns.Contains("ClaimStatus") && row["ClaimStatus"] != DBNull.Value
+                    ? row["ClaimStatus"].ToString().Trim()
+                    : string.Empty;
+                string detailStatus = row.Table.Columns.Contains("DetailStatus") && row["DetailStatus"] != DBNull.Value
+                    ? row["DetailStatus"].ToString().Trim()
+                    : string.Empty;
+                bool isEditable = row.Table.Columns.Contains("IsEditable")
+                    && row["IsEditable"] != DBNull.Value
+                    && Convert.ToBoolean(row["IsEditable"]);
+
+                string effectiveStatus = ClaimEditabilityHelper.ResolveEffectiveRowStatus(claimStatus, detailStatus, isEditable);
+                if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Returned))
+                    count++;
+            }
+
+            return count;
+        }
+
+        private static string GetDetailRemarksFromRow(DataRow row)
+        {
+            if (row == null) return string.Empty;
+            if (row.Table.Columns.Contains("DetailRemarks") && row["DetailRemarks"] != DBNull.Value)
+                return row["DetailRemarks"].ToString().Trim();
+            return string.Empty;
+        }
+
+        private static string GetReturnedByDisplay(DataRow row, string detailRemarks)
+        {
+            if (row != null && row.Table.Columns.Contains("DetailApprovedBy") && row["DetailApprovedBy"] != DBNull.Value)
+            {
+                string approvedBy = row["DetailApprovedBy"].ToString().Trim();
+                if (!string.IsNullOrWhiteSpace(approvedBy))
+                    return HttpUtility.HtmlEncode(approvedBy);
+            }
+
+            if (!string.IsNullOrWhiteSpace(detailRemarks))
+            {
+                int idx = detailRemarks.LastIndexOf(" - Added by ", StringComparison.OrdinalIgnoreCase);
+                if (idx > 0)
+                {
+                    string suffix = detailRemarks.Substring(idx + " - Added by ".Length).Trim();
+                    int parenIdx = suffix.LastIndexOf(" (", StringComparison.Ordinal);
+                    if (parenIdx > 0)
+                        return HttpUtility.HtmlEncode(suffix.Substring(0, parenIdx).Trim());
+                }
+            }
+
+            return "Approver";
+        }
+
+        private static string StripApproverSuffixFromRemark(string remark)
+        {
+            if (string.IsNullOrWhiteSpace(remark)) return string.Empty;
+            int idx = remark.LastIndexOf(" - Added by ", StringComparison.OrdinalIgnoreCase);
+            if (idx > 0) return remark.Substring(0, idx).Trim();
+            return remark.Trim();
+        }
+
+        private static string GetReturnedActionRequiredText(string remark)
+        {
+            string lower = (remark ?? string.Empty).ToLowerInvariant();
+            if (lower.Contains("receipt") || lower.Contains("upload") || lower.Contains("bill") || lower.Contains("attachment"))
+                return "Upload receipt and resubmit.";
+            if (lower.Contains("km") || lower.Contains("distance") || lower.Contains("kilometer"))
+                return "Update travel distance and resubmit.";
+            if (lower.Contains("hotel"))
+                return "Correct hotel details and resubmit.";
+            if (lower.Contains("da") || lower.Contains("allowance"))
+                return "Correct daily allowance and resubmit.";
+            return "Make the requested corrections and resubmit.";
+        }
+
+        private static string BuildReturnedActivityInfoHtml(string returnedBy, string reason, string actionRequired)
+        {
+            string safeReturnedBy = string.IsNullOrWhiteSpace(returnedBy) ? "Approver" : returnedBy;
+            string safeReason = string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason;
+            string safeAction = HttpUtility.HtmlEncode(actionRequired ?? "Make the requested corrections and resubmit.");
+
+            return string.Format(
+                @"<div class=""returned-info-panel"">
+                    <div class=""returned-info-row""><span class=""returned-info-label"">Returned by</span><span class=""returned-info-value"">{0}</span></div>
+                    <div class=""returned-info-row""><span class=""returned-info-label"">Reason</span><span class=""returned-info-value"">{1}</span></div>
+                    <div class=""returned-info-row""><span class=""returned-info-label"">Action Required</span><span class=""returned-info-value text-warning font-weight-bold"">{2}</span></div>
+                </div>",
+                safeReturnedBy,
+                reason,
+                safeAction);
+        }
+
+        private void BindSubmissionChecklist(DataTable dt, bool allowSubmission, bool monthLocked, bool policyWindowOpen)
+        {
+            if (pnlSubmissionChecklist == null || phSubmissionChecklist == null) return;
+
+            bool hasActivities = dt != null && dt.Rows.Count > 0;
+            bool policyEnabled = Convert.ToBoolean(ConfigurationManager.AppSettings["EnablePreviousMonthPolicy"]);
+            bool submissionWindowOpen = !policyEnabled || policyWindowOpen;
+
+            int draftCount = 0;
+            int returnedCorrectionCount = 0;
+
+            if (hasActivities)
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    string claimStatus = row.Table.Columns.Contains("ClaimStatus") && row["ClaimStatus"] != DBNull.Value
+                        ? row["ClaimStatus"].ToString().Trim()
+                        : string.Empty;
+                    string detailStatus = row.Table.Columns.Contains("DetailStatus") && row["DetailStatus"] != DBNull.Value
+                        ? row["DetailStatus"].ToString().Trim()
+                        : string.Empty;
+                    bool isEditable = row.Table.Columns.Contains("IsEditable")
+                        && row["IsEditable"] != DBNull.Value
+                        && Convert.ToBoolean(row["IsEditable"]);
+
+                    if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft))
+                        draftCount++;
+
+                    if (isEditable && (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned) || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned)))
+                        returnedCorrectionCount++;
+                }
+            }
+
+            bool activitiesReady = hasActivities;
+            bool approvalGateOpen = !monthLocked || allowSubmission;
+            bool submitReady = allowSubmission;
+
+            var items = new List<Tuple<string, bool, string>>();
+            items.Add(Tuple.Create(
+                activitiesReady ? "Daily activities loaded" : "Load daily activities for the selected month",
+                activitiesReady,
+                hasActivities ? string.Format("{0} working day(s) found", dt.Rows.Count) : "Click Search to load activities"));
+
+            items.Add(Tuple.Create(
+                submissionWindowOpen ? "Submission window is open" : "Submission window is closed",
+                submissionWindowOpen,
+                policyEnabled ? "Allowed between 1st and 15th for the previous month" : "Monthly processing policy is disabled"));
+
+            if (monthLocked && allowSubmission && returnedCorrectionCount > 0)
+            {
+                items.Add(Tuple.Create(
+                    string.Format("{0} returned day(s) awaiting correction", returnedCorrectionCount),
+                    false,
+                    "Edit highlighted rows and resubmit when ready"));
+            }
+            else if (monthLocked && !allowSubmission)
+            {
+                items.Add(Tuple.Create(
+                    "Monthly claim is with approvers",
+                    false,
+                    "Editing is disabled until approver action"));
+            }
+            else
+            {
+                items.Add(Tuple.Create(
+                    "No approval lock blocking submission",
+                    approvalGateOpen,
+                    approvalGateOpen ? "You may submit or continue editing" : "Submission is currently blocked"));
+            }
+
+            if (draftCount > 0 && !monthLocked)
+            {
+                items.Add(Tuple.Create(
+                    string.Format("{0} day(s) still in Draft", draftCount),
+                    true,
+                    "Draft days will be included when you submit"));
+            }
+
+            items.Add(Tuple.Create(
+                submitReady ? "Ready to submit for approval" : "Submit for approval is not available yet",
+                submitReady,
+                submitReady ? "Use the Submit for Approval button when you are done" : "Resolve the items above before submitting"));
+
+            phSubmissionChecklist.Controls.Clear();
+            foreach (var item in items)
+            {
+                string iconClass = item.Item2 ? "check-pass" : "check-fail";
+                string icon = item.Item2 ? "✓" : "✗";
+                string detail = string.IsNullOrWhiteSpace(item.Item3) ? string.Empty : string.Format(" <span class=\"text-muted\">— {0}</span>", HttpUtility.HtmlEncode(item.Item3));
+
+                phSubmissionChecklist.Controls.Add(new Literal
+                {
+                    Text = string.Format(
+                        "<div class=\"check-item\"><span class=\"check-icon {0}\">{1}</span><span><strong>{2}</strong>{3}</span></div>",
+                        iconClass,
+                        icon,
+                        HttpUtility.HtmlEncode(item.Item1),
+                        detail)
+                });
+            }
+
+            pnlSubmissionChecklist.Visible = hasActivities;
         }
 
         private bool TryValidateKmModification(
@@ -1759,6 +2028,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false);
+                NotifyDraftChangeSaved();
                 BindKmHistory(activityId);
                 if (txtKmReason != null) txtKmReason.Text = string.Empty;
                 if (hdnOriginalKm != null) hdnOriginalKm.Value = newKm.ToString("0.##", CultureInfo.InvariantCulture);
@@ -1877,7 +2147,9 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                 lblStatus.Text = "<span class='badge badge-success' data-toggle='tooltip' title='Approved by manager'><i class='fa fa-check-circle'></i></span>";
                                 break;
                             case "returned":
-                                lblStatus.Text = $"<span class='badge badge-warning text-dark' data-toggle='tooltip' title='Returned for correction{(string.IsNullOrWhiteSpace(encodedRemark) ? "" : " – " + encodedRemark)}'><i class='fa fa-undo'></i></span>";
+                                lblStatus.Text =
+                                    "<span class='badge badge-danger mr-1' data-toggle='tooltip' title='Returned for correction – requires your attention'><i class='fa fa-exclamation-circle'></i> Requires Attention</span>" +
+                                    "<span class='badge badge-warning text-dark' data-toggle='tooltip' title='Action needed before resubmission'><i class='fa fa-wrench'></i> Requires Action</span>";
                                 break;
                             case "rejected":
                                 lblStatus.Text = $"<span class='badge badge-danger' data-toggle='tooltip' title='Rejected – please review{(string.IsNullOrWhiteSpace(encodedRemark) ? "" : " – " + encodedRemark)}'><i class='fa fa-times-circle'></i></span>";
@@ -1894,6 +2166,66 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                     PopulateKmTolerance(drv, e.Row);
                     ApplyApprovalEditability(drv, e.Row);
                 }
+            }
+        }
+
+        protected void gvActivities_DataBound(object sender, EventArgs e)
+        {
+            if (gvActivities == null || gvActivities.Rows.Count == 0) return;
+
+            string sessionKey = GetCurrentSessionKey();
+            DataTable dt = Session[sessionKey] as DataTable;
+            if (dt == null || !dt.Columns.Contains("ActivityId")) return;
+
+            for (int i = gvActivities.Rows.Count - 1; i >= 0; i--)
+            {
+                GridViewRow row = gvActivities.Rows[i];
+                if (row.RowType != DataControlRowType.DataRow) continue;
+                if (!row.CssClass.Contains("returned-activity-row")) continue;
+
+                if (gvActivities.DataKeys == null || gvActivities.DataKeys.Count <= i) continue;
+                int activityId = Convert.ToInt32(gvActivities.DataKeys[i].Value);
+
+                DataRow dataRow = null;
+                try { dataRow = dt.Rows.Find(activityId); }
+                catch { /* ignore */ }
+
+                if (dataRow == null)
+                {
+                    foreach (DataRow candidate in dt.Rows)
+                    {
+                        if (candidate["ActivityId"] != DBNull.Value && Convert.ToInt32(candidate["ActivityId"]) == activityId)
+                        {
+                            dataRow = candidate;
+                            break;
+                        }
+                    }
+                }
+
+                if (dataRow == null) continue;
+
+                string rawRemark = GetDetailRemarksFromRow(dataRow);
+                string returnedBy = GetReturnedByDisplay(dataRow, rawRemark);
+                string reason = HttpUtility.HtmlEncode(StripApproverSuffixFromRemark(rawRemark));
+                string actionRequired = GetReturnedActionRequiredText(rawRemark);
+                string panelHtml = BuildReturnedActivityInfoHtml(returnedBy, reason, actionRequired);
+
+                var detailRow = new GridViewRow(-1, -1, DataControlRowType.DataRow, DataControlRowState.Normal);
+                detailRow.CssClass = "returned-activity-detail-row";
+
+                var cell = new TableCell
+                {
+                    ColumnSpan = gvActivities.Columns.Count,
+                    CssClass = "p-0 border-top-0"
+                };
+                cell.Controls.Add(new Literal { Text = panelHtml });
+                detailRow.Cells.Add(cell);
+
+                var table = row.Parent as Table;
+                if (table == null) continue;
+
+                int tableIndex = table.Rows.GetRowIndex(row);
+                table.Rows.AddAt(tableIndex + 1, detailRow);
             }
         }
 
@@ -2050,7 +2382,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             if (ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Returned))
             {
-                row.CssClass = (row.CssClass + " row-returned").Trim();
+                row.CssClass = (row.CssClass + " row-returned returned-activity-row table-warning").Trim();
                 row.ToolTip = "Returned for correction. Edit this day and resubmit.";
             }
             else if (ClaimStatuses.Equals(effectiveVisualStatus, ClaimStatuses.Rejected))
@@ -2175,6 +2507,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 gvActivities.EditIndex = -1;
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false, false);
+                NotifyDraftChangeSaved();
 
                 if (lbl_msg != null)
                 {
@@ -2239,6 +2572,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             DataTable dtAfter = LoadExpenseForActivity(activityId.ToString());
             Session.Remove(GetCurrentSessionKey());
             BindGrid(false);
+            NotifyDraftChangeSaved();
 
             if (LBL_ExpenseMsg != null)
             {
@@ -2743,6 +3077,8 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             LinkButton lnkDelete = e.Item.FindControl("lnkDeleteExpense") as LinkButton;
             LinkButton lnkDeleteDisabled = e.Item.FindControl("lnkDeleteExpenseDisabled") as LinkButton;
             Literal litBadges = e.Item.FindControl("litPolicyBadges") as Literal;
+            Literal litReturnRemarks = e.Item.FindControl("litExpenseReturnRemarks") as Literal;
+            var trExpenseRow = e.Item.FindControl("trExpenseRow") as System.Web.UI.HtmlControls.HtmlTableRow;
 
             bool canDelete = ClaimEditabilityHelper.CanDeleteExpense(claimStatus, isAuto);
 
@@ -2756,14 +3092,51 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 if (isAuto) sb.Append("<span class='badge badge-warning mr-1'>AUTO</span>");
                 if (!string.IsNullOrWhiteSpace(claimStatus))
                 {
-                    string badgeClass = ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned)
-                        ? "badge badge-warning text-dark"
-                        : (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected)
-                            ? "badge badge-danger"
-                            : "badge badge-secondary");
-                    sb.AppendFormat("<span class='{0} mr-1'>{1}</span>", badgeClass, HttpUtility.HtmlEncode(claimStatus));
+                    if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned))
+                    {
+                        sb.Append("<span class='badge badge-danger mr-1'><i class='fa fa-exclamation-circle'></i> Returned</span>");
+                    }
+                    else if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved))
+                    {
+                        sb.Append("<span class='badge badge-success mr-1'><i class='fa fa-check-circle'></i> Approved</span>");
+                    }
+                    else if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected))
+                    {
+                        sb.AppendFormat("<span class='badge badge-danger mr-1'>{0}</span>", HttpUtility.HtmlEncode(claimStatus));
+                    }
+                    else
+                    {
+                        sb.AppendFormat("<span class='badge badge-secondary mr-1'>{0}</span>", HttpUtility.HtmlEncode(claimStatus));
+                    }
                 }
                 litBadges.Text = sb.ToString();
+            }
+
+            string expenseRemarks = r.Table.Columns.Contains("Remarks") && r["Remarks"] != DBNull.Value
+                ? r["Remarks"].ToString().Trim()
+                : string.Empty;
+
+            if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned))
+            {
+                if (trExpenseRow != null)
+                    trExpenseRow.Attributes["class"] = "returned-expense-row table-warning";
+
+                if (litReturnRemarks != null)
+                {
+                    string displayRemark = StripApproverSuffixFromRemark(expenseRemarks);
+                    if (!string.IsNullOrWhiteSpace(displayRemark))
+                    {
+                        litReturnRemarks.Visible = true;
+                        litReturnRemarks.Text = string.Format(
+                            "<span class='expense-return-remarks'><i class='fa fa-comment-o'></i> {0}</span>",
+                            HttpUtility.HtmlEncode(displayRemark));
+                    }
+                }
+            }
+            else if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved))
+            {
+                if (trExpenseRow != null)
+                    trExpenseRow.Attributes["class"] = "expense-approved-row table-success";
             }
 
             if (lnkDelete != null && (string.IsNullOrWhiteSpace(lnkDelete.CommandArgument) || !lnkDelete.CommandArgument.Contains("|")))
@@ -2920,7 +3293,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             DataTable dt = new DataTable();
             using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand(@"SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate, PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 ORDER BY ExpenseDate DESC, ExpenseId DESC", con))
+            using (var cmd = new SqlCommand(@"SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate, PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus, Remarks FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 ORDER BY ExpenseDate DESC, ExpenseId DESC", con))
             using (var da = new SqlDataAdapter(cmd))
             {
                 cmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
@@ -3006,7 +3379,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             DataTable dt = new DataTable();
             using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand(@"SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate, PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 ORDER BY ExpenseDate DESC, ExpenseId DESC", con))
+            using (var cmd = new SqlCommand(@"SELECT ExpenseId, ActivityId, ExpenseType, ExpenseDate, FromDate, ToDate, BillNo, Amount, Currency, Purpose, AttachmentFileName, AttachmentPath, TravelType, FromPlace, ToPlace, TravelDate, PolicyMode, PolicySnapshot, IsAutoDA, ClaimStatus, Remarks FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND IsDeleted = 0 ORDER BY ExpenseDate DESC, ExpenseId DESC", con))
             using (var da = new SqlDataAdapter(cmd))
             {
                 cmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
@@ -3456,6 +3829,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                 DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
                                 Session.Remove(GetCurrentSessionKey());
                                 BindGrid(false);
+                                NotifyDraftChangeSaved();
 
                                 string currentMode = "";
                                 if (dtAfterDel != null && dtAfterDel.Rows.Count > 0 && dtAfterDel.Columns.Contains("PolicyMode") && dtAfterDel.Rows[0]["PolicyMode"] != DBNull.Value)
@@ -3663,6 +4037,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                 DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
                                 Session.Remove(GetCurrentSessionKey());
                                 BindGrid(false);
+                                NotifyDraftChangeSaved();
 
                                 string currentMode = "";
                                 if (dtAfterDel != null && dtAfterDel.Rows.Count > 0 && dtAfterDel.Columns.Contains("PolicyMode") && dtAfterDel.Rows[0]["PolicyMode"] != DBNull.Value)
@@ -4238,6 +4613,196 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             catch (Exception ex)
             {
                 HandleSubmitException(ex);
+            }
+        }
+
+        private sealed class ActivityProgressCounts
+        {
+            public int WorkingDays { get; set; }
+            public int Completed { get; set; }
+            public int Draft { get; set; }
+            public int Returned { get; set; }
+            public int Submitted { get; set; }
+        }
+
+        private string GetLastSavedSessionKey()
+        {
+            return string.Format("SO_LastDraftSave_{0}_{1}_{2}", GetCurrentUserLoginId(), DDL_Year.SelectedValue, DDL_Month.SelectedValue);
+        }
+
+        private DateTime? GetLastDraftSaveTime()
+        {
+            object stored = Session[GetLastSavedSessionKey()];
+            return stored is DateTime ? (DateTime?)stored : null;
+        }
+
+        private void NotifyDraftChangeSaved()
+        {
+            DateTime savedAt = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.UtcNow,
+                TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"));
+            Session[GetLastSavedSessionKey()] = savedAt;
+
+            string timeLabel = savedAt.ToString("h:mm tt");
+            string script = string.Format(
+                "if (typeof showAutoSaveIndicator === 'function') showAutoSaveIndicator('{0}', true, false);",
+                timeLabel.Replace("'", "\\'"));
+            ScriptManager.RegisterStartupScript(this, GetType(), "autoSave_" + Guid.NewGuid().ToString("N"), script, true);
+        }
+
+        private static ActivityProgressCounts CountActivityProgress(DataTable dt)
+        {
+            var counts = new ActivityProgressCounts();
+            if (dt == null) return counts;
+
+            counts.WorkingDays = dt.Rows.Count;
+            foreach (DataRow row in dt.Rows)
+            {
+                string claimStatus = row.Table.Columns.Contains("ClaimStatus") && row["ClaimStatus"] != DBNull.Value
+                    ? row["ClaimStatus"].ToString().Trim()
+                    : string.Empty;
+                string detailStatus = row.Table.Columns.Contains("DetailStatus") && row["DetailStatus"] != DBNull.Value
+                    ? row["DetailStatus"].ToString().Trim()
+                    : string.Empty;
+                bool isEditable = row.Table.Columns.Contains("IsEditable")
+                    && row["IsEditable"] != DBNull.Value
+                    && Convert.ToBoolean(row["IsEditable"]);
+
+                string effectiveStatus = ClaimEditabilityHelper.ResolveEffectiveRowStatus(claimStatus, detailStatus, isEditable);
+
+                if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Draft))
+                    counts.Draft++;
+                else if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Returned))
+                    counts.Returned++;
+                else if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Submitted)
+                    || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending))
+                    counts.Submitted++;
+                else if (ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Approved)
+                    || ClaimStatuses.Equals(effectiveStatus, ClaimStatuses.Processed))
+                    counts.Completed++;
+                else
+                    counts.Submitted++;
+            }
+
+            return counts;
+        }
+
+        private void BindAutoSaveIndicator(DataTable dt)
+        {
+            if (pnlAutoSaveIndicator == null) return;
+
+            ActivityProgressCounts progress = CountActivityProgress(dt);
+            DateTime? lastSaved = GetLastDraftSaveTime();
+            bool showIndicator = progress.Draft > 0;
+
+            pnlAutoSaveIndicator.Visible = showIndicator;
+            if (!showIndicator) return;
+
+            if (litLastSavedTime != null)
+                litLastSavedTime.Text = lastSaved.HasValue ? lastSaved.Value.ToString("h:mm tt") : string.Empty;
+        }
+
+        private void BindEnhancedMonthlySummary(decimal grandTravel, decimal grandDA, decimal grandHotel, decimal grandOtherExpenses, decimal grandTotal)
+        {
+            if (pnlEnhancedMonthlySummary == null) return;
+
+            pnlEnhancedMonthlySummary.Visible = true;
+            if (lblSummaryTravel != null) lblSummaryTravel.Text = "₹ " + grandTravel.ToString("N2");
+            if (lblSummaryDA != null) lblSummaryDA.Text = "₹ " + grandDA.ToString("N2");
+            if (lblSummaryHotel != null) lblSummaryHotel.Text = "₹ " + grandHotel.ToString("N2");
+            if (lblSummaryOther != null) lblSummaryOther.Text = "₹ " + grandOtherExpenses.ToString("N2");
+            if (lblSummaryGrandTotal != null) lblSummaryGrandTotal.Text = "₹ " + grandTotal.ToString("N2");
+        }
+
+        private void BindProgressSummary(DataTable dt)
+        {
+            if (pnlProgressSummary == null) return;
+
+            ActivityProgressCounts progress = CountActivityProgress(dt);
+            bool hasActivities = dt != null && dt.Rows.Count > 0;
+            pnlProgressSummary.Visible = hasActivities;
+
+            if (!hasActivities) return;
+
+            if (lblProgressWorkingDays != null) lblProgressWorkingDays.Text = progress.WorkingDays.ToString();
+            if (lblProgressCompleted != null) lblProgressCompleted.Text = progress.Completed.ToString();
+            if (lblProgressDraft != null) lblProgressDraft.Text = progress.Draft.ToString();
+            if (lblProgressReturned != null) lblProgressReturned.Text = progress.Returned.ToString();
+            if (lblProgressSubmitted != null) lblProgressSubmitted.Text = progress.Submitted.ToString();
+        }
+
+        private void BindSubmissionConfidencePanel(DataTable dt, bool monthLocked, bool allowSubmission, bool allowExecution)
+        {
+            if (pnlSubmissionConfidence == null || phSubmissionConfidence == null) return;
+
+            bool hasActivities = dt != null && dt.Rows.Count > 0;
+            ActivityProgressCounts progress = CountActivityProgress(dt);
+
+            bool allActivitiesCompleted = hasActivities && progress.Draft == 0;
+            bool expensesReviewed = hasActivities && progress.Returned == 0;
+            bool policyLimitsSatisfied = allowExecution;
+            bool noReturnedActivities = progress.Returned == 0;
+
+            bool showPanel = hasActivities && (Actionable == null || Actionable.Visible);
+            pnlSubmissionConfidence.Visible = showPanel;
+
+            if (!showPanel)
+            {
+                phSubmissionConfidence.Controls.Clear();
+                return;
+            }
+
+            var items = new List<Tuple<string, bool>>
+            {
+                Tuple.Create("All activities completed", allActivitiesCompleted),
+                Tuple.Create("Expenses reviewed", expensesReviewed),
+                Tuple.Create("Policy limits satisfied", policyLimitsSatisfied),
+                Tuple.Create("No Returned activities", noReturnedActivities)
+            };
+
+            phSubmissionConfidence.Controls.Clear();
+            foreach (var item in items)
+            {
+                string iconClass = item.Item2 ? "fa-check-circle text-success" : "fa-times-circle text-muted";
+                phSubmissionConfidence.Controls.Add(new Literal
+                {
+                    Text = string.Format(
+                        "<div class=\"check-item\"><i class=\"fa {0}\"></i><span>{1}</span></div>",
+                        iconClass,
+                        HttpUtility.HtmlEncode(item.Item2 ? item.Item1 : item.Item1 + " — pending"))
+                });
+            }
+
+            if (!allowSubmission && monthLocked && progress.Returned > 0)
+            {
+                phSubmissionConfidence.Controls.Add(new Literal
+                {
+                    Text = "<div class=\"small text-warning mt-2 mb-0\"><i class=\"fa fa-info-circle\"></i> Correct returned days before resubmitting.</div>"
+                });
+            }
+        }
+
+        private void BindMonthlyConfidenceUx(DataTable dt, bool monthLocked, bool allowSubmission, bool allowExecution,
+            decimal grandTravel, decimal grandDA, decimal grandHotel, decimal grandTravelExpenses, decimal grandStationary)
+        {
+            decimal grandOther = grandTravelExpenses + grandStationary;
+            decimal grandTotal = grandTravel + grandDA + grandHotel + grandOther;
+
+            BindEnhancedMonthlySummary(grandTravel, grandDA, grandHotel, grandOther, grandTotal);
+            BindProgressSummary(dt);
+            BindSubmissionConfidencePanel(dt, monthLocked, allowSubmission, allowExecution);
+            BindAutoSaveIndicator(dt);
+
+            DateTime? lastSaved = GetLastDraftSaveTime();
+            if (lastSaved.HasValue && pnlAutoSaveIndicator != null && pnlAutoSaveIndicator.Visible)
+            {
+                string timeLabel = lastSaved.Value.ToString("h:mm tt");
+                ScriptManager.RegisterStartupScript(
+                    this,
+                    GetType(),
+                    "restoreAutoSave_" + Guid.NewGuid().ToString("N"),
+                    string.Format("if (typeof showAutoSaveIndicator === 'function') showAutoSaveIndicator('{0}', true, false);", timeLabel.Replace("'", "\\'")),
+                    true);
             }
         }
 
