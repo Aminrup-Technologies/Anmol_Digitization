@@ -43,8 +43,8 @@ namespace AnmolDristi
         {
             if (string.IsNullOrWhiteSpace(scheduleType))
                 throw new Exception("Please select a visit schedule type.");
-
-            if (!DateTime.TryParse(fromDateText, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime fromDate))
+            DateTime fromDate;
+            if (!DateTime.TryParse(fromDateText, CultureInfo.InvariantCulture, DateTimeStyles.None, out fromDate))
                 throw new Exception("Please select a valid visit start date.");
 
             DateTime toDate = fromDate;
@@ -56,11 +56,11 @@ namespace AnmolDristi
                 if (toDate.Date < fromDate.Date)
                     throw new Exception("Visit end date cannot be before the start date.");
             }
-
-            if (!TimeSpan.TryParse(timeFromText, out TimeSpan timeFrom))
+            TimeSpan timeFrom;
+            if (!TimeSpan.TryParse(timeFromText, out timeFrom))
                 throw new Exception("Please select a valid expected arrival time.");
-
-            if (!TimeSpan.TryParse(timeToText, out TimeSpan timeTo))
+            TimeSpan timeTo;
+            if (!TimeSpan.TryParse(timeToText, out timeTo))
                 throw new Exception("Please select a valid expected departure time.");
 
             if (timeTo <= timeFrom)
