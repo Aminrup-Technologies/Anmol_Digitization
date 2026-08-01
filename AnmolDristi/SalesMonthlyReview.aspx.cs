@@ -2138,27 +2138,34 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                         switch (effectiveStatus.ToLowerInvariant())
                         {
                             case "draft":
-                                lblStatus.Text = "<span class='badge badge-warning' data-toggle='tooltip' title='Draft – not submitted yet'><i class='fa fa-pencil-square-o'></i></span>";
+                                lblStatus.Text = "<span class='claims-badge claims-badge-pending' data-toggle='tooltip' title='Draft – not submitted yet'><i class='fa fa-pencil-square-o'></i> Draft</span>";
                                 break;
                             case "submitted":
-                                lblStatus.Text = "<span class='badge badge-info' data-toggle='tooltip' title='Submitted – awaiting approval'><i class='fa fa-paper-plane'></i></span>";
+                                lblStatus.Text = "<span class='claims-badge claims-badge-pending' data-toggle='tooltip' title='Submitted – awaiting approval'><i class='fa fa-paper-plane'></i> Submitted</span>";
                                 break;
                             case "approved":
-                                lblStatus.Text = "<span class='badge badge-success' data-toggle='tooltip' title='Approved by manager'><i class='fa fa-check-circle'></i></span>";
+                                lblStatus.Text = "<span class='claims-badge claims-badge-approved' data-toggle='tooltip' title='Approved by manager'><i class='fa fa-check-circle'></i> Approved</span>";
                                 break;
                             case "returned":
-                                lblStatus.Text =
-                                    "<span class='badge badge-danger mr-1' data-toggle='tooltip' title='Returned for correction – requires your attention'><i class='fa fa-exclamation-circle'></i> Requires Attention</span>" +
-                                    "<span class='badge badge-warning text-dark' data-toggle='tooltip' title='Action needed before resubmission'><i class='fa fa-wrench'></i> Requires Action</span>";
+                                lblStatus.Text = $"<span class='claims-badge claims-badge-returned' data-toggle='tooltip' title='Returned for correction'><i class='fa fa-undo'></i> Returned</span>";
+                                if (!string.IsNullOrWhiteSpace(remark))
+                                {
+                                    var lblReturnedReason = e.Row.FindControl("lblReturnedReasonInline") as Label;
+                                    if (lblReturnedReason != null)
+                                    {
+                                        lblReturnedReason.Visible = true;
+                                        lblReturnedReason.Text = "Reason: " + HttpUtility.HtmlEncode(remark);
+                                    }
+                                }
                                 break;
                             case "rejected":
-                                lblStatus.Text = $"<span class='badge badge-danger' data-toggle='tooltip' title='Rejected – please review{(string.IsNullOrWhiteSpace(encodedRemark) ? "" : " – " + encodedRemark)}'><i class='fa fa-times-circle'></i></span>";
+                                lblStatus.Text = $"<span class='claims-badge claims-badge-rejected' data-toggle='tooltip' title='Rejected – please review{(string.IsNullOrWhiteSpace(encodedRemark) ? "" : " – " + encodedRemark)}'><i class='fa fa-times-circle'></i> Rejected</span>";
                                 break;
                             case "processed":
-                                lblStatus.Text = "<span class='badge badge-primary' data-toggle='tooltip' title='Processed in accounts'><i class='fa fa-cogs'></i></span>";
+                                lblStatus.Text = "<span class='claims-badge claims-badge-completed' data-toggle='tooltip' title='Processed in accounts'><i class='fa fa-cogs'></i> Processed</span>";
                                 break;
                             default:
-                                lblStatus.Text = $"<span class='badge badge-secondary' data-toggle='tooltip' title='{HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(effectiveStatus) ? "Unknown status" : effectiveStatus)}'><i class='fa fa-clock-o'></i></span>";
+                                lblStatus.Text = $"<span class='claims-badge claims-badge-default' data-toggle='tooltip' title='{HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(effectiveStatus) ? "Unknown status" : effectiveStatus)}'><i class='fa fa-clock-o'></i> {HttpUtility.HtmlEncode(effectiveStatus)}</span>";
                                 break;
                         }
                     }

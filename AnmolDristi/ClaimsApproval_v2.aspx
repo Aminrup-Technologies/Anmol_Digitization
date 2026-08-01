@@ -312,7 +312,107 @@
         #detailsModal .table-responsive input[type="text"] {
             min-width: 160px; /* Forces enough width to read the text */
         }
+
+        /* Status badge standardization */
+        .claims-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .claims-badge-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .claims-badge-returned { background: #ffe8cc; color: #c45c00; border: 1px solid #ffc78a; }
+        .claims-badge-approved { background: #d4edda; color: #155724; border: 1px solid #b9dfc0; }
+        .claims-badge-completed { background: #cce5ff; color: #004085; border: 1px solid #9ec5fe; }
+        .claims-badge-ready { background: #e8d9ff; color: #4a148c; border: 1px solid #c9a8ff; }
+        .claims-badge-rejected { background: #f8d7da; color: #721c24; border: 1px solid #f1b0b7; }
+        .claims-badge-default { background: #e9ecef; color: #495057; border: 1px solid #ced4da; }
+
+        /* Sticky details modal action footer */
+        #detailsModal .modal-content { display: flex; flex-direction: column; max-height: 92vh; }
+        #detailsModal .modal-body { flex: 1 1 auto; overflow: hidden; }
+        #detailsModal .modal-footer.sticky-modal-footer {
+            position: sticky;
+            bottom: 0;
+            z-index: 1030;
+            background: #f8f9fa;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+            flex-shrink: 0;
+        }
+
+        /* Processing overlay */
+        .claims-ux-processing-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.85);
+            z-index: 10050;
+            text-align: center;
+            padding-top: 18vh;
+        }
+        .claims-ux-processing-card {
+            display: inline-block;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 28px 36px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            max-width: 420px;
+        }
+
+        /* Summary counter chips */
+        .request-summary-counters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .request-counter-chip {
+            flex: 1 1 140px;
+            min-width: 120px;
+            padding: 10px 14px;
+            border-radius: 6px;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+        .request-counter-chip .count { font-size: 1.4rem; font-weight: 700; display: block; }
+        .request-counter-chip .label { font-size: 0.72rem; text-transform: uppercase; color: #6c757d; font-weight: 600; }
+
+        /* Returned visibility */
+        .returned-reason-block {
+            font-size: 0.78rem;
+            margin-top: 4px;
+            color: #c45c00;
+            max-width: 220px;
+            white-space: normal;
+        }
+        .km-edited-badge {
+            font-size: 0.68rem;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+        .receipt-count-hint {
+            display: block;
+            font-size: 0.68rem;
+            color: #6c757d;
+            margin-top: 2px;
+            white-space: normal;
+            line-height: 1.2;
+        }
+
+        /* Empty state */
+        .claims-empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #6c757d;
+        }
+        .claims-empty-state i { font-size: 2.5rem; margin-bottom: 12px; color: #adb5bd; }
     </style>
+    <script src="Scripts/claims-ux-stabilization.js"></script>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -370,11 +470,37 @@
                                             </div>
                                         </div>
 
+                                        <div class="request-summary-counters" id="requestSummaryCounters">
+                                            <div class="request-counter-chip border-warning">
+                                                <span class="count"><asp:Label ID="lblCountPending" runat="server" Text="0" /></span>
+                                                <span class="label">Pending</span>
+                                            </div>
+                                            <div class="request-counter-chip" style="border-color:#ffc78a;">
+                                                <span class="count text-warning"><asp:Label ID="lblCountReturned" runat="server" Text="0" /></span>
+                                                <span class="label">Returned</span>
+                                            </div>
+                                            <div class="request-counter-chip border-primary">
+                                                <span class="count text-primary"><asp:Label ID="lblCountCompleted" runat="server" Text="0" /></span>
+                                                <span class="label">Completed</span>
+                                            </div>
+                                            <div class="request-counter-chip" style="border-color:#c9a8ff;">
+                                                <span class="count" style="color:#4a148c;"><asp:Label ID="lblCountReadyForPayment" runat="server" Text="0" /></span>
+                                                <span class="label">Ready For Payment</span>
+                                            </div>
+                                        </div>
+
+                                        <asp:Panel ID="pnlEmptyRequests" runat="server" Visible="false" CssClass="claims-empty-state border rounded bg-white mb-3">
+                                            <i class="fa fa-inbox d-block"></i>
+                                            <h5 class="mb-1">No approval requests found</h5>
+                                            <p class="mb-0">Try selecting another month or employee.</p>
+                                        </asp:Panel>
+
                                         <asp:Panel ID="pnlRequests" runat="server">
                                             <asp:GridView ID="gvRequests" runat="server" ClientIDMode="Static"
                                                 CssClass="table table-striped jambo_table bulk_action dt-responsive nowrap"
                                                 ShowHeaderWhenEmpty="true" AutoGenerateColumns="false"
-                                                OnRowCommand="gvRequests_RowCommand" DataKeyNames="ApprovalRequestId">
+                                                OnRowCommand="gvRequests_RowCommand" OnRowDataBound="gvRequests_RowDataBound"
+                                                DataKeyNames="ApprovalRequestId">
                                                 <HeaderStyle CssClass="gentilia-table-header" />
                                                 <RowStyle CssClass="gentilia-row" />
                                                 <AlternatingRowStyle CssClass="gentilia-row-alt" />
@@ -394,7 +520,7 @@
                                                     </asp:TemplateField>
                                                     <asp:TemplateField HeaderText="Status">
                                                         <ItemTemplate>
-                                                            <span class="badge badge-info"><%# Eval("RequestStatus") %></span>
+                                                            <span class='<%# GetStatusBadgeCss(Eval("RequestStatus")) %>'><%# Eval("RequestStatus") %></span>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
                                                     <asp:TemplateField HeaderText="Stage">
@@ -461,6 +587,8 @@
                                                     <%# Eval("ActivityDate", "{0:dd-MMM-yyyy}") %><br />
                                                     <small class="text-muted"><%# Eval("Day") %></small>
                                                     <asp:Label ID="lblDetailVersion" runat="server" CssClass="badge badge-secondary ml-1" />
+                                                    <asp:Label ID="lblReturnedBadge" runat="server" Visible="false" CssClass="claims-badge claims-badge-returned d-block mt-1" Text="Returned" />
+                                                    <asp:Label ID="lblReturnedReason" runat="server" Visible="false" CssClass="returned-reason-block d-block" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
@@ -469,6 +597,7 @@
                                                     <span class="km-value font-weight-bold font-md" data-activityid='<%# Eval("ActivityId") %>'>
                                                         <%# Eval("Snapshot_TotalDistanceKM", "{0:N2}") %>
                                                     </span>
+                                                    <asp:Label ID="lblKmEdited" runat="server" Visible="false" CssClass="badge badge-info km-edited-badge" Text="Edited" ToolTip="KM has been modified — click folder to view history" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
                                             <asp:BoundField DataField="Snapshot_CalculatedClaimAmount" HeaderText="Bike TA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
@@ -526,7 +655,7 @@
                                             </asp:TemplateField>
                                             <asp:TemplateField HeaderText="Remarks" HeaderStyle-Width="20%">
                                                 <ItemTemplate>
-                                                    <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' TextMode="MultiLine" Rows="2" CssClass="form-control form-control-sm" />
+                                                    <asp:TextBox ID="txtRowRemark" runat="server" Text='<%# Eval("DetailRemarks") %>' TextMode="MultiLine" Rows="2" CssClass="form-control form-control-sm claims-ux-track-dirty" />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
                                             <asp:TemplateField HeaderText="Approval" HeaderStyle-Width="5%">
@@ -534,24 +663,29 @@
                                                     <asp:Button
                                                         ID="btnApproveRow"
                                                         runat="server"
-                                                        CssClass="btn btn-success btn-sm"
+                                                        CssClass="btn btn-success btn-sm claims-ux-postback-btn"
                                                         Text="Approve"
                                                         CommandName="ApproveRow"
-                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
+                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>'
+                                                        data-ux-loading="Approving..." />
                                                     <asp:Button
                                                         ID="btnReturnRow"
                                                         runat="server"
-                                                        CssClass="btn btn-warning btn-sm mt-1"
+                                                        CssClass="btn btn-warning btn-sm mt-1 claims-ux-postback-btn"
                                                         Text="Return"
                                                         CommandName="ReturnRow"
-                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
+                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>'
+                                                        data-ux-loading="Returning..."
+                                                        data-ux-confirm='{"title":"Return this Day?","message":"The employee will be allowed to edit only Returned items.","confirmText":"Return","confirmClass":"btn-warning"}' />
                                                     <asp:Button
                                                         ID="btnRejectDayRow"
                                                         runat="server"
-                                                        CssClass="btn btn-danger btn-sm mt-1"
+                                                        CssClass="btn btn-danger btn-sm mt-1 claims-ux-postback-btn"
                                                         Text="Reject"
                                                         CommandName="RejectDayRow"
-                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>' />
+                                                        CommandArgument='<%# Eval("ApprovalRequestDetailId") %>'
+                                                        data-ux-loading="Rejecting..."
+                                                        data-ux-confirm='{"title":"Reject this Day?","message":"The employee cannot modify rejected claims.","confirmText":"Reject","confirmClass":"btn-danger"}' />
                                                 </ItemTemplate>
                                             </asp:TemplateField>
                                         </Columns>
@@ -560,19 +694,19 @@
 
                                 <div class="row mt-2 align-items-center">
                                     <div class="col-md-6">
-                                        <asp:TextBox ID="txtBulkRemarks" runat="server" CssClass="form-control form-control-sm" Placeholder="Bulk remarks for selected items..." />
+                                        <asp:TextBox ID="txtBulkRemarks" runat="server" CssClass="form-control form-control-sm claims-ux-track-dirty" Placeholder="Bulk remarks for selected items..." />
                                     </div>
                                     <div class="col-md-6 text-right">
-                                        <asp:Button ID="btnApproveSelected" runat="server" Text="Approve Selected" CssClass="btn btn-success btn-sm" OnClick="btnApproveSelected_Click" />
-                                        <asp:Button ID="btnRejectSelected" runat="server" Text="Return Selected" CssClass="btn btn-warning btn-sm" OnClick="btnReturnSelected_Click" />
-                                        <asp:Button ID="btnRejectDaysSelected" runat="server" Text="Reject Selected" CssClass="btn btn-danger btn-sm" OnClick="btnRejectDaysSelected_Click" />
+                                        <asp:Button ID="btnApproveSelected" runat="server" Text="Approve Selected" CssClass="btn btn-success btn-sm claims-ux-postback-btn" OnClick="btnApproveSelected_Click" data-ux-processing="Processing bulk approval..." data-ux-loading="Approving..." />
+                                        <asp:Button ID="btnRejectSelected" runat="server" Text="Return Selected" CssClass="btn btn-warning btn-sm claims-ux-postback-btn" OnClick="btnReturnSelected_Click" data-ux-processing="Processing bulk return..." data-ux-loading="Returning..." data-ux-confirm='{"title":"Return selected days?","message":"The employee will be allowed to edit only Returned items.","confirmText":"Return","confirmClass":"btn-warning"}' />
+                                        <asp:Button ID="btnRejectDaysSelected" runat="server" Text="Reject Selected" CssClass="btn btn-danger btn-sm claims-ux-postback-btn" OnClick="btnRejectDaysSelected_Click" data-ux-processing="Processing bulk reject..." data-ux-loading="Rejecting..." data-ux-confirm='{"title":"Reject selected days?","message":"The employee cannot modify rejected claims.","confirmText":"Reject","confirmClass":"btn-danger"}' />
                                     </div>
                                 </div>
 
                                 <asp:Button ID="btnRefreshCalculations" runat="server" OnClick="btnRefreshCalculations_Click" ClientIDMode="Static" Style="" />
                             </div>
 
-                            <div class="modal-footer bg-light d-flex justify-content-between align-items-end" style="border-top: 2px solid #dee2e6;">
+                            <div class="modal-footer bg-light d-flex justify-content-between align-items-end sticky-modal-footer" style="border-top: 2px solid #dee2e6;">
 
                                 <div class="dashboard-container">
                                     <div class="dashboard-box bg-white border">
@@ -613,12 +747,12 @@
                                     <asp:Label ID="lblModalMessage" runat="server" CssClass="d-block mb-2 font-weight-bold text-right" />
 
                                     <div class="modal-action-buttons">
-                                        <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0" OnClick="btnRecalculate_Click" OnClientClick="showRecalculateSpinner(this);" ToolTip="Recalculate approved amounts">
+                                        <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0 claims-ux-postback-btn" OnClick="btnRecalculate_Click" ToolTip="Recalculate approved amounts" data-ux-processing="Recalculating totals..." data-ux-loading="Calculating...">
                                             <i class="fa fa-refresh"></i> Re-Calculate
                                         </asp:LinkButton>
-                                        <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return" CssClass="btn btn-danger btn-sm m-0 ml-2" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" />
-                                        <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward" CssClass="btn btn-success btn-sm m-0 ml-2" OnClick="btnForwardLevel_Click" Visible="false" />
-                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2" OnClick="btnMarkReadyForPayment_Click" Visible="false" />
+                                        <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return" CssClass="btn btn-danger btn-sm m-0 ml-2 claims-ux-postback-btn" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" Visible="true" data-ux-loading="Returning..." />
+                                        <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward" CssClass="btn btn-success btn-sm m-0 ml-2 claims-ux-postback-btn" OnClick="btnForwardLevel_Click" OnClientClick="return showApprovalSummaryConfirm('forward');" Visible="false" data-ux-processing="Forwarding request..." data-ux-loading="Forwarding..." />
+                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2 claims-ux-postback-btn" OnClick="btnMarkReadyForPayment_Click" OnClientClick="return showApprovalSummaryConfirm('payment');" Visible="false" data-ux-processing="Finalizing request..." data-ux-loading="Processing..." />
                                         <button type="button" class="btn btn-secondary btn-sm m-0 ml-2" data-dismiss="modal">Close</button>
                                     </div>
                                 </div>
@@ -692,14 +826,14 @@
                                     <div class="col-md-3">
                                         <div class="form-group mb-0">
                                             <label class="font-weight-bold text-primary small mb-1 text-uppercase">Modify KM To</label>
-                                            <input type="number" step="0.01" id="km_modal_new" class="form-control border-primary text-center font-weight-bold" />
+                                            <input type="number" step="0.01" id="km_modal_new" class="form-control border-primary text-center font-weight-bold claims-ux-track-dirty" />
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group mb-0">
                                             <label class="font-weight-bold text-muted small mb-1 text-uppercase">Reason for change</label>
                                             <div class="input-group">
-                                                <input type="text" id="km_modal_reason" class="form-control" placeholder="Required if changing KM..." />
+                                                <input type="text" id="km_modal_reason" class="form-control claims-ux-track-dirty" placeholder="Required if changing KM..." />
                                                 <div class="input-group-append">
                                                     <button type="button" id="km_modal_save" class="btn btn-primary shadow-sm" onclick="saveKM()"><i class="fa fa-save mr-1"></i>Save</button>
                                                 </div>
@@ -1009,6 +1143,13 @@
             } catch (e) {
                 console.error("Error parsing expenses JSON:", e);
             }
+
+            var expenseCounts = ClaimsUx.parseExpenseCounts(expenses);
+            html += '<div class="alert alert-light border small py-2 mb-3">' +
+                '<strong>Expenses (' + expenseCounts.total + ')</strong> &mdash; ' +
+                'Approved: <span class="text-success font-weight-bold">' + expenseCounts.approved + '</span>, ' +
+                'Pending: <span class="text-warning font-weight-bold">' + expenseCounts.pending + '</span>' +
+                '</div>';
 
             // Render Individual Expense Cards
             if (expenses.length > 0) {
@@ -1727,12 +1868,36 @@
                     return;
             }
 
-            if (!confirm("Are you sure you want to " + actionText + "?"))
+            if (action === 'REJECT') {
+                ClaimsUx.showConfirm({
+                    title: 'Reject this Day?',
+                    message: 'The employee cannot modify rejected claims.',
+                    confirmText: 'Reject',
+                    confirmClass: 'btn-danger',
+                    onConfirm: function () { executeDayAction(action, detailId, reqId); }
+                });
                 return;
+            }
+            if (action === 'RETURN') {
+                ClaimsUx.showConfirm({
+                    title: 'Return this Day?',
+                    message: 'The employee will be allowed to edit only Returned items.',
+                    confirmText: 'Return',
+                    confirmClass: 'btn-warning',
+                    onConfirm: function () { executeDayAction(action, detailId, reqId); }
+                });
+                return;
+            }
 
-            // Disable all footer buttons
+            executeDayAction(action, detailId, reqId);
+        }
+
+        function executeDayAction(action, detailId, reqId) {
             $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
                 .prop('disabled', true);
+
+            ClaimsUx.clearDirty();
+            ClaimsUx.showProcessing('Processing day action...');
 
             $('#unified_modal_message').html(
                 '<span class="text-info">' +
@@ -1762,6 +1927,7 @@
                 dataType: "json",
 
                 success: function (r) {
+                    ClaimsUx.hideProcessing();
 
                     if (r.d && r.d.success) {
 
@@ -1787,6 +1953,7 @@
                 },
 
                 error: function () {
+                    ClaimsUx.hideProcessing();
 
                     $('#unified_modal_message').html(
 
@@ -1863,20 +2030,92 @@
         }
 
         function promptForReturn() {
-            var reason = prompt("Please enter the reason for returning this ENTIRE claim to the employee:");
-            if (reason != null && reason.trim() !== "") {
-                document.getElementById('hfReturnReason').value = reason;
-                return true;
-            } else if (reason != null) {
-                alert("A reason is required to return the claim.");
-                return false;
-            }
+            ClaimsUx.showConfirm({
+                title: 'Return this claim to the employee?',
+                message: 'The employee will be allowed to edit only Returned items.<br><br>After confirming, you will be asked for a return reason.',
+                confirmText: 'Return',
+                confirmClass: 'btn-danger',
+                onConfirm: function () {
+                    var reason = prompt('Please enter the reason for returning this ENTIRE claim to the employee:');
+                    if (reason != null && reason.trim() !== '') {
+                        document.getElementById('hfReturnReason').value = reason;
+                        ClaimsUx.armProcessingForPostback('Returning claim to employee...');
+                        ClaimsUx.clearDirty();
+                        var btn = document.getElementById('<%= btnReturnToEmployee.ClientID %>');
+                        if (btn) {
+                            $(btn).data('ux-skip-confirm', true);
+                            ClaimsUx.disableButton(btn, 'Returning...');
+                            setTimeout(function () { __doPostBack(btn.name, ''); }, 0);
+                        }
+                    } else if (reason != null) {
+                        alert('A reason is required to return the claim.');
+                    }
+                }
+            });
+            return false;
+        }
+
+        function showApprovalSummaryConfirm(actionType) {
+            var daysApproved = 0, daysReturned = 0, daysRejected = 0, daysPending = 0;
+            $('#gvDetails tbody tr').each(function () {
+                var $row = $(this);
+                if ($row.find('td').length < 3) return;
+                if ($row.find('.claims-badge-returned').length) { daysReturned++; return; }
+                var cls = $row.attr('class') || '';
+                if (cls.indexOf('table-success') >= 0) daysApproved++;
+                else if (cls.indexOf('table-danger') >= 0) daysRejected++;
+                else daysPending++;
+            });
+
+            var deductions = $('#<%= lblSummaryDeduction.ClientID %>').text() || '0.00';
+            var deductedKm = $('#<%= lblSummaryDeductedKM.ClientID %>').text() || '0.00';
+            var netPayable = $('#<%= lblSummaryApproved.ClientID %>').text() || '0.00';
+            var netKm = $('#<%= lblSummaryApprovedKM.ClientID %>').text() || '0.00';
+
+            var title = actionType === 'payment' ? 'Mark this request Ready For Payment?' : 'Forward this request?';
+            var subtitle = actionType === 'payment'
+                ? 'This completes the approval workflow.'
+                : 'Proceed to the next approval level?';
+            var confirmText = actionType === 'payment' ? 'Confirm' : 'Forward';
+
+            var html = '<div class="text-left"><p class="mb-2">' + subtitle + '</p>' +
+                '<table class="table table-sm table-bordered mb-0">' +
+                '<tr><td>Days Approved</td><td class="text-right font-weight-bold">' + daysApproved + '</td></tr>' +
+                '<tr><td>Days Returned</td><td class="text-right font-weight-bold">' + daysReturned + '</td></tr>' +
+                '<tr><td>Days Rejected</td><td class="text-right font-weight-bold">' + daysRejected + '</td></tr>' +
+                '<tr><td>Expense Deductions</td><td class="text-right text-danger">(-) ₹ ' + deductions + '</td></tr>' +
+                '<tr><td>KM Reduced</td><td class="text-right text-danger">(-) ' + deductedKm + ' KM</td></tr>' +
+                '<tr class="table-success"><td><strong>Final Payable</strong></td><td class="text-right"><strong>₹ ' + netPayable + '</strong><br><small>' + netKm + ' KM</small></td></tr>' +
+                '</table></div>';
+
+            window._approvalSummaryProceed = false;
+            ClaimsUx.showConfirm({
+                title: title,
+                message: html,
+                confirmText: confirmText,
+                confirmClass: actionType === 'payment' ? 'btn-warning' : 'btn-success',
+                onConfirm: function () {
+                    window._approvalSummaryProceed = true;
+                    ClaimsUx.armProcessingForPostback(actionType === 'payment' ? 'Finalizing request...' : 'Forwarding request...');
+                    ClaimsUx.clearDirty();
+                    var btn = document.getElementById(actionType === 'payment'
+                        ? '<%= btnMarkReadyForPayment.ClientID %>'
+                        : '<%= btnForwardLevel.ClientID %>');
+                    if (btn) {
+                        $(btn).data('ux-skip-confirm', true);
+                        ClaimsUx.disableButton(btn, 'Processing...');
+                        setTimeout(function () { __doPostBack(btn.name, ''); }, 0);
+                    }
+                }
+            });
             return false;
         }
 
         function showRecalculateSpinner(btn) {
-            btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Calculating...';
-            btn.classList.add('disabled');
+            if (window.ClaimsUx) {
+                ClaimsUx.armProcessingForPostback('Recalculating totals...');
+                ClaimsUx.disableButton(btn, 'Calculating...');
+            }
             return true;
         }
 
@@ -1897,6 +2136,44 @@
                 var gridContainer = document.querySelector('#detailsModal .table-responsive');
                 if (gridContainer) { gridContainer.scrollTop = _gridScrollTop; }
                 initDataTablesSafe();
+                decorateReceiptCounts();
+                decorateKmEditedBadges();
+            });
+        }
+
+        function decorateReceiptCounts() {
+            $('.btn-day-action').each(function () {
+                var json = $(this).attr('data-expenses');
+                var counts = ClaimsUx.parseExpenseCounts(json);
+                var $hint = $(this).siblings('.receipt-count-hint');
+                if (!$hint.length) {
+                    $hint = $('<small class="receipt-count-hint"></small>');
+                    $(this).after($hint);
+                }
+                if (counts.total > 0) {
+                    $hint.html('Expenses (' + counts.total + ')<br>Approved: ' + counts.approved + ' | Pending: ' + counts.pending);
+                } else {
+                    $hint.html('No expenses');
+                }
+            });
+        }
+
+        function decorateKmEditedBadges() {
+            $('.km-value[data-activityid]').each(function () {
+                var actId = $(this).data('activityid');
+                var $badge = $(this).siblings('.km-edited-badge');
+                if (!$badge.length) return;
+                $.ajax({
+                    type: 'POST',
+                    url: 'ClaimsApproval_v2.aspx/GetKMHistory',
+                    data: JSON.stringify({ activityId: parseInt(actId, 10) }),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json'
+                }).done(function (resp) {
+                    if (resp.d && resp.d.success && resp.d.history && resp.d.history.length > 0) {
+                        $badge.show();
+                    }
+                });
             });
         }
 
@@ -1933,7 +2210,12 @@
         }
 
         $(document).ready(function () {
+            ClaimsUx.init({
+                dirtySelector: '.claims-ux-track-dirty, #km_modal_new, #km_modal_reason, #txtBulkRemarks'
+            });
             initDataTablesSafe();
+            decorateReceiptCounts();
+            decorateKmEditedBadges();
         });
 
         var reopenDetailsModal = false;
