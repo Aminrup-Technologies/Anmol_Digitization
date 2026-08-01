@@ -45,7 +45,9 @@ namespace AnmolDristi
                 // Verify the Visit belongs to this exact decoded Employee Code
                 string query = @"
                     SELECT VisitorName, VisitorCompany, PurposeOfVisit, ApprovalStatus, 
-                           ISNULL(NULLIF(VisitorMobile, ''), VisitorEmail) AS ContactInfo
+                           ISNULL(NULLIF(VisitorMobile, ''), VisitorEmail) AS ContactInfo,
+                           ISNULL(ScheduleType, 'SingleDay') AS ScheduleType,
+                           RequestedValidFrom, RequestedValidUpto
                     FROM VMS_VisitLog 
                     WHERE LogID = @VisitId AND HostEmployeeCode = @EmpCode";
 
@@ -68,6 +70,20 @@ namespace AnmolDristi
                                 lblCompany.Text = sdr["VisitorCompany"].ToString();
                                 lblPurpose.Text = sdr["PurposeOfVisit"].ToString();
                                 lblContact.Text = sdr["ContactInfo"].ToString();
+
+                                if (sdr["RequestedValidFrom"] != DBNull.Value && sdr["RequestedValidUpto"] != DBNull.Value)
+                                {
+                                    DateTime reqFrom = Convert.ToDateTime(sdr["RequestedValidFrom"]);
+                                    DateTime reqTo = Convert.ToDateTime(sdr["RequestedValidUpto"]);
+                                    string scheduleType = sdr["ScheduleType"].ToString();
+                                    lblSchedule.Text = scheduleType == "MultiDay"
+                                        ? $"{reqFrom:dd MMM yyyy} to {reqTo:dd MMM yyyy}, daily {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}"
+                                        : $"{reqFrom:dd MMM yyyy}, {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}";
+                                }
+                                else
+                                {
+                                    lblSchedule.Text = "Not specified";
+                                }
 
                                 pnlAction.Visible = true;
                                 lblMessage.Visible = false;
@@ -109,34 +125,49 @@ namespace AnmolDristi
                 if (approvalStatus == "Approved")
                 {
                     Guid qrToken = Guid.NewGuid();
-                    string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                    {
-                        cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
-                        cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
-                        cmd.Parameters.AddWithValue("@Token", qrToken);
-                        cmd.Parameters.AddWithValue("@LogID", visitId);
-                        cmd.ExecuteNonQuery();
-                    }
 
-                    string visEmail = "";
-                    string visMobile = "";
-                    string visName = "";
-                    using (SqlCommand lookupCmd = new SqlCommand("SELECT VisitorEmail, VisitorMobile, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID", con))
+                    using (SqlTransaction trans = con.BeginTransaction())
                     {
-                        lookupCmd.Parameters.AddWithValue("@LogID", visitId);
-                        using (SqlDataReader sdr = lookupCmd.ExecuteReader())
+                        try
                         {
-                            if (sdr.Read())
+                            string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                            using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
                             {
-                                visEmail = sdr["VisitorEmail"].ToString();
-                                visMobile = sdr["VisitorMobile"].ToString();
-                                visName = sdr["VisitorName"].ToString();
+                                cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
+                                cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
+                                cmd.Parameters.AddWithValue("@Token", qrToken);
+                                cmd.Parameters.AddWithValue("@LogID", visitId);
+                                cmd.ExecuteNonQuery();
                             }
+
+                            VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, Convert.ToInt32(visitId), null, null);
+
+                            string visEmail = "";
+                            string visMobile = "";
+                            string visName = "";
+                            using (SqlCommand lookupCmd = new SqlCommand("SELECT VisitorEmail, VisitorMobile, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID", con, trans))
+                            {
+                                lookupCmd.Parameters.AddWithValue("@LogID", visitId);
+                                using (SqlDataReader sdr = lookupCmd.ExecuteReader())
+                                {
+                                    if (sdr.Read())
+                                    {
+                                        visEmail = sdr["VisitorEmail"].ToString();
+                                        visMobile = sdr["VisitorMobile"].ToString();
+                                        visName = sdr["VisitorName"].ToString();
+                                    }
+                                }
+                            }
+
+                            VmsHelper.QueueVisitorPassNotification(con, Convert.ToInt32(visitId), qrToken, visName, visEmail, visMobile);
+                            trans.Commit();
+                        }
+                        catch
+                        {
+                            trans.Rollback();
+                            throw;
                         }
                     }
-
-                    VmsHelper.QueueVisitorPassNotification(con, Convert.ToInt32(visitId), qrToken, visName, visEmail, visMobile);
                 }
                 else
                 {

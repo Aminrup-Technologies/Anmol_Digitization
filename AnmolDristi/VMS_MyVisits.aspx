@@ -130,7 +130,11 @@
                                     <span><%# Eval("PurposeOfVisit") %></span>
                                 </div>
                                 <div class="detail-row">
-                                    <span class="detail-label">Visit:</span>
+                                    <span class="detail-label">Schedule:</span>
+                                    <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto")) %></span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Today's Visit:</span>
                                     <span><%# Eval("VisitStatus") %></span>
                                 </div>
                                 <div class="detail-row" style="margin-top: 12px;">

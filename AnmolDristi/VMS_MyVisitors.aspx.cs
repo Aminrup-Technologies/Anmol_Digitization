@@ -103,16 +103,29 @@ namespace AnmolDristi
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@Token", qrToken);
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                }
+                    try
+                    {
+                        string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                        using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
+                        {
+                            cmd.Parameters.AddWithValue("@Token", qrToken);
+                            cmd.Parameters.AddWithValue("@LogID", logId);
+                            cmd.ExecuteNonQuery();
+                        }
 
-                VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile);
+                        VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, logId, null, null);
+                        VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile);
+                        trans.Commit();
+                    }
+                    catch
+                    {
+                        trans.Rollback();
+                        throw;
+                    }
+                }
             }
 
             lblPendingMsg.ForeColor = Color.Green;

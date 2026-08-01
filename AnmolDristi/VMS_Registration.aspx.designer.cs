@@ -57,6 +57,16 @@ namespace AnmolDristi {
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfSelectedHostCode;
         
+        protected global::System.Web.UI.WebControls.DropDownList ddlScheduleType;
+        
+        protected global::System.Web.UI.WebControls.TextBox txtVisitFromDate;
+        
+        protected global::System.Web.UI.WebControls.TextBox txtVisitToDate;
+        
+        protected global::System.Web.UI.WebControls.TextBox txtTimeFrom;
+        
+        protected global::System.Web.UI.WebControls.TextBox txtTimeTo;
+        
         /// <summary>
         /// ddlPurpose control.
         /// </summary>

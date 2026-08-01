@@ -51,6 +51,11 @@ namespace AnmolDristi
                         v.PurposeOfVisit,
                         v.ApprovalStatus,
                         v.VisitStatus,
+                        v.ScheduleType,
+                        v.RequestedValidFrom,
+                        v.RequestedValidUpto,
+                        v.ValidFrom,
+                        v.ValidUpto,
                         v.QRToken,
                         ISNULL(o.AliasName, b.Branch_Description) AS AliasName,
                         u.EmployeeName AS HostName
@@ -86,6 +91,21 @@ namespace AnmolDristi
                     }
                 }
             }
+        }
+
+        protected string FormatVisitSchedule(object scheduleTypeObj, object fromObj, object toObj)
+        {
+            if (fromObj == null || fromObj == DBNull.Value || toObj == null || toObj == DBNull.Value)
+                return "Not specified";
+
+            DateTime from = Convert.ToDateTime(fromObj);
+            DateTime to = Convert.ToDateTime(toObj);
+            string scheduleType = scheduleTypeObj?.ToString() ?? "SingleDay";
+
+            if (scheduleType == "MultiDay")
+                return $"{from:dd MMM yyyy} to {to:dd MMM yyyy}, daily {from:HH:mm} - {to:HH:mm}";
+
+            return $"{from:dd MMM yyyy}, {from:HH:mm} - {to:HH:mm}";
         }
 
         protected void rptVisits_ItemDataBound(object sender, RepeaterItemEventArgs e)

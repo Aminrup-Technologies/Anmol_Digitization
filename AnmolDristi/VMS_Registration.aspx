@@ -31,6 +31,37 @@
                     <asp:HiddenField ID="hfSelectedHostCode" runat="server" />
 
                     <div class="form-group">
+                        <label class="form-label">Visit Schedule *</label>
+                        <asp:DropDownList ID="ddlScheduleType" runat="server" CssClass="form-control">
+                            <asp:ListItem Text="Single Day" Value="SingleDay" Selected="True"></asp:ListItem>
+                            <asp:ListItem Text="Multiple Days" Value="MultiDay"></asp:ListItem>
+                        </asp:DropDownList>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label class="form-label">Visit From Date *</label>
+                            <asp:TextBox ID="txtVisitFromDate" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                        </div>
+                        <div class="col-xs-6" id="divVisitToDate">
+                            <label class="form-label">Visit To Date *</label>
+                            <asp:TextBox ID="txtVisitToDate" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-xs-6">
+                            <label class="form-label">Expected Arrival *</label>
+                            <asp:TextBox ID="txtTimeFrom" runat="server" CssClass="form-control" TextMode="Time"></asp:TextBox>
+                        </div>
+                        <div class="col-xs-6">
+                            <label class="form-label">Expected Departure *</label>
+                            <asp:TextBox ID="txtTimeTo" runat="server" CssClass="form-control" TextMode="Time"></asp:TextBox>
+                        </div>
+                    </div>
+                    <p class="text-muted" style="font-size: 12px; margin-bottom: 15px;">You may register anytime. Your host will approve the dates and daily hours. Security will check you in and out on each approved visit day.</p>
+
+                    <div class="form-group">
                         <label class="form-label">Visitor Photo *</label>
                         <div class="camera-box">
                             <video id="videoElement" autoplay playsinline></video>
@@ -116,6 +147,23 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
+            function toggleScheduleFields() {
+                if ($("#<%= ddlScheduleType.ClientID %>").val() === "MultiDay") {
+                    $("#divVisitToDate").show();
+                } else {
+                    $("#divVisitToDate").hide();
+                    $("#<%= txtVisitToDate.ClientID %>").val($("#<%= txtVisitFromDate.ClientID %>").val());
+                }
+            }
+
+            $("#<%= ddlScheduleType.ClientID %>").change(toggleScheduleFields);
+            $("#<%= txtVisitFromDate.ClientID %>").change(function () {
+                if ($("#<%= ddlScheduleType.ClientID %>").val() !== "MultiDay") {
+                    $("#<%= txtVisitToDate.ClientID %>").val($(this).val());
+                }
+            });
+            toggleScheduleFields();
+
             // --- 0. UI Interaction: Internal Employee Logic ---
             $("#<%= ddlPurpose.ClientID %>").change(function () {
                 if ($(this).val() === "I Work Here") {
@@ -229,6 +277,18 @@
             }
             if ($("#<%= hfSelectedHostCode.ClientID %>").val() === "") {
                 alert("Please search and select a valid Host Employee.");
+                return false;
+            }
+            if ($("#<%= txtVisitFromDate.ClientID %>").val() === "") {
+                alert("Please select your visit date.");
+                return false;
+            }
+            if ($("#<%= ddlScheduleType.ClientID %>").val() === "MultiDay" && $("#<%= txtVisitToDate.ClientID %>").val() === "") {
+                alert("Please select your visit end date.");
+                return false;
+            }
+            if ($("#<%= txtTimeFrom.ClientID %>").val() === "" || $("#<%= txtTimeTo.ClientID %>").val() === "") {
+                alert("Please select your expected arrival and departure times.");
                 return false;
             }
             

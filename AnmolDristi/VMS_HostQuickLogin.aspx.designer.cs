@@ -57,6 +57,8 @@ namespace AnmolDristi {
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblPurpose;
         
+        protected global::System.Web.UI.WebControls.Label lblSchedule;
+        
         /// <summary>
         /// lblContact control.
         /// </summary>
