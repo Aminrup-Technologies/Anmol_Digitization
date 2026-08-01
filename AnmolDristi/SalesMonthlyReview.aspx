@@ -456,7 +456,19 @@
                 max-width: 20%;
             }
         }
+
+        .claims-badge { display:inline-block; padding:4px 10px; border-radius:12px; font-size:0.78rem; font-weight:600; }
+        .claims-badge-pending { background:#fff3cd; color:#856404; border:1px solid #ffeeba; }
+        .claims-badge-returned { background:#ffe8cc; color:#c45c00; border:1px solid #ffc78a; }
+        .claims-badge-approved { background:#d4edda; color:#155724; border:1px solid #b9dfc0; }
+        .claims-badge-completed { background:#cce5ff; color:#004085; border:1px solid #9ec5fe; }
+        .claims-badge-ready { background:#e8d9ff; color:#4a148c; border:1px solid #c9a8ff; }
+        .claims-badge-rejected { background:#f8d7da; color:#721c24; border:1px solid #f1b0b7; }
+        .claims-badge-default { background:#e9ecef; color:#495057; border:1px solid #ced4da; }
+        .claims-empty-state { text-align:center; padding:40px 20px; color:#6c757d; }
+        .row-returned { border-left:3px solid #fd7e14; background-color:#fff8f0 !important; }
     </style>
+    <script src="Scripts/claims-ux-stabilization.js"></script>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -497,7 +509,7 @@
                                          Draft is a workflow status only, maintained until Submit Claim.
                                     <asp:Button ID="btn_save_draft" runat="server" CssClass="btn btn-secondary btn-sm mb-3" Text="Save as Draft" OnClick="btn_save_draft_Click" />
                                     --%>
-                                    <asp:Button ID="btn_submit" runat="server" CssClass="btn btn-success btn-sm mb-3" Text="Submit for Approval" OnClick="btn_submit_Click" OnClientClick="return showSubmitModal();" />
+                                    <asp:Button ID="btn_submit" runat="server" CssClass="btn btn-success btn-sm mb-3 claims-ux-postback-btn" Text="Submit for Approval" OnClick="btn_submit_Click" OnClientClick="return showSubmitModal();" data-ux-processing="Submitting claim for approval..." data-ux-loading="Submitting..." />
                                 </div>
                             </div>
 
@@ -540,6 +552,13 @@
                                             DataKeyNames="ActivityId" OnRowCommand="gvActivities_RowCommand" OnRowEditing="gvActivities_RowEditing"
                                             OnRowCancelingEdit="gvActivities_RowCancelingEdit" OnRowUpdating="gvActivities_RowUpdating"
                                             OnRowDataBound="gvActivities_RowDataBound" ShowFooter="true">
+                                            <EmptyDataTemplate>
+                                                <div class="claims-empty-state border rounded bg-white my-3">
+                                                    <i class="fa fa-calendar-o d-block" style="font-size:2.5rem;color:#adb5bd;"></i>
+                                                    <h5 class="mb-1">No activities found</h5>
+                                                    <p class="mb-0">Select a year and month, then click Search to load your working days.</p>
+                                                </div>
+                                            </EmptyDataTemplate>
                                             <Columns>
 
                                                 <asp:TemplateField HeaderText="Date & Day (Status)" ItemStyle-Width="10%">
@@ -592,6 +611,7 @@
                                                 <asp:TemplateField HeaderText="Status" ItemStyle-Width="5%" ItemStyle-HorizontalAlign="Center">
                                                     <ItemTemplate>
                                                         <asp:Label ID="lblClaimStatus" runat="server" />
+                                                        <asp:Label ID="lblReturnedReasonInline" runat="server" Visible="false" CssClass="d-block small text-warning mt-1" style="max-width:160px;white-space:normal;" />
                                                     </ItemTemplate>
                                                 </asp:TemplateField>
 
@@ -1549,6 +1569,11 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
+            if (window.ClaimsUx) {
+                ClaimsUx.init({
+                    dirtySelector: '.claims-ux-track-dirty, .km-input, #expenseModal input, #expenseModal textarea, #expenseModal select, #txtModalKM, #txtKmReason'
+                });
+            }
             $('.collapse-link').on('click', function () {
                 var $BOX_PANEL = $(this).closest('.x_panel');
                 var $ICON = $(this).find('i');
@@ -1605,6 +1630,8 @@
             Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () {
                 initTooltipsAndIcons();
                 keepSummaryPanelExpanded();
+                if (window.ClaimsUx) ClaimsUx.hideProcessing();
+                hidePageLoader();
             });
         }
 
@@ -2085,15 +2112,32 @@
         window.showSubmitModal = function () { $('#submitConfirmModal').modal({ backdrop: 'static', keyboard: false }); return false; };
         window.performSubmitFromModal = function () {
             $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"]').prop('disabled', true).css('opacity', '0.6');
-            $('#submitConfirmModal').modal('hide'); showPageLoader();
+            $('#submitConfirmModal').modal('hide');
+            if (window.ClaimsUx) {
+                ClaimsUx.clearDirty();
+                ClaimsUx.armProcessingForPostback('Submitting claim for approval...');
+                ClaimsUx.showProcessing('Submitting claim for approval...');
+            } else {
+                showPageLoader();
+            }
             __doPostBack('<%= btn_submit.UniqueID %>', '');
         };
-        window.enableButtonsAfterModalClose = function () { $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"]').prop('disabled', false).css('opacity', '1'); };
+        window.enableButtonsAfterModalClose = function () {
+            $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"]').prop('disabled', false).css('opacity', '1');
+            if (window.ClaimsUx) ClaimsUx.hideProcessing();
+            hidePageLoader();
+        };
 
         // Deprecated: handleSaveDraftClick — Save as Draft button removed (auto-save model).
         // window.handleSaveDraftClick = function (btn) { btn.disabled = true; btn.value = "Saving..."; showPageLoader(); return true; };
-        window.showPageLoader = function () { var e = document.getElementById("pageLoader"); if (e) e.style.display = "block"; };
-        window.hidePageLoader = function () { var e = document.getElementById("pageLoader"); if (e) e.style.display = "none"; };
+        window.showPageLoader = function () {
+            if (window.ClaimsUx) ClaimsUx.showProcessing('Processing, please wait...');
+            var e = document.getElementById("pageLoader"); if (e) e.style.display = "block";
+        };
+        window.hidePageLoader = function () {
+            if (window.ClaimsUx) ClaimsUx.hideProcessing();
+            var e = document.getElementById("pageLoader"); if (e) e.style.display = "none";
+        };
 
         window.copyPolicyJson = function () {
             var t = document.getElementById('<%= policyJsonRaw.ClientID %>'); if (!t) return;

@@ -94,6 +94,31 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button btnReset;
         
         /// <summary>
+        /// pnlEmptyRequests control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Panel pnlEmptyRequests;
+
+        /// <summary>
+        /// lblCountPending control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblCountPending;
+
+        /// <summary>
+        /// lblCountReturned control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblCountReturned;
+
+        /// <summary>
+        /// lblCountCompleted control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblCountCompleted;
+
+        /// <summary>
+        /// lblCountReadyForPayment control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.Label lblCountReadyForPayment;
+
+        /// <summary>
         /// pnlRequests control.
         /// </summary>
         /// <remarks>

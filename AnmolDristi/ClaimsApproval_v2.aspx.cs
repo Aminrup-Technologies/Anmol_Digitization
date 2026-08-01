@@ -97,6 +97,9 @@ namespace AnmolDristi
 
             gvRequests.DataSource = dt;
             gvRequests.DataBind();
+            UpdateRequestSummaryCounters(dt);
+            pnlEmptyRequests.Visible = dt.Rows.Count == 0;
+            pnlRequests.Visible = dt.Rows.Count > 0;
 
             // REQUIRED FOR DATATABLES: Forces the Grid to use <thead>
             if (gvRequests.Rows.Count > 0)
@@ -106,6 +109,86 @@ namespace AnmolDristi
             }
 
             if (upMainGrid != null) upMainGrid.Update();
+        }
+
+        protected void gvRequests_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            // Status badges are applied via GetStatusBadgeCss in markup.
+        }
+
+        protected string GetStatusBadgeCss(object statusObj)
+        {
+            string status = statusObj?.ToString() ?? string.Empty;
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Pending) ||
+                ClaimStatuses.Equals(status, ClaimStatuses.Submitted) ||
+                ClaimStatuses.Equals(status, ClaimStatuses.Draft))
+                return "claims-badge claims-badge-pending";
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Returned))
+                return "claims-badge claims-badge-returned";
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Approved))
+                return "claims-badge claims-badge-approved";
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Completed))
+                return "claims-badge claims-badge-completed";
+            if (ClaimStatuses.Equals(status, ClaimStatuses.ReadyForPayment))
+                return "claims-badge claims-badge-ready";
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
+                return "claims-badge claims-badge-rejected";
+            return "claims-badge claims-badge-default";
+        }
+
+        private void UpdateRequestSummaryCounters(DataTable dt)
+        {
+            int pending = 0, returned = 0, completed = 0, ready = 0;
+            if (dt != null)
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    string status = row.Table.Columns.Contains("RequestStatus")
+                        ? row["RequestStatus"]?.ToString() ?? string.Empty
+                        : string.Empty;
+                    if (ClaimStatuses.Equals(status, ClaimStatuses.Pending)) pending++;
+                    else if (ClaimStatuses.Equals(status, ClaimStatuses.Returned)) returned++;
+                    else if (ClaimStatuses.Equals(status, ClaimStatuses.Completed)) completed++;
+                    else if (ClaimStatuses.Equals(status, ClaimStatuses.ReadyForPayment)) ready++;
+                }
+            }
+
+            lblCountPending.Text = pending.ToString();
+            lblCountReturned.Text = returned.ToString();
+            lblCountCompleted.Text = completed.ToString();
+            lblCountReadyForPayment.Text = ready.ToString();
+        }
+
+        private static void ApplyExpenseCountHint(LinkButton lnkReview, string expensesJson)
+        {
+            if (lnkReview == null) return;
+            int total = 0, approved = 0, pending = 0;
+            ParseExpenseCounts(expensesJson, out total, out approved, out pending);
+            if (total > 0)
+            {
+                lnkReview.Text = "<i class=\"fa fa-folder-open\"></i> (" + total + ")";
+                lnkReview.ToolTip = string.Format("Expenses ({0}) — Approved: {1}, Pending: {2}", total, approved, pending);
+            }
+        }
+
+        private static void ParseExpenseCounts(string expensesJson, out int total, out int approved, out int pending)
+        {
+            total = approved = pending = 0;
+            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]") return;
+            try
+            {
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                var list = serializer.Deserialize<List<Dictionary<string, object>>>(expensesJson);
+                if (list == null) return;
+                foreach (var item in list)
+                {
+                    total++;
+                    string st = item.ContainsKey("ClaimStatus") ? (item["ClaimStatus"]?.ToString() ?? "") : "";
+                    if (ClaimStatuses.Equals(st, ClaimStatuses.Approved)) approved++;
+                    else pending++;
+                }
+            }
+            catch { /* display-only helper */ }
         }
 
         protected void btnSearch_Click(object sender, EventArgs e) { BindRequestsGrid(); }
@@ -842,6 +925,17 @@ namespace AnmolDristi
                 else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
                 {
                     e.Row.CssClass += " table-warning";
+                    var lblReturnedBadge = e.Row.FindControl("lblReturnedBadge") as Label;
+                    var lblReturnedReason = e.Row.FindControl("lblReturnedReason") as Label;
+                    if (lblReturnedBadge != null) lblReturnedBadge.Visible = true;
+                    string remarks = drv.Row.Table.Columns.Contains("DetailRemarks") && drv["DetailRemarks"] != DBNull.Value
+                        ? drv["DetailRemarks"].ToString().Trim()
+                        : string.Empty;
+                    if (lblReturnedReason != null && !string.IsNullOrWhiteSpace(remarks))
+                    {
+                        lblReturnedReason.Visible = true;
+                        lblReturnedReason.Text = "Reason: " + HttpUtility.HtmlEncode(remarks);
+                    }
                 }
                 else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentLevel)
                 {
@@ -877,6 +971,10 @@ namespace AnmolDristi
                         lnkReview.Text = "<i class=\"fa fa-exclamation-triangle\"></i>";
                         lnkReview.ToolTip = "Pending receipts require your approval or rejection!";
                     }
+                }
+                else if (lnkReview != null)
+                {
+                    ApplyExpenseCountHint(lnkReview, expensesJson);
                 }
             }
             else if (e.Row.RowType == DataControlRowType.Footer)
