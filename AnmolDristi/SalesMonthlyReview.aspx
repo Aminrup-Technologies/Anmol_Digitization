@@ -560,7 +560,7 @@
         .claims-empty-state { text-align:center; padding:40px 20px; color:#6c757d; }
         .row-returned { border-left:3px solid #fd7e14; background-color:#fff8f0 !important; }
     </style>
-    <script src="Scripts/claims-ux-stabilization.js"></script>
+    <script src="<%= ResolveUrl("~/Scripts/claims-ux-stabilization.js") %>"></script>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -1823,11 +1823,12 @@
 
     <script type="text/javascript">
         $(document).ready(function () {
-            if (window.ClaimsUx) {
-                ClaimsUx.init({
+            if (window.ClaimsUx && ClaimsUx.initOnce) {
+                ClaimsUx.initOnce({
                     dirtySelector: '.claims-ux-track-dirty, .km-input, #expenseModal input, #expenseModal textarea, #expenseModal select, #txtModalKM, #txtKmReason'
                 });
             }
+
             $('.collapse-link').on('click', function () {
                 var $BOX_PANEL = $(this).closest('.x_panel');
                 var $ICON = $(this).find('i');
@@ -1847,6 +1848,18 @@
             initTooltipsAndIcons();
             keepSummaryPanelExpanded();
         });
+
+        if (typeof Sys !== 'undefined' && Sys.Application) {
+            Sys.Application.add_load(function () {
+                if (window.ClaimsUx && ClaimsUx.initOnce) {
+                    ClaimsUx.initOnce({
+                        dirtySelector: '.claims-ux-track-dirty, .km-input, #expenseModal input, #expenseModal textarea, #expenseModal select, #txtModalKM, #txtKmReason'
+                    });
+                }
+                initTooltipsAndIcons();
+                keepSummaryPanelExpanded();
+            });
+        }
 
         function initTooltipsAndIcons() {
             $('[data-toggle="tooltip"]').tooltip();

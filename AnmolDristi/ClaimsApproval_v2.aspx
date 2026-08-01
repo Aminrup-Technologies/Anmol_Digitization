@@ -412,7 +412,7 @@
         }
         .claims-empty-state i { font-size: 2.5rem; margin-bottom: 12px; color: #adb5bd; }
     </style>
-    <script src="Scripts/claims-ux-stabilization.js"></script>
+    <script src="<%= ResolveUrl("~/Scripts/claims-ux-stabilization.js") %>"></script>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -747,12 +747,12 @@
                                     <asp:Label ID="lblModalMessage" runat="server" CssClass="d-block mb-2 font-weight-bold text-right" />
 
                                     <div class="modal-action-buttons">
-                                        <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0 claims-ux-postback-btn" OnClick="btnRecalculate_Click" ToolTip="Recalculate approved amounts" data-ux-processing="Recalculating totals..." data-ux-loading="Calculating...">
+                                        <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0 claims-ux-postback-btn" OnClick="btnRecalculate_Click" OnClientClick="return armRecalculateProcessing(this);" ToolTip="Recalculate approved amounts" data-ux-processing="Recalculating totals..." data-ux-loading="Calculating...">
                                             <i class="fa fa-refresh"></i> Re-Calculate
                                         </asp:LinkButton>
-                                        <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return" CssClass="btn btn-danger btn-sm m-0 ml-2 claims-ux-postback-btn" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" Visible="true" data-ux-loading="Returning..." />
-                                        <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward" CssClass="btn btn-success btn-sm m-0 ml-2 claims-ux-postback-btn" OnClick="btnForwardLevel_Click" OnClientClick="return showApprovalSummaryConfirm('forward');" Visible="false" data-ux-processing="Forwarding request..." data-ux-loading="Forwarding..." />
-                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2 claims-ux-postback-btn" OnClick="btnMarkReadyForPayment_Click" OnClientClick="return showApprovalSummaryConfirm('payment');" Visible="false" data-ux-processing="Finalizing request..." data-ux-loading="Processing..." />
+                                        <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return" CssClass="btn btn-danger btn-sm m-0 ml-2" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" Visible="true" />
+                                        <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward" CssClass="btn btn-success btn-sm m-0 ml-2" OnClick="btnForwardLevel_Click" OnClientClick="return showApprovalSummaryConfirm('forward');" Visible="false" />
+                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2" OnClick="btnMarkReadyForPayment_Click" OnClientClick="return showApprovalSummaryConfirm('payment');" Visible="false" />
                                         <button type="button" class="btn btn-secondary btn-sm m-0 ml-2" data-dismiss="modal">Close</button>
                                     </div>
                                 </div>
@@ -984,7 +984,12 @@
         var _currentUserLevel = <%= ViewState["CurrentUserLevel"] ?? 0 %>;
 
         function selectAllRows(chk) {
-            $('.row-select-checkbox input').prop('checked', chk.checked);
+            var table = document.getElementById('gvDetails');
+            if (!table) return;
+            var boxes = table.querySelectorAll('tbody input[type="checkbox"]');
+            for (var i = 0; i < boxes.length; i++) {
+                boxes[i].checked = chk.checked;
+            }
         }
 
         // =========================================================
@@ -1144,7 +1149,9 @@
                 console.error("Error parsing expenses JSON:", e);
             }
 
-            var expenseCounts = ClaimsUx.parseExpenseCounts(expenses);
+            var expenseCounts = (window.ClaimsUx && ClaimsUx.parseExpenseCounts)
+                ? ClaimsUx.parseExpenseCounts(expenses)
+                : { total: 0, approved: 0, pending: 0 };
             html += '<div class="alert alert-light border small py-2 mb-3">' +
                 '<strong>Expenses (' + expenseCounts.total + ')</strong> &mdash; ' +
                 'Approved: <span class="text-success font-weight-bold">' + expenseCounts.approved + '</span>, ' +
@@ -1869,23 +1876,31 @@
             }
 
             if (action === 'REJECT') {
-                ClaimsUx.showConfirm({
-                    title: 'Reject this Day?',
-                    message: 'The employee cannot modify rejected claims.',
-                    confirmText: 'Reject',
-                    confirmClass: 'btn-danger',
-                    onConfirm: function () { executeDayAction(action, detailId, reqId); }
-                });
+                if (window.ClaimsUx && ClaimsUx.showConfirm) {
+                    ClaimsUx.showConfirm({
+                        title: 'Reject this Day?',
+                        message: 'The employee cannot modify rejected claims.',
+                        confirmText: 'Reject',
+                        confirmClass: 'btn-danger',
+                        onConfirm: function () { executeDayAction(action, detailId, reqId); }
+                    });
+                } else if (confirm('Reject this Day?\n\nThe employee cannot modify rejected claims.')) {
+                    executeDayAction(action, detailId, reqId);
+                }
                 return;
             }
             if (action === 'RETURN') {
-                ClaimsUx.showConfirm({
-                    title: 'Return this Day?',
-                    message: 'The employee will be allowed to edit only Returned items.',
-                    confirmText: 'Return',
-                    confirmClass: 'btn-warning',
-                    onConfirm: function () { executeDayAction(action, detailId, reqId); }
-                });
+                if (window.ClaimsUx && ClaimsUx.showConfirm) {
+                    ClaimsUx.showConfirm({
+                        title: 'Return this Day?',
+                        message: 'The employee will be allowed to edit only Returned items.',
+                        confirmText: 'Return',
+                        confirmClass: 'btn-warning',
+                        onConfirm: function () { executeDayAction(action, detailId, reqId); }
+                    });
+                } else if (confirm('Return this Day?\n\nThe employee will be allowed to edit only Returned items.')) {
+                    executeDayAction(action, detailId, reqId);
+                }
                 return;
             }
 
@@ -1896,8 +1911,10 @@
             $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
                 .prop('disabled', true);
 
-            ClaimsUx.clearDirty();
-            ClaimsUx.showProcessing('Processing day action...');
+            if (window.ClaimsUx) {
+                ClaimsUx.clearDirty();
+                ClaimsUx.showProcessing('Processing day action...');
+            }
 
             $('#unified_modal_message').html(
                 '<span class="text-info">' +
@@ -1927,7 +1944,7 @@
                 dataType: "json",
 
                 success: function (r) {
-                    ClaimsUx.hideProcessing();
+                    if (window.ClaimsUx) ClaimsUx.hideProcessing();
 
                     if (r.d && r.d.success) {
 
@@ -1953,7 +1970,7 @@
                 },
 
                 error: function () {
-                    ClaimsUx.hideProcessing();
+                    if (window.ClaimsUx) ClaimsUx.hideProcessing();
 
                     $('#unified_modal_message').html(
 
@@ -2030,28 +2047,38 @@
         }
 
         function promptForReturn() {
-            ClaimsUx.showConfirm({
-                title: 'Return this claim to the employee?',
-                message: 'The employee will be allowed to edit only Returned items.<br><br>After confirming, you will be asked for a return reason.',
-                confirmText: 'Return',
-                confirmClass: 'btn-danger',
-                onConfirm: function () {
-                    var reason = prompt('Please enter the reason for returning this ENTIRE claim to the employee:');
-                    if (reason != null && reason.trim() !== '') {
-                        document.getElementById('hfReturnReason').value = reason;
+            var doReturn = function () {
+                var reason = prompt('Please enter the reason for returning this ENTIRE claim to the employee:');
+                if (reason != null && reason.trim() !== '') {
+                    document.getElementById('hfReturnReason').value = reason;
+                    if (window.ClaimsUx) {
                         ClaimsUx.armProcessingForPostback('Returning claim to employee...');
                         ClaimsUx.clearDirty();
-                        var btn = document.getElementById('<%= btnReturnToEmployee.ClientID %>');
-                        if (btn) {
-                            $(btn).data('ux-skip-confirm', true);
-                            ClaimsUx.disableButton(btn, 'Returning...');
-                            setTimeout(function () { __doPostBack(btn.name, ''); }, 0);
-                        }
-                    } else if (reason != null) {
-                        alert('A reason is required to return the claim.');
                     }
+                    var btn = document.getElementById('<%= btnReturnToEmployee.ClientID %>');
+                    if (btn) {
+                        if (window.ClaimsUx) {
+                            $(btn).data('ux-skip-confirm', true);
+                            $(btn).data('ux-locked', true);
+                        }
+                        setTimeout(function () { __doPostBack(btn.name, ''); }, 0);
+                    }
+                } else if (reason != null) {
+                    alert('A reason is required to return the claim.');
                 }
-            });
+            };
+
+            if (window.ClaimsUx && ClaimsUx.showConfirm) {
+                ClaimsUx.showConfirm({
+                    title: 'Return this claim to the employee?',
+                    message: 'The employee will be allowed to edit only Returned items.<br><br>After confirming, you will be asked for a return reason.',
+                    confirmText: 'Return',
+                    confirmClass: 'btn-danger',
+                    onConfirm: doReturn
+                });
+            } else if (confirm('Return this claim to the employee?\n\nThe employee will be allowed to edit only Returned items.')) {
+                doReturn();
+            }
             return false;
         }
 
@@ -2088,35 +2115,46 @@
                 '<tr class="table-success"><td><strong>Final Payable</strong></td><td class="text-right"><strong>₹ ' + netPayable + '</strong><br><small>' + netKm + ' KM</small></td></tr>' +
                 '</table></div>';
 
-            window._approvalSummaryProceed = false;
-            ClaimsUx.showConfirm({
-                title: title,
-                message: html,
-                confirmText: confirmText,
-                confirmClass: actionType === 'payment' ? 'btn-warning' : 'btn-success',
-                onConfirm: function () {
-                    window._approvalSummaryProceed = true;
-                    ClaimsUx.armProcessingForPostback(actionType === 'payment' ? 'Finalizing request...' : 'Forwarding request...');
-                    ClaimsUx.clearDirty();
-                    var btn = document.getElementById(actionType === 'payment'
-                        ? '<%= btnMarkReadyForPayment.ClientID %>'
-                        : '<%= btnForwardLevel.ClientID %>');
-                    if (btn) {
-                        $(btn).data('ux-skip-confirm', true);
-                        ClaimsUx.disableButton(btn, 'Processing...');
-                        setTimeout(function () { __doPostBack(btn.name, ''); }, 0);
+            if (window.ClaimsUx && ClaimsUx.showConfirm) {
+                ClaimsUx.showConfirm({
+                    title: title,
+                    message: html,
+                    confirmText: confirmText,
+                    confirmClass: actionType === 'payment' ? 'btn-warning' : 'btn-success',
+                    onConfirm: function () {
+                        if (window.ClaimsUx) {
+                            ClaimsUx.armProcessingForPostback(actionType === 'payment' ? 'Finalizing request...' : 'Forwarding request...');
+                            ClaimsUx.clearDirty();
+                        }
+                        var btn = document.getElementById(actionType === 'payment'
+                            ? '<%= btnMarkReadyForPayment.ClientID %>'
+                            : '<%= btnForwardLevel.ClientID %>');
+                        if (btn) {
+                            $(btn).data('ux-skip-confirm', true);
+                            $(btn).data('ux-locked', true);
+                            setTimeout(function () { __doPostBack(btn.name, ''); }, 0);
+                        }
                     }
-                }
-            });
+                });
+            } else if (confirm(title + '\n\nProceed?')) {
+                var btn = document.getElementById(actionType === 'payment'
+                    ? '<%= btnMarkReadyForPayment.ClientID %>'
+                    : '<%= btnForwardLevel.ClientID %>');
+                if (btn) __doPostBack(btn.name, '');
+            }
             return false;
         }
 
-        function showRecalculateSpinner(btn) {
+        function armRecalculateProcessing(btn) {
             if (window.ClaimsUx) {
                 ClaimsUx.armProcessingForPostback('Recalculating totals...');
-                ClaimsUx.disableButton(btn, 'Calculating...');
+                $(btn).data('ux-locked', true);
             }
             return true;
+        }
+
+        function showRecalculateSpinner(btn) {
+            return armRecalculateProcessing(btn);
         }
 
         // =========================================================
@@ -2142,6 +2180,7 @@
         }
 
         function decorateReceiptCounts() {
+            if (!window.ClaimsUx || !ClaimsUx.parseExpenseCounts) return;
             $('.btn-day-action').each(function () {
                 var json = $(this).attr('data-expenses');
                 var counts = ClaimsUx.parseExpenseCounts(json);
@@ -2209,14 +2248,26 @@
             }
         }
 
-        $(document).ready(function () {
-            ClaimsUx.init({
-                dirtySelector: '.claims-ux-track-dirty, #km_modal_new, #km_modal_reason, #txtBulkRemarks'
-            });
+        function initClaimsApprovalPageUx() {
+            if (window.ClaimsUx && ClaimsUx.initOnce) {
+                ClaimsUx.initOnce({
+                    dirtySelector: '.claims-ux-track-dirty, #km_modal_new, #km_modal_reason, #txtBulkRemarks'
+                });
+            }
             initDataTablesSafe();
             decorateReceiptCounts();
             decorateKmEditedBadges();
-        });
+        }
+
+        if (typeof Sys !== 'undefined' && Sys.Application) {
+            Sys.Application.add_load(function () {
+                initClaimsApprovalPageUx();
+            });
+        } else {
+            $(document).ready(function () {
+                initClaimsApprovalPageUx();
+            });
+        }
 
         var reopenDetailsModal = false;
         $('#unifiedDayModal').on('hidden.bs.modal', function () {
