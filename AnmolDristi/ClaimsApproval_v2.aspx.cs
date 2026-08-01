@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Linq;
+using System.Text;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -1029,104 +1030,194 @@ namespace AnmolDristi
             }
         }
 
-        private static bool HasPendingExpenseReceipts(string expensesJson)
+        private sealed class BulkDetailDbContext
         {
-            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]")
-                return false;
-
-            return expensesJson.Contains("\"ClaimStatus\":\"Submitted\"") ||
-                   expensesJson.Contains("\"ClaimStatus\":\"Draft\"") ||
-                   expensesJson.Contains("\"ClaimStatus\":\"Pending\"") ||
-                   expensesJson.Contains("\"ClaimStatus\":\"Returned\"");
+            public int ApprovalRequestDetailId { get; set; }
+            public int ActivityId { get; set; }
+            public bool ManualReview { get; set; }
+            public string DetailStatus { get; set; }
+            public int DetailApprovedLevel { get; set; }
+            public IList<string> ExpenseStatuses { get; set; }
+            public bool IsLatestDetailVersion { get; set; }
         }
 
-        private static bool IsManualReviewDay(GridViewRow row)
+        private Dictionary<int, BulkDetailDbContext> LoadBulkDetailContextsFromDatabase(int reqId, IList<int> detailIds)
         {
-            var hf = row.FindControl("hfManualReview") as HiddenField;
-            if (hf == null || string.IsNullOrWhiteSpace(hf.Value))
-                return false;
+            var result = new Dictionary<int, BulkDetailDbContext>();
+            if (detailIds == null || detailIds.Count == 0)
+                return result;
 
-            return string.Equals(hf.Value, "true", StringComparison.OrdinalIgnoreCase)
-                || hf.Value == "1"
-                || string.Equals(hf.Value, "True", StringComparison.OrdinalIgnoreCase);
-        }
+            var wanted = new HashSet<int>(detailIds);
 
-        private static string GetRowExpensesJson(GridViewRow row)
-        {
-            var hf = row.FindControl("hfExpensesJson") as HiddenField;
-            return hf != null ? (hf.Value ?? "[]") : "[]";
-        }
-
-        private static bool AreAllExpensesApproved(string expensesJson)
-        {
-            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]")
-                return true;
-
-            try
+            using (var con = new SqlConnection(connString))
             {
-                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
-                var list = serializer.Deserialize<List<Dictionary<string, object>>>(expensesJson);
-                if (list == null || list.Count == 0)
-                    return true;
+                con.Open();
 
-                foreach (var item in list)
+                var spDetails = new DataTable();
+                using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequestDetails", con))
                 {
-                    string status = item.ContainsKey("ClaimStatus")
-                        ? (item["ClaimStatus"]?.ToString() ?? string.Empty).Trim()
-                        : string.Empty;
-
-                    if (string.IsNullOrEmpty(status) || !ClaimStatuses.Equals(status, ClaimStatuses.Approved))
-                        return false;
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                    using (var da = new SqlDataAdapter(cmd))
+                        da.Fill(spDetails);
                 }
 
-                return true;
+                spDetails = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(spDetails);
+
+                foreach (DataRow row in spDetails.Rows)
+                {
+                    int detailId = Convert.ToInt32(row["ApprovalRequestDetailId"]);
+                    if (!wanted.Contains(detailId))
+                        continue;
+
+                    result[detailId] = new BulkDetailDbContext
+                    {
+                        ApprovalRequestDetailId = detailId,
+                        ActivityId = Convert.ToInt32(row["ActivityId"]),
+                        ManualReview = row.Table.Columns.Contains("ManualReview")
+                            && row["ManualReview"] != DBNull.Value
+                            && Convert.ToBoolean(row["ManualReview"]),
+                        DetailStatus = row["DetailStatus"] == DBNull.Value
+                            ? ClaimStatuses.Pending
+                            : row["DetailStatus"].ToString(),
+                        DetailApprovedLevel = row.Table.Columns.Contains("DetailApprovedLevel") && row["DetailApprovedLevel"] != DBNull.Value
+                            ? Convert.ToInt32(row["DetailApprovedLevel"])
+                            : 0,
+                        IsLatestDetailVersion = true
+                    };
+                }
+
+                foreach (int detailId in detailIds)
+                {
+                    if (result.ContainsKey(detailId))
+                        continue;
+
+                    result[detailId] = new BulkDetailDbContext
+                    {
+                        ApprovalRequestDetailId = detailId,
+                        IsLatestDetailVersion = false
+                    };
+                }
+
+                var activityIds = result.Values
+                    .Where(c => c.IsLatestDetailVersion && c.ActivityId > 0)
+                    .Select(c => c.ActivityId)
+                    .Distinct()
+                    .ToList();
+
+                if (activityIds.Count > 0)
+                {
+                    var expenseMap = LoadExpenseStatusesByActivity(con, activityIds);
+                    foreach (var ctx in result.Values.Where(c => c.IsLatestDetailVersion))
+                    {
+                        List<string> statuses;
+                        ctx.ExpenseStatuses = expenseMap.TryGetValue(ctx.ActivityId, out statuses)
+                            ? statuses
+                            : new List<string>();
+                    }
+                }
+                else
+                {
+                    foreach (var ctx in result.Values.Where(c => c.IsLatestDetailVersion))
+                        ctx.ExpenseStatuses = new List<string>();
+                }
             }
-            catch
-            {
-                return false;
-            }
+
+            return result;
         }
 
-        private static string GetManualExpenseSkipReason(string expensesJson)
+        private static Dictionary<int, List<string>> LoadExpenseStatusesByActivity(SqlConnection con, IList<int> activityIds)
         {
+            var map = activityIds.ToDictionary(id => id, id => new List<string>());
+            if (activityIds.Count == 0)
+                return map;
+
+            var sql = new StringBuilder();
+            sql.Append(@"SELECT ActivityId, ISNULL(ClaimStatus, '') AS ClaimStatus
+                         FROM dbo.SalesDailyExpense
+                         WHERE IsDeleted = 0 AND ActivityId IN (");
+            for (int i = 0; i < activityIds.Count; i++)
+            {
+                if (i > 0) sql.Append(",");
+                sql.Append("@a").Append(i);
+            }
+            sql.Append(")");
+
+            using (var cmd = new SqlCommand(sql.ToString(), con))
+            {
+                for (int i = 0; i < activityIds.Count; i++)
+                    cmd.Parameters.AddWithValue("@a" + i, activityIds[i]);
+
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
+                    {
+                        int activityId = Convert.ToInt32(rdr["ActivityId"]);
+                        map[activityId].Add(rdr["ClaimStatus"].ToString());
+                    }
+                }
+            }
+
+            return map;
+        }
+
+        private bool IsDetailActionableAtCurrentLevel(BulkDetailDbContext ctx, int currentLevel)
+        {
+            if (ctx == null || !ctx.IsLatestDetailVersion)
+                return false;
+
+            string status = ctx.DetailStatus ?? ClaimStatuses.Pending;
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Rejected) || ClaimStatuses.Equals(status, ClaimStatuses.Returned))
+                return false;
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Approved) && ctx.DetailApprovedLevel == currentLevel)
+                return false;
+
+            return ClaimStatuses.Equals(status, ClaimStatuses.Pending)
+                || (ClaimStatuses.Equals(status, ClaimStatuses.Approved) && ctx.DetailApprovedLevel < currentLevel);
+        }
+
+        private static bool HasPendingReceiptsFromDb(IList<string> expenseStatuses)
+        {
+            if (expenseStatuses == null || expenseStatuses.Count == 0)
+                return false;
+
+            return expenseStatuses.Any(st =>
+                ClaimStatuses.Equals(st, ClaimStatuses.Pending) ||
+                ClaimStatuses.Equals(st, ClaimStatuses.Returned));
+        }
+
+        private static bool AreAllExpensesApprovedFromDb(IList<string> expenseStatuses)
+        {
+            if (expenseStatuses == null || expenseStatuses.Count == 0)
+                return true;
+
+            return expenseStatuses.All(st => ClaimStatuses.Equals(st, ClaimStatuses.Approved));
+        }
+
+        private static string GetManualExpenseSkipReasonFromDb(IList<string> expenseStatuses)
+        {
+            if (expenseStatuses == null || expenseStatuses.Count == 0)
+                return "Manual expenses still require review.";
+
             bool hasPending = false;
             bool hasReturned = false;
             bool hasDraftOrNull = false;
 
-            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]")
-                return "Manual expenses still require review.";
-
-            try
+            foreach (var status in expenseStatuses)
             {
-                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
-                var list = serializer.Deserialize<List<Dictionary<string, object>>>(expensesJson);
-                if (list == null || list.Count == 0)
-                    return "Manual expenses still require review.";
-
-                foreach (var item in list)
+                if (ClaimStatuses.Equals(status, ClaimStatuses.Approved) ||
+                    ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
                 {
-                    string status = item.ContainsKey("ClaimStatus")
-                        ? (item["ClaimStatus"]?.ToString() ?? string.Empty).Trim()
-                        : string.Empty;
-
-                    if (ClaimStatuses.Equals(status, ClaimStatuses.Approved) ||
-                        ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
-                    {
-                        continue;
-                    }
-
-                    if (ClaimStatuses.Equals(status, ClaimStatuses.Returned))
-                        hasReturned = true;
-                    else if (ClaimStatuses.Equals(status, ClaimStatuses.Pending) ||
-                             ClaimStatuses.Equals(status, ClaimStatuses.Submitted))
-                        hasPending = true;
-                    else
-                        hasDraftOrNull = true;
+                    continue;
                 }
-            }
-            catch
-            {
-                return "Manual expenses still require review.";
+
+                if (ClaimStatuses.Equals(status, ClaimStatuses.Returned))
+                    hasReturned = true;
+                else if (ClaimStatuses.Equals(status, ClaimStatuses.Pending) ||
+                         ClaimStatuses.Equals(status, ClaimStatuses.Submitted))
+                    hasPending = true;
+                else
+                    hasDraftOrNull = true;
             }
 
             int unresolvedCategories = 0;
@@ -1143,58 +1234,38 @@ namespace AnmolDristi
             return "Manual expenses still require review.";
         }
 
-        private bool CanBulkProcessRow(GridViewRow row, DayDetailAction action, out string skipReason)
+        private bool TryEvaluateBulkEligibility(BulkDetailDbContext ctx, DayDetailAction action, out string skipReason)
         {
             skipReason = null;
-            var btnApprove = row.FindControl("btnApproveRow") as Button;
-            var btnReturn = row.FindControl("btnReturnRow") as Button;
-            var btnReject = row.FindControl("btnRejectDayRow") as Button;
+            int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+
+            if (!IsDetailActionableAtCurrentLevel(ctx, currentLevel))
+            {
+                skipReason = "Already processed";
+                return false;
+            }
 
             switch (action)
             {
                 case DayDetailAction.Approve:
-                    if (btnApprove != null &&
-                        btnApprove.Text != null &&
-                        btnApprove.Text.IndexOf("Done", StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (ctx.ManualReview && !AreAllExpensesApprovedFromDb(ctx.ExpenseStatuses))
                     {
-                        skipReason = "Already processed";
+                        skipReason = GetManualExpenseSkipReasonFromDb(ctx.ExpenseStatuses);
                         return false;
                     }
 
-                    if (IsManualReviewDay(row))
+                    if (HasPendingReceiptsFromDb(ctx.ExpenseStatuses))
                     {
-                        string expensesJson = GetRowExpensesJson(row);
-                        if (!AreAllExpensesApproved(expensesJson))
-                        {
-                            skipReason = GetManualExpenseSkipReason(expensesJson);
-                            return false;
-                        }
-                    }
-
-                    if (btnApprove == null || !btnApprove.Enabled)
-                    {
-                        skipReason = HasPendingExpenseReceipts(GetRowExpensesJson(row))
-                            ? GetManualExpenseSkipReason(GetRowExpensesJson(row))
-                            : "Already processed";
+                        skipReason = GetManualExpenseSkipReasonFromDb(ctx.ExpenseStatuses);
                         return false;
                     }
 
                     return true;
 
                 case DayDetailAction.Return:
-                    if (btnReturn == null || !btnReturn.Enabled)
-                    {
-                        skipReason = "Already processed";
-                        return false;
-                    }
                     return true;
 
                 case DayDetailAction.Reject:
-                    if (btnReject == null || !btnReject.Enabled)
-                    {
-                        skipReason = "Already processed";
-                        return false;
-                    }
                     return true;
 
                 default:
@@ -1543,6 +1614,8 @@ namespace AnmolDristi
                     return;
                 }
 
+                var selectedRows = new List<Tuple<int, string>>();
+
                 foreach (GridViewRow row in gvDetails.Rows)
                 {
                     if (row.RowType != DataControlRowType.DataRow) continue;
@@ -1551,13 +1624,6 @@ namespace AnmolDristi
                     if (chk == null || !chk.Checked) continue;
 
                     int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
-                    string skipReason;
-                    if (!CanBulkProcessRow(row, action, out skipReason))
-                    {
-                        RecordBulkSkip(skipReasons, skipReason);
-                        continue;
-                    }
-
                     string rowRemark = remarks;
                     if (action != DayDetailAction.Approve)
                     {
@@ -1566,7 +1632,27 @@ namespace AnmolDristi
                             rowRemark = AppendUserToRemark(txtRowRemark.Text.Trim(), auditor);
                     }
 
-                    rowsToProcess.Add(Tuple.Create(detailId, rowRemark));
+                    selectedRows.Add(Tuple.Create(detailId, rowRemark));
+                }
+
+                var detailIds = selectedRows.Select(x => x.Item1).ToList();
+                var dbContexts = LoadBulkDetailContextsFromDatabase(reqId, detailIds);
+
+                foreach (var selectedRow in selectedRows)
+                {
+                    int detailId = selectedRow.Item1;
+                    BulkDetailDbContext ctx;
+                    if (!dbContexts.TryGetValue(detailId, out ctx))
+                        ctx = null;
+
+                    string skipReason;
+                    if (!TryEvaluateBulkEligibility(ctx, action, out skipReason))
+                    {
+                        RecordBulkSkip(skipReasons, skipReason);
+                        continue;
+                    }
+
+                    rowsToProcess.Add(selectedRow);
                 }
 
                 if (rowsToProcess.Count > 0)
