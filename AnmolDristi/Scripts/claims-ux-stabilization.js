@@ -1,32 +1,74 @@
 /**
  * Claims UX stabilization utilities — client-side only.
- * No business logic, routing, or workflow state changes.
+ * Always defines window.ClaimsUx (no-op fallback if jQuery is unavailable).
  */
-(function (window, $) {
+(function (window) {
     'use strict';
 
-    if (!$) return;
+    function noop() { }
+
+    var stub = {
+        dirty: false,
+        suppressDirtyCheck: false,
+        processingCount: 0,
+        _handlersBound: false,
+        _pendingProcessingMessage: null,
+        options: {},
+        init: noop,
+        initOnce: noop,
+        markDirty: noop,
+        clearDirty: noop,
+        isDirty: function () { return false; },
+        confirmLeave: function (onLeave) { if (typeof onLeave === 'function') onLeave(); },
+        showConfirm: function (cfg) {
+            if (cfg && typeof cfg.onConfirm === 'function' && window.confirm((cfg.title || 'Confirm') + '\n\n' + (cfg.message || '').replace(/<[^>]+>/g, ''))) {
+                cfg.onConfirm();
+            }
+        },
+        disableButton: noop,
+        enableButton: noop,
+        showProcessing: noop,
+        hideProcessing: noop,
+        armProcessingForPostback: noop,
+        statusBadgeClass: function () { return 'claims-badge claims-badge-default'; },
+        parseExpenseCounts: function () { return { total: 0, approved: 0, pending: 0 }; }
+    };
+
+    window.ClaimsUx = stub;
+
+    var $ = window.jQuery;
+    if (!$) {
+        return;
+    }
 
     var ClaimsUx = {
         dirty: false,
         suppressDirtyCheck: false,
         processingCount: 0,
+        _handlersBound: false,
+        _pendingProcessingMessage: null,
+        options: {},
 
-        init: function (options) {
+        initOnce: function (options) {
             options = options || {};
             this.options = $.extend({
                 dirtySelector: '.claims-ux-track-dirty',
                 postbackButtonSelector: '.claims-ux-postback-btn',
-                modalSelector: '.modal',
-                detailsModalSelector: '#detailsModal',
-                unifiedModalSelector: '#unifiedDayModal'
+                modalSelector: '.modal'
             }, options);
 
-            this._bindDirtyTracking();
-            this._bindBeforeUnload();
-            this._bindModalGuards();
-            this._bindPostbackButtons();
-            this._bindProcessingPanel();
+            if (!this._handlersBound) {
+                this._bindDirtyTracking();
+                this._bindBeforeUnload();
+                this._bindModalGuards();
+                this._bindPostbackButtons();
+                this._bindProcessingPanel();
+                this._handlersBound = true;
+            }
+        },
+
+        init: function (options) {
+            this.initOnce(options);
         },
 
         markDirty: function () {
@@ -61,6 +103,7 @@
         },
 
         showConfirm: function (cfg) {
+            cfg = cfg || {};
             var $modal = $('#claimsUxConfirmModal');
             if (!$modal.length) {
                 $('body').append(
@@ -70,7 +113,7 @@
                     '<button type="button" class="close" data-dismiss="modal"><span>&times;</span></button></div>' +
                     '<div class="modal-body" id="claimsUxConfirmBody"></div>' +
                     '<div class="modal-footer">' +
-                    '<button type="button" class="btn btn-secondary" id="claimsUxConfirmCancel">Cancel</button>' +
+                    '<button type="button" class="btn btn-secondary" id="claimsUxConfirmCancel" data-dismiss="modal">Cancel</button>' +
                     '<button type="button" class="btn btn-primary" id="claimsUxConfirmOk">Confirm</button>' +
                     '</div></div></div></div>'
                 );
@@ -85,7 +128,7 @@
                 .removeClass('btn-primary btn-danger btn-warning btn-success')
                 .addClass(cfg.confirmClass || 'btn-primary');
 
-            $modal.off('click', '#claimsUxConfirmOk').on('click', '#claimsUxConfirmOk', function () {
+            $modal.off('click.claimsUxConfirm', '#claimsUxConfirmOk').on('click.claimsUxConfirm', '#claimsUxConfirmOk', function () {
                 $modal.modal('hide');
                 if (typeof cfg.onConfirm === 'function') cfg.onConfirm();
             });
@@ -95,9 +138,10 @@
 
         disableButton: function (btn, loadingText) {
             var $btn = $(btn);
-            if (!$btn.length || $btn.data('ux-locked')) return;
-            $btn.data('ux-locked', true);
-            $btn.data('ux-original-html', $btn.is('input') ? $btn.val() : $btn.html());
+            if (!$btn.length) return;
+            if (!$btn.data('ux-original-html')) {
+                $btn.data('ux-original-html', $btn.is('input') ? $btn.val() : $btn.html());
+            }
             var spinner = '<i class="fa fa-spinner fa-spin mr-1"></i>';
             if ($btn.is('input')) {
                 $btn.val(loadingText || 'Processing...');
@@ -115,7 +159,7 @@
                 if ($btn.is('input')) $btn.val(original);
                 else $btn.html(original);
             }
-            $btn.prop('disabled', false).removeClass('disabled').removeData('ux-locked');
+            $btn.prop('disabled', false).removeClass('disabled').removeData('ux-locked').removeData('ux-original-html');
         },
 
         showProcessing: function (message) {
@@ -127,20 +171,22 @@
                     '<div class="claims-ux-processing-card">' +
                     '<i class="fa fa-spinner fa-spin fa-2x mb-3 text-primary"></i>' +
                     '<h5 class="mb-2">Processing...</h5>' +
-                    '<p class="text-muted mb-0 claims-ux-processing-msg">Please wait while the request is being processed.</p>' +
+                    '<p class="text-muted mb-0 claims-ux-processing-msg">Please wait...</p>' +
                     '</div></div>'
                 );
                 $overlay = $('#claimsUxProcessingOverlay');
             }
-            $overlay.find('.claims-ux-processing-msg').text(message || 'Please wait while the request is being processed.');
+            $overlay.find('.claims-ux-processing-msg').text(message || 'Please wait...');
             $overlay.show();
         },
 
         hideProcessing: function () {
-            this.processingCount = Math.max(0, this.processingCount - 1);
-            if (this.processingCount === 0) {
-                $('#claimsUxProcessingOverlay').hide();
-            }
+            this.processingCount = 0;
+            $('#claimsUxProcessingOverlay').hide();
+        },
+
+        armProcessingForPostback: function (message) {
+            this._pendingProcessingMessage = message || 'Please wait...';
         },
 
         statusBadgeClass: function (status) {
@@ -169,16 +215,24 @@
             return { total: total, approved: approved, pending: pending };
         },
 
+        _resetPostbackButtons: function () {
+            var self = this;
+            $(this.options.postbackButtonSelector).each(function () {
+                self.enableButton(this);
+            });
+        },
+
         _bindDirtyTracking: function () {
             var self = this;
-            $(document).on('input change', this.options.dirtySelector, function () {
+            $(document).off('input.claimsUxDirty change.claimsUxDirty', this.options.dirtySelector);
+            $(document).on('input.claimsUxDirty change.claimsUxDirty', this.options.dirtySelector, function () {
                 self.markDirty();
             });
         },
 
         _bindBeforeUnload: function () {
             var self = this;
-            $(window).on('beforeunload.claimsUx', function (e) {
+            $(window).off('beforeunload.claimsUx').on('beforeunload.claimsUx', function (e) {
                 if (!self.dirty) return undefined;
                 var msg = 'You have unsaved review changes.';
                 e.returnValue = msg;
@@ -188,7 +242,7 @@
 
         _bindModalGuards: function () {
             var self = this;
-            $(this.options.modalSelector).on('hide.bs.modal.claimsUx', function (e) {
+            $(this.options.modalSelector).off('hide.bs.modal.claimsUx').on('hide.bs.modal.claimsUx', function (e) {
                 if (self.suppressDirtyCheck || !self.dirty) return;
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -202,7 +256,8 @@
 
         _bindPostbackButtons: function () {
             var self = this;
-            $(document).on('click', this.options.postbackButtonSelector, function (e) {
+            $(document).off('click.claimsUxPostback', this.options.postbackButtonSelector);
+            $(document).on('click.claimsUxPostback', this.options.postbackButtonSelector, function (e) {
                 var $btn = $(this);
 
                 if ($btn.data('ux-skip-confirm')) {
@@ -229,37 +284,43 @@
                     return false;
                 }
 
+                $btn.data('ux-locked', true);
                 self.clearDirty();
-                if ($btn.data('ux-processing')) {
-                    self.armProcessingForPostback($btn.data('ux-processing'));
-                }
-                self.disableButton($btn[0], $btn.data('ux-loading'));
+                self.armProcessingForPostback($btn.data('ux-processing') || 'Please wait...');
+                // Do NOT disable the button here — disabling cancels ASP.NET postback.
             });
         },
 
         _bindProcessingPanel: function () {
             var self = this;
-            if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
-                var prm = Sys.WebForms.PageRequestManager.getInstance();
-                prm.add_beginRequest(function () {
-                    if (self._pendingProcessingMessage) {
-                        self.showProcessing(self._pendingProcessingMessage);
+            if (typeof Sys === 'undefined' || !Sys.WebForms || !Sys.WebForms.PageRequestManager) {
+                return;
+            }
+
+            var prm = Sys.WebForms.PageRequestManager.getInstance();
+            if (prm._claimsUxHooksBound) {
+                return;
+            }
+            prm._claimsUxHooksBound = true;
+
+            prm.add_beginRequest(function () {
+                if (self._pendingProcessingMessage) {
+                    self.showProcessing(self._pendingProcessingMessage);
+                }
+                $(self.options.postbackButtonSelector).each(function () {
+                    if ($(this).data('ux-locked')) {
+                        self.disableButton(this, $(this).data('ux-loading'));
                     }
                 });
-                prm.add_endRequest(function () {
-                    self.hideProcessing();
-                    self._pendingProcessingMessage = null;
-                    $(self.options.postbackButtonSelector).each(function () {
-                        ClaimsUx.enableButton(this);
-                    });
-                });
-            }
-        },
+            });
 
-        armProcessingForPostback: function (message) {
-            this._pendingProcessingMessage = message;
+            prm.add_endRequest(function () {
+                self.hideProcessing();
+                self._pendingProcessingMessage = null;
+                self._resetPostbackButtons();
+            });
         }
     };
 
     window.ClaimsUx = ClaimsUx;
-})(window, window.jQuery);
+})(window);

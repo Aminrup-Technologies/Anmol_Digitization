@@ -352,6 +352,7 @@
     <Content Include="RolePermissionManager.aspx" />
     <Content Include="RouteDistanceCalculation.aspx" />
     <Content Include="SalesMonthlyReview.aspx" />
+    <Content Include="Scripts\claims-ux-stabilization.js" />
     <Content Include="SubmitClaim.aspx" />
     <Content Include="UiControlMapper.aspx" />
     <Content Include="UserRoleAudit.aspx" />
