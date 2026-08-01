@@ -2465,7 +2465,7 @@ namespace AnmolDristi
                         CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId
+                    WHERE d.ApprovalRequestId = @Id
                       AND d.DetailStatus IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
 
@@ -2480,7 +2480,7 @@ namespace AnmolDristi
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
                     " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId 
+                    WHERE d.ApprovalRequestId = @Id 
                       AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' 
                       AND e.IsDeleted = 0
                       AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
@@ -2502,7 +2502,7 @@ namespace AnmolDristi
                         FROM dbo.SalesDailyActivityKMHistory
                         GROUP BY ActivityId
                     ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId 
+                    WHERE d.ApprovalRequestId = @Id 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
                       AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"        
@@ -2511,7 +2511,7 @@ namespace AnmolDristi
                 using (var con = new SqlConnection(connString))
                 using (var cmd = new SqlCommand(sql, con))
                 {
-                    cmd.Parameters.AddWithValue("@ReqId", approvalRequestId);
+                    cmd.Parameters.AddWithValue("@Id", approvalRequestId);
                     con.Open();
                     using (var rdr = cmd.ExecuteReader())
                     {
