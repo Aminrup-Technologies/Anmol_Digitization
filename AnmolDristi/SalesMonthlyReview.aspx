@@ -560,7 +560,6 @@
         .claims-empty-state { text-align:center; padding:40px 20px; color:#6c757d; }
         .row-returned { border-left:3px solid #fd7e14; background-color:#fff8f0 !important; }
     </style>
-    <script src="<%= ResolveUrl("~/Scripts/claims-ux-stabilization.js") %>"></script>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -1821,6 +1820,7 @@
         </div>
     </div>
 
+    <script src="<%= ResolveUrl("~/Scripts/claims-ux-stabilization.js") %>"></script>
     <script type="text/javascript">
         $(document).ready(function () {
             if (window.ClaimsUx && ClaimsUx.initOnce) {

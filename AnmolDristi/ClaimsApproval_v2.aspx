@@ -412,7 +412,6 @@
         }
         .claims-empty-state i { font-size: 2.5rem; margin-bottom: 12px; color: #adb5bd; }
     </style>
-    <script src="<%= ResolveUrl("~/Scripts/claims-ux-stabilization.js") %>"></script>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -978,6 +977,7 @@
     <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.3/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.2.3/js/responsive.bootstrap4.min.js"></script>
+    <script src="<%= ResolveUrl("~/Scripts/claims-ux-stabilization.js") %>"></script>
     <script type="text/javascript">
         // Global variables
         var _refreshNeeded = false;
