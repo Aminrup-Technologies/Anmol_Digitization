@@ -7,6 +7,39 @@
                  formatting, or object names have been altered.
 */
 
+/*
+    Sprint 2 - Task 01 (Approval Action Hardening)
+    Change: Added authorization and state guards required by the approved
+            Functional Specification and Technical Design Specification.
+            This procedure remains responsible only for processing a single
+            day-level approval action (APPROVE / RETURN / REJECT).
+
+              - Current Approver validation (@ActionBy must match the
+                header's CurrentApproverLoginId).
+              - Header status validation (action permitted only while the
+                request is actively Pending).
+              - Payment Lock (a Completed request is immutable; no action
+                of any kind is processed against it).
+              - Role enforcement for day-level actions:
+                  Manager : may Approve or Return a day. Must NOT Reject.
+                  Auditor : may Approve or Reject a day. Must NOT Return.
+                (Expense-level Approve/Return/Reject rules belong to
+                usp_UpdateSalesDailyExpenseStatus and are out of scope
+                for this procedure.)
+
+            No workflow routing, forwarding, ReadyForPayment, or Completed
+            logic was removed. The existing routing responsibilities this
+            procedure currently performs are marked in place with
+            TODO (Sprint 2 - Task 02) comments and remain fully functional
+            until that responsibility is migrated to
+            usp_ForwardApprovalRequest, so that the workflow does not break
+            between the two tasks' merges.
+
+            No totals, expense, distance, or policy calculation logic was
+            modified. No schema changes were made. No other procedure was
+            modified.
+*/
+
 CREATE PROCEDURE dbo.usp_ProcessApprovalAction
 (
       @ApprovalRequestDetailId INT
@@ -24,6 +57,7 @@ BEGIN
         , @ApprovalRequestId      INT
         , @ActivityId             INT
         , @CurrentApproverLevel   INT
+        , @CurrentApproverLoginId NVARCHAR(100)
         , @OldRequestStatus       NVARCHAR(50)
         , @NewRequestStatus       NVARCHAR(50)
         , @CurrentApproverRole    NVARCHAR(100)
@@ -94,6 +128,7 @@ BEGIN
 
     SELECT
           @CurrentApproverLevel   = r.CurrentApproverLevel
+        , @CurrentApproverLoginId = r.CurrentApproverLoginId
         , @OldRequestStatus       = r.Status
     FROM dbo.SalesApprovalRequest r
     WHERE r.ApprovalRequestId = @ApprovalRequestId;
@@ -104,6 +139,55 @@ BEGIN
     WHERE a.ApprovalRequestId = @ApprovalRequestId
       AND a.ApproverLevel = @CurrentApproverLevel
     ORDER BY a.ApproverLevel;
+
+    --------------------------------------------------------------------
+    -- Payment Lock: a Completed request is immutable. No approval action
+    -- of any kind may be processed against it, regardless of actor.
+    --------------------------------------------------------------------
+    IF ISNULL(@OldRequestStatus, '') = 'Completed'
+    BEGIN
+        RAISERROR('This approval request has been completed and is read-only. No further action can be processed.', 16, 1);
+        RETURN;
+    END;
+
+    --------------------------------------------------------------------
+    -- Header status validation: an approval action may only be processed
+    -- while the request is actively awaiting approval.
+    --------------------------------------------------------------------
+    IF ISNULL(@OldRequestStatus, '') <> 'Pending'
+    BEGIN
+        RAISERROR('This approval request is not currently awaiting approval and cannot be processed.', 16, 1);
+        RETURN;
+    END;
+
+    --------------------------------------------------------------------
+    -- Current Approver validation: only the approver currently holding
+    -- the request may process an action against it.
+    --------------------------------------------------------------------
+    IF @CurrentApproverLoginId IS NULL
+       OR UPPER(LTRIM(RTRIM(@CurrentApproverLoginId))) <> UPPER(LTRIM(RTRIM(@ActionBy)))
+    BEGIN
+        RAISERROR('You are not the current approver for this approval request.', 16, 1);
+        RETURN;
+    END;
+
+    --------------------------------------------------------------------
+    -- Role enforcement (day-level actions only; expense-level role rules
+    -- are enforced by usp_UpdateSalesDailyExpenseStatus).
+    --   Manager : may Approve or Return a day. Must NOT Reject a day.
+    --   Auditor : may Approve or Reject a day. Must NOT Return a day.
+    --------------------------------------------------------------------
+    IF @NormalizedAction = 'REJECT' AND ISNULL(@CurrentApproverRole, '') <> 'Auditor'
+    BEGIN
+        RAISERROR('Only the Auditor may reject a day. Managers return a day for correction instead.', 16, 1);
+        RETURN;
+    END;
+
+    IF @NormalizedAction = 'RETURN' AND ISNULL(@CurrentApproverRole, '') = 'Auditor'
+    BEGIN
+        RAISERROR('The Auditor cannot return a day. Auditors approve or reject; managers return a day for correction.', 16, 1);
+        RETURN;
+    END;
 
     -- Map action to persisted status words (aligned with ClaimStatuses.cs).
     SET @MappedDetailStatus =
@@ -251,6 +335,11 @@ BEGIN
                   AND ApproverLevel = @CurrentApproverLevel
                   AND Status = 'Pending';
 
+                -- TODO (Sprint 2 - Task 02):
+                -- Routing responsibility will be migrated to usp_ForwardApprovalRequest.
+                -- The next-approver lookup and the CurrentApproverLevel/CurrentApproverLoginId
+                -- update below are left fully functional so the workflow continues to advance
+                -- until that migration is complete.
                 SELECT TOP (1)
                       @NextApproverLevel    = a.ApproverLevel
                     , @NextApproverLoginId  = a.ApproverLoginId
@@ -301,6 +390,11 @@ BEGIN
                           )
                     );
                 END
+                -- TODO (Sprint 2 - Task 02):
+                -- Routing responsibility will be migrated to usp_ForwardApprovalRequest.
+                -- Setting the header to Completed and clearing the routing pointer below is
+                -- left fully functional so a claim can still reach Completed until that
+                -- migration is complete.
                 ELSE IF ISNULL(@CurrentApproverRole, '') <> 'Auditor'
                 BEGIN
                     -- Non-auditor final level with all days resolved -> Completed.
