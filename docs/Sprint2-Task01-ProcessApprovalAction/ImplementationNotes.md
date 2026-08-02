@@ -64,3 +64,19 @@ These were identified during this task but are explicitly **not** addressed here
 ## Verification performed before delivery
 
 The updated procedure body was deployed under a temporary scratch name (`usp_ProcessApprovalAction_Sprint2Task01_Validation`) directly against the live `AnmolDristiDev` database, confirmed to compile without error against the real table and column definitions, and then dropped immediately. The live `usp_ProcessApprovalAction` procedure itself was confirmed unmodified throughout. No data was read, written, or altered by this verification step beyond the creation and immediate removal of the scratch procedure object.
+
+## Final review addendum — `@CurrentApproverRole` casing
+
+During final review before merge, it was asked whether the three comparisons of `@CurrentApproverRole` against the literal `'Auditor'` (the two new guards at lines 180 and 186, and the pre-existing routing check at line 398) should be normalized with `UPPER(LTRIM(RTRIM(ISNULL(@CurrentApproverRole, ''))))` and compared against `'AUDITOR'`, matching the normalization already applied to the `CurrentApproverLoginId`/`@ActionBy` comparison.
+
+**No change was made.** This was verified empirically against the live `AnmolDristiDev` database rather than assumed:
+
+- The database's default collation is `SQL_Latin1_General_CP1_CI_AS` — case-insensitive (`CI`), accent-sensitive (`AS`).
+- `SalesApprovalRequestApprover.ApproverRole` carries no column-level `COLLATE` override; it inherits the database default.
+- `@CurrentApproverRole` is declared `NVARCHAR(100)` with no `COLLATE` clause, so it also takes the database default collation.
+- A direct test replicating the procedure's exact comparison (`ISNULL(@CurrentApproverRole, '') <> 'Auditor'`) against the values `'AUDITOR'`, `'auditor'`, and `'Auditor'` returned the identical result — *allowed* — in all three cases; only `NULL` produced *blocked*, which is the correct, casing-independent, deny-by-default behaviour.
+- The only value ever actually stored in `ApproverRole` today is `'Auditor'` (confirmed by querying distinct values: `Auditor`, `L1`, `Reporting_Manager1`).
+
+Under this collation, `UPPER(@CurrentApproverRole) = 'AUDITOR'` and `@CurrentApproverRole = 'Auditor'` are the same comparison and produce the same result for every input, including `NULL`. Adding the normalization would not change behaviour for any current or plausible future value in this column; it would be a stylistic no-op, not a correctness fix. Per the task's own constraint not to modify SQL unless required for correctness, and to avoid unrelated changes, it was left as-is — including at line 398, which is pre-existing routing logic this task does not otherwise touch.
+
+This differs from the `CurrentApproverLoginId`/`@ActionBy` normalization added earlier in this same task: that comparison is between two independently-supplied values (a stored column and an application-supplied parameter) rather than a column against a fixed, single-valued literal, so normalizing it costs nothing and removes any dependency on collation assumptions for that specific check. `@CurrentApproverRole` was not revisited to match, since doing so was not requested and the reasoning above shows it is unnecessary; if a future change to this database's collation is ever made, the recommendation would be to revisit `ApproverRole` comparisons at that time rather than pre-emptively.
