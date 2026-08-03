@@ -84,7 +84,7 @@ Display names are taken from `MST_UserMaster` when the code resolves (not free-t
 | Condition | Behaviour |
 |---|---|
 | L1 `ReportingManagerCode` not in `MST_UserMaster` | Skip employee; `@MissingManagerCount++`; staging `[WARNING]` |
-| L2 code supplied but not in `MST_UserMaster` | Skip employee; `@MissingMasterCount` path via `@MissingManagerCount++`; staging `[WARNING]` |
+| L2 code supplied but not in `MST_UserMaster` | Skip employee; `@MissingManagerCount++`; staging `[WARNING]` |
 | No L1 code supplied | Skip hierarchy update for that row (`@SkippedCount++`); no master DML |
 
 Missing-manager skips do **not** rewrite any `MST_UserMaster` columns.  
