@@ -25,7 +25,7 @@ namespace AnmolDristi
             }
         }
 
-        protected void btnUpload_Click(object sender, EventArgs e)
+        protected void btnUpload_Click_OLD(object sender, EventArgs e)
         {
             // 1. Basic File Validation
             if (!fuCsv.HasFile)
@@ -190,6 +190,215 @@ namespace AnmolDristi
             {
                 lblMessage.Text = "A critical error occurred during import: " + ex.Message;
                 lblMessage.CssClass = "text-danger font-weight-bold";
+            }
+        }
+
+        protected void btnUpload_Click(object sender, EventArgs e)
+        {
+            // 1. Basic File Validation
+            if (!fuCsv.HasFile)
+            {
+                lblMessage.Text = "Please choose a CSV file.";
+                lblMessage.CssClass = "text-danger";
+                return;
+            }
+
+            // NEW: File Size Validation (Limit to 15MB to protect IIS RAM)
+            int maxFileSizeBytes = 15 * 1024 * 1024;
+            if (fuCsv.PostedFile.ContentLength > maxFileSizeBytes)
+            {
+                lblMessage.Text = "File size exceeds the 15MB limit. Please split your file.";
+                lblMessage.CssClass = "text-danger";
+                return;
+            }
+
+            string fileExtension = Path.GetExtension(fuCsv.FileName);
+            if (!string.Equals(fileExtension, ".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                lblMessage.Text = "Invalid file type. Please upload a .csv file.";
+                lblMessage.CssClass = "text-danger";
+                return;
+            }
+
+            var importBatchId = Guid.NewGuid();
+            var fileName = fuCsv.FileName;
+            var importedByUserId = HttpContext.Current.User.Identity.Name ?? "system";
+            var importedByUsername = HttpContext.Current.User.Identity.Name ?? "system";
+            int totalRowsProcessed = 0;
+
+            try
+            {
+                using (var stream = fuCsv.PostedFile.InputStream)
+                {
+                    if (stream.CanSeek) stream.Position = 0;
+
+                    using (var tfp = new TextFieldParser(stream))
+                    {
+                        tfp.TextFieldType = FieldType.Delimited;
+                        tfp.SetDelimiters(",");
+                        tfp.HasFieldsEnclosedInQuotes = true;
+                        tfp.TrimWhiteSpace = true;
+
+                        if (tfp.EndOfData)
+                        {
+                            lblMessage.Text = "The uploaded CSV file is empty.";
+                            lblMessage.CssClass = "text-warning";
+                            return;
+                        }
+
+                        string[] headers = tfp.ReadFields();
+                        if (headers == null || headers.Length == 0)
+                        {
+                            lblMessage.Text = "CSV header is missing or unreadable.";
+                            lblMessage.CssClass = "text-danger";
+                            return;
+                        }
+
+                        for (int i = 0; i < headers.Length; i++)
+                        {
+                            headers[i] = headers[i]?.Trim() ?? string.Empty;
+                        }
+
+                        var dtBatch = CreateStagingDataTableSchema();
+
+                        // 2. Open ONE Connection and ONE Transaction for the entire file
+                        using (var conn = new SqlConnection(_connString))
+                        {
+                            conn.Open();
+                            using (var transaction = conn.BeginTransaction())
+                            {
+                                try
+                                {
+                                    while (!tfp.EndOfData)
+                                    {
+                                        string[] fields = null;
+                                        try { fields = tfp.ReadFields(); }
+                                        catch (MalformedLineException) { continue; }
+
+                                        if (fields == null) continue;
+
+                                        var normalized = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                        for (int i = 0; i < headers.Length; i++)
+                                        {
+                                            string key = headers[i];
+                                            string val = (i < fields.Length && fields[i] != null) ? fields[i].Trim() : string.Empty;
+                                            normalized[key] = val;
+                                        }
+
+                                        var newRow = dtBatch.NewRow();
+                                        newRow["RawJson"] = JsonConvert.SerializeObject(normalized);
+
+                                        newRow["Zone"] = SafeGet(normalized, "Zone");
+                                        newRow["Reporting_Manager3"] = SafeGet(normalized, "Reporting_Manager3");
+                                        newRow["Reporting_Manager2"] = SafeGet(normalized, "Reporting_Manager2");
+                                        newRow["Reporting_Manager1"] = SafeGet(normalized, "Reporting_Manager1");
+                                        newRow["Login_Id"] = SafeGet(normalized, "Login_Id");
+                                        newRow["User_Id"] = SafeGet(normalized, "User_Id");
+                                        newRow["User_Name"] = SafeGet(normalized, "User_Name");
+                                        newRow["Month"] = SafeGet(normalized, "Month");
+                                        newRow["Attendance_Status"] = SafeGet(normalized, "Attendance_Status");
+
+                                        string dateStr = SafeGet(normalized, "Date") ?? SafeGet(normalized, "User_Created_Date");
+
+                                        // 1. Pre-declare the variable for C# 5.0 / .NET 4.5.2 compatibility
+                                        DateTime parsedDate;
+
+                                        // 2. Pass the pre-declared variable using just 'out parsedDate'
+                                        if (DateTime.TryParseExact(dateStr, new[] { "dd-MM-yyyy", "d-M-yyyy", "yyyy-MM-dd", "dd/MM/yyyy" },
+                                            CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate))
+                                        {
+                                            newRow["Date"] = parsedDate.Date;
+                                            newRow["Day"] = parsedDate.DayOfWeek.ToString();
+                                        }
+                                        else
+                                        {
+                                            newRow["Date"] = DBNull.Value;
+                                            newRow["Day"] = SafeGet(normalized, "Day") ?? (object)DBNull.Value;
+                                        }
+
+                                        string kmStr = SafeGet(normalized, "Total_Distance_Travelled_In_KM");
+
+                                        // Pre-declare the variable for C# 5.0 compatibility
+                                        decimal kmVal;
+
+                                        if (decimal.TryParse(kmStr, NumberStyles.Any, CultureInfo.InvariantCulture, out kmVal))
+                                        {
+                                            newRow["Total_Distance_Travelled_In_KM"] = kmVal;
+                                        }
+                                        else
+                                        {
+                                            newRow["Total_Distance_Travelled_In_KM"] = DBNull.Value;
+                                        }
+
+                                        newRow["ImportedByUserId"] = importedByUserId;
+                                        newRow["ImportedByUsername"] = importedByUsername;
+                                        newRow["ImportedDateTime"] = DateTime.Now;
+                                        newRow["ImportStatus"] = "Inserted";
+                                        newRow["ImportFileName"] = fileName;
+                                        newRow["ImportBatchId"] = importBatchId;
+
+                                        dtBatch.Rows.Add(newRow);
+                                        totalRowsProcessed++;
+
+                                        if (dtBatch.Rows.Count >= BulkBatchSize)
+                                        {
+                                            // Pass the active connection and transaction downward
+                                            BulkInsertStaging(dtBatch, conn, transaction);
+                                            dtBatch.Clear();
+                                        }
+                                    }
+
+                                    // Flush remaining rows
+                                    if (dtBatch.Rows.Count > 0)
+                                    {
+                                        BulkInsertStaging(dtBatch, conn, transaction);
+                                        dtBatch.Clear();
+                                    }
+
+                                    // ONLY COMMIT if every single batch was inserted flawlessly
+                                    transaction.Commit();
+                                }
+                                catch
+                                {
+                                    // If ANY row in ANY batch fails, rollback the ENTIRE file import. No orphaned data!
+                                    transaction.Rollback();
+                                    throw;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Process Data to Final Table (Only executes if Staging was 100% successful)
+                ProcessStagingToFinal(importBatchId);
+
+                // 4. Bind Grids
+                BindPreviewGrid(importBatchId);
+                BindErrorGrid(importBatchId);
+            }
+            catch (Exception ex)
+            {
+                lblMessage.Text = "A critical error occurred during import. The upload was safely aborted. Error: " + ex.Message;
+                lblMessage.CssClass = "text-danger font-weight-bold";
+            }
+        }
+
+        // Updated Method Signature: Uses the parent's Connection and Transaction
+        private void BulkInsertStaging(DataTable dt, SqlConnection conn, SqlTransaction transaction)
+        {
+            using (var bulk = new SqlBulkCopy(conn, SqlBulkCopyOptions.Default, transaction))
+            {
+                bulk.DestinationTableName = "dbo.SalesDailyActivity_Staging";
+                // Let SqlBulkCopy optimize network packets based on our DataTable size
+                bulk.BatchSize = dt.Rows.Count;
+                bulk.BulkCopyTimeout = 600;
+
+                foreach (DataColumn col in dt.Columns)
+                {
+                    bulk.ColumnMappings.Add(col.ColumnName, col.ColumnName);
+                }
+
+                bulk.WriteToServer(dt);
             }
         }
 

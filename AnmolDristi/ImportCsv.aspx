@@ -85,7 +85,9 @@
                             <div class="row">
                                 <div class="col-md-12 col-sm-12">
                                     <div class="card-box table-responsive">
-                                        <asp:GridView ID="gvPreview" runat="server" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed"
+                                        <asp:GridView ID="gvPreview" runat="server" 
+                                            EnableViewState="false" 
+                                            CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed"
                                             AutoGenerateColumns="False" GridLines="None">
                                             <Columns>
                                                 <asp:BoundField DataField="Zone" HeaderText="Zone" />
@@ -111,7 +113,9 @@
                                                 <div class="x_content">
                                                     <p class="text-muted">The following rows could not be imported. Please fix these issues in your CSV and try uploading them again.</p>
                                                     <div class="card-box table-responsive">
-                                                        <asp:GridView ID="gvErrors" runat="server" CssClass="table table-striped table-bordered table-sm table-danger"
+                                                        <asp:GridView ID="gvErrors" runat="server" 
+                                                            EnableViewState="false" 
+                                                            CssClass="table table-striped table-bordered table-sm table-danger"
                                                             AutoGenerateColumns="False" GridLines="None">
                                                             <Columns>
                                                                 <asp:BoundField DataField="StagingId" HeaderText="Row Ref ID" />

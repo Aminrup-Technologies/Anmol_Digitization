@@ -8,6 +8,7 @@ using System.Web.UI;
 using System.Linq;
 using System.Web.UI.WebControls;
 using System.Collections.Generic;
+using System.Web.UI;
 
 namespace AnmolDristi
 {
@@ -20,10 +21,16 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            ScriptManager sm = ScriptManager.GetCurrent(this);
+
+            if (sm != null)
+            {
+                sm.RegisterPostBackControl(btnExportReport);
+            }
+
             // 1. Enforce Security Gateway
             if (Session["UserId"] == null || string.IsNullOrEmpty(Session["UserId"].ToString()))
             {
-                // Redirect unauthorized users safely
                 Response.Redirect("~/Login.aspx?msg=session_expired", true);
                 return;
             }
@@ -132,7 +139,6 @@ namespace AnmolDristi
             lblPageError.Text = string.Empty;
             lblRunMessage.Text = string.Empty;
 
-            // Updated query to aggregate row counts dynamically based on Staging Table
             string query = @"
                 SELECT 
                     b.BatchId AS ImportBatchId, 
@@ -150,7 +156,6 @@ namespace AnmolDristi
             DateTime fromDate;
             DateTime toDate;
 
-            // Strict C# 5.0 compatible TryParse logic
             if (DateTime.TryParse(txtFrom.Text, out fromDate))
             {
                 query += " AND b.UploadDate >= @FromDate ";
@@ -181,7 +186,6 @@ namespace AnmolDristi
                     if (!string.IsNullOrEmpty(ddlStatus.SelectedValue))
                         cmd.Parameters.AddWithValue("@Status", ddlStatus.SelectedValue);
 
-                    // 2. Wrap Adapter and DataTable in 'using' statements for immediate cleanup
                     using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                     using (DataTable dt = new DataTable())
                     {
@@ -195,44 +199,31 @@ namespace AnmolDristi
 
         private void LoadOverwriteFields()
         {
-            using (SqlConnection conn =
-                new SqlConnection(GetConnectionString()))
+            using (SqlConnection conn = new SqlConnection(GetConnectionString()))
             {
-                string sql =
-                @"SELECT *
-          FROM MST_HRMSImportField
-          WHERE IsVisible=1
-          ORDER BY Category,DisplayOrder";
+                string sql = @"SELECT * FROM MST_HRMSImportField WHERE IsVisible=1 ORDER BY Category, DisplayOrder";
 
-                SqlDataAdapter da =
-                    new SqlDataAdapter(sql, conn);
-
-                DataTable dt =
-                    new DataTable();
-
-                da.Fill(dt);
-
-                rptOverwriteFields.DataSource = dt;
-
-                rptOverwriteFields.DataBind();
+                using (SqlDataAdapter da = new SqlDataAdapter(sql, conn))
+                {
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+                    rptOverwriteFields.DataSource = dt;
+                    rptOverwriteFields.DataBind();
+                }
             }
         }
 
         protected void rblProcessingMode_SelectedIndexChanged(object sender, EventArgs e)
         {
-            divOverwriteFields.Visible =
-                rblProcessingMode.SelectedValue == "2";
+            divOverwriteFields.Visible = rblProcessingMode.SelectedValue == "2";
         }
 
         protected void btnSelectAll_Click(object sender, EventArgs e)
         {
             foreach (RepeaterItem item in rptOverwriteFields.Items)
             {
-                CheckBox chk =
-                    item.FindControl("chkField") as CheckBox;
-
-                if (chk != null)
-                    chk.Checked = true;
+                CheckBox chk = item.FindControl("chkField") as CheckBox;
+                if (chk != null) chk.Checked = true;
             }
         }
 
@@ -240,11 +231,8 @@ namespace AnmolDristi
         {
             foreach (RepeaterItem item in rptOverwriteFields.Items)
             {
-                CheckBox chk =
-                    item.FindControl("chkField") as CheckBox;
-
-                if (chk != null)
-                    chk.Checked = false;
+                CheckBox chk = item.FindControl("chkField") as CheckBox;
+                if (chk != null) chk.Checked = false;
             }
         }
 
@@ -254,36 +242,16 @@ namespace AnmolDristi
 
             foreach (RepeaterItem item in rptOverwriteFields.Items)
             {
-                CheckBox chk =
-                    item.FindControl("chkField") as CheckBox;
+                CheckBox chk = item.FindControl("chkField") as CheckBox;
+                HiddenField hf = item.FindControl("hfFieldCode") as HiddenField;
 
-                HiddenField hf =
-                    item.FindControl("hfFieldCode") as HiddenField;
-
-                if (chk != null &&
-                    hf != null &&
-                    chk.Checked)
+                if (chk != null && hf != null && chk.Checked)
                 {
                     fields.Add(hf.Value.Trim());
                 }
             }
 
             return string.Join("|", fields);
-        }
-
-        public class SyncExecutionContext
-        {
-            public int BatchId { get; set; }
-
-            public bool AllowOverwrite { get; set; }
-
-            public int ProcessingMode { get; set; }
-
-            public string Modules { get; set; }
-
-            public string OverwriteFields { get; set; }
-
-            public string ExecutedBy { get; set; }
         }
 
         protected void btnFilter_Click(object sender, EventArgs e)
@@ -322,28 +290,19 @@ namespace AnmolDristi
             }
 
             int batchId = Convert.ToInt32(hfSelectedBatch.Value);
-
             int processingMode = 0;
             int.TryParse(rblProcessingMode.SelectedValue, out processingMode);
 
             bool allowOverwrite = processingMode != 0;
-
             string modules = GetSelectedModules();
-
             string overwriteFields = GetSelectedOverwriteFields();
-
-            string executedBy =
-                Session["UserId"] == null
-                ? ""
-                : Session["UserId"].ToString();
+            string executedBy = Session["UserId"] != null ? Session["UserId"].ToString() : "SYSTEM";
 
             try
             {
-                using (SqlConnection conn =
-                    new SqlConnection(GetConnectionString()))
+                using (SqlConnection conn = new SqlConnection(GetConnectionString()))
                 {
-                    using (SqlCommand cmd =
-                        new SqlCommand("usp_RunHRMSSynchronization", conn))
+                    using (SqlCommand cmd = new SqlCommand("usp_RunHRMSSynchronization", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         cmd.CommandTimeout = 300;
@@ -352,20 +311,19 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
                         cmd.Parameters.AddWithValue("@ProcessingMode", processingMode);
                         cmd.Parameters.AddWithValue("@Modules", modules);
-                        cmd.Parameters.AddWithValue("@OverwriteFields", overwriteFields);
+                        cmd.Parameters.AddWithValue("@OverwriteFields", string.IsNullOrEmpty(overwriteFields) ? (object)DBNull.Value : overwriteFields);
                         cmd.Parameters.AddWithValue("@ExecutedBy", executedBy);
 
-                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                        {
+                            DataTable dt = new DataTable();
+                            da.Fill(dt);
 
-                        DataTable dt = new DataTable();
+                            gvResult.DataSource = dt;
+                            gvResult.DataBind();
+                        }
 
-                        da.Fill(dt);
-
-                        gvResult.DataSource = dt;
-                        gvResult.DataBind();
-
-                        lblRunMessage.Text =
-                            "Synchronization completed successfully.";
+                        lblRunMessage.Text = "Synchronization completed successfully.";
                     }
                 }
 
@@ -380,18 +338,35 @@ namespace AnmolDristi
         private string GetSelectedModules()
         {
             List<string> modules = new List<string>();
-
             foreach (ListItem item in chkModules.Items)
             {
                 if (item.Selected)
                     modules.Add(item.Value.Trim().ToUpper());
             }
-
             return string.Join("|", modules);
+        }
+
+        // Bulletproof CSV Field Escaper to prevent layout shifts
+        private string EscapeCsvField(string field)
+        {
+            if (string.IsNullOrEmpty(field))
+                return "";
+
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\r") || field.Contains("\n"))
+            {
+                return string.Format("\"{0}\"", field.Replace("\"", "\"\""));
+            }
+
+            return field;
         }
 
         protected void btnExportReport_Click(object sender, EventArgs e)
         {
+            if (ScriptManager.GetCurrent(this).IsInAsyncPostBack)
+            {
+                throw new Exception("Export is running inside Async PostBack.");
+            }
+
             if (string.IsNullOrEmpty(hfSelectedBatch.Value))
             {
                 lblPageError.Text = "Please select a batch before downloading a report.";
@@ -415,29 +390,42 @@ namespace AnmolDristi
 
                         while (reader.Read())
                         {
-                            string code = reader["EmpCode"] != DBNull.Value ? reader["EmpCode"].ToString() : "";
-                            string name = reader["EmpName"] != DBNull.Value ? reader["EmpName"].ToString() : "";
-                            string email = reader["Email"] != DBNull.Value ? reader["Email"].ToString() : "";
-                            string mobile = reader["MobileNo"] != DBNull.Value ? reader["MobileNo"].ToString() : "";
-                            string status = reader["ImportStatus"] != DBNull.Value ? reader["ImportStatus"].ToString() : "";
-                            string error = reader["ErrorMessage"] != DBNull.Value ? reader["ErrorMessage"].ToString() : "";
-
-                            // Wrap error message in quotes to prevent CSV breakage from commas
-                            error = string.Format("\"{0}\"", error.Replace("\"", "\"\""));
+                            string code = EscapeCsvField(reader["EmpCode"] != DBNull.Value ? reader["EmpCode"].ToString() : "");
+                            string name = EscapeCsvField(reader["EmpName"] != DBNull.Value ? reader["EmpName"].ToString() : "");
+                            string email = EscapeCsvField(reader["Email"] != DBNull.Value ? reader["Email"].ToString() : "");
+                            string mobile = EscapeCsvField(reader["MobileNo"] != DBNull.Value ? reader["MobileNo"].ToString() : "");
+                            string status = EscapeCsvField(reader["ImportStatus"] != DBNull.Value ? reader["ImportStatus"].ToString() : "");
+                            string error = EscapeCsvField(reader["ErrorMessage"] != DBNull.Value ? reader["ErrorMessage"].ToString() : "");
 
                             sb.AppendLine(string.Format("{0},{1},{2},{3},{4},{5}", code, name, email, mobile, status, error));
                         }
 
-                        // Stream CSV file directly to the client browser
                         Response.Clear();
+                        Response.ClearHeaders();
+                        Response.ClearContent();
+
                         Response.Buffer = true;
-                        Response.AddHeader("content-disposition", string.Format("attachment;filename=HRMS_BatchReport_{0}.csv", batchId));
-                        Response.Charset = "";
                         Response.ContentType = "text/csv";
-                        Response.Output.Write(sb.ToString());
+                        Response.ContentEncoding = Encoding.UTF8;
+
+                        Response.AddHeader(
+                            "Content-Disposition",
+                            $"attachment; filename=HRMS_BatchReport_{batchId}.csv");
+
+                        byte[] bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
+
+                        Response.BinaryWrite(bytes);
+
                         Response.Flush();
-                        System.Web.HttpContext.Current.ApplicationInstance.CompleteRequest();
-                        //Response.End();
+
+                        Response.End();
+
+                        Response.Flush();
+
+                        Response.SuppressContent = true;
+                        HttpContext.Current.ApplicationInstance.CompleteRequest();
+
+                        return;
                     }
                 }
             }

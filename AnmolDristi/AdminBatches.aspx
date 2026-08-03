@@ -73,7 +73,7 @@
                                         <div class="col-md-12">
                                             <div class="card-box table-responsive">
                                                 <asp:GridView ID="gvBatches" runat="server" CssClass="table table-striped table-hover table-bordered table-sm table-condensed"
-                                                    AutoGenerateColumns="False" GridLines="None" OnRowDataBound="gvBatches_RowDataBound">
+                                                    AutoGenerateColumns="False" GridLines="None" OnRowDataBound="gvBatches_RowDataBound" EnableViewState="false">
                                                     <Columns>
                                                         <asp:TemplateField HeaderText="Select">
                                                             <ItemTemplate>
@@ -170,7 +170,7 @@
                                         <div class="col-md-12 col-sm-12">
                                             <div class="card-box table-responsive">
                                                 <asp:GridView ID="gvResult" runat="server" CssClass="table table-striped table-hover table-bordered table-sm table-condensed"
-                                                    AutoGenerateColumns="true" EmptyDataText="No result returned." />
+                                                    AutoGenerateColumns="true" EmptyDataText="No result returned." EnableViewState="false"/>
                                             </div>
                                         </div>
                                     </div>
