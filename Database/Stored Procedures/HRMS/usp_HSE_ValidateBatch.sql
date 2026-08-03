@@ -504,7 +504,7 @@ BEGIN
        ------------------------------------------------------------------ */
     SELECT
         @ErrorCount = SUM(CASE WHEN s.ImportStatus = N'Error' THEN 1 ELSE 0 END),
-        @WarningCount = SUM(CASE WHEN s.ErrorMessage LIKE N'%[WARNING]%' THEN 1 ELSE 0 END),
+        @WarningCount = SUM(CASE WHEN s.ErrorMessage LIKE N'%[[]WARNING]%' THEN 1 ELSE 0 END),
         @ValidCount = SUM(CASE WHEN s.ImportStatus <> N'Error' THEN 1 ELSE 0 END),
         @MissingMandatoryCount = SUM(
             CASE
