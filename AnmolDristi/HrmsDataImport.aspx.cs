@@ -6,6 +6,7 @@ using System.Configuration;
 using System.IO;
 using System.Web.UI.WebControls;
 using Microsoft.VisualBasic.FileIO;
+using System.Linq;
 
 namespace AnmolDristi
 {
@@ -16,7 +17,7 @@ namespace AnmolDristi
         {
             // Core
             "EmpCode", "EmpName", "EmpStatus", "EmployeeStatus", "Email", "MobileNo",
-            "DOJ", "Gender", // <--- ADDED HERE
+            "DOJ", "Gender", 
             // Master IDs & Descriptions
             "Branch_ID", "Branch_Description",
             "Department_ID", "Department_Description",
@@ -25,10 +26,10 @@ namespace AnmolDristi
             "PlantID_ID", "PlantID_Description",
             "Region_ID", "Region_Description",
             "Division_ID", "Division_Description",
-            "Category_ID", "Category_Description",  // <-- Added here!
+            "Category_ID", "Category_Description",
             "Company_ID", "Company_Description",
             "SubDepartment_ID",
-    
+            
             // Managers
             "ReportingManager", "ReportingManagerCode",
             "ReportingManagersManagerName", "ReportingManagersManagerCode"
@@ -41,18 +42,10 @@ namespace AnmolDristi
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            // 1. Check if the user is authenticated
-            if (Session["UserId"] == null || string.IsNullOrEmpty(Session["UserId"].ToString()))
+            if (string.IsNullOrWhiteSpace(CurrentEmployeeCode))
             {
-                // Session expired or user not logged in. Redirect immediately.
-                // Appending a query string helps the Login page show a "Session Expired" message if desired.
                 Response.Redirect("~/Login.aspx?msg=session_expired", true);
-                return; // Ensure no further page lifecycle events fire
-            }
-
-            if (!IsPostBack)
-            {
-                // Any initial data binding goes here
+                return;
             }
         }
 
@@ -60,36 +53,47 @@ namespace AnmolDristi
         {
             if (!fileUploadCsv.HasFile)
             {
-                ShowMessage("Please select a CSV file to upload.", false);
+                ShowMessage("Please select a file to upload.", false);
                 return;
             }
 
-            string extension = Path.GetExtension(fileUploadCsv.FileName);
-            if (!string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
+            string fileExtension = Path.GetExtension(fileUploadCsv.FileName).ToLowerInvariant();
+
+            if (fileExtension != ".csv")
             {
-                ShowMessage("Invalid file type. Please upload a CSV file.", false);
+                ShowMessage("Invalid file type. Only .csv files are allowed.", false);
+                return;
+            }
+
+            int maxFileSize = 20 * 1024 * 1024; //20 MB
+
+            if (fileUploadCsv.PostedFile.ContentLength > maxFileSize)
+            {
+                ShowMessage("File is too large. Maximum allowed size is 20MB.", false);
                 return;
             }
 
             try
             {
-                // Save file temporarily to server so we can process it in Step 2 without re-uploading
-                string tempPath = Server.MapPath("~/TempUploads/");
-                if (!Directory.Exists(tempPath))
-                {
-                    Directory.CreateDirectory(tempPath);
-                }
+                string tempFolder = Server.MapPath("~/TempUploads/");
 
-                string uniqueFileName = string.Format("{0}_{1}", Guid.NewGuid().ToString("N"), fileUploadCsv.FileName);
-                string fullPath = Path.Combine(tempPath, uniqueFileName);
+                if (!Directory.Exists(tempFolder))
+                    Directory.CreateDirectory(tempFolder);
+
+                string uniqueFileName =
+                    string.Format("{0}_{1}",
+                    Guid.NewGuid().ToString("N"),
+                    fileUploadCsv.FileName);
+
+                string fullPath = Path.Combine(tempFolder, uniqueFileName);
+
                 fileUploadCsv.SaveAs(fullPath);
 
-                // Save path to session for Step 2
-                Session["TempCsvPath"] = fullPath;
-                Session["OriginalFileName"] = fileUploadCsv.FileName;
+                ViewState["TempCsvPath"] = fullPath;
+                ViewState["OriginalFileName"] = fileUploadCsv.FileName;
 
-                // Read headers
                 List<string> excelHeaders = new List<string>();
+
                 using (StreamReader sr = new StreamReader(fullPath))
                 using (TextFieldParser parser = new TextFieldParser(sr))
                 {
@@ -105,6 +109,7 @@ namespace AnmolDristi
                     }
 
                     string[] headers = parser.ReadFields();
+
                     if (headers == null || headers.Length == 0)
                     {
                         CleanupTempUpload(fullPath);
@@ -114,8 +119,15 @@ namespace AnmolDristi
 
                     foreach (string h in headers)
                     {
-                        if (!string.IsNullOrWhiteSpace(h))
-                            excelHeaders.Add(h.Trim());
+                        if (string.IsNullOrWhiteSpace(h))
+                            continue;
+
+                        string cleanHeader = h
+                            .Trim()
+                            .Trim('\uFEFF')
+                            .Replace("\"", "");
+
+                        excelHeaders.Add(cleanHeader);
                     }
 
                     if (excelHeaders.Count == 0)
@@ -126,11 +138,11 @@ namespace AnmolDristi
                     }
                 }
 
-                Session["ExcelHeaders"] = excelHeaders;
+                ViewState["ExcelHeaders"] = excelHeaders;
 
-                // Bind Grid
                 DataTable dtMapping = new DataTable();
                 dtMapping.Columns.Add("DbColumn", typeof(string));
+
                 foreach (string col in ExpectedDbColumns)
                 {
                     dtMapping.Rows.Add(col);
@@ -141,54 +153,80 @@ namespace AnmolDristi
 
                 pnlUpload.Visible = false;
                 pnlMapping.Visible = true;
+
                 lblMessage.Text = string.Empty;
             }
             catch (Exception ex)
             {
-                ShowMessage(string.Format("Error reading file: {0}", ex.Message), false);
+                ShowMessage("Error reading file: " + ex.Message, false);
             }
         }
 
         protected void rptMapping_ItemDataBound(object sender, RepeaterItemEventArgs e)
         {
-            if (e.Item.ItemType == ListItemType.Item || e.Item.ItemType == ListItemType.AlternatingItem)
+            if (e.Item.ItemType != ListItemType.Item &&
+                e.Item.ItemType != ListItemType.AlternatingItem)
             {
-                DropDownList ddlExcelColumn = (DropDownList)e.Item.FindControl("ddlExcelColumn");
-                HiddenField hfDbColumn = (HiddenField)e.Item.FindControl("hfDbColumn");
+                return;
+            }
 
-                List<string> excelHeaders = Session["ExcelHeaders"] as List<string>;
+            HiddenField hfDbColumn =
+                (HiddenField)e.Item.FindControl("hfDbColumn");
 
-                ddlExcelColumn.Items.Add(new ListItem("-- Ignore / Do Not Map --", ""));
+            DropDownList ddlExcelColumn =
+                (DropDownList)e.Item.FindControl("ddlExcelColumn");
 
-                if (excelHeaders != null)
+            List<string> excelHeaders =
+                ViewState["ExcelHeaders"] as List<string>;
+
+            ddlExcelColumn.Items.Clear();
+
+            ddlExcelColumn.Items.Add(
+                new ListItem("-- Ignore / Do Not Map --", ""));
+
+            if (excelHeaders == null || excelHeaders.Count == 0)
+                return;
+
+            foreach (string header in excelHeaders)
+            {
+                ddlExcelColumn.Items.Add(
+                    new ListItem(header, header));
+            }
+
+            string dbColumn = hfDbColumn.Value
+                .Trim()
+                .Trim('\uFEFF')
+                .Replace("\"", "");
+
+            foreach (ListItem item in ddlExcelColumn.Items)
+            {
+                string excelColumn = item.Text
+                    .Trim()
+                    .Trim('\uFEFF')
+                    .Replace("\"", "");
+
+                if (string.Equals(
+                        excelColumn,
+                        dbColumn,
+                        StringComparison.OrdinalIgnoreCase))
                 {
-                    foreach (string header in excelHeaders)
-                    {
-                        ddlExcelColumn.Items.Add(new ListItem(header, header));
-                    }
-
-                    // Auto-select logic: If DB column name perfectly matches Excel Header name
-                    ListItem matchedItem = ddlExcelColumn.Items.FindByText(hfDbColumn.Value);
-                    if (matchedItem != null)
-                    {
-                        ddlExcelColumn.SelectedValue = matchedItem.Value;
-                    }
+                    ddlExcelColumn.SelectedValue = item.Value;
+                    break;
                 }
             }
         }
 
         protected void btnProcess_Click(object sender, EventArgs e)
         {
-            string tempPath = Session["TempCsvPath"] as string;
+            string tempPath = ViewState["TempCsvPath"] as string;
 
             if (string.IsNullOrEmpty(tempPath) || !File.Exists(tempPath))
             {
-                ShowMessage("Session expired or file lost. Please upload again.", false);
+                ShowMessage("File reference lost. Please upload the file again.", false);
                 btnCancel_Click(null, null);
                 return;
             }
 
-            // 1. Build Mapping Dictionary from User's UI Selections
             Dictionary<string, string> dbToExcelMap = new Dictionary<string, string>();
             foreach (RepeaterItem item in rptMapping.Items)
             {
@@ -221,7 +259,6 @@ namespace AnmolDristi
                     parser.SetDelimiters(",");
                     parser.HasFieldsEnclosedInQuotes = true;
 
-                    // Header Map Dictionary: Excel Header Name -> Array Index
                     Dictionary<string, int> headerIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
                     if (parser.EndOfData)
@@ -239,9 +276,15 @@ namespace AnmolDristi
 
                     for (int i = 0; i < headers.Length; i++)
                     {
-                        string headerName = headers[i].Trim();
+                        string headerName = headers[i]
+                            .Trim()
+                            .Trim('\uFEFF')      // Remove UTF-8 BOM
+                            .Replace("\"", "");  // Remove quotes if present
+
                         if (!headerIndexMap.ContainsKey(headerName))
+                        {
                             headerIndexMap.Add(headerName, i);
+                        }
                     }
 
                     if (!ValidateMappedHeadersExist(dbToExcelMap, headerIndexMap, out templateError))
@@ -258,9 +301,7 @@ namespace AnmolDristi
 
                     // 2. Create Batch ID with Status = Uploaded
                     string uploadedBy = Session["UserId"] != null ? Session["UserId"].ToString() : "UnknownSystemUser";
-                    string originalFileName = Session["OriginalFileName"] != null
-                        ? Session["OriginalFileName"].ToString()
-                        : "UnknownFile.csv";
+                    string originalFileName = ViewState["OriginalFileName"] != null ? ViewState["OriginalFileName"].ToString() : "UnknownFile.csv";
 
                     using (SqlConnection conn = new SqlConnection(connectionString))
                     {
@@ -286,7 +327,6 @@ namespace AnmolDristi
                         DataRow row = dtStaging.NewRow();
                         row["BatchId"] = batchId;
 
-                        // Use the UI Map to pull the correct Excel index into the DB column
                         foreach (KeyValuePair<string, string> mapping in dbToExcelMap)
                         {
                             string dbCol = mapping.Key;
@@ -316,41 +356,78 @@ namespace AnmolDristi
                         InsertBatch(dtStaging, connectionString);
                     }
                 }
-
                 uploadSucceeded = true;
 
-                // Clean up Temp File before redirect
-                if (File.Exists(tempPath))
-                    File.Delete(tempPath);
+                ViewState.Remove("TempCsvPath");
+                ViewState.Remove("ExcelHeaders");
+                ViewState.Remove("OriginalFileName");
+                //ProcessBatch(batchId, chkAllowOverwrite.Checked, connectionString);
 
-                Session["TempCsvPath"] = null;
-                Session["ExcelHeaders"] = null;
-                Session["OriginalFileName"] = null;
+                //btnCancel_Click(null, null);
             }
             catch (Exception ex)
             {
-                // Log the actual exception to your server logs here (NLog, Serilog, etc.)
-                ShowMessage(string.Format("A critical error occurred: {0}", ex.Message), false);
+                // Best-effort cleanup of orphan data
+                if (batchId > 0)
+                {
+                    try
+                    {
+                        using (SqlConnection conn = new SqlConnection(connectionString))
+                        {
+                            conn.Open();
+
+                            using (SqlTransaction tx = conn.BeginTransaction())
+                            {
+                                try
+                                {
+                                    using (SqlCommand cmd = new SqlCommand(@"
+                            DELETE FROM dbo.Staging_EmployeeData
+                            WHERE BatchId = @BatchId;
+
+                            DELETE FROM dbo.ImportBatchMaster
+                            WHERE BatchId = @BatchId;",
+                                        conn, tx))
+                                    {
+                                        cmd.Parameters.AddWithValue("@BatchId", batchId);
+                                        cmd.ExecuteNonQuery();
+                                    }
+
+                                    tx.Commit();
+                                }
+                                catch
+                                {
+                                    if (tx.Connection != null)
+                                        tx.Rollback();
+
+                                    // Do not throw - preserve the original exception
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception cleanupEx)
+                    {
+                        // Log only. Never replace the original upload exception.
+                        System.Diagnostics.Debug.WriteLine(
+                            "Batch cleanup failed: " + cleanupEx.Message);
+                    }
+                }
+
+                ShowMessage(
+                    string.Format("A critical error occurred: {0}", ex.Message),
+                    false);
             }
             finally
             {
-                // GUARANTEED CLEANUP: This runs no matter what happens above.
+                // FIX: Safe cleanup without forcing garbage collection (GC.Collect removed)
                 try
                 {
                     if (!string.IsNullOrEmpty(tempPath) && File.Exists(tempPath))
                     {
-                        // Force garbage collection to release file handles if TextFieldParser kept it open
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-
                         File.Delete(tempPath);
                     }
                 }
                 catch (Exception cleanupEx)
                 {
-                    // Failsafe: If deletion fails (e.g., file locked by another process), 
-                    // catch it so it doesn't crash the IIS worker process. 
-                    // In a real app, log this cleanupEx to your error logger.
                     System.Diagnostics.Debug.WriteLine("Failed to delete temp file: " + cleanupEx.Message);
                 }
             }
@@ -408,9 +485,11 @@ namespace AnmolDristi
         {
             pnlUpload.Visible = true;
             pnlMapping.Visible = false;
-            Session["TempCsvPath"] = null;
-            Session["ExcelHeaders"] = null;
-            Session["OriginalFileName"] = null;
+            lblMessage.Text = string.Empty;
+
+            ViewState.Remove("TempCsvPath");
+            ViewState.Remove("ExcelHeaders");
+            ViewState.Remove("OriginalFileName");
         }
 
         private void CleanupTempUpload(string fullPath)
@@ -424,10 +503,10 @@ namespace AnmolDristi
             {
                 System.Diagnostics.Debug.WriteLine("Failed to delete temp file: " + cleanupEx.Message);
             }
-
-            Session["TempCsvPath"] = null;
-            Session["OriginalFileName"] = null;
-            Session["ExcelHeaders"] = null;
+            // Clear ViewState properly
+            ViewState.Remove("TempCsvPath");
+            ViewState.Remove("ExcelHeaders");
+            ViewState.Remove("OriginalFileName");
         }
 
         private DataTable CreateStagingTable()
@@ -443,30 +522,44 @@ namespace AnmolDristi
 
         private void InsertBatch(DataTable dt, string connectionString)
         {
+            if (dt == null || dt.Rows.Count == 0)
+                return;
+
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
+
                 using (SqlTransaction transaction = conn.BeginTransaction())
                 {
                     try
                     {
-                        using (SqlBulkCopy bulkCopy = new SqlBulkCopy(conn, SqlBulkCopyOptions.Default, transaction))
+                        using (SqlBulkCopy bulkCopy = new SqlBulkCopy(
+                            conn,
+                            SqlBulkCopyOptions.Default,
+                            transaction))
                         {
                             bulkCopy.DestinationTableName = "dbo.Staging_EmployeeData";
                             bulkCopy.BulkCopyTimeout = 300;
+                            bulkCopy.BatchSize = 5000;
 
                             foreach (DataColumn col in dt.Columns)
                             {
                                 bulkCopy.ColumnMappings.Add(col.ColumnName, col.ColumnName);
                             }
+
                             bulkCopy.WriteToServer(dt);
                         }
+
                         transaction.Commit();
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        transaction.Rollback();
-                        throw new Exception(string.Format("Bulk insert failed: {0}", ex.Message));
+                        if (transaction.Connection != null)
+                        {
+                            transaction.Rollback();
+                        }
+
+                        throw;
                     }
                 }
             }
@@ -477,5 +570,6 @@ namespace AnmolDristi
             lblMessage.Text = message;
             lblMessage.CssClass = isSuccess ? "font-weight-bold d-block mb-3 text-success" : "font-weight-bold d-block mb-3 text-danger";
         }
+            
     }
 }
