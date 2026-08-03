@@ -64,6 +64,13 @@ namespace AnmolDristi
                 return;
             }
 
+            string extension = Path.GetExtension(fileUploadCsv.FileName);
+            if (!string.Equals(extension, ".csv", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowMessage("Invalid file type. Please upload a CSV file.", false);
+                return;
+            }
+
             try
             {
                 // Save file temporarily to server so we can process it in Step 2 without re-uploading
@@ -90,13 +97,32 @@ namespace AnmolDristi
                     parser.SetDelimiters(",");
                     parser.HasFieldsEnclosedInQuotes = true;
 
-                    if (!parser.EndOfData)
+                    if (parser.EndOfData)
                     {
-                        string[] headers = parser.ReadFields();
-                        foreach (string h in headers)
-                        {
+                        CleanupTempUpload(fullPath);
+                        ShowMessage("The uploaded file is empty.", false);
+                        return;
+                    }
+
+                    string[] headers = parser.ReadFields();
+                    if (headers == null || headers.Length == 0)
+                    {
+                        CleanupTempUpload(fullPath);
+                        ShowMessage("CSV header row is missing or unreadable.", false);
+                        return;
+                    }
+
+                    foreach (string h in headers)
+                    {
+                        if (!string.IsNullOrWhiteSpace(h))
                             excelHeaders.Add(h.Trim());
-                        }
+                    }
+
+                    if (excelHeaders.Count == 0)
+                    {
+                        CleanupTempUpload(fullPath);
+                        ShowMessage("CSV header row does not contain any valid column names.", false);
+                        return;
                     }
                 }
 
@@ -175,28 +201,19 @@ namespace AnmolDristi
                 }
             }
 
+            string templateError;
+            if (!ValidateTemplateMapping(dbToExcelMap, out templateError))
+            {
+                ShowMessage(templateError, false);
+                return;
+            }
+
             string connectionString = GetConnectionString();
+            int batchId = 0;
+            bool uploadSucceeded = false;
 
             try
             {
-                // 2. Create Batch ID
-                int batchId = 0;
-                string uploadedBy = Session["UserId"] != null ? Session["UserId"].ToString() : "UnknownSystemUser";
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    string insertBatchSql = "INSERT INTO dbo.ImportBatchMaster (FileName, UploadedBy) OUTPUT INSERTED.BatchId VALUES (@FileName, @UploadedBy)";
-                    using (SqlCommand cmd = new SqlCommand(insertBatchSql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@FileName", Session["OriginalFileName"].ToString());
-                        cmd.Parameters.AddWithValue("@UploadedBy", uploadedBy);
-                        conn.Open();
-                        batchId = (int)cmd.ExecuteScalar();
-                    }
-                }
-
-                // 3. Read CSV and Apply Dynamic User Mapping
-                DataTable dtStaging = CreateStagingTable();
-
                 using (StreamReader sr = new StreamReader(tempPath))
                 using (TextFieldParser parser = new TextFieldParser(sr))
                 {
@@ -207,15 +224,61 @@ namespace AnmolDristi
                     // Header Map Dictionary: Excel Header Name -> Array Index
                     Dictionary<string, int> headerIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-                    if (!parser.EndOfData)
+                    if (parser.EndOfData)
                     {
-                        string[] headers = parser.ReadFields();
-                        for (int i = 0; i < headers.Length; i++)
+                        ShowMessage("The uploaded file is empty.", false);
+                        return;
+                    }
+
+                    string[] headers = parser.ReadFields();
+                    if (headers == null || headers.Length == 0)
+                    {
+                        ShowMessage("CSV header row is missing or unreadable.", false);
+                        return;
+                    }
+
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        string headerName = headers[i].Trim();
+                        if (!headerIndexMap.ContainsKey(headerName))
+                            headerIndexMap.Add(headerName, i);
+                    }
+
+                    if (!ValidateMappedHeadersExist(dbToExcelMap, headerIndexMap, out templateError))
+                    {
+                        ShowMessage(templateError, false);
+                        return;
+                    }
+
+                    if (parser.EndOfData)
+                    {
+                        ShowMessage("The file contains a header row but no data rows.", false);
+                        return;
+                    }
+
+                    // 2. Create Batch ID with Status = Uploaded
+                    string uploadedBy = Session["UserId"] != null ? Session["UserId"].ToString() : "UnknownSystemUser";
+                    string originalFileName = Session["OriginalFileName"] != null
+                        ? Session["OriginalFileName"].ToString()
+                        : "UnknownFile.csv";
+
+                    using (SqlConnection conn = new SqlConnection(connectionString))
+                    {
+                        string insertBatchSql =
+                            "INSERT INTO dbo.ImportBatchMaster (FileName, UploadedBy, Status) " +
+                            "OUTPUT INSERTED.BatchId VALUES (@FileName, @UploadedBy, @Status)";
+                        using (SqlCommand cmd = new SqlCommand(insertBatchSql, conn))
                         {
-                            if (!headerIndexMap.ContainsKey(headers[i].Trim()))
-                                headerIndexMap.Add(headers[i].Trim(), i);
+                            cmd.Parameters.AddWithValue("@FileName", originalFileName);
+                            cmd.Parameters.AddWithValue("@UploadedBy", uploadedBy);
+                            cmd.Parameters.AddWithValue("@Status", "Uploaded");
+                            conn.Open();
+                            batchId = (int)cmd.ExecuteScalar();
                         }
                     }
+
+                    // 3. Read CSV and Apply Dynamic User Mapping → Staging_EmployeeData
+                    DataTable dtStaging = CreateStagingTable();
 
                     while (!parser.EndOfData)
                     {
@@ -254,14 +317,15 @@ namespace AnmolDristi
                     }
                 }
 
-                // 4. Run Stored Procedure
-                ProcessBatch(batchId, chkAllowOverwrite.Checked, connectionString);
+                uploadSucceeded = true;
 
-                // Clean up Temp File
-                File.Delete(tempPath);
+                // Clean up Temp File before redirect
+                if (File.Exists(tempPath))
+                    File.Delete(tempPath);
 
-                // Reset UI
-                btnCancel_Click(null, null);
+                Session["TempCsvPath"] = null;
+                Session["ExcelHeaders"] = null;
+                Session["OriginalFileName"] = null;
             }
             catch (Exception ex)
             {
@@ -290,6 +354,54 @@ namespace AnmolDristi
                     System.Diagnostics.Debug.WriteLine("Failed to delete temp file: " + cleanupEx.Message);
                 }
             }
+
+            if (uploadSucceeded && batchId > 0)
+            {
+                Response.Redirect(
+                    string.Format("HrmsBatchManager.aspx?BatchId={0}", batchId),
+                    false);
+                Context.ApplicationInstance.CompleteRequest();
+            }
+        }
+
+        private bool ValidateTemplateMapping(Dictionary<string, string> dbToExcelMap, out string errorMessage)
+        {
+            errorMessage = null;
+
+            if (dbToExcelMap == null || dbToExcelMap.Count == 0)
+            {
+                errorMessage = "Please map at least EmpCode before uploading to staging.";
+                return false;
+            }
+
+            if (!dbToExcelMap.ContainsKey("EmpCode") || string.IsNullOrWhiteSpace(dbToExcelMap["EmpCode"]))
+            {
+                errorMessage = "Template validation failed: EmpCode must be mapped to a source column.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool ValidateMappedHeadersExist(
+            Dictionary<string, string> dbToExcelMap,
+            Dictionary<string, int> headerIndexMap,
+            out string errorMessage)
+        {
+            errorMessage = null;
+
+            foreach (KeyValuePair<string, string> mapping in dbToExcelMap)
+            {
+                if (!headerIndexMap.ContainsKey(mapping.Value))
+                {
+                    errorMessage = string.Format(
+                        "Template validation failed: mapped source column '{0}' was not found in the file header.",
+                        mapping.Value);
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         protected void btnCancel_Click(object sender, EventArgs e)
@@ -297,6 +409,24 @@ namespace AnmolDristi
             pnlUpload.Visible = true;
             pnlMapping.Visible = false;
             Session["TempCsvPath"] = null;
+            Session["ExcelHeaders"] = null;
+            Session["OriginalFileName"] = null;
+        }
+
+        private void CleanupTempUpload(string fullPath)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(fullPath) && File.Exists(fullPath))
+                    File.Delete(fullPath);
+            }
+            catch (Exception cleanupEx)
+            {
+                System.Diagnostics.Debug.WriteLine("Failed to delete temp file: " + cleanupEx.Message);
+            }
+
+            Session["TempCsvPath"] = null;
+            Session["OriginalFileName"] = null;
             Session["ExcelHeaders"] = null;
         }
 
@@ -340,120 +470,6 @@ namespace AnmolDristi
                     }
                 }
             }
-        }
-
-        //private void ProcessBatch(int batchId, bool allowOverwrite, string connectionString)
-        //{
-        //    int processedCount = 0, errorCount = 0, skippedCount = 0;
-
-        //    using (SqlConnection conn = new SqlConnection(connectionString))
-        //    {
-        //        using (SqlCommand cmd = new SqlCommand("dbo.usp_ProcessEmployeeBatch_V2", conn))
-        //        {
-        //            cmd.CommandType = CommandType.StoredProcedure;
-        //            cmd.CommandTimeout = 300;
-        //            cmd.Parameters.AddWithValue("@BatchId", batchId);
-        //            cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
-
-        //            conn.Open();
-        //            using (SqlDataReader reader = cmd.ExecuteReader())
-        //            {
-        //                if (reader.Read())
-        //                {
-        //                    processedCount = reader["ProcessedCount"] != DBNull.Value ? Convert.ToInt32(reader["ProcessedCount"]) : 0;
-        //                    errorCount = reader["ErrorCount"] != DBNull.Value ? Convert.ToInt32(reader["ErrorCount"]) : 0;
-        //                    skippedCount = reader["SkippedCount"] != DBNull.Value ? Convert.ToInt32(reader["SkippedCount"]) : 0;
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    ShowMessage(string.Format("Import Successful! Processed: {0}, Errors: {1}, Skipped: {2}", processedCount, errorCount, skippedCount), true);
-        //}
-
-        private void ProcessBatch(int batchId, bool allowOverwrite, string connectionString)
-        {
-            // Temporary values until V2 is completed
-            int totalRecords = 0;
-            int insertedCount = 0;
-            int updatedCount = 0;
-            int skippedCount = 0;
-            int errorCount = 0;
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand("dbo.usp_RunHRMSSynchronization", conn))
-            {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.CommandTimeout = 300;
-
-                cmd.Parameters.AddWithValue("@BatchId", batchId);
-
-                // Legacy parameter (wrapper still accepts it)
-                cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
-
-                // New parameters
-                cmd.Parameters.AddWithValue("@ProcessingMode", 0);              // Insert Only
-                cmd.Parameters.AddWithValue("@Modules", "Employees");
-                cmd.Parameters.AddWithValue("@OverwriteFields", DBNull.Value);
-                cmd.Parameters.AddWithValue(
-                    "@ExecutedBy",
-                    Session["UserId"] != null
-                        ? Session["UserId"].ToString()
-                        : "SYSTEM");
-
-                conn.Open();
-
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    // Skip debug dataset (#EmployeeSource)
-                    while (reader.NextResult())
-                    {
-                        if (reader.HasRows)
-                        {
-                            if (reader.Read())
-                            {
-                                if (HasColumn(reader, "TotalRecords"))
-                                    totalRecords = Convert.ToInt32(reader["TotalRecords"]);
-
-                                if (HasColumn(reader, "InsertedCount"))
-                                    insertedCount = Convert.ToInt32(reader["InsertedCount"]);
-
-                                if (HasColumn(reader, "UpdatedCount"))
-                                    updatedCount = Convert.ToInt32(reader["UpdatedCount"]);
-
-                                if (HasColumn(reader, "SkippedCount"))
-                                    skippedCount = Convert.ToInt32(reader["SkippedCount"]);
-
-                                if (HasColumn(reader, "ErrorCount"))
-                                    errorCount = Convert.ToInt32(reader["ErrorCount"]);
-                            }
-
-                            break;
-                        }
-                    }
-                }
-            }
-
-            ShowMessage(
-                string.Format(
-                    "Import Completed. Total: {0}, Inserted: {1}, Updated: {2}, Errors: {3}, Skipped: {4}",
-                    totalRecords,
-                    insertedCount,
-                    updatedCount,
-                    errorCount,
-                    skippedCount),
-                true);
-        }
-
-        private bool HasColumn(IDataRecord reader, string columnName)
-        {
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
-
-            return false;
         }
 
         private void ShowMessage(string message, bool isSuccess)

@@ -93,7 +93,7 @@
 
                             <asp:Panel ID="pnlMapping" runat="server" Visible="false">
                                 <div class="alert alert-info">
-                                    <strong>File Analyzed Successfully!</strong> Please verify the column mappings below. The system has auto-matched columns with exact name matches.
+                                    <strong>File Analyzed Successfully!</strong> Please verify the column mappings below. EmpCode is required. After upload, you will be redirected to Batch Manager to run synchronization.
                                 </div>
 
                                 <div class="row mapping-grid bg-light p-3 border">
@@ -119,12 +119,7 @@
 
                                 <div class="form-group row mt-4">
                                     <div class="col-md-12">
-                                        <div class="checkbox mb-3">
-                                            <label>
-                                                <asp:CheckBox ID="chkAllowOverwrite" runat="server" Checked="true" />
-                                                <strong>Allow Overwrite:</strong> Update existing matching records.</label>
-                                        </div>
-                                        <asp:Button ID="btnProcess" runat="server" Text="Execute Import Pipeline" CssClass="btn btn-success" OnClick="btnProcess_Click" OnClientClick="this.value='Processing...'; this.classList.add('disabled');" UseSubmitBehavior="false" />
+                                        <asp:Button ID="btnProcess" runat="server" Text="Upload to Staging" CssClass="btn btn-success" OnClick="btnProcess_Click" OnClientClick="this.value='Uploading...'; this.classList.add('disabled');" UseSubmitBehavior="false" />
                                         <asp:Button ID="btnCancel" runat="server" Text="Cancel & Upload New" CssClass="btn btn-default" OnClick="btnCancel_Click" />
                                     </div>
                                 </div>
