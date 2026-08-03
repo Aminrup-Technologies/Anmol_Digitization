@@ -6,6 +6,7 @@ using System.Configuration;
 using System.IO;
 using System.Web.UI.WebControls;
 using Microsoft.VisualBasic.FileIO;
+using System.Linq;
 
 namespace AnmolDristi
 {
@@ -56,16 +57,16 @@ namespace AnmolDristi
                 return;
             }
 
-            // SECURITY 1: Strict File Extension Check
-            string fileExtension = Path.GetExtension(fileUploadCsv.FileName).ToLower();
+            string fileExtension = Path.GetExtension(fileUploadCsv.FileName).ToLowerInvariant();
+
             if (fileExtension != ".csv")
             {
                 ShowMessage("Invalid file type. Only .csv files are allowed.", false);
                 return;
             }
 
-            // SECURITY 2: Max File Size Check (e.g., limit to 20MB in code)
-            int maxFileSize = 20 * 1024 * 1024; // 20 MB
+            int maxFileSize = 20 * 1024 * 1024; //20 MB
+
             if (fileUploadCsv.PostedFile.ContentLength > maxFileSize)
             {
                 ShowMessage("File is too large. Maximum allowed size is 20MB.", false);
@@ -74,21 +75,25 @@ namespace AnmolDristi
 
             try
             {
-                string tempPath = Server.MapPath("~/TempUploads/");
-                if (!Directory.Exists(tempPath))
-                {
-                    Directory.CreateDirectory(tempPath);
-                }
+                string tempFolder = Server.MapPath("~/TempUploads/");
 
-                string uniqueFileName = string.Format("{0}_{1}", Guid.NewGuid().ToString("N"), fileUploadCsv.FileName);
-                string fullPath = Path.Combine(tempPath, uniqueFileName);
+                if (!Directory.Exists(tempFolder))
+                    Directory.CreateDirectory(tempFolder);
+
+                string uniqueFileName =
+                    string.Format("{0}_{1}",
+                    Guid.NewGuid().ToString("N"),
+                    fileUploadCsv.FileName);
+
+                string fullPath = Path.Combine(tempFolder, uniqueFileName);
+
                 fileUploadCsv.SaveAs(fullPath);
 
-                // FIX: Use ViewState instead of Session to prevent Cross-Tab Pollution
                 ViewState["TempCsvPath"] = fullPath;
                 ViewState["OriginalFileName"] = fileUploadCsv.FileName;
 
                 List<string> excelHeaders = new List<string>();
+
                 using (StreamReader sr = new StreamReader(fullPath))
                 using (TextFieldParser parser = new TextFieldParser(sr))
                 {
@@ -104,6 +109,7 @@ namespace AnmolDristi
                     }
 
                     string[] headers = parser.ReadFields();
+
                     if (headers == null || headers.Length == 0)
                     {
                         CleanupTempUpload(fullPath);
@@ -113,8 +119,15 @@ namespace AnmolDristi
 
                     foreach (string h in headers)
                     {
-                        if (!string.IsNullOrWhiteSpace(h))
-                            excelHeaders.Add(h.Trim());
+                        if (string.IsNullOrWhiteSpace(h))
+                            continue;
+
+                        string cleanHeader = h
+                            .Trim()
+                            .Trim('\uFEFF')
+                            .Replace("\"", "");
+
+                        excelHeaders.Add(cleanHeader);
                     }
 
                     if (excelHeaders.Count == 0)
@@ -127,9 +140,9 @@ namespace AnmolDristi
 
                 ViewState["ExcelHeaders"] = excelHeaders;
 
-                // Bind Grid
                 DataTable dtMapping = new DataTable();
                 dtMapping.Columns.Add("DbColumn", typeof(string));
+
                 foreach (string col in ExpectedDbColumns)
                 {
                     dtMapping.Rows.Add(col);
@@ -140,38 +153,65 @@ namespace AnmolDristi
 
                 pnlUpload.Visible = false;
                 pnlMapping.Visible = true;
+
                 lblMessage.Text = string.Empty;
             }
             catch (Exception ex)
             {
-                ShowMessage(string.Format("Error reading file: {0}", ex.Message), false);
+                ShowMessage("Error reading file: " + ex.Message, false);
             }
         }
 
         protected void rptMapping_ItemDataBound(object sender, RepeaterItemEventArgs e)
         {
-            if (e.Item.ItemType == ListItemType.Item || e.Item.ItemType == ListItemType.AlternatingItem)
+            if (e.Item.ItemType != ListItemType.Item &&
+                e.Item.ItemType != ListItemType.AlternatingItem)
             {
-                DropDownList ddlExcelColumn = (DropDownList)e.Item.FindControl("ddlExcelColumn");
-                HiddenField hfDbColumn = (HiddenField)e.Item.FindControl("hfDbColumn");
+                return;
+            }
 
-                // Retrieve from ViewState safely
-                List<string> excelHeaders = ViewState["ExcelHeaders"] as List<string>;
+            HiddenField hfDbColumn =
+                (HiddenField)e.Item.FindControl("hfDbColumn");
 
-                ddlExcelColumn.Items.Add(new ListItem("-- Ignore / Do Not Map --", ""));
+            DropDownList ddlExcelColumn =
+                (DropDownList)e.Item.FindControl("ddlExcelColumn");
 
-                if (excelHeaders != null)
+            List<string> excelHeaders =
+                ViewState["ExcelHeaders"] as List<string>;
+
+            ddlExcelColumn.Items.Clear();
+
+            ddlExcelColumn.Items.Add(
+                new ListItem("-- Ignore / Do Not Map --", ""));
+
+            if (excelHeaders == null || excelHeaders.Count == 0)
+                return;
+
+            foreach (string header in excelHeaders)
+            {
+                ddlExcelColumn.Items.Add(
+                    new ListItem(header, header));
+            }
+
+            string dbColumn = hfDbColumn.Value
+                .Trim()
+                .Trim('\uFEFF')
+                .Replace("\"", "");
+
+            foreach (ListItem item in ddlExcelColumn.Items)
+            {
+                string excelColumn = item.Text
+                    .Trim()
+                    .Trim('\uFEFF')
+                    .Replace("\"", "");
+
+                if (string.Equals(
+                        excelColumn,
+                        dbColumn,
+                        StringComparison.OrdinalIgnoreCase))
                 {
-                    foreach (string header in excelHeaders)
-                    {
-                        ddlExcelColumn.Items.Add(new ListItem(header, header));
-                    }
-
-                    ListItem matchedItem = ddlExcelColumn.Items.FindByText(hfDbColumn.Value);
-                    if (matchedItem != null)
-                    {
-                        ddlExcelColumn.SelectedValue = matchedItem.Value;
-                    }
+                    ddlExcelColumn.SelectedValue = item.Value;
+                    break;
                 }
             }
         }
@@ -236,9 +276,15 @@ namespace AnmolDristi
 
                     for (int i = 0; i < headers.Length; i++)
                     {
-                        string headerName = headers[i].Trim();
+                        string headerName = headers[i]
+                            .Trim()
+                            .Trim('\uFEFF')      // Remove UTF-8 BOM
+                            .Replace("\"", "");  // Remove quotes if present
+
                         if (!headerIndexMap.ContainsKey(headerName))
+                        {
                             headerIndexMap.Add(headerName, i);
+                        }
                     }
 
                     if (!ValidateMappedHeadersExist(dbToExcelMap, headerIndexMap, out templateError))
