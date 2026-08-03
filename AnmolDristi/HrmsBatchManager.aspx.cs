@@ -339,6 +339,35 @@ namespace AnmolDristi
 
             try
             {
+                // STEP 1: Validate batch before synchronization
+                bool isValid;
+                DataTable dtValidation;
+                string validationMessage;
+
+                ExecuteHseValidateBatch(
+                    batchId,
+                    processingMode,
+                    modules,
+                    out isValid,
+                    out dtValidation,
+                    out validationMessage);
+
+                // STEP 2: Validation failed — do not synchronize
+                if (!isValid)
+                {
+                    gvResult.DataSource = dtValidation;
+                    gvResult.DataBind();
+
+                    lblRunMessage.Text = string.Empty;
+                    lblPageError.Text = string.IsNullOrWhiteSpace(validationMessage)
+                        ? "Batch validation failed. Synchronization was not executed. Review the validation summary and staging ErrorMessage values."
+                        : validationMessage;
+
+                    LoadBatches();
+                    return;
+                }
+
+                // STEP 3: Validation passed — existing synchronization flow unchanged
                 using (SqlConnection conn =
                     new SqlConnection(GetConnectionString()))
                 {
@@ -374,6 +403,57 @@ namespace AnmolDristi
             catch (Exception ex)
             {
                 lblPageError.Text = ex.Message;
+            }
+        }
+
+        /// <summary>
+        /// Executes dbo.usp_HSE_ValidateBatch and returns the OUTPUT IsValid flag plus summary result set.
+        /// Parameter name is @Modules (procedure contract). Callers pass the same Modules string used for sync.
+        /// </summary>
+        private void ExecuteHseValidateBatch(
+            int batchId,
+            int processingMode,
+            string modules,
+            out bool isValid,
+            out DataTable validationSummary,
+            out string validationMessage)
+        {
+            isValid = false;
+            validationMessage = string.Empty;
+            validationSummary = new DataTable();
+
+            using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_HSE_ValidateBatch", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 300;
+
+                cmd.Parameters.AddWithValue("@BatchId", batchId);
+                cmd.Parameters.AddWithValue("@ProcessingMode", processingMode);
+                cmd.Parameters.AddWithValue(
+                    "@Modules",
+                    string.IsNullOrWhiteSpace(modules) ? (object)DBNull.Value : modules);
+
+                SqlParameter pIsValid = new SqlParameter("@IsValid", SqlDbType.Bit)
+                {
+                    Direction = ParameterDirection.Output
+                };
+                cmd.Parameters.Add(pIsValid);
+
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(validationSummary);
+                }
+
+                if (pIsValid.Value != null && pIsValid.Value != DBNull.Value)
+                    isValid = Convert.ToBoolean(pIsValid.Value);
+
+                if (validationSummary.Rows.Count > 0
+                    && validationSummary.Columns.Contains("ValidationMessage")
+                    && validationSummary.Rows[0]["ValidationMessage"] != DBNull.Value)
+                {
+                    validationMessage = validationSummary.Rows[0]["ValidationMessage"].ToString();
+                }
             }
         }
 
