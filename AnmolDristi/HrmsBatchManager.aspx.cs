@@ -4,6 +4,7 @@ using System.Data.SqlClient;
 using System.Configuration;
 using System.Text;
 using System.Web;
+using System.Web.UI;
 using System.Linq;
 using System.Web.UI.WebControls;
 using System.Collections.Generic;
@@ -29,8 +30,100 @@ namespace AnmolDristi
 
             if (!IsPostBack)
             {
+                bool batchSelectedFromQuery = TrySelectBatchFromQueryString();
                 LoadBatches();
                 LoadOverwriteFields();
+
+                if (batchSelectedFromQuery)
+                {
+                    RegisterScrollToSyncConfiguration();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads BatchId from the query string (Upload → BatchManager handoff).
+        /// On success, populates selection controls. Invalid/missing values leave the page unchanged.
+        /// </summary>
+        private bool TrySelectBatchFromQueryString()
+        {
+            string batchIdRaw = Request.QueryString["BatchId"];
+            if (string.IsNullOrWhiteSpace(batchIdRaw))
+                return false;
+
+            int batchId;
+            if (!int.TryParse(batchIdRaw.Trim(), out batchId) || batchId <= 0)
+                return false;
+
+            if (!BatchExists(batchId))
+                return false;
+
+            string batchIdText = batchId.ToString();
+            hfSelectedBatch.Value = batchIdText;
+            lblSelectedBatch.Text = batchIdText;
+            return true;
+        }
+
+        private bool BatchExists(int batchId)
+        {
+            const string sql = "SELECT COUNT(1) FROM dbo.ImportBatchMaster WHERE BatchId = @BatchId";
+
+            using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@BatchId", batchId);
+                conn.Open();
+                object result = cmd.ExecuteScalar();
+                int count = (result == null || result == DBNull.Value) ? 0 : Convert.ToInt32(result);
+                return count > 0;
+            }
+        }
+
+        private void RegisterScrollToSyncConfiguration()
+        {
+            const string script = @"
+(function () {
+    function scrollToSyncConfiguration() {
+        var el = document.getElementById('syncConfigurationSection');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+    if (window.addEventListener) {
+        window.addEventListener('load', scrollToSyncConfiguration);
+    } else if (window.attachEvent) {
+        window.attachEvent('onload', scrollToSyncConfiguration);
+    } else {
+        scrollToSyncConfiguration();
+    }
+})();";
+
+            ClientScript.RegisterStartupScript(
+                this.GetType(),
+                "ScrollToSyncConfiguration",
+                script,
+                true);
+        }
+
+        protected void gvBatches_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType == DataControlRowType.DataRow)
+            {
+                if (string.IsNullOrEmpty(hfSelectedBatch.Value))
+                    return;
+
+                object batchValue = DataBinder.Eval(e.Row.DataItem, "ImportBatchId");
+                if (batchValue == null)
+                    return;
+
+                if (string.Equals(batchValue.ToString(), hfSelectedBatch.Value, StringComparison.Ordinal))
+                {
+                    string existing = e.Row.CssClass ?? string.Empty;
+                    if (existing.IndexOf("selected-row", StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        e.Row.CssClass = (existing + " selected-row").Trim();
+                    }
+                }
             }
         }
 

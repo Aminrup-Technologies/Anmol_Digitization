@@ -70,7 +70,7 @@
                                         <div class="col-md-12">
                                             <div class="card-box table-responsive">
                                                 <asp:GridView ID="gvBatches" runat="server" CssClass="table table-striped table-hover table-bordered table-sm table-condensed"
-                                                    AutoGenerateColumns="False" GridLines="None">
+                                                    AutoGenerateColumns="False" GridLines="None" OnRowDataBound="gvBatches_RowDataBound">
                                                     <Columns>
                                                         <asp:TemplateField HeaderText="Select">
                                                             <ItemTemplate>
@@ -125,7 +125,7 @@
                                                 </div>
                                             </div>--%>
 
-                                            <div class="x_panel">
+                                            <div class="x_panel" id="syncConfigurationSection">
 
                                                 <div class="x_title">
                                                     <h2>Synchronization Configuration</h2>
