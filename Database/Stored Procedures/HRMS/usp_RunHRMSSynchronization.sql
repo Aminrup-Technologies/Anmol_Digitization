@@ -5,11 +5,13 @@
                  4.1 — Warning finalization (ORCH-02)
                  4.2 — Summary KPI refinement (ORCH-01 / ORCH-04)
                  4.3 — Transaction / error-handling hardening
+                 5.1 — Validation warning reconciliation (after masters)
     Purpose:     Coordinate modular HSE procedures. Contains no business
                  insert/update/master/hierarchy logic.
 
     Call order (module / mode gated):
       1. usp_HSE_SynchronizeMasters
+      1b. usp_HSE_ReconcileValidationWarnings  (after masters when MASTER runs)
       2. usp_HSE_InsertNewEmployees
       3. usp_HSE_UpdateChangedEmployees
       4. usp_HSE_UpdateReportingHierarchy
@@ -17,6 +19,8 @@
     Notes:
       - Pre-sync validation is performed by the UI via usp_HSE_ValidateBatch
         (Phase 3.3). This orchestrator does not re-run validation.
+      - After SynchronizeMasters, obsolete "expected to be created by
+        SynchronizeMasters" warnings are reconciled (reporting only).
       - Child HSE sync procedures must be deployed before this procedure
         can execute successfully at runtime.
       - Source data for children: dbo.Staging_EmployeeData WHERE BatchId=@BatchId
@@ -157,6 +161,12 @@ BEGIN
 
             SET @MastersInserted = ISNULL(@StepMastersInserted, 0);
             SET @MastersUpdated = ISNULL(@StepMastersUpdated, 0);
+
+            /* 1b) Clear obsolete ValidateBatch "expected to be created"
+                  warnings now that masters have been synchronized.
+                  Reporting accuracy only — no validation / FK / sync changes. */
+            EXEC dbo.usp_HSE_ReconcileValidationWarnings
+                @BatchId = @BatchId;
         END;
 
         /* ==============================================================
