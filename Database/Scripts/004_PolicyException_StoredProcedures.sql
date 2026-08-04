@@ -374,10 +374,14 @@ BEGIN
         , H.ExceptionId
         , H.VersionNo
         , H.ActionType
+        , H.PolicyJson
+        , H.Priority
+        , H.EffectiveFrom
+        , H.EffectiveTo
+        , H.IsActive
         , H.ChangedBy
         , H.ChangedOn
         , H.ChangeReason
-        , H.IsActive
     FROM dbo.PolicyExceptionHistory H
     WHERE H.ExceptionId = @ExceptionId
     ORDER BY H.VersionNo DESC;

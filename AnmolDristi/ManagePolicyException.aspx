@@ -205,6 +205,18 @@
                             </div>
                         </div>
 
+                        <asp:Panel ID="pnlChangeReason" runat="server" CssClass="card mb-3" Visible="false">
+                            <div class="card-header"><strong>Reason for Change</strong></div>
+                            <div class="card-body">
+                                <asp:TextBox ID="txtChangeReason" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="2"
+                                    placeholder="Describe why this policy exception is being created or changed" />
+                                <asp:Label ID="lblChangeReasonHint" runat="server" CssClass="text-muted small d-block mt-1" />
+                                <asp:RequiredFieldValidator ID="rfvChangeReason" runat="server" ControlToValidate="txtChangeReason"
+                                    ErrorMessage="Reason for Change is required for updates." CssClass="text-danger" Display="Dynamic"
+                                    ValidationGroup="SaveException" Enabled="false" />
+                            </div>
+                        </asp:Panel>
+
                         <div class="card mb-2">
                             <div class="card-header"><strong>Policy Override</strong></div>
                             <div class="card-body">
@@ -290,9 +302,44 @@
 
                         <asp:Panel ID="pnlHistory" runat="server" Visible="false" CssClass="mt-3">
                             <div class="card mb-2">
-                                <div class="card-header"><strong>History</strong></div>
+                                <div class="card-header clearfix">
+                                    <strong>History</strong>
+                                    <asp:Button ID="btnExportHistory" runat="server" Text="Export Excel" CssClass="btn btn-xs btn-success pull-right"
+                                        OnClick="btnExportHistory_Click" CausesValidation="false" />
+                                </div>
                                 <div class="card-body">
                                     <asp:Label ID="lblHistoryVersionNote" runat="server" CssClass="text-info small d-block mb-2" />
+
+                                    <h6 class="text-muted">Timeline</h6>
+                                    <asp:Repeater ID="rptHistoryTimeline" runat="server" OnItemCommand="rptHistoryTimeline_ItemCommand">
+                                        <HeaderTemplate>
+                                            <div class="policy-history-timeline">
+                                        </HeaderTemplate>
+                                        <ItemTemplate>
+                                            <div class="policy-history-timeline-item">
+                                                <div class="policy-history-timeline-version">Version <%# Eval("VersionNo") %></div>
+                                                <div><strong><%# Eval("ActionType") %></strong></div>
+                                                <div class="text-muted small"><%# Eval("ChangedBy") %></div>
+                                                <div class="text-muted small"><%# string.Format("{0:dd-MMM-yyyy HH:mm}", Eval("ChangedOn")) %></div>
+                                                <div class="text-muted small"><%# Eval("ChangeReason") %></div>
+                                                <asp:LinkButton ID="lnkTimelineView" runat="server"
+                                                    CommandName="ViewHistoryVersion"
+                                                    CommandArgument='<%# Eval("VersionNo") %>'
+                                                    CssClass="btn btn-xs btn-link"
+                                                    Text="View snapshot"
+                                                    CausesValidation="false" />
+                                            </div>
+                                        </ItemTemplate>
+                                        <SeparatorTemplate>
+                                            <div class="policy-history-timeline-arrow">↓</div>
+                                        </SeparatorTemplate>
+                                        <FooterTemplate>
+                                            </div>
+                                        </FooterTemplate>
+                                    </asp:Repeater>
+                                    <asp:Label ID="lblTimelineEmpty" runat="server" CssClass="text-muted small" Visible="false" Text="No history recorded yet." />
+
+                                    <h6 class="text-muted mt-3">History Grid</h6>
                                     <asp:GridView ID="gvHistory" runat="server" AutoGenerateColumns="False"
                                         CssClass="table table-striped table-bordered table-sm"
                                         DataKeyNames="VersionNo"
@@ -303,6 +350,7 @@
                                             <asp:BoundField DataField="ActionType" HeaderText="Action" />
                                             <asp:BoundField DataField="ChangedBy" HeaderText="Changed By" />
                                             <asp:BoundField DataField="ChangedOn" HeaderText="Changed On" DataFormatString="{0:dd-MMM-yyyy HH:mm}" />
+                                            <asp:BoundField DataField="ChangeReason" HeaderText="Reason" />
                                             <asp:TemplateField HeaderText="">
                                                 <ItemTemplate>
                                                     <asp:LinkButton ID="lnkViewVersion" runat="server"
@@ -315,6 +363,34 @@
                                             </asp:TemplateField>
                                         </Columns>
                                     </asp:GridView>
+
+                                    <h6 class="text-muted mt-3">Compare Versions</h6>
+                                    <div class="row">
+                                        <div class="col-md-4 form-group">
+                                            <label>Version A</label>
+                                            <asp:DropDownList ID="ddlCompareVersionA" runat="server" CssClass="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-4 form-group">
+                                            <label>Version B</label>
+                                            <asp:DropDownList ID="ddlCompareVersionB" runat="server" CssClass="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-4 form-group" style="padding-top: 24px;">
+                                            <asp:Button ID="btnCompareHistory" runat="server" Text="Compare" CssClass="btn btn-info btn-sm"
+                                                OnClick="btnCompareHistory_Click" CausesValidation="false" />
+                                        </div>
+                                    </div>
+                                    <asp:Label ID="lblCompareMessage" runat="server" CssClass="text-danger small d-block" />
+                                    <asp:Panel ID="pnlCompareResults" runat="server" Visible="false">
+                                        <asp:GridView ID="gvHistoryCompare" runat="server" AutoGenerateColumns="False"
+                                            CssClass="table table-bordered table-sm history-compare-table"
+                                            OnRowDataBound="gvHistoryCompare_RowDataBound">
+                                            <Columns>
+                                                <asp:BoundField DataField="Field" HeaderText="Field" />
+                                                <asp:BoundField DataField="VersionAValue" HeaderText="Version A" />
+                                                <asp:BoundField DataField="VersionBValue" HeaderText="Version B" />
+                                            </Columns>
+                                        </asp:GridView>
+                                    </asp:Panel>
                                 </div>
                             </div>
                         </asp:Panel>
@@ -330,18 +406,36 @@
         </div>
     </div>
 
+    <style type="text/css">
+        .policy-history-timeline { margin-bottom: 12px; }
+        .policy-history-timeline-item {
+            border-left: 3px solid #5bc0de;
+            padding: 6px 10px;
+            margin-left: 8px;
+            background: #f9fbfd;
+        }
+        .policy-history-timeline-arrow {
+            margin: 2px 0 2px 18px;
+            color: #999;
+            font-size: 12px;
+        }
+        .policy-history-timeline .policy-history-timeline-item:last-of-type + .policy-history-timeline-arrow { display: none; }
+        .history-compare-table tr.history-changed td { background: #fff3cd; font-weight: 600; }
+        .history-compare-table tr.history-unchanged td { color: #999; }
+    </style>
     <script type="text/javascript">
         function showPolicyExceptionModal() {
             $('#modalPolicyException').modal('show');
         }
         function setPolicyExceptionReadOnly(isReadOnly) {
             var $form = $('#<%= pnlForm.ClientID %>');
+            var $history = $('#<%= pnlHistory.ClientID %>');
             $form.find('input,textarea,select,button')
                 .not('[data-dismiss="modal"]')
-                .not('#<%= gvHistory.ClientID %> a, #<%= gvHistory.ClientID %> input, #<%= gvHistory.ClientID %> button')
+                .not($history.find('input,textarea,select,button,a'))
                 .prop('disabled', isReadOnly);
-            // Keep history View links clickable in read-only mode.
-            $('#<%= gvHistory.ClientID %> a, #<%= gvHistory.ClientID %> input, #<%= gvHistory.ClientID %> button').prop('disabled', false);
+            // Keep history controls clickable in read-only View mode.
+            $history.find('input,textarea,select,button,a').prop('disabled', false);
             $('#<%= btnLoadEmployee.ClientID %>').prop('disabled', isReadOnly);
             $('#<%= btnSave.ClientID %>').toggle(!isReadOnly);
         }

@@ -96,4 +96,20 @@ namespace AnmolDristi
         public DateTime ChangedOn { get; set; }
         public string ChangeReason { get; set; }
     }
+
+    /// <summary>
+    /// One field row in a historical version comparison.
+    /// </summary>
+    public class PolicyExceptionHistoryCompareRow
+    {
+        public string Field { get; set; }
+        public string VersionAValue { get; set; }
+        public string VersionBValue { get; set; }
+        public bool IsChanged { get; set; }
+
+        public string RowCssClass
+        {
+            get { return IsChanged ? "history-changed" : "history-unchanged"; }
+        }
+    }
 }

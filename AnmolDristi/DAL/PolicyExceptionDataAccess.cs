@@ -164,7 +164,7 @@ WHERE EmployeeCode = @EmployeeCode
             }
         }
 
-        public int InsertPolicyException(PolicyExceptionRecord record, string createdBy)
+        public int InsertPolicyException(PolicyExceptionRecord record, string createdBy, string changeReason = null)
         {
             using (SqlConnection cn = new SqlConnection(_connectionString))
             using (SqlCommand cmd = new SqlCommand("dbo.usp_InsertPolicyException", cn))
@@ -176,13 +176,14 @@ WHERE EmployeeCode = @EmployeeCode
                 cmd.Parameters.AddWithValue("@EffectiveFrom", record.EffectiveFrom.Date);
                 cmd.Parameters.AddWithValue("@EffectiveTo", record.EffectiveTo.HasValue ? (object)record.EffectiveTo.Value.Date : DBNull.Value);
                 cmd.Parameters.AddWithValue("@CreatedBy", createdBy ?? "SYSTEM");
+                cmd.Parameters.AddWithValue("@ChangeReason", ToDbString(changeReason));
                 cn.Open();
                 object scalar = cmd.ExecuteScalar();
                 return scalar == null || scalar == DBNull.Value ? 0 : Convert.ToInt32(scalar);
             }
         }
 
-        public void UpdatePolicyException(PolicyExceptionRecord record, string modifiedBy)
+        public void UpdatePolicyException(PolicyExceptionRecord record, string modifiedBy, string changeReason = null)
         {
             using (SqlConnection cn = new SqlConnection(_connectionString))
             using (SqlCommand cmd = new SqlCommand("dbo.usp_UpdatePolicyException", cn))
@@ -195,12 +196,13 @@ WHERE EmployeeCode = @EmployeeCode
                 cmd.Parameters.AddWithValue("@EffectiveFrom", record.EffectiveFrom.Date);
                 cmd.Parameters.AddWithValue("@EffectiveTo", record.EffectiveTo.HasValue ? (object)record.EffectiveTo.Value.Date : DBNull.Value);
                 cmd.Parameters.AddWithValue("@ModifiedBy", modifiedBy ?? "SYSTEM");
+                cmd.Parameters.AddWithValue("@ChangeReason", ToDbString(changeReason));
                 cn.Open();
                 cmd.ExecuteNonQuery();
             }
         }
 
-        public void SetPolicyExceptionActiveStatus(int exceptionId, bool isActive, string currentUser)
+        public void SetPolicyExceptionActiveStatus(int exceptionId, bool isActive, string currentUser, string changeReason = null)
         {
             using (SqlConnection cn = new SqlConnection(_connectionString))
             using (SqlCommand cmd = new SqlCommand("dbo.usp_SetPolicyExceptionActiveStatus", cn))
@@ -209,6 +211,7 @@ WHERE EmployeeCode = @EmployeeCode
                 cmd.Parameters.AddWithValue("@ExceptionId", exceptionId);
                 cmd.Parameters.AddWithValue("@IsActive", isActive);
                 cmd.Parameters.AddWithValue("@ModifiedBy", currentUser ?? "SYSTEM");
+                cmd.Parameters.AddWithValue("@ChangeReason", ToDbString(changeReason));
                 cn.Open();
                 cmd.ExecuteNonQuery();
             }
