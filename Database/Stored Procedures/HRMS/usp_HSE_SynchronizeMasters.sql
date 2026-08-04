@@ -364,11 +364,9 @@ BEGIN
 
         /* ==============================================================
            7) MST_SubDepartment
-              Requires Staging_EmployeeData.SubDepartment_Description
-              (present on ZingHR dump / staging table; may be unmapped by
-              HrmsDataImport ExpectedDbColumns). Insert/update only when
-              description is non-empty — same createability rule as
-              ValidateBatch warnings for other masters.
+              Uses Staging_EmployeeData.SubDepartment_ID +
+              SubDepartment_Description (schema-aligned with other masters).
+              Insert/update only when description is non-empty.
            ============================================================== */
         ;WITH src AS (
             SELECT
