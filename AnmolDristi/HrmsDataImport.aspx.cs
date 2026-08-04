@@ -28,8 +28,8 @@ namespace AnmolDristi
             "Division_ID", "Division_Description",
             "Category_ID", "Category_Description",
             "Company_ID", "Company_Description",
-            "SubDepartment_ID",
-            
+            "SubDepartment_ID", "SubDepartment_Description",
+    
             // Managers
             "ReportingManager", "ReportingManagerCode",
             "ReportingManagersManagerName", "ReportingManagersManagerCode"

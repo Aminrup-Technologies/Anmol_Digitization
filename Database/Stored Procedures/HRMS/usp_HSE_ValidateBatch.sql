@@ -478,17 +478,32 @@ BEGIN
             WHERE CAST(m.Company_ID AS NVARCHAR(50)) = LTRIM(RTRIM(s.Company_ID))
           );
 
-    /* ---- SubDepartment_ID → MST_SubDepartment.SubDepartment_ID ---- */
+    /* ---- SubDepartment_ID → MST_SubDepartment.SubDepartment_ID ----
+          Same createability rule as Department / Designation / etc.:
+            - unresolved code + empty Description → Error
+            - unresolved code + Description present → [WARNING]
+              (SynchronizeMasters can create the master)
+       ------------------------------------------------------------------ */
     UPDATE s
     SET
-        s.ImportStatus = N'Error',
+        s.ImportStatus =
+            CASE
+                WHEN NULLIF(LTRIM(RTRIM(s.SubDepartment_Description)), N'') IS NULL THEN N'Error'
+                WHEN s.ImportStatus = N'Error' THEN N'Error'
+                ELSE s.ImportStatus
+            END,
         s.ErrorMessage =
             CASE
                 WHEN s.ErrorMessage IS NULL OR s.ErrorMessage = N'' THEN N''
                 ELSE s.ErrorMessage + N'; '
             END
-            + N'Invalid master reference: SubDepartment_ID ''' + LTRIM(RTRIM(s.SubDepartment_ID))
-              + N''' not found in MST_SubDepartment.'
+            + CASE
+                WHEN NULLIF(LTRIM(RTRIM(s.SubDepartment_Description)), N'') IS NULL
+                    THEN N'Invalid master reference: SubDepartment_ID ''' + LTRIM(RTRIM(s.SubDepartment_ID))
+                         + N''' not found in MST_SubDepartment and SubDepartment_Description is empty.'
+                ELSE N'[WARNING] SubDepartment_ID ''' + LTRIM(RTRIM(s.SubDepartment_ID))
+                     + N''' not found in MST_SubDepartment; expected to be created by SynchronizeMasters.'
+              END
     FROM dbo.Staging_EmployeeData AS s
     WHERE s.BatchId = @BatchId
       AND NULLIF(LTRIM(RTRIM(s.SubDepartment_ID)), N'') IS NOT NULL
@@ -497,7 +512,6 @@ BEGIN
             FROM dbo.MST_SubDepartment AS m WITH (NOLOCK)
             WHERE CAST(m.SubDepartment_ID AS NVARCHAR(50)) = LTRIM(RTRIM(s.SubDepartment_ID))
           );
-    /* SubDepartment has no Description column in ExpectedDbColumns; unresolved code is Error. */
 
     /* ------------------------------------------------------------------
        Aggregate counts for summary

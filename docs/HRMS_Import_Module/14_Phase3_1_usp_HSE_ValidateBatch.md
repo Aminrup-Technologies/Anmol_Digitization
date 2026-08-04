@@ -78,7 +78,7 @@ Does **not** update `ImportBatchMaster`.
 5. Blank master ID columns are ignored (optional fields).  
 6. Unresolved master code **with** Description → `[WARNING]` only (SynchronizeMasters can create).  
 7. Unresolved master code **without** Description → blocking `Error`.  
-8. `SubDepartment_ID` has no Description in the upload column list → unresolved code is always blocking `Error`.  
+8. `SubDepartment_ID` uses the same Description createability rule as other masters once `SubDepartment_Description` is staged (see doc 22). Unresolved code + empty description → `Error`; unresolved + description → `[WARNING]`.  
 9. Reporting-manager fields are **not** validated here (hierarchy is Phase 3.5).  
 10. Validated SSMS PoC script was not in the repository; master checklist is derived from staging columns + live app master usage. Adjust in a later patch if the PoC used a narrower master set.  
 11. `CREATE OR ALTER` requires SQL Server 2016+ (environment is SQL Server 2017).  
@@ -104,7 +104,8 @@ Does **not** update `ImportBatchMaster`.
 | T12 | Known Designation code | `Designation_ID` exists in `MST_Designation.Designation_ID` | No designation error |
 | T13 | Unknown Branch without description | Bad `Branch_ID`, blank `Branch_Description` | Row `Error` |
 | T14 | Unknown Branch with description | Bad `Branch_ID` + description | Warning only for that issue |
-| T15 | Unknown SubDepartment | Bad `SubDepartment_ID` | Row `Error` (no description column) |
+| T15 | Unknown SubDepartment without description | Bad `SubDepartment_ID`, blank description | Row `Error` |
+| T15b | Unknown SubDepartment with description | Bad `SubDepartment_ID` + `SubDepartment_Description` | `[WARNING]` only; creatable by SynchronizeMasters |
 | T16 | Modules case/spaces | `master \| employee` | Accepted after normalize |
 | T17 | No PoC table | Search proc text | Must not contain `KKM_SO_TADA_Export_14Nov25$` |
 | T18 | No master DML | Trace execution | No INSERT/UPDATE/DELETE on MST_* except reads; no `ImportBatchMaster` UPDATE |

@@ -134,7 +134,7 @@ This procedure only maintains `MST_Designation` by **business code**. It does no
 
 ### SubDepartment note
 
-`HrmsDataImport.ExpectedDbColumns` currently omits `SubDepartment_Description`, while the ZingHR CSV and `MST_SubDepartment` both use that name. This procedure expects `Staging_EmployeeData.SubDepartment_Description` to exist. If the column is present but unmapped (NULL), SubDepartment insert/update counts remain `0` — consistent with ValidateBatch treating unresolved SubDepartment without description as non-creatable.
+Staging and upload mapping include `SubDepartment_Description` (see doc 22). This procedure upserts `MST_SubDepartment` using ID + Description like other masters. If description is unmapped/NULL, SubDepartment insert/update counts remain `0`; ValidateBatch treats unresolved code without description as blocking `Error`.
 
 ---
 
