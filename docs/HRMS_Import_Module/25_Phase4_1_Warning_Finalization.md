@@ -101,7 +101,7 @@ Finalization updates **`ImportStatus` only**.
 | UI changes | Not done |
 | Validation rule changes | Not done |
 | Result-set contract | Unchanged |
-| ORCH-01 SkippedCount semantics | Not addressed here |
+| ORCH-01 SkippedCount semantics | Deferred to Phase 4.2 — see [`26_Phase4_2_Summary_KPI_Refinement.md`](26_Phase4_2_Summary_KPI_Refinement.md) |
 | Clearing warning text after process | Intentionally not done |
 
 ---
