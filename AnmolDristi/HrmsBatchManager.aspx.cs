@@ -197,20 +197,61 @@ namespace AnmolDristi
             }
         }
 
+        /// <summary>
+        /// Field catalog for mode 2 (@OverwriteFields). Must match FieldCodes accepted by
+        /// dbo.usp_HSE_UpdateChangedEmployees. Bound only on !IsPostBack so checkbox
+        /// state is preserved via ViewState on subsequent postbacks.
+        /// </summary>
+        private static readonly string[,] OverwriteFieldDefinitions = new string[,]
+        {
+            // FieldCode, DisplayName, Category, IsDefault ("1"/"0")
+            { "EmployeeName", "Employee Name", "Employee", "1" },
+            { "EmployeeStatus", "Employee Status", "Employee", "1" },
+            { "Email", "Email", "Employee", "1" },
+            { "Mobile", "Mobile", "Employee", "1" },
+            { "Gender", "Gender", "Employee", "1" },
+            { "DOJ", "Date of Joining (DOJ)", "Employee", "1" },
+            { "Branch", "Branch", "Organization", "1" },
+            { "Department", "Department", "Organization", "1" },
+            { "Designation", "Designation", "Organization", "1" },
+            { "Grade", "Grade", "Organization", "1" },
+            { "Plant", "Plant", "Organization", "1" },
+            { "Region", "Region", "Organization", "1" },
+            { "Division", "Division", "Organization", "1" },
+            { "Category", "Category", "Organization", "1" },
+            { "SubDepartment", "Sub Department", "Organization", "1" },
+            { "ReportingManager", "Reporting Manager", "Hierarchy", "0" },
+            { "ReportingManagerCode", "Reporting Manager Code", "Hierarchy", "0" },
+            { "ReportingManagersManagerName", "Reporting Manager's Manager Name", "Hierarchy", "0" },
+            { "ReportingManagersManagerCode", "Reporting Manager's Manager Code", "Hierarchy", "0" }
+        };
+
         private void LoadOverwriteFields()
         {
-            using (SqlConnection conn = new SqlConnection(GetConnectionString()))
-            {
-                string sql = @"SELECT * FROM MST_HRMSImportField WHERE IsVisible=1 ORDER BY Category, DisplayOrder";
+            // Previously bound from MST_HRMSImportField (often empty / not seeded),
+            // which left rptOverwriteFields with zero items. Bind the HSE-supported
+            // catalog in code so mode 2 always has a selectable field list.
+            DataTable dt = new DataTable();
+            dt.Columns.Add("FieldCode", typeof(string));
+            dt.Columns.Add("DisplayName", typeof(string));
+            dt.Columns.Add("Category", typeof(string));
+            dt.Columns.Add("IsDefault", typeof(bool));
+            dt.Columns.Add("DisplayOrder", typeof(int));
 
-                using (SqlDataAdapter da = new SqlDataAdapter(sql, conn))
-                {
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    rptOverwriteFields.DataSource = dt;
-                    rptOverwriteFields.DataBind();
-                }
+            int order = 1;
+            for (int i = 0; i < OverwriteFieldDefinitions.GetLength(0); i++)
+            {
+                DataRow row = dt.NewRow();
+                row["FieldCode"] = OverwriteFieldDefinitions[i, 0];
+                row["DisplayName"] = OverwriteFieldDefinitions[i, 1];
+                row["Category"] = OverwriteFieldDefinitions[i, 2];
+                row["IsDefault"] = OverwriteFieldDefinitions[i, 3] == "1";
+                row["DisplayOrder"] = order++;
+                dt.Rows.Add(row);
             }
+
+            rptOverwriteFields.DataSource = dt;
+            rptOverwriteFields.DataBind();
         }
 
         protected void rblProcessingMode_SelectedIndexChanged(object sender, EventArgs e)
