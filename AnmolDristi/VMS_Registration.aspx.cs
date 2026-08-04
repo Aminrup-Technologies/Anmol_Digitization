@@ -28,6 +28,9 @@ namespace AnmolDristi
 
                 hfBranchId.Value = Request.QueryString["BranchId"].ToString();
 
+                // Bind quick-select host chips from branch preconfigured hosts
+                BindQuickHosts();
+
                 // 2. Prevent Duplicate Registration
                 CheckForActivePassAndRedirect();
 
@@ -64,6 +67,42 @@ namespace AnmolDristi
                 txtTimeFrom.Text = "09:00";
                 txtTimeTo.Text = "18:00";
             }
+        }
+
+        private void BindQuickHosts()
+        {
+            int branchId = Convert.ToInt32(hfBranchId.Value);
+            List<HostEmployee> quickHosts = GetPreconfiguredHosts(branchId);
+
+            if (quickHosts != null && quickHosts.Count > 0)
+            {
+                rptQuickHosts.DataSource = quickHosts;
+                rptQuickHosts.DataBind();
+                divQuickHosts.Visible = true;
+            }
+            else
+            {
+                rptQuickHosts.DataSource = null;
+                rptQuickHosts.DataBind();
+                divQuickHosts.Visible = false;
+            }
+        }
+
+        private static bool IsValidNotificationEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            email = email.Trim();
+            if (email.Length < 5 || email.Length > 254)
+                return false;
+
+            int at = email.IndexOf('@');
+            if (at <= 0 || at != email.LastIndexOf('@') || at == email.Length - 1)
+                return false;
+
+            string domain = email.Substring(at + 1);
+            return domain.IndexOf('.') > 0;
         }
 
         private void CheckForActivePassAndRedirect()
@@ -701,6 +740,70 @@ namespace AnmolDristi
                                     qCmd.Parameters.AddWithValue("@SourceModule", sourceModule);
 
                                     qCmd.ExecuteNonQuery();
+                                }
+
+                                // ==========================================================
+                                // 14b. ESCALATION / CC ROUTING (branch EscalationEmailList)
+                                // ==========================================================
+                                string escalationEmailList = null;
+                                using (SqlCommand escCmd = new SqlCommand(@"
+                                    SELECT EscalationEmailList
+                                    FROM VMS_OfficeSettings
+                                    WHERE Branch_ID = @BranchId", con, trans))
+                                {
+                                    escCmd.Parameters.AddWithValue("@BranchId", Convert.ToInt32(hfBranchId.Value));
+                                    object escResult = escCmd.ExecuteScalar();
+                                    if (escResult != null && escResult != DBNull.Value)
+                                        escalationEmailList = escResult.ToString();
+                                }
+
+                                if (!string.IsNullOrWhiteSpace(escalationEmailList))
+                                {
+                                    string ccQueueQuery = @"
+                                        INSERT INTO NotificationQueue
+                                        (
+                                            FormSubmissionId,
+                                            EscalationLevel,
+                                            RecipientEmail,
+                                            RecipientName,
+                                            Subject,
+                                            Body,
+                                            NotificationType,
+                                            Status,
+                                            SourceModule
+                                        )
+                                        VALUES
+                                        (
+                                            @VisitId,
+                                            0,
+                                            @Email,
+                                            @Name,
+                                            @Subject,
+                                            @Body,
+                                            'Email',
+                                            'Pending',
+                                            'VMS_REG_CC'
+                                        )";
+
+                                    string ccSubject = "[CC] " + subject;
+                                    string ccRecipientName = "[CC] " + (string.IsNullOrWhiteSpace(hostName) ? "Escalation" : hostName);
+
+                                    foreach (string rawEmail in escalationEmailList.Split(','))
+                                    {
+                                        string ccEmail = rawEmail.Trim();
+                                        if (!IsValidNotificationEmail(ccEmail))
+                                            continue;
+
+                                        using (SqlCommand ccCmd = new SqlCommand(ccQueueQuery, con, trans))
+                                        {
+                                            ccCmd.Parameters.AddWithValue("@VisitId", newVisitId);
+                                            ccCmd.Parameters.AddWithValue("@Email", ccEmail);
+                                            ccCmd.Parameters.AddWithValue("@Name", ccRecipientName);
+                                            ccCmd.Parameters.AddWithValue("@Subject", ccSubject);
+                                            ccCmd.Parameters.AddWithValue("@Body", body);
+                                            ccCmd.ExecuteNonQuery();
+                                        }
+                                    }
                                 }
                             }
 
