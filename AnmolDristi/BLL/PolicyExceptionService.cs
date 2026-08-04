@@ -125,5 +125,17 @@ namespace AnmolDristi.BLL
         {
             return _dataAccess.GetMasterList(masterType);
         }
+
+        public System.Data.DataTable GetHistory(int exceptionId)
+        {
+            if (exceptionId <= 0) return new System.Data.DataTable();
+            return _dataAccess.GetPolicyExceptionHistory(exceptionId);
+        }
+
+        public PolicyExceptionHistoryRecord GetHistoryVersion(int exceptionId, int versionNo)
+        {
+            if (exceptionId <= 0 || versionNo <= 0) return null;
+            return _dataAccess.GetPolicyExceptionHistoryVersion(exceptionId, versionNo);
+        }
     }
 }

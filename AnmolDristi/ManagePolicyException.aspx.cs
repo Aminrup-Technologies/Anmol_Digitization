@@ -112,6 +112,7 @@ namespace AnmolDristi
             hfExceptionId.Value = "0";
             lblModalTitle.Text = "Add Policy Exception";
             pnlAuditInfo.Visible = false;
+            HideHistoryPanel();
             SetIsActiveForNewRecord();
             SetFormReadOnly(false);
             ShowModal();
@@ -160,6 +161,7 @@ namespace AnmolDristi
             {
                 LoadForm(exceptionId, false);
                 lblModalTitle.Text = "Edit Policy Exception";
+                HideHistoryPanel();
                 SetFormReadOnly(false);
                 ShowModal();
             }
@@ -225,6 +227,73 @@ namespace AnmolDristi
 
             txtEmployeeCode.ReadOnly = readOnly || record.ExceptionId > 0;
             btnLoadEmployee.Enabled = !readOnly && record.ExceptionId <= 0;
+
+            if (readOnly)
+                BindHistory(exceptionId);
+            else
+                HideHistoryPanel();
+        }
+
+        private void BindHistory(int exceptionId)
+        {
+            pnlHistory.Visible = true;
+            lblHistoryVersionNote.Text = "Showing current values. Select a version to view a historical snapshot (read-only).";
+            gvHistory.DataSource = _service.GetHistory(exceptionId);
+            gvHistory.DataBind();
+        }
+
+        private void HideHistoryPanel()
+        {
+            pnlHistory.Visible = false;
+            lblHistoryVersionNote.Text = string.Empty;
+            gvHistory.DataSource = null;
+            gvHistory.DataBind();
+        }
+
+        protected void gvHistory_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName != "ViewHistoryVersion") return;
+
+            int exceptionId;
+            int versionNo;
+            if (!int.TryParse(hfExceptionId.Value, out exceptionId) || exceptionId <= 0) return;
+            if (!int.TryParse(Convert.ToString(e.CommandArgument), out versionNo) || versionNo <= 0) return;
+
+            PolicyExceptionHistoryRecord history = _service.GetHistoryVersion(exceptionId, versionNo);
+            if (history == null)
+            {
+                lblFormMessage.Text = "History version not found.";
+                ShowModal();
+                return;
+            }
+
+            ApplyHistorySnapshot(history);
+            BindHistory(exceptionId);
+            lblHistoryVersionNote.Text = string.Format(
+                "Viewing historical version {0} ({1}) changed by {2} on {3:dd-MMM-yyyy HH:mm}. Read-only.",
+                history.VersionNo,
+                history.ActionType,
+                string.IsNullOrWhiteSpace(history.ChangedBy) ? "—" : history.ChangedBy,
+                history.ChangedOn);
+            SetFormReadOnly(true);
+            ShowModal();
+        }
+
+        private void ApplyHistorySnapshot(PolicyExceptionHistoryRecord history)
+        {
+            txtPriority.Text = history.Priority.ToString();
+            txtEffectiveFrom.Text = history.EffectiveFrom.ToString("yyyy-MM-dd");
+            txtEffectiveTo.Text = history.EffectiveTo.HasValue ? history.EffectiveTo.Value.ToString("yyyy-MM-dd") : string.Empty;
+            chkIsActive.Checked = history.IsActive;
+
+            PolicyExceptionDto dto = PolicyExceptionSerializer.Deserialize(history.PolicyJson);
+            txtMaxKM.Text = FormatDecimal(dto.MaxKM);
+            txtRatePerKm.Text = FormatDecimal(dto.RatePerKm);
+            txtDA.Text = FormatDecimal(dto.DA);
+            txtOutstationDA.Text = FormatDecimal(dto.OutstationDA);
+            txtOwnAllowance.Text = FormatDecimal(dto.OwnAllowance);
+            txtHotelCap.Text = FormatDecimal(dto.HotelCap);
+            txtRemarks.Text = dto.Remarks ?? string.Empty;
         }
 
         protected void btnSave_Click(object sender, EventArgs e)
@@ -326,6 +395,7 @@ namespace AnmolDristi
             txtMaxKM.Text = txtRatePerKm.Text = txtDA.Text = txtOutstationDA.Text = txtOwnAllowance.Text = txtHotelCap.Text = txtRemarks.Text = string.Empty;
             txtEmployeeCode.ReadOnly = false;
             btnLoadEmployee.Enabled = true;
+            HideHistoryPanel();
             SetIsActiveForNewRecord();
         }
 

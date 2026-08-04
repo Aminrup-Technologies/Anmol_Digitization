@@ -55,6 +55,9 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.Label lblCreatedOn;
         protected global::System.Web.UI.WebControls.Label lblModifiedBy;
         protected global::System.Web.UI.WebControls.Label lblModifiedOn;
+        protected global::System.Web.UI.WebControls.Panel pnlHistory;
+        protected global::System.Web.UI.WebControls.Label lblHistoryVersionNote;
+        protected global::System.Web.UI.WebControls.GridView gvHistory;
         protected global::System.Web.UI.WebControls.Label lblFormMessage;
         protected global::System.Web.UI.WebControls.Button btnSave;
     }

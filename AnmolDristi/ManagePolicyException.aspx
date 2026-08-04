@@ -288,6 +288,37 @@
                             <div>Modified By: <asp:Label ID="lblModifiedBy" runat="server" /> on <asp:Label ID="lblModifiedOn" runat="server" /></div>
                         </asp:Panel>
 
+                        <asp:Panel ID="pnlHistory" runat="server" Visible="false" CssClass="mt-3">
+                            <div class="card mb-2">
+                                <div class="card-header"><strong>History</strong></div>
+                                <div class="card-body">
+                                    <asp:Label ID="lblHistoryVersionNote" runat="server" CssClass="text-info small d-block mb-2" />
+                                    <asp:GridView ID="gvHistory" runat="server" AutoGenerateColumns="False"
+                                        CssClass="table table-striped table-bordered table-sm"
+                                        DataKeyNames="VersionNo"
+                                        OnRowCommand="gvHistory_RowCommand"
+                                        EmptyDataText="No history recorded yet.">
+                                        <Columns>
+                                            <asp:BoundField DataField="VersionNo" HeaderText="Version" ItemStyle-HorizontalAlign="Center" />
+                                            <asp:BoundField DataField="ActionType" HeaderText="Action" />
+                                            <asp:BoundField DataField="ChangedBy" HeaderText="Changed By" />
+                                            <asp:BoundField DataField="ChangedOn" HeaderText="Changed On" DataFormatString="{0:dd-MMM-yyyy HH:mm}" />
+                                            <asp:TemplateField HeaderText="">
+                                                <ItemTemplate>
+                                                    <asp:LinkButton ID="lnkViewVersion" runat="server"
+                                                        CommandName="ViewHistoryVersion"
+                                                        CommandArgument='<%# Eval("VersionNo") %>'
+                                                        CssClass="btn btn-xs btn-default"
+                                                        Text="View"
+                                                        CausesValidation="false" />
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+                                        </Columns>
+                                    </asp:GridView>
+                                </div>
+                            </div>
+                        </asp:Panel>
+
                         <asp:Label ID="lblFormMessage" runat="server" CssClass="text-danger" />
                     </asp:Panel>
                 </div>
@@ -305,7 +336,12 @@
         }
         function setPolicyExceptionReadOnly(isReadOnly) {
             var $form = $('#<%= pnlForm.ClientID %>');
-            $form.find('input,textarea,select,button').not('[data-dismiss="modal"]').prop('disabled', isReadOnly);
+            $form.find('input,textarea,select,button')
+                .not('[data-dismiss="modal"]')
+                .not('#<%= gvHistory.ClientID %> a, #<%= gvHistory.ClientID %> input, #<%= gvHistory.ClientID %> button')
+                .prop('disabled', isReadOnly);
+            // Keep history View links clickable in read-only mode.
+            $('#<%= gvHistory.ClientID %> a, #<%= gvHistory.ClientID %> input, #<%= gvHistory.ClientID %> button').prop('disabled', false);
             $('#<%= btnLoadEmployee.ClientID %>').prop('disabled', isReadOnly);
             $('#<%= btnSave.ClientID %>').toggle(!isReadOnly);
         }

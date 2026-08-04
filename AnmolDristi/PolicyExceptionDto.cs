@@ -77,4 +77,23 @@ namespace AnmolDristi
         public string GradeName { get; set; }
         public string DesignationName { get; set; }
     }
+
+    /// <summary>
+    /// Immutable history snapshot for a PolicyException version.
+    /// </summary>
+    public class PolicyExceptionHistoryRecord
+    {
+        public int HistoryId { get; set; }
+        public int ExceptionId { get; set; }
+        public int VersionNo { get; set; }
+        public string ActionType { get; set; }
+        public string PolicyJson { get; set; }
+        public int Priority { get; set; }
+        public DateTime EffectiveFrom { get; set; }
+        public DateTime? EffectiveTo { get; set; }
+        public bool IsActive { get; set; }
+        public string ChangedBy { get; set; }
+        public DateTime ChangedOn { get; set; }
+        public string ChangeReason { get; set; }
+    }
 }
