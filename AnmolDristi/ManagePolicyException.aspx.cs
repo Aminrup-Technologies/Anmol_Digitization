@@ -377,11 +377,6 @@ namespace AnmolDristi
             return int.TryParse(trimmed, out tmp) ? (int?)tmp : null;
         }
 
-        private static int? ParseNullableInt(string value)
-        {
-            return ParseOptionalDropdownInt(value);
-        }
-
         private static decimal? ParseNullableDecimal(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
