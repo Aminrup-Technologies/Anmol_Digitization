@@ -4,6 +4,10 @@
 
     History: write procedures call dbo.usp_InsertPolicyExceptionHistorySnapshot
     (created by 007_PolicyExceptionHistory.sql). Deploy 007 before or with this script.
+
+    Integrity: write procedures include ISJSON, activation safety, and employee-scoped
+    applocks from 009_PolicyException_IntegrityHardening.sql. Deploy 009 DDL
+    (constraints/index/trigger) before relying on those guarantees.
 */
 
 IF OBJECT_ID('dbo.usp_SearchPolicyExceptions', 'P') IS NOT NULL
@@ -135,6 +139,8 @@ BEGIN
             THROW 50001, 'Employee Code is required.', 1;
         IF NULLIF(LTRIM(RTRIM(@PolicyJson)), '') IS NULL
             THROW 50002, 'PolicyJson is required.', 1;
+        IF ISJSON(@PolicyJson) <> 1
+            THROW 50009, 'PolicyJson must be valid JSON.', 1;
         IF @Priority <= 0
             THROW 50003, 'Priority must be greater than zero.', 1;
         IF @EffectiveFrom IS NULL
@@ -148,16 +154,33 @@ BEGIN
         IF EXISTS (SELECT 1 FROM dbo.MST_UserMaster WHERE EmployeeCode = @EmployeeCode AND ISNULL(EmployeeStatus,'') <> 'Active')
             THROW 50007, 'Employee is not active.', 1;
 
+        /* Employee-scoped exclusive lock: prevents empty-set overlap races. */
+        DECLARE @LockResult INT;
+        DECLARE @LockResource NVARCHAR(200) = N'PolicyException:' + LTRIM(RTRIM(@EmployeeCode));
+        EXEC @LockResult = sys.sp_getapplock
+              @Resource = @LockResource
+            , @LockMode = N'Exclusive'
+            , @LockOwner = N'Transaction'
+            , @LockTimeout = 5000;
+        IF @LockResult < 0
+            THROW 50010, 'Could not acquire Policy Exception lock. Please retry.', 1;
+
         IF EXISTS (
-            SELECT 1 FROM dbo.PolicyException PE
-            WHERE PE.EmployeeCode = @EmployeeCode AND PE.IsActive = 1
-              AND (@EffectiveFrom <= ISNULL(PE.EffectiveTo,'99991231') AND ISNULL(@EffectiveTo,'99991231') >= PE.EffectiveFrom)
+            SELECT 1
+            FROM dbo.PolicyException PE WITH (UPDLOCK, HOLDLOCK)
+            WHERE PE.EmployeeCode = @EmployeeCode
+              AND PE.IsActive = 1
+              AND (@EffectiveFrom <= ISNULL(PE.EffectiveTo,'99991231')
+                   AND ISNULL(@EffectiveTo,'99991231') >= PE.EffectiveFrom)
         )
             THROW 50008, 'An active Policy Exception already exists for the selected Effective Period.', 1;
 
+        DECLARE @NowIst DATETIME2 =
+            CONVERT(DATETIME2, (SYSUTCDATETIME() AT TIME ZONE 'UTC') AT TIME ZONE 'India Standard Time');
+
         INSERT INTO dbo.PolicyException
         (EmployeeCode, RegionId, BranchId, GradeId, DesignationId, PolicyJson, Priority, EffectiveFrom, EffectiveTo, IsActive, CreatedBy, CreatedOn)
-        SELECT UM.EmployeeCode, UM.RegionId, UM.BranchId, UM.GradeId, UM.Designation_ID, @PolicyJson, @Priority, @EffectiveFrom, @EffectiveTo, 1, @CreatedBy, SYSDATETIME()
+        SELECT UM.EmployeeCode, UM.RegionId, UM.BranchId, UM.GradeId, UM.Designation_ID, @PolicyJson, @Priority, @EffectiveFrom, @EffectiveTo, 1, @CreatedBy, @NowIst
         FROM dbo.MST_UserMaster UM
         WHERE UM.EmployeeCode = @EmployeeCode;
 
@@ -202,12 +225,12 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        IF NOT EXISTS (SELECT 1 FROM dbo.PolicyException WHERE ExceptionId = @ExceptionId)
-            THROW 50020, 'Policy Exception not found.', 1;
         IF NULLIF(LTRIM(RTRIM(@EmployeeCode)), '') IS NULL
             THROW 50021, 'Employee Code is required.', 1;
         IF NULLIF(LTRIM(RTRIM(@PolicyJson)), '') IS NULL
             THROW 50022, 'PolicyJson is required.', 1;
+        IF ISJSON(@PolicyJson) <> 1
+            THROW 50029, 'PolicyJson must be valid JSON.', 1;
         IF @Priority <= 0
             THROW 50023, 'Priority must be greater than zero.', 1;
         IF @EffectiveFrom IS NULL
@@ -218,12 +241,38 @@ BEGIN
             THROW 50026, 'Employee does not exist.', 1;
         IF EXISTS (SELECT 1 FROM dbo.MST_UserMaster WHERE EmployeeCode = @EmployeeCode AND ISNULL(EmployeeStatus, '') <> 'Active')
             THROW 50027, 'Employee is not active.', 1;
+
+        /* Lock target row first. */
+        IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.PolicyException WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+            WHERE ExceptionId = @ExceptionId
+        )
+            THROW 50020, 'Policy Exception not found.', 1;
+
+        DECLARE @LockResult INT;
+        DECLARE @LockResource NVARCHAR(200) = N'PolicyException:' + LTRIM(RTRIM(@EmployeeCode));
+        EXEC @LockResult = sys.sp_getapplock
+              @Resource = @LockResource
+            , @LockMode = N'Exclusive'
+            , @LockOwner = N'Transaction'
+            , @LockTimeout = 5000;
+        IF @LockResult < 0
+            THROW 50010, 'Could not acquire Policy Exception lock. Please retry.', 1;
+
         IF EXISTS (
-            SELECT 1 FROM dbo.PolicyException PE
-            WHERE PE.EmployeeCode = @EmployeeCode AND PE.ExceptionId <> @ExceptionId AND PE.IsActive = 1
-              AND (@EffectiveFrom <= ISNULL(PE.EffectiveTo, '99991231') AND ISNULL(@EffectiveTo, '99991231') >= PE.EffectiveFrom)
+            SELECT 1
+            FROM dbo.PolicyException PE WITH (UPDLOCK, HOLDLOCK)
+            WHERE PE.EmployeeCode = @EmployeeCode
+              AND PE.ExceptionId <> @ExceptionId
+              AND PE.IsActive = 1
+              AND (@EffectiveFrom <= ISNULL(PE.EffectiveTo, '99991231')
+                   AND ISNULL(@EffectiveTo, '99991231') >= PE.EffectiveFrom)
         )
             THROW 50028, 'Another active Policy Exception already exists for the selected Effective Period.', 1;
+
+        DECLARE @NowIst DATETIME2 =
+            CONVERT(DATETIME2, (SYSUTCDATETIME() AT TIME ZONE 'UTC') AT TIME ZONE 'India Standard Time');
 
         UPDATE PE SET
               RegionId = UM.RegionId
@@ -235,7 +284,7 @@ BEGIN
             , EffectiveFrom = @EffectiveFrom
             , EffectiveTo = @EffectiveTo
             , ModifiedBy = @ModifiedBy
-            , ModifiedOn = SYSDATETIME()
+            , ModifiedOn = @NowIst
         FROM dbo.PolicyException PE
         INNER JOIN dbo.MST_UserMaster UM ON UM.EmployeeCode = @EmployeeCode
         WHERE PE.ExceptionId = @ExceptionId;
@@ -275,14 +324,61 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        IF NOT EXISTS (SELECT 1 FROM dbo.PolicyException WHERE ExceptionId = @ExceptionId)
+        DECLARE
+              @EmployeeCode NVARCHAR(50)
+            , @EffectiveFrom DATE
+            , @EffectiveTo DATE
+            , @CurrentIsActive BIT;
+
+        SELECT
+              @EmployeeCode = PE.EmployeeCode
+            , @EffectiveFrom = PE.EffectiveFrom
+            , @EffectiveTo = PE.EffectiveTo
+            , @CurrentIsActive = PE.IsActive
+        FROM dbo.PolicyException PE WITH (UPDLOCK, HOLDLOCK, ROWLOCK)
+        WHERE PE.ExceptionId = @ExceptionId;
+
+        IF @EmployeeCode IS NULL
             THROW 50030, 'Policy Exception not found.', 1;
 
-        IF EXISTS (SELECT 1 FROM dbo.PolicyException WHERE ExceptionId = @ExceptionId AND IsActive = @IsActive)
+        IF @CurrentIsActive = @IsActive
             THROW 50031, 'Policy Exception is already in the requested status.', 1;
 
+        IF @IsActive = 1
+        BEGIN
+            DECLARE @TodayIst DATE =
+                CAST(CONVERT(DATETIME2, (SYSUTCDATETIME() AT TIME ZONE 'UTC') AT TIME ZONE 'India Standard Time') AS DATE);
+
+            IF @EffectiveTo IS NOT NULL AND @EffectiveTo < @TodayIst
+                THROW 50032, 'Expired Policy Exceptions cannot be activated.', 1;
+
+            DECLARE @LockResult INT;
+            DECLARE @LockResource NVARCHAR(200) = N'PolicyException:' + LTRIM(RTRIM(@EmployeeCode));
+            EXEC @LockResult = sys.sp_getapplock
+                  @Resource = @LockResource
+                , @LockMode = N'Exclusive'
+                , @LockOwner = N'Transaction'
+                , @LockTimeout = 5000;
+            IF @LockResult < 0
+                THROW 50010, 'Could not acquire Policy Exception lock. Please retry.', 1;
+
+            IF EXISTS (
+                SELECT 1
+                FROM dbo.PolicyException PE WITH (UPDLOCK, HOLDLOCK)
+                WHERE PE.EmployeeCode = @EmployeeCode
+                  AND PE.ExceptionId <> @ExceptionId
+                  AND PE.IsActive = 1
+                  AND (@EffectiveFrom <= ISNULL(PE.EffectiveTo, '99991231')
+                       AND ISNULL(@EffectiveTo, '99991231') >= PE.EffectiveFrom)
+            )
+                THROW 50033, 'An active Policy Exception already exists for the selected Effective Period.', 1;
+        END
+
+        DECLARE @NowIst DATETIME2 =
+            CONVERT(DATETIME2, (SYSUTCDATETIME() AT TIME ZONE 'UTC') AT TIME ZONE 'India Standard Time');
+
         UPDATE dbo.PolicyException
-        SET IsActive = @IsActive, ModifiedBy = @ModifiedBy, ModifiedOn = SYSDATETIME()
+        SET IsActive = @IsActive, ModifiedBy = @ModifiedBy, ModifiedOn = @NowIst
         WHERE ExceptionId = @ExceptionId;
 
         DECLARE @ActionType NVARCHAR(20) = CASE WHEN @IsActive = 1 THEN N'Activate' ELSE N'Deactivate' END;
@@ -303,7 +399,6 @@ BEGIN
     END CATCH
 END
 GO
-
 IF OBJECT_ID('dbo.usp_InsertPolicyExceptionHistorySnapshot', 'P') IS NOT NULL
     DROP PROCEDURE dbo.usp_InsertPolicyExceptionHistorySnapshot;
 GO
