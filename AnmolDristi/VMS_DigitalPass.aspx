@@ -58,6 +58,10 @@
                         <span class="info-label">Valid Until:</span>
                         <span class="info-value"><asp:Label ID="lblValidUpto" runat="server"></asp:Label></span>
                     </div>
+                    <div class="info-row" id="divApprovedDates" runat="server" visible="false">
+                        <span class="info-label">Approved Dates:</span>
+                        <span class="info-value"><asp:Label ID="lblApprovedDates" runat="server"></asp:Label></span>
+                    </div>
 
                     <asp:Label ID="lblStatusBadge" runat="server"></asp:Label>
                 </div>

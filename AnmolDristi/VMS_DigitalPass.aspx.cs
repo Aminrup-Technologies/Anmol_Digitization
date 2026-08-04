@@ -41,11 +41,13 @@ namespace AnmolDristi
                 // Massive Join to get Visitor, Host, and Plant Settings in one query
                 string query = @"
                     SELECT 
+                        v.LogID,
                         v.VisitorName, 
                         v.VisitorCompany, 
                         v.PhotoPath, 
                         v.ValidUpto, 
                         v.ApprovalStatus,
+                        ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
                         u.EmployeeName AS HostName,
                         ISNULL(s.AliasName, 'Anmol Industries') AS PlantAlias,
                         ISNULL(s.VisitorPolicyText, 'Standard safety rules apply.') AS PolicyText
@@ -59,6 +61,10 @@ namespace AnmolDristi
                     cmd.Parameters.AddWithValue("@Token", token);
                     con.Open();
 
+                    int logId = 0;
+                    string scheduleType = "SingleDay";
+                    bool passFound = false;
+
                     using (SqlDataReader sdr = cmd.ExecuteReader())
                     {
                         if (sdr.Read())
@@ -71,6 +77,8 @@ namespace AnmolDristi
                             }
 
                             // 2. Bind Data to UI
+                            logId = Convert.ToInt32(sdr["LogID"]);
+                            scheduleType = sdr["ScheduleType"].ToString();
                             lblVisitorName.Text = sdr["VisitorName"].ToString();
                             lblCompany.Text = sdr["VisitorCompany"].ToString();
                             lblHostName.Text = sdr["HostName"].ToString();
@@ -98,6 +106,7 @@ namespace AnmolDristi
                                 GenerateScannableQR(tokenStr);
                             }
 
+                            passFound = true;
                             pnlPass.Visible = true;
                         }
                         else
@@ -105,9 +114,28 @@ namespace AnmolDristi
                             ShowError("Pass not found in the system.");
                         }
                     }
-                    con.Close();
+
+                    if (passFound)
+                    {
+                        BindApprovedDates(con, logId, scheduleType);
+                    }
                 }
             }
+        }
+
+        private void BindApprovedDates(SqlConnection con, int logId, string scheduleType)
+        {
+            // scheduleType is already loaded with the pass; helper re-checks ScheduleType + day log
+            string approvedDatesText = VmsHelper.GetMultiDayApprovedDatesText(con, logId);
+            if (string.IsNullOrEmpty(approvedDatesText))
+            {
+                divApprovedDates.Visible = false;
+                lblApprovedDates.Text = "";
+                return;
+            }
+
+            lblApprovedDates.Text = approvedDatesText;
+            divApprovedDates.Visible = true;
         }
 
         private void GenerateScannableQR(string tokenData)

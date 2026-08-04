@@ -234,7 +234,7 @@ namespace AnmolDristi
                             ApplyModalDayApprovals(con, trans, logId);
                         }
 
-                        VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile);
+                        VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile, trans);
                         trans.Commit();
                     }
                     catch

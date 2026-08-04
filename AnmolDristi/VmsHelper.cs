@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SqlClient;
 using System.Web;
@@ -304,19 +305,67 @@ namespace AnmolDristi
             }
         }
 
+        /// <summary>
+        /// Formats selectively approved visit days for multi-day visits (e.g. "12-Nov, 14-Nov").
+        /// Returns null for standard single-day passes.
+        /// </summary>
+        public static string GetMultiDayApprovedDatesText(
+            SqlConnection con,
+            int logId,
+            SqlTransaction trans = null)
+        {
+            string scheduleType = "SingleDay";
+            using (SqlCommand typeCmd = new SqlCommand(
+                "SELECT ISNULL(ScheduleType, 'SingleDay') FROM VMS_VisitLog WHERE LogID = @LogID", con, trans))
+            {
+                typeCmd.Parameters.AddWithValue("@LogID", logId);
+                object result = typeCmd.ExecuteScalar();
+                if (result != null && result != DBNull.Value)
+                    scheduleType = result.ToString();
+            }
+
+            var approvedDates = new List<DateTime>();
+            using (SqlCommand dayCmd = new SqlCommand(@"
+                SELECT VisitDate
+                FROM VMS_VisitDayLog
+                WHERE LogID = @LogID AND IsDayApproved = 1
+                ORDER BY VisitDate", con, trans))
+            {
+                dayCmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = dayCmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                        approvedDates.Add(Convert.ToDateTime(reader["VisitDate"]));
+                }
+            }
+
+            bool isMultiDay = scheduleType == "MultiDay" || approvedDates.Count > 1;
+            if (!isMultiDay || approvedDates.Count == 0)
+                return null;
+
+            return string.Join(", ", approvedDates.ConvertAll(d => d.ToString("dd-MMM")));
+        }
+
         public static void QueueVisitorPassNotification(
             SqlConnection con,
             int visitId,
             Guid qrToken,
             string visitorName,
             string visitorEmail,
-            string visitorMobile)
+            string visitorMobile,
+            SqlTransaction trans = null)
         {
             string passUrl = BuildDigitalPassUrl(qrToken);
+            string approvedDatesText = GetMultiDayApprovedDatesText(con, visitId, trans);
+            string approvedDatesHtml = string.IsNullOrEmpty(approvedDatesText)
+                ? ""
+                : $"<p><b>Approved Dates:</b> {approvedDatesText}</p>";
+
             string emailBody = $@"
                 <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>
                     <h2 style='color: #1ABB9C;'>Visit Approved</h2>
                     <p>Hi {visitorName}, your visit has been approved.</p>
+                    {approvedDatesHtml}
                     <p>Click the link below to open your Digital Gate Pass and show it to the security guard.</p>
                     <br/>
                     <a href='{passUrl}' style='background-color: #1ABB9C; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>View Digital Pass</a>
@@ -331,7 +380,7 @@ namespace AnmolDristi
                     VALUES
                     (@LogId, 0, @Email, @Name, 'Your Anmol Gate Pass', @Body, 'Email', 'Pending', 'VMS_PASS')";
 
-                using (SqlCommand qCmd = new SqlCommand(emailQuery, con))
+                using (SqlCommand qCmd = new SqlCommand(emailQuery, con, trans))
                 {
                     qCmd.Parameters.AddWithValue("@LogId", visitId);
                     qCmd.Parameters.AddWithValue("@Email", normalizedEmail);
@@ -351,7 +400,7 @@ namespace AnmolDristi
                     VALUES
                     (@LogId, 0, @Mobile, @Name, 'SMS', @Body, 'SMS', 'Pending', 'VMS_PASS_SMS')";
 
-                using (SqlCommand smsCmd = new SqlCommand(smsQuery, con))
+                using (SqlCommand smsCmd = new SqlCommand(smsQuery, con, trans))
                 {
                     smsCmd.Parameters.AddWithValue("@LogId", visitId);
                     smsCmd.Parameters.AddWithValue("@Mobile", normalizedMobile);

@@ -247,7 +247,7 @@ namespace AnmolDristi
                                 }
                             }
 
-                            VmsHelper.QueueVisitorPassNotification(con, Convert.ToInt32(visitId), qrToken, visName, visEmail, visMobile);
+                            VmsHelper.QueueVisitorPassNotification(con, Convert.ToInt32(visitId), qrToken, visName, visEmail, visMobile, trans);
                             trans.Commit();
                         }
                         catch

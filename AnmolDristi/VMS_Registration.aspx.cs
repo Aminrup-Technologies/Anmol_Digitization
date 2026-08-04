@@ -712,7 +712,8 @@ namespace AnmolDristi
                                     (Guid)qrTokenParam,
                                     fullName,
                                     visitorEmail,
-                                    visitorMobile);
+                                    visitorMobile,
+                                    trans);
                             }
 
                             // ==========================================================
