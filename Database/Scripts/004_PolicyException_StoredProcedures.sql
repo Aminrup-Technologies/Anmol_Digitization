@@ -95,9 +95,12 @@ BEGIN
         , PE.ModifiedOn
     FROM dbo.PolicyException PE
     INNER JOIN dbo.MST_UserMaster UM ON UM.EmployeeCode = PE.EmployeeCode
-    LEFT JOIN dbo.MST_Region R ON R.Id = PE.RegionId
-    LEFT JOIN dbo.MST_Branch B ON B.Id = PE.BranchId
-    LEFT JOIN dbo.MST_Grade G ON G.Id = PE.GradeId
+    -- Join business keys stored on PolicyException (same keys as usp_SearchPolicyExceptions).
+    -- MST_Region/Branch/Grade use Region_ID/Branch_ID/Grade_ID; surrogate Id does not match PE.*Id.
+    -- MST_Designation uses Id (matches PE.DesignationId / UserMaster.Designation_ID).
+    LEFT JOIN dbo.MST_Region R ON R.Region_ID = PE.RegionId
+    LEFT JOIN dbo.MST_Branch B ON B.Branch_ID = PE.BranchId
+    LEFT JOIN dbo.MST_Grade G ON G.Grade_ID = PE.GradeId
     LEFT JOIN dbo.MST_Designation D ON D.Id = PE.DesignationId
     WHERE PE.ExceptionId = @ExceptionId;
 END
