@@ -28,6 +28,9 @@ namespace AnmolDristi
 
                 hfBranchId.Value = Request.QueryString["BranchId"].ToString();
 
+                // Bind quick-select host chips from branch preconfigured hosts
+                BindQuickHosts();
+
                 // 2. Prevent Duplicate Registration
                 CheckForActivePassAndRedirect();
 
@@ -63,6 +66,25 @@ namespace AnmolDristi
                 txtVisitToDate.Text = today;
                 txtTimeFrom.Text = "09:00";
                 txtTimeTo.Text = "18:00";
+            }
+        }
+
+        private void BindQuickHosts()
+        {
+            int branchId = Convert.ToInt32(hfBranchId.Value);
+            List<HostEmployee> quickHosts = GetPreconfiguredHosts(branchId);
+
+            if (quickHosts != null && quickHosts.Count > 0)
+            {
+                rptQuickHosts.DataSource = quickHosts;
+                rptQuickHosts.DataBind();
+                divQuickHosts.Visible = true;
+            }
+            else
+            {
+                rptQuickHosts.DataSource = null;
+                rptQuickHosts.DataBind();
+                divQuickHosts.Visible = false;
             }
         }
 

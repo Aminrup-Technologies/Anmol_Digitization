@@ -8,6 +8,8 @@
         .camera-box { border: 2px dashed #1ABB9C; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
         video, canvas { width: 100%; max-width: 300px; border-radius: 8px; }
         .ui-autocomplete { max-height: 200px; overflow-y: auto; overflow-x: hidden; z-index: 9999; }
+        .quick-hosts-container .badge { display: inline-block; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
+        .quick-hosts-container .badge:hover { opacity: 0.85; }
     </style>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 </asp:Content>
@@ -126,6 +128,17 @@
                         <label class="form-label">Whom to Meet *</label>
                         <input type="text" id="txtHostSearch" class="form-control" placeholder="Search employee name..." />
                         <small id="hostHelpText" class="text-muted">Select an active employee from the dropdown.</small>
+                        <div id="divQuickHosts" runat="server" class="quick-hosts-container" style="margin-top: 10px;" visible="false">
+                            <small class="text-muted">Or select a frequent host:</small><br />
+                            <asp:Repeater ID="rptQuickHosts" runat="server">
+                                <ItemTemplate>
+                                    <span class="badge badge-info" style="cursor:pointer; margin-right:5px; padding:8px;"
+                                        onclick="selectQuickHost('<%# Eval("EmpCode") %>', '<%# System.Web.HttpUtility.JavaScriptStringEncode(Convert.ToString(Eval("DisplayText"))) %>');">
+                                        <%# Eval("DisplayText") %>
+                                    </span>
+                                </ItemTemplate>
+                            </asp:Repeater>
+                        </div>
                     </div>
 
                     <asp:Button ID="btnSubmit" runat="server" CssClass="btn btn-proceed" Text="Submit Registration" OnClientClick="return validateForm();" OnClick="btnSubmit_Click" />
@@ -260,6 +273,13 @@
                 initializeAutocomplete();
             }
         });
+
+        function selectQuickHost(empCode, displayText) {
+            $("#<%= hfSelectedHostCode.ClientID %>").val(empCode);
+            $("#txtHostSearch").val(displayText);
+            $("#txtHostSearch").css("border-color", "#1ABB9C");
+            $("#hostHelpText").text("Host Selected.").css("color", "#1ABB9C");
+        }
 
         // Basic Client-Side Validation
         function validateForm() {

@@ -57,6 +57,24 @@ namespace AnmolDristi {
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfSelectedHostCode;
         
+        /// <summary>
+        /// divQuickHosts control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divQuickHosts;
+        
+        /// <summary>
+        /// rptQuickHosts control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Repeater rptQuickHosts;
+        
         protected global::System.Web.UI.WebControls.DropDownList ddlScheduleType;
         
         protected global::System.Web.UI.WebControls.TextBox txtVisitFromDate;
