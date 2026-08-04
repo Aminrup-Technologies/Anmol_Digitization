@@ -32,6 +32,11 @@ namespace AnmolDristi.BLL
             return _dataAccess.GetEmployeePolicyContext(employeeCode);
         }
 
+        public System.Data.DataTable SuggestEmployees(string term, int maxRows = 10)
+        {
+            return _dataAccess.SuggestEmployees(term, maxRows);
+        }
+
         public int Save(
             PolicyExceptionRecord record,
             PolicyExceptionDto policyDto,
