@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Globalization;
+using System.Web.UI.WebControls;
 
 namespace AnmolDristi
 {
@@ -51,6 +53,9 @@ namespace AnmolDristi
                     FROM VMS_VisitLog 
                     WHERE LogID = @VisitId AND HostEmployeeCode = @EmpCode";
 
+                string scheduleType = "SingleDay";
+                bool isPending = false;
+
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@VisitId", visitId);
@@ -70,12 +75,12 @@ namespace AnmolDristi
                                 lblCompany.Text = sdr["VisitorCompany"].ToString();
                                 lblPurpose.Text = sdr["PurposeOfVisit"].ToString();
                                 lblContact.Text = sdr["ContactInfo"].ToString();
+                                scheduleType = sdr["ScheduleType"].ToString();
 
                                 if (sdr["RequestedValidFrom"] != DBNull.Value && sdr["RequestedValidUpto"] != DBNull.Value)
                                 {
                                     DateTime reqFrom = Convert.ToDateTime(sdr["RequestedValidFrom"]);
                                     DateTime reqTo = Convert.ToDateTime(sdr["RequestedValidUpto"]);
-                                    string scheduleType = sdr["ScheduleType"].ToString();
                                     lblSchedule.Text = scheduleType == "MultiDay"
                                         ? $"{reqFrom:dd MMM yyyy} to {reqTo:dd MMM yyyy}, daily {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}"
                                         : $"{reqFrom:dd MMM yyyy}, {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}";
@@ -87,6 +92,7 @@ namespace AnmolDristi
 
                                 pnlAction.Visible = true;
                                 lblMessage.Visible = false;
+                                isPending = true;
                             }
                             else
                             {
@@ -101,17 +107,87 @@ namespace AnmolDristi
                         }
                     }
                 }
+
+                if (isPending && scheduleType == "MultiDay")
+                {
+                    BindRequestedDays(con, visitId);
+                }
             }
+        }
+
+        private void BindRequestedDays(SqlConnection con, string visitId)
+        {
+            cblRequestedDays.Items.Clear();
+
+            using (SqlCommand dayCmd = new SqlCommand(@"
+                SELECT VisitDate
+                FROM VMS_VisitDayLog
+                WHERE LogID = @LogID
+                ORDER BY VisitDate", con))
+            {
+                dayCmd.Parameters.AddWithValue("@LogID", visitId);
+                using (SqlDataReader dayReader = dayCmd.ExecuteReader())
+                {
+                    while (dayReader.Read())
+                    {
+                        DateTime visitDate = Convert.ToDateTime(dayReader["VisitDate"]);
+                        var item = new ListItem(visitDate.ToString("dd MMM yyyy"), visitDate.ToString("yyyy-MM-dd"));
+                        item.Selected = true;
+                        cblRequestedDays.Items.Add(item);
+                    }
+                }
+            }
+
+            cblRequestedDays.Visible = cblRequestedDays.Items.Count > 0;
         }
 
         protected void btnApprove_Click(object sender, EventArgs e)
         {
+            if (cblRequestedDays.Visible)
+            {
+                bool anySelected = false;
+                foreach (ListItem item in cblRequestedDays.Items)
+                {
+                    if (item.Selected)
+                    {
+                        anySelected = true;
+                        break;
+                    }
+                }
+
+                if (!anySelected)
+                {
+                    lblMessage.CssClass = "error";
+                    lblMessage.Visible = true;
+                    lblMessage.Text = "Please select at least one day to approve.";
+                    return;
+                }
+            }
+
             ProcessApproval("Approved", "Scheduled");
         }
 
         protected void btnReject_Click(object sender, EventArgs e)
         {
             ProcessApproval("Rejected", "Rejected");
+        }
+
+        private void ApplySelectedDayApprovals(SqlConnection con, SqlTransaction trans, string visitId)
+        {
+            foreach (ListItem item in cblRequestedDays.Items)
+            {
+                DateTime visitDate = DateTime.ParseExact(item.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                using (SqlCommand dayCmd = new SqlCommand(@"
+                    UPDATE VMS_VisitDayLog
+                    SET IsDayApproved = @IsDayApproved
+                    WHERE LogID = @LogID AND VisitDate = @VisitDate", con, trans))
+                {
+                    dayCmd.Parameters.AddWithValue("@IsDayApproved", item.Selected ? 1 : 0);
+                    dayCmd.Parameters.AddWithValue("@LogID", visitId);
+                    dayCmd.Parameters.AddWithValue("@VisitDate", visitDate.Date);
+                    dayCmd.ExecuteNonQuery();
+                }
+            }
         }
 
         private void ProcessApproval(string approvalStatus, string visitStatus)
@@ -124,12 +200,18 @@ namespace AnmolDristi
 
                 if (approvalStatus == "Approved")
                 {
-                    Guid qrToken = Guid.NewGuid();
-
                     using (SqlTransaction trans = con.BeginTransaction())
                     {
                         try
                         {
+                            // Selective multi-day approval must be applied before QR token generation
+                            if (cblRequestedDays.Visible)
+                            {
+                                ApplySelectedDayApprovals(con, trans, visitId);
+                            }
+
+                            Guid qrToken = Guid.NewGuid();
+
                             string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
                             using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
                             {
@@ -141,6 +223,12 @@ namespace AnmolDristi
                             }
 
                             VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, Convert.ToInt32(visitId), null, null);
+
+                            // Re-apply selective day flags so range-based schedule approval does not overwrite them
+                            if (cblRequestedDays.Visible)
+                            {
+                                ApplySelectedDayApprovals(con, trans, visitId);
+                            }
 
                             string visEmail = "";
                             string visMobile = "";

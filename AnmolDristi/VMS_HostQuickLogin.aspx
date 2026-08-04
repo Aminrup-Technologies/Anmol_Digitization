@@ -17,6 +17,8 @@
         .btn-reject:hover { background: #c9302c; }
         .error { color: #d9534f; margin-top: 15px; font-size: 16px; font-weight: bold; display: block; }
         .success { color: #1ABB9C; margin-top: 15px; font-size: 18px; font-weight: bold; display: block; }
+        .day-checklist { text-align: left; margin: 0 0 20px 0; color: #73879C; font-size: 14px; }
+        .day-checklist td { padding: 4px 0; }
         .clearfix { clear: both; }
     </style>
 </head>
@@ -36,6 +38,9 @@
                     <b>Requested Schedule:</b> <asp:Label ID="lblSchedule" runat="server"></asp:Label><br />
                     <b>Contact:</b> <asp:Label ID="lblContact" runat="server"></asp:Label>
                 </div>
+
+                <asp:CheckBoxList ID="cblRequestedDays" runat="server" Visible="false"
+                    CssClass="day-checklist" RepeatDirection="Vertical" />
 
                 <div>
                     <asp:Button ID="btnApprove" runat="server" Text="✓ Approve" CssClass="btn btn-approve" OnClick="btnApprove_Click" OnClientClick="return confirm('Approve this visitor and generate Gate Pass?');" />
