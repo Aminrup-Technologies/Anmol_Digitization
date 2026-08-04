@@ -363,7 +363,11 @@ namespace AnmolDristi
                     con.Close();
                 }
 
-                string querySettings = "SELECT * FROM VMS_OfficeSettings WHERE Branch_ID = @BranchID";
+                string querySettings = @"
+                    SELECT AliasName, FullAddress, VisitorPolicyText, TimeZone,
+                           PreconfiguredHostCodes, EscalationEmailList, EscalationTimeoutMinutes
+                    FROM VMS_OfficeSettings
+                    WHERE Branch_ID = @BranchID";
                 using (SqlCommand cmd = new SqlCommand(querySettings, con))
                 {
                     cmd.Parameters.AddWithValue("@BranchID", branchId);
@@ -378,9 +382,15 @@ namespace AnmolDristi
                             txtAlias.Text = currentAlias;
                             txtAddress.Text = dt.Rows[0]["FullAddress"].ToString();
                             txtPolicy.Text = dt.Rows[0]["VisitorPolicyText"].ToString();
-                            txtPreconfiguredHosts.Text = dt.Rows[0]["PreconfiguredHostCodes"] != DBNull.Value ? dt.Rows[0]["PreconfiguredHostCodes"].ToString() : "";
-                            txtEscalationEmails.Text = dt.Rows[0]["EscalationEmailList"] != DBNull.Value ? dt.Rows[0]["EscalationEmailList"].ToString() : "";
-                            txtEscalationTimeout.Text = dt.Rows[0]["EscalationTimeoutMinutes"] != DBNull.Value ? dt.Rows[0]["EscalationTimeoutMinutes"].ToString() : "15";
+                            txtPreconfiguredHosts.Text = dt.Rows[0]["PreconfiguredHostCodes"] != DBNull.Value
+                                ? dt.Rows[0]["PreconfiguredHostCodes"].ToString()
+                                : "";
+                            txtEscalationEmails.Text = dt.Rows[0]["EscalationEmailList"] != DBNull.Value
+                                ? dt.Rows[0]["EscalationEmailList"].ToString()
+                                : "";
+                            txtEscalationTimeout.Text = dt.Rows[0]["EscalationTimeoutMinutes"] != DBNull.Value
+                                ? dt.Rows[0]["EscalationTimeoutMinutes"].ToString()
+                                : "15";
 
                             if (ddlTimeZone.Items.FindByValue(dt.Rows[0]["TimeZone"].ToString()) != null)
                             {
@@ -392,6 +402,9 @@ namespace AnmolDristi
                             txtAlias.Text = "";
                             txtAddress.Text = "";
                             txtPolicy.Text = "1. Suit Up! Wear required Hair Net...\n2. No Smoking or Gutkha...\n3. Stay Alert! Be mindful of moving machinery...";
+                            txtPreconfiguredHosts.Text = "";
+                            txtEscalationEmails.Text = "";
+                            txtEscalationTimeout.Text = "15";
                         }
                     }
                 }
@@ -468,8 +481,8 @@ namespace AnmolDristi
                     FullAddress = @FullAddress, 
                     VisitorPolicyText = @Policy, 
                     TimeZone = @TimeZone, 
-                    PreconfiguredHostCodes = @PreconfiguredHosts,
-                    EscalationEmailList = @EscalationEmails,
+                    PreconfiguredHostCodes = @PreconfiguredHostCodes,
+                    EscalationEmailList = @EscalationEmailList,
                     EscalationTimeoutMinutes = @EscalationTimeout,
                     UpdatedAt = GETDATE(), 
                     UpdatedBy = @EmpCode
@@ -480,11 +493,14 @@ namespace AnmolDristi
                 INSERT INTO VMS_OfficeSettings 
                 (Branch_ID, AliasName, FullAddress, VisitorPolicyText, TimeZone, PreconfiguredHostCodes, EscalationEmailList, EscalationTimeoutMinutes, UpdatedBy)
                 VALUES 
-                (@BranchID, @AliasName, @FullAddress, @Policy, @TimeZone, @PreconfiguredHosts, @EscalationEmails, @EscalationTimeout, @EmpCode)
+                (@BranchID, @AliasName, @FullAddress, @Policy, @TimeZone, @PreconfiguredHostCodes, @EscalationEmailList, @EscalationTimeout, @EmpCode)
             END";
 
             try
             {
+                string preconfiguredHosts = txtPreconfiguredHosts.Text.Trim();
+                string escalationEmails = txtEscalationEmails.Text.Trim();
+
                 using (SqlConnection con = new SqlConnection(connStr))
                 {
                     using (SqlCommand cmd = new SqlCommand(query, con))
@@ -495,14 +511,19 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@Policy", txtPolicy.Text.Trim());
                         cmd.Parameters.AddWithValue("@TimeZone", ddlTimeZone.SelectedValue);
                         cmd.Parameters.AddWithValue("@EmpCode", empCode);
-                        cmd.Parameters.AddWithValue("@PreconfiguredHosts", txtPreconfiguredHosts.Text.Trim());
-                        cmd.Parameters.AddWithValue("@EscalationEmails", txtEscalationEmails.Text.Trim());
+                        cmd.Parameters.AddWithValue("@PreconfiguredHostCodes",
+                            string.IsNullOrEmpty(preconfiguredHosts) ? (object)DBNull.Value : preconfiguredHosts);
+                        cmd.Parameters.AddWithValue("@EscalationEmailList",
+                            string.IsNullOrEmpty(escalationEmails) ? (object)DBNull.Value : escalationEmails);
                         cmd.Parameters.AddWithValue("@EscalationTimeout", string.IsNullOrEmpty(txtEscalationTimeout.Text) ? 15 : Convert.ToInt32(txtEscalationTimeout.Text));
                         con.Open();
                         cmd.ExecuteNonQuery();
                         con.Close();
                     }
                 }
+
+                // Persist office timings from Tab 3 in the same save action
+                SaveOfficeTimings(branchId);
 
                 lblMsg.ForeColor = Color.Green;
                 lblMsg.Text = "Details updated successfully!";
@@ -520,8 +541,15 @@ namespace AnmolDristi
 
         protected void btnCancel_Click(object sender, EventArgs e)
         {
+            ClearHostsAndEscalationFields();
             pnlEdit.Visible = false;
             pnlList.Visible = true;
+        }
+
+        private void ClearHostsAndEscalationFields()
+        {
+            txtPreconfiguredHosts.Text = "";
+            txtEscalationEmails.Text = "";
         }
 
         private void LoadOfficeTimings(int branchId)
@@ -573,10 +601,8 @@ namespace AnmolDristi
             rptTimings.DataBind();
         }
 
-        protected void btnSaveTimings_Click(object sender, EventArgs e)
+        private void SaveOfficeTimings(int branchId)
         {
-            int branchId = Convert.ToInt32(hfBranchID.Value);
-
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 con.Open();
@@ -618,11 +644,7 @@ namespace AnmolDristi
                         }
                     }
                 }
-                con.Close();
             }
-
-            lblMsg.ForeColor = Color.Green;
-            lblMsg.Text = "Office Timings updated successfully!";
         }
     }
 }

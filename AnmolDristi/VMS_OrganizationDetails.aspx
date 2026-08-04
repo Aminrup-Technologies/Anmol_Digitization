@@ -84,17 +84,25 @@
                             <br />
 
                             <div class="" role="tabpanel" data-example-id="togglable-tabs">
-                                <ul id="myTab" class="nav nav-tabs bar_tabs" role="tablist">
-                                    <li role="presentation" class="active"><a href="#tab_content1" id="basic-tab" role="tab" data-toggle="tab" aria-expanded="true">Basic Details Office</a></li>
-                                    <li role="presentation" class=""><a href="#tab_content2" role="tab" id="policy-tab" data-toggle="tab" aria-expanded="false">Visitor Policy</a></li>
-                                    <li role="presentation" class=""><a href="#tab_content3" role="tab" id="timing-tab" data-toggle="tab" aria-expanded="false">Office Timings</a></li>
-                                    
-                                    <li role="presentation" class=""><a href="#tab_content4" role="tab" id="preview-tab" data-toggle="tab" aria-expanded="false">QR Previews</a></li>
+                                <ul id="orgEditTabs" class="nav nav-tabs bar_tabs" role="tablist">
+                                    <li role="presentation" class="active">
+                                        <a href="#tab_general_policy" id="general-policy-tab" role="tab" data-toggle="tab" aria-expanded="true">General &amp; Policy</a>
+                                    </li>
+                                    <li role="presentation">
+                                        <a href="#tab_hosts_comms" id="hosts-comms-tab" role="tab" data-toggle="tab" aria-expanded="false">Hosts &amp; Communications</a>
+                                    </li>
+                                    <li role="presentation">
+                                        <a href="#tab_office_timings" id="office-timings-tab" role="tab" data-toggle="tab" aria-expanded="false">Office Timings</a>
+                                    </li>
+                                    <li role="presentation">
+                                        <a href="#tab_qr_previews" id="qr-previews-tab" role="tab" data-toggle="tab" aria-expanded="false">QR Previews</a>
+                                    </li>
                                 </ul>
 
-                                <div id="myTabContent" class="tab-content">
+                                <div id="orgEditTabContent" class="tab-content">
 
-                                    <div role="tabpanel" class="tab-pane fade active in" id="tab_content1" aria-labelledby="basic-tab">
+                                    <%-- Tab 1: General & Policy --%>
+                                    <div role="tabpanel" class="tab-pane fade active in" id="tab_general_policy" aria-labelledby="general-policy-tab">
                                         <div class="form-horizontal form-label-left" style="margin-top: 20px;">
                                             <div class="form-group">
                                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">Alias Company Name <span class="required">*</span></label>
@@ -121,10 +129,23 @@
                                             </div>
 
                                             <div class="form-group">
+                                                <label class="control-label col-md-3 col-sm-3 col-xs-12">DOs &amp; DONTs / Visitor Policy</label>
+                                                <div class="col-md-6 col-sm-6 col-xs-12">
+                                                    <span class="help-block">This policy will be shown to the visitor immediately after successful registration and printed on their pass.</span>
+                                                    <asp:TextBox ID="txtPolicy" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="10" placeholder="1. Suit Up! Wear hair net...&#10;2. No Smoking or Gutkha allowed inside the premises..."></asp:TextBox>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <%-- Tab 2: Hosts & Communications --%>
+                                    <div role="tabpanel" class="tab-pane fade" id="tab_hosts_comms" aria-labelledby="hosts-comms-tab">
+                                        <div class="form-horizontal form-label-left" style="margin-top: 20px;">
+                                            <div class="form-group">
                                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">Pre-configured Default Hosts</label>
                                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                                     <asp:TextBox ID="txtPreconfiguredHosts" runat="server" CssClass="form-control" placeholder="e.g. AIL0102, AIL0405"></asp:TextBox>
-                                                    <span class="help-block">Enter comma-separated Employee Codes to display as quick-select hosts for this branch.</span>
+                                                    <span class="help-block">Enter comma-separated Employee Codes for default branch hosts</span>
                                                 </div>
                                             </div>
 
@@ -132,7 +153,7 @@
                                                 <label class="control-label col-md-3 col-sm-3 col-xs-12">Escalation Email Addresses</label>
                                                 <div class="col-md-6 col-sm-6 col-xs-12">
                                                     <asp:TextBox ID="txtEscalationEmails" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="2" placeholder="e.g. plant.hr@anmolindustries.com, security.head@anmolindustries.com"></asp:TextBox>
-                                                    <span class="help-block">Comma-separated email addresses to notify when pending visit approvals exceed the escalation threshold.</span>
+                                                    <span class="help-block">Enter comma-separated Email Addresses to be CC'd on all branch visit requests</span>
                                                 </div>
                                             </div>
 
@@ -145,19 +166,8 @@
                                         </div>
                                     </div>
 
-                                    <div role="tabpanel" class="tab-pane fade" id="tab_content2" aria-labelledby="policy-tab">
-                                        <div class="form-horizontal form-label-left" style="margin-top: 20px;">
-                                            <div class="form-group">
-                                                <label class="control-label col-md-2 col-sm-2 col-xs-12">DOs & DONTs</label>
-                                                <div class="col-md-9 col-sm-9 col-xs-12">
-                                                    <span class="help-block">This policy will be shown to the visitor immediately after successful registration and printed on their pass.</span>
-                                                    <asp:TextBox ID="txtPolicy" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="10" placeholder="1. Suit Up! Wear hair net...&#10;2. No Smoking or Gutkha allowed inside the premises..."></asp:TextBox>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div role="tabpanel" class="tab-pane fade" id="tab_content3" aria-labelledby="timing-tab">
+                                    <%-- Tab 3: Office Timings --%>
+                                    <div role="tabpanel" class="tab-pane fade" id="tab_office_timings" aria-labelledby="office-timings-tab">
                                         <div class="form-horizontal form-label-left" style="margin-top: 20px;">
                                             <p class="text-muted"><i class="fa fa-info-circle"></i> Edit timings of all your offices for all days of the week. Passes will only be valid during these operational hours.</p>
 
@@ -195,22 +205,17 @@
                                                     </tbody>
                                                 </table>
                                             </div>
-
-                                            <div class="ln_solid"></div>
-                                            <div class="form-group text-center">
-                                                <asp:Button ID="btnSaveTimings" runat="server" CssClass="btn btn-warning" Text="Update Timings" OnClick="btnSaveTimings_Click" />
-                                            </div>
-
                                         </div>
                                     </div>
 
-                                    <div role="tabpanel" class="tab-pane fade" id="tab_content4" aria-labelledby="preview-tab">
+                                    <%-- Tab 4: QR Previews (read-only live preview) --%>
+                                    <div role="tabpanel" class="tab-pane fade" id="tab_qr_previews" aria-labelledby="qr-previews-tab">
                                         <div class="row" style="margin-top: 20px;">
                                             
                                             <div class="col-md-6 col-sm-6 col-xs-12 text-center">
                                                 <div class="preview-box preview-visitor">
                                                     <h3 style="font-weight: bold; color: #333;">WELCOME VISITORS</h3>
-                                                    <p class="text-muted">Scan the QR & generate your pass</p>
+                                                    <p class="text-muted">Scan the QR &amp; generate your pass</p>
                                                     
                                                     <asp:Image ID="imgPreviewVisitor" runat="server" Width="220px" Height="220px" />
                                                     
@@ -244,6 +249,7 @@
                                 </div>
                             </div>
 
+                            <%-- Shared actions: save settings from all tabs at once --%>
                             <div class="ln_solid"></div>
                             <div class="form-group">
                                 <div class="col-md-12 col-sm-12 col-xs-12 text-center">
