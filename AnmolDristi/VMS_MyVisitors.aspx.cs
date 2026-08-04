@@ -14,6 +14,8 @@ using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Globalization;
+using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Drawing;
 
@@ -89,7 +91,22 @@ namespace AnmolDristi
 
             if (e.CommandName == "ApproveVisit")
             {
-                ApproveVisitor(logId, visEmail, visMobile, visName);
+                string scheduleType = GetScheduleType(logId);
+                if (scheduleType == "MultiDay")
+                {
+                    hfModalLogId.Value = logId.ToString();
+                    ViewState["ModalVisEmail"] = visEmail;
+                    ViewState["ModalVisMobile"] = visMobile;
+                    ViewState["ModalVisName"] = visName;
+                    BindModalDays(logId);
+                    lblModalMsg.Text = "";
+                    ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
+                        "$('#ScheduleApprovalModal').modal('show');", true);
+                }
+                else
+                {
+                    ApproveVisitor(logId, visEmail, visMobile, visName);
+                }
             }
             else if (e.CommandName == "RejectVisit")
             {
@@ -97,7 +114,95 @@ namespace AnmolDristi
             }
         }
 
-        private void ApproveVisitor(int logId, string email, string mobile, string name)
+        private string GetScheduleType(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(connStr))
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT ISNULL(ScheduleType, 'SingleDay') AS ScheduleType FROM VMS_VisitLog WHERE LogID = @LogID", con))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                con.Open();
+                object result = cmd.ExecuteScalar();
+                return result == null || result == DBNull.Value ? "SingleDay" : result.ToString();
+            }
+        }
+
+        private void BindModalDays(int logId)
+        {
+            cblModalDays.Items.Clear();
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            using (SqlCommand dayCmd = new SqlCommand(@"
+                SELECT VisitDate
+                FROM VMS_VisitDayLog
+                WHERE LogID = @LogID
+                ORDER BY VisitDate", con))
+            {
+                dayCmd.Parameters.AddWithValue("@LogID", logId);
+                con.Open();
+                using (SqlDataReader dayReader = dayCmd.ExecuteReader())
+                {
+                    while (dayReader.Read())
+                    {
+                        DateTime visitDate = Convert.ToDateTime(dayReader["VisitDate"]);
+                        var item = new ListItem(visitDate.ToString("dd MMM yyyy"), visitDate.ToString("yyyy-MM-dd"));
+                        item.Selected = true;
+                        cblModalDays.Items.Add(item);
+                    }
+                }
+            }
+        }
+
+        protected void btnConfirmSchedule_Click(object sender, EventArgs e)
+        {
+            bool anySelected = false;
+            foreach (ListItem item in cblModalDays.Items)
+            {
+                if (item.Selected)
+                {
+                    anySelected = true;
+                    break;
+                }
+            }
+
+            if (!anySelected)
+            {
+                lblModalMsg.Text = "Please select at least one day to approve.";
+                ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
+                    "$('#ScheduleApprovalModal').modal('show');", true);
+                return;
+            }
+
+            int logId = Convert.ToInt32(hfModalLogId.Value);
+            string visEmail = ViewState["ModalVisEmail"] != null ? ViewState["ModalVisEmail"].ToString() : "";
+            string visMobile = ViewState["ModalVisMobile"] != null ? ViewState["ModalVisMobile"].ToString() : "";
+            string visName = ViewState["ModalVisName"] != null ? ViewState["ModalVisName"].ToString() : "";
+
+            ApproveVisitor(logId, visEmail, visMobile, visName, applySelectedModalDays: true);
+
+            ScriptManager.RegisterStartupScript(this, GetType(), "HideScheduleModal",
+                "$('#ScheduleApprovalModal').modal('hide'); $('body').removeClass('modal-open'); $('.modal-backdrop').remove();", true);
+        }
+
+        private void ApplyModalDayApprovals(SqlConnection con, SqlTransaction trans, int logId)
+        {
+            foreach (ListItem item in cblModalDays.Items)
+            {
+                DateTime visitDate = DateTime.ParseExact(item.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                using (SqlCommand dayCmd = new SqlCommand(@"
+                    UPDATE VMS_VisitDayLog
+                    SET IsDayApproved = @IsDayApproved
+                    WHERE LogID = @LogID AND VisitDate = @VisitDate", con, trans))
+                {
+                    dayCmd.Parameters.AddWithValue("@IsDayApproved", item.Selected ? 1 : 0);
+                    dayCmd.Parameters.AddWithValue("@LogID", logId);
+                    dayCmd.Parameters.AddWithValue("@VisitDate", visitDate.Date);
+                    dayCmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private void ApproveVisitor(int logId, string email, string mobile, string name, bool applySelectedModalDays = false)
         {
             Guid qrToken = Guid.NewGuid();
 
@@ -108,6 +213,11 @@ namespace AnmolDristi
                 {
                     try
                     {
+                        if (applySelectedModalDays)
+                        {
+                            ApplyModalDayApprovals(con, trans, logId);
+                        }
+
                         string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
                         using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
                         {
@@ -117,6 +227,13 @@ namespace AnmolDristi
                         }
 
                         VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, logId, null, null);
+
+                        // Re-apply selective day flags so range-based schedule approval does not overwrite them
+                        if (applySelectedModalDays)
+                        {
+                            ApplyModalDayApprovals(con, trans, logId);
+                        }
+
                         VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile);
                         trans.Commit();
                     }

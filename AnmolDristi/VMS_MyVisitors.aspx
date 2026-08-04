@@ -106,4 +106,32 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="ScheduleApprovalModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <asp:UpdatePanel ID="upScheduleApproval" runat="server">
+                    <ContentTemplate>
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span></button>
+                            <h4 class="modal-title">Select Days to Approve</h4>
+                        </div>
+                        <div class="modal-body">
+                            <p>Choose which days to approve for this multi-day visit:</p>
+                            <asp:HiddenField ID="hfModalLogId" runat="server" />
+                            <asp:CheckBoxList ID="cblModalDays" runat="server" RepeatDirection="Vertical" CssClass="checkbox" />
+                            <asp:Label ID="lblModalMsg" runat="server" ForeColor="Red" Font-Bold="true"></asp:Label>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                            <asp:Button ID="btnConfirmSchedule" runat="server" Text="Confirm Approval" CssClass="btn btn-success" OnClick="btnConfirmSchedule_Click" />
+                        </div>
+                    </ContentTemplate>
+                    <Triggers>
+                        <asp:PostBackTrigger ControlID="btnConfirmSchedule" />
+                    </Triggers>
+                </asp:UpdatePanel>
+            </div>
+        </div>
+    </div>
 </asp:Content>
