@@ -36,34 +36,45 @@ namespace AnmolDristi
         private void BindMasterDropdown(DropDownList ddl, string masterType, bool includeAll)
         {
             ddl.Items.Clear();
-            if (includeAll) ddl.Items.Add(new ListItem("-- All --", ""));
+
+            // AppendDataBoundItems must be set before DataBind so "-- All --" is preserved.
+            // Without it, DataBind replaces items and the first master Id becomes selected,
+            // which unintentionally filters the search (often to zero rows).
+            ddl.AppendDataBoundItems = includeAll;
+            if (includeAll)
+                ddl.Items.Add(new ListItem("-- All --", ""));
 
             var dt = _service.GetMasterList(masterType);
             ddl.DataSource = dt;
             ddl.DataTextField = "Description";
             ddl.DataValueField = "Id";
             ddl.DataBind();
+
+            // Explicit default after every bind (initial load and any future rebind).
+            if (includeAll)
+                ddl.SelectedIndex = 0;
         }
 
         private PolicyExceptionSearchCriteria BuildSearchCriteria()
         {
             var criteria = new PolicyExceptionSearchCriteria
             {
-                EmployeeCode = txtSearchEmployeeCode.Text.Trim(),
-                EmployeeName = txtSearchEmployeeName.Text.Trim()
+                // Empty / whitespace text controls must remain "no filter" (null), not "".
+                EmployeeCode = NormalizeOptionalText(txtSearchEmployeeCode.Text),
+                EmployeeName = NormalizeOptionalText(txtSearchEmployeeName.Text),
+                RegionId = ParseOptionalDropdownInt(ddlSearchRegion.SelectedValue),
+                BranchId = ParseOptionalDropdownInt(ddlSearchBranch.SelectedValue),
+                GradeId = ParseOptionalDropdownInt(ddlSearchGrade.SelectedValue),
+                DesignationId = ParseOptionalDropdownInt(ddlSearchDesignation.SelectedValue)
             };
 
-            int tmp;
-            if (int.TryParse(ddlSearchRegion.SelectedValue, out tmp)) criteria.RegionId = tmp;
-            if (int.TryParse(ddlSearchBranch.SelectedValue, out tmp)) criteria.BranchId = tmp;
-            if (int.TryParse(ddlSearchGrade.SelectedValue, out tmp)) criteria.GradeId = tmp;
-            if (int.TryParse(ddlSearchDesignation.SelectedValue, out tmp)) criteria.DesignationId = tmp;
+            string activeValue = NormalizeOptionalText(ddlSearchActive.SelectedValue);
+            if (activeValue != null)
+                criteria.IsActive = activeValue == "1";
 
-            if (!string.IsNullOrWhiteSpace(ddlSearchActive.SelectedValue))
-                criteria.IsActive = ddlSearchActive.SelectedValue == "1";
-
+            string effectiveDateText = NormalizeOptionalText(txtSearchEffectiveDate.Text);
             DateTime effDate;
-            if (DateTime.TryParse(txtSearchEffectiveDate.Text, out effDate))
+            if (effectiveDateText != null && DateTime.TryParse(effectiveDateText, out effDate))
                 criteria.EffectiveDate = effDate.Date;
 
             return criteria;
@@ -348,10 +359,22 @@ namespace AnmolDristi
             ScriptManager.RegisterStartupScript(this, GetType(), "setReadOnly", "setPolicyExceptionReadOnly(" + (readOnly ? "true" : "false") + ");", true);
         }
 
-        private static int? ParseNullableInt(string value)
+        private static string NormalizeOptionalText(string value)
         {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            return value.Trim();
+        }
+
+        /// <summary>
+        /// Parses an optional dropdown filter value. Null, empty, and whitespace mean "no filter".
+        /// </summary>
+        private static int? ParseOptionalDropdownInt(string value)
+        {
+            string trimmed = NormalizeOptionalText(value);
+            if (trimmed == null) return null;
+
             int tmp;
-            return int.TryParse(value, out tmp) ? (int?)tmp : null;
+            return int.TryParse(trimmed, out tmp) ? (int?)tmp : null;
         }
 
         private static decimal? ParseNullableDecimal(string value)
