@@ -36,6 +36,10 @@ namespace AnmolDristi
         private void BindMasterDropdown(DropDownList ddl, string masterType, bool includeAll)
         {
             ddl.Items.Clear();
+            // AppendDataBoundItems must be true so "-- All --" survives DataBind().
+            // Without it, DataBind replaces items and the first master Id becomes selected,
+            // which unintentionally filters the search (often to zero rows).
+            ddl.AppendDataBoundItems = includeAll;
             if (includeAll) ddl.Items.Add(new ListItem("-- All --", ""));
 
             var dt = _service.GetMasterList(masterType);
@@ -43,6 +47,9 @@ namespace AnmolDristi
             ddl.DataTextField = "Description";
             ddl.DataValueField = "Id";
             ddl.DataBind();
+
+            if (includeAll && ddl.Items.Count > 0)
+                ddl.SelectedIndex = 0;
         }
 
         private PolicyExceptionSearchCriteria BuildSearchCriteria()
