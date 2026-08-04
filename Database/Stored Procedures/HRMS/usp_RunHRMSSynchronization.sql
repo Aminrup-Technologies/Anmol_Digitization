@@ -199,15 +199,21 @@ BEGIN
 
         /* ------------------------------------------------------------------
            Mark staging rows appropriately (finalization only)
-           - Rows still Pending with no ErrorMessage → Processed
-           - Rows already Error remain Error (set by validation / children)
+           - Pending + NULL / '' ErrorMessage → Processed
+           - Pending + ErrorMessage starting with [WARNING] → Processed
+             (warnings are informational; text is retained)
+           - ImportStatus = Error (hard failures) remains Error
            ------------------------------------------------------------------ */
         UPDATE s
         SET s.ImportStatus = N'Processed'
         FROM dbo.Staging_EmployeeData AS s
         WHERE s.BatchId = @BatchId
           AND s.ImportStatus = N'Pending'
-          AND (s.ErrorMessage IS NULL OR LTRIM(RTRIM(s.ErrorMessage)) = N'');
+          AND (
+                s.ErrorMessage IS NULL
+             OR LTRIM(RTRIM(s.ErrorMessage)) = N''
+             OR LTRIM(s.ErrorMessage) LIKE N'[[]WARNING]%'
+              );
 
         /* ------------------------------------------------------------------
            Update ImportBatchMaster status
