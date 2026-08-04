@@ -504,6 +504,9 @@ namespace AnmolDristi
                     }
                 }
 
+                // Persist office timings from Tab 3 in the same save action
+                SaveOfficeTimings(branchId);
+
                 lblMsg.ForeColor = Color.Green;
                 lblMsg.Text = "Details updated successfully!";
 
@@ -573,10 +576,8 @@ namespace AnmolDristi
             rptTimings.DataBind();
         }
 
-        protected void btnSaveTimings_Click(object sender, EventArgs e)
+        private void SaveOfficeTimings(int branchId)
         {
-            int branchId = Convert.ToInt32(hfBranchID.Value);
-
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 con.Open();
@@ -618,11 +619,7 @@ namespace AnmolDristi
                         }
                     }
                 }
-                con.Close();
             }
-
-            lblMsg.ForeColor = Color.Green;
-            lblMsg.Text = "Office Timings updated successfully!";
         }
     }
 }
