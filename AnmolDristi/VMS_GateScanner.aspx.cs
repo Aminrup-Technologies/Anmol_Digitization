@@ -193,27 +193,31 @@ namespace AnmolDristi
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
+                // Strict daily validation: visitor must have an approved day-log row for today
+                // (covers both SingleDay and MultiDay; each visit creates VMS_VisitDayLog rows).
                 string query = @"
                 SELECT 
                     v.LogID, v.VisitorName, v.VisitorCompany, v.VisitorMobile, v.VisitorEmail, 
                     v.ApprovalStatus, v.VisitStatus, v.ValidFrom, v.ValidUpto, v.PhotoPath, v.ActualInTime, v.PassCategory,
                     v.TargetBranchID,
                     u.EmployeeName AS HostName, u.Email AS HostEmail,
-                    ISNULL(d.Department_Description, 'General') AS HostDepartment,
-                    ISNULL(b.Branch_Description, 'Unknown Branch') AS VisitBranchName
+                    ISNULL(dept.Department_Description, 'General') AS HostDepartment,
+                    ISNULL(b.Branch_Description, 'Unknown Branch') AS VisitBranchName,
+                    d.DayLogID, d.DayValidFrom, d.DayValidUpto, d.VisitStatus AS DayVisitStatus,
+                    d.ActualInTime AS DayActualInTime, d.IsDayApproved
                 FROM VMS_VisitLog v
+                INNER JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
                 LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
-                LEFT JOIN MST_Department d ON CAST(u.DepartmentId AS VARCHAR) = d.Department_ID
+                LEFT JOIN MST_Department dept ON CAST(u.DepartmentId AS VARCHAR) = dept.Department_ID
                 LEFT JOIN MST_Branch b ON v.TargetBranchID = b.Branch_ID
-                WHERE v.QRToken = @Token";
+                WHERE v.QRToken = @Token
+                  AND d.VisitDate = CAST(GETDATE() AS DATE)
+                  AND d.IsDayApproved = 1";
 
                 con.Open();
 
                 int logId = 0;
                 string status = "";
-                string visitStatus = "Scheduled";
-                DateTime validFrom = DateTime.Now;
-                DateTime validUpto = DateTime.Now;
                 string photoPath = "";
                 int visitBranchId = 0;
                 string visitBranchName = "";
@@ -222,41 +226,69 @@ namespace AnmolDristi
                 string contact = "";
                 string hostName = "";
                 string hostDept = "";
+                int dayLogId = 0;
+                DateTime dayValidFrom = DateTime.Now;
+                DateTime dayValidUpto = DateTime.Now;
+                string dayStatus = "Scheduled";
+                DateTime? dayActualInTime = null;
+                bool passMatchedForToday = false;
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@Token", tokenGuid);
                     using (SqlDataReader sdr = cmd.ExecuteReader())
                     {
-                        if (!sdr.Read())
+                        if (sdr.Read())
                         {
-                            ShowResult("result-card result-danger", "Pass Not Found", "This pass does not exist in the database.", "", null);
-                            return;
+                            passMatchedForToday = true;
+
+                            logId = Convert.ToInt32(sdr["LogID"]);
+                            status = sdr["ApprovalStatus"].ToString();
+                            photoPath = sdr["PhotoPath"].ToString();
+                            visitBranchId = sdr["TargetBranchID"] != DBNull.Value ? Convert.ToInt32(sdr["TargetBranchID"]) : 0;
+                            visitBranchName = sdr["VisitBranchName"].ToString();
+                            visName = sdr["VisitorName"].ToString();
+                            string category = sdr["PassCategory"].ToString();
+                            company = string.IsNullOrEmpty(category) ? sdr["VisitorCompany"].ToString() : $"[{category}] - {sdr["VisitorCompany"]}";
+                            contact = !string.IsNullOrEmpty(sdr["VisitorMobile"].ToString()) ? sdr["VisitorMobile"].ToString() : sdr["VisitorEmail"].ToString();
+                            hostName = sdr["HostName"].ToString();
+                            hostDept = sdr["HostDepartment"].ToString();
+
+                            dayLogId = Convert.ToInt32(sdr["DayLogID"]);
+                            dayValidFrom = Convert.ToDateTime(sdr["DayValidFrom"]);
+                            dayValidUpto = Convert.ToDateTime(sdr["DayValidUpto"]);
+                            dayStatus = sdr["DayVisitStatus"] != DBNull.Value && !string.IsNullOrWhiteSpace(sdr["DayVisitStatus"].ToString())
+                                ? sdr["DayVisitStatus"].ToString()
+                                : "Scheduled";
+                            if (sdr["DayActualInTime"] != DBNull.Value)
+                                dayActualInTime = Convert.ToDateTime(sdr["DayActualInTime"]);
+
+                            hfCurrentLogId.Value = logId.ToString();
+                            hfHostEmail.Value = sdr["HostEmail"].ToString();
+                            hfHostName.Value = hostName;
+                            hfVisName.Value = visName;
+                            hfCompany.Value = sdr["VisitorCompany"].ToString();
                         }
-
-                        logId = Convert.ToInt32(sdr["LogID"]);
-                        status = sdr["ApprovalStatus"].ToString();
-                        visitStatus = sdr["VisitStatus"] != DBNull.Value && !string.IsNullOrWhiteSpace(sdr["VisitStatus"].ToString())
-                            ? sdr["VisitStatus"].ToString()
-                            : "Scheduled";
-                        validFrom = Convert.ToDateTime(sdr["ValidFrom"]);
-                        validUpto = Convert.ToDateTime(sdr["ValidUpto"]);
-                        photoPath = sdr["PhotoPath"].ToString();
-                        visitBranchId = sdr["TargetBranchID"] != DBNull.Value ? Convert.ToInt32(sdr["TargetBranchID"]) : 0;
-                        visitBranchName = sdr["VisitBranchName"].ToString();
-                        visName = sdr["VisitorName"].ToString();
-                        string category = sdr["PassCategory"].ToString();
-                        company = string.IsNullOrEmpty(category) ? sdr["VisitorCompany"].ToString() : $"[{category}] - {sdr["VisitorCompany"]}";
-                        contact = !string.IsNullOrEmpty(sdr["VisitorMobile"].ToString()) ? sdr["VisitorMobile"].ToString() : sdr["VisitorEmail"].ToString();
-                        hostName = sdr["HostName"].ToString();
-                        hostDept = sdr["HostDepartment"].ToString();
-
-                        hfCurrentLogId.Value = logId.ToString();
-                        hfHostEmail.Value = sdr["HostEmail"].ToString();
-                        hfHostName.Value = hostName;
-                        hfVisName.Value = visName;
-                        hfCompany.Value = sdr["VisitorCompany"].ToString();
                     }
+                }
+
+                if (!passMatchedForToday)
+                {
+                    // Distinguish unknown QR vs valid pass that is not approved for today
+                    string deniedValidUpto = "";
+                    if (TryLoadPassByToken(con, tokenGuid,
+                        out photoPath, out visName, out company, out contact, out hostName, out hostDept, out deniedValidUpto))
+                    {
+                        ShowResult("result-card result-danger", "Access Denied",
+                            "Access Denied: Valid Pass, but the host has NOT approved entry for today's date.",
+                            photoPath, visName, company, contact, hostName, hostDept, deniedValidUpto);
+                    }
+                    else
+                    {
+                        ShowResult("result-card result-danger", "Pass Not Found",
+                            "This pass does not exist in the database.", "", null);
+                    }
+                    return;
                 }
 
                 if (isSpecificGate && scannerBranchId != visitBranchId)
@@ -264,7 +296,7 @@ namespace AnmolDristi
                     ShowResult("result-card result-danger",
                         "Wrong Facility Alert",
                         $"This pass is strictly valid for <b>{visitBranchName}</b>. The visitor is at the wrong location.",
-                        photoPath, visName, company, contact, hostName, hostDept, validUpto.ToString("dd MMM, hh:mm tt"));
+                        photoPath, visName, company, contact, hostName, hostDept, dayValidUpto.ToString("dd MMM, hh:mm tt"));
                     return;
                 }
 
@@ -274,45 +306,25 @@ namespace AnmolDristi
                     return;
                 }
 
-                VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLogOrLegacyFallback(
-                    con, logId, validFrom, validUpto, visitStatus);
-
-                if (todayLog == null)
-                {
-                    ShowResult("result-card result-danger", "No Visit Today",
-                        "This pass does not have an approved visit scheduled for today.",
-                        photoPath, visName, company, contact, hostName, hostDept, validUpto.ToString("dd MMM, hh:mm tt"));
-                    return;
-                }
-
-                if (!todayLog.IsDayApproved)
-                {
-                    ShowResult("result-card result-danger", "Day Not Approved",
-                        "Today's visit has not been approved by the host yet.",
-                        photoPath, visName, company, contact, hostName, hostDept, todayLog.DayValidUpto.ToString("dd MMM, hh:mm tt"));
-                    return;
-                }
-
-                hfCurrentDayLogId.Value = todayLog.DayLogId.ToString();
-                string validUptoStr = todayLog.DayValidUpto.ToString("dd MMM, hh:mm tt");
-                string dayStatus = todayLog.VisitStatus ?? "Scheduled";
+                hfCurrentDayLogId.Value = dayLogId.ToString();
+                string validUptoDisplay = dayValidUpto.ToString("dd MMM, hh:mm tt");
                 DateTime now = DateTime.Now;
 
                 if (dayStatus == "Scheduled")
                 {
-                    if (now < todayLog.DayValidFrom)
+                    if (now < dayValidFrom)
                     {
                         ShowResult("result-card result-warning", "Too Early",
-                            $"Today's visiting window starts at {todayLog.DayValidFrom:hh:mm tt}.",
-                            photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                            $"Today's visiting window starts at {dayValidFrom:hh:mm tt}.",
+                            photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                         return;
                     }
 
-                    if (now > todayLog.DayValidUpto)
+                    if (now > dayValidUpto)
                     {
                         ShowResult("result-card result-danger", "Today's Window Ended",
-                            $"Today's approved visiting hours ended at {todayLog.DayValidUpto:hh:mm tt}.",
-                            photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                            $"Today's approved visiting hours ended at {dayValidUpto:hh:mm tt}.",
+                            photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                         return;
                     }
 
@@ -320,12 +332,12 @@ namespace AnmolDristi
                     btnManualCheckOut.Enabled = false;
                     liCheckInTime.Visible = false;
                     ShowResult("result-card result-info", "Visitor Identified",
-                        $"Approved for today ({todayLog.DayValidFrom:hh:mm tt} - {todayLog.DayValidUpto:hh:mm tt}). Verify photo and confirm Check-IN.",
-                        photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                        $"Approved for today ({dayValidFrom:hh:mm tt} - {dayValidUpto:hh:mm tt}). Verify photo and confirm Check-IN.",
+                        photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                 }
                 else if (dayStatus == "Checked-In")
                 {
-                    DateTime inTime = todayLog.ActualInTime ?? DateTime.Now;
+                    DateTime inTime = dayActualInTime ?? DateTime.Now;
                     liCheckInTime.Visible = true;
                     lblDetInTime.Text = inTime.ToString("dd MMM, hh:mm tt");
                     btnManualCheckIn.Enabled = false;
@@ -341,24 +353,84 @@ namespace AnmolDristi
                         btnManualCheckOut.Text = "Confirm Check-OUT";
                     }
 
-                    if (DateTime.Now > todayLog.DayValidUpto)
+                    if (DateTime.Now > dayValidUpto)
                     {
                         ShowResult("result-card result-warning", "Visitor Overstayed",
-                            $"Today's window ended at {validUptoStr}. Please verify and confirm Check-OUT.",
-                            photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                            $"Today's window ended at {validUptoDisplay}. Please verify and confirm Check-OUT.",
+                            photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                     }
                     else
                     {
                         ShowResult("result-card result-info", "Visitor Exiting",
                             "Review today's check-in time and confirm Check-OUT.",
-                            photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                            photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                     }
                 }
                 else if (dayStatus == "Checked-Out")
                 {
                     ShowResult("result-card result-danger", "Already Checked-Out Today",
                         $"{visName} has already completed today's gate check-out.",
-                        photoPath, visName, company, contact, hostName, hostDept, validUptoStr);
+                        photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Loads basic pass details by QR token (without the today/IsDayApproved filter)
+        /// so the scanner can show a clear denial when the pass exists but is not approved for today.
+        /// </summary>
+        private bool TryLoadPassByToken(
+            SqlConnection con,
+            Guid tokenGuid,
+            out string photoPath,
+            out string visName,
+            out string company,
+            out string contact,
+            out string hostName,
+            out string hostDept,
+            out string validUptoStr)
+        {
+            photoPath = "";
+            visName = "";
+            company = "";
+            contact = "";
+            hostName = "";
+            hostDept = "";
+            validUptoStr = "";
+
+            string lookupQuery = @"
+                SELECT 
+                    v.VisitorName, v.VisitorCompany, v.VisitorMobile, v.VisitorEmail,
+                    v.PhotoPath, v.PassCategory, v.ValidUpto,
+                    u.EmployeeName AS HostName,
+                    ISNULL(dept.Department_Description, 'General') AS HostDepartment
+                FROM VMS_VisitLog v
+                LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
+                LEFT JOIN MST_Department dept ON CAST(u.DepartmentId AS VARCHAR) = dept.Department_ID
+                WHERE v.QRToken = @Token";
+
+            using (SqlCommand cmd = new SqlCommand(lookupQuery, con))
+            {
+                cmd.Parameters.AddWithValue("@Token", tokenGuid);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    if (!sdr.Read())
+                        return false;
+
+                    photoPath = sdr["PhotoPath"].ToString();
+                    visName = sdr["VisitorName"].ToString();
+                    string category = sdr["PassCategory"].ToString();
+                    company = string.IsNullOrEmpty(category)
+                        ? sdr["VisitorCompany"].ToString()
+                        : $"[{category}] - {sdr["VisitorCompany"]}";
+                    contact = !string.IsNullOrEmpty(sdr["VisitorMobile"].ToString())
+                        ? sdr["VisitorMobile"].ToString()
+                        : sdr["VisitorEmail"].ToString();
+                    hostName = sdr["HostName"].ToString();
+                    hostDept = sdr["HostDepartment"].ToString();
+                    if (sdr["ValidUpto"] != DBNull.Value)
+                        validUptoStr = Convert.ToDateTime(sdr["ValidUpto"]).ToString("dd MMM, hh:mm tt");
+                    return true;
                 }
             }
         }
