@@ -1,8 +1,11 @@
 using System;
+using System.Data;
 using System.Globalization;
+using System.IO;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using AnmolDristi.BLL;
+using ClosedXML.Excel;
 
 namespace AnmolDristi
 {
@@ -14,6 +17,11 @@ namespace AnmolDristi
         {
             get { return ViewState["LoadedIsActive"] as bool?; }
             set { ViewState["LoadedIsActive"] = value; }
+        }
+
+        private bool CanViewHistory
+        {
+            get { return HasPermission(PolicyExceptionService.HistoryPermissionKey); }
         }
 
         protected void Page_Load(object sender, EventArgs e)
@@ -112,6 +120,8 @@ namespace AnmolDristi
             hfExceptionId.Value = "0";
             lblModalTitle.Text = "Add Policy Exception";
             pnlAuditInfo.Visible = false;
+            HideHistoryPanel();
+            ConfigureChangeReasonUi(isEdit: false, readOnly: false);
             SetIsActiveForNewRecord();
             SetFormReadOnly(false);
             ShowModal();
@@ -160,6 +170,8 @@ namespace AnmolDristi
             {
                 LoadForm(exceptionId, false);
                 lblModalTitle.Text = "Edit Policy Exception";
+                HideHistoryPanel();
+                ConfigureChangeReasonUi(isEdit: true, readOnly: false);
                 SetFormReadOnly(false);
                 ShowModal();
             }
@@ -167,6 +179,7 @@ namespace AnmolDristi
             {
                 LoadForm(exceptionId, true);
                 lblModalTitle.Text = "View Policy Exception";
+                ConfigureChangeReasonUi(isEdit: false, readOnly: true);
                 SetFormReadOnly(true);
                 ShowModal();
             }
@@ -225,6 +238,267 @@ namespace AnmolDristi
 
             txtEmployeeCode.ReadOnly = readOnly || record.ExceptionId > 0;
             btnLoadEmployee.Enabled = !readOnly && record.ExceptionId <= 0;
+
+            ConfigureChangeReasonUi(isEdit: !readOnly && record.ExceptionId > 0, readOnly: readOnly);
+
+            if (readOnly)
+                BindHistory(exceptionId);
+            else
+                HideHistoryPanel();
+        }
+
+        private void ConfigureChangeReasonUi(bool isEdit, bool readOnly)
+        {
+            pnlChangeReason.Visible = !readOnly;
+            txtChangeReason.Text = string.Empty;
+            rfvChangeReason.Enabled = isEdit && !readOnly;
+
+            if (readOnly)
+            {
+                lblChangeReasonHint.Text = string.Empty;
+                return;
+            }
+
+            if (isEdit)
+            {
+                lblChangeReasonHint.Text = "Required for updates. This reason is stored on the new history version only.";
+                txtChangeReason.Attributes["placeholder"] = "Reason for this update (required)";
+            }
+            else
+            {
+                lblChangeReasonHint.Text = "Optional. Defaults to \"" + PolicyExceptionService.DefaultCreateReason + "\" when left blank.";
+                txtChangeReason.Attributes["placeholder"] = PolicyExceptionService.DefaultCreateReason;
+            }
+        }
+
+        private void BindHistory(int exceptionId)
+        {
+            if (!CanViewHistory)
+            {
+                HideHistoryPanel();
+                return;
+            }
+
+            DataTable historyNewestFirst = _service.GetHistory(exceptionId);
+            pnlHistory.Visible = true;
+            lblHistoryVersionNote.Text = "Showing current values. Select a version to view a historical snapshot (read-only).";
+            lblCompareMessage.Text = string.Empty;
+            pnlCompareResults.Visible = false;
+
+            gvHistory.DataSource = historyNewestFirst;
+            gvHistory.DataBind();
+
+            DataView timelineView = historyNewestFirst.DefaultView;
+            timelineView.Sort = "VersionNo ASC";
+            DataTable timeline = timelineView.ToTable();
+            bool hasHistory = timeline.Rows.Count > 0;
+            rptHistoryTimeline.DataSource = timeline;
+            rptHistoryTimeline.DataBind();
+            rptHistoryTimeline.Visible = hasHistory;
+            lblTimelineEmpty.Visible = !hasHistory;
+
+            BindCompareDropdowns(timeline);
+            btnExportHistory.Enabled = hasHistory;
+        }
+
+        private void BindCompareDropdowns(DataTable timelineOldestFirst)
+        {
+            ddlCompareVersionA.Items.Clear();
+            ddlCompareVersionB.Items.Clear();
+
+            if (timelineOldestFirst == null || timelineOldestFirst.Rows.Count == 0)
+            {
+                ddlCompareVersionA.Items.Add(new ListItem("-- None --", ""));
+                ddlCompareVersionB.Items.Add(new ListItem("-- None --", ""));
+                btnCompareHistory.Enabled = false;
+                return;
+            }
+
+            foreach (DataRow row in timelineOldestFirst.Rows)
+            {
+                string version = Convert.ToString(row["VersionNo"]);
+                string action = Convert.ToString(row["ActionType"]);
+                string text = "Version " + version + " (" + action + ")";
+                ddlCompareVersionA.Items.Add(new ListItem(text, version));
+                ddlCompareVersionB.Items.Add(new ListItem(text, version));
+            }
+
+            ddlCompareVersionA.SelectedIndex = 0;
+            ddlCompareVersionB.SelectedIndex = timelineOldestFirst.Rows.Count > 1
+                ? timelineOldestFirst.Rows.Count - 1
+                : 0;
+            btnCompareHistory.Enabled = timelineOldestFirst.Rows.Count >= 2;
+        }
+
+        private void HideHistoryPanel()
+        {
+            pnlHistory.Visible = false;
+            lblHistoryVersionNote.Text = string.Empty;
+            lblCompareMessage.Text = string.Empty;
+            pnlCompareResults.Visible = false;
+            gvHistory.DataSource = null;
+            gvHistory.DataBind();
+            rptHistoryTimeline.DataSource = null;
+            rptHistoryTimeline.DataBind();
+            lblTimelineEmpty.Visible = false;
+            ddlCompareVersionA.Items.Clear();
+            ddlCompareVersionB.Items.Clear();
+        }
+
+        protected void gvHistory_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName != "ViewHistoryVersion") return;
+            ViewHistoryVersion(Convert.ToString(e.CommandArgument));
+        }
+
+        protected void rptHistoryTimeline_ItemCommand(object source, RepeaterCommandEventArgs e)
+        {
+            if (e.CommandName != "ViewHistoryVersion") return;
+            ViewHistoryVersion(Convert.ToString(e.CommandArgument));
+        }
+
+        private void ViewHistoryVersion(string versionArgument)
+        {
+            if (!CanViewHistory) return;
+
+            int exceptionId;
+            int versionNo;
+            if (!int.TryParse(hfExceptionId.Value, out exceptionId) || exceptionId <= 0) return;
+            if (!int.TryParse(versionArgument, out versionNo) || versionNo <= 0) return;
+
+            PolicyExceptionHistoryRecord history = _service.GetHistoryVersion(exceptionId, versionNo);
+            if (history == null)
+            {
+                lblFormMessage.Text = "History version not found.";
+                ShowModal();
+                return;
+            }
+
+            ApplyHistorySnapshot(history);
+            BindHistory(exceptionId);
+            lblHistoryVersionNote.Text = string.Format(
+                "Viewing historical version {0} ({1}) changed by {2} on {3:dd-MMM-yyyy HH:mm}. Reason: {4}. Read-only.",
+                history.VersionNo,
+                history.ActionType,
+                string.IsNullOrWhiteSpace(history.ChangedBy) ? "—" : history.ChangedBy,
+                history.ChangedOn,
+                string.IsNullOrWhiteSpace(history.ChangeReason) ? "—" : history.ChangeReason);
+            ConfigureChangeReasonUi(isEdit: false, readOnly: true);
+            SetFormReadOnly(true);
+            ShowModal();
+        }
+
+        private void ApplyHistorySnapshot(PolicyExceptionHistoryRecord history)
+        {
+            txtPriority.Text = history.Priority.ToString();
+            txtEffectiveFrom.Text = history.EffectiveFrom.ToString("yyyy-MM-dd");
+            txtEffectiveTo.Text = history.EffectiveTo.HasValue ? history.EffectiveTo.Value.ToString("yyyy-MM-dd") : string.Empty;
+            chkIsActive.Checked = history.IsActive;
+
+            PolicyExceptionDto dto = PolicyExceptionSerializer.Deserialize(history.PolicyJson);
+            txtMaxKM.Text = FormatDecimal(dto.MaxKM);
+            txtRatePerKm.Text = FormatDecimal(dto.RatePerKm);
+            txtDA.Text = FormatDecimal(dto.DA);
+            txtOutstationDA.Text = FormatDecimal(dto.OutstationDA);
+            txtOwnAllowance.Text = FormatDecimal(dto.OwnAllowance);
+            txtHotelCap.Text = FormatDecimal(dto.HotelCap);
+            txtRemarks.Text = dto.Remarks ?? string.Empty;
+        }
+
+        protected void btnCompareHistory_Click(object sender, EventArgs e)
+        {
+            if (!CanViewHistory) return;
+
+            int exceptionId;
+            int versionA;
+            int versionB;
+            if (!int.TryParse(hfExceptionId.Value, out exceptionId) || exceptionId <= 0)
+            {
+                lblCompareMessage.Text = "Exception context is missing.";
+                ShowModal();
+                return;
+            }
+
+            if (!int.TryParse(ddlCompareVersionA.SelectedValue, out versionA) ||
+                !int.TryParse(ddlCompareVersionB.SelectedValue, out versionB))
+            {
+                lblCompareMessage.Text = "Select two versions to compare.";
+                ShowModal();
+                return;
+            }
+
+            if (versionA == versionB)
+            {
+                lblCompareMessage.Text = "Select two different versions.";
+                pnlCompareResults.Visible = false;
+                ShowModal();
+                return;
+            }
+
+            var compareRows = _service.CompareHistoryVersions(exceptionId, versionA, versionB);
+            if (compareRows.Count == 0)
+            {
+                lblCompareMessage.Text = "Unable to load one or both versions.";
+                pnlCompareResults.Visible = false;
+                ShowModal();
+                return;
+            }
+
+            lblCompareMessage.Text = string.Empty;
+            gvHistoryCompare.Columns[1].HeaderText = "Version " + versionA;
+            gvHistoryCompare.Columns[2].HeaderText = "Version " + versionB;
+            gvHistoryCompare.DataSource = compareRows;
+            gvHistoryCompare.DataBind();
+            pnlCompareResults.Visible = true;
+            SetFormReadOnly(true);
+            ShowModal();
+        }
+
+        protected void gvHistoryCompare_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow) return;
+            var row = e.Row.DataItem as PolicyExceptionHistoryCompareRow;
+            if (row == null) return;
+            e.Row.CssClass = row.RowCssClass;
+        }
+
+        protected void btnExportHistory_Click(object sender, EventArgs e)
+        {
+            if (!CanViewHistory) return;
+
+            int exceptionId;
+            if (!int.TryParse(hfExceptionId.Value, out exceptionId) || exceptionId <= 0)
+            {
+                lblFormMessage.Text = "Exception context is missing.";
+                ShowModal();
+                return;
+            }
+
+            DataTable export = _service.BuildHistoryExportTable(exceptionId);
+            if (export.Rows.Count == 0)
+            {
+                lblHistoryVersionNote.Text = "No history available to export.";
+                ShowModal();
+                return;
+            }
+
+            string fileName = "PolicyException_" + exceptionId + "_History_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xlsx";
+            using (var workbook = new XLWorkbook())
+            {
+                workbook.Worksheets.Add(export, "History");
+                Response.Clear();
+                Response.Buffer = true;
+                Response.Charset = "";
+                Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                Response.AddHeader("content-disposition", "attachment;filename=" + fileName);
+                using (var stream = new MemoryStream())
+                {
+                    workbook.SaveAs(stream);
+                    stream.WriteTo(Response.OutputStream);
+                    Response.Flush();
+                    Response.End();
+                }
+            }
         }
 
         protected void btnSave_Click(object sender, EventArgs e)
@@ -280,8 +554,9 @@ namespace AnmolDristi
                 Remarks = txtRemarks.Text.Trim()
             };
 
+            string changeReason = NormalizeOptionalText(txtChangeReason.Text);
             string error;
-            int savedId = _service.Save(record, policyDto, GetCurrentUserLogin(), out error);
+            int savedId = _service.Save(record, policyDto, GetCurrentUserLogin(), out error, changeReason);
             if (!string.IsNullOrEmpty(error))
             {
                 lblFormMessage.Text = error;
@@ -324,8 +599,10 @@ namespace AnmolDristi
             chkIsActive.Checked = true;
             LoadedIsActive = null;
             txtMaxKM.Text = txtRatePerKm.Text = txtDA.Text = txtOutstationDA.Text = txtOwnAllowance.Text = txtHotelCap.Text = txtRemarks.Text = string.Empty;
+            txtChangeReason.Text = string.Empty;
             txtEmployeeCode.ReadOnly = false;
             btnLoadEmployee.Enabled = true;
+            HideHistoryPanel();
             SetIsActiveForNewRecord();
         }
 
@@ -348,6 +625,7 @@ namespace AnmolDristi
             txtPriority.ReadOnly = readOnly;
             txtEffectiveFrom.ReadOnly = readOnly;
             txtEffectiveTo.ReadOnly = readOnly;
+            txtChangeReason.ReadOnly = readOnly;
 
             int exceptionId;
             if (!int.TryParse(hfExceptionId.Value, out exceptionId) || exceptionId <= 0)

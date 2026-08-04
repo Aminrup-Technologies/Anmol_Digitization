@@ -1,6 +1,9 @@
 /*
     Policy Exception stored procedures (production definitions).
     Deploy to AnmolDristiDev / target database before using ManagePolicyException.aspx.
+
+    History: write procedures call dbo.usp_InsertPolicyExceptionHistorySnapshot
+    (created by 007_PolicyExceptionHistory.sql). Deploy 007 before or with this script.
 */
 
 IF OBJECT_ID('dbo.usp_SearchPolicyExceptions', 'P') IS NOT NULL
@@ -118,6 +121,7 @@ CREATE PROCEDURE dbo.usp_InsertPolicyException
     , @EffectiveFrom     DATE
     , @EffectiveTo       DATE = NULL
     , @CreatedBy         NVARCHAR(100)
+    , @ChangeReason      NVARCHAR(500) = NULL
 )
 AS
 BEGIN
@@ -158,6 +162,13 @@ BEGIN
         WHERE UM.EmployeeCode = @EmployeeCode;
 
         DECLARE @ExceptionId INT = SCOPE_IDENTITY();
+
+        EXEC dbo.usp_InsertPolicyExceptionHistorySnapshot
+              @ExceptionId = @ExceptionId
+            , @ActionType = N'Create'
+            , @ChangedBy = @CreatedBy
+            , @ChangeReason = @ChangeReason;
+
         COMMIT TRANSACTION;
         SELECT @ExceptionId AS ExceptionId;
     END TRY
@@ -181,6 +192,7 @@ CREATE PROCEDURE dbo.usp_UpdatePolicyException
     , @EffectiveFrom    DATE
     , @EffectiveTo      DATE = NULL
     , @ModifiedBy       VARCHAR(50)
+    , @ChangeReason     NVARCHAR(500) = NULL
 )
 AS
 BEGIN
@@ -228,6 +240,12 @@ BEGIN
         INNER JOIN dbo.MST_UserMaster UM ON UM.EmployeeCode = @EmployeeCode
         WHERE PE.ExceptionId = @ExceptionId;
 
+        EXEC dbo.usp_InsertPolicyExceptionHistorySnapshot
+              @ExceptionId = @ExceptionId
+            , @ActionType = N'Update'
+            , @ChangedBy = @ModifiedBy
+            , @ChangeReason = @ChangeReason;
+
         COMMIT TRANSACTION;
         SELECT @ExceptionId AS ExceptionId, 'Policy Exception updated successfully.' AS Message;
     END TRY
@@ -247,6 +265,7 @@ CREATE PROCEDURE dbo.usp_SetPolicyExceptionActiveStatus
       @ExceptionId INT
     , @IsActive BIT
     , @ModifiedBy VARCHAR(50)
+    , @ChangeReason NVARCHAR(500) = NULL
 )
 AS
 BEGIN
@@ -266,6 +285,14 @@ BEGIN
         SET IsActive = @IsActive, ModifiedBy = @ModifiedBy, ModifiedOn = SYSDATETIME()
         WHERE ExceptionId = @ExceptionId;
 
+        DECLARE @ActionType NVARCHAR(20) = CASE WHEN @IsActive = 1 THEN N'Activate' ELSE N'Deactivate' END;
+
+        EXEC dbo.usp_InsertPolicyExceptionHistorySnapshot
+              @ExceptionId = @ExceptionId
+            , @ActionType = @ActionType
+            , @ChangedBy = @ModifiedBy
+            , @ChangeReason = @ChangeReason;
+
         COMMIT TRANSACTION;
         SELECT @ExceptionId AS ExceptionId, @IsActive AS IsActive,
             CASE WHEN @IsActive = 1 THEN 'Policy Exception activated successfully.' ELSE 'Policy Exception deactivated successfully.' END AS Message;
@@ -274,5 +301,121 @@ BEGIN
         IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
         THROW;
     END CATCH
+END
+GO
+
+IF OBJECT_ID('dbo.usp_InsertPolicyExceptionHistorySnapshot', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.usp_InsertPolicyExceptionHistorySnapshot;
+GO
+
+CREATE PROCEDURE dbo.usp_InsertPolicyExceptionHistorySnapshot
+(
+      @ExceptionId   INT
+    , @ActionType    NVARCHAR(20)
+    , @ChangedBy     NVARCHAR(100)
+    , @ChangeReason  NVARCHAR(500) = NULL
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @ExceptionId IS NULL OR @ExceptionId <= 0
+        THROW 50040, 'ExceptionId is required for history.', 1;
+    IF NULLIF(LTRIM(RTRIM(@ActionType)), '') IS NULL
+        THROW 50041, 'ActionType is required for history.', 1;
+    IF @ActionType NOT IN (N'Create', N'Update', N'Activate', N'Deactivate')
+        THROW 50042, 'Invalid ActionType for history.', 1;
+
+    DECLARE @VersionNo INT;
+
+    SELECT @VersionNo = ISNULL(MAX(VersionNo), 0) + 1
+    FROM dbo.PolicyExceptionHistory WITH (UPDLOCK, HOLDLOCK)
+    WHERE ExceptionId = @ExceptionId;
+
+    INSERT INTO dbo.PolicyExceptionHistory
+    (
+          ExceptionId, VersionNo, ActionType, PolicyJson, Priority,
+          EffectiveFrom, EffectiveTo, IsActive, ChangedBy, ChangedOn, ChangeReason
+    )
+    SELECT
+          PE.ExceptionId
+        , @VersionNo
+        , @ActionType
+        , PE.PolicyJson
+        , PE.Priority
+        , PE.EffectiveFrom
+        , PE.EffectiveTo
+        , PE.IsActive
+        , @ChangedBy
+        , CONVERT(DATETIME2, (SYSUTCDATETIME() AT TIME ZONE 'UTC') AT TIME ZONE 'India Standard Time')
+        , NULLIF(LTRIM(RTRIM(@ChangeReason)), '')
+    FROM dbo.PolicyException PE
+    WHERE PE.ExceptionId = @ExceptionId;
+
+    IF @@ROWCOUNT = 0
+        THROW 50043, 'Policy Exception not found for history snapshot.', 1;
+END
+GO
+
+IF OBJECT_ID('dbo.usp_GetPolicyExceptionHistory', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.usp_GetPolicyExceptionHistory;
+GO
+
+CREATE PROCEDURE dbo.usp_GetPolicyExceptionHistory
+(
+    @ExceptionId INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+          H.HistoryId
+        , H.ExceptionId
+        , H.VersionNo
+        , H.ActionType
+        , H.PolicyJson
+        , H.Priority
+        , H.EffectiveFrom
+        , H.EffectiveTo
+        , H.IsActive
+        , H.ChangedBy
+        , H.ChangedOn
+        , H.ChangeReason
+    FROM dbo.PolicyExceptionHistory H
+    WHERE H.ExceptionId = @ExceptionId
+    ORDER BY H.VersionNo DESC;
+END
+GO
+
+IF OBJECT_ID('dbo.usp_GetPolicyExceptionHistoryVersion', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.usp_GetPolicyExceptionHistoryVersion;
+GO
+
+CREATE PROCEDURE dbo.usp_GetPolicyExceptionHistoryVersion
+(
+      @ExceptionId INT
+    , @VersionNo   INT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+          H.HistoryId
+        , H.ExceptionId
+        , H.VersionNo
+        , H.ActionType
+        , H.PolicyJson
+        , H.Priority
+        , H.EffectiveFrom
+        , H.EffectiveTo
+        , H.IsActive
+        , H.ChangedBy
+        , H.ChangedOn
+        , H.ChangeReason
+    FROM dbo.PolicyExceptionHistory H
+    WHERE H.ExceptionId = @ExceptionId
+      AND H.VersionNo = @VersionNo;
 END
 GO

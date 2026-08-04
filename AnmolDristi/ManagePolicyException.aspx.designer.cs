@@ -43,6 +43,10 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.TextBox txtEffectiveTo;
         protected global::System.Web.UI.WebControls.CheckBox chkIsActive;
         protected global::System.Web.UI.WebControls.Label lblIsActiveNote;
+        protected global::System.Web.UI.WebControls.Panel pnlChangeReason;
+        protected global::System.Web.UI.WebControls.TextBox txtChangeReason;
+        protected global::System.Web.UI.WebControls.Label lblChangeReasonHint;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvChangeReason;
         protected global::System.Web.UI.WebControls.TextBox txtMaxKM;
         protected global::System.Web.UI.WebControls.TextBox txtRatePerKm;
         protected global::System.Web.UI.WebControls.TextBox txtDA;
@@ -55,6 +59,18 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.Label lblCreatedOn;
         protected global::System.Web.UI.WebControls.Label lblModifiedBy;
         protected global::System.Web.UI.WebControls.Label lblModifiedOn;
+        protected global::System.Web.UI.WebControls.Panel pnlHistory;
+        protected global::System.Web.UI.WebControls.Button btnExportHistory;
+        protected global::System.Web.UI.WebControls.Label lblHistoryVersionNote;
+        protected global::System.Web.UI.WebControls.Repeater rptHistoryTimeline;
+        protected global::System.Web.UI.WebControls.Label lblTimelineEmpty;
+        protected global::System.Web.UI.WebControls.GridView gvHistory;
+        protected global::System.Web.UI.WebControls.DropDownList ddlCompareVersionA;
+        protected global::System.Web.UI.WebControls.DropDownList ddlCompareVersionB;
+        protected global::System.Web.UI.WebControls.Button btnCompareHistory;
+        protected global::System.Web.UI.WebControls.Label lblCompareMessage;
+        protected global::System.Web.UI.WebControls.Panel pnlCompareResults;
+        protected global::System.Web.UI.WebControls.GridView gvHistoryCompare;
         protected global::System.Web.UI.WebControls.Label lblFormMessage;
         protected global::System.Web.UI.WebControls.Button btnSave;
     }
