@@ -1,12 +1,8 @@
 ﻿<%@ Page Title="HRMS Master Data Import" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="HrmsBatchManager.aspx.cs" Inherits="AnmolDristi.HrmsBatchManager" %>
+<%@ Register Src="~/Controls/HrmsSyncInfoPanel.ascx" TagPrefix="uc" TagName="HrmsSyncInfoPanel" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
-    <style>
-        .selected-row {
-            background-color: #eef !important;
-            border-left: 4px solid #007bff;
-        }
-    </style>
+    <link href="<%= ResolveUrl("~/css/HrmsBatchManager.css") %>" rel="stylesheet" />
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -106,29 +102,20 @@
                                                 </div>
                                             </div>
 
-                                            <%--<div class="form-group row">
-                                                <label class="col-md-4 control-label">Processed By</label>
-                                                <div class="col-md-6">
-                                                    <asp:TextBox ID="txtProcessedBy" runat="server" CssClass="form-control form-control-sm" placeholder="Optional User ID..." />
-                                                </div>
-                                            </div>
-
-                                            <div class="form-group row">
-                                                <label class="col-md-4 control-label">Allow Overwrite</label>
-                                                <div class="col-md-6">
-                                                    <div class="checkbox">
-                                                        <label>
-                                                            <asp:CheckBox ID="chkAllowOverwrite" runat="server" Checked="true" />
-                                                            Overwrite existing Master Data records
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>--%>
-
                                             <div class="x_panel" id="syncConfigurationSection">
 
                                                 <div class="x_title">
-                                                    <h2>Synchronization Configuration</h2>
+                                                    <h2 class="hrms-sync-config-title">
+                                                        Synchronization Configuration
+                                                        <button type="button"
+                                                                class="hrms-help-trigger"
+                                                                data-hrms-help-trigger="1"
+                                                                data-hrms-help-section="hrms-help-section-flow"
+                                                                title="Synchronization information"
+                                                                aria-label="Open synchronization information">
+                                                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                        </button>
+                                                    </h2>
                                                     <div class="clearfix"></div>
                                                 </div>
 
@@ -140,6 +127,14 @@
 
                                                         <label class="col-md-3 control-label">
                                                             Processing Mode
+                                                            <button type="button"
+                                                                    class="hrms-help-trigger"
+                                                                    data-hrms-help-trigger="1"
+                                                                    data-hrms-help-section="hrms-help-section-modes"
+                                                                    title="About Processing Modes"
+                                                                    aria-label="About Processing Modes">
+                                                                <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                            </button>
                                                         </label>
 
                                                         <div class="col-md-9">
@@ -173,6 +168,14 @@
 
                                                         <label class="col-md-3 control-label">
                                                             Synchronization Modules
+                                                            <button type="button"
+                                                                    class="hrms-help-trigger"
+                                                                    data-hrms-help-trigger="1"
+                                                                    data-hrms-help-section="hrms-help-section-modules"
+                                                                    title="About Synchronization Modules"
+                                                                    aria-label="About Synchronization Modules">
+                                                                <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                            </button>
                                                         </label>
 
                                                         <div class="col-md-9">
@@ -215,7 +218,14 @@
 
                                                             <label class="col-md-3 control-label">
                                                                 Fields to Overwrite
-
+                                                                <button type="button"
+                                                                        class="hrms-help-trigger"
+                                                                        data-hrms-help-trigger="1"
+                                                                        data-hrms-help-section="hrms-help-section-overwrite"
+                                                                        title="About Fields to Overwrite"
+                                                                        aria-label="About Fields to Overwrite">
+                                                                    <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                                                </button>
                                                             </label>
 
                                                             <div class="col-md-9">
@@ -328,38 +338,16 @@
         </div>
     </div>
 
+    <%-- Single reusable slide-out panel (outside UpdatePanels) --%>
+    <uc:HrmsSyncInfoPanel ID="ucHrmsSyncInfoPanel" runat="server" />
+
     <script type="text/javascript">
-        function onRowSelect(btnElement, batchId) {
-            document.getElementById('<%= hfSelectedBatch.ClientID %>').value = batchId;
-            document.getElementById('<%= lblSelectedBatch.ClientID %>').innerText = batchId;
-
-            var rows = document.querySelectorAll('#<%= gvBatches.ClientID %> tr');
-            for (var i = 0; i < rows.length; i++) {
-                rows[i].classList.remove('selected-row');
-            }
-
-            var clickedRow = btnElement.closest("tr");
-            if (clickedRow) {
-                clickedRow.classList.add('selected-row');
-            }
-        }
-
-        function confirmRun() {
-            var sel = document.getElementById('<%= hfSelectedBatch.ClientID %>').value;
-            if (!sel) {
-                alert('Please select a batch to run from the grid.');
-                return false;
-            }
-            if (!confirm('Execute processing for batch:\n' + sel + '?')) {
-                return false;
-            }
-
-            var btn = document.getElementById('<%= btnRun.ClientID %>');
-            if (btn) {
-                btn.value = 'Running...';
-                btn.classList.add('disabled');
-            }
-            return true;
-        }
+        window.HrmsBatchManagerConfig = {
+            hfSelectedBatchId: '<%= hfSelectedBatch.ClientID %>',
+            lblSelectedBatchId: '<%= lblSelectedBatch.ClientID %>',
+            gvBatchesId: '<%= gvBatches.ClientID %>',
+            btnRunId: '<%= btnRun.ClientID %>'
+        };
     </script>
+    <script src="<%= ResolveUrl("~/Scripts/HrmsBatchManager.js") %>" type="text/javascript"></script>
 </asp:Content>
