@@ -4,6 +4,7 @@
     Phase:       3.4 — HRMS Synchronization Engine
                  4.1 — Warning finalization (ORCH-02)
                  4.2 — Summary KPI refinement (ORCH-01 / ORCH-04)
+                 4.3 — Transaction / error-handling hardening
     Purpose:     Coordinate modular HSE procedures. Contains no business
                  insert/update/master/hierarchy logic.
 
@@ -89,21 +90,20 @@ BEGIN
     DECLARE @BatchStatus NVARCHAR(50) = N'Failed';
     DECLARE @Message     NVARCHAR(500) = N'';
     DECLARE @ModulesNorm NVARCHAR(200);
+    /* 1 = this procedure opened the ambient transaction; 0 = joined caller tran */
+    DECLARE @StartedTran BIT = 0;
 
     /* ------------------------------------------------------------------
        Guard: batch must exist (lightweight; full validation is UI-side)
+       Pre-TRY application guards use THROW (not RAISERROR) so execution
+       stops immediately. Custom error numbers 50001–50004 are intentional
+       application messages (not re-throws of caught SQL errors).
        ------------------------------------------------------------------ */
     IF @BatchId IS NULL OR @BatchId <= 0
-    BEGIN
-        RAISERROR(N'usp_RunHRMSSynchronization: @BatchId is required.', 16, 1);
-        RETURN;
-    END;
+        THROW 50001, N'usp_RunHRMSSynchronization: @BatchId is required.', 1;
 
     IF NOT EXISTS (SELECT 1 FROM dbo.ImportBatchMaster WHERE BatchId = @BatchId)
-    BEGIN
-        RAISERROR(N'usp_RunHRMSSynchronization: BatchId was not found in ImportBatchMaster.', 16, 1);
-        RETURN;
-    END;
+        THROW 50002, N'usp_RunHRMSSynchronization: BatchId was not found in ImportBatchMaster.', 1;
 
     SELECT @TotalRecords = COUNT(1)
     FROM dbo.Staging_EmployeeData WITH (NOLOCK)
@@ -122,19 +122,19 @@ BEGIN
         SET @RunHierarchy = 1;
 
     IF @RunMaster = 0 AND @RunEmployee = 0 AND @RunHierarchy = 0
-    BEGIN
-        RAISERROR(N'usp_RunHRMSSynchronization: @Modules must include MASTER, EMPLOYEE, and/or HIERARCHY.', 16, 1);
-        RETURN;
-    END;
+        THROW 50003, N'usp_RunHRMSSynchronization: @Modules must include MASTER, EMPLOYEE, and/or HIERARCHY.', 1;
 
     IF @ProcessingMode NOT IN (0, 1, 2)
-    BEGIN
-        RAISERROR(N'usp_RunHRMSSynchronization: @ProcessingMode must be 0, 1, or 2.', 16, 1);
-        RETURN;
-    END;
+        THROW 50004, N'usp_RunHRMSSynchronization: @ProcessingMode must be 0, 1, or 2.', 1;
 
     BEGIN TRY
-        BEGIN TRANSACTION;
+        /* Nested-safe: only open a transaction when none is active.
+           Children already join ambient (@@TRANCOUNT > 0 → no child BEGIN TRAN). */
+        IF @@TRANCOUNT = 0
+        BEGIN
+            BEGIN TRANSACTION;
+            SET @StartedTran = 1;
+        END;
 
         /* Mark batch as in-progress for operators observing ImportBatchMaster */
         UPDATE dbo.ImportBatchMaster
@@ -278,28 +278,38 @@ BEGIN
 
         SET @Message = N'Synchronization completed.';
 
-        COMMIT TRANSACTION;
+        IF @StartedTran = 1
+            COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
-        IF @@TRANCOUNT > 0
+        /*
+           Rollback strategy (Phase 4.3):
+             XACT_STATE() = -1 → uncommittable; ROLLBACK required
+             XACT_STATE() =  1 → committable but failed; ROLLBACK only if we own the tran
+             XACT_STATE() =  0 → no transaction; do not ROLLBACK
+
+           No savepoints: a hard failure undoes all child DML in this run
+           (partial-commit prevention by design).
+        */
+        IF XACT_STATE() = -1
+            ROLLBACK TRANSACTION;
+        ELSE IF XACT_STATE() = 1 AND @StartedTran = 1
             ROLLBACK TRANSACTION;
 
-        /* Best-effort status update outside the rolled-back work */
+        /* Persist Failed after rollback so the stamp is not undone.
+           Does not touch Validation Failed (validation runs in UI before sync
+           and never enters this CATCH). */
         BEGIN TRY
             UPDATE dbo.ImportBatchMaster
             SET Status = N'Failed'
             WHERE BatchId = @BatchId;
         END TRY
         BEGIN CATCH
-            /* ignore secondary failure */
+            /* ignore secondary failure — primary error is re-thrown below */
         END CATCH;
 
-        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrSeverity INT = ERROR_SEVERITY();
-        DECLARE @ErrState INT = ERROR_STATE();
-
-        RAISERROR(@ErrMsg, @ErrSeverity, @ErrState);
-        RETURN;
+        /* Preserve original error number, severity, state, and line */
+        THROW;
     END CATCH;
 
     /* ------------------------------------------------------------------
