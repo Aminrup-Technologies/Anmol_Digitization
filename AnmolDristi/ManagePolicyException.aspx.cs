@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Web.Script.Services;
+using System.Web.Services;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using AnmolDristi.BLL;
@@ -118,9 +121,11 @@ namespace AnmolDristi
         {
             ClearForm();
             hfExceptionId.Value = "0";
+            hfIsEditMode.Value = "0";
             lblModalTitle.Text = "Add Policy Exception";
             pnlAuditInfo.Visible = false;
             HideHistoryPanel();
+            HideOperationalPanels();
             ConfigureChangeReasonUi(isEdit: false, readOnly: false);
             SetIsActiveForNewRecord();
             SetFormReadOnly(false);
@@ -170,6 +175,7 @@ namespace AnmolDristi
             {
                 LoadForm(exceptionId, false);
                 lblModalTitle.Text = "Edit Policy Exception";
+                hfIsEditMode.Value = "1";
                 HideHistoryPanel();
                 ConfigureChangeReasonUi(isEdit: true, readOnly: false);
                 SetFormReadOnly(false);
@@ -179,6 +185,7 @@ namespace AnmolDristi
             {
                 LoadForm(exceptionId, true);
                 lblModalTitle.Text = "View Policy Exception";
+                hfIsEditMode.Value = "0";
                 ConfigureChangeReasonUi(isEdit: false, readOnly: true);
                 SetFormReadOnly(true);
                 ShowModal();
@@ -190,6 +197,25 @@ namespace AnmolDristi
                 lblPageMessage.Text = !string.IsNullOrEmpty(error) ? error : string.Empty;
                 BindGrid();
             }
+        }
+
+        protected void gvExceptions_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow) return;
+
+            var litExpiry = e.Row.FindControl("litExpiryAlert") as Literal;
+            if (litExpiry == null) return;
+
+            object isActiveObj = DataBinder.Eval(e.Row.DataItem, "IsActive");
+            object toObj = DataBinder.Eval(e.Row.DataItem, "EffectiveTo");
+            bool isActive = isActiveObj != null && isActiveObj != DBNull.Value && Convert.ToBoolean(isActiveObj);
+            DateTime? effectiveTo = toObj == null || toObj == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(toObj);
+            litExpiry.Text = GetExpiryAlertHtml(isActive, effectiveTo);
+        }
+
+        protected void gvHistory_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            // Status badge is rendered via template Eval helpers; keep hook for future styling.
         }
 
         private void LoadForm(int exceptionId, bool readOnly)
@@ -241,10 +267,86 @@ namespace AnmolDristi
 
             ConfigureChangeReasonUi(isEdit: !readOnly && record.ExceptionId > 0, readOnly: readOnly);
 
+            int? historyCount = null;
+            int? currentVersion = null;
+            if (CanViewHistory)
+            {
+                DataTable historyNewestFirst = _service.GetHistory(exceptionId);
+                if (historyNewestFirst != null && historyNewestFirst.Rows.Count > 0)
+                {
+                    historyCount = historyNewestFirst.Rows.Count;
+                    currentVersion = Convert.ToInt32(historyNewestFirst.Rows[0]["VersionNo"]);
+                }
+                else
+                {
+                    historyCount = 0;
+                }
+            }
+
+            BindOperationalUi(record, dto, historyCount, currentVersion);
+
             if (readOnly)
                 BindHistory(exceptionId);
             else
                 HideHistoryPanel();
+        }
+
+        private void BindOperationalUi(PolicyExceptionRecord record, PolicyExceptionDto dto, int? historyCount, int? currentVersion)
+        {
+            if (record == null)
+            {
+                HideOperationalPanels();
+                return;
+            }
+
+            string statusHtml = GetStatusBadgeHtml(record.IsActive, record.EffectiveFrom, record.EffectiveTo);
+            litPolicyStatus.Text = statusHtml;
+            litEffectivePeriod.Text = BuildEffectivePeriodHtml(record.IsActive, record.EffectiveFrom, record.EffectiveTo);
+            pnlEffectivePeriod.Visible = true;
+
+            BindOverrideIndicators(dto);
+
+            pnlSummary.Visible = true;
+            lblSummaryEmployee.Text = string.IsNullOrWhiteSpace(record.EmployeeCode) ? "—" : record.EmployeeCode;
+            litSummaryStatus.Text = statusHtml;
+            lblSummaryPriority.Text = record.Priority.ToString(CultureInfo.InvariantCulture);
+            lblSummaryEffective.Text = record.EffectiveFrom.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture);
+            lblSummaryExpiry.Text = record.EffectiveTo.HasValue
+                ? record.EffectiveTo.Value.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)
+                : "—";
+            lblSummaryLastUpdated.Text = record.ModifiedOn.HasValue
+                ? record.ModifiedOn.Value.ToString("dd-MMM-yyyy HH:mm", CultureInfo.InvariantCulture)
+                : (record.CreatedOn.HasValue ? record.CreatedOn.Value.ToString("dd-MMM-yyyy HH:mm", CultureInfo.InvariantCulture) : "—");
+            lblSummaryUpdatedBy.Text = !string.IsNullOrWhiteSpace(record.ModifiedBy)
+                ? record.ModifiedBy
+                : (!string.IsNullOrWhiteSpace(record.CreatedBy) ? record.CreatedBy : "—");
+            lblSummaryVersion.Text = currentVersion.HasValue ? currentVersion.Value.ToString(CultureInfo.InvariantCulture) : "—";
+            lblSummaryHistoryCount.Text = historyCount.HasValue ? historyCount.Value.ToString(CultureInfo.InvariantCulture) : "—";
+
+            string expiryAlert = GetExpiryAlertHtml(record.IsActive, record.EffectiveTo);
+            if (!string.IsNullOrEmpty(expiryAlert))
+                litEffectivePeriod.Text += "<div class=\"pe-expiry-alert\" style=\"margin-top:8px;\">" + expiryAlert + "</div>";
+        }
+
+        private void BindOverrideIndicators(PolicyExceptionDto dto)
+        {
+            litOverrideDA.Text = GetOverrideBadgeHtml(dto != null && dto.DA.HasValue);
+            litOverrideOutstationDA.Text = GetOverrideBadgeHtml(dto != null && dto.OutstationDA.HasValue);
+            litOverrideOwnAllowance.Text = GetOverrideBadgeHtml(dto != null && dto.OwnAllowance.HasValue);
+            litOverrideHotelCap.Text = GetOverrideBadgeHtml(dto != null && dto.HotelCap.HasValue);
+            litOverrideRatePerKm.Text = GetOverrideBadgeHtml(dto != null && dto.RatePerKm.HasValue);
+            litOverrideMaxKM.Text = GetOverrideBadgeHtml(dto != null && dto.MaxKM.HasValue);
+        }
+
+        private void HideOperationalPanels()
+        {
+            pnlSummary.Visible = false;
+            pnlEffectivePeriod.Visible = false;
+            litEffectivePeriod.Text = string.Empty;
+            litPolicyStatus.Text = string.Empty;
+            litSummaryStatus.Text = string.Empty;
+            litOverrideDA.Text = litOverrideOutstationDA.Text = litOverrideOwnAllowance.Text =
+                litOverrideHotelCap.Text = litOverrideRatePerKm.Text = litOverrideMaxKM.Text = string.Empty;
         }
 
         private void ConfigureChangeReasonUi(bool isEdit, bool readOnly)
@@ -276,6 +378,7 @@ namespace AnmolDristi
             if (!CanViewHistory)
             {
                 HideHistoryPanel();
+                // Summary version/count unknown without history permission.
                 return;
             }
 
@@ -299,6 +402,14 @@ namespace AnmolDristi
 
             BindCompareDropdowns(timeline);
             btnExportHistory.Enabled = hasHistory;
+
+            int historyCount = timeline.Rows.Count;
+            int? currentVersion = null;
+            if (historyCount > 0)
+                currentVersion = Convert.ToInt32(historyNewestFirst.Rows[0]["VersionNo"]);
+
+            lblSummaryVersion.Text = currentVersion.HasValue ? currentVersion.Value.ToString(CultureInfo.InvariantCulture) : "—";
+            lblSummaryHistoryCount.Text = historyCount.ToString(CultureInfo.InvariantCulture);
         }
 
         private void BindCompareDropdowns(DataTable timelineOldestFirst)
@@ -376,6 +487,7 @@ namespace AnmolDristi
 
             ApplyHistorySnapshot(history);
             BindHistory(exceptionId);
+            lblSummaryVersion.Text = history.VersionNo.ToString(CultureInfo.InvariantCulture);
             lblHistoryVersionNote.Text = string.Format(
                 "Viewing historical version {0} ({1}) changed by {2} on {3:dd-MMM-yyyy HH:mm}. Reason: {4}. Read-only.",
                 history.VersionNo,
@@ -403,6 +515,19 @@ namespace AnmolDristi
             txtOwnAllowance.Text = FormatDecimal(dto.OwnAllowance);
             txtHotelCap.Text = FormatDecimal(dto.HotelCap);
             txtRemarks.Text = dto.Remarks ?? string.Empty;
+
+            // Refresh operational display for the snapshot (status / period / overrides).
+            var snapshotRecord = new PolicyExceptionRecord
+            {
+                EmployeeCode = txtEmployeeCode.Text.Trim(),
+                Priority = history.Priority,
+                EffectiveFrom = history.EffectiveFrom,
+                EffectiveTo = history.EffectiveTo,
+                IsActive = history.IsActive,
+                ModifiedBy = history.ChangedBy,
+                ModifiedOn = history.ChangedOn
+            };
+            BindOperationalUi(snapshotRecord, dto, historyCount: null, currentVersion: history.VersionNo);
         }
 
         protected void btnCompareHistory_Click(object sender, EventArgs e)
@@ -603,6 +728,7 @@ namespace AnmolDristi
             txtEmployeeCode.ReadOnly = false;
             btnLoadEmployee.Enabled = true;
             HideHistoryPanel();
+            HideOperationalPanels();
             SetIsActiveForNewRecord();
         }
 
@@ -634,8 +760,134 @@ namespace AnmolDristi
                 chkIsActive.Enabled = !readOnly;
 
             btnSave.Visible = !readOnly;
+            pnlReadOnlyBanner.Visible = readOnly;
+            lblReadOnlyBadge.Visible = readOnly;
             ScriptManager.RegisterStartupScript(this, GetType(), "setReadOnly", "setPolicyExceptionReadOnly(" + (readOnly ? "true" : "false") + ");", true);
         }
+
+        #region Status / period / override helpers (UI only)
+
+        protected string GetToggleConfirmScript(object isActiveObj)
+        {
+            bool isActive = isActiveObj != null && isActiveObj != DBNull.Value && Convert.ToBoolean(isActiveObj);
+            if (isActive)
+            {
+                return "return confirm('This Policy Exception is currently active.\\n\\n"
+                    + "Claims submitted after deactivation will use the standard policy unless another exception exists.\\n\\n"
+                    + "Proceed?');";
+            }
+
+            return "return confirm('Activate this Policy Exception?');";
+        }
+
+        protected string GetStatusBadgeHtml(object isActiveObj, object effectiveFromObj, object effectiveToObj)
+        {
+            bool isActive = isActiveObj != null && isActiveObj != DBNull.Value && Convert.ToBoolean(isActiveObj);
+            DateTime effectiveFrom = effectiveFromObj == null || effectiveFromObj == DBNull.Value
+                ? DateTime.MinValue
+                : Convert.ToDateTime(effectiveFromObj).Date;
+            DateTime? effectiveTo = effectiveToObj == null || effectiveToObj == DBNull.Value
+                ? (DateTime?)null
+                : Convert.ToDateTime(effectiveToObj).Date;
+
+            string status = DerivePolicyStatus(isActive, effectiveFrom, effectiveTo);
+            string css;
+            string label;
+            switch (status)
+            {
+                case "Active":
+                    css = "pe-status-badge pe-status-active";
+                    label = "🟢 Active";
+                    break;
+                case "Future":
+                    css = "pe-status-badge pe-status-future";
+                    label = "🟡 Future";
+                    break;
+                case "Expired":
+                    css = "pe-status-badge pe-status-expired";
+                    label = "🔴 Expired";
+                    break;
+                default:
+                    css = "pe-status-badge pe-status-inactive";
+                    label = "⚪ Inactive";
+                    break;
+            }
+
+            return "<span class=\"" + css + "\">" + label + "</span>";
+        }
+
+        private static string DerivePolicyStatus(bool isActive, DateTime effectiveFrom, DateTime? effectiveTo)
+        {
+            if (!isActive) return "Inactive";
+
+            DateTime today = DateTime.Today;
+            if (effectiveFrom > today) return "Future";
+            if (effectiveTo.HasValue && effectiveTo.Value.Date < today) return "Expired";
+            return "Active";
+        }
+
+        private static string GetOverrideBadgeHtml(bool overridden)
+        {
+            if (overridden)
+                return "<span class=\"pe-override-badge pe-override-yes\">🟢 Overridden</span>";
+            return "<span class=\"pe-override-badge pe-override-no\">⚪ Inherited</span>";
+        }
+
+        private static string BuildEffectivePeriodHtml(bool isActive, DateTime effectiveFrom, DateTime? effectiveTo)
+        {
+            DateTime today = DateTime.Today;
+            string fromText = effectiveFrom.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture);
+            string toText = effectiveTo.HasValue
+                ? effectiveTo.Value.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)
+                : "Open-ended";
+
+            string title;
+            if (!isActive)
+                title = "Inactive";
+            else if (effectiveFrom.Date > today)
+                title = "Starts";
+            else if (effectiveTo.HasValue && effectiveTo.Value.Date < today)
+                title = "Expired";
+            else
+                title = "Currently Effective";
+
+            if (string.Equals(title, "Starts", StringComparison.OrdinalIgnoreCase))
+            {
+                return "<div class=\"pe-period-title\">" + title + "</div>"
+                    + "<div class=\"pe-period-date\">" + fromText + "</div>";
+            }
+
+            if (string.Equals(title, "Expired", StringComparison.OrdinalIgnoreCase))
+            {
+                return "<div class=\"pe-period-title\">" + title + "</div>"
+                    + "<div class=\"pe-period-date\">" + toText + "</div>";
+            }
+
+            return "<div class=\"pe-period-title\">" + title + "</div>"
+                + "<div class=\"pe-period-date\">" + fromText + "</div>"
+                + "<div class=\"pe-period-arrow\">↓</div>"
+                + "<div class=\"pe-period-date\">" + toText + "</div>";
+        }
+
+        private static string GetExpiryAlertHtml(bool isActive, DateTime? effectiveTo)
+        {
+            if (!isActive || !effectiveTo.HasValue) return string.Empty;
+
+            DateTime today = DateTime.Today;
+            DateTime to = effectiveTo.Value.Date;
+            if (to < today) return string.Empty;
+
+            int days = (to - today).Days;
+            if (days > 30) return string.Empty;
+
+            if (days == 0)
+                return "<div class=\"pe-expiry-alert\">⚠ Expires today</div>";
+            if (days == 1)
+                return "<div class=\"pe-expiry-alert\">⚠ Expires in 1 day</div>";
+            return "<div class=\"pe-expiry-alert\">⚠ Expires in " + days + " days</div>";
+        }
+
+        #endregion
 
         private static string NormalizeOptionalText(string value)
         {
@@ -681,5 +933,37 @@ namespace AnmolDristi
         {
             ScriptManager.RegisterStartupScript(this, GetType(), "hidePolicyExceptionModal", "$('#modalPolicyException').modal('hide');", true);
         }
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static List<EmployeeSuggestionDto> SuggestEmployees(string term)
+        {
+            var results = new List<EmployeeSuggestionDto>();
+            if (string.IsNullOrWhiteSpace(term) || term.Trim().Length < 1)
+                return results;
+
+            var service = new PolicyExceptionService();
+            DataTable dt = service.SuggestEmployees(term.Trim(), 10);
+            if (dt == null) return results;
+
+            foreach (DataRow row in dt.Rows)
+            {
+                results.Add(new EmployeeSuggestionDto
+                {
+                    EmployeeCode = Convert.ToString(row["EmployeeCode"]),
+                    EmployeeName = row.Table.Columns.Contains("EmployeeName") && row["EmployeeName"] != DBNull.Value
+                        ? Convert.ToString(row["EmployeeName"])
+                        : string.Empty
+                });
+            }
+
+            return results;
+        }
+    }
+
+    public class EmployeeSuggestionDto
+    {
+        public string EmployeeCode { get; set; }
+        public string EmployeeName { get; set; }
     }
 }

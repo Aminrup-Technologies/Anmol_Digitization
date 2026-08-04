@@ -247,6 +247,36 @@ WHERE EmployeeCode = @EmployeeCode
             }
         }
 
+        /// <summary>
+        /// Lightweight employee suggestions for Policy Exception search autocomplete.
+        /// Reuses MST_UserMaster (same source as GetEmployeePolicyContext). No SP changes.
+        /// </summary>
+        public DataTable SuggestEmployees(string term, int maxRows = 10)
+        {
+            var dt = new DataTable();
+            if (string.IsNullOrWhiteSpace(term)) return dt;
+
+            string like = "%" + term.Trim() + "%";
+            using (SqlConnection cn = new SqlConnection(_connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+SELECT TOP (@MaxRows)
+    u.EmployeeCode,
+    ISNULL(u.EmployeeName, '') AS EmployeeName
+FROM dbo.MST_UserMaster u WITH (NOLOCK)
+WHERE u.EmployeeCode LIKE @Term
+   OR u.EmployeeName LIKE @Term
+ORDER BY
+    CASE WHEN u.EmployeeCode LIKE @Prefix THEN 0 ELSE 1 END,
+    u.EmployeeCode", cn))
+            {
+                cmd.Parameters.AddWithValue("@MaxRows", maxRows <= 0 ? 10 : maxRows);
+                cmd.Parameters.AddWithValue("@Term", like);
+                cmd.Parameters.AddWithValue("@Prefix", term.Trim() + "%");
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd)) da.Fill(dt);
+            }
+            return dt;
+        }
+
         public DataTable GetMasterList(string masterType)
         {
             string sql;
