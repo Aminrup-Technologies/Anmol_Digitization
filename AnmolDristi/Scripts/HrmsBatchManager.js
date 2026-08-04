@@ -167,6 +167,28 @@
                     first.focus();
                 }
             });
+
+        /* Keep chevron / aria in sync; scroll tech block into view when expanded */
+        $(document)
+            .off('show.bs.collapse.hrmsTech hide.bs.collapse.hrmsTech shown.bs.collapse.hrmsTech')
+            .on('show.bs.collapse.hrmsTech', '#hrmsTechDetailsCollapse', function () {
+                $('#hrmsTechDetailsToggle').attr('aria-expanded', 'true');
+            })
+            .on('hide.bs.collapse.hrmsTech', '#hrmsTechDetailsCollapse', function () {
+                $('#hrmsTechDetailsToggle').attr('aria-expanded', 'false');
+            })
+            .on('shown.bs.collapse.hrmsTech', '#hrmsTechDetailsCollapse', function () {
+                var $body = $panel().find(SELECTORS.body);
+                var $section = $('#hrms-help-section-technical');
+                if (!$body.length || !$section.length) {
+                    return;
+                }
+                var top = ($section.offset().top - $body.offset().top) + $body.scrollTop() - 8;
+                if (top < 0) {
+                    top = 0;
+                }
+                $body.stop(true).animate({ scrollTop: top }, 200);
+            });
     }
 
     /* ---- Existing page helpers (ClientIDs from HrmsBatchManagerConfig) ---- */

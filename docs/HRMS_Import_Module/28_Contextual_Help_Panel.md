@@ -71,6 +71,7 @@ window.HrmsSyncInfoPanel.isOpen();
 | `hrms-help-section-validation` | Validation behaviour |
 | `hrms-help-section-warnings` | Warnings vs Errors |
 | `hrms-help-section-status` | Batch Status Lifecycle |
+| `hrms-help-section-technical` | Technical Details (Administrator Reference) — **collapsed by default** |
 
 ### Trigger mapping on BatchManager
 
@@ -82,6 +83,37 @@ window.HrmsSyncInfoPanel.isOpen();
 | Fields to Overwrite | Overwrite fields |
 
 Content is **hardcoded HTML** in the UserControl for v1.0 (no DB / resource file).
+
+---
+
+## 3.1 Technical Details (Administrator Reference)
+
+Collapsed Bootstrap 4 panel (`#hrmsTechDetailsCollapse`, no `show` class) at the bottom of the help panel. Intended for ERP Administrators, Developers, and Support — not required reading for day-to-day operators.
+
+| Sub-section | Contents |
+|---|---|
+| Stored Procedure Execution Flow | ValidateBatch → RunHRMSSynchronization → Masters / Insert / Update / Hierarchy |
+| Synchronization Modules Mapping | Module → affected MST_* tables |
+| Designation Resolution | Staging business code → `MST_Designation.Id` → `MST_UserMaster.Designation_ID` |
+| Processing Modes | Mode 0 / 1 / 2 with `AllowOverwrite` / `OverwriteFields` behaviour |
+| Overwrite Fields Parameter | Pipe-delimited `@OverwriteFields` example |
+| Validation Coverage | Checklist of validation gates |
+| Status Lifecycle | `ImportBatchMaster` and `Staging_EmployeeData` states |
+| Performance Notes | Batch / bulk / modular / single-tran / `XACT_STATE` |
+| Version Information | Engine 1.0 · Modular · Production Ready |
+
+**Footer (version baseline for Dev/UAT/Prod troubleshooting):**
+
+```text
+HRMS Synchronization Engine
+Version : 1.0
+Build    : 2026.08
+Architecture : Modular Synchronization Engine
+Last Updated : August 2026
+© Anmol Digitization – HRMS Integration Module
+```
+
+Styling: Bootstrap cards, Font Awesome icons, Info/Success/Warning/Primary badges, vertical timeline for procedure and designation flows. No dynamic database queries.
 
 ---
 
