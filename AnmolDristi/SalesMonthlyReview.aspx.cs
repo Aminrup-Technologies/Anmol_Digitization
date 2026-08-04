@@ -12,6 +12,8 @@ using System.Globalization;
 using Newtonsoft.Json;
 using System.Text;
 using Newtonsoft.Json.Linq;
+using System.Web.Services;
+using System.Web.Script.Services;
 using AnmolDristi.BLL;
 
 namespace AnmolDristi
@@ -4118,6 +4120,228 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             string js = "(function() { try { if (typeof showPNotify === 'function') { showPNotify('" + safeTitle + "', '" + safeText + "', '" + notifyType + "'); } } catch(e) { } })();";
             ScriptManager.RegisterStartupScript(this.Page, this.Page.GetType(), "policyNotify_" + Guid.NewGuid().ToString("N"), js, true);
+        }
+
+        // -------------------------------------------------------------------------
+        // Resolved Policy self-loading API (Phase 1)
+        // Returns structured JSON for client-side modal (and future consumers).
+        // Does not change PolicyResolutionService / DataAccess business rules.
+        // -------------------------------------------------------------------------
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static object GetResolvedPolicy(int year, int month)
+        {
+            try
+            {
+                if (HttpContext.Current == null || HttpContext.Current.Session == null)
+                    return new { success = false, message = "Session expired. Please sign in again.", policy = (object)null, claimLimits = new object[0], approvalHierarchy = new object[0] };
+
+                string employeeCode = HttpContext.Current.Session["WORKMAN"] as string;
+                if (string.IsNullOrWhiteSpace(employeeCode))
+                    return new { success = false, message = "Employee context is not available.", policy = (object)null, claimLimits = new object[0], approvalHierarchy = new object[0] };
+
+                if (year < 2000 || year > 2100 || month < 1 || month > 12)
+                    return new { success = false, message = "Invalid year or month.", policy = (object)null, claimLimits = new object[0], approvalHierarchy = new object[0] };
+
+                int? regionId = SessionInt("REGION");
+                int? branchId = SessionInt("BRANCH");
+                int? gradeId = SessionInt("GRADE");
+                int? designationId = SessionInt("DESG");
+                DateTime claimDate = new DateTime(year, month, DateTime.DaysInMonth(year, month));
+
+                var service = new PolicyResolutionService();
+                ResolvedPolicyDto dto = service.ResolvePolicy(
+                    employeeCode.Trim(),
+                    claimDate,
+                    regionId,
+                    branchId,
+                    gradeId,
+                    designationId);
+
+                if (dto == null)
+                    return new { success = false, message = "No resolved policy found for the selected context.", policy = (object)null, claimLimits = new object[0], approvalHierarchy = new object[0] };
+
+                string regionName = LookupMasterName("MST_Region", "Id", "Region_Description", dto.RegionId) ?? "All Regions";
+                string branchName = LookupMasterName("MST_Branch", "Id", "Branch_Description", dto.BranchId) ?? "All Branches";
+                string gradeName = LookupMasterName("MST_Grade", "Id", "Grade_Description", dto.GradeId) ?? "All Grades";
+                string desigName = LookupMasterName("MST_Designation", "Id", "Designation_Description", dto.DesignationId) ?? "All Designations";
+
+                string sourceLabel = !string.IsNullOrEmpty(dto.PolicySource)
+                    ? dto.PolicySource
+                    : (!string.IsNullOrEmpty(dto.Source) ? dto.Source : "HR-SOP");
+                bool isActive = dto.IsActive.HasValue && dto.IsActive.Value;
+                string effFrom = dto.EffectiveFrom.HasValue ? dto.EffectiveFrom.Value.ToString("dd-MMM-yyyy") : "—";
+                string effTo = dto.EffectiveTo.HasValue ? dto.EffectiveTo.Value.ToString("dd-MMM-yyyy") : "—";
+                string specificity = string.Join(" → ", new[] { regionName, branchName, gradeName, desigName }
+                    .Where(p => !string.IsNullOrWhiteSpace(p))
+                    .Select(p => p.Trim())
+                    .ToArray());
+                if (string.IsNullOrWhiteSpace(specificity)) specificity = "—";
+
+                var policy = new
+                {
+                    employeeCode = !string.IsNullOrEmpty(dto.EmployeeCode) ? dto.EmployeeCode : employeeCode.Trim(),
+                    rowId = dto.RowId,
+                    source = sourceLabel,
+                    priority = dto.Priority,
+                    isActive = isActive,
+                    isActiveLabel = isActive ? "Active" : "Inactive",
+                    effectiveFrom = dto.EffectiveFrom,
+                    effectiveTo = dto.EffectiveTo,
+                    effectivePeriod = string.Format("{0} to {1}", effFrom, effTo),
+                    specificity = specificity,
+                    designation = desigName,
+                    grade = gradeName,
+                    regionId = dto.RegionId,
+                    branchId = dto.BranchId,
+                    gradeId = dto.GradeId,
+                    designationId = dto.DesignationId,
+                    remarks = dto.Resolved_Remarks,
+                    policyJson = dto.PolicyJson,
+                    isPolicyExceptionApplied = dto.IsPolicyExceptionApplied,
+                    policyExceptionId = dto.PolicyExceptionId,
+                    resolved_MaxKM = dto.Resolved_MaxKM,
+                    resolved_RatePerKm = dto.Resolved_RatePerKm,
+                    resolved_DA = dto.Resolved_DA,
+                    resolved_HotelCap = dto.Resolved_HotelCap,
+                    resolved_OutstationDA = dto.Resolved_OutstationDA,
+                    resolved_OwnAllowance = dto.Resolved_OwnAllowance,
+                    fixedTravelAllowance = dto.FixedTravelAllowance,
+                    // Values for refreshing expense-related hidden fields on the client
+                    hiddenFields = new
+                    {
+                        hotelCap = dto.Resolved_HotelCap.HasValue ? dto.Resolved_HotelCap.Value.ToString("F2", CultureInfo.InvariantCulture) : "0",
+                        da = dto.Resolved_DA.HasValue ? dto.Resolved_DA.Value.ToString("F2", CultureInfo.InvariantCulture) : "200",
+                        outstationDA = dto.Resolved_OutstationDA.HasValue ? dto.Resolved_OutstationDA.Value.ToString("F2", CultureInfo.InvariantCulture) : "350",
+                        ownArrangementDA = dto.Resolved_OwnAllowance.HasValue ? dto.Resolved_OwnAllowance.Value.ToString("F2", CultureInfo.InvariantCulture) : "750",
+                        maxKM = dto.Resolved_MaxKM.HasValue ? dto.Resolved_MaxKM.Value.ToString("F2", CultureInfo.InvariantCulture) : "0",
+                        ratePerKm = dto.Resolved_RatePerKm.HasValue ? dto.Resolved_RatePerKm.Value.ToString("F2", CultureInfo.InvariantCulture) : "0",
+                        fixedTravelAllowance = dto.FixedTravelAllowance.HasValue ? dto.FixedTravelAllowance.Value.ToString("F2", CultureInfo.InvariantCulture) : string.Empty,
+                        regionId = dto.RegionId.HasValue ? dto.RegionId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty,
+                        branchId = dto.BranchId.HasValue ? dto.BranchId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty,
+                        gradeId = dto.GradeId.HasValue ? dto.GradeId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty,
+                        designationId = dto.DesignationId.HasValue ? dto.DesignationId.Value.ToString(CultureInfo.InvariantCulture) : string.Empty
+                    }
+                };
+
+                var claimLimits = BuildClaimLimitItems(dto);
+                var approvalHierarchy = BuildApprovalHierarchyItems();
+
+                return new
+                {
+                    success = true,
+                    message = (string)null,
+                    policy = policy,
+                    claimLimits = claimLimits,
+                    approvalHierarchy = approvalHierarchy
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    success = false,
+                    message = "Unable to resolve policy: " + ex.Message,
+                    policy = (object)null,
+                    claimLimits = new object[0],
+                    approvalHierarchy = new object[0]
+                };
+            }
+        }
+
+        private static int? SessionInt(string key)
+        {
+            if (HttpContext.Current == null || HttpContext.Current.Session == null || HttpContext.Current.Session[key] == null)
+                return null;
+            int value;
+            if (int.TryParse(Convert.ToString(HttpContext.Current.Session[key]), NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
+                return value;
+            return null;
+        }
+
+        private static string LookupMasterName(string tableName, string idColumn, string textColumn, int? id)
+        {
+            if (!id.HasValue) return null;
+            string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            using (var con = new SqlConnection(conn))
+            using (var cmd = new SqlCommand(string.Format("SELECT TOP 1 {0} FROM {1} WHERE {2} = @Id", textColumn, tableName, idColumn), con))
+            {
+                cmd.Parameters.AddWithValue("@Id", id.Value);
+                con.Open();
+                object result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value ? Convert.ToString(result) : null;
+            }
+        }
+
+        private static string LookupEmployeeNameByCode(string employeeCode)
+        {
+            if (string.IsNullOrWhiteSpace(employeeCode)) return string.Empty;
+            string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            using (var con = new SqlConnection(conn))
+            using (var cmd = new SqlCommand("SELECT TOP 1 EmployeeName FROM dbo.MST_UserMaster WITH (NOLOCK) WHERE EmployeeCode = @EmployeeCode", con))
+            {
+                cmd.Parameters.AddWithValue("@EmployeeCode", employeeCode.Trim());
+                con.Open();
+                object result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value ? result.ToString().Trim() : string.Empty;
+            }
+        }
+
+        private static List<object> BuildClaimLimitItems(ResolvedPolicyDto dto)
+        {
+            var items = new List<object>();
+            AddClaimLimitItem(items, "Rate per KM", FormatCurrencyValue(dto.Resolved_RatePerKm));
+            AddClaimLimitItem(items, "Head Office DA", FormatCurrencyValue(dto.Resolved_DA));
+            AddClaimLimitItem(items, "Outstation DA", FormatCurrencyValue(dto.Resolved_OutstationDA));
+            AddClaimLimitItem(items, "Own Arrangement", FormatCurrencyValue(dto.Resolved_OwnAllowance));
+            AddClaimLimitItem(items, "Hotel Limit", FormatCurrencyValue(dto.Resolved_HotelCap, "/night"));
+            AddClaimLimitItem(items, "Monthly KM Limit", FormatKmLimitValue(dto.Resolved_MaxKM));
+            AddClaimLimitItem(items, "Fixed Travel Allowance", FormatCurrencyValue(dto.FixedTravelAllowance));
+            return items;
+        }
+
+        private static void AddClaimLimitItem(List<object> items, string label, string displayValue)
+        {
+            if (string.IsNullOrWhiteSpace(displayValue)) return;
+            items.Add(new { label = label, value = displayValue });
+        }
+
+        private static string FormatCurrencyValue(decimal? amount, string suffix = null)
+        {
+            if (!amount.HasValue) return null;
+            string formatted = string.Format(CultureInfo.GetCultureInfo("en-IN"), "₹{0:N2}", amount.Value);
+            return string.IsNullOrEmpty(suffix) ? formatted : formatted + suffix;
+        }
+
+        private static string FormatKmLimitValue(decimal? km)
+        {
+            if (!km.HasValue) return null;
+            return string.Format(CultureInfo.InvariantCulture, "{0:N0} KM", km.Value);
+        }
+
+        private static List<object> BuildApprovalHierarchyItems()
+        {
+            var levels = new List<object>();
+            AddHierarchyItem(levels, "Manager (L1)", "RONE_NAME", "RONE_CODE");
+            AddHierarchyItem(levels, "Regional Manager (L2)", "RTWO_NAME", "RTWO_CODE");
+            AddHierarchyItem(levels, "Zonal Manager (L3)", "RTHREE_NAME", "RTHREE_CODE");
+            AddHierarchyItem(levels, "Auditor", "AUDITOR_NAME", "AUDITOR_CODE");
+            return levels;
+        }
+
+        private static void AddHierarchyItem(List<object> levels, string title, string nameSessionKey, string codeSessionKey)
+        {
+            string name = GetSessionValue(nameSessionKey);
+            string code = GetSessionValue(codeSessionKey);
+            if (string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(code))
+                name = LookupEmployeeNameByCode(code);
+            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(code)) return;
+            levels.Add(new
+            {
+                title = title,
+                name = string.IsNullOrWhiteSpace(name) ? string.Empty : name.Trim(),
+                code = string.IsNullOrWhiteSpace(code) ? string.Empty : code.Trim()
+            });
         }
 
         private string GetLoggedInEmployeeCode() { return Session["WORKMAN"] as string; }

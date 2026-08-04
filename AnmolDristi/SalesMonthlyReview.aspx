@@ -610,7 +610,7 @@
                                 </div>
 
                                 <div id="Actionable" runat="server" visible="false" class="col-md-3 text-right align-self-end">
-                                    <button type="button" id="btnViewPolicyAgain" class="btn btn-info btn-sm mb-3" onclick="$('#policyModal').modal('show');"><i class="fa fa-info-circle"></i>View Policy</button>
+                                    <button type="button" id="btnViewPolicyAgain" class="btn btn-info btn-sm mb-3" onclick="openResolvedPolicyModal(); return false;"><i class="fa fa-info-circle"></i>View Policy</button>
                                     <%-- Deprecated: Save as Draft removed — application now auto-saves edits immediately.
                                          Draft is a workflow status only, maintained until Submit Claim.
                                     <asp:Button ID="btn_save_draft" runat="server" CssClass="btn btn-secondary btn-sm mb-3" Text="Save as Draft" OnClick="btn_save_draft_Click" />
@@ -1712,19 +1712,23 @@
                         </button>
                     </div>
                     <div class="modal-body bg-light px-4 pt-3 pb-2">
+                        <div id="resolvedPolicyLoadError" class="alert alert-danger" style="display:none;"></div>
+                        <div id="resolvedPolicyLoading" class="text-muted small mb-2" style="display:none;">
+                            <i class="fa fa-spinner fa-spin mr-1"></i>Loading resolved policy...
+                        </div>
                         <div class="card border shadow-sm mb-3">
                             <div class="card-body py-3">
                                 <div class="row">
                                     <div class="col-sm-7 mb-2 mb-sm-0">
                                         <div class="small text-muted text-uppercase">Resolved Policy</div>
                                         <div class="h5 mb-0 text-dark font-weight-bold">
-                                            <asp:Label ID="lblPolicyEmployeeCode" runat="server" Text="—"></asp:Label>
+                                            <span id="rpHeaderEmployeeCode"><asp:Label ID="lblPolicyEmployeeCode" runat="server" Text="—"></asp:Label></span>
                                         </div>
                                     </div>
                                     <div class="col-sm-5 text-right">
-                                        <asp:Label ID="lblPolicyIsActive" runat="server" CssClass="badge badge-success">—</asp:Label>
-                                        <asp:Label ID="lblPolicySource" runat="server" CssClass="badge badge-info" style="margin-left:4px;">—</asp:Label>
-                                        <asp:Label ID="lblPolicyPriority" runat="server" CssClass="badge badge-secondary" style="margin-left:4px;">—</asp:Label>
+                                        <span id="rpHeaderIsActive"><asp:Label ID="lblPolicyIsActive" runat="server" CssClass="badge badge-success">—</asp:Label></span>
+                                        <span id="rpHeaderSource"><asp:Label ID="lblPolicySource" runat="server" CssClass="badge badge-info" style="margin-left:4px;">—</asp:Label></span>
+                                        <span id="rpHeaderPriority"><asp:Label ID="lblPolicyPriority" runat="server" CssClass="badge badge-secondary" style="margin-left:4px;">—</asp:Label></span>
                                     </div>
                                 </div>
                             </div>
@@ -1750,53 +1754,60 @@
 
                         <div class="tab-content bg-white border border-top-0 rounded-bottom p-3 mb-2">
                             <div role="tabpanel" class="tab-pane fade show active" id="policyDetailsTab" aria-labelledby="policyDetailsTabLink">
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="small text-secondary mb-1">Record ID</label>
-                                        <asp:Label ID="lblPolicyRowId" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                <%-- Phase 1: JS-owned render target. Server Labels kept for BindPolicyToModal backward compatibility. --%>
+                                <div id="policyDetailsBody"></div>
+                                <div id="serverPolicyDetailsFallback" style="display:none;">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="small text-secondary mb-1">Record ID</label>
+                                            <asp:Label ID="lblPolicyRowId" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="small text-secondary mb-1">Effective Period</label>
+                                            <asp:Label ID="lblPolicyEffective" runat="server" CssClass="d-block text-dark">—</asp:Label>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="small text-secondary mb-1">Effective Period</label>
-                                        <asp:Label ID="lblPolicyEffective" runat="server" CssClass="d-block text-dark">—</asp:Label>
+                                    <div class="mb-3">
+                                        <label class="small text-secondary mb-1">Specificity</label>
+                                        <asp:Label ID="lblPolicySpecificity" runat="server" CssClass="d-block text-primary font-weight-bold">—</asp:Label>
                                     </div>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="small text-secondary mb-1">Specificity</label>
-                                    <asp:Label ID="lblPolicySpecificity" runat="server" CssClass="d-block text-primary font-weight-bold">—</asp:Label>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="small text-secondary mb-1">Designation</label>
-                                        <asp:Label ID="lblPolicyDesignation" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="small text-secondary mb-1">Designation</label>
+                                            <asp:Label ID="lblPolicyDesignation" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="small text-secondary mb-1">Grade</label>
+                                            <asp:Label ID="lblPolicyGrade" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                        </div>
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="small text-secondary mb-1">Grade</label>
-                                        <asp:Label ID="lblPolicyGrade" runat="server" CssClass="d-block text-dark font-weight-bold">—</asp:Label>
+                                    <div class="mb-2" id="policyRemarksSection" runat="server" visible="false">
+                                        <label class="small text-secondary mb-1">Policy Remarks</label>
+                                        <div class="alert alert-info mb-0" style="white-space: pre-wrap; word-break: break-word;">
+                                            <i class="fa fa-info-circle mr-1"></i>
+                                            <asp:Label ID="lblResolvedRemarks" runat="server" Text=""></asp:Label>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="mb-2" id="policyRemarksSection" runat="server" visible="false">
-                                    <label class="small text-secondary mb-1">Policy Remarks</label>
-                                    <div class="alert alert-info mb-0" style="white-space: pre-wrap; word-break: break-word;">
-                                        <i class="fa fa-info-circle mr-1"></i>
-                                        <asp:Label ID="lblResolvedRemarks" runat="server" Text=""></asp:Label>
+                                    <div class="form-group mb-0" id="Toggler" runat="server" visible="false">
+                                        <asp:Button ID="btnToggleRawJson" runat="server" CssClass="btn btn-sm btn-outline-dark mb-2" OnClientClick="$('#policyJsonRaw').toggle(); return false;" Text="Toggle Raw JSON" />
+                                        <asp:TextBox ID="policyJsonRaw" runat="server" TextMode="MultiLine" Rows="6" CssClass="form-control form-control-sm font-monospace text-dark bg-light border border-secondary" Visible="false"></asp:TextBox>
                                     </div>
-                                </div>
-                                <div class="form-group mb-0" id="Toggler" runat="server" visible="false">
-                                    <asp:Button ID="btnToggleRawJson" runat="server" CssClass="btn btn-sm btn-outline-dark mb-2" OnClientClick="$('#policyJsonRaw').toggle(); return false;" Text="Toggle Raw JSON" />
-                                    <asp:TextBox ID="policyJsonRaw" runat="server" TextMode="MultiLine" Rows="6" CssClass="form-control form-control-sm font-monospace text-dark bg-light border border-secondary" Visible="false"></asp:TextBox>
                                 </div>
                             </div>
 
                             <div role="tabpanel" class="tab-pane fade" id="claimLimitsTab" aria-labelledby="claimLimitsTabLink">
                                 <div class="card border-0 bg-light mb-0">
                                     <div class="card-body p-2">
-                                        <asp:PlaceHolder ID="phClaimLimits" runat="server"></asp:PlaceHolder>
+                                        <div id="claimLimitsBody"></div>
+                                        <%-- Phase 1: PlaceHolder retained for BindPolicyToModal; not shown in UI. --%>
+                                        <div style="display:none;"><asp:PlaceHolder ID="phClaimLimits" runat="server"></asp:PlaceHolder></div>
                                     </div>
                                 </div>
                             </div>
 
                             <div role="tabpanel" class="tab-pane fade" id="approvalHierarchyTab" aria-labelledby="approvalHierarchyTabLink">
-                                <asp:PlaceHolder ID="phApproverHierarchy" runat="server"></asp:PlaceHolder>
+                                <div id="approvalHierarchyBody"></div>
+                                <div style="display:none;"><asp:PlaceHolder ID="phApproverHierarchy" runat="server"></asp:PlaceHolder></div>
                             </div>
                         </div>
 
@@ -2388,8 +2399,296 @@
             }
         }
 
+        // ------------------------------------------------------------------
+        // Resolved Policy self-loading component (Phase 1)
+        // ------------------------------------------------------------------
+        window.resolvedPolicyCache = window.resolvedPolicyCache || null;
+        var resolvedPolicyRequestId = 0;
+        var currentResolvedPolicyRequest = null;
+
+        function getResolvedPolicyCacheKey() {
+            var year = $.trim($('#<%= DDL_Year.ClientID %>').val() || '');
+            var month = $.trim($('#<%= DDL_Month.ClientID %>').val() || '');
+            return year + '|' + month;
+        }
+
+        function invalidateResolvedPolicyCache() {
+            window.resolvedPolicyCache = null;
+        }
+
+        function isResolvedPolicyRequestCurrent(requestId) {
+            return requestId === resolvedPolicyRequestId;
+        }
+
+        function abortInFlightResolvedPolicyRequest() {
+            if (currentResolvedPolicyRequest && currentResolvedPolicyRequest.readyState !== 4) {
+                try { currentResolvedPolicyRequest.abort(); } catch (e) { /* ignore */ }
+            }
+            currentResolvedPolicyRequest = null;
+        }
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function setResolvedPolicyLoading(isLoading) {
+            if (isLoading) {
+                $('#resolvedPolicyLoading').show();
+                $('#resolvedPolicyLoadError').hide().text('');
+            } else {
+                $('#resolvedPolicyLoading').hide();
+            }
+        }
+
+        function showResolvedPolicyError(message) {
+            $('#resolvedPolicyLoadError').text(message || 'Unable to load resolved policy.').show();
+            $('#policyDetailsBody').empty();
+            $('#claimLimitsBody').empty();
+            $('#approvalHierarchyBody').empty();
+        }
+
+        function applyResolvedPolicyHiddenFields(hiddenFields) {
+            if (!hiddenFields) return;
+            var map = [
+                { id: '<%= HF_ResolvedHotelCap.ClientID %>', value: hiddenFields.hotelCap },
+                { id: '<%= HF_ResolvedDA.ClientID %>', value: hiddenFields.da },
+                { id: '<%= HF_OutstationDA.ClientID %>', value: hiddenFields.outstationDA },
+                { id: '<%= HF_OwnArrangementDA.ClientID %>', value: hiddenFields.ownArrangementDA },
+                { id: '<%= HF_ResolvedMaxKM.ClientID %>', value: hiddenFields.maxKM },
+                { id: '<%= HF_ResolvedRatePerKm.ClientID %>', value: hiddenFields.ratePerKm },
+                { id: '<%= HF_FixedTravelAllowance.ClientID %>', value: hiddenFields.fixedTravelAllowance },
+                { id: '<%= HF_Policy_RegionId.ClientID %>', value: hiddenFields.regionId },
+                { id: '<%= HF_Policy_BranchId.ClientID %>', value: hiddenFields.branchId },
+                { id: '<%= HF_Policy_GradeId.ClientID %>', value: hiddenFields.gradeId },
+                { id: '<%= HF_Policy_DesignationId.ClientID %>', value: hiddenFields.designationId }
+            ];
+            for (var i = 0; i < map.length; i++) {
+                var el = document.getElementById(map[i].id);
+                if (el) el.value = map[i].value != null ? map[i].value : '';
+            }
+        }
+
+        function renderResolvedPolicyHeader(policy) {
+            if (!policy) return;
+            var $emp = $('#<%= lblPolicyEmployeeCode.ClientID %>');
+            if ($emp.length) $emp.text(policy.employeeCode || '—');
+
+            var $active = $('#<%= lblPolicyIsActive.ClientID %>');
+            if ($active.length) {
+                $active.text(policy.isActiveLabel || (policy.isActive ? 'Active' : 'Inactive'));
+                $active.removeClass('badge-success badge-secondary')
+                    .addClass(policy.isActive ? 'badge badge-success' : 'badge badge-secondary');
+            }
+
+            var $source = $('#<%= lblPolicySource.ClientID %>');
+            if ($source.length) $source.text(policy.source || '—');
+
+            var $priority = $('#<%= lblPolicyPriority.ClientID %>');
+            if ($priority.length) {
+                $priority.text(policy.priority != null && policy.priority !== ''
+                    ? ('Priority ' + policy.priority)
+                    : '—');
+            }
+        }
+
+        function renderPolicyDetailsBody(policy) {
+            var $body = $('#policyDetailsBody');
+            $body.empty();
+            if (!policy) {
+                $body.html('<div class="text-muted small">No policy details available.</div>');
+                return;
+            }
+
+            var remarksHtml = '';
+            if (policy.remarks) {
+                remarksHtml =
+                    '<div class="mb-2">' +
+                    '  <label class="small text-secondary mb-1">Policy Remarks</label>' +
+                    '  <div class="alert alert-info mb-0" style="white-space: pre-wrap; word-break: break-word;">' +
+                    '    <i class="fa fa-info-circle mr-1"></i>' + escapeHtml(policy.remarks) +
+                    '  </div>' +
+                    '</div>';
+            }
+
+            var html =
+                '<div class="row">' +
+                '  <div class="col-md-6 mb-3">' +
+                '    <label class="small text-secondary mb-1">Record ID</label>' +
+                '    <div class="d-block text-dark font-weight-bold">' + escapeHtml(policy.rowId != null ? policy.rowId : '—') + '</div>' +
+                '  </div>' +
+                '  <div class="col-md-6 mb-3">' +
+                '    <label class="small text-secondary mb-1">Effective Period</label>' +
+                '    <div class="d-block text-dark">' + escapeHtml(policy.effectivePeriod || '—') + '</div>' +
+                '  </div>' +
+                '</div>' +
+                '<div class="mb-3">' +
+                '  <label class="small text-secondary mb-1">Specificity</label>' +
+                '  <div class="d-block text-primary font-weight-bold">' + escapeHtml(policy.specificity || '—') + '</div>' +
+                '</div>' +
+                '<div class="row">' +
+                '  <div class="col-md-6 mb-3">' +
+                '    <label class="small text-secondary mb-1">Designation</label>' +
+                '    <div class="d-block text-dark font-weight-bold">' + escapeHtml(policy.designation || '—') + '</div>' +
+                '  </div>' +
+                '  <div class="col-md-6 mb-3">' +
+                '    <label class="small text-secondary mb-1">Grade</label>' +
+                '    <div class="d-block text-dark font-weight-bold">' + escapeHtml(policy.grade || '—') + '</div>' +
+                '  </div>' +
+                '</div>' +
+                remarksHtml;
+
+            $body.html(html);
+        }
+
+        function renderClaimLimitsBody(claimLimits) {
+            var $body = $('#claimLimitsBody');
+            $body.empty();
+            if (!claimLimits || !claimLimits.length) {
+                $body.html('<div class="alert alert-light border text-muted small mb-0">No resolved claim limits are available for this policy.</div>');
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < claimLimits.length; i++) {
+                var item = claimLimits[i] || {};
+                html +=
+                    '<div class="row py-2 border-bottom">' +
+                    '  <div class="col-xs-6 col-sm-5 text-muted">' + escapeHtml(item.label || '') + '</div>' +
+                    '  <div class="col-xs-6 col-sm-7"><strong>' + escapeHtml(item.value || '') + '</strong></div>' +
+                    '</div>';
+            }
+            $body.html(html);
+        }
+
+        function renderApprovalHierarchyBody(levels) {
+            var $body = $('#approvalHierarchyBody');
+            $body.empty();
+            if (!levels || !levels.length) {
+                $body.html('<div class="text-muted small">No approvers configured for this employee.</div>');
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < levels.length; i++) {
+                var level = levels[i] || {};
+                var nameHtml = level.name
+                    ? '<div class="font-weight-bold text-dark">' + escapeHtml(level.name) + '</div>'
+                    : '';
+                var codeHtml = level.code
+                    ? '<div class="text-muted small">' + escapeHtml(level.code) + '</div>'
+                    : '';
+                html +=
+                    '<div class="card border shadow-sm mb-0">' +
+                    '  <div class="card-body py-2 px-3">' +
+                    '    <div class="small text-uppercase text-muted font-weight-bold mb-1">' + escapeHtml(level.title || '') + '</div>' +
+                    nameHtml + codeHtml +
+                    '  </div>' +
+                    '</div>';
+                if (i < levels.length - 1) {
+                    html += '<div class="text-center text-muted py-1"><i class="fa fa-arrow-down"></i></div>';
+                }
+            }
+            $body.html(html);
+        }
+
+        function renderResolvedPolicyResponse(payload) {
+            if (!payload || !payload.success || !payload.policy) {
+                showResolvedPolicyError((payload && payload.message) || 'No resolved policy found.');
+                return;
+            }
+
+            $('#resolvedPolicyLoadError').hide().text('');
+            renderResolvedPolicyHeader(payload.policy);
+            renderPolicyDetailsBody(payload.policy);
+            renderClaimLimitsBody(payload.claimLimits || []);
+            renderApprovalHierarchyBody(payload.approvalHierarchy || []);
+            applyResolvedPolicyHiddenFields(payload.policy.hiddenFields);
+        }
+
+        function fetchResolvedPolicy(forceRefresh, requestId) {
+            var cacheKey = getResolvedPolicyCacheKey();
+            if (!forceRefresh && window.resolvedPolicyCache && window.resolvedPolicyCache.key === cacheKey && window.resolvedPolicyCache.payload) {
+                return $.Deferred().resolve(window.resolvedPolicyCache.payload).promise();
+            }
+
+            var year = parseInt($('#<%= DDL_Year.ClientID %>').val(), 10);
+            var month = parseInt($('#<%= DDL_Month.ClientID %>').val(), 10);
+
+            abortInFlightResolvedPolicyRequest();
+
+            currentResolvedPolicyRequest = $.ajax({
+                type: 'POST',
+                url: 'SalesMonthlyReview.aspx/GetResolvedPolicy',
+                data: JSON.stringify({ year: year, month: month }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json'
+            });
+
+            return currentResolvedPolicyRequest.then(function (response) {
+                if (!isResolvedPolicyRequestCurrent(requestId)) {
+                    return $.Deferred().reject({ stale: true }).promise();
+                }
+
+                var payload = response && response.d ? response.d : response;
+                if (payload && payload.success) {
+                    window.resolvedPolicyCache = { key: cacheKey, payload: payload };
+                } else {
+                    invalidateResolvedPolicyCache();
+                }
+                return payload;
+            }, function (xhr, textStatus) {
+                // Aborted prior requests and superseded responses must not surface as UI errors.
+                if (textStatus === 'abort' || !isResolvedPolicyRequestCurrent(requestId)) {
+                    return $.Deferred().reject({ stale: true, aborted: textStatus === 'abort' }).promise();
+                }
+                return $.Deferred().reject(xhr).promise();
+            });
+        }
+
+        function openResolvedPolicyModal(forceRefresh) {
+            var requestId = ++resolvedPolicyRequestId;
+            setResolvedPolicyLoading(true);
+            $('#resolvedPolicyLoadError').hide().text('');
+            $('#policyModal').modal('show');
+
+            fetchResolvedPolicy(!!forceRefresh, requestId)
+                .done(function (payload) {
+                    if (!isResolvedPolicyRequestCurrent(requestId)) return;
+                    renderResolvedPolicyResponse(payload);
+                    activatePolicyModalFirstTab();
+                })
+                .fail(function (err) {
+                    if (!isResolvedPolicyRequestCurrent(requestId)) return;
+                    if (err && (err.stale || err.aborted)) return;
+
+                    var msg = 'Unable to load resolved policy.';
+                    if (err && err.responseJSON && err.responseJSON.Message) msg = err.responseJSON.Message;
+                    showResolvedPolicyError(msg);
+                })
+                .always(function () {
+                    if (!isResolvedPolicyRequestCurrent(requestId)) return;
+                    setResolvedPolicyLoading(false);
+                    currentResolvedPolicyRequest = null;
+                });
+        }
+
         $('#policyModal').on('shown.bs.modal', function () {
             activatePolicyModalFirstTab();
+        });
+
+        $(function () {
+            $('#<%= btn_fetch.ClientID %>').on('click', function () {
+                invalidateResolvedPolicyCache();
+            });
+            $('#<%= DDL_Year.ClientID %>, #<%= DDL_Month.ClientID %>').on('change', function () {
+                invalidateResolvedPolicyCache();
+            });
         });
 
         if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
