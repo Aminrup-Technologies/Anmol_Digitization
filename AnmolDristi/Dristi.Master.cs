@@ -140,14 +140,9 @@ namespace AnmolDristi
                 //    }
                 //}
 
-                // Get the current page name being accessed 
-                string currentPage = System.IO.Path.GetFileName(Request.Url.AbsolutePath).ToLower();
-
-                // List the pages that DO NOT require a logged-in employee (Public Visitor Pages)
-                if (currentPage != "vms_selflogin.aspx" &&
-                    currentPage != "vms_registration.aspx" &&
-                    currentPage != "vms_myvisits.aspx" &&  // <-- ADDED THIS!
-                    currentPage != "vms_gatescanner.aspx")
+                // Anonymous/public VMS pages are exempt from ERP USERID gate
+                // (membership: AnonymousAccessPages / IsAnonymousAccessPage).
+                if (!IsAnonymousAccessPage())
                 {
                     // Standard employee security check
                     if (Session["USERID"] == null)
