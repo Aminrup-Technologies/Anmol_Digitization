@@ -41,9 +41,11 @@ namespace AnmolDristi
         /// <remarks>
         /// Uses <c>Path.GetFileName(Request.Url.AbsolutePath)</c> with
         /// case-insensitive membership in <see cref="AnonymousAccessPages"/>.
-        /// Consumed by the USERID gate in <see cref="Page_Load"/>.
+        /// Consumed by the USERID gate in <see cref="Page_Load"/> and exposed to
+        /// client script via <c>window.__anonymousAccessPage</c> in Dristi.Master
+        /// (server remains the only authority; JS must not maintain its own page list).
         /// </remarks>
-        private bool IsAnonymousAccessPage()
+        protected bool IsAnonymousAccessPage()
         {
             if (Request == null || Request.Url == null)
                 return false;
