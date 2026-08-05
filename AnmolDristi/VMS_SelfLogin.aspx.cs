@@ -149,9 +149,7 @@ namespace AnmolDristi
                 return;
             }
 
-            Session.Remove("OTPAttempts");
-            Session["VerifiedMobile"] = mobile;
-            Session["VerifiedEmail"] = string.Empty;
+            InitializeVerifiedSession(mobile);
 
             string branchId = hfBranchId.Value;
             int parsedBranchId;
@@ -236,6 +234,16 @@ namespace AnmolDristi
             }
 
             return isValid;
+        }
+
+        /// <summary>
+        /// Clears OTP attempt state and stores the verified visitor mobile in Session.
+        /// </summary>
+        private void InitializeVerifiedSession(string mobile)
+        {
+            Session.Remove("OTPAttempts");
+            Session["VerifiedMobile"] = mobile;
+            Session["VerifiedEmail"] = string.Empty;
         }
 
         private void QueueOtpEmail(string email, string otp)
