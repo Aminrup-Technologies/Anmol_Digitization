@@ -137,38 +137,9 @@ namespace AnmolDristi
 
             string mobile = txtMobile.Text.Trim();
             string enteredMobileOTP = txtMobileOTP.Text.Trim();
-            bool isValid = false;
-
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                con.Open();
-                string query = @"
-                    SELECT Id FROM VMS_OTPTracking
-                    WHERE MobileNo = @Mobile
-                      AND EmailAddress = ''
-                      AND MobileOTP = @MobileOTP
-                      AND EmailOTP = 'N/A'
-                      AND IsVerified = 0
-                      AND ExpiresAt > GETDATE()";
-
-                using (SqlCommand cmd = new SqlCommand(query, con))
-                {
-                    cmd.Parameters.AddWithValue("@Mobile", mobile);
-                    cmd.Parameters.AddWithValue("@MobileOTP", enteredMobileOTP);
-
-                    object result = cmd.ExecuteScalar();
-                    if (result != null)
-                    {
-                        isValid = true;
-                        string updateQuery = "UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = @Id";
-                        using (SqlCommand updateCmd = new SqlCommand(updateQuery, con))
-                        {
-                            updateCmd.Parameters.AddWithValue("@Id", result.ToString());
-                            updateCmd.ExecuteNonQuery();
-                        }
-                    }
-                }
-            }
+            bool isValid = ValidateMobileOtp(
+                mobile,
+                enteredMobileOTP);
 
             if (!isValid)
             {
@@ -224,6 +195,47 @@ namespace AnmolDristi
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Verifies a mobile OTP against VMS_OTPTracking and marks the matching row verified.
+        /// </summary>
+        private bool ValidateMobileOtp(string mobile, string enteredMobileOtp)
+        {
+            bool isValid = false;
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                string query = @"
+                    SELECT Id FROM VMS_OTPTracking
+                    WHERE MobileNo = @Mobile
+                      AND EmailAddress = ''
+                      AND MobileOTP = @MobileOTP
+                      AND EmailOTP = 'N/A'
+                      AND IsVerified = 0
+                      AND ExpiresAt > GETDATE()";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Mobile", mobile);
+                    cmd.Parameters.AddWithValue("@MobileOTP", enteredMobileOtp);
+
+                    object result = cmd.ExecuteScalar();
+                    if (result != null)
+                    {
+                        isValid = true;
+                        string updateQuery = "UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = @Id";
+                        using (SqlCommand updateCmd = new SqlCommand(updateQuery, con))
+                        {
+                            updateCmd.Parameters.AddWithValue("@Id", result.ToString());
+                            updateCmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+
+            return isValid;
         }
 
         private void QueueOtpEmail(string email, string otp)
