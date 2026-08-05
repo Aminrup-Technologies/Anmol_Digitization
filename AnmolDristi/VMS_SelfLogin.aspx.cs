@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Net;
 using System.IO;
 using System.Web;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
@@ -85,6 +86,16 @@ namespace AnmolDristi
             }
         }
 
+        /// <summary>
+        /// Persists a newly generated mobile OTP with the existing 10-minute expiry.
+        /// </summary>
+        private void PersistMobileOtp(string mobile, string otp)
+        {
+            DateTime expiresAt = DateTime.Now.AddMinutes(10);
+            VmsOtpRepository repository = new VmsOtpRepository();
+            repository.CreateOtp(mobile, otp, expiresAt);
+        }
+
         protected void btnSendOTP_Click(object sender, EventArgs e)
         {
             string mobile = txtMobile.Text.Trim();
@@ -99,22 +110,7 @@ namespace AnmolDristi
             Random rand = new Random();
             string mobileOTP = rand.Next(100000, 999999).ToString();
 
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                con.Open();
-                string query = @"
-                    INSERT INTO VMS_OTPTracking
-                    (MobileNo, EmailAddress, MobileOTP, EmailOTP, ExpiresAt)
-                    VALUES
-                    (@Mobile, '', @MobileOTP, 'N/A', DATEADD(minute, 10, GETDATE()))";
-
-                using (SqlCommand cmd = new SqlCommand(query, con))
-                {
-                    cmd.Parameters.AddWithValue("@Mobile", mobile);
-                    cmd.Parameters.AddWithValue("@MobileOTP", mobileOTP);
-                    cmd.ExecuteNonQuery();
-                }
-            }
+            PersistMobileOtp(mobile, mobileOTP);
 
             SendOtpSms(mobile, mobileOTP);
 
