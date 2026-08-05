@@ -21,18 +21,7 @@ namespace AnmolDristi
 
                 PreventResponseCaching();
 
-                if (Request.QueryString["BranchId"] != null)
-                {
-                    string branchId = Request.QueryString["BranchId"].ToString();
-                    hfBranchId.Value = branchId;
-                    LoadBranchName(branchId);
-                }
-                else
-                {
-                    lblMessage.ForeColor = Color.Red;
-                    lblMessage.Text = "Invalid QR Code. Missing Location ID.";
-                    pnlRequestOTP.Visible = false;
-                }
+                InitializeBranchFromRequest();
             }
         }
 
@@ -58,6 +47,25 @@ namespace AnmolDristi
             Response.Cache.SetCacheability(HttpCacheability.NoCache);
             Response.Cache.SetExpires(DateTime.UtcNow.AddHours(-1));
             Response.Cache.SetNoStore();
+        }
+
+        /// <summary>
+        /// Binds BranchId from the QR query string, or shows the invalid-QR UI when missing.
+        /// </summary>
+        private void InitializeBranchFromRequest()
+        {
+            if (Request.QueryString["BranchId"] != null)
+            {
+                string branchId = Request.QueryString["BranchId"].ToString();
+                hfBranchId.Value = branchId;
+                LoadBranchName(branchId);
+            }
+            else
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = "Invalid QR Code. Missing Location ID.";
+                pnlRequestOTP.Visible = false;
+            }
         }
 
         private void LoadBranchName(string branchId)
