@@ -19,27 +19,7 @@ namespace AnmolDristi
                 if (!InitializeRegistrationRequest())
                     return;
 
-                string closedMsg;
-                bool isOpen = VmsHelper.IsFacilityOpen(Convert.ToInt32(hfBranchId.Value), out closedMsg);
-                hfIsFacilityOpen.Value = isOpen.ToString().ToLower();
-
-                // Bind quick-select host chips from branch preconfigured hosts
-                BindQuickHosts();
-
-                // 3. Safely Pre-fill the contact fields (Existing Logic)
-                if (Session["VerifiedMobile"] != null && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
-                {
-                    txtMobile.Text = Session["VerifiedMobile"].ToString();
-                    txtMobile.ReadOnly = true;
-                }
-
-                txtEmail.ReadOnly = false;
-
-                string today = DateTime.Now.ToString("yyyy-MM-dd");
-                txtVisitFromDate.Text = today;
-                txtVisitToDate.Text = today;
-                txtTimeFrom.Text = "09:00";
-                txtTimeTo.Text = "18:00";
+                InitializeRegistrationPage();
             }
         }
 
@@ -64,6 +44,34 @@ namespace AnmolDristi
             CheckForActivePassAndRedirect();
 
             return true;
+        }
+
+        /// <summary>
+        /// Binds facility flag, quick hosts, contact fields, and default visit schedule controls.
+        /// </summary>
+        private void InitializeRegistrationPage()
+        {
+            string closedMsg;
+            bool isOpen = VmsHelper.IsFacilityOpen(Convert.ToInt32(hfBranchId.Value), out closedMsg);
+            hfIsFacilityOpen.Value = isOpen.ToString().ToLower();
+
+            // Bind quick-select host chips from branch preconfigured hosts
+            BindQuickHosts();
+
+            // 3. Safely Pre-fill the contact fields (Existing Logic)
+            if (Session["VerifiedMobile"] != null && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
+            {
+                txtMobile.Text = Session["VerifiedMobile"].ToString();
+                txtMobile.ReadOnly = true;
+            }
+
+            txtEmail.ReadOnly = false;
+
+            string today = DateTime.Now.ToString("yyyy-MM-dd");
+            txtVisitFromDate.Text = today;
+            txtVisitToDate.Text = today;
+            txtTimeFrom.Text = "09:00";
+            txtTimeTo.Text = "18:00";
         }
 
         private void BindQuickHosts()
