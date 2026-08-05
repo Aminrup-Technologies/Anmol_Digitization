@@ -16,17 +16,8 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                // 1. Existing Security Check (Ensure they passed OTP)
-                if (Session["VerifiedMobile"] == null ||
-                    string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()) ||
-                    Request.QueryString["BranchId"] == null)
-                {
-                    Response.Redirect("VMS_SelfLogin.aspx", false);
-                    Context.ApplicationInstance.CompleteRequest();
+                if (!InitializeRegistrationRequest())
                     return;
-                }
-
-                hfBranchId.Value = Request.QueryString["BranchId"].ToString();
 
                 string closedMsg;
                 bool isOpen = VmsHelper.IsFacilityOpen(Convert.ToInt32(hfBranchId.Value), out closedMsg);
@@ -34,9 +25,6 @@ namespace AnmolDristi
 
                 // Bind quick-select host chips from branch preconfigured hosts
                 BindQuickHosts();
-
-                // 2. Prevent Duplicate Registration
-                CheckForActivePassAndRedirect();
 
                 // 3. Safely Pre-fill the contact fields (Existing Logic)
                 if (Session["VerifiedMobile"] != null && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
@@ -53,6 +41,29 @@ namespace AnmolDristi
                 txtTimeFrom.Text = "09:00";
                 txtTimeTo.Text = "18:00";
             }
+        }
+
+        /// <summary>
+        /// Validates OTP session and BranchId, binds hfBranchId, and redirects if an active pass exists.
+        /// </summary>
+        private bool InitializeRegistrationRequest()
+        {
+            // 1. Existing Security Check (Ensure they passed OTP)
+            if (Session["VerifiedMobile"] == null ||
+                string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()) ||
+                Request.QueryString["BranchId"] == null)
+            {
+                Response.Redirect("VMS_SelfLogin.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
+                return false;
+            }
+
+            hfBranchId.Value = Request.QueryString["BranchId"].ToString();
+
+            // 2. Prevent Duplicate Registration
+            CheckForActivePassAndRedirect();
+
+            return true;
         }
 
         private void BindQuickHosts()
