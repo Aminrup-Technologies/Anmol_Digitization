@@ -120,6 +120,21 @@
                             <p>Choose which days to approve for this multi-day visit:</p>
                             <asp:HiddenField ID="hfModalLogId" runat="server" />
                             <asp:CheckBoxList ID="cblModalDays" runat="server" RepeatDirection="Vertical" CssClass="checkbox" />
+
+                            <div class="row" style="margin-top: 15px;">
+                                <div class="col-xs-12">
+                                    <label class="control-label">Adjust the valid access window for this visitor if required.</label>
+                                </div>
+                                <div class="col-xs-6">
+                                    <label for="<%= txtApprovedTimeFrom.ClientID %>">Valid From</label>
+                                    <asp:TextBox ID="txtApprovedTimeFrom" runat="server" CssClass="form-control" TextMode="Time"></asp:TextBox>
+                                </div>
+                                <div class="col-xs-6">
+                                    <label for="<%= txtApprovedTimeTo.ClientID %>">Valid Until</label>
+                                    <asp:TextBox ID="txtApprovedTimeTo" runat="server" CssClass="form-control" TextMode="Time"></asp:TextBox>
+                                </div>
+                            </div>
+
                             <asp:Label ID="lblModalMsg" runat="server" ForeColor="Red" Font-Bold="true"></asp:Label>
                         </div>
                         <div class="modal-footer">

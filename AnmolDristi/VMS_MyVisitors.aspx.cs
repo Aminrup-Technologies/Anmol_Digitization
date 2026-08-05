@@ -99,6 +99,7 @@ namespace AnmolDristi
                     ViewState["ModalVisMobile"] = visMobile;
                     ViewState["ModalVisName"] = visName;
                     BindModalDays(logId);
+                    PrefillApprovedValidityTimes(logId);
                     lblModalMsg.Text = "";
                     ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
                         "$('#ScheduleApprovalModal').modal('show');", true);
@@ -124,6 +125,72 @@ namespace AnmolDristi
                 con.Open();
                 object result = cmd.ExecuteScalar();
                 return result == null || result == DBNull.Value ? "SingleDay" : result.ToString();
+            }
+        }
+
+        private void PrefillApprovedValidityTimes(int logId)
+        {
+            TimeSpan plantOpen = new TimeSpan(9, 0, 0);
+            TimeSpan plantClose = new TimeSpan(18, 0, 0);
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+
+                int branchId = 0;
+                using (SqlCommand branchCmd = new SqlCommand(
+                    "SELECT ISNULL(TargetBranchID, 0) FROM VMS_VisitLog WHERE LogID = @LogID", con))
+                {
+                    branchCmd.Parameters.AddWithValue("@LogID", logId);
+                    object branchResult = branchCmd.ExecuteScalar();
+                    if (branchResult != null && branchResult != DBNull.Value)
+                        branchId = Convert.ToInt32(branchResult);
+                }
+
+                if (branchId > 0)
+                {
+                    using (SqlCommand timeCmd = new SqlCommand(@"
+                        SELECT OpenTime, CloseTime
+                        FROM VMS_PlantTimings
+                        WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek", con))
+                    {
+                        timeCmd.Parameters.AddWithValue("@BranchID", branchId);
+                        timeCmd.Parameters.AddWithValue("@DayOfWeek", DateTime.Now.ToString("dddd"));
+                        using (SqlDataReader reader = timeCmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                if (reader["OpenTime"] != DBNull.Value)
+                                    plantOpen = (TimeSpan)reader["OpenTime"];
+                                if (reader["CloseTime"] != DBNull.Value)
+                                    plantClose = (TimeSpan)reader["CloseTime"];
+                            }
+                        }
+                    }
+                }
+            }
+
+            DateTime now = DateTime.Now;
+            DateTime plantOpenToday = now.Date.Add(plantOpen);
+            DateTime plantCloseToday = now.Date.Add(plantClose);
+
+            if (now < plantOpenToday)
+            {
+                // Before hours: start validity from now, still end at plant close
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
+            }
+            else if (now > plantCloseToday)
+            {
+                // After hours: start now and allow a short 2-hour window
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                txtApprovedTimeTo.Text = now.AddHours(2).ToString("HH:mm");
+            }
+            else
+            {
+                // Within plant hours: default to standard open/close
+                txtApprovedTimeFrom.Text = plantOpen.ToString(@"hh\:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
             }
         }
 
@@ -173,12 +240,32 @@ namespace AnmolDristi
                 return;
             }
 
+            TimeSpan approvedFromTime;
+            TimeSpan approvedToTime;
+            if (!TimeSpan.TryParse(txtApprovedTimeFrom.Text, out approvedFromTime) ||
+                !TimeSpan.TryParse(txtApprovedTimeTo.Text, out approvedToTime))
+            {
+                lblModalMsg.Text = "Please enter valid From and Until times.";
+                ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
+                    "$('#ScheduleApprovalModal').modal('show');", true);
+                return;
+            }
+
+            if (approvedToTime <= approvedFromTime)
+            {
+                lblModalMsg.Text = "Valid Until must be after Valid From.";
+                ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
+                    "$('#ScheduleApprovalModal').modal('show');", true);
+                return;
+            }
+
             int logId = Convert.ToInt32(hfModalLogId.Value);
             string visEmail = ViewState["ModalVisEmail"] != null ? ViewState["ModalVisEmail"].ToString() : "";
             string visMobile = ViewState["ModalVisMobile"] != null ? ViewState["ModalVisMobile"].ToString() : "";
             string visName = ViewState["ModalVisName"] != null ? ViewState["ModalVisName"].ToString() : "";
 
-            ApproveVisitor(logId, visEmail, visMobile, visName, applySelectedModalDays: true);
+            ApproveVisitor(logId, visEmail, visMobile, visName, applySelectedModalDays: true,
+                approvedFromTime: approvedFromTime, approvedToTime: approvedToTime);
 
             ScriptManager.RegisterStartupScript(this, GetType(), "HideScheduleModal",
                 "$('#ScheduleApprovalModal').modal('hide'); $('body').removeClass('modal-open'); $('.modal-backdrop').remove();", true);
@@ -202,7 +289,50 @@ namespace AnmolDristi
             }
         }
 
-        private void ApproveVisitor(int logId, string email, string mobile, string name, bool applySelectedModalDays = false)
+        private void ApplyApprovedValidityTimes(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            TimeSpan approvedFromTime,
+            TimeSpan approvedToTime)
+        {
+            // Keep the existing calendar dates; replace only the time portion of ValidFrom / ValidUpto
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, GETDATE()) AS date) AS datetime)),
+                    ValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ValidUpto, GETDATE()) AS date) AS datetime)),
+                    ApprovedValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ApprovedValidFrom, ISNULL(ValidFrom, GETDATE())) AS date) AS datetime)),
+                    ApprovedValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ApprovedValidUpto, ISNULL(ValidUpto, GETDATE())) AS date) AS datetime))
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
+                cmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
+                cmd.ExecuteNonQuery();
+            }
+
+            // Keep per-day gate windows aligned with the host override
+            using (SqlCommand dayCmd = new SqlCommand(@"
+                UPDATE VMS_VisitDayLog
+                SET DayValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(VisitDate AS datetime)),
+                    DayValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(VisitDate AS datetime))
+                WHERE LogID = @LogID AND IsDayApproved = 1", con, trans))
+            {
+                dayCmd.Parameters.AddWithValue("@LogID", logId);
+                dayCmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
+                dayCmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
+                dayCmd.ExecuteNonQuery();
+            }
+        }
+
+        private void ApproveVisitor(
+            int logId,
+            string email,
+            string mobile,
+            string name,
+            bool applySelectedModalDays = false,
+            TimeSpan? approvedFromTime = null,
+            TimeSpan? approvedToTime = null)
         {
             Guid qrToken = Guid.NewGuid();
 
@@ -232,6 +362,11 @@ namespace AnmolDristi
                         if (applySelectedModalDays)
                         {
                             ApplyModalDayApprovals(con, trans, logId);
+                        }
+
+                        if (approvedFromTime.HasValue && approvedToTime.HasValue)
+                        {
+                            ApplyApprovedValidityTimes(con, trans, logId, approvedFromTime.Value, approvedToTime.Value);
                         }
 
                         VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile, trans);
