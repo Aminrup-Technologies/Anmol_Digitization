@@ -31,6 +31,7 @@
                     <asp:HiddenField ID="hfBranchId" runat="server" />
                     <asp:HiddenField ID="hfSelfieBase64" runat="server" />
                     <asp:HiddenField ID="hfSelectedHostCode" runat="server" />
+                    <asp:HiddenField ID="hfIsFacilityOpen" runat="server" />
 
                     <div class="form-group">
                         <label class="form-label">Visit Schedule *</label>
