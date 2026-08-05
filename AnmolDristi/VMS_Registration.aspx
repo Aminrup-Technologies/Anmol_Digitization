@@ -312,6 +312,14 @@
                 alert("Please select your expected arrival and departure times.");
                 return false;
             }
+
+            // Off-Hours Soft Warning
+            if ($("#<%= hfIsFacilityOpen.ClientID %>").val() === "false") {
+                var proceed = confirm("NOTICE: You are requesting entry outside of standard office hours.\n\nYour pass validity will be entirely dependent on your Host's approval. Do you wish to proceed?");
+                if (!proceed) {
+                    return false; // Stop submission if they click Cancel
+                }
+            }
             
             // 🌟 ANTI-SPAM FIX: Hide button instantly and show 'Processing...'
             var submitBtn = $("#<%= btnSubmit.ClientID %>");
