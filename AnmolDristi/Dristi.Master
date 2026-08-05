@@ -147,10 +147,14 @@
         }
 
         $(document).ready(function () {
-            startIdleTimer();
-            setInterval(updateDisplay, 1000);
-            document.addEventListener("mousemove", handleUserActivity);
-            document.addEventListener("keypress", handleUserActivity);
+            // ERP idle timeout must not run on anonymous/public VMS pages.
+            // Flag is server-rendered from IsAnonymousAccessPage() — do not add client page lists.
+            if (!window.__anonymousAccessPage) {
+                startIdleTimer();
+                setInterval(updateDisplay, 1000);
+                document.addEventListener("mousemove", handleUserActivity);
+                document.addEventListener("keypress", handleUserActivity);
+            }
         });
 
         // run this on pages where the user is logged in (master page)
