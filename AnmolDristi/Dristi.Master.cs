@@ -12,6 +12,50 @@ namespace AnmolDristi
 {
     public partial class Dristi : System.Web.UI.MasterPage
     {
+        /// <summary>
+        /// Filenames of Master-hosted pages that are allowed to run without an ERP
+        /// <c>Session["USERID"]</c> (public / anonymous VMS workflow pages).
+        /// </summary>
+        /// <remarks>
+        /// Security boundary: membership must match the existing USERID exemption list
+        /// in <see cref="Page_Load"/>. Do not add employee VMS tools (e.g. MyVisitors,
+        /// AdminPending) here. Intentionally unused until a later IMP wires consumers;
+        /// adding this set alone must not change runtime behaviour.
+        /// </remarks>
+        private static readonly HashSet<string> AnonymousAccessPages =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "vms_selflogin.aspx",
+                "vms_registration.aspx",
+                "vms_myvisits.aspx",
+                "vms_gatescanner.aspx",
+            };
+
+        /// <summary>
+        /// Returns whether the current request targets a page in
+        /// <see cref="AnonymousAccessPages"/>.
+        /// </summary>
+        /// <returns>
+        /// <c>true</c> if the request filename is an anonymous-access VMS page;
+        /// <c>false</c> if the filename is null/empty or not in the set.
+        /// </returns>
+        /// <remarks>
+        /// Uses the same filename extraction as the existing USERID gate
+        /// (<c>Path.GetFileName(Request.Url.AbsolutePath)</c>). Not called yet —
+        /// reserved for IMP-DETECT-02 and subsequent visitor-isolation work.
+        /// </remarks>
+        private bool IsAnonymousAccessPage()
+        {
+            if (Request == null || Request.Url == null)
+                return false;
+
+            string filename = System.IO.Path.GetFileName(Request.Url.AbsolutePath);
+            if (string.IsNullOrEmpty(filename))
+                return false;
+
+            return AnonymousAccessPages.Contains(filename);
+        }
+
         //protected void Page_Load(object sender, EventArgs e)
         //{
         //    if (!IsPostBack)
