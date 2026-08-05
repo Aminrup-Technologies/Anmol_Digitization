@@ -17,15 +17,9 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                Session.Clear();
-                Session.Abandon();
+                ResetVisitorSession();
 
                 PreventResponseCaching();
-
-                if (Request.Cookies["ASP.NET_SessionId"] != null)
-                {
-                    Response.Cookies["ASP.NET_SessionId"].Expires = DateTime.Now.AddDays(-1);
-                }
 
                 if (Request.QueryString["BranchId"] != null)
                 {
@@ -39,6 +33,20 @@ namespace AnmolDristi
                     lblMessage.Text = "Invalid QR Code. Missing Location ID.";
                     pnlRequestOTP.Visible = false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Clears abandoned visitor session state and expires the ASP.NET session cookie.
+        /// </summary>
+        private void ResetVisitorSession()
+        {
+            Session.Clear();
+            Session.Abandon();
+
+            if (Request.Cookies["ASP.NET_SessionId"] != null)
+            {
+                Response.Cookies["ASP.NET_SessionId"].Expires = DateTime.Now.AddDays(-1);
             }
         }
 
