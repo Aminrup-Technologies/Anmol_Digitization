@@ -28,6 +28,10 @@ namespace AnmolDristi
 
                 hfBranchId.Value = Request.QueryString["BranchId"].ToString();
 
+                string closedMsg;
+                bool isOpen = VmsHelper.IsFacilityOpen(Convert.ToInt32(hfBranchId.Value), out closedMsg);
+                hfIsFacilityOpen.Value = isOpen.ToString().ToLower();
+
                 // Bind quick-select host chips from branch preconfigured hosts
                 BindQuickHosts();
 
