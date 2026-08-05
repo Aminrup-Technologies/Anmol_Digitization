@@ -17,10 +17,9 @@ namespace AnmolDristi
         /// <c>Session["USERID"]</c> (public / anonymous VMS workflow pages).
         /// </summary>
         /// <remarks>
-        /// Security boundary: membership must match the existing USERID exemption list
-        /// in <see cref="Page_Load"/>. Do not add employee VMS tools (e.g. MyVisitors,
-        /// AdminPending) here. Intentionally unused until a later IMP wires consumers;
-        /// adding this set alone must not change runtime behaviour.
+        /// Security boundary: single source of truth for the USERID exemption in
+        /// <see cref="Page_Load"/>. Do not add employee VMS tools (e.g. MyVisitors,
+        /// AdminPending) here.
         /// </remarks>
         private static readonly HashSet<string> AnonymousAccessPages =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -40,9 +39,9 @@ namespace AnmolDristi
         /// <c>false</c> if the filename is null/empty or not in the set.
         /// </returns>
         /// <remarks>
-        /// Uses the same filename extraction as the existing USERID gate
-        /// (<c>Path.GetFileName(Request.Url.AbsolutePath)</c>). Not called yet —
-        /// reserved for IMP-DETECT-02 and subsequent visitor-isolation work.
+        /// Uses <c>Path.GetFileName(Request.Url.AbsolutePath)</c> with
+        /// case-insensitive membership in <see cref="AnonymousAccessPages"/>.
+        /// Consumed by the USERID gate in <see cref="Page_Load"/>.
         /// </remarks>
         private bool IsAnonymousAccessPage()
         {
