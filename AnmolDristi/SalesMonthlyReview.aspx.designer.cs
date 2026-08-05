@@ -13,6 +13,15 @@ namespace AnmolDristi {
     public partial class SalesMonthlyReview {
         
         /// <summary>
+        /// pnlWorkflowBanner control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Panel pnlWorkflowBanner;
+        
+        /// <summary>
         /// DDL_Year control.
         /// </summary>
         /// <remarks>
@@ -38,11 +47,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Button btn_fetch;
-
-        /// <summary>
-        /// pnlWorkflowBanner control.
-        /// </summary>
-        protected global::System.Web.UI.WebControls.Panel pnlWorkflowBanner;
         
         /// <summary>
         /// Actionable control.
@@ -52,14 +56,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl Actionable;
-        
-        /// <summary>
-        /// btn_save_draft control.
-        /// </summary>
-        /// <remarks>
-        /// Deprecated: Save as Draft button removed from UI (auto-save model).
-        /// </remarks>
-        // protected global::System.Web.UI.WebControls.Button btn_save_draft;
         
         /// <summary>
         /// btn_submit control.
@@ -78,25 +74,41 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_msg;
-
+        
         /// <summary>
         /// pnlAutoSaveIndicator control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Panel pnlAutoSaveIndicator;
-
+        
         /// <summary>
         /// litLastSavedTime control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Literal litLastSavedTime;
-
+        
         /// <summary>
         /// pnlSubmissionConfidence control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Panel pnlSubmissionConfidence;
-
+        
         /// <summary>
         /// phSubmissionConfidence control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.PlaceHolder phSubmissionConfidence;
         
         /// <summary>
@@ -109,6 +121,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl Activities;
         
         /// <summary>
+        /// pnlReturnedClaimsBanner control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Panel pnlReturnedClaimsBanner;
+        
+        /// <summary>
         /// gvActivities control.
         /// </summary>
         /// <remarks>
@@ -116,20 +137,23 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.GridView gvActivities;
-
-        /// <summary>
-        /// pnlReturnedClaimsBanner control.
-        /// </summary>
-        protected global::System.Web.UI.WebControls.Panel pnlReturnedClaimsBanner;
-
+        
         /// <summary>
         /// pnlSubmissionChecklist control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Panel pnlSubmissionChecklist;
-
+        
         /// <summary>
         /// phSubmissionChecklist control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.PlaceHolder phSubmissionChecklist;
         
         /// <summary>
@@ -140,65 +164,113 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl Summary;
-
+        
         /// <summary>
         /// pnlEnhancedMonthlySummary control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Panel pnlEnhancedMonthlySummary;
-
+        
         /// <summary>
         /// lblSummaryTravel control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSummaryTravel;
-
+        
         /// <summary>
         /// lblSummaryDA control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSummaryDA;
-
+        
         /// <summary>
         /// lblSummaryHotel control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSummaryHotel;
-
+        
         /// <summary>
         /// lblSummaryOther control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSummaryOther;
-
+        
         /// <summary>
         /// lblSummaryGrandTotal control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSummaryGrandTotal;
-
+        
         /// <summary>
         /// pnlProgressSummary control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Panel pnlProgressSummary;
-
+        
         /// <summary>
         /// lblProgressWorkingDays control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblProgressWorkingDays;
-
+        
         /// <summary>
         /// lblProgressCompleted control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblProgressCompleted;
-
+        
         /// <summary>
         /// lblProgressDraft control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblProgressDraft;
-
+        
         /// <summary>
         /// lblProgressReturned control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblProgressReturned;
-
+        
         /// <summary>
         /// lblProgressSubmitted control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblProgressSubmitted;
         
         /// <summary>
@@ -542,38 +614,33 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hdnOriginalKm;
-
-        /// <summary>
-        /// HF_KmSaveWorkflow control.
-        /// </summary>
-        /// <remarks>
-        /// Explicit KM save workflow: Manual | Route
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.HiddenField HF_KmSaveWorkflow;
-
-        /// <summary>
-        /// pnlKmPolicyInfo control.
-        /// </summary>
-        protected global::System.Web.UI.WebControls.Panel pnlKmPolicyInfo;
-
-        /// <summary>
-        /// lblModalOriginalKm control.
-        /// </summary>
-        protected global::System.Web.UI.WebControls.Label lblModalOriginalKm;
-
-        /// <summary>
-        /// lblModalAllowedRange control.
-        /// </summary>
-        protected global::System.Web.UI.WebControls.Label lblModalAllowedRange;
         
         /// <summary>
-        /// txtModalKM control.
+        /// HF_KmSaveWorkflow control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox txtModalKM;
+        protected global::System.Web.UI.WebControls.HiddenField HF_KmSaveWorkflow;
+        
+        /// <summary>
+        /// pnlKmPolicyInfo control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Panel pnlKmPolicyInfo;
+        
+        /// <summary>
+        /// lblModalOriginalKm control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblModalOriginalKm;
         
         /// <summary>
         /// lblModalCurrentKm control.
@@ -585,13 +652,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblModalCurrentKm;
         
         /// <summary>
-        /// lblKmModLimit control.
+        /// lblModalAllowedRange control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblKmModLimit;
+        protected global::System.Web.UI.WebControls.Label lblModalAllowedRange;
         
         /// <summary>
         /// lblKmModRemaining control.
@@ -601,6 +668,24 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblKmModRemaining;
+        
+        /// <summary>
+        /// lblKmModLimit control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblKmModLimit;
+        
+        /// <summary>
+        /// txtModalKM control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtModalKM;
         
         /// <summary>
         /// txtKmReason control.
@@ -736,10 +821,14 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField HF_ResolvedRatePerKm;
-
+        
         /// <summary>
         /// HF_FixedTravelAllowance control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
         
         /// <summary>
@@ -1220,6 +1309,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblPolicyEmployeeCode;
         
         /// <summary>
+        /// lblPolicyIsActive control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyIsActive;
+        
+        /// <summary>
         /// lblPolicySource control.
         /// </summary>
         /// <remarks>
@@ -1227,15 +1325,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblPolicySource;
-        
-        /// <summary>
-        /// lblPolicyRowId control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblPolicyRowId;
         
         /// <summary>
         /// lblPolicyPriority control.
@@ -1247,13 +1336,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblPolicyPriority;
         
         /// <summary>
-        /// lblPolicySpecificity control.
+        /// lblPolicyRowId control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblPolicySpecificity;
+        protected global::System.Web.UI.WebControls.Label lblPolicyRowId;
         
         /// <summary>
         /// lblPolicyEffective control.
@@ -1265,13 +1354,94 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblPolicyEffective;
         
         /// <summary>
-        /// lblPolicyIsActive control.
+        /// lblPolicySpecificity control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblPolicyIsActive;
+        protected global::System.Web.UI.WebControls.Label lblPolicySpecificity;
+        
+        /// <summary>
+        /// lblPolicyDesignation control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyDesignation;
+        
+        /// <summary>
+        /// lblPolicyGrade control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPolicyGrade;
+        
+        /// <summary>
+        /// policyRemarksSection control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl policyRemarksSection;
+        
+        /// <summary>
+        /// lblResolvedRemarks control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblResolvedRemarks;
+        
+        /// <summary>
+        /// Toggler control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Toggler;
+        
+        /// <summary>
+        /// btnToggleRawJson control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnToggleRawJson;
+        
+        /// <summary>
+        /// policyJsonRaw control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox policyJsonRaw;
+        
+        /// <summary>
+        /// phClaimLimits control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.PlaceHolder phClaimLimits;
+        
+        /// <summary>
+        /// phApproverHierarchy control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.PlaceHolder phApproverHierarchy;
         
         /// <summary>
         /// lblPolicyDesigGrade control.
@@ -1281,34 +1451,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblPolicyDesigGrade;
-
-        /// <summary>
-        /// lblPolicyDesignation control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblPolicyDesignation;
-
-        /// <summary>
-        /// lblPolicyGrade control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblPolicyGrade;
-
-        /// <summary>
-        /// policyRemarksSection control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl policyRemarksSection;
-
+        
         /// <summary>
         /// lblResolvedMaxKM control.
         /// </summary>
@@ -1335,7 +1478,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblResolvedDA;
-
+        
         /// <summary>
         /// lblResolvedHotelCap control.
         /// </summary>
@@ -1344,61 +1487,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblResolvedHotelCap;
-
-        /// <summary>
-        /// lblResolvedRemarks control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblResolvedRemarks;
-
-        /// <summary>
-        /// Toggler control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Toggler;
-
-        /// <summary>
-        /// btnToggleRawJson control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnToggleRawJson;
-
-        /// <summary>
-        /// policyJsonRaw control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.TextBox policyJsonRaw;
-
-        /// <summary>
-        /// phClaimLimits control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.PlaceHolder phClaimLimits;
-
-        /// <summary>
-        /// phApproverHierarchy control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.PlaceHolder phApproverHierarchy;
-
+        
         /// <summary>
         /// lnkCopyJson control.
         /// </summary>
