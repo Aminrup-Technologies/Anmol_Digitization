@@ -20,9 +20,7 @@ namespace AnmolDristi
                 Session.Clear();
                 Session.Abandon();
 
-                Response.Cache.SetCacheability(HttpCacheability.NoCache);
-                Response.Cache.SetExpires(DateTime.UtcNow.AddHours(-1));
-                Response.Cache.SetNoStore();
+                PreventResponseCaching();
 
                 if (Request.Cookies["ASP.NET_SessionId"] != null)
                 {
@@ -42,6 +40,16 @@ namespace AnmolDristi
                     pnlRequestOTP.Visible = false;
                 }
             }
+        }
+
+        /// <summary>
+        /// Prevents browser/proxy caching of the visitor OTP landing page.
+        /// </summary>
+        private void PreventResponseCaching()
+        {
+            Response.Cache.SetCacheability(HttpCacheability.NoCache);
+            Response.Cache.SetExpires(DateTime.UtcNow.AddHours(-1));
+            Response.Cache.SetNoStore();
         }
 
         private void LoadBranchName(string branchId)
