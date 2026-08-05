@@ -151,25 +151,9 @@ namespace AnmolDristi
 
             InitializeVerifiedSession(mobile);
 
-            string branchId = hfBranchId.Value;
-            int parsedBranchId;
-            if (string.IsNullOrEmpty(branchId) || !int.TryParse(branchId, out parsedBranchId))
-            {
-                lblMessage.ForeColor = Color.Red;
-                lblMessage.Text = "Session lost. Please scan the physical QR code again.";
-                return;
-            }
-
-            if (VmsHelper.HasActiveVisit(mobile, string.Empty, parsedBranchId))
-            {
-                Response.Redirect("VMS_MyVisits.aspx", false);
-            }
-            else
-            {
-                Response.Redirect($"VMS_Registration.aspx?BranchId={branchId}", false);
-            }
-
-            Context.ApplicationInstance.CompleteRequest();
+            ResolveVerifiedVisitor(
+                mobile,
+                hfBranchId.Value);
         }
 
         protected void lnkResend_Click(object sender, EventArgs e)
@@ -244,6 +228,31 @@ namespace AnmolDristi
             Session.Remove("OTPAttempts");
             Session["VerifiedMobile"] = mobile;
             Session["VerifiedEmail"] = string.Empty;
+        }
+
+        /// <summary>
+        /// Routes a verified visitor to MyVisits or Registration based on BranchId and active visit.
+        /// </summary>
+        private void ResolveVerifiedVisitor(string mobile, string branchId)
+        {
+            int parsedBranchId;
+            if (string.IsNullOrEmpty(branchId) || !int.TryParse(branchId, out parsedBranchId))
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = "Session lost. Please scan the physical QR code again.";
+                return;
+            }
+
+            if (VmsHelper.HasActiveVisit(mobile, string.Empty, parsedBranchId))
+            {
+                Response.Redirect("VMS_MyVisits.aspx", false);
+            }
+            else
+            {
+                Response.Redirect($"VMS_Registration.aspx?BranchId={branchId}", false);
+            }
+
+            Context.ApplicationInstance.CompleteRequest();
         }
 
         private void QueueOtpEmail(string email, string otp)
