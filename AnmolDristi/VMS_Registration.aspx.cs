@@ -34,25 +34,7 @@ namespace AnmolDristi
                 // 2. Prevent Duplicate Registration
                 CheckForActivePassAndRedirect();
 
-                // 3. 🌟 NEW: Early-Rejection Check for Office Hours
-                int currentBranchId = Convert.ToInt32(hfBranchId.Value);
-                string closedMessage;
-                if (!VmsHelper.IsFacilityOpen(currentBranchId, out closedMessage))
-                {
-                    lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Welcome to Anmol Industries. " + closedMessage;
-
-                    // Disable the form submission
-                    btnSubmit.Visible = false;
-
-                    // Optional: If you wrapped your input fields in an <asp:Panel ID="pnlRegistrationForm" runat="server">
-                    // you can hide the whole form cleanly by uncommenting the next line:
-                    pnlRegistrationForm.Visible = false; 
-
-                    return; // Stop loading the rest of the page
-                }
-
-                // 4. Safely Pre-fill the contact fields (Existing Logic)
+                // 3. Safely Pre-fill the contact fields (Existing Logic)
                 if (Session["VerifiedMobile"] != null && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
                 {
                     txtMobile.Text = Session["VerifiedMobile"].ToString();
