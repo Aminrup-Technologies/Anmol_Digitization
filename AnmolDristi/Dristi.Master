@@ -92,6 +92,12 @@
 
     <script src="Resources/Scripts/jquery-1.7.2.min.js"></script>
 
+    <%-- Server authority: anonymous/public page flag for future visitor-isolation JS.
+         Do not duplicate AnonymousAccessPages filenames in client script. --%>
+    <script type="text/javascript">
+        window.__anonymousAccessPage = <%= IsAnonymousAccessPage() ? "true" : "false" %>;
+    </script>
+
     <script type="text/javascript">
         var idleTimeout;
         var logoutTime;
@@ -141,10 +147,14 @@
         }
 
         $(document).ready(function () {
-            startIdleTimer();
-            setInterval(updateDisplay, 1000);
-            document.addEventListener("mousemove", handleUserActivity);
-            document.addEventListener("keypress", handleUserActivity);
+            // ERP idle timeout must not run on anonymous/public VMS pages.
+            // Flag is server-rendered from IsAnonymousAccessPage() — do not add client page lists.
+            if (!window.__anonymousAccessPage) {
+                startIdleTimer();
+                setInterval(updateDisplay, 1000);
+                document.addEventListener("mousemove", handleUserActivity);
+                document.addEventListener("keypress", handleUserActivity);
+            }
         });
 
         // run this on pages where the user is logged in (master page)
@@ -386,6 +396,10 @@
 
             // Listen for remote logout via storage event
             window.addEventListener('storage', function (e) {
+                // Anonymous/public VMS pages must not follow ERP cross-tab logout.
+                if (window.__anonymousAccessPage)
+                    return;
+
                 if (!e) return;
                 if (e.key === 'app_logout' && e.newValue) {
                     // parse payload

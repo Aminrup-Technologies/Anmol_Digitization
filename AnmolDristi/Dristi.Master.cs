@@ -12,6 +12,51 @@ namespace AnmolDristi
 {
     public partial class Dristi : System.Web.UI.MasterPage
     {
+        /// <summary>
+        /// Filenames of Master-hosted pages that are allowed to run without an ERP
+        /// <c>Session["USERID"]</c> (public / anonymous VMS workflow pages).
+        /// </summary>
+        /// <remarks>
+        /// Security boundary: single source of truth for the USERID exemption in
+        /// <see cref="Page_Load"/>. Do not add employee VMS tools (e.g. MyVisitors,
+        /// AdminPending) here.
+        /// </remarks>
+        private static readonly HashSet<string> AnonymousAccessPages =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "vms_selflogin.aspx",
+                "vms_registration.aspx",
+                "vms_myvisits.aspx",
+                "vms_gatescanner.aspx",
+            };
+
+        /// <summary>
+        /// Returns whether the current request targets a page in
+        /// <see cref="AnonymousAccessPages"/>.
+        /// </summary>
+        /// <returns>
+        /// <c>true</c> if the request filename is an anonymous-access VMS page;
+        /// <c>false</c> if the filename is null/empty or not in the set.
+        /// </returns>
+        /// <remarks>
+        /// Uses <c>Path.GetFileName(Request.Url.AbsolutePath)</c> with
+        /// case-insensitive membership in <see cref="AnonymousAccessPages"/>.
+        /// Consumed by the USERID gate in <see cref="Page_Load"/> and exposed to
+        /// client script via <c>window.__anonymousAccessPage</c> in Dristi.Master
+        /// (server remains the only authority; JS must not maintain its own page list).
+        /// </remarks>
+        protected bool IsAnonymousAccessPage()
+        {
+            if (Request == null || Request.Url == null)
+                return false;
+
+            string filename = System.IO.Path.GetFileName(Request.Url.AbsolutePath);
+            if (string.IsNullOrEmpty(filename))
+                return false;
+
+            return AnonymousAccessPages.Contains(filename);
+        }
+
         //protected void Page_Load(object sender, EventArgs e)
         //{
         //    if (!IsPostBack)
@@ -96,14 +141,9 @@ namespace AnmolDristi
                 //    }
                 //}
 
-                // Get the current page name being accessed 
-                string currentPage = System.IO.Path.GetFileName(Request.Url.AbsolutePath).ToLower();
-
-                // List the pages that DO NOT require a logged-in employee (Public Visitor Pages)
-                if (currentPage != "vms_selflogin.aspx" &&
-                    currentPage != "vms_registration.aspx" &&
-                    currentPage != "vms_myvisits.aspx" &&  // <-- ADDED THIS!
-                    currentPage != "vms_gatescanner.aspx")
+                // Anonymous/public VMS pages are exempt from ERP USERID gate
+                // (membership: AnonymousAccessPages / IsAnonymousAccessPage).
+                if (!IsAnonymousAccessPage())
                 {
                     // Standard employee security check
                     if (Session["USERID"] == null)
