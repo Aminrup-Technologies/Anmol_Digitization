@@ -396,6 +396,10 @@
 
             // Listen for remote logout via storage event
             window.addEventListener('storage', function (e) {
+                // Anonymous/public VMS pages must not follow ERP cross-tab logout.
+                if (window.__anonymousAccessPage)
+                    return;
+
                 if (!e) return;
                 if (e.key === 'app_logout' && e.newValue) {
                     // parse payload
