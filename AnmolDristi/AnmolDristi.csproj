@@ -1508,6 +1508,7 @@
     <Compile Include="DAL\PolicyExceptionDataAccess.cs" />
     <Compile Include="DAL\PolicyResolutionDataAccess.cs" />
     <Compile Include="DAL\VmsOtpRepository.cs" />
+    <Compile Include="DAL\VmsVisitorRepository.cs" />
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />
