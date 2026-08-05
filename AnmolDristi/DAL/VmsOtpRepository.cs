@@ -36,5 +36,43 @@ namespace AnmolDristi.DAL
                 }
             }
         }
+
+        public bool ValidateOtp(string mobile, string otp)
+        {
+            bool isValid = false;
+
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                string query = @"
+                    SELECT Id FROM VMS_OTPTracking
+                    WHERE MobileNo = @Mobile
+                      AND EmailAddress = ''
+                      AND MobileOTP = @MobileOTP
+                      AND EmailOTP = 'N/A'
+                      AND IsVerified = 0
+                      AND ExpiresAt > GETDATE()";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Mobile", mobile);
+                    cmd.Parameters.AddWithValue("@MobileOTP", otp);
+
+                    object result = cmd.ExecuteScalar();
+                    if (result != null)
+                    {
+                        isValid = true;
+                        string updateQuery = "UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = @Id";
+                        using (SqlCommand updateCmd = new SqlCommand(updateQuery, con))
+                        {
+                            updateCmd.Parameters.AddWithValue("@Id", result.ToString());
+                            updateCmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+            }
+
+            return isValid;
+        }
     }
 }

@@ -96,6 +96,16 @@ namespace AnmolDristi
             repository.CreateOtp(mobile, otp, expiresAt);
         }
 
+        /// <summary>
+        /// Page-layer wrapper for mobile OTP verification against VMS_OTPTracking.
+        /// </summary>
+        private bool ValidateMobileOtp(string mobile, string enteredMobileOtp)
+        {
+            return new VmsOtpRepository().ValidateOtp(
+                mobile,
+                enteredMobileOtp);
+        }
+
         protected void btnSendOTP_Click(object sender, EventArgs e)
         {
             string mobile = txtMobile.Text.Trim();
@@ -137,38 +147,9 @@ namespace AnmolDristi
 
             string mobile = txtMobile.Text.Trim();
             string enteredMobileOTP = txtMobileOTP.Text.Trim();
-            bool isValid = false;
-
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                con.Open();
-                string query = @"
-                    SELECT Id FROM VMS_OTPTracking
-                    WHERE MobileNo = @Mobile
-                      AND EmailAddress = ''
-                      AND MobileOTP = @MobileOTP
-                      AND EmailOTP = 'N/A'
-                      AND IsVerified = 0
-                      AND ExpiresAt > GETDATE()";
-
-                using (SqlCommand cmd = new SqlCommand(query, con))
-                {
-                    cmd.Parameters.AddWithValue("@Mobile", mobile);
-                    cmd.Parameters.AddWithValue("@MobileOTP", enteredMobileOTP);
-
-                    object result = cmd.ExecuteScalar();
-                    if (result != null)
-                    {
-                        isValid = true;
-                        string updateQuery = "UPDATE VMS_OTPTracking SET IsVerified = 1 WHERE Id = @Id";
-                        using (SqlCommand updateCmd = new SqlCommand(updateQuery, con))
-                        {
-                            updateCmd.Parameters.AddWithValue("@Id", result.ToString());
-                            updateCmd.ExecuteNonQuery();
-                        }
-                    }
-                }
-            }
+            bool isValid = ValidateMobileOtp(
+                mobile,
+                enteredMobileOTP);
 
             if (!isValid)
             {
