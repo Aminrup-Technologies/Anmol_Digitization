@@ -182,9 +182,12 @@ namespace AnmolDristi
             }
             else if (now > plantCloseToday)
             {
-                // After hours: start now and allow a short 2-hour window
+                // After hours: start now and allow a short 2-hour window (same calendar day)
                 txtApprovedTimeFrom.Text = now.ToString("HH:mm");
-                txtApprovedTimeTo.Text = now.AddHours(2).ToString("HH:mm");
+                DateTime afterHoursEnd = now.AddHours(2);
+                if (afterHoursEnd.Date > now.Date)
+                    afterHoursEnd = now.Date.AddHours(23).AddMinutes(59);
+                txtApprovedTimeTo.Text = afterHoursEnd.ToString("HH:mm");
             }
             else
             {
