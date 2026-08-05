@@ -132,12 +132,8 @@ namespace AnmolDristi
         protected void btnVerifyOTP_Click(object sender, EventArgs e)
         {
             int attempts = Session["OTPAttempts"] != null ? Convert.ToInt32(Session["OTPAttempts"]) : 0;
-            if (attempts >= 5)
-            {
-                lblMessage.ForeColor = Color.Red;
-                lblMessage.Text = "Too many failed attempts. Please request a new verification code.";
+            if (!ValidateOtpAttemptLimit())
                 return;
-            }
 
             string mobile = txtMobile.Text.Trim();
             string enteredMobileOTP = txtMobileOTP.Text.Trim();
@@ -212,6 +208,22 @@ namespace AnmolDristi
             btnSendOTP_Click(sender, e);
             lblMessage.ForeColor = Color.Green;
             lblMessage.Text = "A new verification code has been sent to your mobile number.";
+        }
+
+        /// <summary>
+        /// Enforces the visitor OTP failed-attempt limit stored in Session["OTPAttempts"].
+        /// </summary>
+        private bool ValidateOtpAttemptLimit()
+        {
+            int attempts = Session["OTPAttempts"] != null ? Convert.ToInt32(Session["OTPAttempts"]) : 0;
+            if (attempts >= 5)
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = "Too many failed attempts. Please request a new verification code.";
+                return false;
+            }
+
+            return true;
         }
 
         private void QueueOtpEmail(string email, string otp)
