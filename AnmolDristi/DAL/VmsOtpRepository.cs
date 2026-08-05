@@ -21,6 +21,19 @@ namespace AnmolDristi.DAL
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
                 con.Open();
+
+                string invalidateQuery = @"
+                    UPDATE VMS_OTPTracking
+                    SET IsVerified = 1
+                    WHERE MobileNo = @Mobile
+                      AND IsVerified = 0";
+
+                using (SqlCommand invalidateCmd = new SqlCommand(invalidateQuery, con))
+                {
+                    invalidateCmd.Parameters.AddWithValue("@Mobile", mobile);
+                    invalidateCmd.ExecuteNonQuery();
+                }
+
                 string query = @"
                     INSERT INTO VMS_OTPTracking
                     (MobileNo, EmailAddress, MobileOTP, EmailOTP, ExpiresAt)

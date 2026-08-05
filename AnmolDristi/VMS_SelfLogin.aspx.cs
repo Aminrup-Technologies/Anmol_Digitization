@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Net;
 using System.IO;
 using System.Web;
+using System.Security.Cryptography;
 using AnmolDristi.DAL;
 
 namespace AnmolDristi
@@ -106,6 +107,31 @@ namespace AnmolDristi
                 enteredMobileOtp);
         }
 
+        /// <summary>
+        /// Generates a cryptographically secure 6-digit OTP in the range 100000-999999.
+        /// </summary>
+        private string GenerateSecureOtp()
+        {
+            const int minInclusive = 100000;
+            const int rangeSize = 900000; // 100000..999999 inclusive
+            byte[] bytes = new byte[4];
+
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+            {
+                uint value;
+                uint exclusiveLimit = uint.MaxValue - (uint.MaxValue % (uint)rangeSize);
+                do
+                {
+                    rng.GetBytes(bytes);
+                    value = BitConverter.ToUInt32(bytes, 0);
+                }
+                while (value >= exclusiveLimit);
+
+                int otp = minInclusive + (int)(value % (uint)rangeSize);
+                return otp.ToString();
+            }
+        }
+
         protected void btnSendOTP_Click(object sender, EventArgs e)
         {
             string mobile = txtMobile.Text.Trim();
@@ -117,8 +143,7 @@ namespace AnmolDristi
                 return;
             }
 
-            Random rand = new Random();
-            string mobileOTP = rand.Next(100000, 999999).ToString();
+            string mobileOTP = GenerateSecureOtp();
 
             PersistMobileOtp(mobile, mobileOTP);
 
@@ -225,13 +250,14 @@ namespace AnmolDristi
         {
             try
             {
-                string username = "anmolb";
-                string password = "Support@2023";
-                string senderId = "ANMOLB";
+                string username = ConfigurationManager.AppSettings["VmsSmsUsername"];
+                string password = ConfigurationManager.AppSettings["VmsSmsPassword"];
+                string senderId = ConfigurationManager.AppSettings["VmsSmsSenderId"];
+                string apiEndpoint = ConfigurationManager.AppSettings["VmsSmsApiEndpoint"];
                 string rawMessage = $"OTP to login into your Anmol CRM Portal is {otp}. Thanks Team ANMOL INDUSTRIES LTD";
                 string encodedMessage = HttpUtility.UrlEncode(rawMessage);
 
-                string url = $"http://api.smscountry.com/SMSCwebservice_bulk.aspx" +
+                string url = $"{apiEndpoint}" +
                              $"?User={username}" +
                              $"&passwd={password}" +
                              $"&mobilenumber={mobile}" +
