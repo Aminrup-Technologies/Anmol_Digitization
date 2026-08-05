@@ -78,6 +78,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.CheckBoxList cblRequestedDays;
         
         /// <summary>
+        /// txtApprovedTimeFrom control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtApprovedTimeFrom;
+        
+        /// <summary>
+        /// txtApprovedTimeTo control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox txtApprovedTimeTo;
+        
+        /// <summary>
         /// btnApprove control.
         /// </summary>
         /// <remarks>

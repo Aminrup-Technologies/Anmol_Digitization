@@ -112,6 +112,75 @@ namespace AnmolDristi
                 {
                     BindRequestedDays(con, visitId);
                 }
+
+                if (isPending)
+                {
+                    PrefillApprovedValidityTimes(con, visitId);
+                }
+            }
+        }
+
+        private void PrefillApprovedValidityTimes(SqlConnection con, string visitId)
+        {
+            TimeSpan plantOpen = new TimeSpan(9, 0, 0);
+            TimeSpan plantClose = new TimeSpan(18, 0, 0);
+
+            int branchId = 0;
+            using (SqlCommand branchCmd = new SqlCommand(
+                "SELECT ISNULL(TargetBranchID, 0) FROM VMS_VisitLog WHERE LogID = @LogID", con))
+            {
+                branchCmd.Parameters.AddWithValue("@LogID", visitId);
+                object branchResult = branchCmd.ExecuteScalar();
+                if (branchResult != null && branchResult != DBNull.Value)
+                    branchId = Convert.ToInt32(branchResult);
+            }
+
+            if (branchId > 0)
+            {
+                using (SqlCommand timeCmd = new SqlCommand(@"
+                    SELECT OpenTime, CloseTime
+                    FROM VMS_PlantTimings
+                    WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek", con))
+                {
+                    timeCmd.Parameters.AddWithValue("@BranchID", branchId);
+                    timeCmd.Parameters.AddWithValue("@DayOfWeek", DateTime.Now.ToString("dddd"));
+                    using (SqlDataReader reader = timeCmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            if (reader["OpenTime"] != DBNull.Value)
+                                plantOpen = (TimeSpan)reader["OpenTime"];
+                            if (reader["CloseTime"] != DBNull.Value)
+                                plantClose = (TimeSpan)reader["CloseTime"];
+                        }
+                    }
+                }
+            }
+
+            DateTime now = DateTime.Now;
+            DateTime plantOpenToday = now.Date.Add(plantOpen);
+            DateTime plantCloseToday = now.Date.Add(plantClose);
+
+            if (now < plantOpenToday)
+            {
+                // Before hours: start validity from now, still end at plant close
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
+            }
+            else if (now > plantCloseToday)
+            {
+                // After hours: start now and allow a short 2-hour window (same calendar day)
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                DateTime afterHoursEnd = now.AddHours(2);
+                if (afterHoursEnd.Date > now.Date)
+                    afterHoursEnd = now.Date.AddHours(23).AddMinutes(59);
+                txtApprovedTimeTo.Text = afterHoursEnd.ToString("HH:mm");
+            }
+            else
+            {
+                // Within plant hours: default to standard open/close
+                txtApprovedTimeFrom.Text = plantOpen.ToString(@"hh\:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
             }
         }
 
@@ -164,7 +233,26 @@ namespace AnmolDristi
                 }
             }
 
-            ProcessApproval("Approved", "Scheduled");
+            TimeSpan approvedFromTime;
+            TimeSpan approvedToTime;
+            if (!TimeSpan.TryParse(txtApprovedTimeFrom.Text, out approvedFromTime) ||
+                !TimeSpan.TryParse(txtApprovedTimeTo.Text, out approvedToTime))
+            {
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                lblMessage.Text = "Please enter valid From and Until times.";
+                return;
+            }
+
+            if (approvedToTime <= approvedFromTime)
+            {
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                lblMessage.Text = "Valid Until must be after Valid From.";
+                return;
+            }
+
+            ProcessApproval("Approved", "Scheduled", approvedFromTime, approvedToTime);
         }
 
         protected void btnReject_Click(object sender, EventArgs e)
@@ -190,7 +278,46 @@ namespace AnmolDristi
             }
         }
 
-        private void ProcessApproval(string approvalStatus, string visitStatus)
+        private void ApplyApprovedValidityTimes(
+            SqlConnection con,
+            SqlTransaction trans,
+            string visitId,
+            TimeSpan approvedFromTime,
+            TimeSpan approvedToTime)
+        {
+            // Keep existing calendar dates; replace only the time portion of ValidFrom / ValidUpto
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, ISNULL(RequestedValidFrom, GETDATE())) AS date) AS datetime)),
+                    ValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ValidUpto, ISNULL(RequestedValidUpto, GETDATE())) AS date) AS datetime)),
+                    ApprovedValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ApprovedValidFrom, ISNULL(ValidFrom, ISNULL(RequestedValidFrom, GETDATE()))) AS date) AS datetime)),
+                    ApprovedValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ApprovedValidUpto, ISNULL(ValidUpto, ISNULL(RequestedValidUpto, GETDATE()))) AS date) AS datetime))
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", visitId);
+                cmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
+                cmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
+                cmd.ExecuteNonQuery();
+            }
+
+            using (SqlCommand dayCmd = new SqlCommand(@"
+                UPDATE VMS_VisitDayLog
+                SET DayValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(VisitDate AS datetime)),
+                    DayValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(VisitDate AS datetime))
+                WHERE LogID = @LogID AND IsDayApproved = 1", con, trans))
+            {
+                dayCmd.Parameters.AddWithValue("@LogID", visitId);
+                dayCmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
+                dayCmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
+                dayCmd.ExecuteNonQuery();
+            }
+        }
+
+        private void ProcessApproval(
+            string approvalStatus,
+            string visitStatus,
+            TimeSpan? approvedFromTime = null,
+            TimeSpan? approvedToTime = null)
         {
             string visitId = Request.QueryString["vid"];
 
@@ -208,6 +335,12 @@ namespace AnmolDristi
                             if (cblRequestedDays.Visible)
                             {
                                 ApplySelectedDayApprovals(con, trans, visitId);
+                            }
+
+                            // Host-chosen validity window (time portions of ValidFrom / ValidUpto)
+                            if (approvedFromTime.HasValue && approvedToTime.HasValue)
+                            {
+                                ApplyApprovedValidityTimes(con, trans, visitId, approvedFromTime.Value, approvedToTime.Value);
                             }
 
                             Guid qrToken = Guid.NewGuid();
@@ -228,6 +361,12 @@ namespace AnmolDristi
                             if (cblRequestedDays.Visible)
                             {
                                 ApplySelectedDayApprovals(con, trans, visitId);
+                            }
+
+                            // Re-apply host time override after schedule approval sets ValidFrom/ValidUpto
+                            if (approvedFromTime.HasValue && approvedToTime.HasValue)
+                            {
+                                ApplyApprovedValidityTimes(con, trans, visitId, approvedFromTime.Value, approvedToTime.Value);
                             }
 
                             string visEmail = "";
