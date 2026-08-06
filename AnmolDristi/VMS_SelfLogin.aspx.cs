@@ -163,12 +163,8 @@ namespace AnmolDristi
         protected void btnVerifyOTP_Click(object sender, EventArgs e)
         {
             int attempts = Session["OTPAttempts"] != null ? Convert.ToInt32(Session["OTPAttempts"]) : 0;
-            if (attempts >= 5)
-            {
-                lblMessage.ForeColor = Color.Red;
-                lblMessage.Text = "Too many failed attempts. Please request a new verification code.";
+            if (!ValidateOtpAttemptLimit())
                 return;
-            }
 
             string mobile = txtMobile.Text.Trim();
             string enteredMobileOTP = txtMobileOTP.Text.Trim();
@@ -184,11 +180,51 @@ namespace AnmolDristi
                 return;
             }
 
+            InitializeVerifiedSession(mobile);
+
+            ResolveVerifiedVisitor(
+                mobile,
+                hfBranchId.Value);
+        }
+
+        protected void lnkResend_Click(object sender, EventArgs e)
+        {
+            btnSendOTP_Click(sender, e);
+            lblMessage.ForeColor = Color.Green;
+            lblMessage.Text = "A new verification code has been sent to your mobile number.";
+        }
+
+        /// <summary>
+        /// Enforces the visitor OTP failed-attempt limit stored in Session["OTPAttempts"].
+        /// </summary>
+        private bool ValidateOtpAttemptLimit()
+        {
+            int attempts = Session["OTPAttempts"] != null ? Convert.ToInt32(Session["OTPAttempts"]) : 0;
+            if (attempts >= 5)
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = "Too many failed attempts. Please request a new verification code.";
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Clears OTP attempt state and stores the verified visitor mobile in Session.
+        /// </summary>
+        private void InitializeVerifiedSession(string mobile)
+        {
             Session.Remove("OTPAttempts");
             Session["VerifiedMobile"] = mobile;
             Session["VerifiedEmail"] = string.Empty;
+        }
 
-            string branchId = hfBranchId.Value;
+        /// <summary>
+        /// Routes a verified visitor to MyVisits or Registration based on BranchId and active visit.
+        /// </summary>
+        private void ResolveVerifiedVisitor(string mobile, string branchId)
+        {
             int parsedBranchId;
             if (string.IsNullOrEmpty(branchId) || !int.TryParse(branchId, out parsedBranchId))
             {
@@ -207,13 +243,6 @@ namespace AnmolDristi
             }
 
             Context.ApplicationInstance.CompleteRequest();
-        }
-
-        protected void lnkResend_Click(object sender, EventArgs e)
-        {
-            btnSendOTP_Click(sender, e);
-            lblMessage.ForeColor = Color.Green;
-            lblMessage.Text = "A new verification code has been sent to your mobile number.";
         }
 
         private void QueueOtpEmail(string email, string otp)
