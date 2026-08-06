@@ -74,6 +74,36 @@ namespace AnmolDristi
             txtTimeTo.Text = "18:00";
         }
 
+        /// <summary>
+        /// Persists the captured selfie from hfSelfieBase64 and returns the relative PhotoPath.
+        /// </summary>
+        private string PersistSelfie()
+        {
+            string base64Data = hfSelfieBase64.Value;
+
+            if (string.IsNullOrWhiteSpace(base64Data))
+                throw new Exception("No photo captured.");
+
+            base64Data = base64Data.Replace("data:image/png;base64,", "");
+
+            byte[] imageBytes = Convert.FromBase64String(base64Data);
+
+            string folderPath =
+                Server.MapPath("~/Uploads/VisitorPhotos/");
+
+            if (!Directory.Exists(folderPath))
+                Directory.CreateDirectory(folderPath);
+
+            string fileName =
+                $"Vis_{DateTime.Now.Ticks}.png";
+
+            string physicalFullPath = Path.Combine(folderPath, fileName);
+
+            File.WriteAllBytes(physicalFullPath, imageBytes);
+
+            return "/Uploads/VisitorPhotos/" + fileName;
+        }
+
         private void BindQuickHosts()
         {
             int branchId = Convert.ToInt32(hfBranchId.Value);
@@ -209,29 +239,9 @@ namespace AnmolDristi
                 // ==========================================================
                 // 4. SELFIE VALIDATION
                 // ==========================================================
-                string base64Data = hfSelfieBase64.Value;
-
-                if (string.IsNullOrWhiteSpace(base64Data))
-                    throw new Exception("No photo captured.");
-
-                base64Data = base64Data.Replace("data:image/png;base64,", "");
-
-                byte[] imageBytes = Convert.FromBase64String(base64Data);
-
-                string folderPath =
-                    Server.MapPath("~/Uploads/VisitorPhotos/");
-
-                if (!Directory.Exists(folderPath))
-                    Directory.CreateDirectory(folderPath);
-
-                string fileName =
-                    $"Vis_{DateTime.Now.Ticks}.png";
-
-                fullPath = Path.Combine(folderPath, fileName);
-
-                File.WriteAllBytes(fullPath, imageBytes);
-
-                dbPhotoPath = "/Uploads/VisitorPhotos/" + fileName;
+                string photoPath = PersistSelfie();
+                fullPath = Server.MapPath("~" + photoPath);
+                dbPhotoPath = photoPath;
 
                 // ==========================================================
                 // 5. HOST VALIDATION
