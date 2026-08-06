@@ -105,6 +105,314 @@ namespace AnmolDristi
             return "/Uploads/VisitorPhotos/" + fileName;
         }
 
+        /// <summary>
+        /// Queues host approval/FYI, escalation CC, and optional visitor pass notifications.
+        /// </summary>
+        private void QueueNotifications(
+            int visitId,
+            string hostEmpCode,
+            string fullName,
+            string currentApprovalStatus,
+            string scheduleSummary,
+            string visitorEmail,
+            string visitorMobile,
+            object qrTokenParam,
+            bool shouldQueueVisitorPass)
+        {
+            string hostEmail = "";
+            string hostName = "";
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+
+                // ==========================================================
+                // 12. FETCH HOST DETAILS
+                // ==========================================================
+                string hostQuery = @"
+                            SELECT
+                            EmployeeName,
+                            Email
+                            FROM MST_UserMaster
+                            WHERE EmployeeCode=@HostCode";
+
+                using (SqlCommand hostCmd =
+                    new SqlCommand(hostQuery, con))
+                {
+                    hostCmd.Parameters.AddWithValue(
+                        "@HostCode",
+                        hostEmpCode);
+
+                    using (SqlDataReader dr =
+                        hostCmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            hostName =
+                                dr["EmployeeName"].ToString();
+
+                            hostEmail =
+                                dr["Email"].ToString();
+                        }
+                    }
+                }
+
+                // ==========================================================
+                // 13. FALLBACK EMAIL LOGIC
+                // ==========================================================
+                bool isFallbackEmail = false;
+
+                if (string.IsNullOrWhiteSpace(hostEmail))
+                {
+                    hostEmail = "dgtlautomation@anmolindustries.com";
+                    isFallbackEmail = true;
+                }
+
+                string fallbackNote = "";
+
+                if (isFallbackEmail)
+                {
+                    fallbackNote =
+                            $@"<p style='color:red;font-size:12px;'>
+                                <em>
+                                System Note:
+                                This email was routed to the fallback address because
+                                no valid email was found for Host Code:
+                                {hostEmpCode}.
+                                </em>
+                                </p>";
+                }
+
+                // ==========================================================
+                // 14. QUEUE EMAIL NOTIFICATION
+                // ==========================================================
+
+                if (!string.IsNullOrWhiteSpace(hostEmail))
+                {
+                    string subject;
+                    string body;
+                    string sourceModule;
+
+                    if (currentApprovalStatus == "Pending")
+                    {
+                        subject = $"Approval Needed: Visitor {fullName} has arrived";
+
+                        if (isFallbackEmail)
+                            subject = "[FALLBACK] " + subject;
+
+                        byte[] plainTextBytes =
+                            System.Text.Encoding.UTF8.GetBytes(hostEmpCode);
+
+                        string encodedEmpCode =
+                            Convert.ToBase64String(plainTextBytes);
+
+                        string quickApproveLink =
+                            VmsHelper.BuildHostQuickLoginUrl(visitId, encodedEmpCode);
+
+                        body = $@"
+                                            <div style='font-family:Arial;padding:20px;'>
+
+                                            {fallbackNote}
+
+                                            <h3 style='color:#1ABB9C;'>
+                                            Hello {hostName},
+                                            </h3>
+
+                                            <p>
+                                            <strong>{fullName}</strong>
+                                            from
+                                            <strong>{txtCompany.Text}</strong>
+                                            has requested a visit on:
+                                            <strong>{scheduleSummary}</strong>
+                                            </p>
+
+                                            <br/>
+
+                                            <a href='{quickApproveLink}'
+                                            style='background:#1ABB9C;
+                                            color:white;
+                                            padding:12px 25px;
+                                            text-decoration:none;
+                                            border-radius:5px;
+                                            font-weight:bold;'>
+
+                                            Review & Approve Visitor
+
+                                            </a>
+
+                                            </div>";
+
+                        sourceModule = "VMS_APPROVAL";
+                    }
+                    else
+                    {
+                        subject =
+                            $"FYI: Internal Colleague {fullName} has arrived";
+
+                        if (isFallbackEmail)
+                            subject = "[FALLBACK] " + subject;
+
+                        body = $@"
+                                        <div style='font-family:Arial;padding:20px;'>
+
+                                        {fallbackNote}
+
+                                        <h3 style='color:#1ABB9C;'>
+
+                                        Hello {hostName},
+
+                                        </h3>
+
+                                        <p>
+
+                                        <strong>{fullName}</strong>
+
+                                        from
+
+                                        <strong>{txtCompany.Text}</strong>
+
+                                        (Internal Employee)
+
+                                        is currently at the reception to meet you.
+
+                                        </p>
+
+                                        <p style='color:#73879C;'>
+
+                                        <em>
+
+                                        Their visitor pass has already been automatically approved.
+
+                                        They will check in at the security gate using their digital pass.
+
+                                        </em>
+
+                                        </p>
+
+                                        </div>";
+
+                        sourceModule = "VMS_FYI_ARRIVAL";
+                    }
+
+                    string queueQuery = @"
+
+                                    INSERT INTO NotificationQueue
+                                    (
+                                    FormSubmissionId,
+                                    EscalationLevel,
+                                    RecipientEmail,
+                                    RecipientName,
+                                    Subject,
+                                    Body,
+                                    NotificationType,
+                                    Status,
+                                    SourceModule
+                                    )
+
+                                    VALUES
+                                    (
+                                    @VisitId,
+                                    0,
+                                    @Email,
+                                    @Name,
+                                    @Subject,
+                                    @Body,
+                                    'Email',
+                                    'Pending',
+                                    @SourceModule
+                                    )";
+
+                    using (SqlCommand qCmd =
+                        new SqlCommand(queueQuery, con))
+                    {
+                        qCmd.Parameters.AddWithValue("@VisitId", visitId);
+                        qCmd.Parameters.AddWithValue("@Email", hostEmail);
+                        qCmd.Parameters.AddWithValue("@Name", hostName);
+                        qCmd.Parameters.AddWithValue("@Subject", subject);
+                        qCmd.Parameters.AddWithValue("@Body", body);
+                        qCmd.Parameters.AddWithValue("@SourceModule", sourceModule);
+
+                        qCmd.ExecuteNonQuery();
+                    }
+
+                    // ==========================================================
+                    // 14b. ESCALATION / CC ROUTING (branch EscalationEmailList)
+                    // ==========================================================
+                    string escalationEmailList = null;
+                    using (SqlCommand escCmd = new SqlCommand(@"
+                                    SELECT EscalationEmailList
+                                    FROM VMS_OfficeSettings
+                                    WHERE Branch_ID = @BranchId", con))
+                    {
+                        escCmd.Parameters.AddWithValue("@BranchId", Convert.ToInt32(hfBranchId.Value));
+                        object escResult = escCmd.ExecuteScalar();
+                        if (escResult != null && escResult != DBNull.Value)
+                            escalationEmailList = escResult.ToString();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(escalationEmailList))
+                    {
+                        string ccQueueQuery = @"
+                                        INSERT INTO NotificationQueue
+                                        (
+                                            FormSubmissionId,
+                                            EscalationLevel,
+                                            RecipientEmail,
+                                            RecipientName,
+                                            Subject,
+                                            Body,
+                                            NotificationType,
+                                            Status,
+                                            SourceModule
+                                        )
+                                        VALUES
+                                        (
+                                            @VisitId,
+                                            0,
+                                            @Email,
+                                            @Name,
+                                            @Subject,
+                                            @Body,
+                                            'Email',
+                                            'Pending',
+                                            'VMS_REG_CC'
+                                        )";
+
+                        string ccSubject = "[CC] " + subject;
+                        string ccRecipientName = "[CC] " + (string.IsNullOrWhiteSpace(hostName) ? "Escalation" : hostName);
+
+                        foreach (string rawEmail in escalationEmailList.Split(','))
+                        {
+                            string ccEmail = rawEmail.Trim();
+                            if (!IsValidNotificationEmail(ccEmail))
+                                continue;
+
+                            using (SqlCommand ccCmd = new SqlCommand(ccQueueQuery, con))
+                            {
+                                ccCmd.Parameters.AddWithValue("@VisitId", visitId);
+                                ccCmd.Parameters.AddWithValue("@Email", ccEmail);
+                                ccCmd.Parameters.AddWithValue("@Name", ccRecipientName);
+                                ccCmd.Parameters.AddWithValue("@Subject", ccSubject);
+                                ccCmd.Parameters.AddWithValue("@Body", body);
+                                ccCmd.ExecuteNonQuery();
+                            }
+                        }
+                    }
+                }
+
+                if (shouldQueueVisitorPass)
+                {
+                    VmsHelper.QueueVisitorPassNotification(
+                        con,
+                        visitId,
+                        (Guid)qrTokenParam,
+                        fullName,
+                        visitorEmail,
+                        visitorMobile);
+                }
+            }
+        }
+
         private class ApprovalResolution
         {
             public string ApprovalStatus { get; set; }
@@ -375,9 +683,6 @@ namespace AnmolDristi
                 object approvedOn = approval.ApprovedOn;
                 object qrTokenParam = approval.QrTokenParam;
 
-                string hostEmail = "";
-                string hostName = "";
-
                 VisitScheduleRequest visitSchedule = VmsVisitScheduleHelper.ParseSchedule(
                     ddlScheduleType.SelectedValue,
                     txtVisitFromDate.Text,
@@ -416,295 +721,16 @@ namespace AnmolDristi
                     approvedOn,
                     visitSchedule);
 
-                using (SqlConnection con = new SqlConnection(connStr))
-                {
-                    con.Open();
-
-                            // ==========================================================
-                            // 12. FETCH HOST DETAILS
-                            // ==========================================================
-                            string hostQuery = @"
-                            SELECT
-                            EmployeeName,
-                            Email
-                            FROM MST_UserMaster
-                            WHERE EmployeeCode=@HostCode";
-
-                            using (SqlCommand hostCmd =
-                                new SqlCommand(hostQuery, con))
-                            {
-                                hostCmd.Parameters.AddWithValue(
-                                    "@HostCode",
-                                    hostEmpCode);
-
-                                using (SqlDataReader dr =
-                                    hostCmd.ExecuteReader())
-                                {
-                                    if (dr.Read())
-                                    {
-                                        hostName =
-                                            dr["EmployeeName"].ToString();
-
-                                        hostEmail =
-                                            dr["Email"].ToString();
-                                    }
-                                }
-                            }
-
-                            // ==========================================================
-                            // 13. FALLBACK EMAIL LOGIC
-                            // ==========================================================
-                            bool isFallbackEmail = false;
-
-                            if (string.IsNullOrWhiteSpace(hostEmail))
-                            {
-                                hostEmail = "dgtlautomation@anmolindustries.com";
-                                isFallbackEmail = true;
-                            }
-
-                            string fallbackNote = "";
-
-                            if (isFallbackEmail)
-                            {
-                                fallbackNote =
-                                        $@"<p style='color:red;font-size:12px;'>
-                                <em>
-                                System Note:
-                                This email was routed to the fallback address because
-                                no valid email was found for Host Code:
-                                {hostEmpCode}.
-                                </em>
-                                </p>";
-                            }
-
-                            // ==========================================================
-                            // 14. QUEUE EMAIL NOTIFICATION
-                            // ==========================================================
-
-                            if (!string.IsNullOrWhiteSpace(hostEmail))
-                            {
-                                string subject;
-                                string body;
-                                string sourceModule;
-
-                                if (currentApprovalStatus == "Pending")
-                                {
-                                    subject = $"Approval Needed: Visitor {fullName} has arrived";
-
-                                    if (isFallbackEmail)
-                                        subject = "[FALLBACK] " + subject;
-
-                                    byte[] plainTextBytes =
-                                        System.Text.Encoding.UTF8.GetBytes(hostEmpCode);
-
-                                    string encodedEmpCode =
-                                        Convert.ToBase64String(plainTextBytes);
-
-                                    string quickApproveLink =
-                                        VmsHelper.BuildHostQuickLoginUrl(newVisitId, encodedEmpCode);
-
-                                    body = $@"
-                                            <div style='font-family:Arial;padding:20px;'>
-
-                                            {fallbackNote}
-
-                                            <h3 style='color:#1ABB9C;'>
-                                            Hello {hostName},
-                                            </h3>
-
-                                            <p>
-                                            <strong>{fullName}</strong>
-                                            from
-                                            <strong>{txtCompany.Text}</strong>
-                                            has requested a visit on:
-                                            <strong>{scheduleSummary}</strong>
-                                            </p>
-
-                                            <br/>
-
-                                            <a href='{quickApproveLink}'
-                                            style='background:#1ABB9C;
-                                            color:white;
-                                            padding:12px 25px;
-                                            text-decoration:none;
-                                            border-radius:5px;
-                                            font-weight:bold;'>
-
-                                            Review & Approve Visitor
-
-                                            </a>
-
-                                            </div>";
-
-                                    sourceModule = "VMS_APPROVAL";
-                                }
-                                else
-                                {
-                                    subject =
-                                        $"FYI: Internal Colleague {fullName} has arrived";
-
-                                    if (isFallbackEmail)
-                                        subject = "[FALLBACK] " + subject;
-
-                                    body = $@"
-                                        <div style='font-family:Arial;padding:20px;'>
-
-                                        {fallbackNote}
-
-                                        <h3 style='color:#1ABB9C;'>
-
-                                        Hello {hostName},
-
-                                        </h3>
-
-                                        <p>
-
-                                        <strong>{fullName}</strong>
-
-                                        from
-
-                                        <strong>{txtCompany.Text}</strong>
-
-                                        (Internal Employee)
-
-                                        is currently at the reception to meet you.
-
-                                        </p>
-
-                                        <p style='color:#73879C;'>
-
-                                        <em>
-
-                                        Their visitor pass has already been automatically approved.
-
-                                        They will check in at the security gate using their digital pass.
-
-                                        </em>
-
-                                        </p>
-
-                                        </div>";
-
-                                    sourceModule = "VMS_FYI_ARRIVAL";
-                                }
-
-                                string queueQuery = @"
-
-                                    INSERT INTO NotificationQueue
-                                    (
-                                    FormSubmissionId,
-                                    EscalationLevel,
-                                    RecipientEmail,
-                                    RecipientName,
-                                    Subject,
-                                    Body,
-                                    NotificationType,
-                                    Status,
-                                    SourceModule
-                                    )
-
-                                    VALUES
-                                    (
-                                    @VisitId,
-                                    0,
-                                    @Email,
-                                    @Name,
-                                    @Subject,
-                                    @Body,
-                                    'Email',
-                                    'Pending',
-                                    @SourceModule
-                                    )";
-
-                                using (SqlCommand qCmd =
-                                    new SqlCommand(queueQuery, con))
-                                {
-                                    qCmd.Parameters.AddWithValue("@VisitId", newVisitId);
-                                    qCmd.Parameters.AddWithValue("@Email", hostEmail);
-                                    qCmd.Parameters.AddWithValue("@Name", hostName);
-                                    qCmd.Parameters.AddWithValue("@Subject", subject);
-                                    qCmd.Parameters.AddWithValue("@Body", body);
-                                    qCmd.Parameters.AddWithValue("@SourceModule", sourceModule);
-
-                                    qCmd.ExecuteNonQuery();
-                                }
-
-                                // ==========================================================
-                                // 14b. ESCALATION / CC ROUTING (branch EscalationEmailList)
-                                // ==========================================================
-                                string escalationEmailList = null;
-                                using (SqlCommand escCmd = new SqlCommand(@"
-                                    SELECT EscalationEmailList
-                                    FROM VMS_OfficeSettings
-                                    WHERE Branch_ID = @BranchId", con))
-                                {
-                                    escCmd.Parameters.AddWithValue("@BranchId", Convert.ToInt32(hfBranchId.Value));
-                                    object escResult = escCmd.ExecuteScalar();
-                                    if (escResult != null && escResult != DBNull.Value)
-                                        escalationEmailList = escResult.ToString();
-                                }
-
-                                if (!string.IsNullOrWhiteSpace(escalationEmailList))
-                                {
-                                    string ccQueueQuery = @"
-                                        INSERT INTO NotificationQueue
-                                        (
-                                            FormSubmissionId,
-                                            EscalationLevel,
-                                            RecipientEmail,
-                                            RecipientName,
-                                            Subject,
-                                            Body,
-                                            NotificationType,
-                                            Status,
-                                            SourceModule
-                                        )
-                                        VALUES
-                                        (
-                                            @VisitId,
-                                            0,
-                                            @Email,
-                                            @Name,
-                                            @Subject,
-                                            @Body,
-                                            'Email',
-                                            'Pending',
-                                            'VMS_REG_CC'
-                                        )";
-
-                                    string ccSubject = "[CC] " + subject;
-                                    string ccRecipientName = "[CC] " + (string.IsNullOrWhiteSpace(hostName) ? "Escalation" : hostName);
-
-                                    foreach (string rawEmail in escalationEmailList.Split(','))
-                                    {
-                                        string ccEmail = rawEmail.Trim();
-                                        if (!IsValidNotificationEmail(ccEmail))
-                                            continue;
-
-                                        using (SqlCommand ccCmd = new SqlCommand(ccQueueQuery, con))
-                                        {
-                                            ccCmd.Parameters.AddWithValue("@VisitId", newVisitId);
-                                            ccCmd.Parameters.AddWithValue("@Email", ccEmail);
-                                            ccCmd.Parameters.AddWithValue("@Name", ccRecipientName);
-                                            ccCmd.Parameters.AddWithValue("@Subject", ccSubject);
-                                            ccCmd.Parameters.AddWithValue("@Body", body);
-                                            ccCmd.ExecuteNonQuery();
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (approval.ShouldQueueVisitorPass)
-                            {
-                                VmsHelper.QueueVisitorPassNotification(
-                                    con,
-                                    newVisitId,
-                                    (Guid)qrTokenParam,
-                                    fullName,
-                                    visitorEmail,
-                                    visitorMobile);
-                            }
-                }
+                QueueNotifications(
+                    newVisitId,
+                    hostEmpCode,
+                    fullName,
+                    currentApprovalStatus,
+                    scheduleSummary,
+                    visitorEmail,
+                    visitorMobile,
+                    qrTokenParam,
+                    approval.ShouldQueueVisitorPass);
 
                 // ==========================================================
                 // 16. SUCCESS
