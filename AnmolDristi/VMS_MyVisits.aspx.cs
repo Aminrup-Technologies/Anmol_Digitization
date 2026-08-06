@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Data;
-using System.Data.SqlClient;
-using System.Configuration;
 using System.Web.UI.WebControls;
 using System.Web.UI;
 using QRCoder;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_MyVisits : System.Web.UI.Page
     {
-        string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorRepository _repository = new VmsVisitorRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -42,55 +41,9 @@ namespace AnmolDristi
                 ? Session["VerifiedEmail"].ToString()
                 : string.Empty;
 
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                string query = @"
-                    SELECT 
-                        v.LogID,
-                        v.CreatedDate,
-                        v.PurposeOfVisit,
-                        v.ApprovalStatus,
-                        v.VisitStatus,
-                        v.ScheduleType,
-                        v.RequestedValidFrom,
-                        v.RequestedValidUpto,
-                        v.ValidFrom,
-                        v.ValidUpto,
-                        v.QRToken,
-                        ISNULL(o.AliasName, b.Branch_Description) AS AliasName,
-                        u.EmployeeName AS HostName
-                    FROM 
-                        VMS_VisitLog v
-                    LEFT JOIN 
-                        VMS_OfficeSettings o ON v.TargetBranchID = o.Branch_ID
-                    LEFT JOIN 
-                        MST_Branch b ON v.TargetBranchID = b.Branch_ID
-                    LEFT JOIN 
-                        MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
-                    WHERE 
-                        (
-                            (@Mobile <> '' AND v.VisitorMobile = @Mobile)
-                            OR (@Email <> '' AND @Email <> 'N/A' AND v.VisitorEmail = @Email)
-                        )
-                        AND v.CreatedDate >= DATEADD(month, -6, GETDATE())
-                    ORDER BY 
-                        v.CreatedDate DESC";
-
-                using (SqlCommand cmd = new SqlCommand(query, con))
-                {
-                    cmd.Parameters.AddWithValue("@Mobile", VmsHelper.NormalizeMobile(mobile));
-                    cmd.Parameters.AddWithValue("@Email", VmsHelper.NormalizeEmail(email));
-
-                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
-                    {
-                        DataTable dt = new DataTable();
-                        sda.Fill(dt);
-
-                        rptVisits.DataSource = dt;
-                        rptVisits.DataBind();
-                    }
-                }
-            }
+            DataTable dt = _repository.GetVisitorHistory(mobile, email);
+            rptVisits.DataSource = dt;
+            rptVisits.DataBind();
         }
 
         protected string FormatVisitSchedule(object scheduleTypeObj, object fromObj, object toObj)

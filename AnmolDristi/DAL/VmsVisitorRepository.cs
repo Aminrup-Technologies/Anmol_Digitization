@@ -1,5 +1,6 @@
 using System;
 using System.Configuration;
+using System.Data;
 using System.Data.SqlClient;
 
 namespace AnmolDristi.DAL
@@ -167,6 +168,57 @@ namespace AnmolDristi.DAL
                         }
 
                         throw;
+                    }
+                }
+            }
+        }
+
+        public DataTable GetVisitorHistory(string mobile, string email)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                string query = @"
+                    SELECT 
+                        v.LogID,
+                        v.CreatedDate,
+                        v.PurposeOfVisit,
+                        v.ApprovalStatus,
+                        v.VisitStatus,
+                        v.ScheduleType,
+                        v.RequestedValidFrom,
+                        v.RequestedValidUpto,
+                        v.ValidFrom,
+                        v.ValidUpto,
+                        v.QRToken,
+                        ISNULL(o.AliasName, b.Branch_Description) AS AliasName,
+                        u.EmployeeName AS HostName
+                    FROM 
+                        VMS_VisitLog v
+                    LEFT JOIN 
+                        VMS_OfficeSettings o ON v.TargetBranchID = o.Branch_ID
+                    LEFT JOIN 
+                        MST_Branch b ON v.TargetBranchID = b.Branch_ID
+                    LEFT JOIN 
+                        MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
+                    WHERE 
+                        (
+                            (@Mobile <> '' AND v.VisitorMobile = @Mobile)
+                            OR (@Email <> '' AND @Email <> 'N/A' AND v.VisitorEmail = @Email)
+                        )
+                        AND v.CreatedDate >= DATEADD(month, -6, GETDATE())
+                    ORDER BY 
+                        v.CreatedDate DESC";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Mobile", VmsHelper.NormalizeMobile(mobile));
+                    cmd.Parameters.AddWithValue("@Email", VmsHelper.NormalizeEmail(email));
+
+                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        sda.Fill(dt);
+                        return dt;
                     }
                 }
             }
