@@ -18,18 +18,26 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                // Security Check: Look for the NEW Dual-Auth session keys
-                if (Session["VerifiedMobile"] == null ||
-                    string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
-                {
-                    // Safe Redirect Pattern
-                    Response.Redirect("VMS_SelfLogin.aspx", false);
-                    Context.ApplicationInstance.CompleteRequest();
+                if (!ValidateVisitorSession())
                     return;
-                }
 
                 LoadVisitorHistory();
             }
+        }
+
+        private bool ValidateVisitorSession()
+        {
+            // Security Check: Look for the NEW Dual-Auth session keys
+            if (Session["VerifiedMobile"] == null ||
+                string.IsNullOrEmpty(Session["VerifiedMobile"].ToString()))
+            {
+                // Safe Redirect Pattern
+                Response.Redirect("VMS_SelfLogin.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
+                return false;
+            }
+
+            return true;
         }
 
         private void LoadVisitorHistory()
