@@ -277,36 +277,40 @@ namespace AnmolDristi
 
         private void SendOtpSms(string mobile, string otp)
         {
-            try
+            string username = ConfigurationManager.AppSettings["VmsSmsUsername"];
+            string password = ConfigurationManager.AppSettings["VmsSmsPassword"];
+            string senderId = ConfigurationManager.AppSettings["VmsSmsSenderId"];
+            string apiEndpoint = ConfigurationManager.AppSettings["VmsSmsApiEndpoint"];
+
+            string rawMessage =
+                $"OTP to login into your Anmol CRM Portal is {otp}. Thanks Team ANMOL INDUSTRIES LTD";
+
+            string url =
+                $"{apiEndpoint}" +
+                $"?User={HttpUtility.UrlEncode(username)}" +
+                $"&passwd={HttpUtility.UrlEncode(password)}" +
+                $"&mobilenumber={HttpUtility.UrlEncode(mobile)}" +
+                $"&message={HttpUtility.UrlEncode(rawMessage)}" +
+                $"&sid={HttpUtility.UrlEncode(senderId)}" +
+                $"&mtype=N" +
+                $"&DR=Y";
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "GET";
+            request.Timeout = 30000;
+            request.ReadWriteTimeout = 30000;
+            request.UserAgent = "AnmolDristi VMS";
+
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            using (StreamReader reader = new StreamReader(response.GetResponseStream()))
             {
-                string username = ConfigurationManager.AppSettings["VmsSmsUsername"];
-                string password = ConfigurationManager.AppSettings["VmsSmsPassword"];
-                string senderId = ConfigurationManager.AppSettings["VmsSmsSenderId"];
-                string apiEndpoint = ConfigurationManager.AppSettings["VmsSmsApiEndpoint"];
-                string rawMessage = $"OTP to login into your Anmol CRM Portal is {otp}. Thanks Team ANMOL INDUSTRIES LTD";
-                string encodedMessage = HttpUtility.UrlEncode(rawMessage);
+                string apiResponse = reader.ReadToEnd();
 
-                string url = $"{apiEndpoint}" +
-                             $"?User={username}" +
-                             $"&passwd={password}" +
-                             $"&mobilenumber={mobile}" +
-                             $"&message={encodedMessage}" +
-                             $"&sid={senderId}" +
-                             $"&mtype=N" +
-                             $"&DR=Y";
-
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-                request.Method = "GET";
-
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
+                if (!apiResponse.StartsWith("OK:", StringComparison.OrdinalIgnoreCase))
                 {
-                    System.Diagnostics.Debug.WriteLine($"SMS Sent Successfully. Response: {reader.ReadToEnd()}");
+                    throw new ApplicationException(
+                        $"SMSCountry rejected the request. Response: {apiResponse}");
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"SMS API Error: {ex.Message}");
             }
         }
     }
