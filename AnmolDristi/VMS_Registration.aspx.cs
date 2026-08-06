@@ -5,6 +5,7 @@ using System.Configuration;
 using System.IO;
 using System.Web.Services;
 using System.Web.Script.Services;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
@@ -387,189 +388,37 @@ namespace AnmolDristi
                 string scheduleSummary = VmsVisitScheduleHelper.FormatScheduleSummary(visitSchedule);
 
                 // ==========================================================
-                // 8. BEGIN DATABASE TRANSACTION
+                // 8-11. PERSIST VISITOR VISIT (repository transaction)
                 // ==========================================================
-                using (SqlConnection con =
-                    new SqlConnection(connStr))
+                DateTime validFrom = visitSchedule.RequestedValidFrom;
+                DateTime validUpto = visitSchedule.RequestedValidUpto;
+
+                VmsVisitorRepository visitorRepository = new VmsVisitorRepository();
+                newVisitId = visitorRepository.CreateVisitorVisit(
+                    ddlPurpose.SelectedValue,
+                    fullName,
+                    txtFirstName.Text.Trim(),
+                    txtLastName.Text.Trim(),
+                    visitorMobile,
+                    visitorEmail,
+                    txtCompany.Text.Trim(),
+                    txtDesignation.Text.Trim(),
+                    dbPhotoPath,
+                    branchId,
+                    hostEmpCode,
+                    purposeOfVisit,
+                    currentApprovalStatus,
+                    validFrom,
+                    validUpto,
+                    qrTokenParam,
+                    currentVisitStatus,
+                    actualInTime,
+                    approvedOn,
+                    visitSchedule);
+
+                using (SqlConnection con = new SqlConnection(connStr))
                 {
                     con.Open();
-
-                    using (SqlTransaction trans =
-                        con.BeginTransaction())
-                    {
-                        try
-                        {
-                            // --------------------------------------------------
-                            // CONTINUE IN PART-2
-                            // Timing Validation
-                            // Visit Insert
-                            // Host Lookup
-                            // Notification Queue
-                            // --------------------------------------------------
-                            // ==========================================================
-                            // 9. VISITING HOURS VALIDATION
-                            // ==========================================================
-                            DateTime validFrom = visitSchedule.RequestedValidFrom;
-                            DateTime validUpto = visitSchedule.RequestedValidUpto;
-
-                            // ==========================================================
-                            // 11. INSERT VISITOR RECORD
-                            // ==========================================================
-                            string insertQuery = @"
-
-                                INSERT INTO VMS_VisitLog
-                                (
-                                PassCategory,
-                                VisitorName,
-                                VisitorFirstName,
-                                VisitorLastName,
-                                VisitorMobile,
-                                VisitorEmail,
-                                VisitorCompany,
-                                VisitorDesignation,
-                                PhotoPath,
-                                TargetBranchID,
-                                HostEmployeeCode,
-                                PurposeOfVisit,
-                                ApprovalStatus,
-                                ValidFrom,
-                                ValidUpto,
-                                QRToken,
-                                VisitStatus,
-                                ActualInTime,
-                                ApprovedOn,
-                                ScheduleType,
-                                RequestedValidFrom,
-                                RequestedValidUpto,
-                                DailyTimeFrom,
-                                DailyTimeTo,
-                                ApprovedValidFrom,
-                                ApprovedValidUpto
-                                )
-                                VALUES
-                                (
-                                @Category,
-                                @FullName,
-                                @FirstName,
-                                @LastName,
-                                @Mobile,
-                                @Email,
-                                @Company,
-                                @Designation,
-                                @PhotoPath,
-                                @BranchID,
-                                @HostCode,
-                                @Purpose,
-                                @ApprovalStatus,
-                                @ValidFrom,
-                                @ValidUpto,
-                                @QRToken,
-                                @VisitStatus,
-                                @ActualInTime,
-                                @ApprovedOn,
-                                @ScheduleType,
-                                @RequestedValidFrom,
-                                @RequestedValidUpto,
-                                @DailyTimeFrom,
-                                @DailyTimeTo,
-                                @ApprovedValidFrom,
-                                @ApprovedValidUpto
-                                );
-
-                                SELECT SCOPE_IDENTITY();
-                                ";
-
-                            using (SqlCommand cmd =
-                                new SqlCommand(insertQuery, con, trans))
-                            {
-                                cmd.Parameters.AddWithValue("@Category",
-                                    ddlPurpose.SelectedValue);
-
-                                cmd.Parameters.AddWithValue("@FullName",
-                                    fullName);
-
-                                cmd.Parameters.AddWithValue("@FirstName",
-                                    txtFirstName.Text.Trim());
-
-                                cmd.Parameters.AddWithValue("@LastName",
-                                    txtLastName.Text.Trim());
-
-                                cmd.Parameters.AddWithValue("@Mobile",
-                                    visitorMobile);
-
-                                cmd.Parameters.AddWithValue("@Email",
-                                    visitorEmail);
-
-                                cmd.Parameters.AddWithValue("@Company",
-                                    txtCompany.Text.Trim());
-
-                                cmd.Parameters.AddWithValue("@Designation",
-                                    txtDesignation.Text.Trim());
-
-                                cmd.Parameters.AddWithValue("@PhotoPath",
-                                    dbPhotoPath);
-
-                                cmd.Parameters.AddWithValue("@BranchID",
-                                    branchId);
-
-                                cmd.Parameters.AddWithValue("@HostCode",
-                                    hostEmpCode);
-
-                                cmd.Parameters.AddWithValue("@Purpose",
-                                    purposeOfVisit);
-
-                                cmd.Parameters.AddWithValue("@ApprovalStatus",
-                                    currentApprovalStatus);
-
-                                cmd.Parameters.AddWithValue("@ValidFrom",
-                                    validFrom);
-
-                                cmd.Parameters.AddWithValue("@ValidUpto",
-                                    validUpto);
-
-                                cmd.Parameters.AddWithValue("@QRToken",
-                                    qrTokenParam);
-
-                                cmd.Parameters.AddWithValue("@VisitStatus",
-                                    currentVisitStatus);
-
-                                cmd.Parameters.AddWithValue("@ActualInTime",
-                                    actualInTime);
-
-                                cmd.Parameters.AddWithValue("@ApprovedOn",
-                                    approvedOn);
-
-                                cmd.Parameters.AddWithValue("@ScheduleType",
-                                    visitSchedule.ScheduleType);
-
-                                cmd.Parameters.AddWithValue("@RequestedValidFrom",
-                                    visitSchedule.RequestedValidFrom);
-
-                                cmd.Parameters.AddWithValue("@RequestedValidUpto",
-                                    visitSchedule.RequestedValidUpto);
-
-                                cmd.Parameters.AddWithValue("@DailyTimeFrom",
-                                    visitSchedule.TimeFrom);
-
-                                cmd.Parameters.AddWithValue("@DailyTimeTo",
-                                    visitSchedule.TimeTo);
-
-                                cmd.Parameters.AddWithValue("@ApprovedValidFrom",
-                                    currentApprovalStatus == "Approved" ? (object)validFrom : DBNull.Value);
-
-                                cmd.Parameters.AddWithValue("@ApprovedValidUpto",
-                                    currentApprovalStatus == "Approved" ? (object)validUpto : DBNull.Value);
-
-                                newVisitId =
-                                    Convert.ToInt32(cmd.ExecuteScalar());
-                            }
-
-                            VmsVisitScheduleHelper.CreateRequestedDayLogs(
-                                con,
-                                trans,
-                                newVisitId,
-                                visitSchedule,
-                                currentApprovalStatus == "Approved");
 
                             // ==========================================================
                             // 12. FETCH HOST DETAILS
@@ -582,7 +431,7 @@ namespace AnmolDristi
                             WHERE EmployeeCode=@HostCode";
 
                             using (SqlCommand hostCmd =
-                                new SqlCommand(hostQuery, con, trans))
+                                new SqlCommand(hostQuery, con))
                             {
                                 hostCmd.Parameters.AddWithValue(
                                     "@HostCode",
@@ -628,14 +477,6 @@ namespace AnmolDristi
                                 </p>";
                             }
 
-                            // ==========================================================
-                            // CONTINUE IN PART-3
-                            // Notification Queue
-                            // Commit
-                            // Rollback
-                            // File Cleanup
-                            // Redirect
-                            // ==========================================================
                             // ==========================================================
                             // 14. QUEUE EMAIL NOTIFICATION
                             // ==========================================================
@@ -776,7 +617,7 @@ namespace AnmolDristi
                                     )";
 
                                 using (SqlCommand qCmd =
-                                    new SqlCommand(queueQuery, con, trans))
+                                    new SqlCommand(queueQuery, con))
                                 {
                                     qCmd.Parameters.AddWithValue("@VisitId", newVisitId);
                                     qCmd.Parameters.AddWithValue("@Email", hostEmail);
@@ -795,7 +636,7 @@ namespace AnmolDristi
                                 using (SqlCommand escCmd = new SqlCommand(@"
                                     SELECT EscalationEmailList
                                     FROM VMS_OfficeSettings
-                                    WHERE Branch_ID = @BranchId", con, trans))
+                                    WHERE Branch_ID = @BranchId", con))
                                 {
                                     escCmd.Parameters.AddWithValue("@BranchId", Convert.ToInt32(hfBranchId.Value));
                                     object escResult = escCmd.ExecuteScalar();
@@ -840,7 +681,7 @@ namespace AnmolDristi
                                         if (!IsValidNotificationEmail(ccEmail))
                                             continue;
 
-                                        using (SqlCommand ccCmd = new SqlCommand(ccQueueQuery, con, trans))
+                                        using (SqlCommand ccCmd = new SqlCommand(ccQueueQuery, con))
                                         {
                                             ccCmd.Parameters.AddWithValue("@VisitId", newVisitId);
                                             ccCmd.Parameters.AddWithValue("@Email", ccEmail);
@@ -861,29 +702,8 @@ namespace AnmolDristi
                                     (Guid)qrTokenParam,
                                     fullName,
                                     visitorEmail,
-                                    visitorMobile,
-                                    trans);
+                                    visitorMobile);
                             }
-
-                            // ==========================================================
-                            // 15. COMMIT TRANSACTION
-                            // ==========================================================
-                            trans.Commit();
-                        }
-                        catch
-                        {
-                            try
-                            {
-                                trans.Rollback();
-                            }
-                            catch
-                            {
-                                // Ignore rollback exceptions
-                            }
-
-                            throw;
-                        }
-                    }
                 }
 
                 // ==========================================================
