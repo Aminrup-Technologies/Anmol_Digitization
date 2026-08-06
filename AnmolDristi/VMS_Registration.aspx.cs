@@ -104,6 +104,109 @@ namespace AnmolDristi
             return "/Uploads/VisitorPhotos/" + fileName;
         }
 
+        private class ApprovalResolution
+        {
+            public string ApprovalStatus { get; set; }
+            public string VisitStatus { get; set; }
+            public object ActualInTime { get; set; }
+            public object ApprovedOn { get; set; }
+            public string FullName { get; set; }
+            public object QrTokenParam { get; set; }
+            public bool ShouldQueueVisitorPass { get; set; }
+        }
+
+        /// <summary>
+        /// Resolves Pending vs internal-employee auto-Approved mode, including QR/pass-queue flags.
+        /// </summary>
+        private ApprovalResolution ResolveApprovalMode(string fullName)
+        {
+            ApprovalResolution resolution = new ApprovalResolution
+            {
+                ApprovalStatus = "Pending",
+                VisitStatus = "Scheduled",
+                ActualInTime = DBNull.Value,
+                ApprovedOn = DBNull.Value,
+                FullName = fullName,
+                QrTokenParam = DBNull.Value,
+                ShouldQueueVisitorPass = false
+            };
+
+            // ==========================================================
+            // 7. INTERNAL EMPLOYEE AUTO APPROVAL
+            // ==========================================================
+            if (ddlPurpose.SelectedValue == "I Work Here")
+            {
+                string internalCode =
+                    txtInternalEmpCode.Text.Trim();
+
+                if (string.IsNullOrWhiteSpace(internalCode))
+                {
+                    throw new Exception(
+                        "You must provide your internal Employee Code to self-approve your pass.");
+                }
+
+                using (SqlConnection conCheck =
+                    new SqlConnection(connStr))
+                {
+                    conCheck.Open();
+
+                    string empQuery = @"
+                        SELECT
+                            EmployeeName,
+                            Email,
+                            Mobile
+                        FROM MST_UserMaster
+                        WHERE EmployeeCode=@EmpCode
+                        AND EmployeeStatus='Active'";
+
+                    using (SqlCommand cmd =
+                        new SqlCommand(empQuery, conCheck))
+                    {
+                        cmd.Parameters.AddWithValue("@EmpCode",
+                            internalCode);
+
+                        using (SqlDataReader dr =
+                            cmd.ExecuteReader())
+                        {
+                            if (!dr.Read())
+                            {
+                                throw new Exception(
+                                    "The Employee Code entered is invalid or inactive. Registration denied.");
+                            }
+
+                            resolution.ApprovalStatus = "Approved";
+                            resolution.VisitStatus = "Scheduled";
+                            resolution.ApprovedOn = DateTime.Now;
+
+                            resolution.FullName =
+                                dr["EmployeeName"].ToString();
+
+                            string[] parts =
+                                resolution.FullName.Split(new[] { ' ' }, 2);
+
+                            txtFirstName.Text =
+                                parts.Length > 0
+                                ? parts[0]
+                                : resolution.FullName;
+
+                            txtLastName.Text =
+                                parts.Length > 1
+                                ? parts[1]
+                                : "";
+
+                            txtCompany.Text =
+                                "Anmol Industries Ltd.";
+
+                            resolution.QrTokenParam = Guid.NewGuid();
+                            resolution.ShouldQueueVisitorPass = true;
+                        }
+                    }
+                }
+            }
+
+            return resolution;
+        }
+
         private void BindQuickHosts()
         {
             int branchId = Convert.ToInt32(hfBranchId.Value);
@@ -255,92 +358,24 @@ namespace AnmolDristi
                 }
 
                 // ==========================================================
-                // 6. DEFAULT VISIT VALUES
+                // 6. DEFAULT VISIT VALUES / APPROVAL RESOLUTION
                 // ==========================================================
-                string fullName =
-                    txtFirstName.Text.Trim() + " " + txtLastName.Text.Trim();
-
-                string hostEmail = "";
-                string hostName = "";
-
                 string purposeOfVisit = ddlPurpose.SelectedItem != null
                     ? ddlPurpose.SelectedItem.Text
                     : ddlPurpose.SelectedValue;
 
-                string currentApprovalStatus = "Pending";
-                string currentVisitStatus = "Scheduled";
-                object actualInTime = DBNull.Value;
-                object approvedOn = DBNull.Value;
+                ApprovalResolution approval = ResolveApprovalMode(
+                    txtFirstName.Text.Trim() + " " + txtLastName.Text.Trim());
 
-                // ==========================================================
-                // 7. INTERNAL EMPLOYEE AUTO APPROVAL
-                // ==========================================================
-                if (ddlPurpose.SelectedValue == "I Work Here")
-                {
-                    string internalCode =
-                        txtInternalEmpCode.Text.Trim();
+                string fullName = approval.FullName;
+                string currentApprovalStatus = approval.ApprovalStatus;
+                string currentVisitStatus = approval.VisitStatus;
+                object actualInTime = approval.ActualInTime;
+                object approvedOn = approval.ApprovedOn;
+                object qrTokenParam = approval.QrTokenParam;
 
-                    if (string.IsNullOrWhiteSpace(internalCode))
-                    {
-                        throw new Exception(
-                            "You must provide your internal Employee Code to self-approve your pass.");
-                    }
-
-                    using (SqlConnection conCheck =
-                        new SqlConnection(connStr))
-                    {
-                        conCheck.Open();
-
-                        string empQuery = @"
-                        SELECT
-                            EmployeeName,
-                            Email,
-                            Mobile
-                        FROM MST_UserMaster
-                        WHERE EmployeeCode=@EmpCode
-                        AND EmployeeStatus='Active'";
-
-                        using (SqlCommand cmd =
-                            new SqlCommand(empQuery, conCheck))
-                        {
-                            cmd.Parameters.AddWithValue("@EmpCode",
-                                internalCode);
-
-                            using (SqlDataReader dr =
-                                cmd.ExecuteReader())
-                            {
-                                if (!dr.Read())
-                                {
-                                    throw new Exception(
-                                        "The Employee Code entered is invalid or inactive. Registration denied.");
-                                }
-
-                                currentApprovalStatus = "Approved";
-                                currentVisitStatus = "Scheduled";
-                                approvedOn = DateTime.Now;
-
-                                fullName =
-                                    dr["EmployeeName"].ToString();
-
-                                string[] parts =
-                                    fullName.Split(new[] { ' ' }, 2);
-
-                                txtFirstName.Text =
-                                    parts.Length > 0
-                                    ? parts[0]
-                                    : fullName;
-
-                                txtLastName.Text =
-                                    parts.Length > 1
-                                    ? parts[1]
-                                    : "";
-
-                                txtCompany.Text =
-                                    "Anmol Industries Ltd.";
-                            }
-                        }
-                    }
-                }
+                string hostEmail = "";
+                string hostName = "";
 
                 VisitScheduleRequest visitSchedule = VmsVisitScheduleHelper.ParseSchedule(
                     ddlScheduleType.SelectedValue,
@@ -376,10 +411,6 @@ namespace AnmolDristi
                             // ==========================================================
                             DateTime validFrom = visitSchedule.RequestedValidFrom;
                             DateTime validUpto = visitSchedule.RequestedValidUpto;
-
-                            object qrTokenParam = currentApprovalStatus == "Approved"
-                                ? (object)Guid.NewGuid()
-                                : DBNull.Value;
 
                             // ==========================================================
                             // 11. INSERT VISITOR RECORD
@@ -822,7 +853,7 @@ namespace AnmolDristi
                                 }
                             }
 
-                            if (currentApprovalStatus == "Approved" && qrTokenParam != DBNull.Value)
+                            if (approval.ShouldQueueVisitorPass)
                             {
                                 VmsHelper.QueueVisitorPassNotification(
                                     con,
