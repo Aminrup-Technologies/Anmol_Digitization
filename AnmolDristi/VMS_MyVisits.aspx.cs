@@ -51,22 +51,55 @@ namespace AnmolDristi
 
         private void BindStatusTabs(DataTable dt)
         {
-            BindStatusRepeater(rptVisits, lblEmptyAll, dt, null);
-            BindStatusRepeater(rptVisitsPending, lblEmptyPending, dt, "Pending");
-            BindStatusRepeater(rptVisitsApproved, lblEmptyApproved, dt, "Approved");
-            BindStatusRepeater(rptVisitsRejected, lblEmptyRejected, dt, "Rejected");
+            DateTime now = DateTime.Now;
+            DataTable active = dt.Clone();
+            DataTable pending = dt.Clone();
+            DataTable rejected = dt.Clone();
+            DataTable expired = dt.Clone();
+
+            foreach (DataRow row in dt.Rows)
+            {
+                string status = row["ApprovalStatus"] == DBNull.Value
+                    ? string.Empty
+                    : row["ApprovalStatus"].ToString().Trim();
+
+                if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    pending.ImportRow(row);
+                }
+                else if (string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase))
+                {
+                    rejected.ImportRow(row);
+                }
+                else if (string.Equals(status, "Approved", StringComparison.OrdinalIgnoreCase))
+                {
+                    // NULL ValidUpto: keep under Active Passes (do not treat missing date as expired).
+                    if (row["ValidUpto"] == DBNull.Value || row["ValidUpto"] == null)
+                    {
+                        active.ImportRow(row);
+                    }
+                    else
+                    {
+                        DateTime validUpto = Convert.ToDateTime(row["ValidUpto"]);
+                        if (validUpto >= now)
+                            active.ImportRow(row);
+                        else
+                            expired.ImportRow(row);
+                    }
+                }
+            }
+
+            BindCategoryRepeater(rptVisitsActivePasses, lblEmptyActivePasses, active);
+            BindCategoryRepeater(rptVisitsPending, lblEmptyPending, pending);
+            BindCategoryRepeater(rptVisitsRejected, lblEmptyRejected, rejected);
+            BindCategoryRepeater(rptVisitsExpiredPasses, lblEmptyExpiredPasses, expired);
         }
 
-        private void BindStatusRepeater(Repeater repeater, Label emptyLabel, DataTable source, string statusFilter)
+        private void BindCategoryRepeater(Repeater repeater, Label emptyLabel, DataTable categoryRows)
         {
-            DataView view = new DataView(source);
-            // DataTable.CaseSensitive defaults to false → case-insensitive status match.
-            if (!string.IsNullOrEmpty(statusFilter))
-                view.RowFilter = string.Format("ApprovalStatus = '{0}'", statusFilter.Replace("'", "''"));
-
-            repeater.DataSource = view;
+            repeater.DataSource = categoryRows;
             repeater.DataBind();
-            emptyLabel.Visible = view.Count == 0;
+            emptyLabel.Visible = categoryRows.Rows.Count == 0;
         }
 
         protected string FormatVisitSchedule(object scheduleTypeObj, object fromObj, object toObj)
@@ -104,15 +137,19 @@ namespace AnmolDristi
 
                 if (status == "approved")
                 {
-                    object tokenObj = DataBinder.Eval(e.Item.DataItem, "QRToken");
-
-                    if (tokenObj != DBNull.Value && tokenObj != null && !string.IsNullOrEmpty(tokenObj.ToString()))
+                    // Full Screen Pass only for Active Passes — never for Expired Passes.
+                    if (!ReferenceEquals(sender, rptVisitsExpiredPasses))
                     {
-                        pnlFooter.Visible = true;
+                        object tokenObj = DataBinder.Eval(e.Item.DataItem, "QRToken");
 
-                        Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
-                        if (pnlPassLink != null)
-                            pnlPassLink.Visible = true;
+                        if (tokenObj != DBNull.Value && tokenObj != null && !string.IsNullOrEmpty(tokenObj.ToString()))
+                        {
+                            pnlFooter.Visible = true;
+
+                            Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
+                            if (pnlPassLink != null)
+                                pnlPassLink.Visible = true;
+                        }
                     }
                 }
                 else
