@@ -29,15 +29,23 @@ namespace AnmolDristi
         {
             if (!IsPostBack)
             {
-                // FIX: Check for BOTH the standard ERP session and the Quick Verification session
-                if (Session["WORKMAN"] == null && Session["EmpCode"] == null)
-                {
-                    Response.Redirect("Login.aspx");
+                if (!ValidateHostSession())
                     return;
-                }
 
                 BindGrids();
             }
+        }
+
+        private bool ValidateHostSession()
+        {
+            // Accept either standard ERP session (WORKMAN) or VMS Host Quick Login (EmpCode).
+            if (Session["WORKMAN"] == null && Session["EmpCode"] == null)
+            {
+                Response.Redirect("Login.aspx");
+                return false;
+            }
+
+            return true;
         }
 
         private void BindGrids()
