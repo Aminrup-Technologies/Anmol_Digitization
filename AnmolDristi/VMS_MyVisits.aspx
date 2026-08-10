@@ -138,23 +138,23 @@
 
                 <ul class="nav nav-tabs visit-status-tabs" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" id="tabAll-tab" data-toggle="tab" href="#tabAll" role="tab" aria-controls="tabAll" aria-selected="true">All</a>
+                        <a class="nav-link active" id="tabActivePasses-tab" data-toggle="tab" href="#tabActivePasses" role="tab" aria-controls="tabActivePasses" aria-selected="true">Active Passes</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="tabPending-tab" data-toggle="tab" href="#tabPending" role="tab" aria-controls="tabPending" aria-selected="false">Pending</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="tabApproved-tab" data-toggle="tab" href="#tabApproved" role="tab" aria-controls="tabApproved" aria-selected="false">Approved</a>
+                        <a class="nav-link" id="tabPendingApproval-tab" data-toggle="tab" href="#tabPendingApproval" role="tab" aria-controls="tabPendingApproval" aria-selected="false">Pending Approval</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" id="tabRejected-tab" data-toggle="tab" href="#tabRejected" role="tab" aria-controls="tabRejected" aria-selected="false">Rejected</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="tabExpiredPasses-tab" data-toggle="tab" href="#tabExpiredPasses" role="tab" aria-controls="tabExpiredPasses" aria-selected="false">Expired Passes</a>
+                    </li>
                 </ul>
 
                 <div class="tab-content" style="padding-top: 15px;">
-                    <div role="tabpanel" class="tab-pane active" id="tabAll">
-                        <asp:Label ID="lblEmptyAll" runat="server" CssClass="visit-empty-state" Text="No visits found." Visible="false" />
-                        <asp:Repeater ID="rptVisits" runat="server" OnItemDataBound="rptVisits_ItemDataBound">
+                    <div role="tabpanel" class="tab-pane active" id="tabActivePasses">
+                        <asp:Label ID="lblEmptyActivePasses" runat="server" CssClass="visit-empty-state" Text="No active passes found." Visible="false" />
+                        <asp:Repeater ID="rptVisitsActivePasses" runat="server" OnItemDataBound="rptVisits_ItemDataBound">
                             <ItemTemplate>
                                 <div class='visit-card <%# Eval("ApprovalStatus").ToString().ToLower() %>'>
                                     <div class="card-header">
@@ -196,53 +196,9 @@
                         </asp:Repeater>
                     </div>
 
-                    <div role="tabpanel" class="tab-pane" id="tabPending">
+                    <div role="tabpanel" class="tab-pane" id="tabPendingApproval">
                         <asp:Label ID="lblEmptyPending" runat="server" CssClass="visit-empty-state" Text="No pending visits found." Visible="false" />
                         <asp:Repeater ID="rptVisitsPending" runat="server" OnItemDataBound="rptVisits_ItemDataBound">
-                            <ItemTemplate>
-                                <div class='visit-card <%# Eval("ApprovalStatus").ToString().ToLower() %>'>
-                                    <div class="card-header">
-                                        <h4 class="card-title"><i class="fa fa-building-o"></i><%# Eval("AliasName") %></h4>
-                                        <span class="visit-date"><%# Convert.ToDateTime(Eval("CreatedDate")).ToString("dd MMM yyyy") %></span>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="detail-row">
-                                            <span class="detail-label">Host:</span>
-                                            <span style="color: #333; font-weight: bold;"><%# Eval("HostName") %></span>
-                                        </div>
-                                        <div class="detail-row">
-                                            <span class="detail-label">Purpose:</span>
-                                            <span><%# Eval("PurposeOfVisit") %></span>
-                                        </div>
-                                        <div class="detail-row">
-                                            <span class="detail-label">Schedule:</span>
-                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto")) %></span>
-                                        </div>
-                                        <div class="detail-row">
-                                            <span class="detail-label">Today's Visit:</span>
-                                            <span><%# Eval("VisitStatus") %></span>
-                                        </div>
-                                        <div class="detail-row" style="margin-top: 12px;">
-                                            <span class="detail-label">Status:</span>
-                                            <asp:Label ID="lblStatus" runat="server" Text='<%# Eval("ApprovalStatus") %>'></asp:Label>
-                                        </div>
-                                    </div>
-                                    <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer text-center" Visible="false">
-                                        <asp:Label ID="lblQRMessage" runat="server" Visible="false" CssClass="text-muted" Style="font-size: 12px; display: block; margin-bottom: 8px;"></asp:Label>
-                                        <asp:Panel ID="pnlPassLink" runat="server" Visible="false">
-                                            <a href='VMS_DigitalPass.aspx?token=<%# Eval("QRToken") %>' class="btn btn-pass" style="margin-top: 5px; display: inline-block;">
-                                                <i class="fa fa-qrcode"></i>Full Screen Pass
-                                            </a>
-                                        </asp:Panel>
-                                    </asp:Panel>
-                                </div>
-                            </ItemTemplate>
-                        </asp:Repeater>
-                    </div>
-
-                    <div role="tabpanel" class="tab-pane" id="tabApproved">
-                        <asp:Label ID="lblEmptyApproved" runat="server" CssClass="visit-empty-state" Text="No approved visits found." Visible="false" />
-                        <asp:Repeater ID="rptVisitsApproved" runat="server" OnItemDataBound="rptVisits_ItemDataBound">
                             <ItemTemplate>
                                 <div class='visit-card <%# Eval("ApprovalStatus").ToString().ToLower() %>'>
                                     <div class="card-header">
@@ -327,6 +283,50 @@
                             </ItemTemplate>
                         </asp:Repeater>
                     </div>
+                    <div role="tabpanel" class="tab-pane" id="tabExpiredPasses">
+                        <asp:Label ID="lblEmptyExpiredPasses" runat="server" CssClass="visit-empty-state" Text="No expired passes found." Visible="false" />
+                        <asp:Repeater ID="rptVisitsExpiredPasses" runat="server" OnItemDataBound="rptVisits_ItemDataBound">
+                            <ItemTemplate>
+                                <div class='visit-card <%# Eval("ApprovalStatus").ToString().ToLower() %>'>
+                                    <div class="card-header">
+                                        <h4 class="card-title"><i class="fa fa-building-o"></i><%# Eval("AliasName") %></h4>
+                                        <span class="visit-date"><%# Convert.ToDateTime(Eval("CreatedDate")).ToString("dd MMM yyyy") %></span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="detail-row">
+                                            <span class="detail-label">Host:</span>
+                                            <span style="color: #333; font-weight: bold;"><%# Eval("HostName") %></span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Purpose:</span>
+                                            <span><%# Eval("PurposeOfVisit") %></span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Schedule:</span>
+                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto")) %></span>
+                                        </div>
+                                        <div class="detail-row">
+                                            <span class="detail-label">Today's Visit:</span>
+                                            <span><%# Eval("VisitStatus") %></span>
+                                        </div>
+                                        <div class="detail-row" style="margin-top: 12px;">
+                                            <span class="detail-label">Status:</span>
+                                            <asp:Label ID="lblStatus" runat="server" Text='<%# Eval("ApprovalStatus") %>'></asp:Label>
+                                        </div>
+                                    </div>
+                                    <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer text-center" Visible="false">
+                                        <asp:Label ID="lblQRMessage" runat="server" Visible="false" CssClass="text-muted" Style="font-size: 12px; display: block; margin-bottom: 8px;"></asp:Label>
+                                        <asp:Panel ID="pnlPassLink" runat="server" Visible="false">
+                                            <a href='VMS_DigitalPass.aspx?token=<%# Eval("QRToken") %>' class="btn btn-pass" style="margin-top: 5px; display: inline-block;">
+                                                <i class="fa fa-qrcode"></i>Full Screen Pass
+                                            </a>
+                                        </asp:Panel>
+                                    </asp:Panel>
+                                </div>
+                            </ItemTemplate>
+                        </asp:Repeater>
+                    </div>
+
                 </div>
 
             </div>
