@@ -18,12 +18,14 @@ using System.Globalization;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Drawing;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_MyVisitors : System.Web.UI.Page
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -61,32 +63,14 @@ namespace AnmolDristi
                 empCode = Session["EmpCode"].ToString();
             }
 
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                // 1. Bind Pending Grid
-                string pendingQuery = "SELECT * FROM VMS_VisitLog WHERE HostEmployeeCode = @EmpCode AND ApprovalStatus = 'Pending' ORDER BY CreatedDate DESC";
-                using (SqlDataAdapter sda = new SqlDataAdapter(pendingQuery, con))
-                {
-                    sda.SelectCommand.Parameters.AddWithValue("@EmpCode", empCode);
-                    DataTable dtPending = new DataTable();
-                    sda.Fill(dtPending);
-                    gvPending.DataSource = dtPending;
-                    gvPending.DataBind();
+            DataTable dtPending = _repository.GetPendingVisits(empCode);
+            gvPending.DataSource = dtPending;
+            gvPending.DataBind();
+            badgeCount.InnerText = dtPending.Rows.Count.ToString();
 
-                    badgeCount.InnerText = dtPending.Rows.Count.ToString();
-                }
-
-                // 2. Bind History Grid (Now includes logic to power the Manual Check-In/Out)
-                string historyQuery = "SELECT TOP 50 * FROM VMS_VisitLog WHERE HostEmployeeCode = @EmpCode AND ApprovalStatus IN ('Approved', 'Rejected') ORDER BY CreatedDate DESC";
-                using (SqlDataAdapter sda = new SqlDataAdapter(historyQuery, con))
-                {
-                    sda.SelectCommand.Parameters.AddWithValue("@EmpCode", empCode);
-                    DataTable dtHistory = new DataTable();
-                    sda.Fill(dtHistory);
-                    gvHistory.DataSource = dtHistory;
-                    gvHistory.DataBind();
-                }
-            }
+            DataTable dtHistory = _repository.GetHostVisitHistory(empCode);
+            gvHistory.DataSource = dtHistory;
+            gvHistory.DataBind();
         }
 
         protected void gvPending_RowCommand(object sender, GridViewCommandEventArgs e)
