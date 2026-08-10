@@ -398,32 +398,17 @@ namespace AnmolDristi
             {
                 int logId = Convert.ToInt32(e.CommandArgument);
 
-                using (SqlConnection con = new SqlConnection(connStr))
+                if (e.CommandName == "ManualCheckIn")
                 {
-                    string updateQuery = "";
-
-                    if (e.CommandName == "ManualCheckIn")
-                    {
-                        // FIXED: Changed CheckInTime to ActualInTime
-                        updateQuery = "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-In', ActualInTime = GETDATE() WHERE LogID = @LogID";
-                        lblHistoryMsg.ForeColor = Color.Green;
-                        lblHistoryMsg.Text = "Visitor successfully Checked-IN manually.";
-                    }
-                    else if (e.CommandName == "ManualCheckOut")
-                    {
-                        // FIXED: Changed CheckOutTime to ActualOutTime
-                        updateQuery = "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-Out', ActualOutTime = GETDATE() WHERE LogID = @LogID";
-                        lblHistoryMsg.ForeColor = Color.Green;
-                        lblHistoryMsg.Text = "Visitor successfully Checked-OUT manually.";
-                    }
-
-                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                    {
-                        cmd.Parameters.AddWithValue("@LogID", logId);
-                        con.Open();
-                        cmd.ExecuteNonQuery();
-                        con.Close();
-                    }
+                    _repository.ManualCheckIn(logId);
+                    lblHistoryMsg.ForeColor = Color.Green;
+                    lblHistoryMsg.Text = "Visitor successfully Checked-IN manually.";
+                }
+                else if (e.CommandName == "ManualCheckOut")
+                {
+                    _repository.ManualCheckOut(logId);
+                    lblHistoryMsg.ForeColor = Color.Green;
+                    lblHistoryMsg.Text = "Visitor successfully Checked-OUT manually.";
                 }
 
                 // Refresh the Grid to show updated statuses and swap the buttons immediately
