@@ -2,10 +2,6 @@
 using System.Data;
 using System.Web.UI.WebControls;
 using System.Web.UI;
-using QRCoder;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
 using AnmolDristi.DAL;
 
 namespace AnmolDristi
@@ -50,8 +46,27 @@ namespace AnmolDristi
                 : string.Empty;
 
             DataTable dt = _repository.GetVisitorHistory(mobile, email);
-            rptVisits.DataSource = dt;
-            rptVisits.DataBind();
+            BindStatusTabs(dt);
+        }
+
+        private void BindStatusTabs(DataTable dt)
+        {
+            BindStatusRepeater(rptVisits, lblEmptyAll, dt, null);
+            BindStatusRepeater(rptVisitsPending, lblEmptyPending, dt, "Pending");
+            BindStatusRepeater(rptVisitsApproved, lblEmptyApproved, dt, "Approved");
+            BindStatusRepeater(rptVisitsRejected, lblEmptyRejected, dt, "Rejected");
+        }
+
+        private void BindStatusRepeater(Repeater repeater, Label emptyLabel, DataTable source, string statusFilter)
+        {
+            DataView view = new DataView(source);
+            // DataTable.CaseSensitive defaults to false → case-insensitive status match.
+            if (!string.IsNullOrEmpty(statusFilter))
+                view.RowFilter = string.Format("ApprovalStatus = '{0}'", statusFilter.Replace("'", "''"));
+
+            repeater.DataSource = view;
+            repeater.DataBind();
+            emptyLabel.Visible = view.Count == 0;
         }
 
         protected string FormatVisitSchedule(object scheduleTypeObj, object fromObj, object toObj)
@@ -84,7 +99,7 @@ namespace AnmolDristi
                 else
                     lblStatus.CssClass = "badge badge-pending";
 
-                // 2. Process Digital Pass Footer & QR Code
+                // 2. Process Digital Pass Footer
                 Panel pnlFooter = (Panel)e.Item.FindControl("pnlFooter");
 
                 if (status == "approved")
@@ -93,47 +108,11 @@ namespace AnmolDristi
 
                     if (tokenObj != DBNull.Value && tokenObj != null && !string.IsNullOrEmpty(tokenObj.ToString()))
                     {
-                        // Show the footer wrapper
                         pnlFooter.Visible = true;
 
-                        // Find the Image and Label controls inside the repeater
-                        System.Web.UI.WebControls.Image imgQRCode = (System.Web.UI.WebControls.Image)e.Item.FindControl("imgQRCode");
-                        Label lblQRMessage = (Label)e.Item.FindControl("lblQRMessage");
-
-                        if (imgQRCode != null)
-                        {
-                            // Initialize the QR Generator using the secure DB Token
-                            string qrTokenFromDb = tokenObj.ToString();
-                            QRCodeGenerator qrGenerator = new QRCodeGenerator();
-                            QRCodeData qrCodeData = qrGenerator.CreateQrCode(qrTokenFromDb, QRCodeGenerator.ECCLevel.Q);
-                            QRCode qrCode = new QRCode(qrCodeData);
-
-                            // Render graphic (Size 5 is optimal for mobile screens)
-                            using (Bitmap qrCodeImage = qrCode.GetGraphic(5))
-                            {
-                                using (MemoryStream ms = new MemoryStream())
-                                {
-                                    // Convert the image directly to Base64 to serve it without saving to disk
-                                    qrCodeImage.Save(ms, ImageFormat.Png);
-                                    byte[] byteImage = ms.ToArray();
-                                    string base64String = Convert.ToBase64String(byteImage);
-
-                                    // Bind the generated image string to the UI control
-                                    imgQRCode.ImageUrl = "data:image/png;base64," + base64String;
-                                    imgQRCode.Visible = true;
-                                }
-                            }
-
-                            if (lblQRMessage != null)
-                            {
-                                lblQRMessage.Text = "Scan this at the security gate to check in.";
-                                lblQRMessage.Visible = true;
-                            }
-
-                            Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
-                            if (pnlPassLink != null)
-                                pnlPassLink.Visible = true;
-                        }
+                        Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
+                        if (pnlPassLink != null)
+                            pnlPassLink.Visible = true;
                     }
                 }
                 else
