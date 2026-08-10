@@ -36,12 +36,9 @@ namespace AnmolDristi
             }
         }
 
-        /// <summary>
-        /// Host auth gate: either Session["WORKMAN"] (ERP login) or
-        /// Session["EmpCode"] (VMS Host Quick Login) is acceptable.
-        /// </summary>
         private bool ValidateHostSession()
         {
+            // Accept either standard ERP session (WORKMAN) or VMS Host Quick Login (EmpCode).
             if (Session["WORKMAN"] == null && Session["EmpCode"] == null)
             {
                 Response.Redirect("Login.aspx");
