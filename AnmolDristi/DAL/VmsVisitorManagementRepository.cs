@@ -66,5 +66,41 @@ namespace AnmolDristi.DAL
                 }
             }
         }
+
+        public void ManualCheckIn(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                // FIXED: Changed CheckInTime to ActualInTime
+                string updateQuery =
+                    "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-In', ActualInTime = GETDATE() WHERE LogID = @LogID";
+
+                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                {
+                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                    con.Close();
+                }
+            }
+        }
+
+        public void ManualCheckOut(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                // FIXED: Changed CheckOutTime to ActualOutTime
+                string updateQuery =
+                    "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-Out', ActualOutTime = GETDATE() WHERE LogID = @LogID";
+
+                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                {
+                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                    con.Close();
+                }
+            }
+        }
     }
 }
