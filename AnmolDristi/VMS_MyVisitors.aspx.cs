@@ -382,17 +382,8 @@ namespace AnmolDristi
 
         private void RejectVisitor(int logId)
         {
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Rejected', VisitStatus = 'Rejected', ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
-                }
-            }
+            _repository.RejectVisitor(logId);
+
             lblPendingMsg.ForeColor = Color.Red;
             lblPendingMsg.Text = "Visitor request rejected.";
             BindGrids(); // Refresh UI

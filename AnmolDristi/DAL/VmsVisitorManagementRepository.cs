@@ -5,7 +5,7 @@ using System.Data.SqlClient;
 namespace AnmolDristi.DAL
 {
     /// <summary>
-    /// Persistence access for VMS host My Visitors read operations.
+    /// Persistence access for VMS host My Visitors operations.
     /// </summary>
     public class VmsVisitorManagementRepository
     {
@@ -46,6 +46,23 @@ namespace AnmolDristi.DAL
                     DataTable dtHistory = new DataTable();
                     sda.Fill(dtHistory);
                     return dtHistory;
+                }
+            }
+        }
+
+        public void RejectVisitor(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                string updateQuery =
+                    "UPDATE VMS_VisitLog SET ApprovalStatus = 'Rejected', VisitStatus = 'Rejected', ApprovedOn = GETDATE() WHERE LogID = @LogID";
+
+                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                {
+                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                    con.Close();
                 }
             }
         }
