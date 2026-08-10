@@ -119,61 +119,73 @@ namespace AnmolDristi
 
         protected void rptVisits_ItemDataBound(object sender, RepeaterItemEventArgs e)
         {
-            if (e.Item.ItemType == ListItemType.Item || e.Item.ItemType == ListItemType.AlternatingItem)
+            if (e.Item.ItemType != ListItemType.Item &&
+                e.Item.ItemType != ListItemType.AlternatingItem)
             {
-                // 1. Style the Status Badge dynamically
-                Label lblStatus = (Label)e.Item.FindControl("lblStatus");
-                string status = lblStatus.Text.ToLower();
+                return;
+            }
 
-                if (status == "approved")
-                    lblStatus.CssClass = "badge badge-approved";
-                else if (status == "rejected")
-                    lblStatus.CssClass = "badge badge-rejected";
-                else
-                    lblStatus.CssClass = "badge badge-pending";
+            Label lblStatus = (Label)e.Item.FindControl("lblStatus");
+            ApplyStatusBadge(lblStatus);
+            ConfigureVisitPass(sender, e.Item);
+        }
 
-                // 2. Process Digital Pass Footer
-                Panel pnlFooter = (Panel)e.Item.FindControl("pnlFooter");
+        private void ApplyStatusBadge(Label lblStatus)
+        {
+            string status = lblStatus.Text.ToLower();
 
-                if (status == "approved")
+            if (status == "approved")
+                lblStatus.CssClass = "badge badge-approved";
+            else if (status == "rejected")
+                lblStatus.CssClass = "badge badge-rejected";
+            else
+                lblStatus.CssClass = "badge badge-pending";
+        }
+
+        private void ConfigureVisitPass(object sender, RepeaterItem item)
+        {
+            Label lblStatus = (Label)item.FindControl("lblStatus");
+            string status = lblStatus.Text.ToLower();
+            Panel pnlFooter = (Panel)item.FindControl("pnlFooter");
+
+            if (status == "approved")
+            {
+                // Full Screen Pass only for Active Passes — never for Expired Passes.
+                if (!ReferenceEquals(sender, rptVisitsExpiredPasses))
                 {
-                    // Full Screen Pass only for Active Passes — never for Expired Passes.
-                    if (!ReferenceEquals(sender, rptVisitsExpiredPasses))
+                    object tokenObj = DataBinder.Eval(item.DataItem, "QRToken");
+
+                    if (tokenObj != DBNull.Value && tokenObj != null && !string.IsNullOrEmpty(tokenObj.ToString()))
                     {
-                        object tokenObj = DataBinder.Eval(e.Item.DataItem, "QRToken");
-
-                        if (tokenObj != DBNull.Value && tokenObj != null && !string.IsNullOrEmpty(tokenObj.ToString()))
-                        {
-                            pnlFooter.Visible = true;
-
-                            Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
-                            if (pnlPassLink != null)
-                                pnlPassLink.Visible = true;
-                        }
-                    }
-                }
-                else
-                {
-                    if (pnlFooter != null)
                         pnlFooter.Visible = true;
 
-                    Panel pnlPassLink = (Panel)e.Item.FindControl("pnlPassLink");
-                    if (pnlPassLink != null)
-                        pnlPassLink.Visible = false;
+                        Panel pnlPassLink = (Panel)item.FindControl("pnlPassLink");
+                        if (pnlPassLink != null)
+                            pnlPassLink.Visible = true;
+                    }
+                }
+            }
+            else
+            {
+                if (pnlFooter != null)
+                    pnlFooter.Visible = true;
 
-                    Label lblQRMessage = (Label)e.Item.FindControl("lblQRMessage");
-                    if (lblQRMessage != null)
+                Panel pnlPassLink = (Panel)item.FindControl("pnlPassLink");
+                if (pnlPassLink != null)
+                    pnlPassLink.Visible = false;
+
+                Label lblQRMessage = (Label)item.FindControl("lblQRMessage");
+                if (lblQRMessage != null)
+                {
+                    if (status == "pending")
                     {
-                        if (status == "pending")
-                        {
-                            lblQRMessage.Text = "Waiting for host approval. This page will show your gate pass once approved.";
-                            lblQRMessage.Visible = true;
-                        }
-                        else if (status == "rejected")
-                        {
-                            lblQRMessage.Text = "This visit request was rejected by the host.";
-                            lblQRMessage.Visible = true;
-                        }
+                        lblQRMessage.Text = "Waiting for host approval. This page will show your gate pass once approved.";
+                        lblQRMessage.Visible = true;
+                    }
+                    else if (status == "rejected")
+                    {
+                        lblQRMessage.Text = "This visit request was rejected by the host.";
+                        lblQRMessage.Visible = true;
                     }
                 }
             }
