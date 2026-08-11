@@ -84,6 +84,6 @@ Tracks uploaded files. Stored on the IIS file system, not as database blobs, for
 ## 5. Entity Relationships & Routing Logic
 The EF6 Navigation Properties power the business logic without complex ADO.NET `JOIN` statements:
 
-1. **Auto-Population:** `ItsmDbContext.UserMasters.FirstOrDefault(u => u.EmployeeCode == Session["LoginToken"].UserCode)` instantly retrieves the user's `PlantId` and `DepartmentId` to pre-fill the "New Ticket" Web Form.
+1. **Auto-Population:** `ItsmDbContext.UserMasters.FirstOrDefault(u => u.EmployeeCode == Session["WORKMAN"].ToString())` instantly retrieves the user's `PlantId` and `DepartmentId` to pre-fill the "New Ticket" Web Form. *(Note: `WORKMAN` is the legacy session key that stores the logged-in user's `EmployeeCode` — set by `login.aspx` alongside `Session["USERNAME"]` and `Session["LoginToken"]`.)*
 2. **Decentralized Routing:** A ticket raised by a user with `PlantId = 4` automatically associates the `Ticket.PlantId` with `4`. 
 3. **Assignee Filtering:** The UI dropdown for "Assign To" queries `MST_UserMaster` where `Department = 'IT'` AND `PlantId == Ticket.PlantId`, ensuring Corporate IT is not assigned Plant-level hardware issues.
