@@ -37,6 +37,20 @@ namespace AnmolDristi.DAL
         public Guid? QrToken { get; set; }
     }
 
+    public class DigitalPassDetails
+    {
+        public int LogId { get; set; }
+        public string VisitorName { get; set; }
+        public string VisitorCompany { get; set; }
+        public string PhotoPath { get; set; }
+        public DateTime ValidUpto { get; set; }
+        public string ApprovalStatus { get; set; }
+        public string ScheduleType { get; set; }
+        public string HostName { get; set; }
+        public string PlantAlias { get; set; }
+        public string PolicyText { get; set; }
+    }
+
     /// <summary>
     /// Persistence access for VMS host My Visitors operations.
     /// </summary>
@@ -376,6 +390,64 @@ namespace AnmolDristi.DAL
 
                     return ApprovalFailureReason.Unexpected;
                 }
+            }
+        }
+
+        public DigitalPassDetails GetDigitalPassDetails(Guid token)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                string query = @"
+                    SELECT 
+                        v.LogID,
+                        v.VisitorName, 
+                        v.VisitorCompany, 
+                        v.PhotoPath, 
+                        v.ValidUpto, 
+                        v.ApprovalStatus,
+                        ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
+                        u.EmployeeName AS HostName,
+                        ISNULL(s.AliasName, 'Anmol Industries') AS PlantAlias,
+                        ISNULL(s.VisitorPolicyText, 'Standard safety rules apply.') AS PolicyText
+                    FROM VMS_VisitLog v
+                    LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
+                    LEFT JOIN VMS_OfficeSettings s ON v.TargetBranchID = s.Branch_ID
+                    WHERE v.QRToken = @Token";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Token", token);
+                    con.Open();
+
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        if (!sdr.Read())
+                            return null;
+
+                        return new DigitalPassDetails
+                        {
+                            LogId = Convert.ToInt32(sdr["LogID"]),
+                            VisitorName = sdr["VisitorName"].ToString(),
+                            VisitorCompany = sdr["VisitorCompany"].ToString(),
+                            PhotoPath = sdr["PhotoPath"].ToString(),
+                            ValidUpto = Convert.ToDateTime(sdr["ValidUpto"]),
+                            ApprovalStatus = sdr["ApprovalStatus"].ToString(),
+                            ScheduleType = sdr["ScheduleType"].ToString(),
+                            HostName = sdr["HostName"].ToString(),
+                            PlantAlias = sdr["PlantAlias"].ToString(),
+                            PolicyText = sdr["PolicyText"].ToString()
+                        };
+                    }
+                }
+            }
+        }
+
+        public string GetMultiDayApprovedDatesText(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                return VmsHelper.GetMultiDayApprovedDatesText(con, logId);
             }
         }
     }
