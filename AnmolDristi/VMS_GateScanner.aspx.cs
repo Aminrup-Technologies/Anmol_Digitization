@@ -440,21 +440,7 @@ namespace AnmolDristi
             int logId = Convert.ToInt32(hfCurrentLogId.Value);
             int dayLogId = 0;
             int.TryParse(hfCurrentDayLogId.Value, out dayLogId);
-            string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
-
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                con.Open();
-                if (dayLogId > 0)
-                    VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, guardId);
-                else
-                    UpdateGateStatus(con, logId, "Checked-In", "ActualInTime");
-
-                if (!string.IsNullOrEmpty(hfHostEmail.Value))
-                {
-                    NotifyHostArrival(con, logId, hfHostName.Value, hfHostEmail.Value, hfVisName.Value, hfCompany.Value);
-                }
-            }
+            ProcessDatabaseCheckIn(logId, dayLogId);
 
             divActionButtons.Visible = false;
             divFinishButtons.Visible = true;
@@ -487,6 +473,26 @@ namespace AnmolDristi
 
             BindInsideVisitors();
             KeepTabActive("scanner-tab");
+        }
+
+        // --- REUSABLE CHECK-IN DATABASE LOGIC ---
+        private void ProcessDatabaseCheckIn(int logId, int dayLogId = 0)
+        {
+            string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                if (dayLogId > 0)
+                    VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, guardId);
+                else
+                    UpdateGateStatus(con, logId, "Checked-In", "ActualInTime");
+
+                if (!string.IsNullOrEmpty(hfHostEmail.Value))
+                {
+                    NotifyHostArrival(con, logId, hfHostName.Value, hfHostEmail.Value, hfVisName.Value, hfCompany.Value);
+                }
+            }
         }
 
         // --- REUSABLE CHECK-OUT DATABASE LOGIC ---
