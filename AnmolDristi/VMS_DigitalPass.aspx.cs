@@ -6,6 +6,17 @@ using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
+    public enum DigitalPassState
+    {
+        NotApprovedForToday,
+        PassNotActiveYet,
+        ValidPass,
+        VisitorCurrentlyInside,
+        VisitCompleted,
+        TodaysWindowEnded,
+        Expired
+    }
+
     public partial class VMS_DigitalPass : System.Web.UI.Page
     {
         private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
@@ -61,23 +72,112 @@ namespace AnmolDristi
             string photoUrl = pass.PhotoPath;
             imgVisitorPhoto.ImageUrl = string.IsNullOrEmpty(photoUrl) ? "~/images/user.png" : photoUrl;
 
-            // 3. Time Validation (Has the pass expired?)
             DateTime validUpto = pass.ValidUpto;
             lblValidUpto.Text = validUpto.ToString("dd MMM yyyy, hh:mm tt");
 
-            if (DateTime.Now > validUpto)
-            {
-                lblStatusBadge.Text = "<span class='status-badge status-expired'><i class='fa fa-times-circle'></i> EXPIRED</span>";
-                imgScanQR.Visible = false; // Hide QR so guard can't scan it
-            }
-            else
-            {
-                lblStatusBadge.Text = "<span class='status-badge status-valid'><i class='fa fa-check-circle'></i> VALID PASS</span>";
-                GenerateScannableQR(tokenStr);
-            }
+            // 3. Classify today's presentation state (read-only; Gate Scanner remains authoritative)
+            DigitalPassState state = ResolvePresentationState(pass);
+            ApplyPresentationState(state, tokenStr);
 
             pnlPass.Visible = true;
             BindApprovedDates(pass.LogId, pass.ScheduleType);
+        }
+
+        private DigitalPassState ResolvePresentationState(DigitalPassDetails pass)
+        {
+            // SingleDay: preserve prior ValidUpto-only lifecycle (EXPIRED presentation).
+            if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
+            {
+                if (DateTime.Now > pass.ValidUpto)
+                    return DigitalPassState.Expired;
+
+                return DigitalPassState.ValidPass;
+            }
+
+            VisitDayLogInfo todayLog = _repository.GetTodayVisitDayLog(pass.LogId);
+            if (todayLog == null || !todayLog.IsDayApproved)
+                return DigitalPassState.NotApprovedForToday;
+
+            DateTime now = DateTime.Now;
+            string dayStatus = string.IsNullOrWhiteSpace(todayLog.VisitStatus)
+                ? "Scheduled"
+                : todayLog.VisitStatus.Trim();
+
+            if (now < todayLog.DayValidFrom)
+                return DigitalPassState.PassNotActiveYet;
+
+            if (string.Equals(dayStatus, "Checked-Out", StringComparison.OrdinalIgnoreCase))
+                return DigitalPassState.VisitCompleted;
+
+            if (string.Equals(dayStatus, "Checked-In", StringComparison.OrdinalIgnoreCase))
+                return DigitalPassState.VisitorCurrentlyInside;
+
+            if (now > todayLog.DayValidUpto)
+                return DigitalPassState.TodaysWindowEnded;
+
+            return DigitalPassState.ValidPass;
+        }
+
+        private void ApplyPresentationState(DigitalPassState state, string tokenStr)
+        {
+            string badgeText;
+            string badgeCss;
+            string message;
+
+            switch (state)
+            {
+                case DigitalPassState.NotApprovedForToday:
+                    badgeText = "NOT APPROVED FOR TODAY";
+                    badgeCss = "status-badge status-expired";
+                    message = "This pass is not approved for entry today.";
+                    break;
+                case DigitalPassState.PassNotActiveYet:
+                    badgeText = "PASS NOT ACTIVE YET";
+                    badgeCss = "status-badge status-pending";
+                    message = "Your approved visit window has not started.";
+                    break;
+                case DigitalPassState.VisitorCurrentlyInside:
+                    badgeText = "VISITOR CURRENTLY INSIDE";
+                    badgeCss = "status-badge status-inside";
+                    message = "You have already checked in.";
+                    break;
+                case DigitalPassState.VisitCompleted:
+                    badgeText = "VISIT COMPLETED";
+                    badgeCss = "status-badge status-completed";
+                    message = "You have already checked out for today.";
+                    break;
+                case DigitalPassState.TodaysWindowEnded:
+                    badgeText = "TODAY'S WINDOW ENDED";
+                    badgeCss = "status-badge status-expired";
+                    message = "Today's approved visiting window has ended.";
+                    break;
+                case DigitalPassState.Expired:
+                    badgeText = "<i class='fa fa-times-circle'></i> EXPIRED";
+                    badgeCss = "status-badge status-expired";
+                    message = "";
+                    break;
+                case DigitalPassState.ValidPass:
+                default:
+                    badgeText = "VALID PASS";
+                    badgeCss = "status-badge status-valid";
+                    message = "Show this QR code at the security gate.";
+                    break;
+            }
+
+            lblStatusBadge.Text = "<span class='" + badgeCss + "'>" + badgeText + "</span>";
+            lblStatusMessage.Text = message;
+
+            if (state == DigitalPassState.ValidPass)
+            {
+                divQrBox.Visible = true;
+                imgScanQR.Visible = true;
+                GenerateScannableQR(tokenStr);
+            }
+            else
+            {
+                divQrBox.Visible = false;
+                imgScanQR.Visible = false;
+            }
         }
 
         private void BindApprovedDates(int logId, string scheduleType)

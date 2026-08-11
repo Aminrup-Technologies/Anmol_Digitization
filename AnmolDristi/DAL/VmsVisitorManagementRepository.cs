@@ -450,5 +450,14 @@ namespace AnmolDristi.DAL
                 return VmsHelper.GetMultiDayApprovedDatesText(con, logId);
             }
         }
+
+        public VisitDayLogInfo GetTodayVisitDayLog(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                return VmsVisitScheduleHelper.GetTodayDayLog(con, logId);
+            }
+        }
     }
 }

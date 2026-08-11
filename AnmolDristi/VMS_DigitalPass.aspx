@@ -23,6 +23,10 @@
         .status-badge { display: inline-block; padding: 8px 20px; border-radius: 20px; font-weight: bold; font-size: 14px; margin-top: 10px; }
         .status-valid { background-color: #e8f5e9; color: #2e7d32; }
         .status-expired { background-color: #ffebee; color: #c62828; }
+        .status-pending { background-color: #fff8e1; color: #f57f17; }
+        .status-inside { background-color: #e3f2fd; color: #1565c0; }
+        .status-completed { background-color: #eceff1; color: #455a64; }
+        .status-message { display: block; margin-top: 8px; font-size: 13px; color: #555; }
         .policy-box { padding: 15px 20px; font-size: 12px; color: #666; background: #fff; }
         .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; text-align: left; }
         .info-label { color: #777; font-weight: 600; }
@@ -64,9 +68,10 @@
                     </div>
 
                     <asp:Label ID="lblStatusBadge" runat="server"></asp:Label>
+                    <asp:Label ID="lblStatusMessage" runat="server" CssClass="status-message"></asp:Label>
                 </div>
 
-                <div class="qr-box">
+                <div class="qr-box" id="divQrBox" runat="server">
                     <p class="text-muted"><small>Show this QR code at the security gate</small></p>
                     <asp:Image ID="imgScanQR" runat="server" />
                 </div>
