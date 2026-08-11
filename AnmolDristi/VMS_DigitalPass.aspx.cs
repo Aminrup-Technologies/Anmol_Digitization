@@ -13,7 +13,8 @@ namespace AnmolDristi
         ValidPass,
         VisitorCurrentlyInside,
         VisitCompleted,
-        TodaysWindowEnded
+        TodaysWindowEnded,
+        Expired
     }
 
     public partial class VMS_DigitalPass : System.Web.UI.Page
@@ -84,11 +85,11 @@ namespace AnmolDristi
 
         private DigitalPassState ResolvePresentationState(DigitalPassDetails pass)
         {
-            // SingleDay: preserve prior ValidUpto-only lifecycle (no new ValidFrom rule).
+            // SingleDay: preserve prior ValidUpto-only lifecycle (EXPIRED presentation).
             if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
             {
                 if (DateTime.Now > pass.ValidUpto)
-                    return DigitalPassState.TodaysWindowEnded;
+                    return DigitalPassState.Expired;
 
                 return DigitalPassState.ValidPass;
             }
@@ -150,9 +151,14 @@ namespace AnmolDristi
                     badgeCss = "status-badge status-expired";
                     message = "Today's approved visiting window has ended.";
                     break;
+                case DigitalPassState.Expired:
+                    badgeText = "<i class='fa fa-times-circle'></i> EXPIRED";
+                    badgeCss = "status-badge status-expired";
+                    message = "";
+                    break;
                 case DigitalPassState.ValidPass:
                 default:
-                    badgeText = "VALID PASS";
+                    badgeText = "<i class='fa fa-check-circle'></i> VALID PASS";
                     badgeCss = "status-badge status-valid";
                     message = "Show this QR code at the security gate.";
                     break;
