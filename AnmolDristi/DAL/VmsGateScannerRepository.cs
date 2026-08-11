@@ -6,7 +6,7 @@ using System.Data.SqlClient;
 namespace AnmolDristi.DAL
 {
     /// <summary>
-    /// Persistence access for VMS Gate Scanner read operations.
+    /// Persistence access for VMS Gate Scanner read and check-in/out operations.
     /// </summary>
     public class VmsGateScannerRepository
     {
@@ -148,14 +148,8 @@ namespace AnmolDristi.DAL
 
         public DataTable GetCheckoutVisitor(int logId)
         {
-            string query = @"
-                SELECT v.VisitorName, v.VisitorCompany, u.EmployeeName AS HostName, u.Email AS HostEmail 
-                FROM VMS_VisitLog v 
-                LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode 
-                WHERE v.LogID = @LogID";
-
             using (SqlConnection con = new SqlConnection(_connectionString))
-            using (SqlCommand cmd = new SqlCommand(query, con))
+            using (SqlCommand cmd = new SqlCommand(CheckoutVisitorQuery, con))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
@@ -164,6 +158,226 @@ namespace AnmolDristi.DAL
                     sda.Fill(dt);
                     return dt;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Atomically check in a visit (day-aware or legacy) and optionally queue arrival notification.
+        /// </summary>
+        public void CheckIn(
+            int logId,
+            int dayLogId,
+            string guardId,
+            string hostName,
+            string hostEmail,
+            string visName,
+            string company)
+        {
+            string resolvedGuardId = guardId ?? "SecurityGate";
+
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        if (dayLogId > 0)
+                            VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, resolvedGuardId, trans);
+                        else
+                            UpdateGateStatus(con, trans, logId, "Checked-In", "ActualInTime", resolvedGuardId);
+
+                        if (!string.IsNullOrEmpty(hostEmail))
+                        {
+                            NotifyHostArrival(con, trans, logId, hostName, hostEmail, visName, company);
+                        }
+
+                        trans.Commit();
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            trans.Rollback();
+                        }
+                        catch
+                        {
+                            // Do not mask the original exception.
+                        }
+
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Atomically check out a visit (day-aware or legacy) and optionally queue departure notification.
+        /// </summary>
+        public void CheckOut(int logId, int dayLogId, string guardId)
+        {
+            string resolvedGuardId = guardId ?? "SecurityGate";
+
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        string visName = "";
+                        string company = "";
+                        string hostName = "";
+                        string hostEmail = "";
+                        LoadCheckoutVisitor(con, trans, logId, out visName, out company, out hostName, out hostEmail);
+
+                        if (dayLogId <= 0)
+                        {
+                            VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+                            if (todayLog != null)
+                                dayLogId = todayLog.DayLogId;
+                        }
+
+                        if (dayLogId > 0)
+                            VmsVisitScheduleHelper.CheckOutDay(con, dayLogId, logId, resolvedGuardId, trans);
+                        else
+                            UpdateGateStatus(con, trans, logId, "Checked-Out", "ActualOutTime", resolvedGuardId);
+
+                        if (!string.IsNullOrEmpty(hostEmail))
+                        {
+                            NotifyHostDeparture(con, trans, logId, hostName, hostEmail, visName, company);
+                        }
+
+                        trans.Commit();
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            trans.Rollback();
+                        }
+                        catch
+                        {
+                            // Do not mask the original exception.
+                        }
+
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private const string CheckoutVisitorQuery = @"
+                SELECT v.VisitorName, v.VisitorCompany, u.EmployeeName AS HostName, u.Email AS HostEmail 
+                FROM VMS_VisitLog v 
+                LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode 
+                WHERE v.LogID = @LogID";
+
+        private static void LoadCheckoutVisitor(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            out string visName,
+            out string company,
+            out string hostName,
+            out string hostEmail)
+        {
+            visName = "";
+            company = "";
+            hostName = "";
+            hostEmail = "";
+
+            using (SqlCommand cmd = new SqlCommand(CheckoutVisitorQuery, con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    if (sdr.Read())
+                    {
+                        visName = sdr["VisitorName"].ToString();
+                        company = sdr["VisitorCompany"].ToString();
+                        hostName = sdr["HostName"].ToString();
+                        hostEmail = sdr["HostEmail"].ToString();
+                    }
+                }
+            }
+        }
+
+        private static void UpdateGateStatus(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string newStatus,
+            string timeColumn,
+            string guardId)
+        {
+            string updateQuery = $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID";
+            using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
+            {
+                cmd.Parameters.AddWithValue("@Status", newStatus);
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void NotifyHostArrival(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string hostName,
+            string hostEmail,
+            string visName,
+            string company)
+        {
+            string subject = $"Your visitor {visName} has arrived at the gate";
+            string body = $@"
+            <div style='font-family: Arial; padding: 20px; border-left: 4px solid #1ABB9C;'>
+                <h3 style='color: #1ABB9C;'>Visitor Arrival Notification</h3>
+                <p>Hello <b>{hostName}</b>,</p>
+                <p>Your approved visitor, <b>{visName}</b> from <b>{company}</b>, has successfully checked in at the security gate and is now entering the premises.</p>
+            </div>";
+
+            string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_ARRIVAL')";
+            using (SqlCommand qCmd = new SqlCommand(qQuery, con, trans))
+            {
+                qCmd.Parameters.AddWithValue("@LogId", logId);
+                qCmd.Parameters.AddWithValue("@Email", hostEmail);
+                qCmd.Parameters.AddWithValue("@Name", hostName);
+                qCmd.Parameters.AddWithValue("@Subject", subject);
+                qCmd.Parameters.AddWithValue("@Body", body);
+                qCmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void NotifyHostDeparture(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string hostName,
+            string hostEmail,
+            string visName,
+            string company)
+        {
+            string subject = $"Visitor Departure: {visName} has left the premises";
+            string body = $@"
+            <div style='font-family: Arial; padding: 20px; border-left: 4px solid #f0ad4e;'>
+                <h3 style='color: #f0ad4e;'>Visitor Departure Notification</h3>
+                <p>Hello <b>{hostName}</b>,</p>
+                <p>Your visitor, <b>{visName}</b> from <b>{company}</b>, has successfully checked out at the security gate and has left the premises.</p>
+                <br />
+                <p style='color: #777; font-size: 12px;'>Thank you for using the Anmol VMS.</p>
+            </div>";
+
+            string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_DEPARTURE')";
+            using (SqlCommand qCmd = new SqlCommand(qQuery, con, trans))
+            {
+                qCmd.Parameters.AddWithValue("@LogId", logId);
+                qCmd.Parameters.AddWithValue("@Email", hostEmail);
+                qCmd.Parameters.AddWithValue("@Name", hostName);
+                qCmd.Parameters.AddWithValue("@Subject", subject);
+                qCmd.Parameters.AddWithValue("@Body", body);
+                qCmd.ExecuteNonQuery();
             }
         }
     }

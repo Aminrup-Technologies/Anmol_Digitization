@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Data;
-using System.Data.SqlClient;
-using System.Configuration;
 using System.Web.UI.WebControls;
 using System.Web.UI;
 using AnmolDristi.DAL;
@@ -10,7 +8,6 @@ namespace AnmolDristi
 {
     public partial class VMS_GateScanner : System.Web.UI.Page
     {
-        string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsGateScannerRepository _repository = new VmsGateScannerRepository();
 
         protected void Page_Load(object sender, EventArgs e)
@@ -375,118 +372,21 @@ namespace AnmolDristi
         private void ProcessDatabaseCheckIn(int logId, int dayLogId = 0)
         {
             string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
-
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                con.Open();
-                if (dayLogId > 0)
-                    VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, guardId);
-                else
-                    UpdateGateStatus(con, logId, "Checked-In", "ActualInTime");
-
-                if (!string.IsNullOrEmpty(hfHostEmail.Value))
-                {
-                    NotifyHostArrival(con, logId, hfHostName.Value, hfHostEmail.Value, hfVisName.Value, hfCompany.Value);
-                }
-            }
+            _repository.CheckIn(
+                logId,
+                dayLogId,
+                guardId,
+                hfHostName.Value,
+                hfHostEmail.Value,
+                hfVisName.Value,
+                hfCompany.Value);
         }
 
         // --- REUSABLE CHECK-OUT DATABASE LOGIC ---
         private void ProcessDatabaseCheckOut(int logId, int dayLogId = 0)
         {
-            string visName = "", company = "", hostName = "", hostEmail = "";
             string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
-
-            DataTable checkoutDt = _repository.GetCheckoutVisitor(logId);
-            if (checkoutDt.Rows.Count > 0)
-            {
-                DataRow sdr = checkoutDt.Rows[0];
-                visName = sdr["VisitorName"].ToString();
-                company = sdr["VisitorCompany"].ToString();
-                hostName = sdr["HostName"].ToString();
-                hostEmail = sdr["HostEmail"].ToString();
-            }
-
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                con.Open();
-
-                if (dayLogId <= 0)
-                {
-                    VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId);
-                    if (todayLog != null)
-                        dayLogId = todayLog.DayLogId;
-                }
-
-                if (dayLogId > 0)
-                    VmsVisitScheduleHelper.CheckOutDay(con, dayLogId, logId, guardId);
-                else
-                    UpdateGateStatus(con, logId, "Checked-Out", "ActualOutTime");
-
-                if (!string.IsNullOrEmpty(hostEmail))
-                {
-                    NotifyHostDeparture(con, logId, hostName, hostEmail, visName, company);
-                }
-            }
-        }
-
-        // --- UTILITIES ---
-        private void UpdateGateStatus(SqlConnection con, int logId, string newStatus, string timeColumn)
-        {
-            string updateQuery = $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID";
-            using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-            {
-                cmd.Parameters.AddWithValue("@Status", newStatus);
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@GuardId", Session["EmployeeCode"] ?? "SecurityGate");
-                cmd.ExecuteNonQuery();
-            }
-        }
-
-        private void NotifyHostArrival(SqlConnection con, int logId, string hostName, string hostEmail, string visName, string company)
-        {
-            string subject = $"Your visitor {visName} has arrived at the gate";
-            string body = $@"
-            <div style='font-family: Arial; padding: 20px; border-left: 4px solid #1ABB9C;'>
-                <h3 style='color: #1ABB9C;'>Visitor Arrival Notification</h3>
-                <p>Hello <b>{hostName}</b>,</p>
-                <p>Your approved visitor, <b>{visName}</b> from <b>{company}</b>, has successfully checked in at the security gate and is now entering the premises.</p>
-            </div>";
-
-            string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_ARRIVAL')";
-            using (SqlCommand qCmd = new SqlCommand(qQuery, con))
-            {
-                qCmd.Parameters.AddWithValue("@LogId", logId);
-                qCmd.Parameters.AddWithValue("@Email", hostEmail);
-                qCmd.Parameters.AddWithValue("@Name", hostName);
-                qCmd.Parameters.AddWithValue("@Subject", subject);
-                qCmd.Parameters.AddWithValue("@Body", body);
-                qCmd.ExecuteNonQuery();
-            }
-        }
-
-        private void NotifyHostDeparture(SqlConnection con, int logId, string hostName, string hostEmail, string visName, string company)
-        {
-            string subject = $"Visitor Departure: {visName} has left the premises";
-            string body = $@"
-            <div style='font-family: Arial; padding: 20px; border-left: 4px solid #f0ad4e;'>
-                <h3 style='color: #f0ad4e;'>Visitor Departure Notification</h3>
-                <p>Hello <b>{hostName}</b>,</p>
-                <p>Your visitor, <b>{visName}</b> from <b>{company}</b>, has successfully checked out at the security gate and has left the premises.</p>
-                <br />
-                <p style='color: #777; font-size: 12px;'>Thank you for using the Anmol VMS.</p>
-            </div>";
-
-            string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_DEPARTURE')";
-            using (SqlCommand qCmd = new SqlCommand(qQuery, con))
-            {
-                qCmd.Parameters.AddWithValue("@LogId", logId);
-                qCmd.Parameters.AddWithValue("@Email", hostEmail);
-                qCmd.Parameters.AddWithValue("@Name", hostName);
-                qCmd.Parameters.AddWithValue("@Subject", subject);
-                qCmd.Parameters.AddWithValue("@Body", body);
-                qCmd.ExecuteNonQuery();
-            }
+            _repository.CheckOut(logId, dayLogId, guardId);
         }
 
         private void ShowResult(string cssClass, string title, string message, string photoPath,
