@@ -14,6 +14,17 @@ namespace AnmolDristi.DAL
         Unexpected = 3
     }
 
+    /// <summary>
+    /// WHO may approve — separate from the VisitLog+DayLog lifecycle WHAT.
+    /// HostOwnership: Pending + HostEmployeeCode.
+    /// PendingOnly: Pending (Admin/Receptionist page authority; no host match).
+    /// </summary>
+    public enum ApprovalAuthorizationMode
+    {
+        HostOwnership = 0,
+        PendingOnly = 1
+    }
+
     public class SelectedVisitDay
     {
         public DateTime VisitDate { get; set; }
@@ -27,6 +38,18 @@ namespace AnmolDristi.DAL
         public IList<SelectedVisitDay> SelectedDays { get; set; }
         public TimeSpan? ApprovedFromTime { get; set; }
         public TimeSpan? ApprovedToTime { get; set; }
+
+        /// <summary>Optional remark appended to ApprovalRemarks (Admin/Receptionist).</summary>
+        public string ApprovalRemarksSuffix { get; set; }
+
+        /// <summary>When set, used instead of GETDATE() for ApprovedOn (Admin schedDate).</summary>
+        public DateTime? ApprovedOnOverride { get; set; }
+
+        /// <summary>Queue VMS_ADMIN_ACTION to the visit host after successful approval.</summary>
+        public bool QueueHostOnBehalfNotification { get; set; }
+
+        public string OnBehalfHostEmail { get; set; }
+        public string OnBehalfHostName { get; set; }
     }
 
     public class VisitorApprovalResult
@@ -35,6 +58,7 @@ namespace AnmolDristi.DAL
         public ApprovalFailureReason FailureReason { get; set; }
         public int LogId { get; set; }
         public Guid? QrToken { get; set; }
+        public DateTime? ValidUpto { get; set; }
     }
 
     public class DigitalPassDetails
@@ -151,7 +175,42 @@ namespace AnmolDristi.DAL
             }
         }
 
+        /// <summary>
+        /// Host/MyVisitors approval — Pending + HostEmployeeCode authorization.
+        /// Lifecycle owned by <see cref="ApproveVisitCore"/>.
+        /// </summary>
         public VisitorApprovalResult ApprovePendingVisit(VisitorApprovalRequest request)
+        {
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.HostOwnership);
+        }
+
+        /// <summary>
+        /// Admin on-behalf approval — Pending-only authorization (host ownership bypassed).
+        /// Produces the same VisitLog + DayLog + QR + validity + pass-notification lifecycle.
+        /// Valid* comes from ApproveVisitSchedule(RequestedValid*); ApprovedOn may use schedDate override.
+        /// </summary>
+        public VisitorApprovalResult ApproveVisitOnBehalf(VisitorApprovalRequest request)
+        {
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
+        }
+
+        /// <summary>
+        /// Receptionist force-approve — Pending-only authorization.
+        /// Issues QR, DayLog authorization via ApproveVisitSchedule, and visitor pass notification.
+        /// </summary>
+        public VisitorApprovalResult ApproveVisitByReceptionist(VisitorApprovalRequest request)
+        {
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
+        }
+
+        /// <summary>
+        /// Shared approval lifecycle (AR-VMS-02):
+        /// selected days → QR → guarded VisitLog UPDATE → ApproveVisitSchedule →
+        /// re-apply selected days → optional time override → pass notify → optional host on-behalf notify → COMMIT.
+        /// </summary>
+        private VisitorApprovalResult ApproveVisitCore(
+            VisitorApprovalRequest request,
+            ApprovalAuthorizationMode authMode)
         {
             if (request == null)
                 throw new ArgumentNullException("request");
@@ -172,29 +231,18 @@ namespace AnmolDristi.DAL
 
                         Guid qrToken = Guid.NewGuid();
 
-                        string updateQuery = @"
-                            UPDATE VMS_VisitLog
-                            SET ApprovalStatus = 'Approved',
-                                VisitStatus = 'Scheduled',
-                                QRToken = @Token,
-                                ApprovedOn = GETDATE()
-                            WHERE LogID = @LogID
-                              AND HostEmployeeCode = @HostEmployeeCode
-                              AND ApprovalStatus = 'Pending'";
-
-                        int rowsAffected;
-                        using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
-                        {
-                            cmd.Parameters.AddWithValue("@Token", qrToken);
-                            cmd.Parameters.AddWithValue("@LogID", request.LogId);
-                            cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
-                            rowsAffected = cmd.ExecuteNonQuery();
-                        }
+                        int rowsAffected = ExecuteGuardedApprovalUpdate(
+                            con,
+                            trans,
+                            request,
+                            authMode,
+                            hostEmployeeCode,
+                            qrToken);
 
                         if (rowsAffected != 1)
                         {
                             ApprovalFailureReason reason =
-                                ResolveApprovalFailure(con, trans, request.LogId, hostEmployeeCode);
+                                ResolveApprovalFailure(con, trans, request.LogId, hostEmployeeCode, authMode);
 
                             try
                             {
@@ -214,6 +262,8 @@ namespace AnmolDristi.DAL
                             };
                         }
 
+                        // Full requested range: SelectedDays null → all RequestedValid* days approved;
+                        // out-of-range days cancelled. MultiDay Admin/Receptionist use this path (no day UI).
                         VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, request.LogId, null, null);
 
                         // Re-apply selective day flags so range-based schedule approval does not overwrite them
@@ -246,6 +296,20 @@ namespace AnmolDristi.DAL
                             visitorMobile,
                             trans);
 
+                        if (request.QueueHostOnBehalfNotification)
+                        {
+                            QueueHostOnBehalfNotification(
+                                con,
+                                trans,
+                                request.LogId,
+                                visitorName,
+                                request.OnBehalfHostEmail,
+                                request.OnBehalfHostName,
+                                request.ApprovalRemarksSuffix);
+                        }
+
+                        DateTime? validUpto = LoadValidUpto(con, trans, request.LogId);
+
                         trans.Commit();
 
                         return new VisitorApprovalResult
@@ -253,7 +317,8 @@ namespace AnmolDristi.DAL
                             Succeeded = true,
                             FailureReason = ApprovalFailureReason.None,
                             LogId = request.LogId,
-                            QrToken = qrToken
+                            QrToken = qrToken,
+                            ValidUpto = validUpto
                         };
                     }
                     catch
@@ -270,6 +335,105 @@ namespace AnmolDristi.DAL
                         throw;
                     }
                 }
+            }
+        }
+
+        private static int ExecuteGuardedApprovalUpdate(
+            SqlConnection con,
+            SqlTransaction trans,
+            VisitorApprovalRequest request,
+            ApprovalAuthorizationMode authMode,
+            string hostEmployeeCode,
+            Guid qrToken)
+        {
+            bool hasRemarks = !string.IsNullOrWhiteSpace(request.ApprovalRemarksSuffix);
+            bool useApprovedOnOverride = request.ApprovedOnOverride.HasValue;
+
+            string remarksSql = hasRemarks
+                ? ", ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + ' | ' + @Remarks, 250)"
+                : string.Empty;
+
+            string approvedOnSql = useApprovedOnOverride
+                ? "ApprovedOn = @ApprovedOn"
+                : "ApprovedOn = GETDATE()";
+
+            string ownershipSql = authMode == ApprovalAuthorizationMode.HostOwnership
+                ? " AND HostEmployeeCode = @HostEmployeeCode"
+                : string.Empty;
+
+            string updateQuery = $@"
+                UPDATE VMS_VisitLog
+                SET ApprovalStatus = 'Approved',
+                    VisitStatus = 'Scheduled',
+                    QRToken = @Token,
+                    {approvedOnSql}
+                    {remarksSql}
+                WHERE LogID = @LogID
+                  AND ApprovalStatus = 'Pending'
+                  {ownershipSql}";
+
+            using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
+            {
+                cmd.Parameters.AddWithValue("@Token", qrToken);
+                cmd.Parameters.AddWithValue("@LogID", request.LogId);
+
+                if (useApprovedOnOverride)
+                    cmd.Parameters.AddWithValue("@ApprovedOn", request.ApprovedOnOverride.Value);
+
+                if (hasRemarks)
+                    cmd.Parameters.AddWithValue("@Remarks", request.ApprovalRemarksSuffix.Trim());
+
+                if (authMode == ApprovalAuthorizationMode.HostOwnership)
+                    cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
+
+                return cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void QueueHostOnBehalfNotification(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string visitorName,
+            string hostEmail,
+            string hostName,
+            string remarks)
+        {
+            if (string.IsNullOrWhiteSpace(hostEmail))
+                return;
+
+            string resolvedHostName = string.IsNullOrWhiteSpace(hostName) ? "Host" : hostName;
+            string resolvedRemarks = string.IsNullOrWhiteSpace(remarks) ? "(none)" : remarks.Trim();
+            string subject = $"FYI: Visitor {visitorName} Approved On-Behalf";
+            string body = $@"<div style='padding:20px;'><h3 style='color:#3498DB;'>Admin Action Notification</h3><p>Hello {resolvedHostName},</p><p>Please note that your pending visitor <b>{visitorName}</b> was successfully <b>Approved On-Behalf</b> by the Administration Team.</p><p>Remarks: {resolvedRemarks}</p></div>";
+
+            string qQuery = @"
+                INSERT INTO NotificationQueue
+                (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule)
+                VALUES
+                (@LogId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', 'VMS_ADMIN_ACTION')";
+
+            using (SqlCommand qCmd = new SqlCommand(qQuery, con, trans))
+            {
+                qCmd.Parameters.AddWithValue("@LogId", logId);
+                qCmd.Parameters.AddWithValue("@Email", hostEmail);
+                qCmd.Parameters.AddWithValue("@Name", resolvedHostName);
+                qCmd.Parameters.AddWithValue("@Subject", subject);
+                qCmd.Parameters.AddWithValue("@Body", body);
+                qCmd.ExecuteNonQuery();
+            }
+        }
+
+        private static DateTime? LoadValidUpto(SqlConnection con, SqlTransaction trans, int logId)
+        {
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT ValidUpto FROM VMS_VisitLog WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                object result = cmd.ExecuteScalar();
+                if (result == null || result == DBNull.Value)
+                    return null;
+                return Convert.ToDateTime(result);
             }
         }
 
@@ -363,7 +527,8 @@ namespace AnmolDristi.DAL
             SqlConnection con,
             SqlTransaction trans,
             int logId,
-            string hostEmployeeCode)
+            string hostEmployeeCode,
+            ApprovalAuthorizationMode authMode)
         {
             using (SqlCommand cmd = new SqlCommand(
                 "SELECT HostEmployeeCode, ApprovalStatus FROM VMS_VisitLog WHERE LogID = @LogID",
@@ -383,7 +548,8 @@ namespace AnmolDristi.DAL
                         ? string.Empty
                         : reader["ApprovalStatus"].ToString();
 
-                    if (!string.Equals(rowHost, hostEmployeeCode, StringComparison.OrdinalIgnoreCase))
+                    if (authMode == ApprovalAuthorizationMode.HostOwnership
+                        && !string.Equals(rowHost, hostEmployeeCode, StringComparison.OrdinalIgnoreCase))
                         return ApprovalFailureReason.NotFoundOrNotOwned;
 
                     if (!string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))

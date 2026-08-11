@@ -5,12 +5,15 @@ using System.Configuration;
 using System.Web.UI.WebControls;
 using System.Drawing;
 using System.Web.UI;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_AdminPending : System.Web.UI.Page
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _visitorManagementRepository =
+            new VmsVisitorManagementRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -611,110 +614,52 @@ namespace AnmolDristi
         }
 
         // ==========================================
-        // TAB 2: ON-BEHALF LOGIC (DYNAMIC VALIDITY & APPROVED ON)
+        // TAB 1: ON-BEHALF APPROVAL (AR-VMS-02 shared lifecycle)
         // ==========================================
+        /// <summary>
+        /// Admin on-behalf approval via shared VisitLog+DayLog approval core.
+        /// Contract defaults: Pending-only auth; Valid* from RequestedValid* via ApproveVisitSchedule;
+        /// schedDate → ApprovedOn only; MultiDay = full requested range; QR + pass notify + VMS_ADMIN_ACTION in tx.
+        /// </summary>
         private void ApproveOnBehalf(int logId, string visEmail, string visName, string hostEmail, string hostName, string remarks, DateTime schedDate)
         {
-            Guid qrToken = Guid.NewGuid();
-            DateTime validFrom = schedDate;
-            DateTime validUpto = schedDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
-
-            using (SqlConnection con = new SqlConnection(connStr))
+            // visEmail retained for call-site compatibility; pass notify loads contact from DB inside the repository.
+            VisitorApprovalResult result = _visitorManagementRepository.ApproveVisitOnBehalf(new VisitorApprovalRequest
             {
-                con.Open();
+                LogId = logId,
+                ApprovalRemarksSuffix = remarks,
+                ApprovedOnOverride = schedDate,
+                QueueHostOnBehalfNotification = true,
+                OnBehalfHostEmail = hostEmail,
+                OnBehalfHostName = hostName
+            });
 
-                // 1. Fetch the TargetBranchID for this specific Visit Log
-                int branchId = 0;
-                string branchQuery = "SELECT TargetBranchID FROM VMS_VisitLog WHERE LogID = @LogID";
-                using (SqlCommand cmdBranch = new SqlCommand(branchQuery, con))
-                {
-                    cmdBranch.Parameters.AddWithValue("@LogID", logId);
-                    object result = cmdBranch.ExecuteScalar();
-                    if (result != null && result != DBNull.Value)
-                    {
-                        branchId = Convert.ToInt32(result);
-                    }
-                }
-
-                // 2. Dynamic Validity Calculation (Office Closure Check)
-                if (branchId > 0)
-                {
-                    string dayOfWeek = schedDate.DayOfWeek.ToString();
-
-                    // FIX: Querying correct Branch_ID column
-                    string timingQuery = "SELECT CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchId AND DayOfWeek = @Day";
-                    using (SqlCommand cmdTiming = new SqlCommand(timingQuery, con))
-                    {
-                        cmdTiming.Parameters.AddWithValue("@BranchId", branchId);
-                        cmdTiming.Parameters.AddWithValue("@Day", dayOfWeek);
-                        object closeTimeObj = cmdTiming.ExecuteScalar();
-
-                        if (closeTimeObj != null && closeTimeObj != DBNull.Value)
-                        {
-                            TimeSpan closeTimeSpan;
-                            if (TimeSpan.TryParse(closeTimeObj.ToString(), out closeTimeSpan))
-                            {
-                                DateTime closureTime = schedDate.Date.Add(closeTimeSpan);
-
-                                if (schedDate <= closureTime.AddHours(-3))
-                                {
-                                    validUpto = closureTime;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                string updateQuery = @"
-                UPDATE VMS_VisitLog 
-                SET ApprovalStatus = 'Approved', 
-                    VisitStatus = 'Scheduled', 
-                    ValidFrom = @ValidFrom, 
-                    ValidUpto = @ValidUpto, 
-                    QRToken = @Token, 
-                    ApprovedOn = @ApprovedOn, 
-                    ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + ' | ' + @Remarks, 250) 
-                WHERE LogID = @LogID";
-
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@ValidFrom", validFrom);
-                    cmd.Parameters.AddWithValue("@ValidUpto", validUpto);
-                    cmd.Parameters.AddWithValue("@Token", qrToken);
-                    cmd.Parameters.AddWithValue("@ApprovedOn", schedDate);
-                    cmd.Parameters.AddWithValue("@Remarks", remarks);
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    cmd.ExecuteNonQuery();
-                }
-
-                string passUrl = VmsHelper.BuildDigitalPassUrl(qrToken);
-                if (!string.IsNullOrEmpty(visEmail))
-                {
-                    string visBody = $"<div style='padding:20px;'><h2 style='color:#1ABB9C;'>Visit Approved</h2><p>Hi {visName}, your visit has been scheduled for {schedDate:dd-MMM yyyy HH:mm} and authorized by Administration.</p><a href='{passUrl}'>View Digital Pass</a></div>";
-                    QueueEmail(con, logId, visEmail, visName, "Your Anmol Gate Pass (Approved)", visBody, "VMS_PASS");
-                }
-                if (!string.IsNullOrEmpty(hostEmail))
-                {
-                    string hostBody = $"<div style='padding:20px;'><h3 style='color:#3498DB;'>Admin Action Notification</h3><p>Hello {hostName},</p><p>Please note that your pending visitor <b>{visName}</b> was successfully <b>Approved On-Behalf</b> by the Administration Team.</p><p>Remarks: {remarks}</p></div>";
-                    QueueEmail(con, logId, hostEmail, hostName, $"FYI: Visitor {visName} Approved On-Behalf", hostBody, "VMS_ADMIN_ACTION");
-                }
+            if (!result.Succeeded)
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = $"<i class='fa fa-exclamation-triangle'></i> {FormatOnBehalfFailure(result.FailureReason)}";
+                return;
             }
-            lblMessage.ForeColor = System.Drawing.Color.Green;
-            lblMessage.Text = $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf (Valid Upto: {validUpto:dd-MMM HH:mm}).";
+
+            string validUptoText = result.ValidUpto.HasValue
+                ? result.ValidUpto.Value.ToString("dd-MMM HH:mm")
+                : "n/a";
+
+            lblMessage.ForeColor = Color.Green;
+            lblMessage.Text =
+                $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf (Valid Upto: {validUptoText}).";
         }
 
-        private void QueueEmail(SqlConnection con, int logId, string email, string name, string subject, string body, string module)
+        private static string FormatOnBehalfFailure(ApprovalFailureReason reason)
         {
-            string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', @Module)";
-            using (SqlCommand qCmd = new SqlCommand(qQuery, con))
+            switch (reason)
             {
-                qCmd.Parameters.AddWithValue("@LogId", logId);
-                qCmd.Parameters.AddWithValue("@Email", email);
-                qCmd.Parameters.AddWithValue("@Name", name);
-                qCmd.Parameters.AddWithValue("@Subject", subject);
-                qCmd.Parameters.AddWithValue("@Body", body);
-                qCmd.Parameters.AddWithValue("@Module", module);
-                qCmd.ExecuteNonQuery();
+                case ApprovalFailureReason.NotFoundOrNotOwned:
+                    return "Unable to approve on-behalf. Visit was not found.";
+                case ApprovalFailureReason.NotPending:
+                    return "Unable to approve on-behalf. Visit is no longer pending.";
+                default:
+                    return "Unable to approve on-behalf. Please try again.";
             }
         }
 
