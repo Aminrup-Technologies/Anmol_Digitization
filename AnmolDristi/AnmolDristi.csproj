@@ -1565,6 +1565,7 @@
     </Compile>
     <Compile Include="VmsVisitScheduleHelper.cs" />
     <Compile Include="VmsHelper.cs" />
+    <Compile Include="VmsEffectiveValidity.cs" />
     <Compile Include="DigitalPassStateResolver.cs" />
     <Compile Include="VMS_AdminPending.aspx.cs">
       <DependentUpon>VMS_AdminPending.aspx</DependentUpon>

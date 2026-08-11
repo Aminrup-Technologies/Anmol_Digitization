@@ -43,7 +43,8 @@ namespace AnmolDristi.DAL
         public string VisitorName { get; set; }
         public string VisitorCompany { get; set; }
         public string PhotoPath { get; set; }
-        public DateTime ValidUpto { get; set; }
+        public DateTime? ValidFrom { get; set; }
+        public DateTime? ValidUpto { get; set; }
         public string ApprovalStatus { get; set; }
         public string ScheduleType { get; set; }
         public string HostName { get; set; }
@@ -403,6 +404,7 @@ namespace AnmolDristi.DAL
                         v.VisitorName, 
                         v.VisitorCompany, 
                         v.PhotoPath, 
+                        v.ValidFrom,
                         v.ValidUpto, 
                         v.ApprovalStatus,
                         ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
@@ -430,7 +432,12 @@ namespace AnmolDristi.DAL
                             VisitorName = sdr["VisitorName"].ToString(),
                             VisitorCompany = sdr["VisitorCompany"].ToString(),
                             PhotoPath = sdr["PhotoPath"].ToString(),
-                            ValidUpto = Convert.ToDateTime(sdr["ValidUpto"]),
+                            ValidFrom = sdr["ValidFrom"] == DBNull.Value
+                                ? (DateTime?)null
+                                : Convert.ToDateTime(sdr["ValidFrom"]),
+                            ValidUpto = sdr["ValidUpto"] == DBNull.Value
+                                ? (DateTime?)null
+                                : Convert.ToDateTime(sdr["ValidUpto"]),
                             ApprovalStatus = sdr["ApprovalStatus"].ToString(),
                             ScheduleType = sdr["ScheduleType"].ToString(),
                             HostName = sdr["HostName"].ToString(),

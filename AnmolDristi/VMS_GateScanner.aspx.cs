@@ -213,6 +213,8 @@ namespace AnmolDristi
             int dayLogId = 0;
             DateTime dayValidFrom = DateTime.Now;
             DateTime dayValidUpto = DateTime.Now;
+            DateTime? parentValidFrom = null;
+            DateTime? parentValidUpto = null;
             string dayStatus = "Scheduled";
             DateTime? dayActualInTime = null;
             bool passMatchedForToday = false;
@@ -237,6 +239,12 @@ namespace AnmolDristi
                 dayLogId = Convert.ToInt32(sdr["DayLogID"]);
                 dayValidFrom = Convert.ToDateTime(sdr["DayValidFrom"]);
                 dayValidUpto = Convert.ToDateTime(sdr["DayValidUpto"]);
+                parentValidFrom = sdr["ValidFrom"] != DBNull.Value
+                    ? (DateTime?)Convert.ToDateTime(sdr["ValidFrom"])
+                    : null;
+                parentValidUpto = sdr["ValidUpto"] != DBNull.Value
+                    ? (DateTime?)Convert.ToDateTime(sdr["ValidUpto"])
+                    : null;
                 dayStatus = sdr["DayVisitStatus"] != DBNull.Value && !string.IsNullOrWhiteSpace(sdr["DayVisitStatus"].ToString())
                     ? sdr["DayVisitStatus"].ToString()
                     : "Scheduled";
@@ -285,23 +293,46 @@ namespace AnmolDristi
             }
 
             hfCurrentDayLogId.Value = dayLogId.ToString();
-            string validUptoDisplay = dayValidUpto.ToString("dd MMM, hh:mm tt");
+
+            DateTime effectiveFrom;
+            DateTime effectiveUpto;
+            bool hasEffectiveWindow = VmsEffectiveValidity.TryResolveEffectiveWindow(
+                parentValidFrom,
+                parentValidUpto,
+                dayValidFrom,
+                dayValidUpto,
+                out effectiveFrom,
+                out effectiveUpto);
+
+            string validUptoDisplay = hasEffectiveWindow
+                ? effectiveUpto.ToString("dd MMM, hh:mm tt")
+                : dayValidUpto.ToString("dd MMM, hh:mm tt");
             DateTime now = DateTime.Now;
 
             if (dayStatus == "Scheduled")
             {
-                if (now < dayValidFrom)
+                // Parent ∩ DayLog physical-access window (AR-GS-11).
+                // NULL parent ValidUpto/ValidFrom or empty intersection → deny.
+                if (!hasEffectiveWindow)
                 {
-                    ShowResult("result-card result-warning", "Too Early",
-                        $"Today's visiting window starts at {dayValidFrom:hh:mm tt}.",
+                    ShowResult("result-card result-danger", "Access Denied",
+                        "This pass is not valid for physical access at this time.",
                         photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                     return;
                 }
 
-                if (now > dayValidUpto)
+                if (now < effectiveFrom)
+                {
+                    ShowResult("result-card result-warning", "Too Early",
+                        $"Today's visiting window starts at {effectiveFrom:hh:mm tt}.",
+                        photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
+                    return;
+                }
+
+                if (now > effectiveUpto)
                 {
                     ShowResult("result-card result-danger", "Today's Window Ended",
-                        $"Today's approved visiting hours ended at {dayValidUpto:hh:mm tt}.",
+                        $"Today's approved visiting hours ended at {effectiveUpto:hh:mm tt}.",
                         photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                     return;
                 }
@@ -310,7 +341,7 @@ namespace AnmolDristi
                 btnManualCheckOut.Enabled = false;
                 liCheckInTime.Visible = false;
                 ShowResult("result-card result-info", "Visitor Identified",
-                    $"Approved for today ({dayValidFrom:hh:mm tt} - {dayValidUpto:hh:mm tt}). Verify photo and confirm Check-IN.",
+                    $"Approved for today ({effectiveFrom:hh:mm tt} - {effectiveUpto:hh:mm tt}). Verify photo and confirm Check-IN.",
                     photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
             }
             else if (dayStatus == "Checked-In")
@@ -331,7 +362,9 @@ namespace AnmolDristi
                     btnManualCheckOut.Text = "Confirm Check-OUT";
                 }
 
-                if (DateTime.Now > dayValidUpto)
+                // Overstay messaging only — expired validity must not block Check-Out.
+                DateTime overstayCutoff = hasEffectiveWindow ? effectiveUpto : dayValidUpto;
+                if (DateTime.Now > overstayCutoff)
                 {
                     ShowResult("result-card result-warning", "Visitor Overstayed",
                         $"Today's window ended at {validUptoDisplay}. Please verify and confirm Check-OUT.",

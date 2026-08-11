@@ -61,33 +61,52 @@ namespace AnmolDristi
             string photoUrl = pass.PhotoPath;
             imgVisitorPhoto.ImageUrl = string.IsNullOrEmpty(photoUrl) ? "~/images/user.png" : photoUrl;
 
-            DateTime validUpto = pass.ValidUpto;
-            lblValidUpto.Text = validUpto.ToString("dd MMM yyyy, hh:mm tt");
-
             // 3. Classify today's presentation state (read-only; Gate Scanner remains authoritative)
-            DigitalPassState state = ResolvePresentationState(pass);
+            VisitDayLogInfo todayLog = null;
+            DigitalPassState state = ResolvePresentationState(pass, out todayLog);
+            BindValidityDisplay(pass, todayLog, state);
             ApplyPresentationState(state, tokenStr);
 
             pnlPass.Visible = true;
             BindApprovedDates(pass.LogId, pass.ScheduleType);
         }
 
-        private DigitalPassState ResolvePresentationState(DigitalPassDetails pass)
+        private DigitalPassState ResolvePresentationState(DigitalPassDetails pass, out VisitDayLogInfo todayLog)
         {
-            VisitDayLogInfo todayLog = null;
-
-            if (string.Equals(
-                    pass.ScheduleType,
-                    "MultiDay",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                todayLog = _repository.GetTodayVisitDayLog(pass.LogId);
-            }
+            // SingleDay and MultiDay both need today's DayLog for presentation under AR-GS-11.
+            todayLog = _repository.GetTodayVisitDayLog(pass.LogId);
 
             return DigitalPassStateResolver.Resolve(
                 pass,
                 todayLog,
                 DateTime.Now);
+        }
+
+        private void BindValidityDisplay(DigitalPassDetails pass, VisitDayLogInfo todayLog, DigitalPassState state)
+        {
+            DateTime? displayUpto = pass.ValidUpto;
+
+            if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase)
+                && todayLog != null
+                && todayLog.IsDayApproved)
+            {
+                DateTime effectiveFrom;
+                DateTime effectiveUpto;
+                if (VmsEffectiveValidity.TryResolveEffectiveWindow(
+                        pass.ValidFrom,
+                        pass.ValidUpto,
+                        todayLog.DayValidFrom,
+                        todayLog.DayValidUpto,
+                        out effectiveFrom,
+                        out effectiveUpto))
+                {
+                    displayUpto = effectiveUpto;
+                }
+            }
+
+            lblValidUpto.Text = displayUpto.HasValue
+                ? displayUpto.Value.ToString("dd MMM yyyy, hh:mm tt")
+                : "Not set";
         }
 
         private void ApplyPresentationState(DigitalPassState state, string tokenStr)

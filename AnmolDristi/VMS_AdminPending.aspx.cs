@@ -375,21 +375,114 @@ namespace AnmolDristi
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                string updateQuery = $@"
-                    UPDATE VMS_VisitLog 
-                    SET {dbColumnName} = @NewTime 
-                        {statusUpdateLogic}, 
-                        ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + @AuditTrail, 250) 
-                    WHERE LogID = @LogID";
+                con.Open();
 
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                // AR-GS-11C: SingleDay ValidUpto edits must sync the corresponding DayLog atomically.
+                if (dbColumnName == "ValidUpto")
                 {
-                    cmd.Parameters.AddWithValue("@NewTime", newTime);
-                    cmd.Parameters.AddWithValue("@AuditTrail", auditTrail);
-                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    using (SqlTransaction trans = con.BeginTransaction())
+                    {
+                        try
+                        {
+                            string scheduleType = "SingleDay";
+                            using (SqlCommand scheduleCmd = new SqlCommand(
+                                "SELECT ISNULL(ScheduleType, 'SingleDay') AS ScheduleType FROM VMS_VisitLog WHERE LogID = @LogID",
+                                con,
+                                trans))
+                            {
+                                scheduleCmd.Parameters.AddWithValue("@LogID", logId);
+                                object scheduleResult = scheduleCmd.ExecuteScalar();
+                                if (scheduleResult != null && scheduleResult != DBNull.Value)
+                                    scheduleType = scheduleResult.ToString();
+                            }
 
-                    con.Open();
-                    cmd.ExecuteNonQuery();
+                            string updateQuery = $@"
+                                UPDATE VMS_VisitLog 
+                                SET {dbColumnName} = @NewTime 
+                                    {statusUpdateLogic}, 
+                                    ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + @AuditTrail, 250) 
+                                WHERE LogID = @LogID";
+
+                            using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
+                            {
+                                cmd.Parameters.AddWithValue("@NewTime", newTime);
+                                cmd.Parameters.AddWithValue("@AuditTrail", auditTrail);
+                                cmd.Parameters.AddWithValue("@LogID", logId);
+                                cmd.ExecuteNonQuery();
+                            }
+
+                            if (string.Equals(scheduleType, "SingleDay", StringComparison.OrdinalIgnoreCase))
+                            {
+                                int dayLogCount;
+                                int dayLogId = 0;
+                                using (SqlCommand countCmd = new SqlCommand(@"
+                                    SELECT COUNT(1) AS DayCount,
+                                           ISNULL(MAX(DayLogID), 0) AS OnlyDayLogID
+                                    FROM VMS_VisitDayLog
+                                    WHERE LogID = @LogID", con, trans))
+                                {
+                                    countCmd.Parameters.AddWithValue("@LogID", logId);
+                                    using (SqlDataReader reader = countCmd.ExecuteReader())
+                                    {
+                                        reader.Read();
+                                        dayLogCount = Convert.ToInt32(reader["DayCount"]);
+                                        dayLogId = Convert.ToInt32(reader["OnlyDayLogID"]);
+                                    }
+                                }
+
+                                // Ambiguous or missing DayLog: do not guess — reject before partial commit.
+                                if (dayLogCount != 1)
+                                {
+                                    try { trans.Rollback(); } catch { }
+                                    ShowValidationError(
+                                        "Cannot sync SingleDay pass validity: expected exactly one VisitDayLog row.");
+                                    return;
+                                }
+
+                                using (SqlCommand dayCmd = new SqlCommand(@"
+                                    UPDATE VMS_VisitDayLog
+                                    SET DayValidUpto = @NewTime
+                                    WHERE DayLogID = @DayLogID
+                                      AND LogID = @LogID", con, trans))
+                                {
+                                    dayCmd.Parameters.AddWithValue("@NewTime", newTime);
+                                    dayCmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                                    dayCmd.Parameters.AddWithValue("@LogID", logId);
+                                    if (dayCmd.ExecuteNonQuery() != 1)
+                                    {
+                                        try { trans.Rollback(); } catch { }
+                                        ShowValidationError("Failed to synchronize SingleDay VisitDayLog validity.");
+                                        return;
+                                    }
+                                }
+                            }
+
+                            // MultiDay: parent ValidUpto only — do not overwrite per-day windows.
+                            trans.Commit();
+                        }
+                        catch
+                        {
+                            try { trans.Rollback(); } catch { }
+                            throw;
+                        }
+                    }
+                }
+                else
+                {
+                    string updateQuery = $@"
+                        UPDATE VMS_VisitLog 
+                        SET {dbColumnName} = @NewTime 
+                            {statusUpdateLogic}, 
+                            ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + @AuditTrail, 250) 
+                        WHERE LogID = @LogID";
+
+                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                    {
+                        cmd.Parameters.AddWithValue("@NewTime", newTime);
+                        cmd.Parameters.AddWithValue("@AuditTrail", auditTrail);
+                        cmd.Parameters.AddWithValue("@LogID", logId);
+                        cmd.ExecuteNonQuery();
+                    }
                 }
             }
 
