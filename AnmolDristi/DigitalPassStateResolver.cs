@@ -25,10 +25,30 @@ namespace AnmolDristi
             VisitDayLogInfo todayLog,
             DateTime now)
         {
-            // SingleDay: preserve prior ValidUpto-only lifecycle (EXPIRED presentation).
+            // SingleDay: presentation matches Gate effective window (parent ∩ DayLog).
             if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
             {
-                if (now > pass.ValidUpto)
+                if (todayLog == null || !todayLog.IsDayApproved)
+                    return DigitalPassState.NotApprovedForToday;
+
+                DateTime effectiveFrom;
+                DateTime effectiveUpto;
+                if (!VmsEffectiveValidity.TryResolveEffectiveWindow(
+                        pass.ValidFrom,
+                        pass.ValidUpto,
+                        todayLog.DayValidFrom,
+                        todayLog.DayValidUpto,
+                        out effectiveFrom,
+                        out effectiveUpto))
+                {
+                    // NULL parent ValidUpto/ValidFrom or empty intersection → not valid.
+                    return DigitalPassState.Expired;
+                }
+
+                if (now < effectiveFrom)
+                    return DigitalPassState.PassNotActiveYet;
+
+                if (now > effectiveUpto)
                     return DigitalPassState.Expired;
 
                 return DigitalPassState.ValidPass;
