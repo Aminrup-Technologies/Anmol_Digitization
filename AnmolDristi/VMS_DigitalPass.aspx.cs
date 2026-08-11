@@ -6,17 +6,6 @@ using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
-    public enum DigitalPassState
-    {
-        NotApprovedForToday,
-        PassNotActiveYet,
-        ValidPass,
-        VisitorCurrentlyInside,
-        VisitCompleted,
-        TodaysWindowEnded,
-        Expired
-    }
-
     public partial class VMS_DigitalPass : System.Web.UI.Page
     {
         private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
@@ -85,37 +74,20 @@ namespace AnmolDristi
 
         private DigitalPassState ResolvePresentationState(DigitalPassDetails pass)
         {
-            // SingleDay: preserve prior ValidUpto-only lifecycle (EXPIRED presentation).
-            if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
-            {
-                if (DateTime.Now > pass.ValidUpto)
-                    return DigitalPassState.Expired;
+            VisitDayLogInfo todayLog = null;
 
-                return DigitalPassState.ValidPass;
+            if (string.Equals(
+                    pass.ScheduleType,
+                    "MultiDay",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                todayLog = _repository.GetTodayVisitDayLog(pass.LogId);
             }
 
-            VisitDayLogInfo todayLog = _repository.GetTodayVisitDayLog(pass.LogId);
-            if (todayLog == null || !todayLog.IsDayApproved)
-                return DigitalPassState.NotApprovedForToday;
-
-            DateTime now = DateTime.Now;
-            string dayStatus = string.IsNullOrWhiteSpace(todayLog.VisitStatus)
-                ? "Scheduled"
-                : todayLog.VisitStatus.Trim();
-
-            if (now < todayLog.DayValidFrom)
-                return DigitalPassState.PassNotActiveYet;
-
-            if (string.Equals(dayStatus, "Checked-Out", StringComparison.OrdinalIgnoreCase))
-                return DigitalPassState.VisitCompleted;
-
-            if (string.Equals(dayStatus, "Checked-In", StringComparison.OrdinalIgnoreCase))
-                return DigitalPassState.VisitorCurrentlyInside;
-
-            if (now > todayLog.DayValidUpto)
-                return DigitalPassState.TodaysWindowEnded;
-
-            return DigitalPassState.ValidPass;
+            return DigitalPassStateResolver.Resolve(
+                pass,
+                todayLog,
+                DateTime.Now);
         }
 
         private void ApplyPresentationState(DigitalPassState state, string tokenStr)
