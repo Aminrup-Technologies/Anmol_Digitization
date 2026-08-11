@@ -158,7 +158,7 @@ namespace AnmolDristi
                     break;
                 case DigitalPassState.ValidPass:
                 default:
-                    badgeText = "<i class='fa fa-check-circle'></i> VALID PASS";
+                    badgeText = "VALID PASS";
                     badgeCss = "status-badge status-valid";
                     message = "Show this QR code at the security gate.";
                     break;
