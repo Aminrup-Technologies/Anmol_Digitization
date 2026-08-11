@@ -1,14 +1,17 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Globalization;
 using System.Web.UI.WebControls;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_HostQuickLogin : System.Web.UI.Page
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -260,59 +263,6 @@ namespace AnmolDristi
             ProcessApproval("Rejected", "Rejected");
         }
 
-        private void ApplySelectedDayApprovals(SqlConnection con, SqlTransaction trans, string visitId)
-        {
-            foreach (ListItem item in cblRequestedDays.Items)
-            {
-                DateTime visitDate = DateTime.ParseExact(item.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                using (SqlCommand dayCmd = new SqlCommand(@"
-                    UPDATE VMS_VisitDayLog
-                    SET IsDayApproved = @IsDayApproved
-                    WHERE LogID = @LogID AND VisitDate = @VisitDate", con, trans))
-                {
-                    dayCmd.Parameters.AddWithValue("@IsDayApproved", item.Selected ? 1 : 0);
-                    dayCmd.Parameters.AddWithValue("@LogID", visitId);
-                    dayCmd.Parameters.AddWithValue("@VisitDate", visitDate.Date);
-                    dayCmd.ExecuteNonQuery();
-                }
-            }
-        }
-
-        private void ApplyApprovedValidityTimes(
-            SqlConnection con,
-            SqlTransaction trans,
-            string visitId,
-            TimeSpan approvedFromTime,
-            TimeSpan approvedToTime)
-        {
-            // Keep existing calendar dates; replace only the time portion of ValidFrom / ValidUpto
-            using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitLog
-                SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, ISNULL(RequestedValidFrom, GETDATE())) AS date) AS datetime)),
-                    ValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ValidUpto, ISNULL(RequestedValidUpto, GETDATE())) AS date) AS datetime)),
-                    ApprovedValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ApprovedValidFrom, ISNULL(ValidFrom, ISNULL(RequestedValidFrom, GETDATE()))) AS date) AS datetime)),
-                    ApprovedValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ApprovedValidUpto, ISNULL(ValidUpto, ISNULL(RequestedValidUpto, GETDATE()))) AS date) AS datetime))
-                WHERE LogID = @LogID", con, trans))
-            {
-                cmd.Parameters.AddWithValue("@LogID", visitId);
-                cmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
-                cmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
-                cmd.ExecuteNonQuery();
-            }
-
-            using (SqlCommand dayCmd = new SqlCommand(@"
-                UPDATE VMS_VisitDayLog
-                SET DayValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(VisitDate AS datetime)),
-                    DayValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(VisitDate AS datetime))
-                WHERE LogID = @LogID AND IsDayApproved = 1", con, trans))
-            {
-                dayCmd.Parameters.AddWithValue("@LogID", visitId);
-                dayCmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
-                dayCmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
-                dayCmd.ExecuteNonQuery();
-            }
-        }
-
         private void ProcessApproval(
             string approvalStatus,
             string visitStatus,
@@ -321,100 +271,113 @@ namespace AnmolDristi
         {
             string visitId = Request.QueryString["vid"];
 
+            if (approvalStatus == "Approved")
+            {
+                string hostEmployeeCode;
+                if (!TryResolveHostEmployeeCode(out hostEmployeeCode))
+                {
+                    lblMessage.CssClass = "error";
+                    lblMessage.Visible = true;
+                    if (string.IsNullOrEmpty(lblMessage.Text))
+                        lblMessage.Text = "Invalid access link. Please check your email.";
+                    return;
+                }
+
+                int logId = Convert.ToInt32(visitId);
+
+                IList<SelectedVisitDay> selectedDays = null;
+                if (cblRequestedDays.Visible)
+                {
+                    selectedDays = new List<SelectedVisitDay>();
+                    foreach (ListItem item in cblRequestedDays.Items)
+                    {
+                        DateTime visitDate = DateTime.ParseExact(item.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        selectedDays.Add(new SelectedVisitDay
+                        {
+                            VisitDate = visitDate.Date,
+                            IsApproved = item.Selected
+                        });
+                    }
+                }
+
+                VisitorApprovalResult result = _repository.ApprovePendingVisit(new VisitorApprovalRequest
+                {
+                    LogId = logId,
+                    HostEmployeeCode = hostEmployeeCode,
+                    SelectedDays = selectedDays,
+                    ApprovedFromTime = approvedFromTime,
+                    ApprovedToTime = approvedToTime
+                });
+
+                if (!result.Succeeded)
+                {
+                    lblMessage.CssClass = "error";
+                    lblMessage.Visible = true;
+                    lblMessage.Text = FormatApprovalFailureMessage(result.FailureReason);
+                    return;
+                }
+
+                pnlAction.Visible = false;
+                lblMessage.Visible = true;
+                lblMessage.CssClass = "success";
+                lblMessage.Text = "Visitor Approved successfully! The digital gate pass has been sent to them.";
+                return;
+            }
+
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 con.Open();
 
-                if (approvalStatus == "Approved")
+                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, ApprovedOn = GETDATE() WHERE LogID = @LogID";
+                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
                 {
-                    using (SqlTransaction trans = con.BeginTransaction())
-                    {
-                        try
-                        {
-                            // Selective multi-day approval must be applied before QR token generation
-                            if (cblRequestedDays.Visible)
-                            {
-                                ApplySelectedDayApprovals(con, trans, visitId);
-                            }
-
-                            // Host-chosen validity window (time portions of ValidFrom / ValidUpto)
-                            if (approvedFromTime.HasValue && approvedToTime.HasValue)
-                            {
-                                ApplyApprovedValidityTimes(con, trans, visitId, approvedFromTime.Value, approvedToTime.Value);
-                            }
-
-                            Guid qrToken = Guid.NewGuid();
-
-                            string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                            using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
-                            {
-                                cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
-                                cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
-                                cmd.Parameters.AddWithValue("@Token", qrToken);
-                                cmd.Parameters.AddWithValue("@LogID", visitId);
-                                cmd.ExecuteNonQuery();
-                            }
-
-                            VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, Convert.ToInt32(visitId), null, null);
-
-                            // Re-apply selective day flags so range-based schedule approval does not overwrite them
-                            if (cblRequestedDays.Visible)
-                            {
-                                ApplySelectedDayApprovals(con, trans, visitId);
-                            }
-
-                            // Re-apply host time override after schedule approval sets ValidFrom/ValidUpto
-                            if (approvedFromTime.HasValue && approvedToTime.HasValue)
-                            {
-                                ApplyApprovedValidityTimes(con, trans, visitId, approvedFromTime.Value, approvedToTime.Value);
-                            }
-
-                            string visEmail = "";
-                            string visMobile = "";
-                            string visName = "";
-                            using (SqlCommand lookupCmd = new SqlCommand("SELECT VisitorEmail, VisitorMobile, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID", con, trans))
-                            {
-                                lookupCmd.Parameters.AddWithValue("@LogID", visitId);
-                                using (SqlDataReader sdr = lookupCmd.ExecuteReader())
-                                {
-                                    if (sdr.Read())
-                                    {
-                                        visEmail = sdr["VisitorEmail"].ToString();
-                                        visMobile = sdr["VisitorMobile"].ToString();
-                                        visName = sdr["VisitorName"].ToString();
-                                    }
-                                }
-                            }
-
-                            VmsHelper.QueueVisitorPassNotification(con, Convert.ToInt32(visitId), qrToken, visName, visEmail, visMobile, trans);
-                            trans.Commit();
-                        }
-                        catch
-                        {
-                            trans.Rollback();
-                            throw;
-                        }
-                    }
-                }
-                else
-                {
-                    string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                    {
-                        cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
-                        cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
-                        cmd.Parameters.AddWithValue("@LogID", visitId);
-                        cmd.ExecuteNonQuery();
-                    }
+                    cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
+                    cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
+                    cmd.Parameters.AddWithValue("@LogID", visitId);
+                    cmd.ExecuteNonQuery();
                 }
             }
 
             pnlAction.Visible = false;
             lblMessage.Visible = true;
             lblMessage.CssClass = "success";
-            lblMessage.Text = approvalStatus == "Approved"
-                ? "Visitor Approved successfully! The digital gate pass has been sent to them."
-                : "Visitor request has been rejected.";
+            lblMessage.Text = "Visitor request has been rejected.";
+        }
+
+        private bool TryResolveHostEmployeeCode(out string hostEmployeeCode)
+        {
+            hostEmployeeCode = string.Empty;
+
+            if (Request.QueryString["t"] == null)
+            {
+                lblMessage.Text = "Invalid access link. Please check your email.";
+                return false;
+            }
+
+            try
+            {
+                byte[] base64EncodedBytes = Convert.FromBase64String(Request.QueryString["t"]);
+                hostEmployeeCode = System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
+                return !string.IsNullOrEmpty(hostEmployeeCode);
+            }
+            catch
+            {
+                lblMessage.Text = "Malformed security token.";
+                return false;
+            }
+        }
+
+        private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)
+        {
+            switch (reason)
+            {
+                case ApprovalFailureReason.NotFoundOrNotOwned:
+                    return "Visitor not found or you are not authorized to approve this request.";
+                case ApprovalFailureReason.NotPending:
+                    return "This request has already been processed.";
+                default:
+                    return "Unable to approve this visit. Please try again.";
+            }
         }
 
         private void DispatchVisitorNotification_OBSOLETE(SqlConnection con, string visitId, Guid token)
