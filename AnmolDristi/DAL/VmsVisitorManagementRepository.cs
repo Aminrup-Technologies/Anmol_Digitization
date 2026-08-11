@@ -1,9 +1,42 @@
+using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 
 namespace AnmolDristi.DAL
 {
+    public enum ApprovalFailureReason
+    {
+        None = 0,
+        NotFoundOrNotOwned = 1,
+        NotPending = 2,
+        Unexpected = 3
+    }
+
+    public class SelectedVisitDay
+    {
+        public DateTime VisitDate { get; set; }
+        public bool IsApproved { get; set; }
+    }
+
+    public class VisitorApprovalRequest
+    {
+        public int LogId { get; set; }
+        public string HostEmployeeCode { get; set; }
+        public IList<SelectedVisitDay> SelectedDays { get; set; }
+        public TimeSpan? ApprovedFromTime { get; set; }
+        public TimeSpan? ApprovedToTime { get; set; }
+    }
+
+    public class VisitorApprovalResult
+    {
+        public bool Succeeded { get; set; }
+        public ApprovalFailureReason FailureReason { get; set; }
+        public int LogId { get; set; }
+        public Guid? QrToken { get; set; }
+    }
+
     /// <summary>
     /// Persistence access for VMS host My Visitors operations.
     /// </summary>
@@ -99,6 +132,249 @@ namespace AnmolDristi.DAL
                     con.Open();
                     cmd.ExecuteNonQuery();
                     con.Close();
+                }
+            }
+        }
+
+        public VisitorApprovalResult ApprovePendingVisit(VisitorApprovalRequest request)
+        {
+            if (request == null)
+                throw new ArgumentNullException("request");
+
+            string hostEmployeeCode = request.HostEmployeeCode ?? string.Empty;
+
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        if (request.SelectedDays != null)
+                        {
+                            ApplySelectedDayApprovals(con, trans, request.LogId, request.SelectedDays);
+                        }
+
+                        Guid qrToken = Guid.NewGuid();
+
+                        string updateQuery = @"
+                            UPDATE VMS_VisitLog
+                            SET ApprovalStatus = 'Approved',
+                                VisitStatus = 'Scheduled',
+                                QRToken = @Token,
+                                ApprovedOn = GETDATE()
+                            WHERE LogID = @LogID
+                              AND HostEmployeeCode = @HostEmployeeCode
+                              AND ApprovalStatus = 'Pending'";
+
+                        int rowsAffected;
+                        using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
+                        {
+                            cmd.Parameters.AddWithValue("@Token", qrToken);
+                            cmd.Parameters.AddWithValue("@LogID", request.LogId);
+                            cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
+                            rowsAffected = cmd.ExecuteNonQuery();
+                        }
+
+                        if (rowsAffected != 1)
+                        {
+                            ApprovalFailureReason reason =
+                                ResolveApprovalFailure(con, trans, request.LogId, hostEmployeeCode);
+
+                            try
+                            {
+                                trans.Rollback();
+                            }
+                            catch
+                            {
+                                // Do not mask the approval failure result.
+                            }
+
+                            return new VisitorApprovalResult
+                            {
+                                Succeeded = false,
+                                FailureReason = reason,
+                                LogId = request.LogId,
+                                QrToken = null
+                            };
+                        }
+
+                        VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, request.LogId, null, null);
+
+                        // Re-apply selective day flags so range-based schedule approval does not overwrite them
+                        if (request.SelectedDays != null)
+                        {
+                            ApplySelectedDayApprovals(con, trans, request.LogId, request.SelectedDays);
+                        }
+
+                        if (request.ApprovedFromTime.HasValue && request.ApprovedToTime.HasValue)
+                        {
+                            ApplyApprovedValidityTimes(
+                                con,
+                                trans,
+                                request.LogId,
+                                request.ApprovedFromTime.Value,
+                                request.ApprovedToTime.Value);
+                        }
+
+                        string visitorName;
+                        string visitorEmail;
+                        string visitorMobile;
+                        LoadVisitorContact(con, trans, request.LogId, out visitorName, out visitorEmail, out visitorMobile);
+
+                        VmsHelper.QueueVisitorPassNotification(
+                            con,
+                            request.LogId,
+                            qrToken,
+                            visitorName,
+                            visitorEmail,
+                            visitorMobile,
+                            trans);
+
+                        trans.Commit();
+
+                        return new VisitorApprovalResult
+                        {
+                            Succeeded = true,
+                            FailureReason = ApprovalFailureReason.None,
+                            LogId = request.LogId,
+                            QrToken = qrToken
+                        };
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            trans.Rollback();
+                        }
+                        catch
+                        {
+                            // Do not mask the original exception.
+                        }
+
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static void ApplySelectedDayApprovals(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            IList<SelectedVisitDay> selectedDays)
+        {
+            foreach (SelectedVisitDay day in selectedDays)
+            {
+                using (SqlCommand dayCmd = new SqlCommand(@"
+                    UPDATE VMS_VisitDayLog
+                    SET IsDayApproved = @IsDayApproved
+                    WHERE LogID = @LogID AND VisitDate = @VisitDate", con, trans))
+                {
+                    dayCmd.Parameters.AddWithValue("@IsDayApproved", day.IsApproved ? 1 : 0);
+                    dayCmd.Parameters.AddWithValue("@LogID", logId);
+                    dayCmd.Parameters.AddWithValue("@VisitDate", day.VisitDate.Date);
+                    dayCmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private static void ApplyApprovedValidityTimes(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            TimeSpan approvedFromTime,
+            TimeSpan approvedToTime)
+        {
+            // Preserve MyVisitors calendar-date behavior; replace only the time portion.
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, GETDATE()) AS date) AS datetime)),
+                    ValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ValidUpto, GETDATE()) AS date) AS datetime)),
+                    ApprovedValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ApprovedValidFrom, ISNULL(ValidFrom, GETDATE())) AS date) AS datetime)),
+                    ApprovedValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ApprovedValidUpto, ISNULL(ValidUpto, GETDATE())) AS date) AS datetime))
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
+                cmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
+                cmd.ExecuteNonQuery();
+            }
+
+            using (SqlCommand dayCmd = new SqlCommand(@"
+                UPDATE VMS_VisitDayLog
+                SET DayValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(VisitDate AS datetime)),
+                    DayValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(VisitDate AS datetime))
+                WHERE LogID = @LogID AND IsDayApproved = 1", con, trans))
+            {
+                dayCmd.Parameters.AddWithValue("@LogID", logId);
+                dayCmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
+                dayCmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
+                dayCmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void LoadVisitorContact(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            out string visitorName,
+            out string visitorEmail,
+            out string visitorMobile)
+        {
+            visitorName = string.Empty;
+            visitorEmail = string.Empty;
+            visitorMobile = string.Empty;
+
+            using (SqlCommand lookupCmd = new SqlCommand(
+                "SELECT VisitorEmail, VisitorMobile, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID",
+                con,
+                trans))
+            {
+                lookupCmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader sdr = lookupCmd.ExecuteReader())
+                {
+                    if (sdr.Read())
+                    {
+                        visitorEmail = sdr["VisitorEmail"] == DBNull.Value ? string.Empty : sdr["VisitorEmail"].ToString();
+                        visitorMobile = sdr["VisitorMobile"] == DBNull.Value ? string.Empty : sdr["VisitorMobile"].ToString();
+                        visitorName = sdr["VisitorName"] == DBNull.Value ? string.Empty : sdr["VisitorName"].ToString();
+                    }
+                }
+            }
+        }
+
+        private static ApprovalFailureReason ResolveApprovalFailure(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string hostEmployeeCode)
+        {
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT HostEmployeeCode, ApprovalStatus FROM VMS_VisitLog WHERE LogID = @LogID",
+                con,
+                trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return ApprovalFailureReason.NotFoundOrNotOwned;
+
+                    string rowHost = reader["HostEmployeeCode"] == DBNull.Value
+                        ? string.Empty
+                        : reader["HostEmployeeCode"].ToString();
+                    string status = reader["ApprovalStatus"] == DBNull.Value
+                        ? string.Empty
+                        : reader["ApprovalStatus"].ToString();
+
+                    if (!string.Equals(rowHost, hostEmployeeCode, StringComparison.OrdinalIgnoreCase))
+                        return ApprovalFailureReason.NotFoundOrNotOwned;
+
+                    if (!string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
+                        return ApprovalFailureReason.NotPending;
+
+                    return ApprovalFailureReason.Unexpected;
                 }
             }
         }
