@@ -10,13 +10,73 @@ namespace AnmolDristi
     {
         private readonly VmsGateScannerRepository _repository = new VmsGateScannerRepository();
 
+        /// <summary>
+        /// When gate config is valid: null = universal gate; non-null = branch-scoped gate.
+        /// </summary>
+        private int? _specificBranchId;
+
+        /// <summary>
+        /// True when BranchId query string is present but not a valid positive integer.
+        /// </summary>
+        private bool _gateConfigInvalid;
+
         protected void Page_Load(object sender, EventArgs e)
         {
+            if (!TryResolveGateBranchContext(out _specificBranchId))
+            {
+                _gateConfigInvalid = true;
+                DenyInvalidGateConfiguration();
+                return;
+            }
+
             if (!IsPostBack)
             {
                 LoadGateLocation();
                 BindInsideVisitors();
             }
+        }
+
+        /// <summary>
+        /// Distinguishes absent BranchId (universal) from present-but-invalid (deny).
+        /// Valid specific BranchIds are positive integers (aligned with other VMS pages using branchId &gt; 0).
+        /// </summary>
+        private bool TryResolveGateBranchContext(out int? specificBranchId)
+        {
+            specificBranchId = null;
+
+            // Absent key only — empty string means the parameter is present.
+            if (Request.QueryString["BranchId"] == null)
+                return true;
+
+            string raw = Request.QueryString["BranchId"];
+            int branchId;
+            if (!int.TryParse(raw, out branchId) || branchId <= 0)
+                return false;
+
+            specificBranchId = branchId;
+            return true;
+        }
+
+        private void DenyInvalidGateConfiguration()
+        {
+            lblGateLocation.Text = "Invalid gate configuration.";
+            ClearInsideVisitorsDisplay();
+            ShowResult(
+                "result-card result-danger",
+                "Invalid Gate Configuration",
+                "Invalid gate configuration.",
+                "",
+                null);
+            hfScannedToken.Value = "";
+        }
+
+        private void ClearInsideVisitorsDisplay()
+        {
+            rptVisitorLogs.DataSource = null;
+            rptVisitorLogs.DataBind();
+            lblInsideCount.Text = "0";
+            upGrid.Update();
+            upBadge.Update();
         }
 
         private void KeepTabActive(string tabId)
@@ -27,14 +87,10 @@ namespace AnmolDristi
 
         private void LoadGateLocation()
         {
-            if (Request.QueryString["BranchId"] != null)
+            if (_specificBranchId.HasValue)
             {
-                int branchId;
-                if (int.TryParse(Request.QueryString["BranchId"].ToString(), out branchId))
-                {
-                    string locationName = _repository.GetGateLocation(branchId);
-                    lblGateLocation.Text = locationName != null ? locationName : "Unknown Facility";
-                }
+                string locationName = _repository.GetGateLocation(_specificBranchId.Value);
+                lblGateLocation.Text = locationName != null ? locationName : "Unknown Facility";
             }
             else
             {
@@ -44,17 +100,13 @@ namespace AnmolDristi
 
         private void BindInsideVisitors()
         {
-            // 1. Check if the guard is at a specific branch
-            int branchId = 0;
-            bool isSpecificGate = false;
-
-            if (Request.QueryString["BranchId"] != null && int.TryParse(Request.QueryString["BranchId"].ToString(), out branchId))
+            if (_gateConfigInvalid)
             {
-                isSpecificGate = true;
+                ClearInsideVisitorsDisplay();
+                return;
             }
 
-            int? filterBranchId = isSpecificGate ? (int?)branchId : null;
-            DataTable dt = _repository.GetInsideVisitors(filterBranchId);
+            DataTable dt = _repository.GetInsideVisitors(_specificBranchId);
 
             // Bind to the new responsive Repeater instead of the old GridView
             rptVisitorLogs.DataSource = dt;
@@ -97,6 +149,12 @@ namespace AnmolDristi
         {
             if (e.CommandName == "ForceCheckOut")
             {
+                if (_gateConfigInvalid)
+                {
+                    DenyInvalidGateConfiguration();
+                    return;
+                }
+
                 string[] parts = e.CommandArgument.ToString().Split('|');
                 int logId = Convert.ToInt32(parts[0]);
                 int dayLogId = parts.Length > 1 ? Convert.ToInt32(parts[1]) : 0;
@@ -120,6 +178,12 @@ namespace AnmolDristi
 
         protected void btnProcessScan_Click(object sender, EventArgs e)
         {
+            if (_gateConfigInvalid)
+            {
+                DenyInvalidGateConfiguration();
+                return;
+            }
+
             string scannedToken = hfScannedToken.Value;
             Guid tokenGuid;
 
@@ -129,12 +193,8 @@ namespace AnmolDristi
                 return;
             }
 
-            int scannerBranchId = 0;
-            bool isSpecificGate = false;
-            if (Request.QueryString["BranchId"] != null && int.TryParse(Request.QueryString["BranchId"], out scannerBranchId))
-            {
-                isSpecificGate = true;
-            }
+            bool isSpecificGate = _specificBranchId.HasValue;
+            int scannerBranchId = _specificBranchId ?? 0;
 
             // Strict daily validation: visitor must have an approved day-log row for today
             // (covers both SingleDay and MultiDay; each visit creates VMS_VisitDayLog rows).
@@ -337,6 +397,12 @@ namespace AnmolDristi
 
         protected void btnManualCheckIn_Click(object sender, EventArgs e)
         {
+            if (_gateConfigInvalid)
+            {
+                DenyInvalidGateConfiguration();
+                return;
+            }
+
             int logId = Convert.ToInt32(hfCurrentLogId.Value);
             int dayLogId = 0;
             int.TryParse(hfCurrentDayLogId.Value, out dayLogId);
@@ -363,6 +429,12 @@ namespace AnmolDristi
 
         protected void btnManualCheckOut_Click(object sender, EventArgs e)
         {
+            if (_gateConfigInvalid)
+            {
+                DenyInvalidGateConfiguration();
+                return;
+            }
+
             int logId = Convert.ToInt32(hfCurrentLogId.Value);
             int dayLogId = 0;
             int.TryParse(hfCurrentDayLogId.Value, out dayLogId);
@@ -420,6 +492,20 @@ namespace AnmolDristi
             BindInsideVisitors();
         }
 
+        protected void btnResetScanner_Click(object sender, EventArgs e)
+        {
+            if (_gateConfigInvalid)
+            {
+                DenyInvalidGateConfiguration();
+                return;
+            }
+
+            pnlCamera.Visible = true;
+            pnlResult.Visible = false;
+            hfScannedToken.Value = "";
+            KeepTabActive("scanner-tab");
+        }
+
         private void ShowResult(string cssClass, string title, string message, string photoPath,
             string visName = null, string comp = null, string contact = null,
             string hostName = null, string hostDept = null, string validStr = null)
@@ -470,14 +556,6 @@ namespace AnmolDristi
                 divFinishButtons.Visible = true;
             }
 
-            KeepTabActive("scanner-tab");
-        }
-
-        protected void btnResetScanner_Click(object sender, EventArgs e)
-        {
-            pnlCamera.Visible = true;
-            pnlResult.Visible = false;
-            hfScannedToken.Value = "";
             KeepTabActive("scanner-tab");
         }
     }
