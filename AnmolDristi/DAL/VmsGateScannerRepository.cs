@@ -5,6 +5,19 @@ using System.Data.SqlClient;
 
 namespace AnmolDristi.DAL
 {
+    public enum GateMutationFailureReason
+    {
+        None = 0,
+        StateChanged = 1
+    }
+
+    public class GateMutationResult
+    {
+        public bool Succeeded { get; set; }
+        public GateMutationFailureReason FailureReason { get; set; }
+        public int LogId { get; set; }
+    }
+
     /// <summary>
     /// Persistence access for VMS Gate Scanner read and check-in/out operations.
     /// </summary>
@@ -164,7 +177,7 @@ namespace AnmolDristi.DAL
         /// <summary>
         /// Atomically check in a visit (day-aware or legacy) and optionally queue arrival notification.
         /// </summary>
-        public void CheckIn(
+        public GateMutationResult CheckIn(
             int logId,
             int dayLogId,
             string guardId,
@@ -182,10 +195,30 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        bool transitionSucceeded;
                         if (dayLogId > 0)
-                            VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, resolvedGuardId, trans);
+                            transitionSucceeded = VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, resolvedGuardId, trans);
                         else
-                            UpdateGateStatus(con, trans, logId, "Checked-In", "ActualInTime", resolvedGuardId);
+                            transitionSucceeded = UpdateGateStatus(con, trans, logId, "Checked-In", "ActualInTime", resolvedGuardId, "Scheduled");
+
+                        if (!transitionSucceeded)
+                        {
+                            try
+                            {
+                                trans.Rollback();
+                            }
+                            catch
+                            {
+                                // Do not mask the state-transition failure.
+                            }
+
+                            return new GateMutationResult
+                            {
+                                Succeeded = false,
+                                FailureReason = GateMutationFailureReason.StateChanged,
+                                LogId = logId
+                            };
+                        }
 
                         if (!string.IsNullOrEmpty(hostEmail))
                         {
@@ -193,6 +226,13 @@ namespace AnmolDristi.DAL
                         }
 
                         trans.Commit();
+
+                        return new GateMutationResult
+                        {
+                            Succeeded = true,
+                            FailureReason = GateMutationFailureReason.None,
+                            LogId = logId
+                        };
                     }
                     catch
                     {
@@ -214,7 +254,7 @@ namespace AnmolDristi.DAL
         /// <summary>
         /// Atomically check out a visit (day-aware or legacy) and optionally queue departure notification.
         /// </summary>
-        public void CheckOut(int logId, int dayLogId, string guardId)
+        public GateMutationResult CheckOut(int logId, int dayLogId, string guardId)
         {
             string resolvedGuardId = guardId ?? "SecurityGate";
 
@@ -238,10 +278,30 @@ namespace AnmolDristi.DAL
                                 dayLogId = todayLog.DayLogId;
                         }
 
+                        bool transitionSucceeded;
                         if (dayLogId > 0)
-                            VmsVisitScheduleHelper.CheckOutDay(con, dayLogId, logId, resolvedGuardId, trans);
+                            transitionSucceeded = VmsVisitScheduleHelper.CheckOutDay(con, dayLogId, logId, resolvedGuardId, trans);
                         else
-                            UpdateGateStatus(con, trans, logId, "Checked-Out", "ActualOutTime", resolvedGuardId);
+                            transitionSucceeded = UpdateGateStatus(con, trans, logId, "Checked-Out", "ActualOutTime", resolvedGuardId, "Checked-In");
+
+                        if (!transitionSucceeded)
+                        {
+                            try
+                            {
+                                trans.Rollback();
+                            }
+                            catch
+                            {
+                                // Do not mask the state-transition failure.
+                            }
+
+                            return new GateMutationResult
+                            {
+                                Succeeded = false,
+                                FailureReason = GateMutationFailureReason.StateChanged,
+                                LogId = logId
+                            };
+                        }
 
                         if (!string.IsNullOrEmpty(hostEmail))
                         {
@@ -249,6 +309,13 @@ namespace AnmolDristi.DAL
                         }
 
                         trans.Commit();
+
+                        return new GateMutationResult
+                        {
+                            Succeeded = true,
+                            FailureReason = GateMutationFailureReason.None,
+                            LogId = logId
+                        };
                     }
                     catch
                     {
@@ -303,21 +370,27 @@ namespace AnmolDristi.DAL
             }
         }
 
-        private static void UpdateGateStatus(
+        /// <summary>
+        /// Legacy parent-only VisitLog status update. Requires expectedCurrentStatus and rowsAffected == 1.
+        /// </summary>
+        private static bool UpdateGateStatus(
             SqlConnection con,
             SqlTransaction trans,
             int logId,
             string newStatus,
             string timeColumn,
-            string guardId)
+            string guardId,
+            string expectedCurrentStatus)
         {
-            string updateQuery = $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID";
+            string updateQuery =
+                $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID AND VisitStatus = @ExpectedStatus";
             using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
             {
                 cmd.Parameters.AddWithValue("@Status", newStatus);
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
-                cmd.ExecuteNonQuery();
+                cmd.Parameters.AddWithValue("@ExpectedStatus", expectedCurrentStatus);
+                return cmd.ExecuteNonQuery() == 1;
             }
         }
 
