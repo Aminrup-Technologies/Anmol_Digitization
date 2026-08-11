@@ -262,67 +262,93 @@ namespace AnmolDristi
             }
         }
 
-        public static void CheckInDay(
+        /// <summary>
+        /// Day-aware check-in. Returns true only when both DayLog and VisitLog
+        /// transitioned from Scheduled (rowsAffected == 1 each).
+        /// </summary>
+        public static bool CheckInDay(
             SqlConnection con,
             int dayLogId,
             int logId,
             string guardId,
             SqlTransaction trans = null)
         {
+            int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitDayLog
                 SET VisitStatus = 'Checked-In', ActualInTime = GETDATE()
-                WHERE DayLogID = @DayLogID", con, trans))
+                WHERE DayLogID = @DayLogID
+                  AND VisitStatus = 'Scheduled'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
-                cmd.ExecuteNonQuery();
+                dayRows = cmd.ExecuteNonQuery();
             }
 
+            if (dayRows != 1)
+                return false;
+
+            int visitRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET VisitStatus = 'Checked-In',
                     ActualInTime = COALESCE(ActualInTime, GETDATE())
-                WHERE LogID = @LogID", con, trans))
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Scheduled'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.ExecuteNonQuery();
+                visitRows = cmd.ExecuteNonQuery();
             }
+
+            return visitRows == 1;
         }
 
-        public static void CheckOutDay(
+        /// <summary>
+        /// Day-aware check-out. Returns true only when both DayLog and VisitLog
+        /// transitioned from Checked-In (rowsAffected == 1 each).
+        /// </summary>
+        public static bool CheckOutDay(
             SqlConnection con,
             int dayLogId,
             int logId,
             string guardId,
             SqlTransaction trans = null)
         {
+            int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitDayLog
                 SET VisitStatus = 'Checked-Out',
                     ActualOutTime = GETDATE(),
                     CheckedOutBy = @GuardId
-                WHERE DayLogID = @DayLogID", con, trans))
+                WHERE DayLogID = @DayLogID
+                  AND VisitStatus = 'Checked-In'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
-                cmd.ExecuteNonQuery();
+                dayRows = cmd.ExecuteNonQuery();
             }
+
+            if (dayRows != 1)
+                return false;
 
             bool hasFutureDays = HasFutureApprovedDays(con, logId, DateTime.Now.Date, trans);
             string nextVisitStatus = hasFutureDays ? "Scheduled" : "Checked-Out";
 
+            int visitRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET VisitStatus = @VisitStatus,
                     ActualOutTime = GETDATE(),
                     CheckedOutBy = @GuardId
-                WHERE LogID = @LogID", con, trans))
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Checked-In'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@VisitStatus", nextVisitStatus);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
                 cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.ExecuteNonQuery();
+                visitRows = cmd.ExecuteNonQuery();
             }
+
+            return visitRows == 1;
         }
 
         public static string FormatScheduleSummary(VisitScheduleRequest schedule)

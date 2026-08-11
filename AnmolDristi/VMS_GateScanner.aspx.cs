@@ -100,9 +100,16 @@ namespace AnmolDristi
                 string[] parts = e.CommandArgument.ToString().Split('|');
                 int logId = Convert.ToInt32(parts[0]);
                 int dayLogId = parts.Length > 1 ? Convert.ToInt32(parts[1]) : 0;
-                ProcessDatabaseCheckOut(logId, dayLogId);
+                GateMutationResult result = ProcessDatabaseCheckOut(logId, dayLogId);
 
-                lblGridMsg.Text = "Visitor successfully checked out from the premises.";
+                if (result.Succeeded)
+                {
+                    lblGridMsg.Text = "Visitor successfully checked out from the premises.";
+                }
+                else
+                {
+                    lblGridMsg.Text = "This visitor's status has changed. Please refresh the inside list and try again.";
+                }
 
                 BindInsideVisitors(); // This will auto-refresh the repeater via AJAX
                 KeepTabActive("inside-tab");
@@ -333,7 +340,13 @@ namespace AnmolDristi
             int logId = Convert.ToInt32(hfCurrentLogId.Value);
             int dayLogId = 0;
             int.TryParse(hfCurrentDayLogId.Value, out dayLogId);
-            ProcessDatabaseCheckIn(logId, dayLogId);
+            GateMutationResult result = ProcessDatabaseCheckIn(logId, dayLogId);
+
+            if (!result.Succeeded)
+            {
+                ShowStateChangedFailure();
+                return;
+            }
 
             divActionButtons.Visible = false;
             divFinishButtons.Visible = true;
@@ -353,7 +366,13 @@ namespace AnmolDristi
             int logId = Convert.ToInt32(hfCurrentLogId.Value);
             int dayLogId = 0;
             int.TryParse(hfCurrentDayLogId.Value, out dayLogId);
-            ProcessDatabaseCheckOut(logId, dayLogId);
+            GateMutationResult result = ProcessDatabaseCheckOut(logId, dayLogId);
+
+            if (!result.Succeeded)
+            {
+                ShowStateChangedFailure();
+                return;
+            }
 
             divActionButtons.Visible = false;
             divFinishButtons.Visible = true;
@@ -369,10 +388,10 @@ namespace AnmolDristi
         }
 
         // --- REUSABLE CHECK-IN DATABASE LOGIC ---
-        private void ProcessDatabaseCheckIn(int logId, int dayLogId = 0)
+        private GateMutationResult ProcessDatabaseCheckIn(int logId, int dayLogId = 0)
         {
             string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
-            _repository.CheckIn(
+            return _repository.CheckIn(
                 logId,
                 dayLogId,
                 guardId,
@@ -383,10 +402,22 @@ namespace AnmolDristi
         }
 
         // --- REUSABLE CHECK-OUT DATABASE LOGIC ---
-        private void ProcessDatabaseCheckOut(int logId, int dayLogId = 0)
+        private GateMutationResult ProcessDatabaseCheckOut(int logId, int dayLogId = 0)
         {
             string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
-            _repository.CheckOut(logId, dayLogId, guardId);
+            return _repository.CheckOut(logId, dayLogId, guardId);
+        }
+
+        private void ShowStateChangedFailure()
+        {
+            ShowResult(
+                "result-card result-danger",
+                "Status Changed",
+                "This visitor's status has changed. Please scan the pass again.",
+                "",
+                null);
+            hfScannedToken.Value = "";
+            BindInsideVisitors();
         }
 
         private void ShowResult(string cssClass, string title, string message, string photoPath,
