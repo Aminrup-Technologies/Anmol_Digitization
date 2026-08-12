@@ -139,39 +139,165 @@ namespace AnmolDristi.DAL
             }
         }
 
-        public void ManualCheckIn(int logId)
+        /// <summary>
+        /// Host convenience Check-In (AR-VMS-03A).
+        /// When an approved today VisitDayLog exists: reuse CheckInDay (Parent+DayLog, guarded).
+        /// When no today DayLog row exists: legacy guarded parent-only VisitLog update.
+        /// Does not create DayLogs, enforce Gate validity, or queue arrival notifications.
+        /// </summary>
+        /// <returns>True only when the guarded mutation succeeded (rowsAffected / CheckInDay).</returns>
+        public bool ManualCheckIn(int logId)
         {
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
-                // FIXED: Changed CheckInTime to ActualInTime
-                string updateQuery =
-                    "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-In', ActualInTime = GETDATE() WHERE LogID = @LogID";
-
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
+                    try
+                    {
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+
+                        // Applicable = today's DayLog row exists and is host-approved for the day.
+                        // Missing row → legacy parent-only. Unapproved/cancelled today → not DayLog-aware
+                        // (do not fabricate/approve a day); fall through to legacy only when no row.
+                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
+
+                        bool succeeded;
+                        if (useDayLogPath)
+                        {
+                            // Reuse canonical CheckInDay — do not duplicate status-guard SQL.
+                            succeeded = VmsVisitScheduleHelper.CheckInDay(
+                                con,
+                                todayLog.DayLogId,
+                                logId,
+                                "HostManual",
+                                trans);
+                        }
+                        else if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
+                        {
+                            // Today exists but not approved (or not selectable): do not parent-only
+                            // desync; controlled failure.
+                            succeeded = false;
+                        }
+                        else
+                        {
+                            // Legacy niche: VisitLog with no VisitDayLog for today.
+                            succeeded = LegacyManualCheckInParentOnly(con, trans, logId);
+                        }
+
+                        if (!succeeded)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
+                        trans.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
                 }
             }
         }
 
-        public void ManualCheckOut(int logId)
+        /// <summary>
+        /// Host convenience Check-Out (AR-VMS-03A).
+        /// When an approved today VisitDayLog exists: reuse CheckOutDay (MultiDay → Parent Scheduled
+        /// when future approved days remain). Otherwise legacy guarded parent-only Check-Out.
+        /// No departure notifications.
+        /// </summary>
+        public bool ManualCheckOut(int logId)
         {
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
-                // FIXED: Changed CheckOutTime to ActualOutTime
-                string updateQuery =
-                    "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-Out', ActualOutTime = GETDATE() WHERE LogID = @LogID";
-
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
+                    try
+                    {
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+
+                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
+
+                        bool succeeded;
+                        if (useDayLogPath)
+                        {
+                            succeeded = VmsVisitScheduleHelper.CheckOutDay(
+                                con,
+                                todayLog.DayLogId,
+                                logId,
+                                "HostManual",
+                                trans);
+                        }
+                        else if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
+                        {
+                            succeeded = false;
+                        }
+                        else
+                        {
+                            succeeded = LegacyManualCheckOutParentOnly(con, trans, logId);
+                        }
+
+                        if (!succeeded)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
+                        trans.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Legacy parent-only Check-In when no today VisitDayLog row exists.
+        /// Guarded: VisitStatus must be Scheduled; ActualInTime preserves first stamp.
+        /// </summary>
+        private static bool LegacyManualCheckInParentOnly(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET VisitStatus = 'Checked-In',
+                    ActualInTime = COALESCE(ActualInTime, GETDATE())
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Scheduled'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        /// <summary>
+        /// Legacy parent-only Check-Out when no today VisitDayLog row exists.
+        /// Guarded: VisitStatus must be Checked-In. Does not set CheckedOutBy (MyVisitors contract).
+        /// </summary>
+        private static bool LegacyManualCheckOutParentOnly(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET VisitStatus = 'Checked-Out',
+                    ActualOutTime = GETDATE()
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Checked-In'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                return cmd.ExecuteNonQuery() == 1;
             }
         }
 

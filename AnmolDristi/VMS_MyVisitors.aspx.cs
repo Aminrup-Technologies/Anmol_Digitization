@@ -351,7 +351,7 @@ namespace AnmolDristi
         }
 
         // ========================================================
-        // NEW METHOD: Handle Manual Check-In and Check-Out by Host
+        // Manual Check-In / Check-Out by Host (AR-VMS-03A DayLog-aware)
         // ========================================================
         protected void gvHistory_RowCommand(object sender, GridViewCommandEventArgs e)
         {
@@ -361,15 +361,31 @@ namespace AnmolDristi
 
                 if (e.CommandName == "ManualCheckIn")
                 {
-                    _repository.ManualCheckIn(logId);
-                    lblHistoryMsg.ForeColor = Color.Green;
-                    lblHistoryMsg.Text = "Visitor successfully Checked-IN manually.";
+                    if (_repository.ManualCheckIn(logId))
+                    {
+                        lblHistoryMsg.ForeColor = Color.Green;
+                        lblHistoryMsg.Text = "Visitor successfully Checked-IN manually.";
+                    }
+                    else
+                    {
+                        lblHistoryMsg.ForeColor = Color.Red;
+                        lblHistoryMsg.Text =
+                            "Unable to Check-IN. Status may have changed, today is not approved, or the visitor is already checked in.";
+                    }
                 }
                 else if (e.CommandName == "ManualCheckOut")
                 {
-                    _repository.ManualCheckOut(logId);
-                    lblHistoryMsg.ForeColor = Color.Green;
-                    lblHistoryMsg.Text = "Visitor successfully Checked-OUT manually.";
+                    if (_repository.ManualCheckOut(logId))
+                    {
+                        lblHistoryMsg.ForeColor = Color.Green;
+                        lblHistoryMsg.Text = "Visitor successfully Checked-OUT manually.";
+                    }
+                    else
+                    {
+                        lblHistoryMsg.ForeColor = Color.Red;
+                        lblHistoryMsg.Text =
+                            "Unable to Check-OUT. Status may have changed, today is not approved, or the visitor is not checked in.";
+                    }
                 }
 
                 // Refresh the Grid to show updated statuses and swap the buttons immediately
