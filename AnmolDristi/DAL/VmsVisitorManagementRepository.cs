@@ -929,6 +929,7 @@ namespace AnmolDristi.DAL
         /// <summary>
         /// Approved today DayLog: atomic Parent + DayLog In-Time with Admin-supplied timestamp.
         /// Both rows must transition Scheduled → Checked-In (rowsAffected == 1 each).
+        /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// </summary>
         private static bool AdminCorrectInTimeWithDayLog(
             SqlConnection con,
@@ -943,10 +944,12 @@ namespace AnmolDristi.DAL
                 SET ActualInTime = @AdminInTime,
                     VisitStatus = 'Checked-In'
                 WHERE DayLogID = @DayLogID
+                  AND LogID = @LogID
                   AND VisitStatus = 'Scheduled'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminInTime", adminInTime);
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                cmd.Parameters.AddWithValue("@LogID", logId);
                 dayRows = cmd.ExecuteNonQuery();
             }
 
@@ -996,6 +999,7 @@ namespace AnmolDristi.DAL
         /// <summary>
         /// Approved today DayLog: DayLog → Checked-Out with @AdminOutTime; Parent VisitStatus
         /// Scheduled when HasFutureApprovedDays, else Checked-Out. CheckedOutBy = ADMIN_INLINE.
+        /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// </summary>
         private static bool AdminCorrectOutTimeWithDayLog(
             SqlConnection con,
@@ -1010,10 +1014,12 @@ namespace AnmolDristi.DAL
                 SET ActualOutTime = @AdminOutTime,
                     VisitStatus = 'Checked-Out'
                 WHERE DayLogID = @DayLogID
+                  AND LogID = @LogID
                   AND VisitStatus = 'Checked-In'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                cmd.Parameters.AddWithValue("@LogID", logId);
                 dayRows = cmd.ExecuteNonQuery();
             }
 
