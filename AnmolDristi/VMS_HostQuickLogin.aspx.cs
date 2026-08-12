@@ -324,10 +324,20 @@ namespace AnmolDristi
                 return;
             }
 
-            // AR-VMS-06B: Reject routes through canonical repository RejectVisitor
-            // (Pending guard + DayLog cascade). Do not duplicate Parent SQL here.
+            // AR-VMS-06B + AR-VMS-07A: Reject via canonical RejectVisitor with Host ownership.
+            // Do not trust vid alone; resolve Host from token t (same as Approve).
+            string rejectHostCode;
+            if (!TryResolveHostEmployeeCode(out rejectHostCode))
+            {
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                if (string.IsNullOrEmpty(lblMessage.Text))
+                    lblMessage.Text = "Invalid access link. Please check your email.";
+                return;
+            }
+
             int rejectLogId = Convert.ToInt32(visitId);
-            if (!_repository.RejectVisitor(rejectLogId))
+            if (!_repository.RejectVisitor(rejectLogId, rejectHostCode))
             {
                 lblMessage.CssClass = "error";
                 lblMessage.Visible = true;
