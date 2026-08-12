@@ -7,12 +7,15 @@ using System.Web.UI.WebControls;
 using System.Text;
 using System.IO;
 using System.Collections.Generic;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_ReceptionistLogs : System.Web.UI.Page
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _visitorManagementRepository =
+            new VmsVisitorManagementRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -240,22 +243,27 @@ namespace AnmolDristi
 
         private void ExecuteAction(int logId, string actionType)
         {
+            if (actionType == "Approve")
+            {
+                // AR-VMS-02: shared VisitLog+DayLog approval (QR, RequestedValid*, pass notify, Pending guard, tx).
+                _visitorManagementRepository.ApproveVisitByReceptionist(
+                    new VisitorApprovalRequest
+                    {
+                        LogId = logId,
+                        ApprovalRemarksSuffix =
+                            "[Reception Override] Force Approved on " + DateTime.Now.ToString("dd-MMM-yy HH:mm")
+                    });
+
+                LoadDashboardData();
+                return;
+            }
+
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 string updateQuery = "";
 
                 // We use ISNULL to append to any existing remarks so we don't accidentally delete host comments
-                if (actionType == "Approve")
-                {
-                    updateQuery = @"
-                UPDATE VMS_VisitLog 
-                SET ApprovalStatus = 'Approved', 
-                    VisitStatus = 'Scheduled', 
-                    ApprovedOn = GETDATE(),
-                    ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | [Reception Override] Force Approved on ' + FORMAT(GETDATE(), 'dd-MMM-yy HH:mm')
-                WHERE LogID = @LogID";
-                }
-                else if (actionType == "CheckIn")
+                if (actionType == "CheckIn")
                 {
                     updateQuery = @"
                 UPDATE VMS_VisitLog 
