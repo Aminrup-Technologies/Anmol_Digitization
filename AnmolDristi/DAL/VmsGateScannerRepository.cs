@@ -401,7 +401,8 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Legacy parent-only VisitLog status update. Requires expectedCurrentStatus and rowsAffected == 1.
+        /// Legacy parent-only VisitLog status update. Requires expectedCurrentStatus,
+        /// ApprovalStatus='Approved' (AR-VMS-07B), and rowsAffected == 1.
         /// </summary>
         private static bool UpdateGateStatus(
             SqlConnection con,
@@ -413,7 +414,7 @@ namespace AnmolDristi.DAL
             string expectedCurrentStatus)
         {
             string updateQuery =
-                $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID AND VisitStatus = @ExpectedStatus";
+                $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID AND VisitStatus = @ExpectedStatus AND ApprovalStatus = 'Approved'";
             using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
             {
                 cmd.Parameters.AddWithValue("@Status", newStatus);
