@@ -324,18 +324,25 @@ namespace AnmolDristi
                 return;
             }
 
-            using (SqlConnection con = new SqlConnection(connStr))
+            // AR-VMS-06B + AR-VMS-07A: Reject via canonical RejectVisitor with Host ownership.
+            // Do not trust vid alone; resolve Host from token t (same as Approve).
+            string rejectHostCode;
+            if (!TryResolveHostEmployeeCode(out rejectHostCode))
             {
-                con.Open();
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                if (string.IsNullOrEmpty(lblMessage.Text))
+                    lblMessage.Text = "Invalid access link. Please check your email.";
+                return;
+            }
 
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
-                    cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
-                    cmd.Parameters.AddWithValue("@LogID", visitId);
-                    cmd.ExecuteNonQuery();
-                }
+            int rejectLogId = Convert.ToInt32(visitId);
+            if (!_repository.RejectVisitor(rejectLogId, rejectHostCode))
+            {
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                lblMessage.Text = "Unable to reject this visit. It may already have been processed.";
+                return;
             }
 
             pnlAction.Visible = false;

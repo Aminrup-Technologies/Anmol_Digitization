@@ -854,6 +854,11 @@
     <Compile Include="ImportCsv.aspx.designer.cs">
       <DependentUpon>ImportCsv.aspx</DependentUpon>
     </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.designer.cs">
+      <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />
     <Compile Include="LeakAndSlant_Detailed.aspx.cs">
       <DependentUpon>LeakAndSlant_Detailed.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1511,6 +1516,29 @@
     <Compile Include="DAL\VmsVisitorRepository.cs" />
     <Compile Include="DAL\VmsVisitorManagementRepository.cs" />
     <Compile Include="DAL\VmsGateScannerRepository.cs" />
+    <Compile Include="ITSM\DAL\Entities\RequestType.cs" />
+    <Compile Include="ITSM\DAL\Entities\Category.cs" />
+    <Compile Include="ITSM\DAL\Entities\SubCategory.cs" />
+    <Compile Include="ITSM\DAL\Entities\Item.cs" />
+    <Compile Include="ITSM\DAL\Entities\Impact.cs" />
+    <Compile Include="ITSM\DAL\Entities\Urgency.cs" />
+    <Compile Include="ITSM\DAL\Entities\Priority.cs" />
+    <Compile Include="ITSM\DAL\Entities\PriorityMatrix.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketStatus.cs" />
+    <Compile Include="ITSM\DAL\Entities\SupportMapping.cs" />
+    <Compile Include="ITSM\DAL\Entities\Ticket.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketComment.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketAttachment.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketApproval.cs" />
+    <Compile Include="ITSM\DAL\Entities\UserMaster.cs" />
+    <Compile Include="ITSM\DAL\Entities\Plant.cs" />
+    <Compile Include="ITSM\DAL\Entities\Branch.cs" />
+    <Compile Include="ITSM\DAL\Entities\Department.cs" />
+    <Compile Include="ITSM\DAL\Entities\Calendar.cs" />
+    <Compile Include="ITSM\DAL\Entities\PlantTimings.cs" />
+    <Compile Include="ITSM\DAL\ItsmDbContext.cs" />
+    <Compile Include="ITSM\BLL\PriorityCalculationService.cs" />
+    <Compile Include="ITSM\BLL\DispatchService.cs" />
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />
@@ -1698,6 +1726,11 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.resx">
+      <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
