@@ -212,6 +212,7 @@ The central record connecting legacy personnel/location data with ITSM workflows
 | `CreatedByCode` | `NVARCHAR(50)` | Audit — typically same as `RequesterCode` |
 | `ModifiedOn` | `DATETIME` NULL | |
 | `ModifiedByCode` | `NVARCHAR(50)` NULL | |
+| `RowVersion` | `TIMESTAMP` | SQL Server `rowversion` — **EF6 optimistic concurrency token**; auto-updated by the database on every row change. Prevents agents from silently overwriting each other's edits (see [Technical Guidelines §2](../06-implementation/technical-guidelines.md#2-agent-collision-optimistic-concurrency)). |
 
 #### Dynamic ticket numbering
 
