@@ -67,6 +67,8 @@ namespace AnmolDristi.ITSM.DAL
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultSchema("itsm");
+            // Disable global cascade deletes for required Foreign Keys
+            modelBuilder.Conventions.Remove<System.Data.Entity.ModelConfiguration.Conventions.OneToManyCascadeDeleteConvention>();
             base.OnModelCreating(modelBuilder);
         }
 

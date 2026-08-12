@@ -854,6 +854,11 @@
     <Compile Include="ImportCsv.aspx.designer.cs">
       <DependentUpon>ImportCsv.aspx</DependentUpon>
     </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.designer.cs">
+      <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />
     <Compile Include="LeakAndSlant_Detailed.aspx.cs">
       <DependentUpon>LeakAndSlant_Detailed.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1719,6 +1724,11 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.resx">
+      <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
