@@ -250,6 +250,7 @@
     <Content Include="Critical_Incident_Detailed.aspx" />
     <Content Include="Critical_Incident_ViewPage.aspx" />
     <Content Include="critical_quality_report.aspx" />
+    <Content Include="ITSM\UI\CreateTicket.aspx" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
     <Content Include="DeviceTransfer.aspx" />
@@ -1539,6 +1540,15 @@
     <Compile Include="ITSM\DAL\ItsmDbContext.cs" />
     <Compile Include="ITSM\BLL\PriorityCalculationService.cs" />
     <Compile Include="ITSM\BLL\DispatchService.cs" />
+    <Compile Include="ITSM\BLL\SlaService.cs" />
+    <Compile Include="ITSM\BLL\TicketService.cs" />
+    <Compile Include="ITSM\UI\CreateTicket.aspx.cs">
+      <DependentUpon>CreateTicket.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\CreateTicket.aspx.designer.cs">
+      <DependentUpon>CreateTicket.aspx</DependentUpon>
+    </Compile>
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />

@@ -265,6 +265,7 @@ namespace AnmolDristi
         /// <summary>
         /// Day-aware check-in. Returns true only when both DayLog and VisitLog
         /// transitioned from Scheduled (rowsAffected == 1 each).
+        /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -278,9 +279,11 @@ namespace AnmolDristi
                 UPDATE VMS_VisitDayLog
                 SET VisitStatus = 'Checked-In', ActualInTime = GETDATE()
                 WHERE DayLogID = @DayLogID
+                  AND LogID = @LogID
                   AND VisitStatus = 'Scheduled'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                cmd.Parameters.AddWithValue("@LogID", logId);
                 dayRows = cmd.ExecuteNonQuery();
             }
 
@@ -305,6 +308,7 @@ namespace AnmolDristi
         /// <summary>
         /// Day-aware check-out. Returns true only when both DayLog and VisitLog
         /// transitioned from Checked-In (rowsAffected == 1 each).
+        /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// </summary>
         public static bool CheckOutDay(
             SqlConnection con,
@@ -320,9 +324,11 @@ namespace AnmolDristi
                     ActualOutTime = GETDATE(),
                     CheckedOutBy = @GuardId
                 WHERE DayLogID = @DayLogID
+                  AND LogID = @LogID
                   AND VisitStatus = 'Checked-In'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
                 dayRows = cmd.ExecuteNonQuery();
             }
