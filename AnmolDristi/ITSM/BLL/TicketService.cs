@@ -199,8 +199,9 @@ namespace AnmolDristi.ITSM.BLL
                 nextSequence = maxExisting
                     .Select(n =>
                     {
+                        int seq;
                         if (n != null && n.Length >= 10
-                            && int.TryParse(n.Substring(n.Length - 4), out var seq))
+                            && int.TryParse(n.Substring(n.Length - 4), out seq))
                         {
                             return seq;
                         }

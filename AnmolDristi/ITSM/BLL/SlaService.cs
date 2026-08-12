@@ -8,6 +8,17 @@ using AnmolDristi.ITSM.DAL.Entities;
 namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
+    /// Result of an SLA window calculation (start + due).
+    /// Plain class for C# 6 / .NET Framework 4.8 compatibility (no ValueTuple).
+    /// </summary>
+    public class SlaResult
+    {
+        public DateTime SlaStartTime { get; set; }
+
+        public DateTime DueDate { get; set; }
+    }
+
+    /// <summary>
     /// SLA date math using plant working hours (<c>dbo.VMS_PlantTimings</c>)
     /// and business calendar weekends (<c>dbo.MST_Calendar</c>).
     /// </summary>
@@ -18,14 +29,14 @@ namespace AnmolDristi.ITSM.BLL
         /// and due date by adding <paramref name="resolutionHours"/> while skipping
         /// calendar days where <c>MST_Calendar.IsWeekend == true</c>.
         /// </summary>
-        public (DateTime SlaStartTime, DateTime DueDate) CalculateSla(
+        public SlaResult CalculateSla(
             int branchId,
             DateTime requestTime,
             int resolutionHours)
         {
             if (resolutionHours < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(resolutionHours));
+                throw new ArgumentOutOfRangeException("resolutionHours");
             }
 
             using (var context = new ItsmDbContext())
@@ -33,7 +44,12 @@ namespace AnmolDristi.ITSM.BLL
                 var slaStartTime = ResolveSlaStartTime(context, branchId, requestTime);
                 var dueDate = AddBusinessHoursSkippingWeekends(
                     context, slaStartTime, resolutionHours);
-                return (slaStartTime, dueDate);
+
+                return new SlaResult
+                {
+                    SlaStartTime = slaStartTime,
+                    DueDate = dueDate
+                };
             }
         }
 
