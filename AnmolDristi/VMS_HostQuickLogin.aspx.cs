@@ -324,18 +324,15 @@ namespace AnmolDristi
                 return;
             }
 
-            using (SqlConnection con = new SqlConnection(connStr))
+            // AR-VMS-06B: Reject routes through canonical repository RejectVisitor
+            // (Pending guard + DayLog cascade). Do not duplicate Parent SQL here.
+            int rejectLogId = Convert.ToInt32(visitId);
+            if (!_repository.RejectVisitor(rejectLogId))
             {
-                con.Open();
-
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = @AppStatus, VisitStatus = @VisStatus, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@AppStatus", approvalStatus);
-                    cmd.Parameters.AddWithValue("@VisStatus", visitStatus);
-                    cmd.Parameters.AddWithValue("@LogID", visitId);
-                    cmd.ExecuteNonQuery();
-                }
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                lblMessage.Text = "Unable to reject this visit. It may already have been processed.";
+                return;
             }
 
             pnlAction.Visible = false;

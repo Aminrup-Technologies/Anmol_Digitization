@@ -343,10 +343,17 @@ namespace AnmolDristi
 
         private void RejectVisitor(int logId)
         {
-            _repository.RejectVisitor(logId);
+            if (_repository.RejectVisitor(logId))
+            {
+                lblPendingMsg.ForeColor = Color.Red;
+                lblPendingMsg.Text = "Visitor request rejected.";
+            }
+            else
+            {
+                lblPendingMsg.ForeColor = Color.Red;
+                lblPendingMsg.Text = "Unable to reject this visit. It may already have been processed.";
+            }
 
-            lblPendingMsg.ForeColor = Color.Red;
-            lblPendingMsg.Text = "Visitor request rejected.";
             BindGrids(); // Refresh UI
         }
 
