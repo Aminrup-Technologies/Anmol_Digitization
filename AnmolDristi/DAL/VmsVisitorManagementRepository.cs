@@ -163,13 +163,19 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Reject a pending visit (AR-VMS-06B). Guarded: ApprovalStatus must be Pending.
+        /// Host reject of a pending visit (AR-VMS-06B + AR-VMS-07A).
+        /// Guarded: ApprovalStatus must be Pending AND HostEmployeeCode must match.
         /// Atomically cascades all associated VisitDayLog rows to Cancelled / IsDayApproved=0.
         /// Does not delete DayLog rows. No notifications.
         /// </summary>
-        /// <returns>True only when the Parent Pending→Rejected update affected exactly one row.</returns>
-        public bool RejectVisitor(int logId)
+        /// <returns>True only when the owned Parent Pending→Rejected update affected exactly one row.</returns>
+        public bool RejectVisitor(int logId, string hostEmployeeCode)
         {
+            if (string.IsNullOrWhiteSpace(hostEmployeeCode))
+                return false;
+
+            string resolvedHost = hostEmployeeCode.Trim();
+
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
                 con.Open();
@@ -184,9 +190,11 @@ namespace AnmolDristi.DAL
                                 VisitStatus = 'Rejected',
                                 ApprovedOn = GETDATE()
                             WHERE LogID = @LogID
-                              AND ApprovalStatus = 'Pending'", con, trans))
+                              AND ApprovalStatus = 'Pending'
+                              AND HostEmployeeCode = @HostEmployeeCode", con, trans))
                         {
                             cmd.Parameters.AddWithValue("@LogID", logId);
+                            cmd.Parameters.AddWithValue("@HostEmployeeCode", resolvedHost);
                             parentRows = cmd.ExecuteNonQuery();
                         }
 
@@ -277,14 +285,20 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Host convenience Check-In (AR-VMS-03A).
+        /// Host convenience Check-In (AR-VMS-03A + AR-VMS-07A ownership).
         /// When an approved today VisitDayLog exists: reuse CheckInDay (Parent+DayLog, guarded).
         /// When no today DayLog row exists: legacy guarded parent-only VisitLog update.
+        /// Requires HostEmployeeCode ownership under the same transaction.
         /// Does not create DayLogs, enforce Gate validity, or queue arrival notifications.
         /// </summary>
-        /// <returns>True only when the guarded mutation succeeded (rowsAffected / CheckInDay).</returns>
-        public bool ManualCheckIn(int logId)
+        /// <returns>True only when ownership and the guarded mutation succeeded.</returns>
+        public bool ManualCheckIn(int logId, string hostEmployeeCode)
         {
+            if (string.IsNullOrWhiteSpace(hostEmployeeCode))
+                return false;
+
+            string resolvedHost = hostEmployeeCode.Trim();
+
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
                 con.Open();
@@ -292,6 +306,12 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        if (!TryAssertHostOwnsVisit(con, trans, logId, resolvedHost))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
 
                         // Applicable = today's DayLog row exists and is host-approved for the day.
@@ -319,7 +339,7 @@ namespace AnmolDristi.DAL
                         else
                         {
                             // Legacy niche: VisitLog with no VisitDayLog for today.
-                            succeeded = LegacyManualCheckInParentOnly(con, trans, logId);
+                            succeeded = LegacyManualCheckInParentOnly(con, trans, logId, resolvedHost);
                         }
 
                         if (!succeeded)
@@ -341,13 +361,18 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Host convenience Check-Out (AR-VMS-03A).
+        /// Host convenience Check-Out (AR-VMS-03A + AR-VMS-07A ownership).
         /// When an approved today VisitDayLog exists: reuse CheckOutDay (MultiDay → Parent Scheduled
         /// when future approved days remain). Otherwise legacy guarded parent-only Check-Out.
-        /// No departure notifications.
+        /// Requires HostEmployeeCode ownership under the same transaction. No departure notifications.
         /// </summary>
-        public bool ManualCheckOut(int logId)
+        public bool ManualCheckOut(int logId, string hostEmployeeCode)
         {
+            if (string.IsNullOrWhiteSpace(hostEmployeeCode))
+                return false;
+
+            string resolvedHost = hostEmployeeCode.Trim();
+
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
                 con.Open();
@@ -355,6 +380,12 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        if (!TryAssertHostOwnsVisit(con, trans, logId, resolvedHost))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
 
                         bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
@@ -375,7 +406,7 @@ namespace AnmolDristi.DAL
                         }
                         else
                         {
-                            succeeded = LegacyManualCheckOutParentOnly(con, trans, logId);
+                            succeeded = LegacyManualCheckOutParentOnly(con, trans, logId, resolvedHost);
                         }
 
                         if (!succeeded)
@@ -397,43 +428,78 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
+        /// Assert Host ownership under the open transaction (UPDLOCK) so SyncHost reassignment
+        /// cannot race a stale Host CI/CO/Reject between check and mutation.
+        /// </summary>
+        private static bool TryAssertHostOwnsVisit(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string hostEmployeeCode)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT HostEmployeeCode
+                FROM VMS_VisitLog WITH (UPDLOCK, ROWLOCK)
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                object value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                    return false;
+
+                return string.Equals(
+                    value.ToString().Trim(),
+                    hostEmployeeCode,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        /// <summary>
         /// Legacy parent-only Check-In when no today VisitDayLog row exists.
-        /// Guarded: VisitStatus must be Scheduled; ActualInTime preserves first stamp.
+        /// Guarded: VisitStatus must be Scheduled and HostEmployeeCode must match;
+        /// ActualInTime preserves first stamp.
         /// </summary>
         private static bool LegacyManualCheckInParentOnly(
             SqlConnection con,
             SqlTransaction trans,
-            int logId)
+            int logId,
+            string hostEmployeeCode)
         {
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET VisitStatus = 'Checked-In',
                     ActualInTime = COALESCE(ActualInTime, GETDATE())
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Scheduled'", con, trans))
+                  AND VisitStatus = 'Scheduled'
+                  AND HostEmployeeCode = @HostEmployeeCode", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
                 return cmd.ExecuteNonQuery() == 1;
             }
         }
 
         /// <summary>
         /// Legacy parent-only Check-Out when no today VisitDayLog row exists.
-        /// Guarded: VisitStatus must be Checked-In. Does not set CheckedOutBy (MyVisitors contract).
+        /// Guarded: VisitStatus must be Checked-In and HostEmployeeCode must match.
+        /// Does not set CheckedOutBy (MyVisitors contract).
         /// </summary>
         private static bool LegacyManualCheckOutParentOnly(
             SqlConnection con,
             SqlTransaction trans,
-            int logId)
+            int logId,
+            string hostEmployeeCode)
         {
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET VisitStatus = 'Checked-Out',
                     ActualOutTime = GETDATE()
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Checked-In'", con, trans))
+                  AND VisitStatus = 'Checked-In'
+                  AND HostEmployeeCode = @HostEmployeeCode", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
                 return cmd.ExecuteNonQuery() == 1;
             }
         }

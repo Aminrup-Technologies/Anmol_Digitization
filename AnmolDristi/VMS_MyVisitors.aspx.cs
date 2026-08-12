@@ -343,7 +343,17 @@ namespace AnmolDristi
 
         private void RejectVisitor(int logId)
         {
-            if (_repository.RejectVisitor(logId))
+            string hostEmployeeCode = "";
+            if (Session["WORKMAN"] != null)
+            {
+                hostEmployeeCode = Session["WORKMAN"].ToString();
+            }
+            else if (Session["EmpCode"] != null)
+            {
+                hostEmployeeCode = Session["EmpCode"].ToString();
+            }
+
+            if (_repository.RejectVisitor(logId, hostEmployeeCode))
             {
                 lblPendingMsg.ForeColor = Color.Red;
                 lblPendingMsg.Text = "Visitor request rejected.";
@@ -366,9 +376,19 @@ namespace AnmolDristi
             {
                 int logId = Convert.ToInt32(e.CommandArgument);
 
+                string hostEmployeeCode = "";
+                if (Session["WORKMAN"] != null)
+                {
+                    hostEmployeeCode = Session["WORKMAN"].ToString();
+                }
+                else if (Session["EmpCode"] != null)
+                {
+                    hostEmployeeCode = Session["EmpCode"].ToString();
+                }
+
                 if (e.CommandName == "ManualCheckIn")
                 {
-                    if (_repository.ManualCheckIn(logId))
+                    if (_repository.ManualCheckIn(logId, hostEmployeeCode))
                     {
                         lblHistoryMsg.ForeColor = Color.Green;
                         lblHistoryMsg.Text = "Visitor successfully Checked-IN manually.";
@@ -382,7 +402,7 @@ namespace AnmolDristi
                 }
                 else if (e.CommandName == "ManualCheckOut")
                 {
-                    if (_repository.ManualCheckOut(logId))
+                    if (_repository.ManualCheckOut(logId, hostEmployeeCode))
                     {
                         lblHistoryMsg.ForeColor = Color.Green;
                         lblHistoryMsg.Text = "Visitor successfully Checked-OUT manually.";
