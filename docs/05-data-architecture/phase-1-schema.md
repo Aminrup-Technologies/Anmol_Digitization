@@ -23,6 +23,7 @@ These tables exist in the `dbo` schema. EF6 maps to these using `[Table("...", S
 | **`dbo.MST_Branch`** | `Id` | `Branch_Description` | **Dispatch Anchor:** Maps to `Tickets.BranchId` and `MST_SupportMapping.BranchId`. Drives the Intelligent Dispatch Matrix. |
 | **`dbo.MST_Department`** | `Id` | `Department_Description` | **Organizational Context:** Helps IT agents prioritize tickets based on the requester's department. |
 | **`dbo.MST_Designation`** | `Id` | `Designation_Description` | **User Role:** Contextual lookup. *(Note: Legacy `MST_UserMaster.Designation_ID` stores ERP identity; mapped carefully in EF6.)* |
+| **`dbo.MST_Calendar`** | `CalendarDate` | `IsWeekend`, `FinancialYear`, `FinancialQuarter`, `IsMonthEnd`, `IsQuarterEnd` | **Business Calendar:** Read-only reference for SLA date math (business-day calculations), dashboard analytics grouping, and triggering scheduled maintenance tickets. Mapped via `[Table("MST_Calendar", Schema = "dbo")]`. |
 
 ---
 
@@ -94,13 +95,54 @@ MST_Category (Hardware)
         └── MST_Item (HP LaserJet Pro M404)
 ```
 
-### 3.3 Priority & Status Masters
+### 3.3 Impact & Urgency Masters
 
-**`itsm.MST_Priority`**: `Id`, `Name`, `SlaResolutionHours`, `IsActive` *(e.g. P1 - Critical, P2 - High)*
+Priority is **not** selected manually by the requester. Instead, the user selects **Impact** and **Urgency** on the New Ticket form; the BLL derives `PriorityId` via the Impact × Urgency matrix (see Section 5.4).
 
-**`itsm.MST_TicketStatus`**: `Id`, `Name`, `IsTerminal`, `IsActive` *(e.g. New, Pending Approval, In Progress, Resolved, Closed)*
+**`itsm.MST_Impact`** — How severely the issue affects the business.
 
-### 3.4 Intelligent Dispatch Configuration
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `Id` | `INT` PK | Identity |
+| `Code` | `NVARCHAR(20)` | Unique — e.g. `Low`, `Medium`, `High` |
+| `Name` | `NVARCHAR(100)` | Display label |
+| `SortOrder` | `INT` | Ascending severity |
+| `IsActive` | `BIT` | Default `1` |
+
+**`itsm.MST_Urgency`** — How quickly the issue requires attention.
+
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `Id` | `INT` PK | Identity |
+| `Code` | `NVARCHAR(20)` | Unique — e.g. `Low`, `Medium`, `High` |
+| `Name` | `NVARCHAR(100)` | Display label |
+| `SortOrder` | `INT` | Ascending urgency |
+| `IsActive` | `BIT` | Default `1` |
+
+**Seed data (both tables):**
+
+| Code | Name | SortOrder |
+| :--- | :--- | :--- |
+| `Low` | Low | 1 |
+| `Medium` | Medium | 2 |
+| `High` | High | 3 |
+
+**`itsm.MST_PriorityMatrix`** — Maps each Impact × Urgency combination to a `MST_Priority` row (maintained via EF6 seed/migration).
+
+| Column | Type | Notes |
+| :--- | :--- | :--- |
+| `Id` | `INT` PK | Identity |
+| `ImpactId` | `INT` FK | → `itsm.MST_Impact.Id` |
+| `UrgencyId` | `INT` FK | → `itsm.MST_Urgency.Id` |
+| `PriorityId` | `INT` FK | → `itsm.MST_Priority.Id` |
+
+### 3.4 Priority & Status Masters
+
+**`itsm.MST_Priority`**: `Id`, `Code`, `Name`, `SlaResolutionHours`, `IsActive` *(e.g. P1 - Critical, P2 - High, P3 - Medium, P4 - Low)* — **assigned automatically** from `MST_PriorityMatrix`, not chosen directly on the form.
+
+**`itsm.MST_TicketStatus`**: `Id`, `Name`, `IsTerminal`, `IsActive` *(e.g. New, Pending Approval, In Progress, **Resolved**, **Closed**)*
+
+### 3.5 Intelligent Dispatch Configuration
 
 **`itsm.MST_SupportMapping`** — Maps branch + taxonomy to a default support agent. Evaluated by the BLL **Intelligent Dispatch Matrix** (see Section 5).
 
@@ -157,10 +199,16 @@ The central record connecting legacy personnel/location data with ITSM workflows
 | `CategoryId` | `INT` FK | → `itsm.MST_Category.Id` |
 | `SubCategoryId` | `INT` FK | → `itsm.MST_SubCategory.Id` |
 | `ItemId` | `INT` FK NULL | → `itsm.MST_Item.Id` — finest taxonomy selection |
-| `PriorityId` | `INT` FK | → `itsm.MST_Priority.Id` |
+| `ImpactId` | `INT` FK | → `itsm.MST_Impact.Id` — user-selected; drives priority calculation |
+| `UrgencyId` | `INT` FK | → `itsm.MST_Urgency.Id` — user-selected; drives priority calculation |
+| `PriorityId` | `INT` FK | → `itsm.MST_Priority.Id` — **auto-calculated** from Impact × Urgency matrix |
 | `StatusId` | `INT` FK | → `itsm.MST_TicketStatus.Id` |
+| `ResolutionText` | `NVARCHAR(MAX)` NULL | Agent's resolution notes — required when moving to **Resolved** |
+| `CsatScore` | `TINYINT` NULL | Customer satisfaction score (1–5) — captured at **Closed** |
+| `CsatFeedback` | `NVARCHAR(500)` NULL | Optional free-text CSAT comment from requester |
 | `CreatedOn` | `DATETIME` | |
-| `ResolvedOn` | `DATETIME` NULL | |
+| `ResolvedOn` | `DATETIME` NULL | Set when agent marks ticket **Resolved** (step 1 of two-step closure) |
+| `ClosedOn` | `DATETIME` NULL | Set when ticket moves to **Closed** after CSAT or 72-hour auto-close |
 | `CreatedByCode` | `NVARCHAR(50)` | Audit — typically same as `RequesterCode` |
 | `ModifiedOn` | `DATETIME` NULL | |
 | `ModifiedByCode` | `NVARCHAR(50)` NULL | |
@@ -251,6 +299,11 @@ dbo.MST_Plant ─────────────< itsm.Tickets (PlantId)
 
 itsm.MST_RequestType ──────< itsm.Tickets (RequestTypeId)
 
+itsm.MST_Impact ───────────< itsm.Tickets (ImpactId)
+itsm.MST_Urgency ──────────< itsm.Tickets (UrgencyId)
+itsm.MST_Priority ─────────< itsm.Tickets (PriorityId)
+itsm.MST_PriorityMatrix ─── (ImpactId + UrgencyId → PriorityId)
+
 itsm.MST_Category ──┬──< itsm.MST_SubCategory ──┬──< itsm.MST_Item
                     │                            │
                     └──────────< itsm.Tickets ──┘ (CategoryId, SubCategoryId, ItemId)
@@ -320,16 +373,69 @@ After dispatch assignment, the BLL evaluates `MST_RequestType`:
 2. **SR** — Inserts `TicketApprovals` row (`ApprovalLevel = Manager`, `ApproverCode = requester.ReportingManagerCode`). Status = **Pending Approval**. Manager action in `~/ITSM/UI/ApproveTicket.aspx` transitions to **In Progress** or **Rejected**.
 3. **CR** — Inserts two rows: Manager (sequential step 1), then IT Head (step 2). IT Head `ApproverCode` resolved from branch-level IT Head configuration. Status remains **Pending Approval** until both levels approve.
 
-### 5.4 Manual Assignee Override
+### 5.4 Priority Auto-Calculation (Impact × Urgency)
+
+On ticket create (and when Impact/Urgency is edited before resolution), `PriorityCalculationService` in `~/ITSM/BLL/` looks up `itsm.MST_PriorityMatrix`:
+
+1. User selects **Impact** and **Urgency** on the New Ticket Web Form (`ImpactId`, `UrgencyId`).
+2. BLL queries: `SELECT PriorityId FROM itsm.MST_PriorityMatrix WHERE ImpactId = @impact AND UrgencyId = @urgency`.
+3. `Tickets.PriorityId` is set **before** `SaveChanges()` — the UI displays the derived priority label read-only.
+4. `SlaService` uses the resolved `MST_Priority.SlaResolutionHours` with `MST_Calendar` to compute the SLA due date.
+
+**Default matrix (seed data):**
+
+| Impact ↓ / Urgency → | Low | Medium | High |
+| :--- | :--- | :--- | :--- |
+| **High** | P2 | P1 | P1 |
+| **Medium** | P3 | P2 | P2 |
+| **Low** | P4 | P3 | P3 |
+
+Agents may **not** override `PriorityId` directly on the ticket form; changing priority requires changing Impact and/or Urgency (audited in `TicketHistory`).
+
+### 5.5 Two-Step Resolution Flow (Resolved → Closed)
+
+ITSM uses a **two-step closure** model to separate technical resolution from customer confirmation:
+
+**Step 1 — Resolved (agent action)**
+
+1. Assignee sets status to **Resolved** via `~/ITSM/UI/TicketDetail.aspx`.
+2. BLL validates `ResolutionText` is non-empty.
+3. `Tickets.ResolvedOn = GETDATE()`, `StatusId` → **Resolved**.
+4. `NotificationQueue` notifies the requester with a link to confirm satisfaction.
+
+**Step 2 — Closed (requester CSAT or auto-close)**
+
+1. Requester opens the CSAT prompt and submits `CsatScore` (1–5) and optional `CsatFeedback`.
+2. BLL sets `StatusId` → **Closed**, `ClosedOn = GETDATE()`.
+3. If the requester does not respond within **72 hours** of `ResolvedOn`, a scheduled job (`TicketClosureService`) auto-closes the ticket:
+   - `StatusId` → **Closed**
+   - `ClosedOn = ResolvedOn + 72 hours`
+   - `CsatScore` / `CsatFeedback` remain `NULL` (recorded as "no response" in analytics)
+
+```
+In Progress ──(agent + ResolutionText)──> Resolved ──(CSAT submitted)──> Closed
+                                              │
+                                              └──(72h elapsed, no CSAT)──> Closed (auto)
+```
+
+### 5.6 SLA Calendar & Analytics (`dbo.MST_Calendar`)
+
+The BLL queries `dbo.MST_Calendar` (read-only via EF6) to:
+
+- **Calculate accurate SLA deadlines** — when applying `MST_Priority.SlaResolutionHours` to a ticket's `CreatedOn`, `SlaService` advances the deadline across business days only, skipping rows where `IsWeekend = 1`. This avoids naive `DATEADD` calculations that would over-count weekends.
+- **Group dashboard analytics** — ticket volume, resolution time, and backlog reports aggregate by `FinancialYear` and `FinancialQuarter` from `MST_Calendar`, aligned with corporate reporting periods rather than calendar months alone.
+- **Trigger scheduled maintenance tickets** — batch jobs (e.g. month-end or quarter-end windows flagged by `IsMonthEnd` / `IsQuarterEnd`) consult `MST_Calendar` to auto-raise recurring SR/CR tickets for preventive maintenance workflows.
+
+### 5.7 Manual Assignee Override
 
 IT supervisors may override `AssigneeCode` via the ticket detail page. Overrides are logged in `TicketComments` (`IsInternal = 1`) and do not alter `MST_SupportMapping` — they are ticket-level exceptions only.
 
-### 5.5 EF6 Layer Responsibilities
+### 5.8 EF6 Layer Responsibilities
 
 | Layer | Routing responsibility |
 | :--- | :--- |
-| `~/ITSM/UI/` | Collects form input; calls BLL; displays resolved assignee and approval status |
-| `~/ITSM/BLL/` | `DispatchService`, `TicketNumberService`, `ApprovalWorkflowService` — all routing rules |
+| `~/ITSM/UI/` | Collects form input; calls BLL; displays resolved assignee, derived priority, and approval status |
+| `~/ITSM/BLL/` | `DispatchService`, `TicketNumberService`, `ApprovalWorkflowService`, `PriorityCalculationService`, `SlaService`, `TicketClosureService` — routing, SLA, priority, and closure rules |
 | `~/ITSM/DAL/` | EF6 queries against `itsm.*` and read-only `dbo.*`; no business logic |
 
 ---
