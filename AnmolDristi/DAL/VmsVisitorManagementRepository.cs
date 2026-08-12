@@ -162,20 +162,117 @@ namespace AnmolDristi.DAL
             }
         }
 
-        public void RejectVisitor(int logId)
+        /// <summary>
+        /// Reject a pending visit (AR-VMS-06B). Guarded: ApprovalStatus must be Pending.
+        /// Atomically cascades all associated VisitDayLog rows to Cancelled / IsDayApproved=0.
+        /// Does not delete DayLog rows. No notifications.
+        /// </summary>
+        /// <returns>True only when the Parent Pending→Rejected update affected exactly one row.</returns>
+        public bool RejectVisitor(int logId)
         {
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
-                string updateQuery =
-                    "UPDATE VMS_VisitLog SET ApprovalStatus = 'Rejected', VisitStatus = 'Rejected', ApprovedOn = GETDATE() WHERE LogID = @LogID";
-
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
+                    try
+                    {
+                        int parentRows;
+                        using (SqlCommand cmd = new SqlCommand(@"
+                            UPDATE VMS_VisitLog
+                            SET ApprovalStatus = 'Rejected',
+                                VisitStatus = 'Rejected',
+                                ApprovedOn = GETDATE()
+                            WHERE LogID = @LogID
+                              AND ApprovalStatus = 'Pending'", con, trans))
+                        {
+                            cmd.Parameters.AddWithValue("@LogID", logId);
+                            parentRows = cmd.ExecuteNonQuery();
+                        }
+
+                        if (parentRows != 1)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
+                        CancelVisitDayLogs(con, logId, trans);
+                        trans.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Admin soft-delete of a pending duplicate/invalid request (AR-VMS-06B).
+        /// Guarded: ApprovalStatus must be Pending. Cascades all DayLogs to Cancelled /
+        /// IsDayApproved=0. Preserves ApprovalRemarks append (LEFT 250). No notifications.
+        /// </summary>
+        /// <returns>True only when the Parent Pending→Deleted update affected exactly one row.</returns>
+        public bool SoftDeleteDuplicate(int logId, string adminName)
+        {
+            string resolvedAdmin = string.IsNullOrWhiteSpace(adminName) ? "Admin" : adminName.Trim();
+
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        int parentRows;
+                        using (SqlCommand cmd = new SqlCommand(@"
+                            UPDATE VMS_VisitLog
+                            SET ApprovalStatus = 'Deleted',
+                                VisitStatus = 'Cancelled',
+                                ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + ' | Deleted by ' + @AdminName, 250)
+                            WHERE LogID = @LogId
+                              AND ApprovalStatus = 'Pending'", con, trans))
+                        {
+                            cmd.Parameters.AddWithValue("@LogId", logId);
+                            cmd.Parameters.AddWithValue("@AdminName", resolvedAdmin);
+                            parentRows = cmd.ExecuteNonQuery();
+                        }
+
+                        if (parentRows != 1)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
+                        CancelVisitDayLogs(con, logId, trans);
+                        trans.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Cancel all VisitDayLog rows for a visit (AR-VMS-06B). Retains rows; sets
+        /// IsDayApproved=0 and VisitStatus=Cancelled. Zero rows affected is OK (legacy).
+        /// </summary>
+        private static void CancelVisitDayLogs(SqlConnection con, int logId, SqlTransaction trans)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitDayLog
+                SET IsDayApproved = 0,
+                    VisitStatus = 'Cancelled'
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.ExecuteNonQuery();
             }
         }
 

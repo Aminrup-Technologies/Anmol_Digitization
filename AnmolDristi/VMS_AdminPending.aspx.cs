@@ -560,19 +560,19 @@ namespace AnmolDristi
         private void SoftDeleteDuplicate(int logId)
         {
             string adminName = Session["UserName"] != null ? Session["UserName"].ToString() : "Admin";
-            using (SqlConnection con = new SqlConnection(connStr))
+            if (_visitorManagementRepository.SoftDeleteDuplicate(logId, adminName))
             {
-                string q = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Deleted', VisitStatus = 'Cancelled', ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks,'') + ' | Deleted by ' + @AdminName, 250) WHERE LogID = @LogId";
-                using (SqlCommand cmd = new SqlCommand(q, con))
-                {
-                    cmd.Parameters.AddWithValue("@LogId", logId);
-                    cmd.Parameters.AddWithValue("@AdminName", adminName);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                }
+                lblMessage.ForeColor = Color.Green;
+                lblMessage.Text = $"<i class='fa fa-check-circle'></i> Duplicate Request #{logId} has been securely soft-deleted.";
             }
-            lblMessage.ForeColor = Color.Green;
-            lblMessage.Text = $"<i class='fa fa-check-circle'></i> Duplicate Request #{logId} has been securely soft-deleted.";
+            else
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = $"<i class='fa fa-exclamation-triangle'></i> Unable to delete request #{logId}. It may already have been processed.";
+            }
+
+            BindAllGrids();
+            KeepTabActive("tabPending");
         }
 
         private void SendReminderToHost(int logId)
