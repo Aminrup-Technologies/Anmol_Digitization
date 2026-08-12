@@ -5,12 +5,15 @@ using System.Configuration;
 using System.Web.UI.WebControls;
 using System.Drawing;
 using System.Web.UI;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_AdminPending : System.Web.UI.Page
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _visitorManagementRepository =
+            new VmsVisitorManagementRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -329,11 +332,9 @@ namespace AnmolDristi
                 }
             }
 
-            string dbColumnName = "";
-            string statusUpdateLogic = "";
-            string friendlyName = "";
-            string oldTimeRecord = "Empty";
+            string adminName = Session["UserName"] != null ? Session["UserName"].ToString() : "Admin";
 
+            // AR-VMS-04: In/Out corrections go through repository (timestamp-aware DayLog sync).
             if (txtChanged.ID == "txtInTime")
             {
                 if (approvedOn.HasValue && newTime < approvedOn.Value) { ShowValidationError($"Check-In ({newTime:HH:mm}) cannot be BEFORE Approval."); return; }
@@ -341,55 +342,131 @@ namespace AnmolDristi
                 if (currentOutTime.HasValue && newTime > currentOutTime.Value) { ShowValidationError("Check-In cannot be AFTER Check-Out."); return; }
                 if (currentValidUpto.HasValue && newTime > currentValidUpto.Value) { ShowValidationError("Check-In cannot be AFTER Pass Expiry."); return; }
 
-                dbColumnName = "ActualInTime";
-                friendlyName = "Check-In Time";
-                statusUpdateLogic = ", VisitStatus = 'Checked-In'";
-                if (currentInTime.HasValue) oldTimeRecord = currentInTime.Value.ToString("dd-MMM HH:mm");
+                AdminCorrectionResult result = _visitorManagementRepository.AdminCorrectInTime(
+                    logId, newTime, reason, adminName);
+                HandleAdminCorrectionResult(result, "Check-In Time", visName);
+                return;
             }
-            else if (txtChanged.ID == "txtOutTime")
+
+            if (txtChanged.ID == "txtOutTime")
             {
                 if (!currentInTime.HasValue) { ShowValidationError("Cannot set Check-Out. Visitor has no Check-In time yet."); return; }
                 if (newTime < currentInTime.Value) { ShowValidationError("Check-Out cannot be BEFORE Check-In."); return; }
                 if (newTime > DateTime.Now) { ShowValidationError("Check-Out cannot be set in the future."); return; }
                 if (currentValidUpto.HasValue && newTime > currentValidUpto.Value) { ShowValidationError("Check-Out cannot be AFTER Pass Expiry."); return; }
 
-                dbColumnName = "ActualOutTime";
-                friendlyName = "Check-Out Time";
-                statusUpdateLogic = ", VisitStatus = 'Checked-Out', CheckedOutBy = 'ADMIN_INLINE'";
-                if (currentOutTime.HasValue) oldTimeRecord = currentOutTime.Value.ToString("dd-MMM HH:mm");
+                AdminCorrectionResult result = _visitorManagementRepository.AdminCorrectOutTime(
+                    logId, newTime, reason, adminName);
+                HandleAdminCorrectionResult(result, "Check-Out Time", visName);
+                return;
             }
-            else if (txtChanged.ID == "txtValidUpto")
+
+            if (txtChanged.ID != "txtValidUpto")
             {
-                if (currentOutTime.HasValue && newTime < currentOutTime.Value) { ShowValidationError("Pass Expiry cannot be set BEFORE Check-Out."); return; }
-                else if (currentInTime.HasValue && newTime < currentInTime.Value) { ShowValidationError("Pass Expiry cannot be set BEFORE Check-In."); return; }
-                else if (approvedOn.HasValue && newTime < approvedOn.Value) { ShowValidationError("Pass Expiry cannot be set BEFORE Approval."); return; }
-
-                dbColumnName = "ValidUpto";
-                friendlyName = "Pass Validity";
-                statusUpdateLogic = "";
-                if (currentValidUpto.HasValue) oldTimeRecord = currentValidUpto.Value.ToString("dd-MMM HH:mm");
+                ShowValidationError("Unrecognized override field.");
+                return;
             }
 
-            string adminName = Session["UserName"] != null ? Session["UserName"].ToString() : "Admin";
+            // ValidUpto path — AR-GS-11C unchanged (not part of AR-VMS-04 In/Out correction).
+            if (currentOutTime.HasValue && newTime < currentOutTime.Value) { ShowValidationError("Pass Expiry cannot be set BEFORE Check-Out."); return; }
+            else if (currentInTime.HasValue && newTime < currentInTime.Value) { ShowValidationError("Pass Expiry cannot be set BEFORE Check-In."); return; }
+            else if (approvedOn.HasValue && newTime < approvedOn.Value) { ShowValidationError("Pass Expiry cannot be set BEFORE Approval."); return; }
+
+            string friendlyName = "Pass Validity";
+            string oldTimeRecord = currentValidUpto.HasValue
+                ? currentValidUpto.Value.ToString("dd-MMM HH:mm")
+                : "Empty";
             string auditTrail = $" | [{friendlyName}: {oldTimeRecord}->{newTime:dd-MMM HH:mm} by {adminName}] Rsn: {reason}";
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                string updateQuery = $@"
-                    UPDATE VMS_VisitLog 
-                    SET {dbColumnName} = @NewTime 
-                        {statusUpdateLogic}, 
-                        ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + @AuditTrail, 250) 
-                    WHERE LogID = @LogID";
+                con.Open();
 
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                // AR-GS-11C: SingleDay ValidUpto edits must sync the corresponding DayLog atomically.
+                using (SqlTransaction trans = con.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@NewTime", newTime);
-                    cmd.Parameters.AddWithValue("@AuditTrail", auditTrail);
-                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    try
+                    {
+                        string scheduleType = "SingleDay";
+                        using (SqlCommand scheduleCmd = new SqlCommand(
+                            "SELECT ISNULL(ScheduleType, 'SingleDay') AS ScheduleType FROM VMS_VisitLog WHERE LogID = @LogID",
+                            con,
+                            trans))
+                        {
+                            scheduleCmd.Parameters.AddWithValue("@LogID", logId);
+                            object scheduleResult = scheduleCmd.ExecuteScalar();
+                            if (scheduleResult != null && scheduleResult != DBNull.Value)
+                                scheduleType = scheduleResult.ToString();
+                        }
 
-                    con.Open();
-                    cmd.ExecuteNonQuery();
+                        string updateQuery = @"
+                            UPDATE VMS_VisitLog 
+                            SET ValidUpto = @NewTime, 
+                                ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + @AuditTrail, 250) 
+                            WHERE LogID = @LogID";
+
+                        using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
+                        {
+                            cmd.Parameters.AddWithValue("@NewTime", newTime);
+                            cmd.Parameters.AddWithValue("@AuditTrail", auditTrail);
+                            cmd.Parameters.AddWithValue("@LogID", logId);
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        if (string.Equals(scheduleType, "SingleDay", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int dayLogCount;
+                            int dayLogId = 0;
+                            using (SqlCommand countCmd = new SqlCommand(@"
+                                SELECT COUNT(1) AS DayCount,
+                                       ISNULL(MAX(DayLogID), 0) AS OnlyDayLogID
+                                FROM VMS_VisitDayLog
+                                WHERE LogID = @LogID", con, trans))
+                            {
+                                countCmd.Parameters.AddWithValue("@LogID", logId);
+                                using (SqlDataReader reader = countCmd.ExecuteReader())
+                                {
+                                    reader.Read();
+                                    dayLogCount = Convert.ToInt32(reader["DayCount"]);
+                                    dayLogId = Convert.ToInt32(reader["OnlyDayLogID"]);
+                                }
+                            }
+
+                            // Ambiguous or missing DayLog: do not guess — reject before partial commit.
+                            if (dayLogCount != 1)
+                            {
+                                try { trans.Rollback(); } catch { }
+                                ShowValidationError(
+                                    "Cannot sync SingleDay pass validity: expected exactly one VisitDayLog row.");
+                                return;
+                            }
+
+                            using (SqlCommand dayCmd = new SqlCommand(@"
+                                UPDATE VMS_VisitDayLog
+                                SET DayValidUpto = @NewTime
+                                WHERE DayLogID = @DayLogID
+                                  AND LogID = @LogID", con, trans))
+                            {
+                                dayCmd.Parameters.AddWithValue("@NewTime", newTime);
+                                dayCmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                                dayCmd.Parameters.AddWithValue("@LogID", logId);
+                                if (dayCmd.ExecuteNonQuery() != 1)
+                                {
+                                    try { trans.Rollback(); } catch { }
+                                    ShowValidationError("Failed to synchronize SingleDay VisitDayLog validity.");
+                                    return;
+                                }
+                            }
+                        }
+
+                        // MultiDay: parent ValidUpto only — do not overwrite per-day windows.
+                        trans.Commit();
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
                 }
             }
 
@@ -398,6 +475,38 @@ namespace AnmolDristi
 
             BindAllGrids();
             KeepTabActive("tabGateOverride");
+        }
+
+        private void HandleAdminCorrectionResult(AdminCorrectionResult result, string friendlyName, string visName)
+        {
+            if (result != null && result.Succeeded)
+            {
+                lblMessage.ForeColor = System.Drawing.Color.Green;
+                lblMessage.Text = $"<i class='fa fa-check-circle'></i> Auto-Saved: {friendlyName} updated for {visName}.";
+                BindAllGrids();
+                KeepTabActive("tabGateOverride");
+                return;
+            }
+
+            string message;
+            AdminCorrectionFailureReason reason = result != null
+                ? result.FailureReason
+                : AdminCorrectionFailureReason.UnexpectedFailure;
+
+            switch (reason)
+            {
+                case AdminCorrectionFailureReason.UnapprovedToday:
+                    message = "Today's visit day is not approved. Admin time correction was rejected.";
+                    break;
+                case AdminCorrectionFailureReason.StateChanged:
+                    message = "Visit status changed or is not eligible for this correction (concurrent update or wrong lifecycle state).";
+                    break;
+                default:
+                    message = "Admin time correction failed unexpectedly.";
+                    break;
+            }
+
+            ShowValidationError(message);
         }
 
         protected void gvAdminGateOverride_RowCommand(object sender, GridViewCommandEventArgs e)
@@ -518,110 +627,52 @@ namespace AnmolDristi
         }
 
         // ==========================================
-        // TAB 2: ON-BEHALF LOGIC (DYNAMIC VALIDITY & APPROVED ON)
+        // TAB 1: ON-BEHALF APPROVAL (AR-VMS-02 shared lifecycle)
         // ==========================================
+        /// <summary>
+        /// Admin on-behalf approval via shared VisitLog+DayLog approval core.
+        /// Contract defaults: Pending-only auth; Valid* from RequestedValid* via ApproveVisitSchedule;
+        /// schedDate → ApprovedOn only; MultiDay = full requested range; QR + pass notify + VMS_ADMIN_ACTION in tx.
+        /// </summary>
         private void ApproveOnBehalf(int logId, string visEmail, string visName, string hostEmail, string hostName, string remarks, DateTime schedDate)
         {
-            Guid qrToken = Guid.NewGuid();
-            DateTime validFrom = schedDate;
-            DateTime validUpto = schedDate.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
-
-            using (SqlConnection con = new SqlConnection(connStr))
+            // visEmail retained for call-site compatibility; pass notify loads contact from DB inside the repository.
+            VisitorApprovalResult result = _visitorManagementRepository.ApproveVisitOnBehalf(new VisitorApprovalRequest
             {
-                con.Open();
+                LogId = logId,
+                ApprovalRemarksSuffix = remarks,
+                ApprovedOnOverride = schedDate,
+                QueueHostOnBehalfNotification = true,
+                OnBehalfHostEmail = hostEmail,
+                OnBehalfHostName = hostName
+            });
 
-                // 1. Fetch the TargetBranchID for this specific Visit Log
-                int branchId = 0;
-                string branchQuery = "SELECT TargetBranchID FROM VMS_VisitLog WHERE LogID = @LogID";
-                using (SqlCommand cmdBranch = new SqlCommand(branchQuery, con))
-                {
-                    cmdBranch.Parameters.AddWithValue("@LogID", logId);
-                    object result = cmdBranch.ExecuteScalar();
-                    if (result != null && result != DBNull.Value)
-                    {
-                        branchId = Convert.ToInt32(result);
-                    }
-                }
-
-                // 2. Dynamic Validity Calculation (Office Closure Check)
-                if (branchId > 0)
-                {
-                    string dayOfWeek = schedDate.DayOfWeek.ToString();
-
-                    // FIX: Querying correct Branch_ID column
-                    string timingQuery = "SELECT CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchId AND DayOfWeek = @Day";
-                    using (SqlCommand cmdTiming = new SqlCommand(timingQuery, con))
-                    {
-                        cmdTiming.Parameters.AddWithValue("@BranchId", branchId);
-                        cmdTiming.Parameters.AddWithValue("@Day", dayOfWeek);
-                        object closeTimeObj = cmdTiming.ExecuteScalar();
-
-                        if (closeTimeObj != null && closeTimeObj != DBNull.Value)
-                        {
-                            TimeSpan closeTimeSpan;
-                            if (TimeSpan.TryParse(closeTimeObj.ToString(), out closeTimeSpan))
-                            {
-                                DateTime closureTime = schedDate.Date.Add(closeTimeSpan);
-
-                                if (schedDate <= closureTime.AddHours(-3))
-                                {
-                                    validUpto = closureTime;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                string updateQuery = @"
-                UPDATE VMS_VisitLog 
-                SET ApprovalStatus = 'Approved', 
-                    VisitStatus = 'Scheduled', 
-                    ValidFrom = @ValidFrom, 
-                    ValidUpto = @ValidUpto, 
-                    QRToken = @Token, 
-                    ApprovedOn = @ApprovedOn, 
-                    ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + ' | ' + @Remarks, 250) 
-                WHERE LogID = @LogID";
-
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@ValidFrom", validFrom);
-                    cmd.Parameters.AddWithValue("@ValidUpto", validUpto);
-                    cmd.Parameters.AddWithValue("@Token", qrToken);
-                    cmd.Parameters.AddWithValue("@ApprovedOn", schedDate);
-                    cmd.Parameters.AddWithValue("@Remarks", remarks);
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    cmd.ExecuteNonQuery();
-                }
-
-                string passUrl = VmsHelper.BuildDigitalPassUrl(qrToken);
-                if (!string.IsNullOrEmpty(visEmail))
-                {
-                    string visBody = $"<div style='padding:20px;'><h2 style='color:#1ABB9C;'>Visit Approved</h2><p>Hi {visName}, your visit has been scheduled for {schedDate:dd-MMM yyyy HH:mm} and authorized by Administration.</p><a href='{passUrl}'>View Digital Pass</a></div>";
-                    QueueEmail(con, logId, visEmail, visName, "Your Anmol Gate Pass (Approved)", visBody, "VMS_PASS");
-                }
-                if (!string.IsNullOrEmpty(hostEmail))
-                {
-                    string hostBody = $"<div style='padding:20px;'><h3 style='color:#3498DB;'>Admin Action Notification</h3><p>Hello {hostName},</p><p>Please note that your pending visitor <b>{visName}</b> was successfully <b>Approved On-Behalf</b> by the Administration Team.</p><p>Remarks: {remarks}</p></div>";
-                    QueueEmail(con, logId, hostEmail, hostName, $"FYI: Visitor {visName} Approved On-Behalf", hostBody, "VMS_ADMIN_ACTION");
-                }
+            if (!result.Succeeded)
+            {
+                lblMessage.ForeColor = Color.Red;
+                lblMessage.Text = $"<i class='fa fa-exclamation-triangle'></i> {FormatOnBehalfFailure(result.FailureReason)}";
+                return;
             }
-            lblMessage.ForeColor = System.Drawing.Color.Green;
-            lblMessage.Text = $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf (Valid Upto: {validUpto:dd-MMM HH:mm}).";
+
+            string validUptoText = result.ValidUpto.HasValue
+                ? result.ValidUpto.Value.ToString("dd-MMM HH:mm")
+                : "n/a";
+
+            lblMessage.ForeColor = Color.Green;
+            lblMessage.Text =
+                $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf (Valid Upto: {validUptoText}).";
         }
 
-        private void QueueEmail(SqlConnection con, int logId, string email, string name, string subject, string body, string module)
+        private static string FormatOnBehalfFailure(ApprovalFailureReason reason)
         {
-            string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, @Subject, @Body, 'Email', 'Pending', @Module)";
-            using (SqlCommand qCmd = new SqlCommand(qQuery, con))
+            switch (reason)
             {
-                qCmd.Parameters.AddWithValue("@LogId", logId);
-                qCmd.Parameters.AddWithValue("@Email", email);
-                qCmd.Parameters.AddWithValue("@Name", name);
-                qCmd.Parameters.AddWithValue("@Subject", subject);
-                qCmd.Parameters.AddWithValue("@Body", body);
-                qCmd.Parameters.AddWithValue("@Module", module);
-                qCmd.ExecuteNonQuery();
+                case ApprovalFailureReason.NotFoundOrNotOwned:
+                    return "Unable to approve on-behalf. Visit was not found.";
+                case ApprovalFailureReason.NotPending:
+                    return "Unable to approve on-behalf. Visit is no longer pending.";
+                default:
+                    return "Unable to approve on-behalf. Please try again.";
             }
         }
 

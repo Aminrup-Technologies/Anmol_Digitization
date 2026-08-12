@@ -2,91 +2,114 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
-The existing `AnmolDristi` application is a tightly coupled ASP.NET Web Forms 4.8 monolith using ADO.NET and inline SQL. We are introducing a custom, scalable ITSM module (from basic ticketing to enterprise CMDB). We must decide whether to couple this new system to the legacy architecture or build it as a modern standalone service.
+The existing `AnmolDristi` application is a tightly coupled ASP.NET Web Forms 4.8 monolith using ADO.NET and inline SQL. We are introducing a custom, scalable ITSM module (from basic ticketing to enterprise CMDB). We must choose an architecture that delivers ITSM capabilities without repeating the coupling problems that affect the legacy codebase.
 
 **What we know about the legacy system:**
 
-- Single web assembly (`AnmolDristi`) with **168 `.aspx` code-behinds**; most business logic, validation, and SQL live in those files.
-- Data access is **ADO.NET-first** (`SqlConnection` / inline SQL), with stored procedures only in newer pockets and **no active ORM** (EF 6 is referenced but unused).
-- Auth is **custom and session-centric**: `MST_UserMaster` for credentials, `ActiveUserSession` for server-side session tracking, and a custom RBAC model (`UserRole` → `RolePermission` → `Permission`). Forms Authentication is configured but not the real gatekeeper.
-- Layering is **partial at best**: only a few modules (policy exceptions, VMS, some QC) use `DAL/` + `BLL/` folders inside the same project. `DB_Utility_OH4Y` mixes data access with UI helpers.
+- Single web assembly (`AnmolDristi`) targeting **.NET Framework 4.8**, with **168 `.aspx` code-behinds**; most business logic, validation, and SQL live in those files.
+- Data access is **ADO.NET-first** (`SqlConnection` / inline SQL), with stored procedures only in newer pockets.
+- **Entity Framework 6.4.4** is already referenced in the project but is **not used** for application data access today.
+- Auth is **custom and session-centric**: `MST_UserMaster` for credentials, `ActiveUserSession` for session tracking, and RBAC via `UserRole` → `RolePermission` → `Permission`.
+- Layering is **partial at best**: a small `DAL/` and `BLL/` exist for policy exceptions and VMS, but most modules bypass them. `DB_Utility_OH4Y` mixes data access with UI helpers.
+- The delivery team has **deep Web Forms expertise** and established patterns (`BasePage`, session checks, `Dristi.Master`, AdminLTE-style UI).
 
 **What ITSM will require:**
 
 - A flexible, evolvable data model (tickets → assets → relationships → CMDB).
-- Dynamic UIs (queues, Kanban, search, dashboards, workflow designer).
-- APIs for integrations (email, monitoring, HR, procurement).
-- Independent scaling and release cadence as the module grows.
+- Rich UI for queues, search, dashboards, and CMDB views.
+- Integrations with email, monitoring, HR, and procurement over time.
+- Clear boundaries so ITSM domain logic does not devolve into the inline-SQL code-behind pattern seen elsewhere in the app.
 
 ## Decision
 
-**Option B: Build ITSM as a modern standalone service (sidecar), integrated with the legacy app for identity and navigation — not as new Web Forms pages inside `AnmolDristi`.**
+We will build ITSM as a **Modular Monolith** entirely inside the existing `AnmolDristi` .NET Framework 4.8 web project, using the **same SQL Server database** with a dedicated **`itsm` schema** for all new ITSM tables.
+
+### Physical structure
+
+All ITSM code and UI live under a single root folder in the web project:
+
+```
+AnmolDristi/
+└── ITSM/
+    ├── UI/          ← Web Forms pages (.aspx, .aspx.cs, designers)
+    ├── BLL/         ← Business logic, services, validators, workflow rules
+    └── DAL/         ← Data access only (EF6 DbContext, repositories, mappings)
+```
+
+| Folder | Responsibility | Rules |
+|--------|----------------|-------|
+| **`~/ITSM/UI/`** | Presentation only — `.aspx` pages, controls, view binding, navigation | May call BLL services. **Must not** contain inline SQL, `SqlConnection`, or domain/business rules. |
+| **`~/ITSM/BLL/`** | Business logic — ticket lifecycle, SLA evaluation, CMDB rules, approval workflows | May call DAL. **Must not** reference `System.Web.UI` or Web Forms controls. |
+| **`~/ITSM/DAL/`** | Persistence — EF6 entities, `DbContext`, repositories, query composition | **Only layer** that talks to SQL Server for ITSM data. No UI or workflow logic. |
+
+### Data access
+
+- **Entity Framework 6 (EF6)** is the sole data-access technology for the ITSM module.
+- **Write target:** all new ITSM tables are created and managed in the **`itsm` schema** (e.g. `itsm.Ticket`, `itsm.ConfigurationItem`, `itsm.TicketComment`).
+- **Read access to legacy data:** EF6 maps selected existing **`dbo`** tables as read-only entities (e.g. `MST_UserMaster`, org/plant masters) for lookups and joins — **no schema changes to legacy `dbo` tables** without a separate approved migration.
+- Code-first or EDMX-based EF6 mappings live exclusively under `~/ITSM/DAL/`.
+- Legacy modules outside `~/ITSM/` continue using ADO.NET; ITSM does **not** extend `DB_Utility_OH4Y`.
+
+### Authentication and authorization
+
+ITSM pages use the **existing** `AnmolDristi` session model (`Session["LoginToken"]`, `Session["WORKMAN"]`, `BasePage`, `RequirePermission`). No separate auth subsystem is introduced for ITSM.
+
+### Deployment
+
+- **Single deployable unit:** `AnmolDristi` IIS site, same as today.
+- **Single database:** existing connection string (`DbConn`); `itsm` schema is additive.
 
 ## Rationale
 
-### Why not Option A (extend the monolith)
+### Why a Modular Monolith (not unbounded extension of legacy patterns)
 
-1. **The dominant pattern is page-level coupling.** New ITSM features would follow the same model as large legacy pages (e.g. `qaqc_process_rpt.aspx.cs`, ~3,300 lines mixing UI, rules, and SQL), making CMDB and workflow logic hard to test, reuse, or scale.
+1. **The legacy anti-pattern is unbounded code-behind coupling.** Pages like `qaqc_process_rpt.aspx.cs` mix UI, rules, and SQL in one file. ITSM must not follow that model, even though it lives in the same project.
 
-2. **Web Forms is a poor fit for enterprise ITSM UX.** CMDB, ticket queues, SLA dashboards, and relationship graphs need component-driven, API-backed UIs. Bolting that onto `.aspx` + postbacks + `[WebMethod]` AJAX will be slower to build and harder to maintain than a modern SPA or Blazor front end on a dedicated API.
+2. **Strict folders enforce discipline.** `UI / BLL / DAL` gives testable seams without the operational cost of a second application, second host, or second deployment pipeline.
 
-3. **Introducing an ORM into the monolith creates two data paradigms.** The codebase is overwhelmingly inline SQL + `DataTable`. Adding EF Core (or similar) only for ITSM inside the same project increases inconsistency without fixing the structural coupling.
+3. **EF6 is already in the project.** Using EF6 for the `itsm` schema introduces a modern ORM boundary for new work while staying on .NET Framework 4.8 — no framework upgrade required for MVP.
 
-4. **CMDB schema evolution is high-churn.** Asset types, CI relationships, discovery sources, and workflow definitions change frequently. Embedding that in the legacy SQL Server schema and deployment unit ties ITSM releases to the entire `AnmolDristi` release cycle.
+4. **Dedicated `itsm` schema isolates churn.** CMDB tables, ticket history, and workflow state evolve independently of legacy `dbo` objects. Migrations are scoped to `itsm.*` without risking QA/QC production tables.
 
-5. **Partial DAL/BLL is not a foundation to extend.** Only ~9 classes in `DAL/` and `BLL/` exist today; they are folders in the web project, not reusable libraries. ITSM would not inherit a mature architecture — only the worst coupling habits.
+5. **Team and runtime alignment.** Web Forms, `BasePage`, session auth, and single-IIS deployment match current team skills and infrastructure. Users navigate ITSM from `home.aspx` like any other module.
 
-### Why Option B fits
+6. **Incremental adoption.** Existing 168 legacy pages are untouched. ITSM is additive under `~/ITSM/`.
 
-1. **Separation of concerns.** ITSM gets its own bounded context: tickets, SLAs, changes, assets, CMDB graph, audit trail — with a proper domain model and ORM (e.g. EF Core + PostgreSQL or SQL Server).
+### Why not alternatives considered earlier
 
-2. **Scalability and operability.** The ITSM API and UI can scale, deploy, and fail independently. Incidents in QA/QC modules do not take down the service desk.
-
-3. **API-first enables the roadmap.** Basic ticketing, approvals, email ingestion, monitoring webhooks, and CMDB discovery all need stable APIs. A sidecar is natural; a Web Forms monolith is not.
-
-4. **Legacy identity can be integrated without replicating its flaws.** We do not need to embed `ActiveUserSession` heartbeats inside ITSM. We need a thin **identity bridge**:
-   - Treat `MST_UserMaster.EmployeeCode` as the canonical user key.
-   - On login from `AnmolDristi`, issue a signed token (JWT) or use OpenID Connect with a bridge that validates legacy session / credentials once.
-   - Map legacy roles/permissions to ITSM roles at the integration boundary (sync job or on-demand lookup), rather than querying `UserRole` from every ITSM page.
-
-5. **Strangler-fig path.** Users can reach ITSM from `home.aspx` via a link to the new app (same domain or subdomain). Legacy stays stable; ITSM grows without rewriting 168 pages.
-
-### Decision summary
-
-| Criterion | Monolith (A) | Sidecar (B) |
-|-----------|--------------|-------------|
-| Time to first ticket | Faster initially | Slightly slower (scaffolding) |
-| CMDB / workflow fit | Poor | Strong |
-| Testability | Low | High |
-| Release independence | None | Full |
-| Auth reuse | Trivial but couples session model | Bridge required, decoupled runtime |
-| Long-term TCO | High (debt compounds) | Lower |
+| Approach | Why rejected |
+|----------|--------------|
+| **Unstructured monolith** (inline SQL in new `.aspx.cs` files) | Reproduces the worst maintainability problems in the codebase. |
+| **Separate service / headless backend** | Unnecessary operational complexity for MVP; splits deployment and auth for little gain given Web Forms expertise. |
 
 ## Consequences
 
 ### Positive
 
-- ITSM can use a **modern stack** (e.g. ASP.NET Core 8 API + React/Blazor + EF Core) without contaminating the legacy codebase.
-- **Independent versioning** of ITSM schema, APIs, and UI.
-- **Clear domain boundaries** for tickets, changes, assets, and CMDB relationships.
-- Easier path to **enterprise features**: multi-tenant queues, SLA engine, workflow designer, CMDB federation, external integrations.
-- Legacy `AnmolDristi` **remains unchanged** in scope and risk profile for existing QA/QC/production modules.
+- **Single deployment:** one IIS site, one database, one release process.
+- **Clear module boundary:** all ITSM code under `~/ITSM/`; easy to locate, review, and eventually extract if needed.
+- **ORM for new schema:** EF6 migrations manage `itsm` tables without hand-written DDL scattered in code-behinds.
+- **Reuses existing auth:** `BasePage`, `Session["LoginToken"]`, and `PermissionKey` RBAC — no second login or token bridge.
+- **Legacy isolation:** QA/QC and production modules outside `~/ITSM/` are not modified.
+- **Read-only legacy access:** EF6 can query `dbo.MST_UserMaster` and related masters without altering legacy write paths.
 
 ### Negative / costs
 
-- **Identity integration work upfront:** bridge from legacy login/session to ITSM tokens; define employee-code mapping and role sync.
-- **Two deployments** to operate (legacy IIS app + ITSM service), plus possibly a reverse proxy (e.g. `/itsm` → new app).
-- **Duplicate cross-cutting concerns** unless shared carefully: logging, email (today via `EmailNotifier` in monolith), audit standards.
-- **User context fragmentation** until navigation is seamless (single sign-on feel from `home.aspx` → ITSM).
-- Team needs **dual-stack skills** during transition (Web Forms maintenance + modern API/SPA development).
+- **Two data paradigms in one project:** ITSM uses EF6; legacy modules remain ADO.NET. Developers must know which pattern applies where.
+- **Discipline is conventional, not enforced by the compiler:** folder rules and "no inline SQL in UI" must be enforced by code review and CI checks.
+- **Shared runtime risk:** a defect in ITSM BLL/DAL could affect the same app pool as legacy modules (mitigate with testing and feature flags).
+- **EF6 on .NET Framework 4.8** is in maintenance mode; long-term migration to EF Core would require a framework upgrade (acceptable deferred cost).
+- **`itsm` schema migrations** must be coordinated with DBA release practices on the shared database.
 
 ### Required follow-up
 
-1. **ADR 0002:** Identity bridge design (`MST_UserMaster` / session → JWT or OIDC).
-2. **ADR 0003:** ITSM data store (shared SQL Server vs dedicated DB; CMDB schema ownership).
-3. **ADR 0004:** UI strategy (embedded iframe vs subdomain vs full SPA with deep link from legacy menu).
-4. Spike: prototype login flow from `login.aspx` → ITSM landing page with shared `EmployeeCode` and permission mapping.
+1. **ADR 0003:** `itsm` schema design — core entities (Ticket, Asset/CI, Relationship, SLA, Comment, Audit).
+2. Scaffold `~/ITSM/DAL/` — EF6 `DbContext` with `itsm` schema default and read-only `dbo` entity mappings.
+3. Define **ITSM `BasePage`** (or inherit existing `BasePage`) with `RequirePermission` keys under a `UI.ITSM.*` namespace.
+4. Spike: end-to-end ticket list — `~/ITSM/UI/TicketList.aspx` → BLL → DAL → `itsm.Ticket` grid bind.
+5. Add **architecture tests or build rules** to block `SqlConnection` / inline SQL in `~/ITSM/UI/`.
+6. Register ITSM menu entries on `home.aspx` pointing to `~/ITSM/UI/` pages.

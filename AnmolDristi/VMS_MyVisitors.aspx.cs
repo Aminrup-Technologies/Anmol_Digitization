@@ -11,6 +11,7 @@ What: Updated Page_Load and BindGrids to accept either
 */
 
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
@@ -18,12 +19,14 @@ using System.Globalization;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Drawing;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_MyVisitors : System.Web.UI.Page
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -61,32 +64,14 @@ namespace AnmolDristi
                 empCode = Session["EmpCode"].ToString();
             }
 
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                // 1. Bind Pending Grid
-                string pendingQuery = "SELECT * FROM VMS_VisitLog WHERE HostEmployeeCode = @EmpCode AND ApprovalStatus = 'Pending' ORDER BY CreatedDate DESC";
-                using (SqlDataAdapter sda = new SqlDataAdapter(pendingQuery, con))
-                {
-                    sda.SelectCommand.Parameters.AddWithValue("@EmpCode", empCode);
-                    DataTable dtPending = new DataTable();
-                    sda.Fill(dtPending);
-                    gvPending.DataSource = dtPending;
-                    gvPending.DataBind();
+            DataTable dtPending = _repository.GetPendingVisits(empCode);
+            gvPending.DataSource = dtPending;
+            gvPending.DataBind();
+            badgeCount.InnerText = dtPending.Rows.Count.ToString();
 
-                    badgeCount.InnerText = dtPending.Rows.Count.ToString();
-                }
-
-                // 2. Bind History Grid (Now includes logic to power the Manual Check-In/Out)
-                string historyQuery = "SELECT TOP 50 * FROM VMS_VisitLog WHERE HostEmployeeCode = @EmpCode AND ApprovalStatus IN ('Approved', 'Rejected') ORDER BY CreatedDate DESC";
-                using (SqlDataAdapter sda = new SqlDataAdapter(historyQuery, con))
-                {
-                    sda.SelectCommand.Parameters.AddWithValue("@EmpCode", empCode);
-                    DataTable dtHistory = new DataTable();
-                    sda.Fill(dtHistory);
-                    gvHistory.DataSource = dtHistory;
-                    gvHistory.DataBind();
-                }
-            }
+            DataTable dtHistory = _repository.GetHostVisitHistory(empCode);
+            gvHistory.DataSource = dtHistory;
+            gvHistory.DataBind();
         }
 
         protected void gvPending_RowCommand(object sender, GridViewCommandEventArgs e)
@@ -114,7 +99,7 @@ namespace AnmolDristi
                 }
                 else
                 {
-                    ApproveVisitor(logId, visEmail, visMobile, visName);
+                    ApproveVisitor(logId);
                 }
             }
             else if (e.CommandName == "RejectVisit")
@@ -271,151 +256,102 @@ namespace AnmolDristi
             }
 
             int logId = Convert.ToInt32(hfModalLogId.Value);
-            string visEmail = ViewState["ModalVisEmail"] != null ? ViewState["ModalVisEmail"].ToString() : "";
-            string visMobile = ViewState["ModalVisMobile"] != null ? ViewState["ModalVisMobile"].ToString() : "";
-            string visName = ViewState["ModalVisName"] != null ? ViewState["ModalVisName"].ToString() : "";
 
-            ApproveVisitor(logId, visEmail, visMobile, visName, applySelectedModalDays: true,
-                approvedFromTime: approvedFromTime, approvedToTime: approvedToTime);
-
-            ScriptManager.RegisterStartupScript(this, GetType(), "HideScheduleModal",
-                "$('#ScheduleApprovalModal').modal('hide'); $('body').removeClass('modal-open'); $('.modal-backdrop').remove();", true);
-        }
-
-        private void ApplyModalDayApprovals(SqlConnection con, SqlTransaction trans, int logId)
-        {
+            var selectedDays = new List<SelectedVisitDay>();
             foreach (ListItem item in cblModalDays.Items)
             {
                 DateTime visitDate = DateTime.ParseExact(item.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                using (SqlCommand dayCmd = new SqlCommand(@"
-                    UPDATE VMS_VisitDayLog
-                    SET IsDayApproved = @IsDayApproved
-                    WHERE LogID = @LogID AND VisitDate = @VisitDate", con, trans))
+                selectedDays.Add(new SelectedVisitDay
                 {
-                    dayCmd.Parameters.AddWithValue("@IsDayApproved", item.Selected ? 1 : 0);
-                    dayCmd.Parameters.AddWithValue("@LogID", logId);
-                    dayCmd.Parameters.AddWithValue("@VisitDate", visitDate.Date);
-                    dayCmd.ExecuteNonQuery();
-                }
+                    VisitDate = visitDate.Date,
+                    IsApproved = item.Selected
+                });
+            }
+
+            VisitorApprovalResult result = ApproveVisitor(
+                logId,
+                selectedDays,
+                approvedFromTime,
+                approvedToTime);
+
+            if (result.Succeeded)
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "HideScheduleModal",
+                    "$('#ScheduleApprovalModal').modal('hide'); $('body').removeClass('modal-open'); $('.modal-backdrop').remove();", true);
+            }
+            else
+            {
+                lblModalMsg.Text = FormatApprovalFailureMessage(result.FailureReason);
+                ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
+                    "$('#ScheduleApprovalModal').modal('show');", true);
             }
         }
 
-        private void ApplyApprovedValidityTimes(
-            SqlConnection con,
-            SqlTransaction trans,
+        private VisitorApprovalResult ApproveVisitor(
             int logId,
-            TimeSpan approvedFromTime,
-            TimeSpan approvedToTime)
-        {
-            // Keep the existing calendar dates; replace only the time portion of ValidFrom / ValidUpto
-            using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitLog
-                SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, GETDATE()) AS date) AS datetime)),
-                    ValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ValidUpto, GETDATE()) AS date) AS datetime)),
-                    ApprovedValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ApprovedValidFrom, ISNULL(ValidFrom, GETDATE())) AS date) AS datetime)),
-                    ApprovedValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ApprovedValidUpto, ISNULL(ValidUpto, GETDATE())) AS date) AS datetime))
-                WHERE LogID = @LogID", con, trans))
-            {
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
-                cmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
-                cmd.ExecuteNonQuery();
-            }
-
-            // Keep per-day gate windows aligned with the host override
-            using (SqlCommand dayCmd = new SqlCommand(@"
-                UPDATE VMS_VisitDayLog
-                SET DayValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(VisitDate AS datetime)),
-                    DayValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(VisitDate AS datetime))
-                WHERE LogID = @LogID AND IsDayApproved = 1", con, trans))
-            {
-                dayCmd.Parameters.AddWithValue("@LogID", logId);
-                dayCmd.Parameters.AddWithValue("@FromMinutes", (int)approvedFromTime.TotalMinutes);
-                dayCmd.Parameters.AddWithValue("@ToMinutes", (int)approvedToTime.TotalMinutes);
-                dayCmd.ExecuteNonQuery();
-            }
-        }
-
-        private void ApproveVisitor(
-            int logId,
-            string email,
-            string mobile,
-            string name,
-            bool applySelectedModalDays = false,
+            IList<SelectedVisitDay> selectedDays = null,
             TimeSpan? approvedFromTime = null,
             TimeSpan? approvedToTime = null)
         {
-            Guid qrToken = Guid.NewGuid();
-
-            using (SqlConnection con = new SqlConnection(connStr))
+            string hostEmployeeCode = "";
+            if (Session["WORKMAN"] != null)
             {
-                con.Open();
-                using (SqlTransaction trans = con.BeginTransaction())
-                {
-                    try
-                    {
-                        if (applySelectedModalDays)
-                        {
-                            ApplyModalDayApprovals(con, trans, logId);
-                        }
-
-                        string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Approved', VisitStatus = 'Scheduled', QRToken = @Token, ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                        using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
-                        {
-                            cmd.Parameters.AddWithValue("@Token", qrToken);
-                            cmd.Parameters.AddWithValue("@LogID", logId);
-                            cmd.ExecuteNonQuery();
-                        }
-
-                        VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, logId, null, null);
-
-                        // Re-apply selective day flags so range-based schedule approval does not overwrite them
-                        if (applySelectedModalDays)
-                        {
-                            ApplyModalDayApprovals(con, trans, logId);
-                        }
-
-                        if (approvedFromTime.HasValue && approvedToTime.HasValue)
-                        {
-                            ApplyApprovedValidityTimes(con, trans, logId, approvedFromTime.Value, approvedToTime.Value);
-                        }
-
-                        VmsHelper.QueueVisitorPassNotification(con, logId, qrToken, name, email, mobile, trans);
-                        trans.Commit();
-                    }
-                    catch
-                    {
-                        trans.Rollback();
-                        throw;
-                    }
-                }
+                hostEmployeeCode = Session["WORKMAN"].ToString();
+            }
+            else if (Session["EmpCode"] != null)
+            {
+                hostEmployeeCode = Session["EmpCode"].ToString();
             }
 
-            lblPendingMsg.ForeColor = Color.Green;
-            lblPendingMsg.Text = "Visitor Approved! Digital pass sent.";
-            BindGrids();
+            VisitorApprovalResult result = _repository.ApprovePendingVisit(new VisitorApprovalRequest
+            {
+                LogId = logId,
+                HostEmployeeCode = hostEmployeeCode,
+                SelectedDays = selectedDays,
+                ApprovedFromTime = approvedFromTime,
+                ApprovedToTime = approvedToTime
+            });
+
+            if (result.Succeeded)
+            {
+                lblPendingMsg.ForeColor = Color.Green;
+                lblPendingMsg.Text = "Visitor Approved! Digital pass sent.";
+                BindGrids();
+            }
+            else
+            {
+                lblPendingMsg.ForeColor = Color.Red;
+                lblPendingMsg.Text = FormatApprovalFailureMessage(result.FailureReason);
+                BindGrids();
+            }
+
+            return result;
+        }
+
+        private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)
+        {
+            switch (reason)
+            {
+                case ApprovalFailureReason.NotFoundOrNotOwned:
+                    return "Unable to approve this visit. It was not found or you are not authorized.";
+                case ApprovalFailureReason.NotPending:
+                    return "Unable to approve this visit. It is no longer pending.";
+                default:
+                    return "Unable to approve this visit. Please try again.";
+            }
         }
 
         private void RejectVisitor(int logId)
         {
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                string updateQuery = "UPDATE VMS_VisitLog SET ApprovalStatus = 'Rejected', VisitStatus = 'Rejected', ApprovedOn = GETDATE() WHERE LogID = @LogID";
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
-                }
-            }
+            _repository.RejectVisitor(logId);
+
             lblPendingMsg.ForeColor = Color.Red;
             lblPendingMsg.Text = "Visitor request rejected.";
             BindGrids(); // Refresh UI
         }
 
         // ========================================================
-        // NEW METHOD: Handle Manual Check-In and Check-Out by Host
+        // Manual Check-In / Check-Out by Host (AR-VMS-03A DayLog-aware)
         // ========================================================
         protected void gvHistory_RowCommand(object sender, GridViewCommandEventArgs e)
         {
@@ -423,31 +359,32 @@ namespace AnmolDristi
             {
                 int logId = Convert.ToInt32(e.CommandArgument);
 
-                using (SqlConnection con = new SqlConnection(connStr))
+                if (e.CommandName == "ManualCheckIn")
                 {
-                    string updateQuery = "";
-
-                    if (e.CommandName == "ManualCheckIn")
+                    if (_repository.ManualCheckIn(logId))
                     {
-                        // FIXED: Changed CheckInTime to ActualInTime
-                        updateQuery = "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-In', ActualInTime = GETDATE() WHERE LogID = @LogID";
                         lblHistoryMsg.ForeColor = Color.Green;
                         lblHistoryMsg.Text = "Visitor successfully Checked-IN manually.";
                     }
-                    else if (e.CommandName == "ManualCheckOut")
+                    else
                     {
-                        // FIXED: Changed CheckOutTime to ActualOutTime
-                        updateQuery = "UPDATE VMS_VisitLog SET VisitStatus = 'Checked-Out', ActualOutTime = GETDATE() WHERE LogID = @LogID";
+                        lblHistoryMsg.ForeColor = Color.Red;
+                        lblHistoryMsg.Text =
+                            "Unable to Check-IN. Status may have changed, today is not approved, or the visitor is already checked in.";
+                    }
+                }
+                else if (e.CommandName == "ManualCheckOut")
+                {
+                    if (_repository.ManualCheckOut(logId))
+                    {
                         lblHistoryMsg.ForeColor = Color.Green;
                         lblHistoryMsg.Text = "Visitor successfully Checked-OUT manually.";
                     }
-
-                    using (SqlCommand cmd = new SqlCommand(updateQuery, con))
+                    else
                     {
-                        cmd.Parameters.AddWithValue("@LogID", logId);
-                        con.Open();
-                        cmd.ExecuteNonQuery();
-                        con.Close();
+                        lblHistoryMsg.ForeColor = Color.Red;
+                        lblHistoryMsg.Text =
+                            "Unable to Check-OUT. Status may have changed, today is not approved, or the visitor is not checked in.";
                     }
                 }
 

@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Data;
-using System.Data.SqlClient;
-using System.Configuration;
 using System.Drawing;
 using System.IO;
 using QRCoder;
+using AnmolDristi.DAL;
 
 namespace AnmolDristi
 {
     public partial class VMS_DigitalPass : System.Web.UI.Page
     {
-        string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -36,97 +34,147 @@ namespace AnmolDristi
                 return;
             }
 
-            using (SqlConnection con = new SqlConnection(connStr))
+            DigitalPassDetails pass = _repository.GetDigitalPassDetails(token);
+            if (pass == null)
             {
-                // Massive Join to get Visitor, Host, and Plant Settings in one query
-                string query = @"
-                    SELECT 
-                        v.LogID,
-                        v.VisitorName, 
-                        v.VisitorCompany, 
-                        v.PhotoPath, 
-                        v.ValidUpto, 
-                        v.ApprovalStatus,
-                        ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
-                        u.EmployeeName AS HostName,
-                        ISNULL(s.AliasName, 'Anmol Industries') AS PlantAlias,
-                        ISNULL(s.VisitorPolicyText, 'Standard safety rules apply.') AS PolicyText
-                    FROM VMS_VisitLog v
-                    LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
-                    LEFT JOIN VMS_OfficeSettings s ON v.TargetBranchID = s.Branch_ID
-                    WHERE v.QRToken = @Token";
+                ShowError("Pass not found in the system.");
+                return;
+            }
 
-                using (SqlCommand cmd = new SqlCommand(query, con))
+            // 1. Verify Approval Status
+            if (pass.ApprovalStatus != "Approved")
+            {
+                ShowError("This pass has not been approved or has been revoked.");
+                return;
+            }
+
+            // 2. Bind Data to UI
+            lblVisitorName.Text = pass.VisitorName;
+            lblCompany.Text = pass.VisitorCompany;
+            lblHostName.Text = pass.HostName;
+            lblPlantAlias.Text = pass.PlantAlias;
+
+            // Format Policy text to keep line breaks
+            litPolicyText.Text = pass.PolicyText.Replace("\n", "<br/>");
+
+            // Handle absolute vs relative image paths
+            string photoUrl = pass.PhotoPath;
+            imgVisitorPhoto.ImageUrl = string.IsNullOrEmpty(photoUrl) ? "~/images/user.png" : photoUrl;
+
+            // 3. Classify today's presentation state (read-only; Gate Scanner remains authoritative)
+            VisitDayLogInfo todayLog = null;
+            DigitalPassState state = ResolvePresentationState(pass, out todayLog);
+            BindValidityDisplay(pass, todayLog, state);
+            ApplyPresentationState(state, tokenStr);
+
+            pnlPass.Visible = true;
+            BindApprovedDates(pass.LogId, pass.ScheduleType);
+        }
+
+        private DigitalPassState ResolvePresentationState(DigitalPassDetails pass, out VisitDayLogInfo todayLog)
+        {
+            // SingleDay and MultiDay both need today's DayLog for presentation under AR-GS-11.
+            todayLog = _repository.GetTodayVisitDayLog(pass.LogId);
+
+            return DigitalPassStateResolver.Resolve(
+                pass,
+                todayLog,
+                DateTime.Now);
+        }
+
+        private void BindValidityDisplay(DigitalPassDetails pass, VisitDayLogInfo todayLog, DigitalPassState state)
+        {
+            DateTime? displayUpto = pass.ValidUpto;
+
+            if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase)
+                && todayLog != null
+                && todayLog.IsDayApproved)
+            {
+                DateTime effectiveFrom;
+                DateTime effectiveUpto;
+                if (VmsEffectiveValidity.TryResolveEffectiveWindow(
+                        pass.ValidFrom,
+                        pass.ValidUpto,
+                        todayLog.DayValidFrom,
+                        todayLog.DayValidUpto,
+                        out effectiveFrom,
+                        out effectiveUpto))
                 {
-                    cmd.Parameters.AddWithValue("@Token", token);
-                    con.Open();
-
-                    int logId = 0;
-                    string scheduleType = "SingleDay";
-                    bool passFound = false;
-
-                    using (SqlDataReader sdr = cmd.ExecuteReader())
-                    {
-                        if (sdr.Read())
-                        {
-                            // 1. Verify Approval Status
-                            if (sdr["ApprovalStatus"].ToString() != "Approved")
-                            {
-                                ShowError("This pass has not been approved or has been revoked.");
-                                return;
-                            }
-
-                            // 2. Bind Data to UI
-                            logId = Convert.ToInt32(sdr["LogID"]);
-                            scheduleType = sdr["ScheduleType"].ToString();
-                            lblVisitorName.Text = sdr["VisitorName"].ToString();
-                            lblCompany.Text = sdr["VisitorCompany"].ToString();
-                            lblHostName.Text = sdr["HostName"].ToString();
-                            lblPlantAlias.Text = sdr["PlantAlias"].ToString();
-
-                            // Format Policy text to keep line breaks
-                            litPolicyText.Text = sdr["PolicyText"].ToString().Replace("\n", "<br/>");
-
-                            // Handle absolute vs relative image paths
-                            string photoUrl = sdr["PhotoPath"].ToString();
-                            imgVisitorPhoto.ImageUrl = string.IsNullOrEmpty(photoUrl) ? "~/images/user.png" : photoUrl;
-
-                            // 3. Time Validation (Has the pass expired?)
-                            DateTime validUpto = Convert.ToDateTime(sdr["ValidUpto"]);
-                            lblValidUpto.Text = validUpto.ToString("dd MMM yyyy, hh:mm tt");
-
-                            if (DateTime.Now > validUpto)
-                            {
-                                lblStatusBadge.Text = "<span class='status-badge status-expired'><i class='fa fa-times-circle'></i> EXPIRED</span>";
-                                imgScanQR.Visible = false; // Hide QR so guard can't scan it
-                            }
-                            else
-                            {
-                                lblStatusBadge.Text = "<span class='status-badge status-valid'><i class='fa fa-check-circle'></i> VALID PASS</span>";
-                                GenerateScannableQR(tokenStr);
-                            }
-
-                            passFound = true;
-                            pnlPass.Visible = true;
-                        }
-                        else
-                        {
-                            ShowError("Pass not found in the system.");
-                        }
-                    }
-
-                    if (passFound)
-                    {
-                        BindApprovedDates(con, logId, scheduleType);
-                    }
+                    displayUpto = effectiveUpto;
                 }
+            }
+
+            lblValidUpto.Text = displayUpto.HasValue
+                ? displayUpto.Value.ToString("dd MMM yyyy, hh:mm tt")
+                : "Not set";
+        }
+
+        private void ApplyPresentationState(DigitalPassState state, string tokenStr)
+        {
+            string badgeText;
+            string badgeCss;
+            string message;
+
+            switch (state)
+            {
+                case DigitalPassState.NotApprovedForToday:
+                    badgeText = "NOT APPROVED FOR TODAY";
+                    badgeCss = "status-badge status-expired";
+                    message = "This pass is not approved for entry today.";
+                    break;
+                case DigitalPassState.PassNotActiveYet:
+                    badgeText = "PASS NOT ACTIVE YET";
+                    badgeCss = "status-badge status-pending";
+                    message = "Your approved visit window has not started.";
+                    break;
+                case DigitalPassState.VisitorCurrentlyInside:
+                    badgeText = "VISITOR CURRENTLY INSIDE";
+                    badgeCss = "status-badge status-inside";
+                    message = "You have already checked in.";
+                    break;
+                case DigitalPassState.VisitCompleted:
+                    badgeText = "VISIT COMPLETED";
+                    badgeCss = "status-badge status-completed";
+                    message = "You have already checked out for today.";
+                    break;
+                case DigitalPassState.TodaysWindowEnded:
+                    badgeText = "TODAY'S WINDOW ENDED";
+                    badgeCss = "status-badge status-expired";
+                    message = "Today's approved visiting window has ended.";
+                    break;
+                case DigitalPassState.Expired:
+                    badgeText = "<i class='fa fa-times-circle'></i> EXPIRED";
+                    badgeCss = "status-badge status-expired";
+                    message = "";
+                    break;
+                case DigitalPassState.ValidPass:
+                default:
+                    badgeText = "VALID PASS";
+                    badgeCss = "status-badge status-valid";
+                    message = "Show this QR code at the security gate.";
+                    break;
+            }
+
+            lblStatusBadge.Text = "<span class='" + badgeCss + "'>" + badgeText + "</span>";
+            lblStatusMessage.Text = message;
+
+            if (state == DigitalPassState.ValidPass)
+            {
+                divQrBox.Visible = true;
+                imgScanQR.Visible = true;
+                GenerateScannableQR(tokenStr);
+            }
+            else
+            {
+                divQrBox.Visible = false;
+                imgScanQR.Visible = false;
             }
         }
 
-        private void BindApprovedDates(SqlConnection con, int logId, string scheduleType)
+        private void BindApprovedDates(int logId, string scheduleType)
         {
             // scheduleType is already loaded with the pass; helper re-checks ScheduleType + day log
-            string approvedDatesText = VmsHelper.GetMultiDayApprovedDatesText(con, logId);
+            string approvedDatesText = _repository.GetMultiDayApprovedDatesText(logId);
             if (string.IsNullOrEmpty(approvedDatesText))
             {
                 divApprovedDates.Visible = false;
