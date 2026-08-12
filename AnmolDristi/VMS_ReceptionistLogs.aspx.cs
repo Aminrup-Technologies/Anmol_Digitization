@@ -258,42 +258,63 @@ namespace AnmolDristi
                 return;
             }
 
-            using (SqlConnection con = new SqlConnection(connStr))
+            if (actionType == "CheckIn")
             {
-                string updateQuery = "";
-
-                // We use ISNULL to append to any existing remarks so we don't accidentally delete host comments
-                if (actionType == "CheckIn")
+                // AR-VMS-03B: DayLog-aware desk Check-In (CheckInDay when today approved).
+                ReceptionistAttendanceResult result = _visitorManagementRepository.ReceptionistManualCheckIn(logId);
+                if (!result.Succeeded)
                 {
-                    updateQuery = @"
-                UPDATE VMS_VisitLog 
-                SET VisitStatus = 'Checked-In', 
-                    ActualInTime = GETDATE(),
-                    ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | [Reception Override] Manual Check-In on ' + FORMAT(GETDATE(), 'dd-MMM-yy HH:mm')
-                WHERE LogID = @LogID";
-                }
-                else if (actionType == "CheckOut")
-                {
-                    updateQuery = @"
-                UPDATE VMS_VisitLog 
-                SET VisitStatus = 'Checked-Out', 
-                    ActualOutTime = GETDATE(),
-                    CheckedOutBy = 'Receptionist',
-                    ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | [Reception Override] Manual Check-Out on ' + FORMAT(GETDATE(), 'dd-MMM-yy HH:mm')
-                WHERE LogID = @LogID";
+                    RegisterAttendanceFailureScript(FormatReceptionistAttendanceFailure(result.FailureReason, isCheckIn: true));
                 }
 
-                using (SqlCommand cmd = new SqlCommand(updateQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@LogID", logId);
-                    con.Open();
-                    cmd.ExecuteNonQuery();
-                    con.Close();
-                }
+                LoadDashboardData();
+                return;
             }
 
-            // Refresh the grid and charts so the UI instantly reflects the new status
-            LoadDashboardData();
+            if (actionType == "CheckOut")
+            {
+                // AR-VMS-03B: DayLog-aware desk Check-Out (CheckOutDay / MultiDay Parent Scheduled).
+                ReceptionistAttendanceResult result = _visitorManagementRepository.ReceptionistManualCheckOut(logId);
+                if (!result.Succeeded)
+                {
+                    RegisterAttendanceFailureScript(FormatReceptionistAttendanceFailure(result.FailureReason, isCheckIn: false));
+                }
+
+                LoadDashboardData();
+                return;
+            }
+        }
+
+        private void RegisterAttendanceFailureScript(string message)
+        {
+            string safe = (message ?? string.Empty).Replace("\\", "\\\\").Replace("'", "\\'");
+            ScriptManager.RegisterStartupScript(
+                UpdatePanelGrid,
+                UpdatePanelGrid.GetType(),
+                "ReceptionistAttendanceFail",
+                "alert('" + safe + "');",
+                true);
+        }
+
+        private static string FormatReceptionistAttendanceFailure(
+            ReceptionistAttendanceFailureReason reason,
+            bool isCheckIn)
+        {
+            switch (reason)
+            {
+                case ReceptionistAttendanceFailureReason.TodayNotApproved:
+                    return isCheckIn
+                        ? "Unable to Check-In. Today is not approved for this visit."
+                        : "Unable to Check-Out. Today is not approved for this visit.";
+                case ReceptionistAttendanceFailureReason.StateChanged:
+                    return isCheckIn
+                        ? "Unable to Check-In. Status may have changed or the visitor is already checked in."
+                        : "Unable to Check-Out. Status may have changed or the visitor is not checked in.";
+                default:
+                    return isCheckIn
+                        ? "Unable to Check-In. Please refresh and try again."
+                        : "Unable to Check-Out. Please refresh and try again.";
+            }
         }
 
         private void PopulateModal(int logId)
