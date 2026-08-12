@@ -81,6 +81,26 @@ namespace AnmolDristi.DAL
         public int LogId { get; set; }
     }
 
+    /// <summary>
+    /// Controlled failure reasons for Admin Inline Gate Override timestamp correction (AR-VMS-04).
+    /// </summary>
+    public enum AdminCorrectionFailureReason
+    {
+        None = 0,
+        /// <summary>Expected VisitStatus/DayLog status did not match (stale or concurrent mutation).</summary>
+        StateChanged = 1,
+        /// <summary>Today's VisitDayLog exists but IsDayApproved = 0 — correction must fail closed.</summary>
+        UnapprovedToday = 2,
+        UnexpectedFailure = 3
+    }
+
+    public class AdminCorrectionResult
+    {
+        public bool Succeeded { get; set; }
+        public AdminCorrectionFailureReason FailureReason { get; set; }
+        public int LogId { get; set; }
+    }
+
     public class DigitalPassDetails
     {
         public int LogId { get; set; }
@@ -539,6 +559,360 @@ namespace AnmolDristi.DAL
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@Remark", remark);
                 return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        /// <summary>
+        /// Admin Inline Gate Override — In-Time correction (AR-VMS-04).
+        /// Uses the Admin-supplied timestamp (not GETDATE). When today's DayLog is approved,
+        /// atomically corrects Parent + DayLog. When no today DayLog exists, guarded parent-only.
+        /// When today exists but unapproved: FAIL (no parent fallback). Does not call
+        /// CheckInDay / ManualCheckIn. No notifications.
+        /// </summary>
+        public AdminCorrectionResult AdminCorrectInTime(
+            int logId,
+            DateTime adminInTime,
+            string overrideReason,
+            string userName)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+
+                        if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailAdminCorrection(logId, AdminCorrectionFailureReason.UnapprovedToday);
+                        }
+
+                        DateTime? oldInTime = ReadParentActualInTime(con, trans, logId);
+
+                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
+                        bool mutated;
+
+                        if (useDayLogPath)
+                        {
+                            mutated = AdminCorrectInTimeWithDayLog(
+                                con, trans, logId, todayLog.DayLogId, adminInTime);
+                        }
+                        else
+                        {
+                            mutated = AdminCorrectInTimeParentOnly(con, trans, logId, adminInTime);
+                        }
+
+                        if (!mutated)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailAdminCorrection(logId, AdminCorrectionFailureReason.StateChanged);
+                        }
+
+                        string oldRecord = oldInTime.HasValue
+                            ? oldInTime.Value.ToString("dd-MMM HH:mm")
+                            : "Empty";
+                        string auditName = string.IsNullOrWhiteSpace(userName) ? "Admin" : userName.Trim();
+                        string reason = overrideReason ?? string.Empty;
+                        string auditTrail =
+                            $" | [Check-In Time: {oldRecord}->{adminInTime:dd-MMM HH:mm} by {auditName}] Rsn: {reason}";
+
+                        AppendAdminCorrectionRemark(con, trans, logId, auditTrail);
+
+                        trans.Commit();
+                        return new AdminCorrectionResult
+                        {
+                            Succeeded = true,
+                            FailureReason = AdminCorrectionFailureReason.None,
+                            LogId = logId
+                        };
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Admin Inline Gate Override — Out-Time correction (AR-VMS-04).
+        /// Uses the Admin-supplied timestamp (not GETDATE). Approved today DayLog: atomic
+        /// Parent+DayLog with MultiDay Parent→Scheduled when future approved days remain
+        /// (HasFutureApprovedDays). No today DayLog: guarded parent-only Checked-Out.
+        /// Unapproved today: FAIL. CheckedOutBy = ADMIN_INLINE. Does not call CheckOutDay.
+        /// </summary>
+        public AdminCorrectionResult AdminCorrectOutTime(
+            int logId,
+            DateTime adminOutTime,
+            string overrideReason,
+            string userName)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+
+                        if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailAdminCorrection(logId, AdminCorrectionFailureReason.UnapprovedToday);
+                        }
+
+                        DateTime? oldOutTime = ReadParentActualOutTime(con, trans, logId);
+
+                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
+                        bool mutated;
+
+                        if (useDayLogPath)
+                        {
+                            mutated = AdminCorrectOutTimeWithDayLog(
+                                con, trans, logId, todayLog.DayLogId, adminOutTime);
+                        }
+                        else
+                        {
+                            mutated = AdminCorrectOutTimeParentOnly(con, trans, logId, adminOutTime);
+                        }
+
+                        if (!mutated)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailAdminCorrection(logId, AdminCorrectionFailureReason.StateChanged);
+                        }
+
+                        string oldRecord = oldOutTime.HasValue
+                            ? oldOutTime.Value.ToString("dd-MMM HH:mm")
+                            : "Empty";
+                        string auditName = string.IsNullOrWhiteSpace(userName) ? "Admin" : userName.Trim();
+                        string reason = overrideReason ?? string.Empty;
+                        string auditTrail =
+                            $" | [Check-Out Time: {oldRecord}->{adminOutTime:dd-MMM HH:mm} by {auditName}] Rsn: {reason}";
+
+                        AppendAdminCorrectionRemark(con, trans, logId, auditTrail);
+
+                        trans.Commit();
+                        return new AdminCorrectionResult
+                        {
+                            Succeeded = true,
+                            FailureReason = AdminCorrectionFailureReason.None,
+                            LogId = logId
+                        };
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static AdminCorrectionResult FailAdminCorrection(
+            int logId,
+            AdminCorrectionFailureReason reason)
+        {
+            return new AdminCorrectionResult
+            {
+                Succeeded = false,
+                FailureReason = reason,
+                LogId = logId
+            };
+        }
+
+        private static DateTime? ReadParentActualInTime(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId)
+        {
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT ActualInTime FROM VMS_VisitLog WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                object value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                    return null;
+                return Convert.ToDateTime(value);
+            }
+        }
+
+        private static DateTime? ReadParentActualOutTime(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId)
+        {
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT ActualOutTime FROM VMS_VisitLog WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                object value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                    return null;
+                return Convert.ToDateTime(value);
+            }
+        }
+
+        /// <summary>
+        /// Approved today DayLog: atomic Parent + DayLog In-Time with Admin-supplied timestamp.
+        /// Both rows must transition Scheduled → Checked-In (rowsAffected == 1 each).
+        /// </summary>
+        private static bool AdminCorrectInTimeWithDayLog(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            int dayLogId,
+            DateTime adminInTime)
+        {
+            int dayRows;
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitDayLog
+                SET ActualInTime = @AdminInTime,
+                    VisitStatus = 'Checked-In'
+                WHERE DayLogID = @DayLogID
+                  AND VisitStatus = 'Scheduled'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@AdminInTime", adminInTime);
+                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                dayRows = cmd.ExecuteNonQuery();
+            }
+
+            if (dayRows != 1)
+                return false;
+
+            int visitRows;
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ActualInTime = @AdminInTime,
+                    VisitStatus = 'Checked-In'
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Scheduled'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@AdminInTime", adminInTime);
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                visitRows = cmd.ExecuteNonQuery();
+            }
+
+            return visitRows == 1;
+        }
+
+        /// <summary>
+        /// Legacy niche: no today VisitDayLog row — guarded parent-only In-Time correction.
+        /// </summary>
+        private static bool AdminCorrectInTimeParentOnly(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            DateTime adminInTime)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ActualInTime = @AdminInTime,
+                    VisitStatus = 'Checked-In'
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Scheduled'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@AdminInTime", adminInTime);
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        /// <summary>
+        /// Approved today DayLog: DayLog → Checked-Out with @AdminOutTime; Parent VisitStatus
+        /// Scheduled when HasFutureApprovedDays, else Checked-Out. CheckedOutBy = ADMIN_INLINE.
+        /// </summary>
+        private static bool AdminCorrectOutTimeWithDayLog(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            int dayLogId,
+            DateTime adminOutTime)
+        {
+            int dayRows;
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitDayLog
+                SET ActualOutTime = @AdminOutTime,
+                    VisitStatus = 'Checked-Out'
+                WHERE DayLogID = @DayLogID
+                  AND VisitStatus = 'Checked-In'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
+                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                dayRows = cmd.ExecuteNonQuery();
+            }
+
+            if (dayRows != 1)
+                return false;
+
+            bool hasFutureDays = VmsVisitScheduleHelper.HasFutureApprovedDays(
+                con, logId, DateTime.Now.Date, trans);
+            string nextVisitStatus = hasFutureDays ? "Scheduled" : "Checked-Out";
+
+            int visitRows;
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ActualOutTime = @AdminOutTime,
+                    VisitStatus = @VisitStatus,
+                    CheckedOutBy = 'ADMIN_INLINE'
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Checked-In'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
+                cmd.Parameters.AddWithValue("@VisitStatus", nextVisitStatus);
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                visitRows = cmd.ExecuteNonQuery();
+            }
+
+            return visitRows == 1;
+        }
+
+        /// <summary>
+        /// Legacy niche: no today VisitDayLog row — guarded parent-only Out-Time correction.
+        /// </summary>
+        private static bool AdminCorrectOutTimeParentOnly(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            DateTime adminOutTime)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ActualOutTime = @AdminOutTime,
+                    VisitStatus = 'Checked-Out',
+                    CheckedOutBy = 'ADMIN_INLINE'
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Checked-In'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        /// <summary>
+        /// Append Admin correction audit remark after successful lifecycle mutation (same tx).
+        /// Preserves LEFT(..., 250) truncation used by Admin Inline Gate Override.
+        /// </summary>
+        private static void AppendAdminCorrectionRemark(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string auditTrail)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + @AuditTrail, 250)
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@AuditTrail", auditTrail);
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.ExecuteNonQuery();
             }
         }
 
