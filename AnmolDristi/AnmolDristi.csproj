@@ -1537,6 +1537,8 @@
     <Compile Include="ITSM\DAL\Entities\Calendar.cs" />
     <Compile Include="ITSM\DAL\Entities\PlantTimings.cs" />
     <Compile Include="ITSM\DAL\ItsmDbContext.cs" />
+    <Compile Include="ITSM\BLL\PriorityCalculationService.cs" />
+    <Compile Include="ITSM\BLL\DispatchService.cs" />
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />
