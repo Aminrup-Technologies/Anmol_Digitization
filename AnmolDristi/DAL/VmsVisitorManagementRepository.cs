@@ -61,6 +61,26 @@ namespace AnmolDristi.DAL
         public DateTime? ValidUpto { get; set; }
     }
 
+    /// <summary>
+    /// Controlled failure reasons for Receptionist desk Check-In/Out (AR-VMS-03B).
+    /// </summary>
+    public enum ReceptionistAttendanceFailureReason
+    {
+        None = 0,
+        /// <summary>Expected VisitStatus/DayLog status did not match (stale or concurrent mutation).</summary>
+        StateChanged = 1,
+        /// <summary>Today's VisitDayLog exists but IsDayApproved = 0 — normal CI/CO must fail.</summary>
+        TodayNotApproved = 2,
+        Unexpected = 3
+    }
+
+    public class ReceptionistAttendanceResult
+    {
+        public bool Succeeded { get; set; }
+        public ReceptionistAttendanceFailureReason FailureReason { get; set; }
+        public int LogId { get; set; }
+    }
+
     public class DigitalPassDetails
     {
         public int LogId { get; set; }
@@ -297,6 +317,227 @@ namespace AnmolDristi.DAL
                   AND VisitStatus = 'Checked-In'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        /// <summary>
+        /// Receptionist desk Check-In (AR-VMS-03B). DayLog-aware when today's DayLog is approved;
+        /// legacy guarded parent-only when no today row; FAIL when today exists but unapproved.
+        /// Preserves [Reception Override] remarks. No Gate validity, branch predicate, or notifications.
+        /// </summary>
+        public ReceptionistAttendanceResult ReceptionistManualCheckIn(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+
+                        if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.TodayNotApproved);
+                        }
+
+                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
+                        bool succeeded;
+
+                        if (useDayLogPath)
+                        {
+                            succeeded = VmsVisitScheduleHelper.CheckInDay(
+                                con,
+                                todayLog.DayLogId,
+                                logId,
+                                "Receptionist",
+                                trans);
+
+                            if (succeeded)
+                            {
+                                // Metadata-only: do not alter VisitStatus / ActualInTime / DayLog status.
+                                AppendReceptionOverrideRemark(
+                                    con,
+                                    trans,
+                                    logId,
+                                    "[Reception Override] Manual Check-In on " + DateTime.Now.ToString("dd-MMM-yy HH:mm"));
+                            }
+                        }
+                        else
+                        {
+                            succeeded = LegacyReceptionistCheckInParentOnly(con, trans, logId);
+                        }
+
+                        if (!succeeded)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
+                        }
+
+                        trans.Commit();
+                        return new ReceptionistAttendanceResult
+                        {
+                            Succeeded = true,
+                            FailureReason = ReceptionistAttendanceFailureReason.None,
+                            LogId = logId
+                        };
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Receptionist desk Check-Out (AR-VMS-03B). Reuses CheckOutDay for MultiDay Parent→Scheduled
+        /// when future approved days remain. CheckedOutBy = Receptionist on DayLog path via helper
+        /// and on legacy path explicitly. No departure notifications.
+        /// </summary>
+        public ReceptionistAttendanceResult ReceptionistManualCheckOut(int logId)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                using (SqlTransaction trans = con.BeginTransaction())
+                {
+                    try
+                    {
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+
+                        if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.TodayNotApproved);
+                        }
+
+                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
+                        bool succeeded;
+
+                        if (useDayLogPath)
+                        {
+                            succeeded = VmsVisitScheduleHelper.CheckOutDay(
+                                con,
+                                todayLog.DayLogId,
+                                logId,
+                                "Receptionist",
+                                trans);
+
+                            if (succeeded)
+                            {
+                                AppendReceptionOverrideRemark(
+                                    con,
+                                    trans,
+                                    logId,
+                                    "[Reception Override] Manual Check-Out on " + DateTime.Now.ToString("dd-MMM-yy HH:mm"));
+                            }
+                        }
+                        else
+                        {
+                            succeeded = LegacyReceptionistCheckOutParentOnly(con, trans, logId);
+                        }
+
+                        if (!succeeded)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
+                        }
+
+                        trans.Commit();
+                        return new ReceptionistAttendanceResult
+                        {
+                            Succeeded = true,
+                            FailureReason = ReceptionistAttendanceFailureReason.None,
+                            LogId = logId
+                        };
+                    }
+                    catch
+                    {
+                        try { trans.Rollback(); } catch { }
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static ReceptionistAttendanceResult FailReceptionistAttendance(
+            int logId,
+            ReceptionistAttendanceFailureReason reason)
+        {
+            return new ReceptionistAttendanceResult
+            {
+                Succeeded = false,
+                FailureReason = reason,
+                LogId = logId
+            };
+        }
+
+        /// <summary>
+        /// Metadata-only remarks append after a successful canonical DayLog transition.
+        /// Does not change VisitStatus, ActualInTime, ActualOutTime, or DayLog status.
+        /// </summary>
+        private static void AppendReceptionOverrideRemark(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string remark)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | ' + @Remark
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@Remark", remark);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static bool LegacyReceptionistCheckInParentOnly(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId)
+        {
+            string remark =
+                "[Reception Override] Manual Check-In on " + DateTime.Now.ToString("dd-MMM-yy HH:mm");
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET VisitStatus = 'Checked-In',
+                    ActualInTime = COALESCE(ActualInTime, GETDATE()),
+                    ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | ' + @Remark
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Scheduled'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@Remark", remark);
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        private static bool LegacyReceptionistCheckOutParentOnly(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId)
+        {
+            string remark =
+                "[Reception Override] Manual Check-Out on " + DateTime.Now.ToString("dd-MMM-yy HH:mm");
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                UPDATE VMS_VisitLog
+                SET VisitStatus = 'Checked-Out',
+                    ActualOutTime = GETDATE(),
+                    CheckedOutBy = 'Receptionist',
+                    ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | ' + @Remark
+                WHERE LogID = @LogID
+                  AND VisitStatus = 'Checked-In'", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@Remark", remark);
                 return cmd.ExecuteNonQuery() == 1;
             }
         }
