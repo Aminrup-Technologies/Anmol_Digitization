@@ -1539,6 +1539,8 @@
     <Compile Include="ITSM\DAL\ItsmDbContext.cs" />
     <Compile Include="ITSM\BLL\PriorityCalculationService.cs" />
     <Compile Include="ITSM\BLL\DispatchService.cs" />
+    <Compile Include="ITSM\BLL\SlaService.cs" />
+    <Compile Include="ITSM\BLL\TicketService.cs" />
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />
