@@ -250,6 +250,7 @@
     <Content Include="Critical_Incident_Detailed.aspx" />
     <Content Include="Critical_Incident_ViewPage.aspx" />
     <Content Include="critical_quality_report.aspx" />
+    <Content Include="ITSM\UI\CreateTicket.aspx" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
     <Content Include="DeviceTransfer.aspx" />
