@@ -195,6 +195,36 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        // AR-VMS-06A: when dayLogId is missing, resolve today's DayLog before
+                        // legacy Parent-only Check-In. Unapproved today must fail closed.
+                        if (dayLogId <= 0)
+                        {
+                            VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+                            if (todayLog != null && todayLog.DayLogId > 0)
+                            {
+                                if (!todayLog.IsDayApproved)
+                                {
+                                    try
+                                    {
+                                        trans.Rollback();
+                                    }
+                                    catch
+                                    {
+                                        // Do not mask the controlled failure.
+                                    }
+
+                                    return new GateMutationResult
+                                    {
+                                        Succeeded = false,
+                                        FailureReason = GateMutationFailureReason.StateChanged,
+                                        LogId = logId
+                                    };
+                                }
+
+                                dayLogId = todayLog.DayLogId;
+                            }
+                        }
+
                         bool transitionSucceeded;
                         if (dayLogId > 0)
                             transitionSucceeded = VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, resolvedGuardId, trans);
