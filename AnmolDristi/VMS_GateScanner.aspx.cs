@@ -503,14 +503,15 @@ namespace AnmolDristi
                 hfHostName.Value,
                 hfHostEmail.Value,
                 hfVisName.Value,
-                hfCompany.Value);
+                hfCompany.Value,
+                _specificBranchId);
         }
 
         // --- REUSABLE CHECK-OUT DATABASE LOGIC ---
         private GateMutationResult ProcessDatabaseCheckOut(int logId, int dayLogId = 0)
         {
             string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
-            return _repository.CheckOut(logId, dayLogId, guardId);
+            return _repository.CheckOut(logId, dayLogId, guardId, _specificBranchId);
         }
 
         private void ShowStateChangedFailure()
