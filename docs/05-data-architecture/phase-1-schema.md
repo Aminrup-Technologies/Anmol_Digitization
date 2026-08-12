@@ -23,6 +23,7 @@ These tables exist in the `dbo` schema. EF6 maps to these using `[Table("...", S
 | **`dbo.MST_Branch`** | `Id` | `Branch_Description` | **Dispatch Anchor:** Maps to `Tickets.BranchId` and `MST_SupportMapping.BranchId`. Drives the Intelligent Dispatch Matrix. |
 | **`dbo.MST_Department`** | `Id` | `Department_Description` | **Organizational Context:** Helps IT agents prioritize tickets based on the requester's department. |
 | **`dbo.MST_Designation`** | `Id` | `Designation_Description` | **User Role:** Contextual lookup. *(Note: Legacy `MST_UserMaster.Designation_ID` stores ERP identity; mapped carefully in EF6.)* |
+| **`dbo.MST_Calendar`** | `CalendarDate` | `IsWeekend`, `FinancialYear`, `FinancialQuarter`, `IsMonthEnd`, `IsQuarterEnd` | **Business Calendar:** Read-only reference for SLA date math (business-day calculations), dashboard analytics grouping, and triggering scheduled maintenance tickets. Mapped via `[Table("MST_Calendar", Schema = "dbo")]`. |
 
 ---
 
@@ -320,16 +321,24 @@ After dispatch assignment, the BLL evaluates `MST_RequestType`:
 2. **SR** — Inserts `TicketApprovals` row (`ApprovalLevel = Manager`, `ApproverCode = requester.ReportingManagerCode`). Status = **Pending Approval**. Manager action in `~/ITSM/UI/ApproveTicket.aspx` transitions to **In Progress** or **Rejected**.
 3. **CR** — Inserts two rows: Manager (sequential step 1), then IT Head (step 2). IT Head `ApproverCode` resolved from branch-level IT Head configuration. Status remains **Pending Approval** until both levels approve.
 
-### 5.4 Manual Assignee Override
+### 5.5 SLA Calendar & Analytics (`dbo.MST_Calendar`)
+
+The BLL queries `dbo.MST_Calendar` (read-only via EF6) to:
+
+- **Calculate accurate SLA deadlines** — when applying `MST_Priority.SlaResolutionHours` to a ticket's `CreatedOn`, `SlaService` advances the deadline across business days only, skipping rows where `IsWeekend = 1`. This avoids naive `DATEADD` calculations that would over-count weekends.
+- **Group dashboard analytics** — ticket volume, resolution time, and backlog reports aggregate by `FinancialYear` and `FinancialQuarter` from `MST_Calendar`, aligned with corporate reporting periods rather than calendar months alone.
+- **Trigger scheduled maintenance tickets** — batch jobs (e.g. month-end or quarter-end windows flagged by `IsMonthEnd` / `IsQuarterEnd`) consult `MST_Calendar` to auto-raise recurring SR/CR tickets for preventive maintenance workflows.
+
+### 5.6 Manual Assignee Override
 
 IT supervisors may override `AssigneeCode` via the ticket detail page. Overrides are logged in `TicketComments` (`IsInternal = 1`) and do not alter `MST_SupportMapping` — they are ticket-level exceptions only.
 
-### 5.5 EF6 Layer Responsibilities
+### 5.7 EF6 Layer Responsibilities
 
 | Layer | Routing responsibility |
 | :--- | :--- |
 | `~/ITSM/UI/` | Collects form input; calls BLL; displays resolved assignee and approval status |
-| `~/ITSM/BLL/` | `DispatchService`, `TicketNumberService`, `ApprovalWorkflowService` — all routing rules |
+| `~/ITSM/BLL/` | `DispatchService`, `TicketNumberService`, `ApprovalWorkflowService`, `SlaService` — all routing and SLA rules |
 | `~/ITSM/DAL/` | EF6 queries against `itsm.*` and read-only `dbo.*`; no business logic |
 
 ---
