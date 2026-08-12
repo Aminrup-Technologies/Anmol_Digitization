@@ -176,6 +176,8 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Atomically check in a visit (day-aware or legacy) and optionally queue arrival notification.
+        /// When <paramref name="gateBranchId"/> is set (Specific Gate), VisitLog.TargetBranchID must match
+        /// under the same transaction (AR-VMS-08B). Null = Universal Gate (no branch restriction).
         /// </summary>
         public GateMutationResult CheckIn(
             int logId,
@@ -184,7 +186,8 @@ namespace AnmolDristi.DAL
             string hostName,
             string hostEmail,
             string visName,
-            string company)
+            string company,
+            int? gateBranchId = null)
         {
             string resolvedGuardId = guardId ?? "SecurityGate";
 
@@ -195,6 +198,25 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        if (!TryAssertVisitBelongsToGateBranch(con, trans, logId, gateBranchId))
+                        {
+                            try
+                            {
+                                trans.Rollback();
+                            }
+                            catch
+                            {
+                                // Do not mask the controlled failure.
+                            }
+
+                            return new GateMutationResult
+                            {
+                                Succeeded = false,
+                                FailureReason = GateMutationFailureReason.StateChanged,
+                                LogId = logId
+                            };
+                        }
+
                         // AR-VMS-06A: when dayLogId is missing, resolve today's DayLog before
                         // legacy Parent-only Check-In. Unapproved today must fail closed.
                         if (dayLogId <= 0)
@@ -229,7 +251,8 @@ namespace AnmolDristi.DAL
                         if (dayLogId > 0)
                             transitionSucceeded = VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, resolvedGuardId, trans);
                         else
-                            transitionSucceeded = UpdateGateStatus(con, trans, logId, "Checked-In", "ActualInTime", resolvedGuardId, "Scheduled");
+                            transitionSucceeded = UpdateGateStatus(
+                                con, trans, logId, "Checked-In", "ActualInTime", resolvedGuardId, "Scheduled", gateBranchId);
 
                         if (!transitionSucceeded)
                         {
@@ -283,8 +306,10 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Atomically check out a visit (day-aware or legacy) and optionally queue departure notification.
+        /// When <paramref name="gateBranchId"/> is set (Specific Gate), VisitLog.TargetBranchID must match
+        /// under the same transaction (AR-VMS-08B). Null = Universal Gate (no branch restriction).
         /// </summary>
-        public GateMutationResult CheckOut(int logId, int dayLogId, string guardId)
+        public GateMutationResult CheckOut(int logId, int dayLogId, string guardId, int? gateBranchId = null)
         {
             string resolvedGuardId = guardId ?? "SecurityGate";
 
@@ -295,6 +320,25 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        if (!TryAssertVisitBelongsToGateBranch(con, trans, logId, gateBranchId))
+                        {
+                            try
+                            {
+                                trans.Rollback();
+                            }
+                            catch
+                            {
+                                // Do not mask the controlled failure.
+                            }
+
+                            return new GateMutationResult
+                            {
+                                Succeeded = false,
+                                FailureReason = GateMutationFailureReason.StateChanged,
+                                LogId = logId
+                            };
+                        }
+
                         string visName = "";
                         string company = "";
                         string hostName = "";
@@ -312,7 +356,8 @@ namespace AnmolDristi.DAL
                         if (dayLogId > 0)
                             transitionSucceeded = VmsVisitScheduleHelper.CheckOutDay(con, dayLogId, logId, resolvedGuardId, trans);
                         else
-                            transitionSucceeded = UpdateGateStatus(con, trans, logId, "Checked-Out", "ActualOutTime", resolvedGuardId, "Checked-In");
+                            transitionSucceeded = UpdateGateStatus(
+                                con, trans, logId, "Checked-Out", "ActualOutTime", resolvedGuardId, "Checked-In", gateBranchId);
 
                         if (!transitionSucceeded)
                         {
@@ -370,6 +415,37 @@ namespace AnmolDristi.DAL
                 LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode 
                 WHERE v.LogID = @LogID";
 
+        /// <summary>
+        /// Specific Gate: UPDLOCK VisitLog and require TargetBranchID == gateBranchId.
+        /// Universal Gate (null): no restriction.
+        /// </summary>
+        private static bool TryAssertVisitBelongsToGateBranch(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            int? gateBranchId)
+        {
+            if (!gateBranchId.HasValue)
+                return true;
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT TargetBranchID
+                FROM VMS_VisitLog WITH (UPDLOCK, ROWLOCK)
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                object value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                    return false;
+
+                int visitBranchId;
+                if (!int.TryParse(value.ToString(), out visitBranchId))
+                    return false;
+
+                return visitBranchId == gateBranchId.Value;
+            }
+        }
+
         private static void LoadCheckoutVisitor(
             SqlConnection con,
             SqlTransaction trans,
@@ -403,6 +479,7 @@ namespace AnmolDristi.DAL
         /// <summary>
         /// Legacy parent-only VisitLog status update. Requires expectedCurrentStatus,
         /// ApprovalStatus='Approved' (AR-VMS-07B), and rowsAffected == 1.
+        /// When gateBranchId is set (Specific Gate), also requires TargetBranchID match (AR-VMS-08B).
         /// </summary>
         private static bool UpdateGateStatus(
             SqlConnection con,
@@ -411,16 +488,23 @@ namespace AnmolDristi.DAL
             string newStatus,
             string timeColumn,
             string guardId,
-            string expectedCurrentStatus)
+            string expectedCurrentStatus,
+            int? gateBranchId = null)
         {
+            string branchPredicate = gateBranchId.HasValue
+                ? " AND TargetBranchID = @GateBranchId"
+                : string.Empty;
+
             string updateQuery =
-                $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID AND VisitStatus = @ExpectedStatus AND ApprovalStatus = 'Approved'";
+                $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID AND VisitStatus = @ExpectedStatus AND ApprovalStatus = 'Approved'{branchPredicate}";
             using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
             {
                 cmd.Parameters.AddWithValue("@Status", newStatus);
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
                 cmd.Parameters.AddWithValue("@ExpectedStatus", expectedCurrentStatus);
+                if (gateBranchId.HasValue)
+                    cmd.Parameters.AddWithValue("@GateBranchId", gateBranchId.Value);
                 return cmd.ExecuteNonQuery() == 1;
             }
         }
