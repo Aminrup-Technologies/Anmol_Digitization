@@ -456,8 +456,8 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Legacy parent-only Check-In when no today VisitDayLog row exists.
-        /// Guarded: VisitStatus must be Scheduled and HostEmployeeCode must match;
-        /// ActualInTime preserves first stamp.
+        /// Guarded: VisitStatus must be Scheduled, HostEmployeeCode must match, and
+        /// ApprovalStatus must be Approved (AR-VMS-07B); ActualInTime preserves first stamp.
         /// </summary>
         private static bool LegacyManualCheckInParentOnly(
             SqlConnection con,
@@ -471,7 +471,8 @@ namespace AnmolDristi.DAL
                     ActualInTime = COALESCE(ActualInTime, GETDATE())
                 WHERE LogID = @LogID
                   AND VisitStatus = 'Scheduled'
-                  AND HostEmployeeCode = @HostEmployeeCode", con, trans))
+                  AND HostEmployeeCode = @HostEmployeeCode
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
@@ -481,7 +482,8 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Legacy parent-only Check-Out when no today VisitDayLog row exists.
-        /// Guarded: VisitStatus must be Checked-In and HostEmployeeCode must match.
+        /// Guarded: VisitStatus must be Checked-In, HostEmployeeCode must match, and
+        /// ApprovalStatus must be Approved (AR-VMS-07B).
         /// Does not set CheckedOutBy (MyVisitors contract).
         /// </summary>
         private static bool LegacyManualCheckOutParentOnly(
@@ -496,7 +498,8 @@ namespace AnmolDristi.DAL
                     ActualOutTime = GETDATE()
                 WHERE LogID = @LogID
                   AND VisitStatus = 'Checked-In'
-                  AND HostEmployeeCode = @HostEmployeeCode", con, trans))
+                  AND HostEmployeeCode = @HostEmployeeCode
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
@@ -694,7 +697,8 @@ namespace AnmolDristi.DAL
                     ActualInTime = COALESCE(ActualInTime, GETDATE()),
                     ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | ' + @Remark
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Scheduled'", con, trans))
+                  AND VisitStatus = 'Scheduled'
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@Remark", remark);
@@ -717,7 +721,8 @@ namespace AnmolDristi.DAL
                     CheckedOutBy = 'Receptionist',
                     ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | ' + @Remark
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Checked-In'", con, trans))
+                  AND VisitStatus = 'Checked-In'
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@Remark", remark);
@@ -966,6 +971,7 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Legacy niche: no today VisitDayLog row — guarded parent-only In-Time correction.
+        /// Requires ApprovalStatus='Approved' (AR-VMS-07B).
         /// </summary>
         private static bool AdminCorrectInTimeParentOnly(
             SqlConnection con,
@@ -978,6 +984,7 @@ namespace AnmolDristi.DAL
                 SET ActualInTime = @AdminInTime,
                     VisitStatus = 'Checked-In'
                 WHERE LogID = @LogID
+                  AND ApprovalStatus = 'Approved'
                   AND VisitStatus = 'Scheduled'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminInTime", adminInTime);
@@ -1037,6 +1044,7 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Legacy niche: no today VisitDayLog row — guarded parent-only Out-Time correction.
+        /// Requires ApprovalStatus='Approved' (AR-VMS-07B).
         /// </summary>
         private static bool AdminCorrectOutTimeParentOnly(
             SqlConnection con,
@@ -1050,6 +1058,7 @@ namespace AnmolDristi.DAL
                     VisitStatus = 'Checked-Out',
                     CheckedOutBy = 'ADMIN_INLINE'
                 WHERE LogID = @LogID
+                  AND ApprovalStatus = 'Approved'
                   AND VisitStatus = 'Checked-In'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
