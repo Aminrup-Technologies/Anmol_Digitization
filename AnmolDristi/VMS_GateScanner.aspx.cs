@@ -10,19 +10,24 @@ namespace AnmolDristi
     {
         private readonly VmsGateScannerRepository _repository = new VmsGateScannerRepository();
 
+        private const string VsGateContextEstablished = "GateContextEstablished";
+        private const string VsGateIsUniversal = "GateIsUniversal";
+        private const string VsGateSpecificBranchId = "GateSpecificBranchId";
+
         /// <summary>
         /// When gate config is valid: null = universal gate; non-null = branch-scoped gate.
+        /// Restored every request from the page-scoped ViewState Gate context (AR-VMS-08C).
         /// </summary>
         private int? _specificBranchId;
 
         /// <summary>
-        /// True when BranchId query string is present but not a valid positive integer.
+        /// True when BranchId is invalid/malformed or postback Gate context fails validation.
         /// </summary>
         private bool _gateConfigInvalid;
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (!TryResolveGateBranchContext(out _specificBranchId))
+            if (!TryEstablishOrValidateGateContext())
             {
                 _gateConfigInvalid = true;
                 DenyInvalidGateConfiguration();
@@ -37,23 +42,123 @@ namespace AnmolDristi
         }
 
         /// <summary>
-        /// Distinguishes absent BranchId (universal) from present-but-invalid (deny).
-        /// Valid specific BranchIds are positive integers (aligned with other VMS pages using branchId &gt; 0).
+        /// Initial GET establishes page Gate context in ViewState.
+        /// Postbacks validate the request against that established context (AR-VMS-08C).
         /// </summary>
-        private bool TryResolveGateBranchContext(out int? specificBranchId)
+        private bool TryEstablishOrValidateGateContext()
         {
-            specificBranchId = null;
+            if (!IsPostBack)
+                return EstablishInitialGateContext();
 
+            return ValidatePostbackGateContext();
+        }
+
+        /// <summary>
+        /// AR-GS-09: absent BranchId → Universal; valid positive → Specific; present-but-invalid → fail closed.
+        /// Establishes page-scoped ViewState only on the initial non-postback request.
+        /// </summary>
+        private bool EstablishInitialGateContext()
+        {
+            int? queryBranchId;
+            bool keyPresent;
+            if (!TryParseBranchIdQuery(out queryBranchId, out keyPresent))
+                return false;
+
+            if (!keyPresent)
+            {
+                PersistGateContext(isUniversal: true, specificBranchId: null);
+                _specificBranchId = null;
+                return true;
+            }
+
+            PersistGateContext(isUniversal: false, specificBranchId: queryBranchId.Value);
+            _specificBranchId = queryBranchId.Value;
+            return true;
+        }
+
+        /// <summary>
+        /// Postback: restore established Gate context; never silently Specific→Universal or N→M.
+        /// Universal page instances must not become Specific via a crafted postback BranchId.
+        /// </summary>
+        private bool ValidatePostbackGateContext()
+        {
+            // ViewState boxes bool as System.Boolean — do not use "as bool?" (always null).
+            object establishedFlag = ViewState[VsGateContextEstablished];
+            if (!(establishedFlag is bool) || !(bool)establishedFlag)
+                return false;
+
+            object universalFlag = ViewState[VsGateIsUniversal];
+            if (!(universalFlag is bool))
+                return false;
+
+            bool isUniversal = (bool)universalFlag;
+            int? establishedSpecific = null;
+            if (!isUniversal)
+            {
+                object rawEstablished = ViewState[VsGateSpecificBranchId];
+                if (rawEstablished == null)
+                    return false;
+
+                establishedSpecific = Convert.ToInt32(rawEstablished);
+                if (establishedSpecific.Value <= 0)
+                    return false;
+            }
+
+            int? queryBranchId;
+            bool keyPresent;
+            if (!TryParseBranchIdQuery(out queryBranchId, out keyPresent))
+                return false;
+
+            if (isUniversal)
+            {
+                // Established Universal: only missing BranchId remains Universal.
+                // A postback that introduces BranchId is not a legitimate context switch.
+                if (keyPresent)
+                    return false;
+
+                _specificBranchId = null;
+                return true;
+            }
+
+            // Established Specific N:
+            // missing BranchId → preserve N (do NOT treat as Universal)
+            // BranchId == N → preserve N
+            // BranchId == M → fail closed
+            if (keyPresent && queryBranchId.Value != establishedSpecific.Value)
+                return false;
+
+            _specificBranchId = establishedSpecific.Value;
+            return true;
+        }
+
+        private void PersistGateContext(bool isUniversal, int? specificBranchId)
+        {
+            ViewState[VsGateContextEstablished] = true;
+            ViewState[VsGateIsUniversal] = isUniversal;
+            if (isUniversal)
+                ViewState[VsGateSpecificBranchId] = null;
+            else
+                ViewState[VsGateSpecificBranchId] = specificBranchId.Value;
+        }
+
+        /// <summary>
+        /// Distinguishes absent BranchId from present-but-invalid (AR-GS-09).
+        /// Valid specific BranchIds are positive integers.
+        /// </summary>
+        private bool TryParseBranchIdQuery(out int? branchId, out bool keyPresent)
+        {
+            branchId = null;
             // Absent key only — empty string means the parameter is present.
-            if (Request.QueryString["BranchId"] == null)
+            keyPresent = Request.QueryString["BranchId"] != null;
+            if (!keyPresent)
                 return true;
 
             string raw = Request.QueryString["BranchId"];
-            int branchId;
-            if (!int.TryParse(raw, out branchId) || branchId <= 0)
+            int parsed;
+            if (!int.TryParse(raw, out parsed) || parsed <= 0)
                 return false;
 
-            specificBranchId = branchId;
+            branchId = parsed;
             return true;
         }
 
