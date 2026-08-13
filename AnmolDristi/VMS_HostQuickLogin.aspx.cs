@@ -23,31 +23,14 @@ namespace AnmolDristi
 
         private void ValidateAndLoadVisitor()
         {
-            if (Request.QueryString["vid"] == null || Request.QueryString["t"] == null)
-            {
-                lblMessage.Text = "Invalid access link. Please check your email.";
+            int visitId;
+            string hostEmployeeCode;
+            if (!TryAuthorizeCapabilityLink(out visitId, out hostEmployeeCode))
                 return;
-            }
-
-            string visitId = Request.QueryString["vid"];
-            string encodedToken = Request.QueryString["t"];
-            string decodedEmpCode = "";
-
-            try
-            {
-                // Decode the Base64 Employee Code from the URL
-                byte[] base64EncodedBytes = Convert.FromBase64String(encodedToken);
-                decodedEmpCode = System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
-            }
-            catch
-            {
-                lblMessage.Text = "Malformed security token.";
-                return;
-            }
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                // Verify the Visit belongs to this exact decoded Employee Code
+                // Token host + LogID already verified; 07A-equivalent row bind is still required.
                 string query = @"
                     SELECT VisitorName, VisitorCompany, PurposeOfVisit, ApprovalStatus, 
                            ISNULL(NULLIF(VisitorMobile, ''), VisitorEmail) AS ContactInfo,
@@ -62,7 +45,7 @@ namespace AnmolDristi
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@VisitId", visitId);
-                    cmd.Parameters.AddWithValue("@EmpCode", decodedEmpCode);
+                    cmd.Parameters.AddWithValue("@EmpCode", hostEmployeeCode);
 
                     con.Open();
                     using (SqlDataReader sdr = cmd.ExecuteReader())
@@ -113,12 +96,12 @@ namespace AnmolDristi
 
                 if (isPending && scheduleType == "MultiDay")
                 {
-                    BindRequestedDays(con, visitId);
+                    BindRequestedDays(con, visitId.ToString(CultureInfo.InvariantCulture));
                 }
 
                 if (isPending)
                 {
-                    PrefillApprovedValidityTimes(con, visitId);
+                    PrefillApprovedValidityTimes(con, visitId.ToString(CultureInfo.InvariantCulture));
                 }
             }
         }
@@ -269,22 +252,13 @@ namespace AnmolDristi
             TimeSpan? approvedFromTime = null,
             TimeSpan? approvedToTime = null)
         {
-            string visitId = Request.QueryString["vid"];
+            int logId;
+            string hostEmployeeCode;
+            if (!TryAuthorizeCapabilityLink(out logId, out hostEmployeeCode))
+                return;
 
             if (approvalStatus == "Approved")
             {
-                string hostEmployeeCode;
-                if (!TryResolveHostEmployeeCode(out hostEmployeeCode))
-                {
-                    lblMessage.CssClass = "error";
-                    lblMessage.Visible = true;
-                    if (string.IsNullOrEmpty(lblMessage.Text))
-                        lblMessage.Text = "Invalid access link. Please check your email.";
-                    return;
-                }
-
-                int logId = Convert.ToInt32(visitId);
-
                 IList<SelectedVisitDay> selectedDays = null;
                 if (cblRequestedDays.Visible)
                 {
@@ -325,19 +299,8 @@ namespace AnmolDristi
             }
 
             // AR-VMS-06B + AR-VMS-07A: Reject via canonical RejectVisitor with Host ownership.
-            // Do not trust vid alone; resolve Host from token t (same as Approve).
-            string rejectHostCode;
-            if (!TryResolveHostEmployeeCode(out rejectHostCode))
-            {
-                lblMessage.CssClass = "error";
-                lblMessage.Visible = true;
-                if (string.IsNullOrEmpty(lblMessage.Text))
-                    lblMessage.Text = "Invalid access link. Please check your email.";
-                return;
-            }
-
-            int rejectLogId = Convert.ToInt32(visitId);
-            if (!_repository.RejectVisitor(rejectLogId, rejectHostCode))
+            // Capability token already bound host + LogID; 07A SQL remains the mutation guard.
+            if (!_repository.RejectVisitor(logId, hostEmployeeCode))
             {
                 lblMessage.CssClass = "error";
                 lblMessage.Visible = true;
@@ -351,27 +314,54 @@ namespace AnmolDristi
             lblMessage.Text = "Visitor request has been rejected.";
         }
 
-        private bool TryResolveHostEmployeeCode(out string hostEmployeeCode)
+        /// <summary>
+        /// AR-VMS-13: verify capability token integrity, UTC expiry, and vid==token.LogID.
+        /// On failure: no PII, no mutation. Does not accept legacy Base64(EmployeeCode).
+        /// </summary>
+        private bool TryAuthorizeCapabilityLink(out int logId, out string hostEmployeeCode)
         {
+            logId = 0;
             hostEmployeeCode = string.Empty;
 
-            if (Request.QueryString["t"] == null)
+            string rawVid = Request.QueryString["vid"];
+            string rawToken = Request.QueryString["t"];
+            if (string.IsNullOrWhiteSpace(rawVid) || string.IsNullOrWhiteSpace(rawToken))
             {
-                lblMessage.Text = "Invalid access link. Please check your email.";
+                ShowCapabilityDenied(false);
                 return false;
             }
 
-            try
+            int parsedVid;
+            if (!int.TryParse(rawVid, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedVid) ||
+                parsedVid <= 0)
             {
-                byte[] base64EncodedBytes = Convert.FromBase64String(Request.QueryString["t"]);
-                hostEmployeeCode = System.Text.Encoding.UTF8.GetString(base64EncodedBytes);
-                return !string.IsNullOrEmpty(hostEmployeeCode);
-            }
-            catch
-            {
-                lblMessage.Text = "Malformed security token.";
+                ShowCapabilityDenied(false);
                 return false;
             }
+
+            VmsHostQuickLoginToken.Status status = VmsHostQuickLoginToken.TryValidate(
+                rawToken,
+                parsedVid,
+                out hostEmployeeCode);
+
+            if (status == VmsHostQuickLoginToken.Status.Valid)
+            {
+                logId = parsedVid;
+                return true;
+            }
+
+            ShowCapabilityDenied(status == VmsHostQuickLoginToken.Status.Expired);
+            return false;
+        }
+
+        private void ShowCapabilityDenied(bool expired)
+        {
+            pnlAction.Visible = false;
+            lblMessage.Visible = true;
+            lblMessage.CssClass = "error";
+            lblMessage.Text = expired
+                ? "This link has expired. Please request a new approval email."
+                : "Invalid or expired link.";
         }
 
         private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)

@@ -668,8 +668,7 @@ namespace AnmolDristi
                 if (!string.IsNullOrEmpty(hostEmail) && !string.IsNullOrEmpty(hostEmpCode))
                 {
                     string subject = $"[URGENT] Approval Needed: Visitor {visitorName} is waiting";
-                    string encodedEmpCode = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(hostEmpCode));
-                    string quickApproveLink = VmsHelper.BuildHostQuickLoginUrl(Convert.ToInt32(logId), encodedEmpCode);
+                    string quickApproveLink = VmsHelper.BuildHostQuickLoginUrl(logId, hostEmpCode);
 
                     string body = $@"<div style='padding:20px; border: 2px solid #f0ad4e; font-family: Arial, sans-serif;'>
                                      <h3 style='color:#f0ad4e;'>Reminder: Visitor Waiting</h3><p>Hello <b>{hostName}</b>,</p>

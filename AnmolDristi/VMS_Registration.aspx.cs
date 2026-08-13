@@ -200,14 +200,8 @@ namespace AnmolDristi
                         if (isFallbackEmail)
                             subject = "[FALLBACK] " + subject;
 
-                        byte[] plainTextBytes =
-                            System.Text.Encoding.UTF8.GetBytes(hostEmpCode);
-
-                        string encodedEmpCode =
-                            Convert.ToBase64String(plainTextBytes);
-
                         string quickApproveLink =
-                            VmsHelper.BuildHostQuickLoginUrl(visitId, encodedEmpCode);
+                            VmsHelper.BuildHostQuickLoginUrl(visitId, hostEmpCode);
 
                         body = $@"
                                             <div style='font-family:Arial;padding:20px;'>
@@ -987,10 +981,7 @@ namespace AnmolDristi
                             string subject = $"Approval Needed: Visitor {fullName} has arrived";
                             if (isFallbackEmail) subject = "[FALLBACK] " + subject;
 
-                            byte[] plainTextBytes = System.Text.Encoding.UTF8.GetBytes(hostEmpCode);
-                            string encodedEmpCode = Convert.ToBase64String(plainTextBytes);
-
-                            string quickApproveLink = VmsHelper.BuildHostQuickLoginUrl(newVisitId, encodedEmpCode);
+                            string quickApproveLink = VmsHelper.BuildHostQuickLoginUrl(newVisitId, hostEmpCode);
 
                             string fallbackNote = isFallbackEmail
                                 ? $"<p style='color: red; font-size: 12px;'><em>System Note: This email was routed to the fallback address because no valid email was found in the database for Host Code: {hostEmpCode}.</em></p>"
