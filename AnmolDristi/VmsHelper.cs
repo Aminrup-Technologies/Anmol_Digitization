@@ -60,9 +60,15 @@ namespace AnmolDristi
             return BuildPublicUrl($"VMS_DigitalPass.aspx?token={qrToken}");
         }
 
-        public static string BuildHostQuickLoginUrl(int visitId, string encodedHostEmpCode)
+        /// <summary>
+        /// Public HostQuickLogin capability URL (AR-VMS-13).
+        /// Issues a visit-bound, expiring, MachineKey-protected token as query parameter t.
+        /// Callers must pass the raw HostEmployeeCode (not Base64).
+        /// </summary>
+        public static string BuildHostQuickLoginUrl(int logId, string hostEmployeeCode)
         {
-            return BuildPublicUrl($"VMS_HostQuickLogin.aspx?vid={visitId}&t={encodedHostEmpCode}");
+            string token = VmsHostQuickLoginToken.Create(logId, hostEmployeeCode);
+            return BuildPublicUrl($"VMS_HostQuickLogin.aspx?vid={logId}&t={token}");
         }
 
         public static string BuildSelfLoginUrl(int branchId)
