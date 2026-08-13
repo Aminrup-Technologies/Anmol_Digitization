@@ -451,18 +451,31 @@ namespace AnmolDristi
                                 scheduleType = scheduleResult.ToString();
                         }
 
+                        // AR-VMS-12: Parent ValidUpto mutation is authoritative — reassert lifecycle
+                        // state in SQL. UI/grid filtering alone is not authorization.
                         string updateQuery = @"
                             UPDATE VMS_VisitLog 
                             SET ValidUpto = @NewTime, 
                                 ApprovalRemarks = LEFT(ISNULL(ApprovalRemarks, '') + @AuditTrail, 250) 
-                            WHERE LogID = @LogID";
+                            WHERE LogID = @LogID
+                              AND ApprovalStatus = 'Approved'
+                              AND VisitStatus IN ('Scheduled', 'Checked-In')";
 
+                        int parentRowsAffected;
                         using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
                         {
                             cmd.Parameters.AddWithValue("@NewTime", newTime);
                             cmd.Parameters.AddWithValue("@AuditTrail", auditTrail);
                             cmd.Parameters.AddWithValue("@LogID", logId);
-                            cmd.ExecuteNonQuery();
+                            parentRowsAffected = cmd.ExecuteNonQuery();
+                        }
+
+                        if (parentRowsAffected != 1)
+                        {
+                            try { trans.Rollback(); } catch { }
+                            ShowValidationError(
+                                "Cannot update Pass Validity. Visit is no longer Approved and Scheduled/Checked-In. Please refresh.");
+                            return;
                         }
 
                         if (string.Equals(scheduleType, "SingleDay", StringComparison.OrdinalIgnoreCase))
