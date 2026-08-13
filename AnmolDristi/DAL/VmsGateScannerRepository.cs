@@ -178,15 +178,13 @@ namespace AnmolDristi.DAL
         /// Atomically check in a visit (day-aware or legacy) and optionally queue arrival notification.
         /// When <paramref name="gateBranchId"/> is set (Specific Gate), VisitLog.TargetBranchID must match
         /// under the same transaction (AR-VMS-08B). Null = Universal Gate (no branch restriction).
+        /// Arrival notification identity is loaded from VMS_VisitLog + MST_UserMaster for the mutated LogID
+        /// (AR-VMS-09); page HiddenFields are not authoritative.
         /// </summary>
         public GateMutationResult CheckIn(
             int logId,
             int dayLogId,
             string guardId,
-            string hostName,
-            string hostEmail,
-            string visName,
-            string company,
             int? gateBranchId = null)
         {
             string resolvedGuardId = guardId ?? "SecurityGate";
@@ -272,6 +270,13 @@ namespace AnmolDristi.DAL
                                 LogId = logId
                             };
                         }
+
+                        // AR-VMS-09: bind arrival notification to the mutated LogID (same pattern as Check-Out).
+                        string visName = "";
+                        string company = "";
+                        string hostName = "";
+                        string hostEmail = "";
+                        LoadCheckoutVisitor(con, trans, logId, out visName, out company, out hostName, out hostEmail);
 
                         if (!string.IsNullOrEmpty(hostEmail))
                         {
@@ -446,6 +451,10 @@ namespace AnmolDristi.DAL
             }
         }
 
+        /// <summary>
+        /// Loads visitor/host notification identity for a VisitLog row (Check-Out departure and
+        /// Check-In arrival — AR-VMS-09). Bound to LogID under the caller's transaction.
+        /// </summary>
         private static void LoadCheckoutVisitor(
             SqlConnection con,
             SqlTransaction trans,

@@ -601,15 +601,9 @@ namespace AnmolDristi
         private GateMutationResult ProcessDatabaseCheckIn(int logId, int dayLogId = 0)
         {
             string guardId = Session["EmployeeCode"]?.ToString() ?? "SecurityGate";
-            return _repository.CheckIn(
-                logId,
-                dayLogId,
-                guardId,
-                hfHostName.Value,
-                hfHostEmail.Value,
-                hfVisName.Value,
-                hfCompany.Value,
-                _specificBranchId);
+            // AR-VMS-09: arrival notification identity is loaded in the repository from VMS_VisitLog
+            // for the mutated LogID. Hidden fields are display/scan state only.
+            return _repository.CheckIn(logId, dayLogId, guardId, _specificBranchId);
         }
 
         // --- REUSABLE CHECK-OUT DATABASE LOGIC ---
