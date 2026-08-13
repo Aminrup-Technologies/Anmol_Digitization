@@ -195,35 +195,87 @@ namespace AnmolDristi
             }
             else if (e.CommandName == "SyncHost")
             {
+                // AR-VMS-11: Pending-only host reassignment.
+                // TargetBranchID and Pending status come from VMS_VisitLog (not hfTargetBranchID).
                 TextBox txtCode = (TextBox)row.FindControl("txtHostCode");
-                HiddenField hfBranch = (HiddenField)row.FindControl("hfTargetBranchID");
-                string newHostCode = txtCode.Text.Trim();
+                string newHostCode = txtCode != null ? txtCode.Text.Trim() : string.Empty;
 
-                using (SqlConnection con = new SqlConnection(connStr))
+                if (string.IsNullOrEmpty(newHostCode))
                 {
-                    string checkQ = "SELECT COUNT(1) FROM MST_UserMaster WHERE EmployeeCode = @Code AND BranchId = @BranchId AND EmployeeStatus = 'Active'";
-                    using (SqlCommand checkCmd = new SqlCommand(checkQ, con))
+                    lblMessage.ForeColor = Color.Red;
+                    lblMessage.Text = "<i class='fa fa-exclamation-triangle'></i> Save failed. Host employee code is required.";
+                }
+                else
+                {
+                    using (SqlConnection con = new SqlConnection(connStr))
                     {
-                        checkCmd.Parameters.AddWithValue("@Code", newHostCode);
-                        checkCmd.Parameters.AddWithValue("@BranchId", hfBranch.Value);
                         con.Open();
 
-                        if (Convert.ToInt32(checkCmd.ExecuteScalar()) > 0)
+                        object branchObj;
+                        using (SqlCommand branchCmd = new SqlCommand(@"
+                            SELECT TargetBranchID
+                            FROM VMS_VisitLog
+                            WHERE LogID = @LogID
+                              AND ApprovalStatus = 'Pending'", con))
                         {
-                            string updateQ = "UPDATE VMS_VisitLog SET HostEmployeeCode = @Code WHERE LogID = @LogID";
-                            using (SqlCommand updateCmd = new SqlCommand(updateQ, con))
-                            {
-                                updateCmd.Parameters.AddWithValue("@Code", newHostCode);
-                                updateCmd.Parameters.AddWithValue("@LogID", logId);
-                                updateCmd.ExecuteNonQuery();
-                            }
-                            lblMessage.ForeColor = Color.Green;
-                            lblMessage.Text = $"<i class='fa fa-check-circle'></i> Host successfully reassigned to Code: {newHostCode}.";
+                            branchCmd.Parameters.AddWithValue("@LogID", logId);
+                            branchObj = branchCmd.ExecuteScalar();
+                        }
+
+                        if (branchObj == null || branchObj == DBNull.Value)
+                        {
+                            lblMessage.ForeColor = Color.Red;
+                            lblMessage.Text = "<i class='fa fa-exclamation-triangle'></i> Save failed. Visit is not Pending or was not found.";
                         }
                         else
                         {
-                            lblMessage.ForeColor = Color.Red;
-                            lblMessage.Text = "<i class='fa fa-exclamation-triangle'></i> Save failed. Invalid or wrong branch.";
+                            int targetBranchId = Convert.ToInt32(branchObj);
+
+                            int activeHostCount;
+                            using (SqlCommand checkCmd = new SqlCommand(@"
+                                SELECT COUNT(1)
+                                FROM MST_UserMaster
+                                WHERE EmployeeCode = @Code
+                                  AND BranchId = @BranchId
+                                  AND EmployeeStatus = 'Active'", con))
+                            {
+                                checkCmd.Parameters.AddWithValue("@Code", newHostCode);
+                                checkCmd.Parameters.AddWithValue("@BranchId", targetBranchId);
+                                activeHostCount = Convert.ToInt32(checkCmd.ExecuteScalar());
+                            }
+
+                            if (activeHostCount <= 0)
+                            {
+                                lblMessage.ForeColor = Color.Red;
+                                lblMessage.Text = "<i class='fa fa-exclamation-triangle'></i> Save failed. Invalid or wrong branch.";
+                            }
+                            else
+                            {
+                                int rowsAffected;
+                                using (SqlCommand updateCmd = new SqlCommand(@"
+                                    UPDATE VMS_VisitLog
+                                    SET HostEmployeeCode = @Code
+                                    WHERE LogID = @LogID
+                                      AND ApprovalStatus = 'Pending'
+                                      AND TargetBranchID = @BranchId", con))
+                                {
+                                    updateCmd.Parameters.AddWithValue("@Code", newHostCode);
+                                    updateCmd.Parameters.AddWithValue("@LogID", logId);
+                                    updateCmd.Parameters.AddWithValue("@BranchId", targetBranchId);
+                                    rowsAffected = updateCmd.ExecuteNonQuery();
+                                }
+
+                                if (rowsAffected == 1)
+                                {
+                                    lblMessage.ForeColor = Color.Green;
+                                    lblMessage.Text = $"<i class='fa fa-check-circle'></i> Host successfully reassigned to Code: {newHostCode}.";
+                                }
+                                else
+                                {
+                                    lblMessage.ForeColor = Color.Red;
+                                    lblMessage.Text = "<i class='fa fa-exclamation-triangle'></i> Save failed. Visit status changed. Please refresh and try again.";
+                                }
+                            }
                         }
                     }
                 }
