@@ -266,6 +266,7 @@ namespace AnmolDristi
         /// Day-aware check-in. Returns true only when both DayLog and VisitLog
         /// transitioned from Scheduled (rowsAffected == 1 each).
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
+        /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -276,11 +277,16 @@ namespace AnmolDristi
         {
             int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitDayLog
-                SET VisitStatus = 'Checked-In', ActualInTime = GETDATE()
-                WHERE DayLogID = @DayLogID
-                  AND LogID = @LogID
-                  AND VisitStatus = 'Scheduled'", con, trans))
+                UPDATE d
+                SET d.VisitStatus = 'Checked-In', d.ActualInTime = GETDATE()
+                FROM VMS_VisitDayLog d
+                INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
+                WHERE d.DayLogID = @DayLogID
+                  AND d.LogID = @LogID
+                  AND d.VisitDate = CAST(GETDATE() AS date)
+                  AND d.IsDayApproved = 1
+                  AND d.VisitStatus = 'Scheduled'
+                  AND v.ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -296,7 +302,8 @@ namespace AnmolDristi
                 SET VisitStatus = 'Checked-In',
                     ActualInTime = COALESCE(ActualInTime, GETDATE())
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Scheduled'", con, trans))
+                  AND VisitStatus = 'Scheduled'
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 visitRows = cmd.ExecuteNonQuery();
@@ -309,6 +316,7 @@ namespace AnmolDristi
         /// Day-aware check-out. Returns true only when both DayLog and VisitLog
         /// transitioned from Checked-In (rowsAffected == 1 each).
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
+        /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
         /// </summary>
         public static bool CheckOutDay(
             SqlConnection con,
@@ -319,13 +327,18 @@ namespace AnmolDristi
         {
             int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitDayLog
-                SET VisitStatus = 'Checked-Out',
-                    ActualOutTime = GETDATE(),
-                    CheckedOutBy = @GuardId
-                WHERE DayLogID = @DayLogID
-                  AND LogID = @LogID
-                  AND VisitStatus = 'Checked-In'", con, trans))
+                UPDATE d
+                SET d.VisitStatus = 'Checked-Out',
+                    d.ActualOutTime = GETDATE(),
+                    d.CheckedOutBy = @GuardId
+                FROM VMS_VisitDayLog d
+                INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
+                WHERE d.DayLogID = @DayLogID
+                  AND d.LogID = @LogID
+                  AND d.VisitDate = CAST(GETDATE() AS date)
+                  AND d.IsDayApproved = 1
+                  AND d.VisitStatus = 'Checked-In'
+                  AND v.ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -346,7 +359,8 @@ namespace AnmolDristi
                     ActualOutTime = GETDATE(),
                     CheckedOutBy = @GuardId
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Checked-In'", con, trans))
+                  AND VisitStatus = 'Checked-In'
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@VisitStatus", nextVisitStatus);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");

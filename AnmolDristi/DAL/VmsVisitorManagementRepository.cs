@@ -930,6 +930,7 @@ namespace AnmolDristi.DAL
         /// Approved today DayLog: atomic Parent + DayLog In-Time with Admin-supplied timestamp.
         /// Both rows must transition Scheduled → Checked-In (rowsAffected == 1 each).
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
+        /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
         /// </summary>
         private static bool AdminCorrectInTimeWithDayLog(
             SqlConnection con,
@@ -940,12 +941,17 @@ namespace AnmolDristi.DAL
         {
             int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitDayLog
-                SET ActualInTime = @AdminInTime,
-                    VisitStatus = 'Checked-In'
-                WHERE DayLogID = @DayLogID
-                  AND LogID = @LogID
-                  AND VisitStatus = 'Scheduled'", con, trans))
+                UPDATE d
+                SET d.ActualInTime = @AdminInTime,
+                    d.VisitStatus = 'Checked-In'
+                FROM VMS_VisitDayLog d
+                INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
+                WHERE d.DayLogID = @DayLogID
+                  AND d.LogID = @LogID
+                  AND d.VisitDate = CAST(GETDATE() AS date)
+                  AND d.IsDayApproved = 1
+                  AND d.VisitStatus = 'Scheduled'
+                  AND v.ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminInTime", adminInTime);
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
@@ -962,7 +968,8 @@ namespace AnmolDristi.DAL
                 SET ActualInTime = @AdminInTime,
                     VisitStatus = 'Checked-In'
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Scheduled'", con, trans))
+                  AND VisitStatus = 'Scheduled'
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminInTime", adminInTime);
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -1000,6 +1007,7 @@ namespace AnmolDristi.DAL
         /// Approved today DayLog: DayLog → Checked-Out with @AdminOutTime; Parent VisitStatus
         /// Scheduled when HasFutureApprovedDays, else Checked-Out. CheckedOutBy = ADMIN_INLINE.
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
+        /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
         /// </summary>
         private static bool AdminCorrectOutTimeWithDayLog(
             SqlConnection con,
@@ -1010,12 +1018,17 @@ namespace AnmolDristi.DAL
         {
             int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitDayLog
-                SET ActualOutTime = @AdminOutTime,
-                    VisitStatus = 'Checked-Out'
-                WHERE DayLogID = @DayLogID
-                  AND LogID = @LogID
-                  AND VisitStatus = 'Checked-In'", con, trans))
+                UPDATE d
+                SET d.ActualOutTime = @AdminOutTime,
+                    d.VisitStatus = 'Checked-Out'
+                FROM VMS_VisitDayLog d
+                INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
+                WHERE d.DayLogID = @DayLogID
+                  AND d.LogID = @LogID
+                  AND d.VisitDate = CAST(GETDATE() AS date)
+                  AND d.IsDayApproved = 1
+                  AND d.VisitStatus = 'Checked-In'
+                  AND v.ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
@@ -1037,7 +1050,8 @@ namespace AnmolDristi.DAL
                     VisitStatus = @VisitStatus,
                     CheckedOutBy = 'ADMIN_INLINE'
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Checked-In'", con, trans))
+                  AND VisitStatus = 'Checked-In'
+                  AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
                 cmd.Parameters.AddWithValue("@VisitStatus", nextVisitStatus);

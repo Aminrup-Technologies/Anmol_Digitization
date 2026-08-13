@@ -215,39 +215,39 @@ namespace AnmolDristi.DAL
                             };
                         }
 
-                        // AR-VMS-06A: when dayLogId is missing, resolve today's DayLog before
-                        // legacy Parent-only Check-In. Unapproved today must fail closed.
-                        if (dayLogId <= 0)
+                        // AR-VMS-10: client dayLogId is never authoritative. Always resolve today's
+                        // DayLog from the database. Unapproved today fails closed; no today DayLog
+                        // preserves the AR-VMS-06A legacy Parent-only fallback.
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+                        int resolvedDayLogId = 0;
+                        if (todayLog != null && todayLog.DayLogId > 0)
                         {
-                            VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
-                            if (todayLog != null && todayLog.DayLogId > 0)
+                            if (!todayLog.IsDayApproved)
                             {
-                                if (!todayLog.IsDayApproved)
+                                try
                                 {
-                                    try
-                                    {
-                                        trans.Rollback();
-                                    }
-                                    catch
-                                    {
-                                        // Do not mask the controlled failure.
-                                    }
-
-                                    return new GateMutationResult
-                                    {
-                                        Succeeded = false,
-                                        FailureReason = GateMutationFailureReason.StateChanged,
-                                        LogId = logId
-                                    };
+                                    trans.Rollback();
+                                }
+                                catch
+                                {
+                                    // Do not mask the controlled failure.
                                 }
 
-                                dayLogId = todayLog.DayLogId;
+                                return new GateMutationResult
+                                {
+                                    Succeeded = false,
+                                    FailureReason = GateMutationFailureReason.StateChanged,
+                                    LogId = logId
+                                };
                             }
+
+                            resolvedDayLogId = todayLog.DayLogId;
                         }
 
                         bool transitionSucceeded;
-                        if (dayLogId > 0)
-                            transitionSucceeded = VmsVisitScheduleHelper.CheckInDay(con, dayLogId, logId, resolvedGuardId, trans);
+                        if (resolvedDayLogId > 0)
+                            transitionSucceeded = VmsVisitScheduleHelper.CheckInDay(
+                                con, resolvedDayLogId, logId, resolvedGuardId, trans);
                         else
                             transitionSucceeded = UpdateGateStatus(
                                 con, trans, logId, "Checked-In", "ActualInTime", resolvedGuardId, "Scheduled", gateBranchId);
@@ -350,16 +350,39 @@ namespace AnmolDristi.DAL
                         string hostEmail = "";
                         LoadCheckoutVisitor(con, trans, logId, out visName, out company, out hostName, out hostEmail);
 
-                        if (dayLogId <= 0)
+                        // AR-VMS-10: client dayLogId is never authoritative. Always resolve today's
+                        // DayLog from the database. Unapproved today fails closed; no today DayLog
+                        // preserves the legacy Parent-only fallback.
+                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+                        int resolvedDayLogId = 0;
+                        if (todayLog != null && todayLog.DayLogId > 0)
                         {
-                            VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
-                            if (todayLog != null)
-                                dayLogId = todayLog.DayLogId;
+                            if (!todayLog.IsDayApproved)
+                            {
+                                try
+                                {
+                                    trans.Rollback();
+                                }
+                                catch
+                                {
+                                    // Do not mask the controlled failure.
+                                }
+
+                                return new GateMutationResult
+                                {
+                                    Succeeded = false,
+                                    FailureReason = GateMutationFailureReason.StateChanged,
+                                    LogId = logId
+                                };
+                            }
+
+                            resolvedDayLogId = todayLog.DayLogId;
                         }
 
                         bool transitionSucceeded;
-                        if (dayLogId > 0)
-                            transitionSucceeded = VmsVisitScheduleHelper.CheckOutDay(con, dayLogId, logId, resolvedGuardId, trans);
+                        if (resolvedDayLogId > 0)
+                            transitionSucceeded = VmsVisitScheduleHelper.CheckOutDay(
+                                con, resolvedDayLogId, logId, resolvedGuardId, trans);
                         else
                             transitionSucceeded = UpdateGateStatus(
                                 con, trans, logId, "Checked-Out", "ActualOutTime", resolvedGuardId, "Checked-In", gateBranchId);
