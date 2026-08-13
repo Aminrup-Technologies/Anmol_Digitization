@@ -30,14 +30,18 @@ namespace AnmolDristi
 
             using (SqlConnection con = new SqlConnection(connStr))
             {
-                // Token host + LogID already verified; 07A-equivalent row bind is still required.
+                // Token host + LogID already verified; 07A row bind + live Active host required
+                // before any visitor PII columns are returned.
                 string query = @"
-                    SELECT VisitorName, VisitorCompany, PurposeOfVisit, ApprovalStatus, 
-                           ISNULL(NULLIF(VisitorMobile, ''), VisitorEmail) AS ContactInfo,
-                           ISNULL(ScheduleType, 'SingleDay') AS ScheduleType,
-                           RequestedValidFrom, RequestedValidUpto
-                    FROM VMS_VisitLog 
-                    WHERE LogID = @VisitId AND HostEmployeeCode = @EmpCode";
+                    SELECT v.VisitorName, v.VisitorCompany, v.PurposeOfVisit, v.ApprovalStatus, 
+                           ISNULL(NULLIF(v.VisitorMobile, ''), v.VisitorEmail) AS ContactInfo,
+                           ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
+                           v.RequestedValidFrom, v.RequestedValidUpto
+                    FROM VMS_VisitLog v
+                    INNER JOIN MST_UserMaster u
+                        ON u.EmployeeCode = v.HostEmployeeCode
+                       AND u.EmployeeStatus = 'Active'
+                    WHERE v.LogID = @VisitId AND v.HostEmployeeCode = @EmpCode";
 
                 string scheduleType = "SingleDay";
                 bool isPending = false;
@@ -316,7 +320,8 @@ namespace AnmolDristi
 
         /// <summary>
         /// AR-VMS-13: verify capability token integrity, UTC expiry, and vid==token.LogID.
-        /// On failure: no PII, no mutation. Does not accept legacy Base64(EmployeeCode).
+        /// AR-VMS-14: require a live Active MST_UserMaster row for token.HostEmployeeCode
+        /// before GET PII or Approve/Reject. Does not accept legacy Base64(EmployeeCode).
         /// </summary>
         private bool TryAuthorizeCapabilityLink(out int logId, out string hostEmployeeCode)
         {
@@ -344,14 +349,43 @@ namespace AnmolDristi
                 parsedVid,
                 out hostEmployeeCode);
 
-            if (status == VmsHostQuickLoginToken.Status.Valid)
+            if (status != VmsHostQuickLoginToken.Status.Valid)
             {
-                logId = parsedVid;
-                return true;
+                ShowCapabilityDenied(status == VmsHostQuickLoginToken.Status.Expired);
+                return false;
             }
 
-            ShowCapabilityDenied(status == VmsHostQuickLoginToken.Status.Expired);
-            return false;
+            if (!IsHostEmployeeActive(hostEmployeeCode))
+            {
+                ShowHostInactiveDenied();
+                return false;
+            }
+
+            logId = parsedVid;
+            return true;
+        }
+
+        /// <summary>
+        /// Live Active-at-use check. Missing UserMaster row or non-Active status both DENY.
+        /// Status is not taken from the token.
+        /// </summary>
+        private bool IsHostEmployeeActive(string hostEmployeeCode)
+        {
+            if (string.IsNullOrWhiteSpace(hostEmployeeCode))
+                return false;
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT 1
+                FROM MST_UserMaster
+                WHERE EmployeeCode = @EmpCode
+                  AND EmployeeStatus = 'Active'", con))
+            {
+                cmd.Parameters.AddWithValue("@EmpCode", hostEmployeeCode.Trim());
+                con.Open();
+                object result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value;
+            }
         }
 
         private void ShowCapabilityDenied(bool expired)
@@ -362,6 +396,14 @@ namespace AnmolDristi
             lblMessage.Text = expired
                 ? "This link has expired. Please request a new approval email."
                 : "Invalid or expired link.";
+        }
+
+        private void ShowHostInactiveDenied()
+        {
+            pnlAction.Visible = false;
+            lblMessage.Visible = true;
+            lblMessage.CssClass = "error";
+            lblMessage.Text = "This approval link is no longer valid.";
         }
 
         private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)

@@ -646,7 +646,11 @@ namespace AnmolDristi
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 string query = @"SELECT v.VisitorName, v.VisitorCompany, v.HostEmployeeCode, u.EmployeeName AS HostName, u.Email AS HostEmail 
-                                 FROM VMS_VisitLog v LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode WHERE v.LogID = @LogID AND v.ApprovalStatus = 'Pending'";
+                                 FROM VMS_VisitLog v
+                                 INNER JOIN MST_UserMaster u
+                                     ON v.HostEmployeeCode = u.EmployeeCode
+                                    AND u.EmployeeStatus = 'Active'
+                                 WHERE v.LogID = @LogID AND v.ApprovalStatus = 'Pending'";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
