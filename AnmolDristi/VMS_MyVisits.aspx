@@ -332,4 +332,21 @@
             </div>
         </div>
     </div>
+
+    <!-- FIX-3: Session keepalive timer -->
+    <script type="text/javascript">
+        (function () {
+            var KEEPALIVE_INTERVAL_MS = 10 * 60 * 1000;
+            var pageUrl = window.location.pathname + 'KeepAlive';
+            function keepSessionAlive() {
+                try {
+                    $.ajax({ type: 'POST', url: pageUrl, contentType: 'application/json; charset=utf-8', dataType: 'json',
+                        success: function (r) { if (r.d === false) window.location.href = 'VMS_SelfLogin.aspx'; },
+                        error: function () { }
+                    });
+                } catch (e) { }
+            }
+            setInterval(keepSessionAlive, KEEPALIVE_INTERVAL_MS);
+        })();
+    </script>
 </asp:Content>
