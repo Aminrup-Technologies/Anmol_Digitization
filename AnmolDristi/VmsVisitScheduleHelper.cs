@@ -285,7 +285,7 @@ namespace AnmolDristi
                   AND d.LogID = @LogID
                   AND d.VisitDate = CAST(GETDATE() AS date)
                   AND d.IsDayApproved = 1
-                  AND d.VisitStatus = 'Scheduled'
+                  AND d.VisitStatus IN ('Scheduled', 'Checked-Out')
                   AND v.ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
@@ -302,7 +302,7 @@ namespace AnmolDristi
                 SET VisitStatus = 'Checked-In',
                     ActualInTime = COALESCE(ActualInTime, GETDATE())
                 WHERE LogID = @LogID
-                  AND VisitStatus = 'Scheduled'
+                  AND VisitStatus IN ('Scheduled', 'Checked-Out')
                   AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -349,20 +349,17 @@ namespace AnmolDristi
             if (dayRows != 1)
                 return false;
 
-            bool hasFutureDays = HasFutureApprovedDays(con, logId, DateTime.Now.Date, trans);
-            string nextVisitStatus = hasFutureDays ? "Scheduled" : "Checked-Out";
-
+            // FIX-2: Always reset to Scheduled for re-entry
             int visitRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
-                SET VisitStatus = @VisitStatus,
+                SET VisitStatus = 'Scheduled',
                     ActualOutTime = GETDATE(),
                     CheckedOutBy = @GuardId
                 WHERE LogID = @LogID
                   AND VisitStatus = 'Checked-In'
                   AND ApprovalStatus = 'Approved'", con, trans))
             {
-                cmd.Parameters.AddWithValue("@VisitStatus", nextVisitStatus);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 visitRows = cmd.ExecuteNonQuery();

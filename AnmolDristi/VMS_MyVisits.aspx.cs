@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Data;
-using System.Web.UI.WebControls;
 using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.Services;
+using System.Web.Script.Services;
 using AnmolDristi.DAL;
 
 namespace AnmolDristi
@@ -9,6 +11,19 @@ namespace AnmolDristi
     public partial class VMS_MyVisits : System.Web.UI.Page
     {
         private readonly VmsVisitorRepository _repository = new VmsVisitorRepository();
+
+        // FIX-3: Session keepalive WebMethod
+        [WebMethod]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static bool KeepAlive()
+        {
+            if (System.Web.HttpContext.Current.Session != null)
+            {
+                string mobile = System.Web.HttpContext.Current.Session["VerifiedMobile"] as string;
+                return !string.IsNullOrEmpty(mobile);
+            }
+            return false;
+        }
 
         protected void Page_Load(object sender, EventArgs e)
         {

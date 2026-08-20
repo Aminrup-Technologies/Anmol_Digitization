@@ -123,19 +123,31 @@ namespace AnmolDristi
             return "our Facility";
         }
 
-        public static bool HasActiveVisit(string mobile, string email, int branchId)
+        // FIX-1 (2026-08-20): Host-aware duplicate check.
+        // What: Added optional hostEmployeeCode parameter.
+        // Why:  Business rule requires blocking duplicate requests against the SAME
+        //       host at the same branch, but allowing requests to a DIFFERENT host.
+
+        /// <summary>
+        /// When hostEmployeeCode is provided, the check is scoped to that specific host.
+        /// </summary>
+        public static bool HasActiveVisit(string mobile, string email, int branchId, string hostEmployeeCode = null)
         {
-            return GetActiveVisitLogId(mobile, email, branchId).HasValue;
+            return GetActiveVisitLogId(mobile, email, branchId, hostEmployeeCode).HasValue;
         }
 
-        public static int? GetActiveVisitLogId(string mobile, string email, int branchId)
+        public static int? GetActiveVisitLogId(string mobile, string email, int branchId, string hostEmployeeCode = null)
         {
             string normalizedMobile = NormalizeMobile(mobile);
             string normalizedEmail = NormalizeEmail(email);
 
             using (SqlConnection con = new SqlConnection(ConnStr))
             {
-                string query = @"
+                string hostFilter = !string.IsNullOrWhiteSpace(hostEmployeeCode)
+                    ? "AND HostEmployeeCode = @HostEmployeeCode"
+                    : string.Empty;
+
+                string query = $@"
                     SELECT TOP 1 LogID
                     FROM VMS_VisitLog
                     WHERE TargetBranchID = @BranchId
@@ -146,13 +158,17 @@ namespace AnmolDristi
                       AND (
                             VisitorMobile = @Mobile
                             OR (@Email <> 'N/A' AND VisitorEmail = @Email)
-                          )";
+                          )
+                      {hostFilter}";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@Mobile", normalizedMobile);
                     cmd.Parameters.AddWithValue("@Email", normalizedEmail);
                     cmd.Parameters.AddWithValue("@BranchId", branchId);
+                    if (!string.IsNullOrWhiteSpace(hostEmployeeCode))
+                        cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode.Trim());
+
                     con.Open();
                     object result = cmd.ExecuteScalar();
                     if (result != null && result != DBNull.Value)
