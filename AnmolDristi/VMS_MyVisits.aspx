@@ -337,4 +337,22 @@
             </div>
         </div>
     </div>
+    <script type="text/javascript">
+        (function () {
+            var keepAliveMs = 10 * 60 * 1000;
+            function pingSession() {
+                $.ajax({
+                    type: 'POST',
+                    url: 'VMS_MyVisits.aspx/KeepAlive',
+                    data: '{}',
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json'
+                }).done(function (r) {
+                    if (r && r.d === false)
+                        window.location.href = 'VMS_SelfLogin.aspx';
+                });
+            }
+            setInterval(pingSession, keepAliveMs);
+        })();
+    </script>
 </asp:Content>

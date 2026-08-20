@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Data;
+using System.Web;
+using System.Web.Services;
 using System.Web.UI.WebControls;
 using System.Web.UI;
 using AnmolDristi.DAL;
@@ -200,6 +202,21 @@ namespace AnmolDristi
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Sliding session ping for the visitor MyVisits page only.
+        /// DigitalPass is token-authenticated and must not use this.
+        /// </summary>
+        [WebMethod(EnableSession = true)]
+        public static bool KeepAlive()
+        {
+            var session = HttpContext.Current != null ? HttpContext.Current.Session : null;
+            if (session == null)
+                return false;
+
+            object mobile = session["VerifiedMobile"];
+            return mobile != null && !string.IsNullOrEmpty(mobile.ToString());
         }
     }
 }
