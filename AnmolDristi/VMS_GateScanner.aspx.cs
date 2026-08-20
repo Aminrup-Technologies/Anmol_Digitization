@@ -482,24 +482,11 @@ namespace AnmolDristi
                         photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                 }
             }
-            // FIX-2: Re-entry support when pass is still valid
             else if (dayStatus == "Checked-Out")
             {
-                if (hasEffectiveWindow && now <= effectiveUpto)
-                {
-                    btnManualCheckIn.Enabled = true;
-                    btnManualCheckOut.Enabled = false;
-                    liCheckInTime.Visible = false;
-                    ShowResult("result-card result-info", "Ready for Re-Entry",
-                        $"{visName} has already checked out today but the pass is valid until {effectiveUpto:hh:mm tt}. Verify photo and confirm Check-IN for re-entry.",
-                        photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
-                }
-                else
-                {
-                    ShowResult("result-card result-danger", "Already Checked-Out Today",
-                        $"{visName} has already completed today's gate check-out.",
-                        photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
-                }
+                ShowResult("result-card result-danger", "Already Checked-Out Today",
+                    $"{visName} has already completed today's gate check-out.",
+                    photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
             }
         }
 
