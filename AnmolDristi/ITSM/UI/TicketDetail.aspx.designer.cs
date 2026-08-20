@@ -11,6 +11,10 @@ namespace AnmolDristi.ITSM.UI
 {
     public partial class TicketDetail
     {
+        protected global::System.Web.UI.WebControls.Panel pnlTenantBadge;
+
+        protected global::System.Web.UI.WebControls.Label lblTenantBadge;
+
         protected global::System.Web.UI.WebControls.Label lblTicketNumber;
 
         protected global::System.Web.UI.WebControls.Label lblStatusBadge;

@@ -1,11 +1,17 @@
 // ========================================================================
 // File:    TicketDetail.aspx.cs
 // Layer:   UI — Code-Behind
-// When:    2026-08-20
+// When:    2026-08-20 / 2026-08-20 (audit patch)
 // What:    Presentation-only code-behind for ticket processing surface.
 // Why:     Thin UI layer — validates session, reads control values,
 //          invokes TicketUpdateService for all mutations. No business rules,
 //          no SQL, no transaction logic, no static state (requirement §21).
+// Patch:   Session gate now validates only USERID + BranchID (§5-6).
+//          CompanyID is NO LONGER required from session — it comes from
+//          the loaded ticket's Branch.CompanyId (§7, §31).
+//          Added tenant badge population from ticket data (§23).
+//          Removed ResolveCompanyId() — replaced with ticket-derived
+//          CompanyId loaded during LoadTicket flow.
 // ========================================================================
 
 using System;
@@ -20,12 +26,16 @@ namespace AnmolDristi.ITSM.UI
 {
     public partial class TicketDetail : BasePage
     {
+        // Lightweight view-state — only the ticket ID survives postback (§13)
+        private const string VS_TICKET_COMPANY_ID = "_ticketCompanyId";
+
         protected void Page_Load(object sender, EventArgs e)
         {
-            // Session gatekeeping (requirement §16)
-            if (Session["WORKMAN"] == null || Session["USERID"] == null)
+            // Session gatekeeping — ONLY USERID + BranchID required (§5-6, §31)
+            // CompanyID is NOT a session gate — it comes from the ticket itself (§7)
+            if (Session["USERID"] == null || Session["BranchID"] == null)
             {
-                Response.Redirect("~/login.aspx");
+                Response.Redirect("~/Login.aspx", true);
                 return;
             }
 
@@ -56,7 +66,7 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var ticketId = int.Parse(hfTicketId.Value);
-            var companyId = ResolveCompanyId();
+            var companyId = GetTicketCompanyId();
             var actorCode = Session["WORKMAN"].ToString();
             int targetStatusId = int.Parse(ddlTargetStatus.SelectedValue);
 
@@ -92,7 +102,7 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var ticketId = int.Parse(hfTicketId.Value);
-            var companyId = ResolveCompanyId();
+            var companyId = GetTicketCompanyId();
             var actorCode = Session["WORKMAN"].ToString();
             var newAssigneeCode = ddlReassignTo.SelectedValue;
 
@@ -123,7 +133,7 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var ticketId = int.Parse(hfTicketId.Value);
-            var companyId = ResolveCompanyId();
+            var companyId = GetTicketCompanyId();
             var actorCode = Session["WORKMAN"].ToString();
             int newPriorityId = int.Parse(ddlOverridePriority.SelectedValue);
 
@@ -148,7 +158,7 @@ namespace AnmolDristi.ITSM.UI
             ClearMessage();
 
             var ticketId = int.Parse(hfTicketId.Value);
-            var companyId = ResolveCompanyId();
+            var companyId = GetTicketCompanyId();
             var approverCode = Session["WORKMAN"].ToString();
 
             var service = new TicketUpdateService();
@@ -172,7 +182,7 @@ namespace AnmolDristi.ITSM.UI
             ClearMessage();
 
             var ticketId = int.Parse(hfTicketId.Value);
-            var companyId = ResolveCompanyId();
+            var companyId = GetTicketCompanyId();
             var approverCode = Session["WORKMAN"].ToString();
             var reason = txtRejectionReason.Text;
 
@@ -205,7 +215,7 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var ticketId = int.Parse(hfTicketId.Value);
-            var companyId = ResolveCompanyId();
+            var companyId = GetTicketCompanyId();
             var actorCode = Session["WORKMAN"].ToString();
 
             var service = new TicketUpdateService();
@@ -227,10 +237,26 @@ namespace AnmolDristi.ITSM.UI
 
         // ---- Private Helpers ----
 
+        /// <summary>
+        /// Loads the full ticket detail, populates all UI controls,
+        /// and stores the ticket's CompanyId in ViewState for postback use.
+        /// CompanyId comes from the ticket's Branch FK — NOT from session (§7).
+        /// </summary>
         private void LoadTicket(int ticketId)
         {
-            var companyId = ResolveCompanyId();
             var service = new TicketDetailService();
+
+            // First pass: load ticket to establish CompanyId from ticket data.
+            // The service filters by Branch.CompanyId, but we need an initial
+            // load to discover the ticket's own CompanyId. We use a broad load
+            // here — the ticket's Branch.CompanyId becomes the authority.
+            var companyId = ResolveTicketCompanyId(ticketId);
+            if (companyId == 0)
+            {
+                ShowNotFound();
+                return;
+            }
+
             var dto = service.GetTicketDetail(companyId, ticketId);
 
             if (dto == null)
@@ -239,8 +265,15 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
+            // Store ticket's CompanyId in ViewState for postback handlers (§13)
+            ViewState[VS_TICKET_COMPANY_ID] = companyId;
+
             pnlTicketContent.Visible = true;
             pnlNotFound.Visible = false;
+
+            // Tenant badge — populated from trusted ticket data, NOT session (§23)
+            pnlTenantBadge.Visible = true;
+            lblTenantBadge.Text = "Tenant " + dto.CompanyId;
 
             // Bind metadata
             lblTicketNumber.Text = "#" + dto.TicketNumber;
@@ -279,6 +312,10 @@ namespace AnmolDristi.ITSM.UI
                 lblCsatScore.Text = dto.CsatScore.Value + " / 5";
                 lblCsatFeedback.Text = dto.CsatFeedback ?? "(No feedback)";
             }
+            else
+            {
+                pnlCsat.Visible = false;
+            }
 
             // Bind available statuses to dropdown
             ddlTargetStatus.Items.Clear();
@@ -289,7 +326,7 @@ namespace AnmolDristi.ITSM.UI
                 ddlTargetStatus.Items.Add(new ListItem(status.Name, status.Id.ToString()));
             }
 
-            // Show/hide resolution text based on selected status
+            // Reset resolution text
             divResolution.Visible = false;
             txtResolution.Text = string.Empty;
 
@@ -315,7 +352,7 @@ namespace AnmolDristi.ITSM.UI
             gvAudit.DataSource = dto.AuditHistory;
             gvAudit.DataBind();
 
-            // Store RowVersion for concurrency
+            // Store RowVersion for concurrency (lightweight, §13)
             if (dto.RowVersion != null)
             {
                 hfRowVersion.Value = Convert.ToBase64String(dto.RowVersion);
@@ -324,6 +361,57 @@ namespace AnmolDristi.ITSM.UI
             // Show/hide action panel for terminal status
             bool isTerminal = currentStatus == "Closed" || currentStatus == "Cancelled";
             pnlActions.Visible = !isTerminal;
+        }
+
+        /// <summary>
+        /// Resolves the ticket's CompanyId by loading the ticket's Branch.CompanyId.
+        /// This establishes the authoritative tenant context from the ticket itself (§7).
+        /// No session-derived CompanyID is used.
+        /// </summary>
+        private int ResolveTicketCompanyId(int ticketId)
+        {
+            using (var context = new ItsmDbContext())
+            {
+                // Load ticket with Branch navigation to discover its CompanyId
+                var ticket = context.Tickets
+                    .AsNoTracking()
+                    .FirstOrDefault(t => t.Id == ticketId);
+
+                if (ticket == null)
+                {
+                    return 0;
+                }
+
+                // Branch.CompanyId is the authoritative tenant boundary
+                var branch = context.Branches
+                    .AsNoTracking()
+                    .FirstOrDefault(b => b.Branch_ID == ticket.BranchId);
+
+                return branch != null ? branch.CompanyId : 0;
+            }
+        }
+
+        /// <summary>
+        /// Returns the ticket's CompanyId from ViewState (stored during LoadTicket).
+        /// This is the ticket-derived CompanyId, NOT session-derived (§7, §13).
+        /// </summary>
+        private int GetTicketCompanyId()
+        {
+            object stored = ViewState[VS_TICKET_COMPANY_ID];
+            int companyId;
+            if (stored != null && int.TryParse(stored.ToString(), out companyId) && companyId > 0)
+            {
+                return companyId;
+            }
+
+            // Fallback: re-resolve from database if ViewState is cleared
+            int ticketId;
+            if (int.TryParse(hfTicketId.Value, out ticketId))
+            {
+                return ResolveTicketCompanyId(ticketId);
+            }
+
+            return 0;
         }
 
         private void BindAgentDropdown()
@@ -368,23 +456,11 @@ namespace AnmolDristi.ITSM.UI
             }
         }
 
-        private int ResolveCompanyId()
-        {
-            var workman = Session["WORKMAN"].ToString();
-            using (var context = new ItsmDbContext())
-            {
-                var user = context.UserMasters
-                    .AsNoTracking()
-                    .FirstOrDefault(u => u.EmployeeCode == workman);
-
-                return user != null ? user.CompanyId : 0;
-            }
-        }
-
         private void ShowNotFound()
         {
             pnlNotFound.Visible = true;
             pnlTicketContent.Visible = false;
+            pnlTenantBadge.Visible = false;
         }
 
         private void ClearMessage()

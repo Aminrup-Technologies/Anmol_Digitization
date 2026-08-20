@@ -64,11 +64,14 @@ namespace AnmolDristi.ITSM.DAL
 
         public DbSet<TicketApproval> TicketApprovals { get; set; }
 
+<<<<<<< HEAD
         /// <summary>
         /// Phase 1B — immutable audit trail for ticket workflow mutations.
         /// </summary>
         public DbSet<TicketAuditLog> TicketAuditLogs { get; set; }
 
+=======
+>>>>>>> Aug26_AILWorks_AmimnrupSupport
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultSchema("itsm");

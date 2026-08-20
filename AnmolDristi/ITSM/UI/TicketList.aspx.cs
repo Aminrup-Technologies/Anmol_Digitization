@@ -1,11 +1,17 @@
 // ========================================================================
 // File:    TicketList.aspx.cs
 // Layer:   UI — Code-Behind
-// When:    2026-08-20
+// When:    2026-08-20 / 2026-08-20 (audit patch)
 // What:    Presentation-only code-behind for agent ticket queue.
 // Why:     Thin UI layer — validates session, invokes BLL services,
 //          binds DTO results to GridView. No business rules, no SQL,
 //          no transaction logic, no static state (requirement §21).
+// Patch:   Enforced mandatory session gatekeeping for ALL required keys
+//          (WORKMAN, USERID, BranchID, CompanyID) per audit rule §16.
+//          Added endResponse:true to all Redirect calls to prevent
+//          continuation of the page lifecycle after auth failure.
+//          Replaced DB-resolved CompanyId with direct Session["CompanyID"]
+//          lookup to eliminate unnecessary round-trip.
 // ========================================================================
 
 using System;
@@ -25,10 +31,11 @@ namespace AnmolDristi.ITSM.UI
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            // Session gatekeeping (requirement §16)
-            if (Session["WORKMAN"] == null || Session["USERID"] == null)
+            // Session gatekeeping — ALL four keys mandatory (requirement §16, audit patch)
+            if (Session["WORKMAN"] == null || Session["USERID"] == null
+                || Session["BranchID"] == null || Session["CompanyID"] == null)
             {
-                Response.Redirect("~/login.aspx");
+                Response.Redirect("~/Login.aspx", true);
                 return;
             }
 
@@ -153,8 +160,21 @@ namespace AnmolDristi.ITSM.UI
             return ViewState[VS_ACTIVE_TAB] as string ?? "MyQueue";
         }
 
+        /// <summary>
+        /// Resolves CompanyId from trusted session context.
+        /// Session["CompanyID"] is set at login and validated in Page_Load.
+        /// No DB round-trip — CompanyId comes from the authenticated
+        /// application context, not from arbitrary user input (requirement §7).
+        /// </summary>
         private int ResolveCompanyId()
         {
+            int companyId;
+            if (int.TryParse(Session["CompanyID"].ToString(), out companyId) && companyId > 0)
+            {
+                return companyId;
+            }
+
+            // Fallback: derive from user master if session value is stale
             var workman = Session["WORKMAN"].ToString();
             using (var context = new ItsmDbContext())
             {

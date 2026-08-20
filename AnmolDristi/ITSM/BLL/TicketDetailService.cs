@@ -1,11 +1,14 @@
 // ========================================================================
 // File:    TicketDetailService.cs
 // Layer:   BLL — Service
-// When:    2026-08-20
+// When:    2026-08-20 / 2026-08-20 (audit patch)
 // What:    Read-only service for full ticket detail retrieval.
 // Why:     Loads a single ticket with all associated comments,
 //          approvals, and audit history for the TicketDetail.aspx
 //          processing surface (requirement §15).
+// Patch:   Added CompanyId to TicketDetailDto so the UI can display
+//          the ticket's tenant badge without a separate session-derived
+//          CompanyID. CompanyId comes from the ticket's Branch FK.
 // ========================================================================
 
 using System;
@@ -60,6 +63,9 @@ namespace AnmolDristi.ITSM.BLL
         public DateTime? ResolvedOn { get; set; }
         public DateTime? ClosedOn { get; set; }
         public string CreatedByCode { get; set; }
+
+        // --- Tenant ---
+        public int CompanyId { get; set; }
 
         // --- Concurrency ---
         public byte[] RowVersion { get; set; }
@@ -220,6 +226,7 @@ namespace AnmolDristi.ITSM.BLL
                 ResolvedOn = ticket.ResolvedOn,
                 ClosedOn = ticket.ClosedOn,
                 CreatedByCode = ticket.CreatedByCode,
+                CompanyId = ticket.Branch != null ? ticket.Branch.CompanyId : 0,
                 RowVersion = ticket.RowVersion
             };
         }
