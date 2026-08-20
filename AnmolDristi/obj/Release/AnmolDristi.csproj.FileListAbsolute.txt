@@ -83,3 +83,5 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.dll
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\BouncyCastle.Cryptography.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\itextsharp.xml
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\bin\QRCoder.xml
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\AnmolDristi.ITSM.DAL.Migrations.InitialItsmSchema.resources
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Release\AnmolDristi.csproj.GenerateResource.Cache
