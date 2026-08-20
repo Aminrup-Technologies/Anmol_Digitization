@@ -123,36 +123,51 @@ namespace AnmolDristi
             return "our Facility";
         }
 
-        public static bool HasActiveVisit(string mobile, string email, int branchId)
+        /// <summary>
+        /// Returns true when the visitor already has a Pending or in-window Approved visit
+        /// at the branch (Approved includes Checked-Out while ValidUpto is still in the future,
+        /// so same-day re-entry does not open a duplicate request). When
+        /// <paramref name="hostEmployeeCode"/> is provided, the check is scoped to that host
+        /// only (same visitor may request a different host).
+        /// </summary>
+        public static bool HasActiveVisit(string mobile, string email, int branchId, string hostEmployeeCode = null)
         {
-            return GetActiveVisitLogId(mobile, email, branchId).HasValue;
+            return GetActiveVisitLogId(mobile, email, branchId, hostEmployeeCode).HasValue;
         }
 
-        public static int? GetActiveVisitLogId(string mobile, string email, int branchId)
+        public static int? GetActiveVisitLogId(string mobile, string email, int branchId, string hostEmployeeCode = null)
         {
             string normalizedMobile = NormalizeMobile(mobile);
             string normalizedEmail = NormalizeEmail(email);
 
             using (SqlConnection con = new SqlConnection(ConnStr))
             {
-                string query = @"
+                string hostFilter = !string.IsNullOrWhiteSpace(hostEmployeeCode)
+                    ? "AND HostEmployeeCode = @HostEmployeeCode"
+                    : string.Empty;
+
+                string query = $@"
                     SELECT TOP 1 LogID
                     FROM VMS_VisitLog
                     WHERE TargetBranchID = @BranchId
                       AND (
                             (ApprovalStatus = 'Pending' AND ISNULL(RequestedValidUpto, ValidUpto) >= GETDATE())
-                            OR (ApprovalStatus = 'Approved' AND ValidUpto >= GETDATE() AND ISNULL(VisitStatus, '') <> 'Checked-Out')
+                            OR (ApprovalStatus = 'Approved' AND ValidUpto >= GETDATE())
                           )
                       AND (
                             VisitorMobile = @Mobile
                             OR (@Email <> 'N/A' AND VisitorEmail = @Email)
-                          )";
+                          )
+                      {hostFilter}";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
                     cmd.Parameters.AddWithValue("@Mobile", normalizedMobile);
                     cmd.Parameters.AddWithValue("@Email", normalizedEmail);
                     cmd.Parameters.AddWithValue("@BranchId", branchId);
+                    if (!string.IsNullOrWhiteSpace(hostEmployeeCode))
+                        cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode.Trim());
+
                     con.Open();
                     object result = cmd.ExecuteScalar();
                     if (result != null && result != DBNull.Value)

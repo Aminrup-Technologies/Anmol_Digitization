@@ -134,6 +134,11 @@
                 <div class="text-center" style="margin-bottom: 25px;">
                     <h3 style="color: #333; font-weight: bold;">My Visits</h3>
                     <p class="text-muted">History for the last 6 months</p>
+                    <asp:Panel ID="pnlAnotherHost" runat="server" Visible="false" style="margin-top: 12px;">
+                        <asp:HyperLink ID="lnkAnotherHost" runat="server" CssClass="btn btn-pass">
+                            Request visit with another host
+                        </asp:HyperLink>
+                    </asp:Panel>
                 </div>
 
                 <ul class="nav nav-tabs visit-status-tabs" role="tablist">
@@ -332,4 +337,22 @@
             </div>
         </div>
     </div>
+    <script type="text/javascript">
+        (function () {
+            var keepAliveMs = 10 * 60 * 1000;
+            function pingSession() {
+                $.ajax({
+                    type: 'POST',
+                    url: 'VMS_MyVisits.aspx/KeepAlive',
+                    data: '{}',
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json'
+                }).done(function (r) {
+                    if (r && r.d === false)
+                        window.location.href = 'VMS_SelfLogin.aspx';
+                });
+            }
+            setInterval(pingSession, keepAliveMs);
+        })();
+    </script>
 </asp:Content>
