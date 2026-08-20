@@ -64,6 +64,12 @@ namespace AnmolDristi.ITSM.BLL
                             "Requester was not found in MST_UserMaster for code: " + requesterCode);
                     }
 
+                    if (!requester.CompanyId.HasValue || requester.CompanyId.Value <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Requester has no CompanyId on MST_UserMaster; ticket creation is blocked for tenant isolation.");
+                    }
+
                     var requestType = context.RequestTypes
                         .AsNoTracking()
                         .FirstOrDefault(r => r.Id == requestTypeId && r.IsActive);
@@ -121,6 +127,19 @@ namespace AnmolDristi.ITSM.BLL
                     };
 
                     context.Tickets.Add(ticket);
+                    context.SaveChanges();
+
+                    context.TicketAuditLogs.Add(new TicketAuditLog
+                    {
+                        TicketId = ticket.Id,
+                        CompanyId = requester.CompanyId.Value,
+                        ActionType = "Created",
+                        OldValue = null,
+                        NewValue = requiresApproval ? "Pending Approval" : "New",
+                        Detail = ticket.TicketNumber,
+                        ActorCode = requester.EmployeeCode,
+                        ActionedOn = createdOn
+                    });
                     context.SaveChanges();
 
                     if (requiresApproval)

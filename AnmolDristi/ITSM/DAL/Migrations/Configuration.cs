@@ -1,9 +1,7 @@
 ﻿namespace AnmolDristi.ITSM.DAL.Migrations
 {
-    using System;
-    using System.Data.Entity;
     using System.Data.Entity.Migrations;
-    using System.Linq;
+    using AnmolDristi.ITSM.DAL.Entities;
 
     internal sealed class Configuration : DbMigrationsConfiguration<AnmolDristi.ITSM.DAL.ItsmDbContext>
     {
@@ -15,10 +13,16 @@
 
         protected override void Seed(AnmolDristi.ITSM.DAL.ItsmDbContext context)
         {
-            //  This method will be called after migrating to the latest version.
-
-            //  You can use the DbSet<T>.AddOrUpdate() helper extension method
-            //  to avoid creating duplicate seed data.
+            context.TicketStatuses.AddOrUpdate(
+                s => s.Name,
+                new TicketStatus { Name = "New", IsTerminal = false, IsActive = true },
+                new TicketStatus { Name = "Pending Approval", IsTerminal = false, IsActive = true },
+                new TicketStatus { Name = "In Progress", IsTerminal = false, IsActive = true },
+                new TicketStatus { Name = "On Hold", IsTerminal = false, IsActive = true },
+                new TicketStatus { Name = "Resolved", IsTerminal = false, IsActive = true },
+                new TicketStatus { Name = "Closed", IsTerminal = true, IsActive = true },
+                new TicketStatus { Name = "Cancelled", IsTerminal = true, IsActive = true },
+                new TicketStatus { Name = "Rejected", IsTerminal = true, IsActive = true });
         }
     }
 }
