@@ -632,17 +632,10 @@ namespace AnmolDristi
 
                 int branchId = Convert.ToInt32(hfBranchId.Value);
 
-                // FIX-1: Host validation moved before duplicate check
-                string hostEmpCode = hfSelectedHostCode.Value;
-
-                if (string.IsNullOrWhiteSpace(hostEmpCode))
-                {
-                    throw new Exception(
-                        "Selecting a Host Employee is mandatory to generate a pass.");
-                }
-
-                // FIX-1: Host-aware duplicate check
-                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId, hostEmpCode))
+                // ==========================================================
+                // 3. DUPLICATE ACTIVE PASS CHECK
+                // ==========================================================
+                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
                 {
                     Response.Redirect("VMS_MyVisits.aspx", false);
                     Context.ApplicationInstance.CompleteRequest();
@@ -655,6 +648,17 @@ namespace AnmolDristi
                 string photoPath = PersistSelfie();
                 fullPath = Server.MapPath("~" + photoPath);
                 dbPhotoPath = photoPath;
+
+                // ==========================================================
+                // 5. HOST VALIDATION
+                // ==========================================================
+                string hostEmpCode = hfSelectedHostCode.Value;
+
+                if (string.IsNullOrWhiteSpace(hostEmpCode))
+                {
+                    throw new Exception(
+                        "Selecting a Host Employee is mandatory to generate a pass.");
+                }
 
                 // ==========================================================
                 // 6. DEFAULT VISIT VALUES / APPROVAL RESOLUTION
