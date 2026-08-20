@@ -218,6 +218,7 @@ namespace AnmolDristi
             Session.Remove("OTPAttempts");
             Session["VerifiedMobile"] = mobile;
             Session["VerifiedEmail"] = string.Empty;
+            Session.Remove("VmsBranchId");
         }
 
         /// <summary>
@@ -233,9 +234,11 @@ namespace AnmolDristi
                 return;
             }
 
+            Session["VmsBranchId"] = parsedBranchId;
+
             if (VmsHelper.HasActiveVisit(mobile, string.Empty, parsedBranchId))
             {
-                Response.Redirect("VMS_MyVisits.aspx", false);
+                Response.Redirect($"VMS_MyVisits.aspx?BranchId={parsedBranchId}", false);
             }
             else
             {

@@ -18,7 +18,30 @@ namespace AnmolDristi
                     return;
 
                 LoadVisitorHistory();
+                BindAnotherHostLink();
             }
+        }
+
+        /// <summary>
+        /// Shows a Registration link when the plant BranchId is known (query or session)
+        /// so a visitor with a pass for Host A can still request Host B.
+        /// </summary>
+        private void BindAnotherHostLink()
+        {
+            pnlAnotherHost.Visible = false;
+
+            int branchId = 0;
+            string queryBranch = Request.QueryString["BranchId"];
+            if (!string.IsNullOrEmpty(queryBranch) && int.TryParse(queryBranch, out branchId) && branchId > 0)
+                Session["VmsBranchId"] = branchId;
+            else if (Session["VmsBranchId"] != null)
+                int.TryParse(Session["VmsBranchId"].ToString(), out branchId);
+
+            if (branchId <= 0)
+                return;
+
+            pnlAnotherHost.Visible = true;
+            lnkAnotherHost.NavigateUrl = $"VMS_Registration.aspx?BranchId={branchId}";
         }
 
         private bool ValidateVisitorSession()
