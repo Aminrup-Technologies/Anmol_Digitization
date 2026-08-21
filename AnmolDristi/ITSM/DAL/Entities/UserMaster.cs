@@ -35,6 +35,11 @@ namespace AnmolDristi.ITSM.DAL.Entities
 
         public int? DepartmentId { get; set; }
 
+        /// <summary>
+        /// Company tenant key from dbo.MST_UserMaster — ITGC isolation boundary.
+        /// </summary>
+        public int? CompanyId { get; set; }
+
         [StringLength(50)]
         [Column(TypeName = "varchar")]
         public string ReportingManagerCode { get; set; }

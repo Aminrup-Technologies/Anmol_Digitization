@@ -174,11 +174,14 @@ namespace AnmolDristi.ITSM.DAL.Entities
 
         public virtual ICollection<TicketApproval> Approvals { get; set; }
 
+        public virtual ICollection<TicketAuditLog> AuditLogs { get; set; }
+
         public Ticket()
         {
             Comments = new HashSet<TicketComment>();
             Attachments = new HashSet<TicketAttachment>();
             Approvals = new HashSet<TicketApproval>();
+            AuditLogs = new HashSet<TicketAuditLog>();
         }
     }
 }

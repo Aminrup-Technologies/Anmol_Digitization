@@ -64,6 +64,11 @@ namespace AnmolDristi.ITSM.DAL
 
         public DbSet<TicketApproval> TicketApprovals { get; set; }
 
+        /// <summary>
+        /// Immutable ITGC audit trail for ticket mutations (what / who / when).
+        /// </summary>
+        public DbSet<TicketAuditLog> TicketAuditLogs { get; set; }
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultSchema("itsm");

@@ -251,6 +251,9 @@
     <Content Include="Critical_Incident_ViewPage.aspx" />
     <Content Include="critical_quality_report.aspx" />
     <Content Include="ITSM\UI\CreateTicket.aspx" />
+    <Content Include="ITSM\UI\TicketList.aspx" />
+    <Content Include="ITSM\UI\TicketDetail.aspx" />
+    <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
     <Content Include="DeviceTransfer.aspx" />
@@ -858,6 +861,10 @@
     <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.cs" />
     <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.designer.cs">
       <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608201200000_AddTicketAuditLog.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608201200000_AddTicketAuditLog.Designer.cs">
+      <DependentUpon>202608201200000_AddTicketAuditLog.cs</DependentUpon>
     </Compile>
     <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />
     <Compile Include="LeakAndSlant_Detailed.aspx.cs">
@@ -1531,6 +1538,7 @@
     <Compile Include="ITSM\DAL\Entities\TicketComment.cs" />
     <Compile Include="ITSM\DAL\Entities\TicketAttachment.cs" />
     <Compile Include="ITSM\DAL\Entities\TicketApproval.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketAuditLog.cs" />
     <Compile Include="ITSM\DAL\Entities\UserMaster.cs" />
     <Compile Include="ITSM\DAL\Entities\Plant.cs" />
     <Compile Include="ITSM\DAL\Entities\Branch.cs" />
@@ -1542,12 +1550,31 @@
     <Compile Include="ITSM\BLL\DispatchService.cs" />
     <Compile Include="ITSM\BLL\SlaService.cs" />
     <Compile Include="ITSM\BLL\TicketService.cs" />
+    <Compile Include="ITSM\BLL\ItsmTenantContext.cs" />
+    <Compile Include="ITSM\BLL\TicketWorkflow.cs" />
+    <Compile Include="ITSM\BLL\TicketListService.cs" />
+    <Compile Include="ITSM\BLL\TicketDetailService.cs" />
+    <Compile Include="ITSM\BLL\TicketUpdateService.cs" />
     <Compile Include="ITSM\UI\CreateTicket.aspx.cs">
       <DependentUpon>CreateTicket.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="ITSM\UI\CreateTicket.aspx.designer.cs">
       <DependentUpon>CreateTicket.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketList.aspx.cs">
+      <DependentUpon>TicketList.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketList.aspx.designer.cs">
+      <DependentUpon>TicketList.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketDetail.aspx.cs">
+      <DependentUpon>TicketDetail.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketDetail.aspx.designer.cs">
+      <DependentUpon>TicketDetail.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
