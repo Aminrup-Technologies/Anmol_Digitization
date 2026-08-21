@@ -11,7 +11,9 @@ namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
     /// Master orchestrator for new-ticket creation (schema §5.1–5.4).
-    /// Coordinates priority, dispatch, SLA, approvals, and NotificationQueue.
+    /// When: 2026-08-21
+    /// What: Snapshot requester.CompanyId onto Ticket.CompanyId at create.
+    /// Why: Ticket tenant must be immutable; live Requester.CompanyId can change in HRMS.
     /// </summary>
     public class TicketService
     {
@@ -115,6 +117,7 @@ namespace AnmolDristi.ITSM.BLL
                         AssigneeCode = assigneeCode,
                         PlantId = requester.PlantId,
                         BranchId = requester.BranchId,
+                        CompanyId = requester.CompanyId,
                         CategoryId = categoryId,
                         SubCategoryId = subCategoryId,
                         ItemId = itemId,
@@ -132,7 +135,7 @@ namespace AnmolDristi.ITSM.BLL
                     context.TicketAuditLogs.Add(new TicketAuditLog
                     {
                         TicketId = ticket.Id,
-                        CompanyId = requester.CompanyId.Value,
+                        CompanyId = ticket.CompanyId.Value,
                         ActionType = "Created",
                         OldValue = null,
                         NewValue = requiresApproval ? "Pending Approval" : "New",

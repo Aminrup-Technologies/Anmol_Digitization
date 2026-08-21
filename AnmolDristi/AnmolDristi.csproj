@@ -866,6 +866,10 @@
     <Compile Include="ITSM\DAL\Migrations\202608201200000_AddTicketAuditLog.Designer.cs">
       <DependentUpon>202608201200000_AddTicketAuditLog.cs</DependentUpon>
     </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.Designer.cs">
+      <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
+    </Compile>
     <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />
     <Compile Include="LeakAndSlant_Detailed.aspx.cs">
       <DependentUpon>LeakAndSlant_Detailed.aspx</DependentUpon>

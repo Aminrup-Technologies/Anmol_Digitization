@@ -193,9 +193,10 @@ The central record connecting legacy personnel/location data with ITSM workflows
 | `Title` | `NVARCHAR(200)` | Required |
 | `Description` | `NVARCHAR(MAX)` | |
 | `RequesterCode` | `NVARCHAR(50)` | FK → `dbo.MST_UserMaster.EmployeeCode` |
-| `AssigneeCode` | `NVARCHAR(50)` NULL | FK → `dbo.MST_UserMaster.EmployeeCode` — set by Intelligent Dispatch Matrix |
-| `PlantId` | `INT` FK NULL | → `dbo.MST_Plant.Id` |
-| `BranchId` | `INT` FK | → `dbo.MST_Branch.Id` — from requester context; drives dispatch |
+| `AssigneeCode` | `NVARCHAR(50)` NULL | FK → `dbo.MST_UserMaster.EmployeeCode` — **workload** (Intelligent Dispatch). Not ticket tenant. |
+| `PlantId` | `INT` FK NULL | → `dbo.MST_Plant.Id` — **routing/location** from requester at create. Not ticket tenant. |
+| `BranchId` | `INT` FK | → `dbo.MST_Branch.Id` — **routing/location** from requester at create; drives dispatch. Not ticket tenant. |
+| `CompanyId` | `INT` NULL | **Immutable ticket tenant.** Snapshot of the requester's `MST_UserMaster.CompanyId` at create. Does not change when requester, assignee, branch, or plant later change. No FK: `MST_UserMaster.CompanyId` has no FK to `MST_Company` in the extracted schema, and `MST_Company` is not an ITSM EF entity. Existing rows remain NULL until a separate data-remediation exercise (current requester company is not proven historical ownership). |
 | `CategoryId` | `INT` FK | → `itsm.MST_Category.Id` |
 | `SubCategoryId` | `INT` FK | → `itsm.MST_SubCategory.Id` |
 | `ItemId` | `INT` FK NULL | → `itsm.MST_Item.Id` — finest taxonomy selection |
@@ -213,6 +214,15 @@ The central record connecting legacy personnel/location data with ITSM workflows
 | `ModifiedOn` | `DATETIME` NULL | |
 | `ModifiedByCode` | `NVARCHAR(50)` NULL | |
 | `RowVersion` | `TIMESTAMP` | SQL Server `rowversion` — **EF6 optimistic concurrency token**; auto-updated by the database on every row change. Prevents agents from silently overwriting each other's edits (see [Technical Guidelines §2](../06-implementation/technical-guidelines.md#2-agent-collision-optimistic-concurrency)). |
+
+**Ownership vs routing (do not collapse):**
+
+| Field | Role |
+| :--- | :--- |
+| `CompanyId` | Authoritative **ticket tenant** (immutable snapshot at create) |
+| `BranchId` / `PlantId` | Routing / location |
+| `AssigneeCode` | Workload |
+| `RequesterCode` | Who raised the ticket (person identity; their current `MST_UserMaster.CompanyId` is **not** the ticket tenant) |
 
 #### Dynamic ticket numbering
 
