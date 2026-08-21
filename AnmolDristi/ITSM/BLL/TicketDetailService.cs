@@ -1,10 +1,11 @@
 // ========================================================================
 // When: 2026-08-21
 // What: Ticket detail from Ticket.CompanyId; AsNoTracking Select into DTO;
-//       CompanyName via dbo.MST_Company.Company_ID; CanViewTicket
-//       (requester / assignee / pending approver — not processing, not !isTerminal).
-// Why: View is not the same as process. Historical approval rows do not
-//      authorize viewing. Arbitrary TicketID is not authorization.
+//       CompanyName via dbo.MST_Company.Company_ID; CanViewTicket;
+//       CanAddInternalNote requires CanProcessTicket plus existing
+//       requester internal-note policy (pending approver does not see internals).
+// Why: View is not process. A view-only pending approver must not be
+//      advertised internal-note capability or shown internal comments.
 // ========================================================================
 
 using System;
@@ -165,8 +166,9 @@ namespace AnmolDristi.ITSM.BLL
                               && a.ApproverCode == actorCode
                               && a.ApprovalStatus == "Pending");
                 dto.CanAddInternalNote =
-                    !string.Equals(dto.RequesterCode, actorCode, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(dto.AssigneeCode, actorCode, StringComparison.OrdinalIgnoreCase);
+                    ItsmTicketAccess.CanProcessTicket(actorCode, dto.RequesterCode, dto.AssigneeCode)
+                    && (!string.Equals(dto.RequesterCode, actorCode, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(dto.AssigneeCode, actorCode, StringComparison.OrdinalIgnoreCase));
 
                 var commentsQuery = context.TicketComments
                     .AsNoTracking()
