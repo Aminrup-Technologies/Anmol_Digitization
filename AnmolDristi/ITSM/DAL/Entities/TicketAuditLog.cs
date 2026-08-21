@@ -1,11 +1,9 @@
 // ========================================================================
 // File:    TicketAuditLog.cs
 // Layer:   DAL — Entity
-// When:    2026-08-20
-// What:    New entity for field-level ticket audit trail (Phase 1B).
-// Why:     Every state change, reassignment, priority override, and
-//          approval/rejection must produce an atomic audit record
-//          establishing What / Who / When (requirement §12–§13).
+// When:    2026-08-21
+// What:    CompanyId documented as Ticket.CompanyId (ticket tenant), not actor company.
+// Why:     Shared-service processing audits the ticket tenant being mutated.
 // ========================================================================
 
 using System;
@@ -33,8 +31,7 @@ namespace AnmolDristi.ITSM.DAL.Entities
         public int TicketId { get; set; }
 
         /// <summary>
-        /// Company-level tenant scope — inherited from the acting user's UserMaster.CompanyId.
-        /// Ensures audit records are never queried cross-company (requirement §7).
+        /// Tenant of the ticket being audited (Ticket.CompanyId snapshot), not actor CompanyId.
         /// </summary>
         [Required]
         public int CompanyId { get; set; }

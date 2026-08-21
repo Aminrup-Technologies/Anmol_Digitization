@@ -18,7 +18,8 @@ These tables exist in the `dbo` schema. EF6 maps to these using `[Table("...", S
 
 | Table Name | Primary Key | Key Columns Mapped | ITSM Utilization & Relationships |
 | :--- | :--- | :--- | :--- |
-| **`dbo.MST_UserMaster`** | `EmployeeCode` | `EmployeeName`, `Email`, `Mobile`, `PlantId`, `BranchId`, `DepartmentId`, `ReportingManagerCode`, `EmployeeStatus` | **Core Identity:** Auto-fills requester details on the UI. FK target for `Tickets.RequesterCode`, `Tickets.AssigneeCode`, `TicketApprovals.ApproverCode`, and `MST_SupportMapping.SupportAgentCode`. |
+| **`dbo.MST_UserMaster`** | `EmployeeCode` | `EmployeeName`, `Email`, `Mobile`, `PlantId`, `BranchId`, `DepartmentId`, `CompanyId`, `ReportingManagerCode`, `EmployeeStatus` | **Core Identity:** Auto-fills requester details on the UI. FK target for `Tickets.RequesterCode`, `Tickets.AssigneeCode`, `TicketApprovals.ApproverCode`, and `MST_SupportMapping.SupportAgentCode`. `CompanyId` is live/mutable (HRMS) and is **not** ticket tenant after create. |
+| **`dbo.MST_Company`** | `Id` | `Company_Description`, `Company_ID` | **Tenant display name (read-only).** `MST_UserMaster.CompanyId` and `itsm.Tickets.CompanyId` store `Company_ID` (numeric business key), not `Id`. No FK from Tickets. Used only to resolve `CompanyName` on ticket detail. |
 | **`dbo.MST_Plant`** | `Id` | `PlantID_Description`, `SAP_Code` | **Primary Routing Context:** Maps to `Tickets.PlantId`. Determines if the ticket belongs to a Plant/Depot or Corporate Office. |
 | **`dbo.MST_Branch`** | `Id` | `Branch_Description` | **Dispatch Anchor:** Maps to `Tickets.BranchId` and `MST_SupportMapping.BranchId`. Drives the Intelligent Dispatch Matrix. |
 | **`dbo.MST_Department`** | `Id` | `Department_Description` | **Organizational Context:** Helps IT agents prioritize tickets based on the requester's department. |
@@ -196,7 +197,7 @@ The central record connecting legacy personnel/location data with ITSM workflows
 | `AssigneeCode` | `NVARCHAR(50)` NULL | FK → `dbo.MST_UserMaster.EmployeeCode` — **workload** (Intelligent Dispatch). Not ticket tenant. |
 | `PlantId` | `INT` FK NULL | → `dbo.MST_Plant.Id` — **routing/location** from requester at create. Not ticket tenant. |
 | `BranchId` | `INT` FK | → `dbo.MST_Branch.Id` — **routing/location** from requester at create; drives dispatch. Not ticket tenant. |
-| `CompanyId` | `INT` NULL | **Immutable ticket tenant.** Snapshot of the requester's `MST_UserMaster.CompanyId` at create. Does not change when requester, assignee, branch, or plant later change. No FK: `MST_UserMaster.CompanyId` has no FK to `MST_Company` in the extracted schema, and `MST_Company` is not an ITSM EF entity. Existing rows remain NULL until a separate data-remediation exercise (current requester company is not proven historical ownership). |
+| `CompanyId` | `INT` NULL | **Immutable ticket tenant.** Snapshot of the requester's `MST_UserMaster.CompanyId` at create. Does not change when requester, assignee, branch, or plant later change. No FK: `MST_UserMaster.CompanyId` has no FK in the extracted schema. Display name is a read-only EF join to `dbo.MST_Company.Company_ID` → `Company_Description`. Existing rows remain NULL until a separate data-remediation exercise (current requester company is not proven historical ownership). |
 | `CategoryId` | `INT` FK | → `itsm.MST_Category.Id` |
 | `SubCategoryId` | `INT` FK | → `itsm.MST_SubCategory.Id` |
 | `ItemId` | `INT` FK NULL | → `itsm.MST_Item.Id` — finest taxonomy selection |

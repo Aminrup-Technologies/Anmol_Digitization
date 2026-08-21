@@ -1549,12 +1549,14 @@
     <Compile Include="ITSM\DAL\Entities\Department.cs" />
     <Compile Include="ITSM\DAL\Entities\Calendar.cs" />
     <Compile Include="ITSM\DAL\Entities\PlantTimings.cs" />
+    <Compile Include="ITSM\DAL\Entities\Company.cs" />
     <Compile Include="ITSM\DAL\ItsmDbContext.cs" />
     <Compile Include="ITSM\BLL\PriorityCalculationService.cs" />
     <Compile Include="ITSM\BLL\DispatchService.cs" />
     <Compile Include="ITSM\BLL\SlaService.cs" />
     <Compile Include="ITSM\BLL\TicketService.cs" />
     <Compile Include="ITSM\BLL\ItsmTenantContext.cs" />
+    <Compile Include="ITSM\BLL\ItsmTicketAccess.cs" />
     <Compile Include="ITSM\BLL\TicketWorkflow.cs" />
     <Compile Include="ITSM\BLL\TicketListService.cs" />
     <Compile Include="ITSM\BLL\TicketDetailService.cs" />

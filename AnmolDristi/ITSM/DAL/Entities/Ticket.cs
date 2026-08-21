@@ -9,7 +9,8 @@ namespace AnmolDristi.ITSM.DAL.Entities
     /// Maps to itsm.Tickets — central ITSM transactional record.
     /// RowVersion enables EF6 optimistic concurrency (see technical guidelines §2).
     /// When: 2026-08-21
-    /// What: Added CompanyId as an immutable tenant snapshot.
+    /// What: Added CompanyId as an immutable tenant snapshot. Display name is
+    ///       a read-only join to dbo.MST_Company.Company_ID (not Company.Id).
     /// Why: Requester.CompanyId is live/mutable (HRMS) and is not ticket ownership.
     /// </summary>
     [Table("Tickets", Schema = "itsm")]
@@ -61,7 +62,8 @@ namespace AnmolDristi.ITSM.DAL.Entities
         /// <summary>
         /// Immutable tenant snapshot: requester MST_UserMaster.CompanyId at create.
         /// Does not change when requester, assignee, branch, or plant later change.
-        /// Nullable until historical tickets are remediated; no FK (MST_Company is not EF-mapped; UserMaster.CompanyId has no FK).
+        /// Nullable until historical tickets are remediated. No FK: UserMaster.CompanyId has none,
+        /// and MST_Company is a read-only lookup (join Company_ID) — not a Tickets foreign key.
         /// </summary>
         public int? CompanyId { get; set; }
 

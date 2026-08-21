@@ -1,11 +1,9 @@
 // ========================================================================
-// File:    TicketListService.cs
-// Layer:   BLL — read-only queues
-// When:    2026-08-21
-// What:    Dropped CompanyId from GetAgentQueue / GetOpenQueue LINQ filters.
-//          Queries stay AsNoTracking + Select into TicketListItemDto (no DataTable).
-// Why:     Shared-service agents work tickets across companies. Tenant isolation
-//          is enforced on mutations only (TicketUpdateService / TicketDetailService).
+// When: 2026-08-21
+// What: Removed actor/requester CompanyId from MyTickets, Approvals,
+//       GetBranches, GetActiveAgents. Queues stay AsNoTracking + Select.
+// Why: Shared-service queues and assignment must not be scoped by the
+//      agent's current CompanyId. Ticket.CompanyId is tenant ownership.
 // ========================================================================
 
 using System;
@@ -60,8 +58,8 @@ namespace AnmolDristi.ITSM.BLL
     }
 
     /// <summary>
-    /// Agent queues are tenant-agnostic (shared services). CompanyId is applied
-    /// only on requester/approval reads that are not shared dispatch surfaces.
+    /// Agent queues are tenant-agnostic (shared services). Ticket-level
+    /// authorization is enforced on detail and mutation, not on queue listing.
     /// </summary>
     public class TicketListService
     {
@@ -77,7 +75,7 @@ namespace AnmolDristi.ITSM.BLL
 
             using (var context = new ItsmDbContext())
             {
-                return SortQueue(BuildQueueQuery(context, null, filter)).ToList();
+                return SortQueue(BuildQueueQuery(context, filter)).ToList();
             }
         }
 
@@ -92,25 +90,22 @@ namespace AnmolDristi.ITSM.BLL
 
             using (var context = new ItsmDbContext())
             {
-                return SortQueue(BuildQueueQuery(context, null, filter)).ToList();
+                return SortQueue(BuildQueueQuery(context, filter)).ToList();
             }
         }
 
-        public List<TicketListItemDto> GetMyTickets(
-            int companyId,
-            string requesterCode,
-            TicketListFilter filter)
+        public List<TicketListItemDto> GetMyTickets(string requesterCode, TicketListFilter filter)
         {
             using (var context = new ItsmDbContext())
             {
                 return SortQueue(
-                    BuildQueueQuery(context, companyId, filter)
+                    BuildQueueQuery(context, filter)
                         .Where(t => t.RequesterCode == requesterCode))
                     .ToList();
             }
         }
 
-        public List<TicketListItemDto> GetApprovalQueue(int companyId, string approverCode)
+        public List<TicketListItemDto> GetApprovalQueue(string approverCode)
         {
             using (var context = new ItsmDbContext())
             {
@@ -119,7 +114,7 @@ namespace AnmolDristi.ITSM.BLL
                     .Where(a => a.ApproverCode == approverCode
                                 && a.ApprovalStatus == "Pending")
                     .Join(
-                        BuildQueueQuery(context, companyId, null),
+                        BuildQueueQuery(context, null),
                         approval => approval.TicketId,
                         ticket => ticket.Id,
                         (approval, ticket) => ticket)
@@ -151,37 +146,34 @@ namespace AnmolDristi.ITSM.BLL
                     .AsNoTracking()
                     .Where(p => p.IsActive)
                     .OrderBy(p => p.Id)
-                    .Select(p => new LookupItemDto { Id = p.Id, Name = p.Name })
+                    .Select(s => new LookupItemDto { Id = s.Id, Name = s.Name })
                     .ToList();
             }
         }
 
-        public List<LookupItemDto> GetBranches(int companyId)
+        public List<LookupItemDto> GetBranches()
         {
             using (var context = new ItsmDbContext())
             {
-                return context.UserMasters
+                return context.Branches
                     .AsNoTracking()
-                    .Where(u => u.CompanyId == companyId && u.Branch != null)
-                    .Select(u => new LookupItemDto
+                    .Select(b => new LookupItemDto
                     {
-                        Id = u.Branch.Id,
-                        Name = u.Branch.Branch_Description
+                        Id = b.Id,
+                        Name = b.Branch_Description
                     })
-                    .Distinct()
                     .OrderBy(b => b.Name)
                     .ToList();
             }
         }
 
-        public List<AgentLookupDto> GetActiveAgents(int companyId)
+        public List<AgentLookupDto> GetActiveAgents()
         {
             using (var context = new ItsmDbContext())
             {
                 return context.UserMasters
                     .AsNoTracking()
-                    .Where(u => u.EmployeeStatus == "Active"
-                                && u.CompanyId == companyId)
+                    .Where(u => u.EmployeeStatus == "Active")
                     .OrderBy(u => u.EmployeeName)
                     .Select(u => new AgentLookupDto
                     {
@@ -194,15 +186,9 @@ namespace AnmolDristi.ITSM.BLL
 
         private static IQueryable<TicketListItemDto> BuildQueueQuery(
             ItsmDbContext context,
-            int? companyId,
             TicketListFilter filter)
         {
             IQueryable<Ticket> query = context.Tickets.AsNoTracking();
-
-            if (companyId.HasValue)
-            {
-                query = query.Where(t => t.Requester.CompanyId == companyId.Value);
-            }
 
             if (filter != null)
             {

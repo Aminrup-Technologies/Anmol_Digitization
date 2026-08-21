@@ -1,3 +1,11 @@
+// ========================================================================
+// When: 2026-08-21
+// What: Session gate WORKMAN+USERID+BRANCH. MyTickets/Approvals/branch
+//       lookup no longer use actor CompanyId. Queues stay DTO-bound.
+// Why: Shared-service queues must not be restricted by agent company.
+//      Session CompanyID is not the authentication model.
+// ========================================================================
+
 using System;
 using System.Collections;
 using System.Drawing;
@@ -12,7 +20,9 @@ namespace AnmolDristi.ITSM.UI
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["WORKMAN"] == null || Session["USERID"] == null)
+            if (Session["WORKMAN"] == null
+                || Session["USERID"] == null
+                || Session["BRANCH"] == null)
             {
                 Response.Redirect("~/login.aspx", true);
                 return;
@@ -126,11 +136,6 @@ namespace AnmolDristi.ITSM.UI
             return ViewState[VS_ACTIVE_TAB] as string ?? "MyQueue";
         }
 
-        private int ResolveCompanyId()
-        {
-            return ItsmTenantContext.ResolveCompanyId(Session["WORKMAN"].ToString());
-        }
-
         private TicketListFilter BuildFilter()
         {
             var filter = new TicketListFilter();
@@ -184,29 +189,11 @@ namespace AnmolDristi.ITSM.UI
                         gvTickets.DataSource = service.GetOpenQueue(filter);
                         break;
                     case "MyTickets":
-                        {
-                            var companyId = ResolveCompanyId();
-                            if (companyId == 0)
-                            {
-                                ShowMessage("Unable to resolve company context for the signed-in user.", false);
-                                return;
-                            }
-
-                            gvTickets.DataSource = service.GetMyTickets(companyId, workman, filter);
-                            break;
-                        }
+                        gvTickets.DataSource = service.GetMyTickets(workman, filter);
+                        break;
                     case "Approvals":
-                        {
-                            var companyId = ResolveCompanyId();
-                            if (companyId == 0)
-                            {
-                                ShowMessage("Unable to resolve company context for the signed-in user.", false);
-                                return;
-                            }
-
-                            gvTickets.DataSource = service.GetApprovalQueue(companyId, workman);
-                            break;
-                        }
+                        gvTickets.DataSource = service.GetApprovalQueue(workman);
+                        break;
                     default:
                         gvTickets.DataSource = service.GetAgentQueue(workman, filter);
                         break;
@@ -231,7 +218,7 @@ namespace AnmolDristi.ITSM.UI
             var service = new TicketListService();
             BindDropDown(ddlFilterStatus, service.GetActiveStatuses(), "Name", "Id", "All Statuses");
             BindDropDown(ddlFilterPriority, service.GetActivePriorities(), "Name", "Id", "All Priorities");
-            BindDropDown(ddlFilterBranch, service.GetBranches(ResolveCompanyId()), "Name", "Id", "All Branches");
+            BindDropDown(ddlFilterBranch, service.GetBranches(), "Name", "Id", "All Branches");
         }
 
         private static void BindDropDown(
