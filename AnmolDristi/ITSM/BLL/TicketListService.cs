@@ -1,3 +1,13 @@
+// ========================================================================
+// File:    TicketListService.cs
+// Layer:   BLL — read-only queues
+// When:    2026-08-21
+// What:    Dropped CompanyId from GetAgentQueue / GetOpenQueue LINQ filters.
+//          Queries stay AsNoTracking + Select into TicketListItemDto (no DataTable).
+// Why:     Shared-service agents work tickets across companies. Tenant isolation
+//          is enforced on mutations only (TicketUpdateService / TicketDetailService).
+// ========================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
@@ -50,14 +60,12 @@ namespace AnmolDristi.ITSM.BLL
     }
 
     /// <summary>
-    /// Read-only agent queues. Tenant scope = requester CompanyId (ITGC isolation).
+    /// Agent queues are tenant-agnostic (shared services). CompanyId is applied
+    /// only on requester/approval reads that are not shared dispatch surfaces.
     /// </summary>
     public class TicketListService
     {
-        public List<TicketListItemDto> GetAgentQueue(
-            int companyId,
-            string assigneeCode,
-            TicketListFilter filter)
+        public List<TicketListItemDto> GetAgentQueue(string assigneeCode, TicketListFilter filter)
         {
             if (filter == null)
             {
@@ -69,11 +77,11 @@ namespace AnmolDristi.ITSM.BLL
 
             using (var context = new ItsmDbContext())
             {
-                return SortQueue(BuildQueueQuery(context, companyId, filter)).ToList();
+                return SortQueue(BuildQueueQuery(context, null, filter)).ToList();
             }
         }
 
-        public List<TicketListItemDto> GetOpenQueue(int companyId, TicketListFilter filter)
+        public List<TicketListItemDto> GetOpenQueue(TicketListFilter filter)
         {
             if (filter == null)
             {
@@ -84,7 +92,7 @@ namespace AnmolDristi.ITSM.BLL
 
             using (var context = new ItsmDbContext())
             {
-                return SortQueue(BuildQueueQuery(context, companyId, filter)).ToList();
+                return SortQueue(BuildQueueQuery(context, null, filter)).ToList();
             }
         }
 
@@ -186,12 +194,15 @@ namespace AnmolDristi.ITSM.BLL
 
         private static IQueryable<TicketListItemDto> BuildQueueQuery(
             ItsmDbContext context,
-            int companyId,
+            int? companyId,
             TicketListFilter filter)
         {
-            IQueryable<Ticket> query = context.Tickets
-                .AsNoTracking()
-                .Where(t => t.Requester.CompanyId == companyId);
+            IQueryable<Ticket> query = context.Tickets.AsNoTracking();
+
+            if (companyId.HasValue)
+            {
+                query = query.Where(t => t.Requester.CompanyId == companyId.Value);
+            }
 
             if (filter != null)
             {
@@ -235,25 +246,24 @@ namespace AnmolDristi.ITSM.BLL
                 }
             }
 
-            return query
-                .Select(t => new TicketListItemDto
-                {
-                    Id = t.Id,
-                    TicketNumber = t.TicketNumber,
-                    Title = t.Title,
-                    RequestTypeName = t.RequestType.Code + " - " + t.RequestType.Name,
-                    StatusName = t.Status.Name,
-                    PriorityName = t.Priority.Name,
-                    RequesterName = t.Requester.EmployeeName,
-                    AssigneeName = t.Assignee != null ? t.Assignee.EmployeeName : "Unassigned",
-                    CategoryName = t.Category.Name,
-                    BranchName = t.Branch.Branch_Description,
-                    CreatedOn = t.CreatedOn,
-                    ResolvedOn = t.ResolvedOn,
-                    PrioritySortOrder = t.Priority.SlaResolutionHours,
-                    RequesterCode = t.RequesterCode,
-                    AssigneeCode = t.AssigneeCode
-                });
+            return query.Select(t => new TicketListItemDto
+            {
+                Id = t.Id,
+                TicketNumber = t.TicketNumber,
+                Title = t.Title,
+                RequestTypeName = t.RequestType.Code + " - " + t.RequestType.Name,
+                StatusName = t.Status.Name,
+                PriorityName = t.Priority.Name,
+                RequesterName = t.Requester.EmployeeName,
+                AssigneeName = t.Assignee != null ? t.Assignee.EmployeeName : "Unassigned",
+                CategoryName = t.Category.Name,
+                BranchName = t.Branch.Branch_Description,
+                CreatedOn = t.CreatedOn,
+                ResolvedOn = t.ResolvedOn,
+                PrioritySortOrder = t.Priority.SlaResolutionHours,
+                RequesterCode = t.RequesterCode,
+                AssigneeCode = t.AssigneeCode
+            });
         }
 
         private static IQueryable<TicketListItemDto> SortQueue(IQueryable<TicketListItemDto> query)

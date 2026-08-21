@@ -170,13 +170,6 @@ namespace AnmolDristi.ITSM.UI
 
             try
             {
-                var companyId = ResolveCompanyId();
-                if (companyId == 0)
-                {
-                    ShowMessage("Unable to resolve company context for the signed-in user.", false);
-                    return;
-                }
-
                 var workman = Session["WORKMAN"].ToString();
                 var filter = BuildFilter();
                 var service = new TicketListService();
@@ -185,19 +178,37 @@ namespace AnmolDristi.ITSM.UI
                 switch (tab)
                 {
                     case "MyQueue":
-                        gvTickets.DataSource = service.GetAgentQueue(companyId, workman, filter);
+                        gvTickets.DataSource = service.GetAgentQueue(workman, filter);
                         break;
                     case "AllOpen":
-                        gvTickets.DataSource = service.GetOpenQueue(companyId, filter);
+                        gvTickets.DataSource = service.GetOpenQueue(filter);
                         break;
                     case "MyTickets":
-                        gvTickets.DataSource = service.GetMyTickets(companyId, workman, filter);
-                        break;
+                        {
+                            var companyId = ResolveCompanyId();
+                            if (companyId == 0)
+                            {
+                                ShowMessage("Unable to resolve company context for the signed-in user.", false);
+                                return;
+                            }
+
+                            gvTickets.DataSource = service.GetMyTickets(companyId, workman, filter);
+                            break;
+                        }
                     case "Approvals":
-                        gvTickets.DataSource = service.GetApprovalQueue(companyId, workman);
-                        break;
+                        {
+                            var companyId = ResolveCompanyId();
+                            if (companyId == 0)
+                            {
+                                ShowMessage("Unable to resolve company context for the signed-in user.", false);
+                                return;
+                            }
+
+                            gvTickets.DataSource = service.GetApprovalQueue(companyId, workman);
+                            break;
+                        }
                     default:
-                        gvTickets.DataSource = service.GetAgentQueue(companyId, workman, filter);
+                        gvTickets.DataSource = service.GetAgentQueue(workman, filter);
                         break;
                 }
 
