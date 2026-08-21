@@ -72,6 +72,23 @@ namespace AnmolDristi.ITSM.BLL
                             "Requester has no CompanyId on MST_UserMaster; ticket creation is blocked for tenant isolation.");
                     }
 
+                    // Phase-1 schema §5.4: Tickets.PlantId is INT FK NULL.
+                    // NULL = Corporate Office (no plant assignment).
+                    // Orphaned PlantId (not found in MST_Plant) is normalized to NULL
+                    // rather than blocked, since 4,341 legacy records share this condition.
+                    int? resolvedPlantId = null;
+                    if (requester.PlantId > 0)
+                    {
+                        var plantExists = context.Plants
+                            .AsNoTracking()
+                            .Any(p => p.Id == requester.PlantId);
+
+                        if (plantExists)
+                        {
+                            resolvedPlantId = requester.PlantId;
+                        }
+                    }
+
                     var requestType = context.RequestTypes
                         .AsNoTracking()
                         .FirstOrDefault(r => r.Id == requestTypeId && r.IsActive);
@@ -115,7 +132,7 @@ namespace AnmolDristi.ITSM.BLL
                         Description = description,
                         RequesterCode = requester.EmployeeCode,
                         AssigneeCode = assigneeCode,
-                        PlantId = requester.PlantId,
+                        PlantId = resolvedPlantId,
                         BranchId = requester.BranchId,
                         CompanyId = requester.CompanyId,
                         CategoryId = categoryId,

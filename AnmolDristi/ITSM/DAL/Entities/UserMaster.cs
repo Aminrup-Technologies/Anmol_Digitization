@@ -29,6 +29,11 @@ namespace AnmolDristi.ITSM.DAL.Entities
         [Column(TypeName = "varchar")]
         public string Mobile { get; set; }
 
+        /// <summary>
+        /// dbo.MST_UserMaster.PlantId — INT NOT NULL in the database.
+        /// Legacy data may hold orphaned values (PlantId not found in MST_Plant).
+        /// TicketService validates existence before Ticket INSERT.
+        /// </summary>
         public int PlantId { get; set; }
 
         public int BranchId { get; set; }
