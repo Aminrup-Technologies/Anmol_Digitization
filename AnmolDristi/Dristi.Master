@@ -599,6 +599,16 @@
                                             </ul>
                                         </li>
 
+                                        <%-- PermissionHelper maps control ID -> UI.{ID}.View.
+                                             Hidden until dbo.Permission catalog keys exist and are granted
+                                             (see Database/Scripts/010_ITSM_Sidebar_Permissions.sql). --%>
+                                        <li id="ITSM_Module" runat="server" visible="false"><a><i class="fa fa-ticket"></i> ITSM <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="ITSM_TicketList" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/TicketList.aspx") %>">Ticket Queue</a></li>
+                                                <li id="ITSM_CreateTicket" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/CreateTicket.aspx") %>">Create Ticket</a></li>
+                                            </ul>
+                                        </li>
+
                                     </ul>
                                 </div>
                             </div>
