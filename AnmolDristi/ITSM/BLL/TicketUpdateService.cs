@@ -1,10 +1,10 @@
 // ========================================================================
 // When: 2026-08-21
-// What: Mutations require a ticket relationship (not non-terminal status);
-//       NULL CompanyId blocks mutation (no tenant 0); audit copies
-//       ticket.CompanyId; RowVersion on all six paths; reassignment is AssigneeCode only.
-// Why: Arbitrary TicketID must not authorize. Historical NULL tenant must
-//      not be invented as CompanyId 0.
+// What: Process mutations use CanProcessTicket; Approve/Reject use
+//       CanApproveTicket; NULL CompanyId blocks mutation; audit copies
+//       ticket.CompanyId.Value; RowVersion on all six paths.
+// Why: Pending/historical approvers must not gain ChangeStatus/Reassign/
+//      OverridePriority/AddComment. Tenant 0 is not invented.
 // ========================================================================
 
 using System;
@@ -54,7 +54,7 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadAuthorizedTicket(context, ticketId, actorCode, rowVersion, out loadError);
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
@@ -136,7 +136,7 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadAuthorizedTicket(context, ticketId, actorCode, rowVersion, out loadError);
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
@@ -209,7 +209,7 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadAuthorizedTicket(context, ticketId, actorCode, rowVersion, out loadError);
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
@@ -271,7 +271,7 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadAuthorizedTicket(context, ticketId, approverCode, rowVersion, out loadError);
+                    var ticket = LoadForApprove(context, ticketId, approverCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
@@ -372,7 +372,7 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadAuthorizedTicket(context, ticketId, approverCode, rowVersion, out loadError);
+                    var ticket = LoadForApprove(context, ticketId, approverCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
@@ -472,7 +472,7 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadAuthorizedTicket(context, ticketId, actorCode, rowVersion, out loadError);
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
@@ -518,10 +518,53 @@ namespace AnmolDristi.ITSM.BLL
             }
         }
 
-        private static Ticket LoadAuthorizedTicket(
+        private static Ticket LoadForProcess(
             ItsmDbContext context,
             int ticketId,
             string actorCode,
+            byte[] rowVersion,
+            out string error)
+        {
+            var ticket = LoadMutableTicket(context, ticketId, rowVersion, out error);
+            if (ticket == null)
+            {
+                return null;
+            }
+
+            if (!ItsmTicketAccess.CanProcessTicket(actorCode, ticket.RequesterCode, ticket.AssigneeCode))
+            {
+                error = "Ticket not found or access denied.";
+                return null;
+            }
+
+            return RequireRecordedTenant(ticket, out error);
+        }
+
+        private static Ticket LoadForApprove(
+            ItsmDbContext context,
+            int ticketId,
+            string actorCode,
+            byte[] rowVersion,
+            out string error)
+        {
+            var ticket = LoadMutableTicket(context, ticketId, rowVersion, out error);
+            if (ticket == null)
+            {
+                return null;
+            }
+
+            if (!ItsmTicketAccess.CanApproveTicket(context, ticket.Id, actorCode, ticket.RequesterCode))
+            {
+                error = "Ticket not found or access denied.";
+                return null;
+            }
+
+            return RequireRecordedTenant(ticket, out error);
+        }
+
+        private static Ticket LoadMutableTicket(
+            ItsmDbContext context,
+            int ticketId,
             byte[] rowVersion,
             out string error)
         {
@@ -538,17 +581,13 @@ namespace AnmolDristi.ITSM.BLL
                 return null;
             }
 
-            if (!ItsmTicketAccess.CanAccess(
-                context,
-                ticket.Id,
-                actorCode,
-                ticket.RequesterCode,
-                ticket.AssigneeCode))
-            {
-                error = "Ticket not found or access denied.";
-                return null;
-            }
+            context.Entry(ticket).Property(x => x.RowVersion).OriginalValue = rowVersion;
+            error = null;
+            return ticket;
+        }
 
+        private static Ticket RequireRecordedTenant(Ticket ticket, out string error)
+        {
             if (!ticket.CompanyId.HasValue)
             {
                 error = "This ticket has no recorded tenant (CompanyId). "
@@ -556,7 +595,6 @@ namespace AnmolDristi.ITSM.BLL
                 return null;
             }
 
-            context.Entry(ticket).Property(x => x.RowVersion).OriginalValue = rowVersion;
             error = null;
             return ticket;
         }

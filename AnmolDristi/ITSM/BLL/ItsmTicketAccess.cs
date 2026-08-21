@@ -1,9 +1,10 @@
 // ========================================================================
 // When: 2026-08-21
-// What: Ticket access is requester OR current assignee OR TicketApprovals row.
+// What: Split ticket authorization by operation: CanViewTicket,
+//       CanApproveTicket, CanProcessTicket. Pending approval is not
+//       general processing. Historical approval rows are not view/process.
+// Why: A TicketApprovals row must not make an approver a general processor.
 //       Non-terminal status is not authorization.
-// Why: Queue visibility (All Open) is not ticket authorization. An authenticated
-//      agent plus an arbitrary TicketID must not grant access.
 // ========================================================================
 
 using System;
@@ -14,15 +15,55 @@ using AnmolDristi.ITSM.DAL;
 namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
-    /// Ticket-level authorization from stored relationships only.
-    /// SupportMapping is create-time dispatch (sets AssigneeCode); it is not a live ACL.
-    /// App RBAC (UI.ITSM.*) is not registered on these pages — do not invent it here.
+    /// Operation-specific ticket authorization from stored relationships.
+    /// SupportMapping is create-time dispatch, not a live ACL.
+    /// UI.ITSM.* keys are not registered on these pages — not invented here.
     /// </summary>
     internal static class ItsmTicketAccess
     {
-        public static bool CanAccess(
+        public static bool CanViewTicket(
             ItsmDbContext context,
             int ticketId,
+            string actorCode,
+            string requesterCode,
+            string assigneeCode)
+        {
+            if (IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode))
+            {
+                return true;
+            }
+
+            return HasPendingApproval(context, ticketId, actorCode);
+        }
+
+        public static bool CanProcessTicket(
+            string actorCode,
+            string requesterCode,
+            string assigneeCode)
+        {
+            return IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode);
+        }
+
+        public static bool CanApproveTicket(
+            ItsmDbContext context,
+            int ticketId,
+            string actorCode,
+            string requesterCode)
+        {
+            if (string.IsNullOrWhiteSpace(actorCode))
+            {
+                return false;
+            }
+
+            if (string.Equals(requesterCode, actorCode, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return HasPendingApproval(context, ticketId, actorCode);
+        }
+
+        private static bool IsRequesterOrAssignee(
             string actorCode,
             string requesterCode,
             string assigneeCode)
@@ -37,14 +78,19 @@ namespace AnmolDristi.ITSM.BLL
                 return true;
             }
 
-            if (!string.IsNullOrWhiteSpace(assigneeCode)
-                && string.Equals(assigneeCode, actorCode, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
+            return !string.IsNullOrWhiteSpace(assigneeCode)
+                && string.Equals(assigneeCode, actorCode, StringComparison.OrdinalIgnoreCase);
+        }
 
+        private static bool HasPendingApproval(
+            ItsmDbContext context,
+            int ticketId,
+            string actorCode)
+        {
             return context.TicketApprovals.AsNoTracking()
-                .Any(a => a.TicketId == ticketId && a.ApproverCode == actorCode);
+                .Any(a => a.TicketId == ticketId
+                          && a.ApproverCode == actorCode
+                          && a.ApprovalStatus == "Pending");
         }
     }
 }

@@ -1,10 +1,10 @@
 // ========================================================================
 // When: 2026-08-21
 // What: Ticket detail from Ticket.CompanyId; AsNoTracking Select into DTO;
-//       CompanyName via dbo.MST_Company.Company_ID; relationship CanAccess
-//       (requester / assignee / approver — not non-terminal status).
-// Why: Actor CompanyId is not ticket tenant. Non-terminal status is not
-//      authorization for an arbitrary TicketID.
+//       CompanyName via dbo.MST_Company.Company_ID; CanViewTicket
+//       (requester / assignee / pending approver — not processing, not !isTerminal).
+// Why: View is not the same as process. Historical approval rows do not
+//      authorize viewing. Arbitrary TicketID is not authorization.
 // ========================================================================
 
 using System;
@@ -92,7 +92,7 @@ namespace AnmolDristi.ITSM.BLL
 
     /// <summary>
     /// Read-only ticket detail. Tenant is Ticket.CompanyId (immutable snapshot).
-    /// TicketId is not sufficient authorization — see ItsmTicketAccess.
+    /// View uses CanViewTicket; TicketId is not sufficient authorization.
     /// </summary>
     public class TicketDetailService
     {
@@ -149,7 +149,7 @@ namespace AnmolDristi.ITSM.BLL
                     return null;
                 }
 
-                if (!ItsmTicketAccess.CanAccess(
+                if (!ItsmTicketAccess.CanViewTicket(
                     context,
                     ticketId,
                     actorCode,
