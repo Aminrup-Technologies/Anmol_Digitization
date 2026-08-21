@@ -1,3 +1,12 @@
+// ========================================================================
+// When: 2026-08-21
+// What: Session gate WORKMAN+USERID+BRANCH; detail/update without actor
+//       CompanyId; tenant badge = MST_Company.Company_Description;
+//       AddComment passes RowVersion; reassign agents are all Active users.
+// Why: Ticket.CompanyId is the tenant. Session CompanyID / actor company
+//      must not gate shared-service processing.
+// ========================================================================
+
 using System;
 using System.Drawing;
 using System.Web.UI.WebControls;
@@ -9,7 +18,9 @@ namespace AnmolDristi.ITSM.UI
     {
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["WORKMAN"] == null || Session["USERID"] == null)
+            if (Session["WORKMAN"] == null
+                || Session["USERID"] == null
+                || Session["BRANCH"] == null)
             {
                 Response.Redirect("~/login.aspx", true);
                 return;
@@ -55,7 +66,6 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var result = new TicketUpdateService().ChangeStatus(
-                ResolveCompanyId(),
                 ticketId,
                 targetStatusId,
                 GetActorCode(),
@@ -81,7 +91,6 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var result = new TicketUpdateService().ReassignTicket(
-                ResolveCompanyId(),
                 ticketId,
                 ddlReassignTo.SelectedValue,
                 GetActorCode(),
@@ -108,7 +117,6 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var result = new TicketUpdateService().OverridePriority(
-                ResolveCompanyId(),
                 ticketId,
                 newPriorityId,
                 GetActorCode(),
@@ -133,7 +141,6 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var result = new TicketUpdateService().ApproveTicket(
-                ResolveCompanyId(),
                 ticketId,
                 GetActorCode(),
                 null,
@@ -152,7 +159,6 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var result = new TicketUpdateService().RejectTicket(
-                ResolveCompanyId(),
                 ticketId,
                 GetActorCode(),
                 txtRejectionReason.Text,
@@ -182,11 +188,11 @@ namespace AnmolDristi.ITSM.UI
             }
 
             var result = new TicketUpdateService().AddComment(
-                ResolveCompanyId(),
                 ticketId,
                 txtComment.Text,
                 GetActorCode(),
-                chkInternal.Checked);
+                chkInternal.Checked,
+                GetRowVersion());
 
             if (result.Success)
             {
@@ -199,14 +205,7 @@ namespace AnmolDristi.ITSM.UI
 
         private void LoadTicket(int ticketId)
         {
-            var companyId = ResolveCompanyId();
-            if (companyId == 0)
-            {
-                ShowNotFound();
-                return;
-            }
-
-            var dto = new TicketDetailService().GetTicketDetail(companyId, ticketId, GetActorCode());
+            var dto = new TicketDetailService().GetTicketDetail(ticketId, GetActorCode());
             if (dto == null)
             {
                 ShowNotFound();
@@ -216,7 +215,7 @@ namespace AnmolDristi.ITSM.UI
             pnlTicketContent.Visible = true;
             pnlNotFound.Visible = false;
             pnlTenantBadge.Visible = true;
-            lblTenantBadge.Text = "Company " + dto.CompanyId;
+            lblTenantBadge.Text = FormatTenantBadge(dto.CompanyName, dto.CompanyId);
 
             lblTicketNumber.Text = "#" + dto.TicketNumber;
             lblTitle.Text = dto.Title;
@@ -263,7 +262,7 @@ namespace AnmolDristi.ITSM.UI
             divResolution.Visible = false;
             txtResolution.Text = string.Empty;
 
-            BindAgentDropdown(companyId);
+            BindAgentDropdown();
             BindPriorityDropdown();
 
             pnlApprovalActions.Visible = dto.CanApprove;
@@ -287,12 +286,27 @@ namespace AnmolDristi.ITSM.UI
                 : string.Empty;
         }
 
-        private void BindAgentDropdown(int companyId)
+        private static string FormatTenantBadge(string companyName, int? companyId)
+        {
+            if (!string.IsNullOrWhiteSpace(companyName))
+            {
+                return companyName.Trim();
+            }
+
+            if (companyId.HasValue)
+            {
+                return "Company " + companyId.Value;
+            }
+
+            return "Tenant not recorded";
+        }
+
+        private void BindAgentDropdown()
         {
             ddlReassignTo.Items.Clear();
             ddlReassignTo.AppendDataBoundItems = true;
             ddlReassignTo.Items.Add(new ListItem("-- Select Agent --", string.Empty));
-            ddlReassignTo.DataSource = new TicketListService().GetActiveAgents(companyId);
+            ddlReassignTo.DataSource = new TicketListService().GetActiveAgents();
             ddlReassignTo.DataTextField = "EmployeeName";
             ddlReassignTo.DataValueField = "EmployeeCode";
             ddlReassignTo.DataBind();
@@ -307,11 +321,6 @@ namespace AnmolDristi.ITSM.UI
             ddlOverridePriority.DataTextField = "Name";
             ddlOverridePriority.DataValueField = "Id";
             ddlOverridePriority.DataBind();
-        }
-
-        private int ResolveCompanyId()
-        {
-            return ItsmTenantContext.ResolveCompanyId(GetActorCode());
         }
 
         private string GetActorCode()

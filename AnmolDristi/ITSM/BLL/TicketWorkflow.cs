@@ -1,50 +1,75 @@
+// ========================================================================
+// When: 2026-08-21
+// What: Immutable ITIL transition map (IReadOnlyDictionary).
+// Why: public Dictionary remained mutable even when marked readonly.
+// ========================================================================
+
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data.Entity;
 using System.Linq;
 using AnmolDristi.ITSM.DAL;
-using AnmolDristi.ITSM.DAL.Entities;
 
 namespace AnmolDristi.ITSM.BLL
 {
-    /// <summary>
-    /// ITIL / ISO 20000 aligned lifecycle used by ITSM Phase 1.
-    /// Pending Approval is actioned only via Approve/Reject (SoD) — not free status change.
-    /// </summary>
     public static class TicketWorkflow
     {
-        public static readonly Dictionary<string, List<string>> ValidTransitions =
-            new Dictionary<string, List<string>>
+        private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> Transitions;
+
+        static TicketWorkflow()
+        {
+            var map = new Dictionary<string, IReadOnlyList<string>>
             {
-                { "New", new List<string> { "In Progress", "On Hold", "Cancelled" } },
-                { "In Progress", new List<string> { "Resolved", "On Hold", "Cancelled" } },
-                { "On Hold", new List<string> { "In Progress", "Cancelled" } },
-                { "Resolved", new List<string> { "Closed", "In Progress" } }
+                { "New", new ReadOnlyCollection<string>(new[] { "In Progress", "On Hold", "Cancelled" }) },
+                { "In Progress", new ReadOnlyCollection<string>(new[] { "Resolved", "On Hold", "Cancelled" }) },
+                { "On Hold", new ReadOnlyCollection<string>(new[] { "In Progress", "Cancelled" }) },
+                { "Resolved", new ReadOnlyCollection<string>(new[] { "Closed", "In Progress" }) }
             };
+            Transitions = new ReadOnlyDictionary<string, IReadOnlyList<string>>(map);
+        }
 
         public static List<TicketStatusDto> GetAvailableStatuses(
             ItsmDbContext context,
-            TicketStatus currentStatus)
+            string currentStatusName,
+            bool isTerminal)
         {
-            if (currentStatus == null || currentStatus.IsTerminal)
+            if (isTerminal || string.IsNullOrWhiteSpace(currentStatusName))
             {
                 return new List<TicketStatusDto>();
             }
 
-            List<string> validNextNames;
-            if (!ValidTransitions.TryGetValue(currentStatus.Name, out validNextNames))
+            IReadOnlyList<string> validNextNames;
+            if (!Transitions.TryGetValue(currentStatusName, out validNextNames))
             {
                 return new List<TicketStatusDto>();
             }
 
+            var nextNames = validNextNames.ToList();
             return context.TicketStatuses
                 .AsNoTracking()
-                .Where(s => s.IsActive && validNextNames.Contains(s.Name))
+                .Where(s => s.IsActive && nextNames.Contains(s.Name))
                 .Select(s => new TicketStatusDto
                 {
                     Id = s.Id,
                     Name = s.Name
                 })
                 .ToList();
+        }
+
+        public static bool IsValidTransition(string fromName, string toName)
+        {
+            if (string.IsNullOrWhiteSpace(fromName) || string.IsNullOrWhiteSpace(toName))
+            {
+                return false;
+            }
+
+            IReadOnlyList<string> next;
+            if (!Transitions.TryGetValue(fromName, out next))
+            {
+                return false;
+            }
+
+            return next.Contains(toName);
         }
     }
 }

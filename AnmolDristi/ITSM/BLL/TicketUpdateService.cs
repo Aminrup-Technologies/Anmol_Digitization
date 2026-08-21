@@ -1,3 +1,12 @@
+// ========================================================================
+// When: 2026-08-21
+// What: Process mutations use CanProcessTicket; Approve/Reject use
+//       CanApproveTicket; NULL CompanyId blocks mutation; audit copies
+//       ticket.CompanyId.Value; RowVersion on all six paths.
+// Why: Pending/historical approvers must not gain ChangeStatus/Reassign/
+//      OverridePriority/AddComment. Tenant 0 is not invented.
+// ========================================================================
+
 using System;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
@@ -24,13 +33,15 @@ namespace AnmolDristi.ITSM.BLL
     }
 
     /// <summary>
-    /// All ticket mutations + TicketAuditLog in one transaction (ITGC change control).
-    /// Tenant scope is requester CompanyId. Optimistic concurrency via RowVersion.
+    /// Ticket mutations + TicketAuditLog in one transaction.
+    /// Authoritative tenant is Ticket.CompanyId (immutable snapshot).
     /// </summary>
     public class TicketUpdateService
     {
+        private const string ConcurrencyMessage =
+            "This ticket was modified by another agent. Please refresh and re-apply your changes.";
+
         public TicketUpdateResult ChangeStatus(
-            int companyId,
             int ticketId,
             int targetStatusId,
             string actorCode,
@@ -42,10 +53,11 @@ namespace AnmolDristi.ITSM.BLL
             {
                 try
                 {
-                    var ticket = LoadScopedTicket(context, companyId, ticketId, rowVersion);
+                    string loadError;
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
-                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                        return TicketUpdateResult.Fail(loadError);
                     }
 
                     var targetStatus = context.TicketStatuses
@@ -64,8 +76,7 @@ namespace AnmolDristi.ITSM.BLL
                             "Cannot modify a ticket in terminal status: " + currentStatus.Name);
                     }
 
-                    if (!TicketWorkflow.ValidTransitions.ContainsKey(currentStatus.Name)
-                        || !TicketWorkflow.ValidTransitions[currentStatus.Name].Contains(targetStatus.Name))
+                    if (!TicketWorkflow.IsValidTransition(currentStatus.Name, targetStatus.Name))
                     {
                         return TicketUpdateResult.Fail(
                             "Invalid transition from '" + currentStatus.Name
@@ -95,7 +106,7 @@ namespace AnmolDristi.ITSM.BLL
                         ticket.ClosedOn = DateTime.Now;
                     }
 
-                    AddAudit(context, ticketId, companyId, "StatusChange",
+                    AddAudit(context, ticket, "StatusChange",
                         oldStatusName, targetStatus.Name, null, actorCode);
 
                     return Commit(context, transaction);
@@ -114,7 +125,6 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         public TicketUpdateResult ReassignTicket(
-            int companyId,
             int ticketId,
             string newAssigneeCode,
             string actorCode,
@@ -125,10 +135,11 @@ namespace AnmolDristi.ITSM.BLL
             {
                 try
                 {
-                    var ticket = LoadScopedTicket(context, companyId, ticketId, rowVersion);
+                    string loadError;
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
-                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                        return TicketUpdateResult.Fail(loadError);
                     }
 
                     if (!string.IsNullOrWhiteSpace(newAssigneeCode))
@@ -136,13 +147,12 @@ namespace AnmolDristi.ITSM.BLL
                         var assigneeOk = context.UserMasters
                             .AsNoTracking()
                             .Any(u => u.EmployeeCode == newAssigneeCode
-                                      && u.EmployeeStatus == "Active"
-                                      && u.CompanyId == companyId);
+                                      && u.EmployeeStatus == "Active");
 
                         if (!assigneeOk)
                         {
                             return TicketUpdateResult.Fail(
-                                "Target assignee is not an active user in this company.");
+                                "Target assignee is not an active user.");
                         }
                     }
 
@@ -160,7 +170,7 @@ namespace AnmolDristi.ITSM.BLL
                     ticket.ModifiedOn = DateTime.Now;
                     ticket.ModifiedByCode = actorCode;
 
-                    AddAudit(context, ticketId, companyId, "Reassignment",
+                    AddAudit(context, ticket, "Reassignment",
                         oldAssigneeCode ?? "Unassigned",
                         ticket.AssigneeCode ?? "Unassigned",
                         null, actorCode);
@@ -181,7 +191,6 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         public TicketUpdateResult OverridePriority(
-            int companyId,
             int ticketId,
             int newPriorityId,
             string actorCode,
@@ -199,10 +208,11 @@ namespace AnmolDristi.ITSM.BLL
             {
                 try
                 {
-                    var ticket = LoadScopedTicket(context, companyId, ticketId, rowVersion);
+                    string loadError;
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
-                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                        return TicketUpdateResult.Fail(loadError);
                     }
 
                     var newPriority = context.Priorities
@@ -231,7 +241,7 @@ namespace AnmolDristi.ITSM.BLL
                     ticket.ModifiedOn = DateTime.Now;
                     ticket.ModifiedByCode = actorCode;
 
-                    AddAudit(context, ticketId, companyId, "PriorityOverride",
+                    AddAudit(context, ticket, "PriorityOverride",
                         oldPriorityName, newPriority.Name, reason.Trim(), actorCode);
 
                     return Commit(context, transaction);
@@ -250,7 +260,6 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         public TicketUpdateResult ApproveTicket(
-            int companyId,
             int ticketId,
             string approverCode,
             string comments,
@@ -261,10 +270,11 @@ namespace AnmolDristi.ITSM.BLL
             {
                 try
                 {
-                    var ticket = LoadScopedTicket(context, companyId, ticketId, rowVersion);
+                    string loadError;
+                    var ticket = LoadForApprove(context, ticketId, approverCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
-                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                        return TicketUpdateResult.Fail(loadError);
                     }
 
                     if (string.Equals(ticket.RequesterCode, approverCode, StringComparison.OrdinalIgnoreCase))
@@ -325,7 +335,7 @@ namespace AnmolDristi.ITSM.BLL
                     ticket.ModifiedOn = DateTime.Now;
                     ticket.ModifiedByCode = approverCode;
 
-                    AddAudit(context, ticketId, companyId, "Approval",
+                    AddAudit(context, ticket, "Approval",
                         "Pending", stillPending ? "Approved (partial)" : "Approved",
                         comments, approverCode);
 
@@ -345,7 +355,6 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         public TicketUpdateResult RejectTicket(
-            int companyId,
             int ticketId,
             string approverCode,
             string reason,
@@ -362,10 +371,11 @@ namespace AnmolDristi.ITSM.BLL
             {
                 try
                 {
-                    var ticket = LoadScopedTicket(context, companyId, ticketId, rowVersion);
+                    string loadError;
+                    var ticket = LoadForApprove(context, ticketId, approverCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
-                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                        return TicketUpdateResult.Fail(loadError);
                     }
 
                     if (string.Equals(ticket.RequesterCode, approverCode, StringComparison.OrdinalIgnoreCase))
@@ -424,7 +434,7 @@ namespace AnmolDristi.ITSM.BLL
                     ticket.ModifiedOn = DateTime.Now;
                     ticket.ModifiedByCode = approverCode;
 
-                    AddAudit(context, ticketId, companyId, "Rejection",
+                    AddAudit(context, ticket, "Rejection",
                         "Pending Approval",
                         rejectedStatus != null ? rejectedStatus.Name : "Rejected",
                         reason.Trim(), approverCode);
@@ -445,11 +455,11 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         public TicketUpdateResult AddComment(
-            int companyId,
             int ticketId,
             string commentText,
             string actorCode,
-            bool isInternal)
+            bool isInternal,
+            byte[] rowVersion)
         {
             if (string.IsNullOrWhiteSpace(commentText))
             {
@@ -461,10 +471,11 @@ namespace AnmolDristi.ITSM.BLL
             {
                 try
                 {
-                    var ticket = LoadScopedTicket(context, companyId, ticketId, null);
+                    string loadError;
+                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
-                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                        return TicketUpdateResult.Fail(loadError);
                     }
 
                     if (isInternal
@@ -484,12 +495,20 @@ namespace AnmolDristi.ITSM.BLL
                         IsInternal = isInternal
                     });
 
-                    AddAudit(context, ticketId, companyId, "Comment",
+                    ticket.ModifiedOn = DateTime.Now;
+                    ticket.ModifiedByCode = actorCode;
+
+                    AddAudit(context, ticket, "Comment",
                         null, null,
                         (isInternal ? "[Internal] " : "") + commentText.Trim(),
                         actorCode);
 
                     return Commit(context, transaction);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    transaction.Rollback();
+                    return ConcurrencyFail();
                 }
                 catch (Exception)
                 {
@@ -499,28 +518,90 @@ namespace AnmolDristi.ITSM.BLL
             }
         }
 
-        private static Ticket LoadScopedTicket(
+        private static Ticket LoadForProcess(
             ItsmDbContext context,
-            int companyId,
             int ticketId,
-            byte[] rowVersion)
+            string actorCode,
+            byte[] rowVersion,
+            out string error)
         {
-            var ticket = context.Tickets
-                .FirstOrDefault(t => t.Id == ticketId
-                                    && t.Requester.CompanyId == companyId);
-
-            if (ticket != null && rowVersion != null && rowVersion.Length > 0)
+            var ticket = LoadMutableTicket(context, ticketId, rowVersion, out error);
+            if (ticket == null)
             {
-                context.Entry(ticket).Property(x => x.RowVersion).OriginalValue = rowVersion;
+                return null;
             }
 
+            if (!ItsmTicketAccess.CanProcessTicket(actorCode, ticket.RequesterCode, ticket.AssigneeCode))
+            {
+                error = "Ticket not found or access denied.";
+                return null;
+            }
+
+            return RequireRecordedTenant(ticket, out error);
+        }
+
+        private static Ticket LoadForApprove(
+            ItsmDbContext context,
+            int ticketId,
+            string actorCode,
+            byte[] rowVersion,
+            out string error)
+        {
+            var ticket = LoadMutableTicket(context, ticketId, rowVersion, out error);
+            if (ticket == null)
+            {
+                return null;
+            }
+
+            if (!ItsmTicketAccess.CanApproveTicket(context, ticket.Id, actorCode, ticket.RequesterCode))
+            {
+                error = "Ticket not found or access denied.";
+                return null;
+            }
+
+            return RequireRecordedTenant(ticket, out error);
+        }
+
+        private static Ticket LoadMutableTicket(
+            ItsmDbContext context,
+            int ticketId,
+            byte[] rowVersion,
+            out string error)
+        {
+            if (rowVersion == null || rowVersion.Length == 0)
+            {
+                error = ConcurrencyMessage;
+                return null;
+            }
+
+            var ticket = context.Tickets.FirstOrDefault(t => t.Id == ticketId);
+            if (ticket == null)
+            {
+                error = "Ticket not found or access denied.";
+                return null;
+            }
+
+            context.Entry(ticket).Property(x => x.RowVersion).OriginalValue = rowVersion;
+            error = null;
+            return ticket;
+        }
+
+        private static Ticket RequireRecordedTenant(Ticket ticket, out string error)
+        {
+            if (!ticket.CompanyId.HasValue)
+            {
+                error = "This ticket has no recorded tenant (CompanyId). "
+                    + "Mutations are blocked until tenant ownership is remediated.";
+                return null;
+            }
+
+            error = null;
             return ticket;
         }
 
         private static void AddAudit(
             ItsmDbContext context,
-            int ticketId,
-            int companyId,
+            Ticket ticket,
             string actionType,
             string oldValue,
             string newValue,
@@ -529,8 +610,8 @@ namespace AnmolDristi.ITSM.BLL
         {
             context.TicketAuditLogs.Add(new TicketAuditLog
             {
-                TicketId = ticketId,
-                CompanyId = companyId,
+                TicketId = ticket.Id,
+                CompanyId = ticket.CompanyId.Value,
                 ActionType = Truncate(actionType, 50),
                 OldValue = Truncate(oldValue, 200),
                 NewValue = Truncate(newValue, 200),
@@ -561,8 +642,7 @@ namespace AnmolDristi.ITSM.BLL
 
         private static TicketUpdateResult ConcurrencyFail()
         {
-            return TicketUpdateResult.Fail(
-                "This ticket was modified by another agent. Please refresh and re-apply your changes.");
+            return TicketUpdateResult.Fail(ConcurrencyMessage);
         }
     }
 }

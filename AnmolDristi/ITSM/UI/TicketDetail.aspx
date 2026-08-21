@@ -1,12 +1,11 @@
 <%-- ========================================================================
      File:    TicketDetail.aspx
      Layer:   UI — Presentation
-     When:    2026-08-20
-     What:    Ticket processing surface — status transitions, reassignment,
-              priority override, approval, comments, and audit history.
-     Why:     Phase 1B agent-facing detail view. Mutations go through
-              TicketUpdateService. Session gate is WORKMAN + USERID.
-              Tenant is MST_UserMaster.CompanyId of the signed-in user (ITGC).
+     When:    2026-08-21
+     What:    Ticket processing surface. Tenant badge shows MST_Company name
+              from Ticket.CompanyId. Session gate is WORKMAN + USERID + BRANCH.
+     Why:    Actor CompanyId is not ticket tenant. Shared-service agents
+              process authorized tickets across companies.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Ticket Detail" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="TicketDetail.aspx.cs"

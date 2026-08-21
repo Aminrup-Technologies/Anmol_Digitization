@@ -1,9 +1,18 @@
+// ========================================================================
+// When: 2026-08-21
+// What: Ticket detail from Ticket.CompanyId; AsNoTracking Select into DTO;
+//       CompanyName via dbo.MST_Company.Company_ID; CanViewTicket;
+//       CanAddInternalNote requires CanProcessTicket plus existing
+//       requester internal-note policy (pending approver does not see internals).
+// Why: View is not process. A view-only pending approver must not be
+//      advertised internal-note capability or shown internal comments.
+// ========================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using AnmolDristi.ITSM.DAL;
-using AnmolDristi.ITSM.DAL.Entities;
 
 namespace AnmolDristi.ITSM.BLL
 {
@@ -36,7 +45,8 @@ namespace AnmolDristi.ITSM.BLL
         public DateTime? ResolvedOn { get; set; }
         public DateTime? ClosedOn { get; set; }
         public string CreatedByCode { get; set; }
-        public int CompanyId { get; set; }
+        public int? CompanyId { get; set; }
+        public string CompanyName { get; set; }
         public bool CanApprove { get; set; }
         public bool CanAddInternalNote { get; set; }
         public byte[] RowVersion { get; set; }
@@ -81,42 +91,84 @@ namespace AnmolDristi.ITSM.BLL
         public string Name { get; set; }
     }
 
+    /// <summary>
+    /// Read-only ticket detail. Tenant is Ticket.CompanyId (immutable snapshot).
+    /// View uses CanViewTicket; TicketId is not sufficient authorization.
+    /// </summary>
     public class TicketDetailService
     {
-        public TicketDetailDto GetTicketDetail(int companyId, int ticketId, string viewerCode)
+        public TicketDetailDto GetTicketDetail(int ticketId, string actorCode)
         {
+            if (string.IsNullOrWhiteSpace(actorCode))
+            {
+                throw new ArgumentException("Actor is required.", "actorCode");
+            }
+
             using (var context = new ItsmDbContext())
             {
-                var ticket = context.Tickets
-                    .AsNoTracking()
-                    .Include(t => t.Requester)
-                    .Include(t => t.Assignee)
-                    .Include(t => t.RequestType)
-                    .Include(t => t.Category)
-                    .Include(t => t.SubCategory)
-                    .Include(t => t.Item)
-                    .Include(t => t.Branch)
-                    .Include(t => t.Impact)
-                    .Include(t => t.Urgency)
-                    .Include(t => t.Priority)
-                    .Include(t => t.Status)
-                    .FirstOrDefault(t => t.Id == ticketId
-                                        && t.Requester.CompanyId == companyId);
+                var dto = (from t in context.Tickets.AsNoTracking()
+                           where t.Id == ticketId
+                           join c in context.Companies.AsNoTracking()
+                               on t.CompanyId equals (int?)c.Company_ID into companyJoin
+                           from c in companyJoin.DefaultIfEmpty()
+                           select new TicketDetailDto
+                           {
+                               Id = t.Id,
+                               TicketNumber = t.TicketNumber,
+                               Title = t.Title,
+                               Description = t.Description,
+                               RequesterCode = t.RequesterCode,
+                               RequesterName = t.Requester != null ? t.Requester.EmployeeName : t.RequesterCode,
+                               AssigneeCode = t.AssigneeCode,
+                               AssigneeName = t.Assignee != null ? t.Assignee.EmployeeName : "Unassigned",
+                               RequestTypeName = t.RequestType.Code + " - " + t.RequestType.Name,
+                               CategoryName = t.Category.Name,
+                               SubCategoryName = t.SubCategory != null ? t.SubCategory.Name : null,
+                               ItemName = t.Item != null ? t.Item.Name : null,
+                               BranchName = t.Branch.Branch_Description,
+                               ImpactName = t.Impact.Name,
+                               UrgencyName = t.Urgency.Name,
+                               PriorityName = t.Priority.Name,
+                               PriorityId = t.PriorityId,
+                               StatusId = t.StatusId,
+                               StatusName = t.Status.Name,
+                               IsTerminal = t.Status.IsTerminal,
+                               ResolutionText = t.ResolutionText,
+                               CsatScore = t.CsatScore,
+                               CsatFeedback = t.CsatFeedback,
+                               CreatedOn = t.CreatedOn,
+                               ResolvedOn = t.ResolvedOn,
+                               ClosedOn = t.ClosedOn,
+                               CreatedByCode = t.CreatedByCode,
+                               CompanyId = t.CompanyId,
+                               CompanyName = c != null ? c.Company_Description : null,
+                               RowVersion = t.RowVersion
+                           }).FirstOrDefault();
 
-                if (ticket == null)
+                if (dto == null)
                 {
                     return null;
                 }
 
-                var dto = MapToDetailDto(ticket);
+                if (!ItsmTicketAccess.CanViewTicket(
+                    context,
+                    ticketId,
+                    actorCode,
+                    dto.RequesterCode,
+                    dto.AssigneeCode))
+                {
+                    return null;
+                }
+
                 dto.CanApprove = context.TicketApprovals
                     .AsNoTracking()
                     .Any(a => a.TicketId == ticketId
-                              && a.ApproverCode == viewerCode
+                              && a.ApproverCode == actorCode
                               && a.ApprovalStatus == "Pending");
                 dto.CanAddInternalNote =
-                    !string.Equals(ticket.RequesterCode, viewerCode, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(ticket.AssigneeCode, viewerCode, StringComparison.OrdinalIgnoreCase);
+                    ItsmTicketAccess.CanProcessTicket(actorCode, dto.RequesterCode, dto.AssigneeCode)
+                    && (!string.Equals(dto.RequesterCode, actorCode, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(dto.AssigneeCode, actorCode, StringComparison.OrdinalIgnoreCase));
 
                 var commentsQuery = context.TicketComments
                     .AsNoTracking()
@@ -158,90 +210,28 @@ namespace AnmolDristi.ITSM.BLL
                     })
                     .ToList();
 
-                var auditRows = context.TicketAuditLogs
-                    .AsNoTracking()
-                    .Where(a => a.TicketId == ticketId && a.CompanyId == companyId)
-                    .OrderByDescending(a => a.ActionedOn)
-                    .ToList();
+                dto.AuditHistory = (from a in context.TicketAuditLogs.AsNoTracking()
+                                    where a.TicketId == ticketId
+                                    join u in context.UserMasters.AsNoTracking()
+                                        on a.ActorCode equals u.EmployeeCode into actorJoin
+                                    from u in actorJoin.DefaultIfEmpty()
+                                    orderby a.ActionedOn descending
+                                    select new TicketAuditLogDto
+                                    {
+                                        ActionType = a.ActionType,
+                                        OldValue = a.OldValue,
+                                        NewValue = a.NewValue,
+                                        Detail = a.Detail,
+                                        ActorName = u != null ? u.EmployeeName : a.ActorCode,
+                                        ActionedOn = a.ActionedOn
+                                    }).ToList();
 
-                var actorCodes = auditRows
-                    .Select(a => a.ActorCode)
-                    .Distinct()
-                    .ToList();
-
-                var actorNames = context.UserMasters
-                    .AsNoTracking()
-                    .Where(u => actorCodes.Contains(u.EmployeeCode))
-                    .ToList()
-                    .ToDictionary(u => u.EmployeeCode, u => u.EmployeeName);
-
-                dto.AuditHistory = auditRows.Select(a =>
-                {
-                    string actorName;
-                    if (!actorNames.TryGetValue(a.ActorCode, out actorName))
-                    {
-                        actorName = a.ActorCode;
-                    }
-
-                    return new TicketAuditLogDto
-                    {
-                        ActionType = a.ActionType,
-                        OldValue = a.OldValue,
-                        NewValue = a.NewValue,
-                        Detail = a.Detail,
-                        ActorName = actorName,
-                        ActionedOn = a.ActionedOn
-                    };
-                }).ToList();
-
-                dto.AvailableStatuses = TicketWorkflow.GetAvailableStatuses(context, ticket.Status);
-
+                dto.AvailableStatuses = TicketWorkflow.GetAvailableStatuses(
+                    context,
+                    dto.StatusName,
+                    dto.IsTerminal);
                 return dto;
             }
-        }
-
-        private static TicketDetailDto MapToDetailDto(Ticket ticket)
-        {
-            return new TicketDetailDto
-            {
-                Id = ticket.Id,
-                TicketNumber = ticket.TicketNumber,
-                Title = ticket.Title,
-                Description = ticket.Description,
-                RequesterCode = ticket.RequesterCode,
-                RequesterName = ticket.Requester != null
-                    ? ticket.Requester.EmployeeName
-                    : ticket.RequesterCode,
-                AssigneeCode = ticket.AssigneeCode,
-                AssigneeName = ticket.Assignee != null
-                    ? ticket.Assignee.EmployeeName
-                    : "Unassigned",
-                RequestTypeName = ticket.RequestType != null
-                    ? ticket.RequestType.Code + " - " + ticket.RequestType.Name
-                    : "",
-                CategoryName = ticket.Category != null ? ticket.Category.Name : "",
-                SubCategoryName = ticket.SubCategory != null ? ticket.SubCategory.Name : "",
-                ItemName = ticket.Item != null ? ticket.Item.Name : "",
-                BranchName = ticket.Branch != null ? ticket.Branch.Branch_Description : "",
-                ImpactName = ticket.Impact != null ? ticket.Impact.Name : "",
-                UrgencyName = ticket.Urgency != null ? ticket.Urgency.Name : "",
-                PriorityName = ticket.Priority != null ? ticket.Priority.Name : "",
-                PriorityId = ticket.PriorityId,
-                StatusId = ticket.StatusId,
-                StatusName = ticket.Status != null ? ticket.Status.Name : "",
-                IsTerminal = ticket.Status != null && ticket.Status.IsTerminal,
-                ResolutionText = ticket.ResolutionText,
-                CsatScore = ticket.CsatScore,
-                CsatFeedback = ticket.CsatFeedback,
-                CreatedOn = ticket.CreatedOn,
-                ResolvedOn = ticket.ResolvedOn,
-                ClosedOn = ticket.ClosedOn,
-                CreatedByCode = ticket.CreatedByCode,
-                CompanyId = ticket.Requester != null && ticket.Requester.CompanyId.HasValue
-                    ? ticket.Requester.CompanyId.Value
-                    : 0,
-                RowVersion = ticket.RowVersion
-            };
         }
     }
 }

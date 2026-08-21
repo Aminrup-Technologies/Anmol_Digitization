@@ -1,11 +1,11 @@
 <%-- ========================================================================
      File:    TicketList.aspx
      Layer:   UI — Presentation
-     When:    2026-08-20
-     What:    Agent ticket queue surface with GridView binding to flattened DTOs.
-     Why:     Phase 1B agent processing — displays tickets assigned to the
-              current agent with server-side filtering and tenant isolation.
-              GridView binds directly to TicketListItemDto list (requirement §14).
+     When:    2026-08-21
+     What:    Agent ticket queues bound to TicketListItemDto. Session gate is
+              WORKMAN + USERID + BRANCH. Queues are not filtered by actor company.
+     Why:     Shared-service agents work tickets across companies. Ticket.CompanyId
+              is the tenant; BranchId remains a routing filter only.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Ticket Queue" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="TicketList.aspx.cs"

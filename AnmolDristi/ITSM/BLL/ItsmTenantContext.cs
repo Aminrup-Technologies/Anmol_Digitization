@@ -1,3 +1,10 @@
+// ========================================================================
+// When: 2026-08-21
+// What: Documented as live UserMaster.CompanyId lookup only — not ticket tenant.
+// Why: Ticket.CompanyId is the authoritative tenant; this helper must not
+//      gate TicketDetail / TicketUpdate.
+// ========================================================================
+
 using System.Data.Entity;
 using System.Linq;
 using AnmolDristi.ITSM.DAL;
@@ -5,8 +12,9 @@ using AnmolDristi.ITSM.DAL;
 namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
-    /// Resolves the ITGC tenant boundary from the authenticated employee.
-    /// CompanyId is taken from dbo.MST_UserMaster — never from ticket URL or ViewState.
+    /// Resolves the signed-in employee's current MST_UserMaster.CompanyId.
+    /// This is live HRMS data — not ticket tenant ownership. Do not use as
+    /// a TicketDetail / TicketUpdate authorization gate.
     /// </summary>
     public static class ItsmTenantContext
     {
