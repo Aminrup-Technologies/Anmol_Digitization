@@ -1,7 +1,9 @@
 // ========================================================================
 // When: 2026-08-21
-// What: Ticket access by requester/assignee/approver or non-terminal shared queue.
-// Why: Actor CompanyId is not ticket tenant; TicketId alone is not authorization.
+// What: Ticket access is requester OR current assignee OR TicketApprovals row.
+//       Non-terminal status is not authorization.
+// Why: Queue visibility (All Open) is not ticket authorization. An authenticated
+//      agent plus an arbitrary TicketID must not grant access.
 // ========================================================================
 
 using System;
@@ -11,6 +13,11 @@ using AnmolDristi.ITSM.DAL;
 
 namespace AnmolDristi.ITSM.BLL
 {
+    /// <summary>
+    /// Ticket-level authorization from stored relationships only.
+    /// SupportMapping is create-time dispatch (sets AssigneeCode); it is not a live ACL.
+    /// App RBAC (UI.ITSM.*) is not registered on these pages — do not invent it here.
+    /// </summary>
     internal static class ItsmTicketAccess
     {
         public static bool CanAccess(
@@ -18,8 +25,7 @@ namespace AnmolDristi.ITSM.BLL
             int ticketId,
             string actorCode,
             string requesterCode,
-            string assigneeCode,
-            bool isTerminal)
+            string assigneeCode)
         {
             if (string.IsNullOrWhiteSpace(actorCode))
             {
@@ -37,13 +43,8 @@ namespace AnmolDristi.ITSM.BLL
                 return true;
             }
 
-            if (context.TicketApprovals.AsNoTracking()
-                .Any(a => a.TicketId == ticketId && a.ApproverCode == actorCode))
-            {
-                return true;
-            }
-
-            return !isTerminal;
+            return context.TicketApprovals.AsNoTracking()
+                .Any(a => a.TicketId == ticketId && a.ApproverCode == actorCode);
         }
     }
 }

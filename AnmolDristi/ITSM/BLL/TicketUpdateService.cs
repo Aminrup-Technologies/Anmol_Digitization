@@ -1,10 +1,10 @@
 // ========================================================================
 // When: 2026-08-21
-// What: Mutations keyed by TicketId + ticket-level access; tenant is
-//       Ticket.CompanyId; all six paths require RowVersion; audit uses
-//       ticket.CompanyId; reassignment does not change CompanyId/BranchId/PlantId.
-// Why: Actor/requester/assignee CompanyId is not ticket ownership. Shared
-//      services must process Company B tickets when authorized.
+// What: Mutations require a ticket relationship (not non-terminal status);
+//       NULL CompanyId blocks mutation (no tenant 0); audit copies
+//       ticket.CompanyId; RowVersion on all six paths; reassignment is AssigneeCode only.
+// Why: Arbitrary TicketID must not authorize. Historical NULL tenant must
+//      not be invented as CompanyId 0.
 // ========================================================================
 
 using System;
@@ -538,20 +538,21 @@ namespace AnmolDristi.ITSM.BLL
                 return null;
             }
 
-            var isTerminal = context.TicketStatuses
-                .Where(s => s.Id == ticket.StatusId)
-                .Select(s => s.IsTerminal)
-                .FirstOrDefault();
-
             if (!ItsmTicketAccess.CanAccess(
                 context,
                 ticket.Id,
                 actorCode,
                 ticket.RequesterCode,
-                ticket.AssigneeCode,
-                isTerminal))
+                ticket.AssigneeCode))
             {
                 error = "Ticket not found or access denied.";
+                return null;
+            }
+
+            if (!ticket.CompanyId.HasValue)
+            {
+                error = "This ticket has no recorded tenant (CompanyId). "
+                    + "Mutations are blocked until tenant ownership is remediated.";
                 return null;
             }
 
@@ -572,7 +573,7 @@ namespace AnmolDristi.ITSM.BLL
             context.TicketAuditLogs.Add(new TicketAuditLog
             {
                 TicketId = ticket.Id,
-                CompanyId = ticket.CompanyId ?? 0,
+                CompanyId = ticket.CompanyId.Value,
                 ActionType = Truncate(actionType, 50),
                 OldValue = Truncate(oldValue, 200),
                 NewValue = Truncate(newValue, 200),

@@ -1,9 +1,10 @@
 // ========================================================================
 // When: 2026-08-21
 // What: Ticket detail from Ticket.CompanyId; AsNoTracking Select into DTO;
-//       CompanyName via dbo.MST_Company.Company_ID; ticket-level CanAccess.
-// Why: Actor CompanyId is not ticket tenant. Shared-service agents must
-//      open authorized Company B tickets without an actor-company gate.
+//       CompanyName via dbo.MST_Company.Company_ID; relationship CanAccess
+//       (requester / assignee / approver — not non-terminal status).
+// Why: Actor CompanyId is not ticket tenant. Non-terminal status is not
+//      authorization for an arbitrary TicketID.
 // ========================================================================
 
 using System;
@@ -153,8 +154,7 @@ namespace AnmolDristi.ITSM.BLL
                     ticketId,
                     actorCode,
                     dto.RequesterCode,
-                    dto.AssigneeCode,
-                    dto.IsTerminal))
+                    dto.AssigneeCode))
                 {
                     return null;
                 }
