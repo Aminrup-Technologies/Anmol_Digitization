@@ -1,6 +1,5 @@
 using System;
 using System.Data.Entity;
-using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
 using System.Web.UI.WebControls;
@@ -93,8 +92,7 @@ namespace AnmolDristi.ITSM.UI
             }
             catch (Exception ex)
             {
-                var diag = FormatExceptionChain(ex);
-                ShowMessage("Unable to create ticket: " + diag, false);
+                ShowMessage("Unable to create ticket: " + ex.Message, false);
             }
         }
 
@@ -266,35 +264,6 @@ namespace AnmolDristi.ITSM.UI
         {
             lblMessage.Text = message;
             lblMessage.ForeColor = success ? Color.Green : Color.Red;
-        }
-
-        /// <summary>
-        /// Traverses the full exception chain and extracts SqlException details.
-        /// Diagnostic-only: does not change business behavior or swallow exceptions.
-        /// </summary>
-        private static string FormatExceptionChain(Exception ex)
-        {
-            if (ex == null)
-            {
-                return string.Empty;
-            }
-
-            var current = ex;
-            while (current.InnerException != null)
-            {
-                current = current.InnerException;
-            }
-
-            var sqlEx = current as SqlException;
-            if (sqlEx != null)
-            {
-                return string.Format(
-                    "SQL Error {0}: {1}",
-                    sqlEx.Number,
-                    sqlEx.Message);
-            }
-
-            return current.Message ?? ex.Message;
         }
     }
 }
