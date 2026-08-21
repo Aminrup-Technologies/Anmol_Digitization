@@ -1775,6 +1775,12 @@
     <EmbeddedResource Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.resx">
       <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608201200000_AddTicketAuditLog.resx">
+      <DependentUpon>202608201200000_AddTicketAuditLog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.resx">
+      <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
+    </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
