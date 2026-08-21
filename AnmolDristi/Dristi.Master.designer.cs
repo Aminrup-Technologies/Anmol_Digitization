@@ -400,6 +400,21 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl VMS_ReceptionistLogs;
         
         /// <summary>
+        /// ITSM_Module control. Visibility: UI.ITSM_Module.View
+        /// </summary>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_Module;
+        
+        /// <summary>
+        /// ITSM_TicketList control. Visibility: UI.ITSM_TicketList.View
+        /// </summary>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_TicketList;
+        
+        /// <summary>
+        /// ITSM_CreateTicket control. Visibility: UI.ITSM_CreateTicket.View
+        /// </summary>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_CreateTicket;
+        
+        /// <summary>
         /// ProfilePic_2 control.
         /// </summary>
         /// <remarks>

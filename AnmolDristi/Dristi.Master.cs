@@ -513,7 +513,7 @@ namespace AnmolDristi
                 string clientScript = @"
             try { localStorage.setItem('app_logout', JSON.stringify({ ts: Date.now(), reason: 'user_logout' })); } catch(e) {}
             try { sessionStorage.removeItem('ActiveLoginToken'); sessionStorage.removeItem('ActiveSessionId'); } catch(e) {}
-            setTimeout(function(){ window.location.href = 'login.aspx'; }, 150);";
+            setTimeout(function(){ window.location.href = window.__loginUrl; }, 150);";
 
                 if (ScriptManager.GetCurrent(this.Page) != null)
                 {
