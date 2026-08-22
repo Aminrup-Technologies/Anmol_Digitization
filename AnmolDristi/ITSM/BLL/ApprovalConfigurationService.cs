@@ -3,6 +3,10 @@
 // What: ApprovalConfigurationService — manages request-type approval flags
 //       and the global IT Head approver configuration.
 // Why: Prompt 1.6 — IT Head is administratively configurable, not hard-coded.
+//       Privileged changes now require the authenticated actor code and the
+//       IT Head switch is performed in a transaction-safe sequence so the
+//       filtered unique active-row index cannot be violated by SaveChanges
+//       ordering.
 // ========================================================================
 
 using System;
@@ -13,9 +17,6 @@ using AnmolDristi.ITSM.DAL.Entities;
 
 namespace AnmolDristi.ITSM.BLL
 {
-    /// <summary>
-    /// DTO for request-type approval configuration display/edit.
-    /// </summary>
     public class RequestTypeConfigDto
     {
         public int Id { get; set; }
@@ -26,9 +27,6 @@ namespace AnmolDristi.ITSM.BLL
         public bool IsActive { get; set; }
     }
 
-    /// <summary>
-    /// DTO for IT Head configuration display/edit.
-    /// </summary>
     public class ItHeadConfigDto
     {
         public int Id { get; set; }
@@ -44,11 +42,6 @@ namespace AnmolDristi.ITSM.BLL
     /// </summary>
     public class ApprovalConfigurationService
     {
-        // --- Request Type Configuration ---
-
-        /// <summary>
-        /// Returns all request types with approval flags for admin display.
-        /// </summary>
         public System.Collections.Generic.List<RequestTypeConfigDto> GetRequestTypes()
         {
             using (var context = new ItsmDbContext())
@@ -71,30 +64,49 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         /// <summary>
-        /// Updates approval flags for a specific request type.
+        /// Updates request-type approval flags.
+        /// The actor is required so the UI cannot perform an anonymous BLL mutation.
         /// </summary>
-        public void UpdateRequestTypeApproval(int requestTypeId, bool requiresManager, bool requiresItHead)
+        public void UpdateRequestTypeApproval(
+            int requestTypeId,
+            bool requiresManager,
+            bool requiresItHead,
+            string actorCode)
         {
-            using (var context = new ItsmDbContext())
+            if (string.IsNullOrWhiteSpace(actorCode))
             {
-                var requestType = context.RequestTypes.FirstOrDefault(r => r.Id == requestTypeId);
-                if (requestType == null)
-                {
-                    throw new InvalidOperationException("Request type not found: " + requestTypeId);
-                }
+                throw new ArgumentException("Actor code is required.", nameof(actorCode));
+            }
 
-                requestType.RequiresManagerApproval = requiresManager;
-                requestType.RequiresItHeadApproval = requiresItHead;
-                context.SaveChanges();
+            using (var context = new ItsmDbContext())
+            using (var transaction = context.Database.BeginTransaction())
+            {
+                try
+                {
+                    EnsureActiveActor(context, actorCode);
+
+                    var requestType = context.RequestTypes
+                        .FirstOrDefault(r => r.Id == requestTypeId && r.IsActive);
+
+                    if (requestType == null)
+                    {
+                        throw new InvalidOperationException(
+                            "Request type not found: " + requestTypeId);
+                    }
+
+                    requestType.RequiresManagerApproval = requiresManager;
+                    requestType.RequiresItHeadApproval = requiresItHead;
+                    context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch
+                {
+                    transaction.Rollback();
+                    throw;
+                }
             }
         }
 
-        // --- IT Head Configuration ---
-
-        /// <summary>
-        /// Returns the currently active IT Head configuration.
-        /// Returns null if no active configuration exists.
-        /// </summary>
         public ItHeadConfigDto GetActiveItHead()
         {
             using (var context = new ItsmDbContext())
@@ -118,9 +130,6 @@ namespace AnmolDristi.ITSM.BLL
             }
         }
 
-        /// <summary>
-        /// Returns all IT Head configurations (for admin history view).
-        /// </summary>
         public System.Collections.Generic.List<ItHeadConfigDto> GetAllItHeadConfigs()
         {
             using (var context = new ItsmDbContext())
@@ -146,8 +155,10 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         /// <summary>
-        /// Sets the active IT Head approver. Deactivates any previously active configuration.
-        /// Validates that the employee is active in MST_UserMaster.
+        /// Sets the active IT Head approver.
+        /// Existing active rows are committed inactive before a new/existing row
+        /// is activated, preventing the filtered unique index from being hit by
+        /// EF6 update ordering in a single SaveChanges call.
         /// </summary>
         public void SetActiveItHead(string employeeCode, string actorCode)
         {
@@ -156,64 +167,87 @@ namespace AnmolDristi.ITSM.BLL
                 throw new ArgumentException("Employee code is required.", nameof(employeeCode));
             }
 
-            using (var context = new ItsmDbContext())
+            if (string.IsNullOrWhiteSpace(actorCode))
             {
-                // Validate the employee exists and is active.
-                var employee = context.UserMasters
-                    .AsNoTracking()
-                    .FirstOrDefault(u => u.EmployeeCode == employeeCode);
+                throw new ArgumentException("Actor code is required.", nameof(actorCode));
+            }
 
-                if (employee == null)
+            using (var context = new ItsmDbContext())
+            using (var transaction = context.Database.BeginTransaction())
+            {
+                try
                 {
-                    throw new InvalidOperationException(
-                        "Employee not found: " + employeeCode);
-                }
+                    EnsureActiveActor(context, actorCode);
 
-                if (!string.Equals(employee.EmployeeStatus, "Active", StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidOperationException(
-                        "Employee is not active: " + employeeCode + " (" + employee.EmployeeName + ")");
-                }
+                    var employee = context.UserMasters
+                        .AsNoTracking()
+                        .FirstOrDefault(u => u.EmployeeCode == employeeCode);
 
-                // Deactivate all existing configurations.
-                var existing = context.ApprovalConfigurations
-                    .Where(ac => ac.IsActive)
-                    .ToList();
-
-                foreach (var config in existing)
-                {
-                    config.IsActive = false;
-                    config.ModifiedOn = DateTime.Now;
-                }
-
-                // Check if a configuration for this employee already exists.
-                var existingForEmployee = context.ApprovalConfigurations
-                    .FirstOrDefault(ac => ac.ItHeadApproverCode == employeeCode);
-
-                if (existingForEmployee != null)
-                {
-                    // Reactivate existing row.
-                    existingForEmployee.IsActive = true;
-                    existingForEmployee.ModifiedOn = DateTime.Now;
-                }
-                else
-                {
-                    // Create new configuration.
-                    context.ApprovalConfigurations.Add(new ApprovalConfiguration
+                    if (employee == null)
                     {
-                        ItHeadApproverCode = employeeCode,
-                        IsActive = true,
-                        CreatedOn = DateTime.Now
-                    });
-                }
+                        throw new InvalidOperationException(
+                            "Employee not found: " + employeeCode);
+                    }
 
-                context.SaveChanges();
+                    if (!string.Equals(
+                        employee.EmployeeStatus,
+                        "Active",
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException(
+                            "Employee is not active: " + employeeCode
+                            + " (" + employee.EmployeeName + ")");
+                    }
+
+                    var activeConfig = context.ApprovalConfigurations
+                        .FirstOrDefault(ac => ac.IsActive);
+
+                    if (activeConfig != null
+                        && string.Equals(
+                            activeConfig.ItHeadApproverCode,
+                            employeeCode,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        transaction.Commit();
+                        return;
+                    }
+
+                    if (activeConfig != null)
+                    {
+                        activeConfig.IsActive = false;
+                        activeConfig.ModifiedOn = DateTime.Now;
+                        context.SaveChanges();
+                    }
+
+                    var existingForEmployee = context.ApprovalConfigurations
+                        .FirstOrDefault(ac => ac.ItHeadApproverCode == employeeCode);
+
+                    if (existingForEmployee != null)
+                    {
+                        existingForEmployee.IsActive = true;
+                        existingForEmployee.ModifiedOn = DateTime.Now;
+                    }
+                    else
+                    {
+                        context.ApprovalConfigurations.Add(new ApprovalConfiguration
+                        {
+                            ItHeadApproverCode = employeeCode,
+                            IsActive = true,
+                            CreatedOn = DateTime.Now
+                        });
+                    }
+
+                    context.SaveChanges();
+                    transaction.Commit();
+                }
+                catch
+                {
+                    transaction.Rollback();
+                    throw;
+                }
             }
         }
 
-        /// <summary>
-        /// Returns active employees for the IT Head dropdown.
-        /// </summary>
         public System.Collections.Generic.List<AgentLookupDto> GetActiveEmployees()
         {
             using (var context = new ItsmDbContext())
@@ -228,6 +262,20 @@ namespace AnmolDristi.ITSM.BLL
                         EmployeeName = u.EmployeeName
                     })
                     .ToList();
+            }
+        }
+
+        private static void EnsureActiveActor(ItsmDbContext context, string actorCode)
+        {
+            var actorExists = context.UserMasters
+                .AsNoTracking()
+                .Any(u => u.EmployeeCode == actorCode
+                          && u.EmployeeStatus == "Active");
+
+            if (!actorExists)
+            {
+                throw new InvalidOperationException(
+                    "The configuration actor is not an active employee.");
             }
         }
     }
