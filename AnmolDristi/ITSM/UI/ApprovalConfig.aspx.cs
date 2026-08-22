@@ -1,8 +1,9 @@
 // ========================================================================
 // When: 2026-08-22
-// What: Approval configuration admin page — request type flags + IT Head.
-// Why: Prompt 1.6 — IT Head approver is administratively configurable.
-//      No inline SQL. No System.Web in BLL. Session gatekeeping per convention.
+// What: Enforce ITSM approval-configuration permission on page load and
+//       every mutation handler.
+// Why: Session authentication alone must not grant approval-policy control.
+//      Configuration changes are privileged administrative operations.
 // ========================================================================
 
 using System;
@@ -14,15 +15,17 @@ namespace AnmolDristi.ITSM.UI
 {
     public partial class ApprovalConfig : BasePage
     {
+        private const string ManagePermission = "ITSM.ApprovalConfig.Manage";
+
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["WORKMAN"] == null
-                || Session["USERID"] == null
-                || Session["BRANCH"] == null)
+            if (Session["USERID"] == null || Session["BRANCH"] == null)
             {
-                Response.Redirect("~/login.aspx", true);
+                RedirectToLogin();
                 return;
             }
+
+            RequirePermission(ManagePermission);
 
             if (!IsPostBack)
             {
@@ -38,23 +41,24 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
+            RequirePermission(ManagePermission);
             ClearMessage();
 
             int requestTypeId;
             if (!int.TryParse(e.CommandArgument.ToString(), out requestTypeId))
             {
+                ShowMessage("Invalid request type.", false);
                 return;
             }
 
-            // Find the row to read checkbox state.
             int rowIndex = ((GridViewRow)((Control)e.CommandSource).NamingContainer).RowIndex;
             var row = gvRequestTypes.Rows[rowIndex];
-
             var chkManager = row.FindControl("chkManager") as CheckBox;
             var chkItHead = row.FindControl("chkItHead") as CheckBox;
 
             if (chkManager == null || chkItHead == null)
             {
+                ShowMessage("Unable to read approval settings.", false);
                 return;
             }
 
@@ -64,7 +68,8 @@ namespace AnmolDristi.ITSM.UI
                 service.UpdateRequestTypeApproval(
                     requestTypeId,
                     chkManager.Checked,
-                    chkItHead.Checked);
+                    chkItHead.Checked,
+                    CurrentEmployeeCode);
 
                 ShowMessage("Approval policy updated.", true);
                 BindRequestTypes();
@@ -77,6 +82,7 @@ namespace AnmolDristi.ITSM.UI
 
         protected void btnSetItHead_Click(object sender, EventArgs e)
         {
+            RequirePermission(ManagePermission);
             ClearMessage();
 
             if (string.IsNullOrWhiteSpace(ddlItHead.SelectedValue))
@@ -89,7 +95,7 @@ namespace AnmolDristi.ITSM.UI
                 var service = new ApprovalConfigurationService();
                 service.SetActiveItHead(
                     ddlItHead.SelectedValue,
-                    Session["WORKMAN"].ToString());
+                    CurrentEmployeeCode);
 
                 ShowMessage("IT Head approver updated successfully.", true);
                 BindItHeadSection();
@@ -110,9 +116,8 @@ namespace AnmolDristi.ITSM.UI
         private void BindItHeadSection()
         {
             var service = new ApprovalConfigurationService();
-
-            // Current active IT Head.
             var current = service.GetActiveItHead();
+
             if (current != null)
             {
                 pnlCurrentItHead.Visible = true;
@@ -127,7 +132,6 @@ namespace AnmolDristi.ITSM.UI
                 pnlNoItHead.Visible = true;
             }
 
-            // Employee dropdown.
             ddlItHead.Items.Clear();
             ddlItHead.AppendDataBoundItems = true;
             ddlItHead.Items.Add(new ListItem("-- Select Employee --", string.Empty));
@@ -136,7 +140,6 @@ namespace AnmolDristi.ITSM.UI
             ddlItHead.DataValueField = "EmployeeCode";
             ddlItHead.DataBind();
 
-            // Configuration history.
             gvItHeadHistory.DataSource = service.GetAllItHeadConfigs();
             gvItHeadHistory.DataBind();
         }
