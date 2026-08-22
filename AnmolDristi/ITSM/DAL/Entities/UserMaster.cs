@@ -31,11 +31,16 @@ namespace AnmolDristi.ITSM.DAL.Entities
 
         /// <summary>
         /// dbo.MST_UserMaster.PlantId — INT NOT NULL in the database.
-        /// Legacy data may hold orphaned values (PlantId not found in MST_Plant).
-        /// TicketService validates existence before Ticket INSERT.
+        /// Stores legacy PlantID_ID (business key), NOT MST_Plant.Id (identity PK).
+        /// TicketService resolves PlantID_ID → MST_Plant.Id before Ticket INSERT.
         /// </summary>
         public int PlantId { get; set; }
 
+        /// <summary>
+        /// dbo.MST_UserMaster.BranchId — stores legacy Branch_ID (business key),
+        /// NOT MST_Branch.Id (identity PK). TicketService resolves Branch_ID → Id
+        /// before assigning Tickets.BranchId and routing to DispatchService.
+        /// </summary>
         public int BranchId { get; set; }
 
         public int? DepartmentId { get; set; }
@@ -53,8 +58,9 @@ namespace AnmolDristi.ITSM.DAL.Entities
         [Column(TypeName = "varchar")]
         public string EmployeeStatus { get; set; }
 
-        [ForeignKey("PlantId")]
-        public virtual Plant Plant { get; set; }
+        // NOTE: No [ForeignKey] navigation to Plant. UserMaster.PlantId stores
+        // legacy PlantID_ID (business key), not MST_Plant.Id (identity PK).
+        // TicketService resolves PlantID_ID → Id explicitly.
 
         [ForeignKey("BranchId")]
         public virtual Branch Branch { get; set; }
