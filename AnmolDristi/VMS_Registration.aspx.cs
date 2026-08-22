@@ -2,14 +2,16 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Web.Services;
 using System.Web.Script.Services;
-using System.Drawing;
-using System.Drawing.Imaging;
 using AnmolDristi.DAL;
 
-// 2026-08-22: Added System.Drawing and System.Drawing.Imaging for server-side image validation.
+// 2026-08-22: WHAT — Added System.Drawing and System.Drawing.Imaging for server-side image validation.
+// WHY — Registration now requires camera-captured photo with dimension, MIME, and near-blank validation.
+// WHEN — VMS Registration Validation Enforcement (lost local changes re-applied from remote HEAD).
 
 namespace AnmolDristi
 {
@@ -17,26 +19,26 @@ namespace AnmolDristi
     {
         static string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
-        // ==========================================================
-        // 2026-08-22: Named constants for photo validation thresholds.
-        // Centralizes magic numbers for maintainability and clarity.
-        // ==========================================================
-        private const int MinPhotoSizeBytes = 5 * 1024;           // 5KB — reject tiny/blank images
-        private const int MaxPhotoSizeBytes = 5 * 1024 * 1024;    // 5MB — prevent oversized uploads
-        private const int MinPhotoDimension = 240;                 // px — face must be large enough
-        private const int MaxPhotoDimension = 4096;                // px — prevent memory abuse
-        private const double MaxAspectRatio = 3.0;                 // ratio — reject extreme panoramas
-        private const int VarianceSampleGrid = 10;                 // 10x10 grid for pixel sampling
-        private const double MinImageVariance = 350.0;             // below this = near-blank/uniform image
+        // 2026-08-22: Named constants for image validation thresholds.
+        // Replaces magic numbers throughout PersistSelfie/ValidateImageDimensions.
+        private const int MinPhotoSizeBytes = 5 * 1024;            // 5 KB minimum
+        private const int MaxPhotoSizeBytes = 5 * 1024 * 1024;     // 5 MB maximum
+        private const int MinPhotoDimension = 240;                  // 240px minimum width/height
+        private const int MaxPhotoDimension = 4096;                 // 4096px maximum width/height
+        private const double MaxAspectRatio = 3.0;                  // Max width:height or height:width ratio
+        private const int VarianceSampleGrid = 10;                  // 10x10 pixel grid for variance check
+        private const double MinImageVariance = 350.0;              // Below this = near-blank/uniform image
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            // 2026-08-22: rfvCompany lifecycle — re-evaluate on EVERY postback (not just initial load)
-            // because ViewState preserves Enabled=false from a previous "I Work Here" submission.
-            // When Purpose changes away from "I Work Here", rfvCompany must re-enable so external
-            // visitors cannot bypass Company validation.
-            bool isInternalNow = (ddlPurpose.SelectedValue == "I Work Here");
-            rfvCompany.Enabled = !isInternalNow;
+            // 2026-08-22: Manage rfvCompany lifecycle on EVERY postback.
+            // When Purpose = "I Work Here", Company is auto-filled by ResolveApprovalMode(),
+            // so rfvCompany must be disabled BEFORE Page.Validate() fires.
+            // Must run on every postback (not just !IsPostBack) to prevent
+            // ViewState from trapping the validator in a stale disabled state
+            // when the user changes Purpose away from "I Work Here".
+            bool isInternalEmployee = (ddlPurpose.SelectedValue == "I Work Here");
+            rfvCompany.Enabled = !isInternalEmployee;
 
             if (!IsPostBack)
             {
@@ -48,9 +50,7 @@ namespace AnmolDristi
         }
 
         /// <summary>
-        /// Validates OTP session and BranchId, binds hfBranchId.
-        /// Does not host-blind redirect: an existing pass for Host A must not block
-        /// a new request to Host B. Duplicate checks run at submit against the selected host.
+        /// Validates OTP session and BranchId, binds hfBranchId, and redirects if an active pass exists.
         /// </summary>
         private bool InitializeRegistrationRequest()
         {
@@ -65,9 +65,10 @@ namespace AnmolDristi
             }
 
             hfBranchId.Value = Request.QueryString["BranchId"].ToString();
-            int parsedBranchId;
-            if (int.TryParse(hfBranchId.Value, out parsedBranchId) && parsedBranchId > 0)
-                Session["VmsBranchId"] = parsedBranchId;
+
+            // 2. Prevent Duplicate Registration
+            CheckForActivePassAndRedirect();
+
             return true;
         }
 
@@ -101,38 +102,37 @@ namespace AnmolDristi
 
         /// <summary>
         /// Persists the captured selfie from hfSelfieBase64 and returns the relative PhotoPath.
-        /// 2026-08-22: Rewritten with comprehensive image validation.
-        /// Validates: MIME type, Base64 integrity, image decodability, minimum dimensions,
-        /// maximum payload, minimum useful size, and reasonable aspect ratio.
+        /// </summary>
+        /// <summary>
+        /// 2026-08-22: WHAT — Rewrote with comprehensive server-side image validation.
+        /// WHY — Business requires camera-captured photo with usable face visibility.
+        /// Validates: Base64 integrity, MIME type, payload size, image decode,
+        /// dimensions, aspect ratio, and near-blank rejection via pixel variance.
+        /// WHEN — VMS Registration Validation Enforcement.
         /// </summary>
         private string PersistSelfie()
         {
             string base64Data = hfSelfieBase64.Value;
 
-            // 2026-08-22: Reject empty photo payload
+            // 1. Base64 existence
             if (string.IsNullOrWhiteSpace(base64Data))
-                throw new Exception("No photo captured. Please take a photo using the camera.");
+                throw new Exception("No photo captured. Please use the camera to take a photo.");
 
-            // 2026-08-22: Validate and extract MIME type
-            string detectedMime = "";
-            if (base64Data.StartsWith("data:image/png;base64,"))
-            {
-                detectedMime = "image/png";
-                base64Data = base64Data.Substring("data:image/png;base64,".Length);
-            }
-            else if (base64Data.StartsWith("data:image/jpeg;base64,") ||
-                     base64Data.StartsWith("data:image/jpg;base64,"))
-            {
+            // 2. MIME type validation
+            string detectedMime = "image/png";
+            if (base64Data.StartsWith("data:image/jpeg", StringComparison.OrdinalIgnoreCase))
                 detectedMime = "image/jpeg";
-                base64Data = base64Data.Substring(base64Data.IndexOf(",") + 1);
-            }
+            else if (base64Data.StartsWith("data:image/png", StringComparison.OrdinalIgnoreCase))
+                detectedMime = "image/png";
             else
-            {
-                // 2026-08-22: Reject unrecognized MIME types to prevent arbitrary file uploads
                 throw new Exception("Invalid photo format. Only PNG and JPEG images are accepted.");
-            }
 
-            // 2026-08-22: Validate Base64 integrity
+            // Strip data URI prefix
+            int commaIndex = base64Data.IndexOf(',');
+            if (commaIndex > 0)
+                base64Data = base64Data.Substring(commaIndex + 1);
+
+            // 3. Base64 integrity
             byte[] imageBytes;
             try
             {
@@ -143,155 +143,109 @@ namespace AnmolDristi
                 throw new Exception("Corrupted photo data. Please retake your photo.");
             }
 
-            // 2026-08-22: Validate minimum payload size (reject tiny/blank images)
+            // 4. Payload size validation
             if (imageBytes.Length < MinPhotoSizeBytes)
-            {
-                throw new Exception("Photo is too small or appears to be blank. Please retake a clear photo.");
-            }
-
-            // 2026-08-22: Validate maximum payload size (prevent oversized uploads)
+                throw new Exception("Photo is too small to be usable. Please retake your photo with better lighting.");
             if (imageBytes.Length > MaxPhotoSizeBytes)
+                throw new Exception("Photo file is too large. Maximum allowed size is 5 MB.");
+
+            // 5. Image decode + dimension validation
+            using (MemoryStream ms = new MemoryStream(imageBytes))
             {
-                throw new Exception("Photo exceeds maximum size of 5MB. Please use a smaller image.");
+                ValidateImageDimensions(ms, detectedMime);
             }
 
-            // 2026-08-22: Validate image decodability and minimum dimensions
-            ValidateImageDimensions(imageBytes, detectedMime);
-
+            // 6. Write to disk
+            string extension = detectedMime == "image/jpeg" ? ".jpg" : ".png";
             string folderPath = Server.MapPath("~/Uploads/VisitorPhotos/");
-
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
 
-            string extension = detectedMime == "image/jpeg" ? ".jpg" : ".png";
             string fileName = $"Vis_{DateTime.Now.Ticks}{extension}";
-
             string physicalFullPath = Path.Combine(folderPath, fileName);
-
             File.WriteAllBytes(physicalFullPath, imageBytes);
 
             return "/Uploads/VisitorPhotos/" + fileName;
         }
 
         /// <summary>
-        /// 2026-08-22: Validates decoded image bytes for decodability, minimum dimensions,
-        /// reasonable aspect ratio, and image variance (rejects near-blank/uniform images).
-        /// Uses System.Drawing for decode verification.
+        /// 2026-08-22: WHAT — Validates image dimensions, aspect ratio, and pixel variance.
+        /// WHY — Rejects blank/uniform images and images too small for identification.
+        /// WHEN — VMS Registration Validation Enforcement.
         /// </summary>
-        private void ValidateImageDimensions(byte[] imageBytes, string mimeType)
+        private void ValidateImageDimensions(MemoryStream ms, string mimeType)
         {
-            using (MemoryStream ms = new MemoryStream(imageBytes))
+            Bitmap bitmap;
+            try
             {
-                Bitmap bmp;
-                try
-                {
-                    bmp = new Bitmap(ms);
-                }
-                catch (Exception)
-                {
-                    // 2026-08-22: Image could not be decoded — corrupted, truncated, or format mismatch
-                    throw new Exception("Photo could not be read. Please retake your photo.");
-                }
+                bitmap = new Bitmap(ms);
+            }
+            catch
+            {
+                throw new Exception("Unable to read photo data. Please retake your photo.");
+            }
 
-                using (bmp)
-                {
-                    int width = bmp.Width;
-                    int height = bmp.Height;
+            using (bitmap)
+            {
+                int width = bitmap.Width;
+                int height = bitmap.Height;
 
-                    // 2026-08-22: Minimum dimension check (face must be large enough for identification)
-                    if (width < MinPhotoDimension || height < MinPhotoDimension)
-                    {
-                        throw new Exception(
-                            "Photo resolution too low for identification. " +
-                            "Please ensure your face is clearly visible and close to the camera.");
-                    }
+                if (width < MinPhotoDimension || height < MinPhotoDimension)
+                    throw new Exception($"Photo is too small ({width}x{height}). Minimum required is {MinPhotoDimension}x{MinPhotoDimension} pixels.");
 
-                    // 2026-08-22: Maximum dimension check (prevent memory abuse)
-                    if (width > MaxPhotoDimension || height > MaxPhotoDimension)
-                    {
-                        throw new Exception($"Photo dimensions too large. Maximum is {MaxPhotoDimension}x{MaxPhotoDimension}.");
-                    }
+                if (width > MaxPhotoDimension || height > MaxPhotoDimension)
+                    throw new Exception($"Photo is too large ({width}x{height}). Maximum allowed is {MaxPhotoDimension}x{MaxPhotoDimension} pixels.");
 
-                    // 2026-08-22: Reasonable aspect ratio check (reject extreme panoramas)
-                    double ratio = (double)Math.Max(width, height) / Math.Min(width, height);
-                    if (ratio > MaxAspectRatio)
-                    {
-                        throw new Exception("Photo aspect ratio is unusual. Please retake a standard photo.");
-                    }
+                double ratio = (double)Math.Max(width, height) / Math.Min(width, height);
+                if (ratio > MaxAspectRatio)
+                    throw new Exception("Photo aspect ratio is unusual. Please take a standard portrait photo.");
 
-                    // 2026-08-22: Low-variance (near-blank image) rejection
-                    // Samples a grid of pixels and calculates color variance. A near-blank image
-                    // (white screen, hand covering lens, dark room) will have very low variance.
-                    // Threshold of 350 chosen to reject uniformly colored images while accepting
-                    // normal photos which typically have variance > 1000.
-                    ValidateImageVariance(bmp, width, height);
-                }
+                ValidateImageVariance(bitmap);
             }
         }
 
         /// <summary>
-        /// 2026-08-22: Rejects near-blank or uniformly colored images by sampling a pixel grid
-        /// and calculating RGB variance. A real face photo will have significant color variation
-        /// (skin tones, background, features). A blank white/dark screen or hand covering the
-        /// lens will have very low variance.
+        /// 2026-08-22: WHAT — Rejects near-blank or uniformly colored images.
+        /// WHY — Catches white screens, dark rooms, hand-over-lens submissions.
+        /// Samples a 10x10 grid. Threshold: variance < 350 = blank.
+        /// WHEN — VMS Registration Validation Enforcement.
         /// </summary>
-        private void ValidateImageVariance(Bitmap bmp, int width, int height)
+        private void ValidateImageVariance(Bitmap bitmap)
         {
-            // Sample a grid of pixels across the image for variance analysis
-            int sampleCount = 0;
-            double sumR = 0, sumG = 0, sumB = 0;
-            int gridSize = VarianceSampleGrid;
+            int width = bitmap.Width;
+            int height = bitmap.Height;
+            int stepX = Math.Max(1, width / VarianceSampleGrid);
+            int stepY = Math.Max(1, height / VarianceSampleGrid);
 
-            for (int row = 0; row < gridSize; row++)
+            List<int> rValues = new List<int>();
+            List<int> gValues = new List<int>();
+            List<int> bValues = new List<int>();
+
+            for (int y = stepY / 2; y < height && rValues.Count < VarianceSampleGrid * VarianceSampleGrid; y += stepY)
             {
-                for (int col = 0; col < gridSize; col++)
+                for (int x = stepX / 2; x < width && rValues.Count < VarianceSampleGrid * VarianceSampleGrid; x += stepX)
                 {
-                    int x = (col * width) / gridSize + (width / (gridSize * 2));
-                    int y = (row * height) / gridSize + (height / (gridSize * 2));
-                    x = Math.Min(x, width - 1);
-                    y = Math.Min(y, height - 1);
-
-                    Color pixel = bmp.GetPixel(x, y);
-                    sumR += pixel.R;
-                    sumG += pixel.G;
-                    sumB += pixel.B;
-                    sampleCount++;
+                    Color pixel = bitmap.GetPixel(x, y);
+                    rValues.Add(pixel.R);
+                    gValues.Add(pixel.G);
+                    bValues.Add(pixel.B);
                 }
             }
 
-            double avgR = sumR / sampleCount;
-            double avgG = sumG / sampleCount;
-            double avgB = sumB / sampleCount;
+            if (rValues.Count == 0) return;
 
-            // Calculate variance across sampled pixels
-            double varR = 0, varG = 0, varB = 0;
-            for (int row = 0; row < gridSize; row++)
-            {
-                for (int col = 0; col < gridSize; col++)
-                {
-                    int x = (col * width) / gridSize + (width / (gridSize * 2));
-                    int y = (row * height) / gridSize + (height / (gridSize * 2));
-                    x = Math.Min(x, width - 1);
-                    y = Math.Min(y, height - 1);
+            double avgR = rValues.Average();
+            double avgG = gValues.Average();
+            double avgB = bValues.Average();
 
-                    Color pixel = bmp.GetPixel(x, y);
-                    varR += (pixel.R - avgR) * (pixel.R - avgR);
-                    varG += (pixel.G - avgG) * (pixel.G - avgG);
-                    varB += (pixel.B - avgB) * (pixel.B - avgB);
-                }
-            }
+            double variance = rValues.Sum(v => Math.Pow(v - avgR, 2))
+                            + gValues.Sum(v => Math.Pow(v - avgG, 2))
+                            + bValues.Sum(v => Math.Pow(v - avgB, 2));
 
-            double totalVariance = (varR + varG + varB) / sampleCount;
+            double normalizedVariance = variance / (rValues.Count * 3);
 
-            // Threshold: images with variance below MinImageVariance are likely blank,
-            // uniformly colored, or have a hand/object covering the lens. Normal face
-            // photos typically have variance > 1000 due to skin tones and features.
-            if (totalVariance < MinImageVariance)
-            {
-                throw new Exception(
-                    "Photo appears to be blank or uniformly colored. " +
-                    "Please ensure your face is clearly visible and well-lit.");
-            }
+            if (normalizedVariance < MinImageVariance)
+                throw new Exception("Photo appears to be blank or uniformly colored. Please retake your photo with your face clearly visible.");
         }
 
         /// <summary>
@@ -735,6 +689,19 @@ namespace AnmolDristi
             return domain.IndexOf('.') > 0;
         }
 
+        private void CheckForActivePassAndRedirect()
+        {
+            string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
+            string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
+            int branchId = Convert.ToInt32(hfBranchId.Value);
+
+            if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
+            {
+                Response.Redirect("VMS_MyVisits.aspx", false);
+                Context.ApplicationInstance.CompleteRequest();
+            }
+        }
+
         [WebMethod]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static List<HostEmployee> SearchHost(string prefixText, int branchId)
@@ -797,27 +764,24 @@ namespace AnmolDristi
                     return;
                 }
 
-                // 2026-08-22: ASP.NET Validation — validates RequiredFieldValidators in ValidationGroup="Registration"
-                // NOTE: rfvCompany.Enabled is managed in Page_Load on every postback.
-                // It is disabled when Purpose="I Work Here" (Company auto-filled by ResolveApprovalMode)
-                // and re-enabled for all other purposes.
+                // ==========================================================
+                // 1b. ASP.NET VALIDATION GATE (2026-08-22)
+                // Fires rfvCompany, rfvDesignation RequiredFieldValidators.
+                // rfvCompany.Enabled is managed in Page_Load (disabled for internal employees).
+                // ==========================================================
                 Page.Validate("Registration");
                 if (!Page.IsValid)
-                {
-                    lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Please correct the highlighted fields before submitting.";
                     return;
-                }
 
-                // 2026-08-22: Server-side camera activation check (workflow indicator — blocks submission if camera was never active)
-                // SECURITY NOTE: hfCameraActive is a client-controlled workflow indicator. It is NOT proof of
-                // live capture. An attacker could set it to 'true' via DevTools. Its absence (value != 'true')
-                // confirms the camera permission was never granted and getUserMedia never activated, which
-                // provides a practical denylist. True liveness detection requires additional infrastructure.
+                // ==========================================================
+                // 1c. CAMERA WORKFLOW CHECK (2026-08-22)
+                // hfCameraActive is a client-controlled workflow indicator, NOT proof of liveness.
+                // Its absence confirms getUserMedia was never activated — practical denylist.
+                // ==========================================================
                 if (hfCameraActive.Value != "true")
                 {
                     lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Camera access is required. Please allow camera permissions and take a photo.";
+                    lblMessage.Text = "Camera access is required. Please grant camera permission and take a photo.";
                     return;
                 }
 
@@ -833,22 +797,11 @@ namespace AnmolDristi
                 int branchId = Convert.ToInt32(hfBranchId.Value);
 
                 // ==========================================================
-                // 3. HOST + SAME-HOST DUPLICATE CHECK
+                // 3. DUPLICATE ACTIVE PASS CHECK
                 // ==========================================================
-                string hostEmpCode = hfSelectedHostCode.Value == null
-                    ? ""
-                    : hfSelectedHostCode.Value.Trim();
-                if (string.IsNullOrEmpty(hostEmpCode))
+                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
                 {
-                    // 2026-08-22 FIX: Replaced throw new Exception with graceful validation message
-                    lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Selecting a Host Employee is mandatory to generate a pass.";
-                    return;
-                }
-
-                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId, hostEmpCode))
-                {
-                    Response.Redirect($"VMS_MyVisits.aspx?BranchId={branchId}", false);
+                    Response.Redirect("VMS_MyVisits.aspx", false);
                     Context.ApplicationInstance.CompleteRequest();
                     return;
                 }
@@ -859,6 +812,19 @@ namespace AnmolDristi
                 string photoPath = PersistSelfie();
                 fullPath = Server.MapPath("~" + photoPath);
                 dbPhotoPath = photoPath;
+
+                // ==========================================================
+                // 5. HOST VALIDATION
+                // 2026-08-22: Replaced throw with graceful return (existing pattern).
+                // ==========================================================
+                string hostEmpCode = hfSelectedHostCode.Value;
+
+                if (string.IsNullOrWhiteSpace(hostEmpCode))
+                {
+                    lblMessage.ForeColor = System.Drawing.Color.Red;
+                    lblMessage.Text = "Selecting a Host Employee is mandatory to generate a pass.";
+                    return;
+                }
 
                 // ==========================================================
                 // 6. DEFAULT VISIT VALUES / APPROVAL RESOLUTION
@@ -877,21 +843,28 @@ namespace AnmolDristi
                 object approvedOn = approval.ApprovedOn;
                 object qrTokenParam = approval.QrTokenParam;
 
-                // 2026-08-22: Server-side Company Name enforcement (after ResolveApprovalMode auto-fill for internal employees)
-                string companyValue = txtCompany.Text.Trim();
-                if (string.IsNullOrWhiteSpace(companyValue))
+                // ==========================================================
+                // 6b. COMPANY NAME ENFORCEMENT (2026-08-22)
+                // Runs AFTER ResolveApprovalMode() which auto-fills Company
+                // for internal employees ("I Work Here"). This is the
+                // authoritative server-side check — rfvCompany is disabled
+                // for internal employees in Page_Load.
+                // ==========================================================
+                if (string.IsNullOrWhiteSpace(txtCompany.Text))
                 {
                     lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Company Name is required.";
+                    lblMessage.Text = "Company Name is mandatory. Please enter your company name.";
                     return;
                 }
 
-                // 2026-08-22: Server-side Designation enforcement (authoritative — cannot be bypassed)
-                string designationValue = txtDesignation.Text.Trim();
-                if (string.IsNullOrWhiteSpace(designationValue))
+                // ==========================================================
+                // 6c. DESIGNATION ENFORCEMENT (2026-08-22)
+                // Authoritative server-side check for mandatory designation.
+                // ==========================================================
+                if (string.IsNullOrWhiteSpace(txtDesignation.Text))
                 {
                     lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Designation is required.";
+                    lblMessage.Text = "Designation is mandatory. Please enter your designation.";
                     return;
                 }
 
