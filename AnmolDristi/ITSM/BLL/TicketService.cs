@@ -25,6 +25,14 @@ namespace AnmolDristi.ITSM.BLL
     ///      references MST_Plant.Id. PlantID_ID is not globally unique (e.g.
     ///      PlantID_ID=3277 → Id 40 "Greater Noida" + Id 41 "Nirmali").
     ///      Branch is mandatory (routing + dispatch); Plant is optional (location context).
+    /// When: 2026-08-22
+    /// What: IT Head approver is now read from itsm.MST_ApprovalConfiguration
+    ///       (configurable) instead of being hard-coded.
+    /// Why: Prompt 1.6 — approval policy is administratively configurable.
+    ///      Only one active IT Head configuration is permitted.
+    ///      Manager/ITHead approval rows are created only when the request
+    ///      type flags are enabled. Supports: Manager-only, ITHead-only,
+    ///      both, or neither.
     /// </summary>
     public class TicketService
     {
@@ -39,7 +47,7 @@ namespace AnmolDristi.ITSM.BLL
 
         /// <summary>
         /// Creates a ticket: resolves requester context, priority, assignee,
-        /// ticket number, optional manager approval, and queues an email notification.
+        /// ticket number, optional manager/IT Head approval, and queues an email notification.
         /// </summary>
         public void CreateTicket(
             string requesterCode,
@@ -151,8 +159,16 @@ namespace AnmolDristi.ITSM.BLL
                     var ticketNumber = GenerateTicketNumber(
                         context, requestType, createdOn);
 
-                    var requiresApproval = requestType.RequiresManagerApproval;
-                    var statusId = ResolveInitialStatusId(context, requiresApproval);
+                    // ── Approval policy (configurable) ────────────────────────
+                    // Approval configuration is evaluated at creation time.
+                    // Existing tickets retain their approval rows regardless of
+                    // later configuration changes (see Prompt 1.6 §10).
+                    var requiresManagerApproval = requestType.RequiresManagerApproval;
+                    var requiresItHeadApproval = requestType.RequiresItHeadApproval;
+
+                    var statusId = ResolveInitialStatusId(
+                        context,
+                        requiresManagerApproval || requiresItHeadApproval);
 
                     var ticket = new Ticket
                     {
@@ -185,19 +201,22 @@ namespace AnmolDristi.ITSM.BLL
                         CompanyId = ticket.CompanyId.Value,
                         ActionType = "Created",
                         OldValue = null,
-                        NewValue = requiresApproval ? "Pending Approval" : "New",
+                        NewValue = (requiresManagerApproval || requiresItHeadApproval)
+                            ? "Pending Approval" : "New",
                         Detail = ticket.TicketNumber,
                         ActorCode = requester.EmployeeCode,
                         ActionedOn = createdOn
                     });
                     context.SaveChanges();
 
-                    if (requiresApproval)
+                    // ── Manager approval row ───────────────────────────────────
+                    if (requiresManagerApproval)
                     {
                         if (string.IsNullOrWhiteSpace(requester.ReportingManagerCode))
                         {
                             throw new InvalidOperationException(
-                                "Request type requires manager approval, but the requester has no ReportingManagerCode.");
+                                "Manager approval is enabled for this request type, "
+                                + "but the requester has no ReportingManagerCode on MST_UserMaster.");
                         }
 
                         // SoD: requester cannot approve their own CR/SR (compliance §3).
@@ -221,6 +240,36 @@ namespace AnmolDristi.ITSM.BLL
                         context.SaveChanges();
                     }
 
+                    // ── IT Head approval row (configurable) ───────────────────
+                    if (requiresItHeadApproval)
+                    {
+                        var itHeadCode = ResolveActiveItHead(context);
+
+                        // Validate IT Head employee is active.
+                        var itHeadEmployee = context.UserMasters
+                            .AsNoTracking()
+                            .FirstOrDefault(u => u.EmployeeCode == itHeadCode
+                                                 && u.EmployeeStatus == "Active");
+
+                        if (itHeadEmployee == null)
+                        {
+                            throw new InvalidOperationException(
+                                "IT Head approval is enabled for this request type, "
+                                + "but no active IT Head approver is configured. "
+                                + "Please contact an ITSM administrator.");
+                        }
+
+                        context.TicketApprovals.Add(new TicketApproval
+                        {
+                            TicketId = ticket.Id,
+                            ApprovalLevel = "ItHead",
+                            ApproverCode = itHeadCode,
+                            ApprovalStatus = "Pending",
+                            CreatedOn = createdOn
+                        });
+                        context.SaveChanges();
+                    }
+
                     EnqueueTicketCreatedNotification(
                         context,
                         ticket,
@@ -237,6 +286,28 @@ namespace AnmolDristi.ITSM.BLL
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// Resolves the active IT Head approver from itsm.MST_ApprovalConfiguration.
+        /// Returns the EmployeeCode of the single active IT Head.
+        /// Throws if no active configuration exists.
+        /// </summary>
+        private static string ResolveActiveItHead(ItsmDbContext context)
+        {
+            var config = context.ApprovalConfigurations
+                .AsNoTracking()
+                .FirstOrDefault(ac => ac.IsActive);
+
+            if (config == null || string.IsNullOrWhiteSpace(config.ItHeadApproverCode))
+            {
+                throw new InvalidOperationException(
+                    "IT Head approval is enabled for this request type, "
+                    + "but no active IT Head approver is configured. "
+                    + "Please contact an ITSM administrator.");
+            }
+
+            return config.ItHeadApproverCode;
         }
 
         /// <summary>

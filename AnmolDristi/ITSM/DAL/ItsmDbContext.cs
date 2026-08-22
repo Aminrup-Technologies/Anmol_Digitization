@@ -12,6 +12,9 @@ namespace AnmolDristi.ITSM.DAL
     /// When: 2026-08-21
     /// What: Added read-only Company (dbo.MST_Company) for ticket tenant display name.
     /// Why: Ticket.CompanyId snapshots MST_UserMaster.CompanyId (= MST_Company.Company_ID).
+    /// When: 2026-08-22
+    /// What: Added ApprovalConfiguration DbSet for configurable IT Head approval policy.
+    /// Why: Prompt 1.6 — IT Head approver is administratively configurable, not hard-coded.
     /// </summary>
     public class ItsmDbContext : DbContext
     {
@@ -61,6 +64,11 @@ namespace AnmolDristi.ITSM.DAL
         public DbSet<TicketStatus> TicketStatuses { get; set; }
 
         public DbSet<SupportMapping> SupportMappings { get; set; }
+
+        /// <summary>
+        /// Global IT Head approver configuration. Only one active row permitted.
+        /// </summary>
+        public DbSet<ApprovalConfiguration> ApprovalConfigurations { get; set; }
 
         // --- ITSM transactional ---
 

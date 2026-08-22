@@ -253,6 +253,7 @@
     <Content Include="ITSM\UI\CreateTicket.aspx" />
     <Content Include="ITSM\UI\TicketList.aspx" />
     <Content Include="ITSM\UI\TicketDetail.aspx" />
+    <Content Include="ITSM\UI\ApprovalConfig.aspx" />
     <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
@@ -869,6 +870,10 @@
     <Compile Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.cs" />
     <Compile Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.Designer.cs">
       <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608220200000_AddApprovalConfiguration.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608220200000_AddApprovalConfiguration.Designer.cs">
+      <DependentUpon>202608220200000_AddApprovalConfiguration.cs</DependentUpon>
     </Compile>
     <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />
     <Compile Include="LeakAndSlant_Detailed.aspx.cs">
@@ -1543,6 +1548,7 @@
     <Compile Include="ITSM\DAL\Entities\TicketAttachment.cs" />
     <Compile Include="ITSM\DAL\Entities\TicketApproval.cs" />
     <Compile Include="ITSM\DAL\Entities\TicketAuditLog.cs" />
+    <Compile Include="ITSM\DAL\Entities\ApprovalConfiguration.cs" />
     <Compile Include="ITSM\DAL\Entities\UserMaster.cs" />
     <Compile Include="ITSM\DAL\Entities\Plant.cs" />
     <Compile Include="ITSM\DAL\Entities\Branch.cs" />
@@ -1558,6 +1564,7 @@
     <Compile Include="ITSM\BLL\ItsmTenantContext.cs" />
     <Compile Include="ITSM\BLL\ItsmTicketAccess.cs" />
     <Compile Include="ITSM\BLL\TicketWorkflow.cs" />
+    <Compile Include="ITSM\BLL\ApprovalConfigurationService.cs" />
     <Compile Include="ITSM\BLL\TicketListService.cs" />
     <Compile Include="ITSM\BLL\TicketDetailService.cs" />
     <Compile Include="ITSM\BLL\TicketUpdateService.cs" />
@@ -1581,6 +1588,13 @@
     </Compile>
     <Compile Include="ITSM\UI\TicketDetail.aspx.designer.cs">
       <DependentUpon>TicketDetail.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\ApprovalConfig.aspx.cs">
+      <DependentUpon>ApprovalConfig.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\ApprovalConfig.aspx.designer.cs">
+      <DependentUpon>ApprovalConfig.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
@@ -1780,6 +1794,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.resx">
       <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608220200000_AddApprovalConfiguration.resx">
+      <DependentUpon>202608220200000_AddApprovalConfiguration.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
