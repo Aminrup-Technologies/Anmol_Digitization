@@ -123,13 +123,12 @@ namespace AnmolDristi
             return "our Facility";
         }
 
-        // FIX-1 (2026-08-20): Host-aware duplicate check.
-        // What: Added optional hostEmployeeCode parameter.
-        // Why:  Business rule requires blocking duplicate requests against the SAME
-        //       host at the same branch, but allowing requests to a DIFFERENT host.
-
         /// <summary>
-        /// When hostEmployeeCode is provided, the check is scoped to that specific host.
+        /// Returns true when the visitor already has a Pending or in-window Approved visit
+        /// at the branch (Approved includes Checked-Out while ValidUpto is still in the future,
+        /// so same-day re-entry does not open a duplicate request). When
+        /// <paramref name="hostEmployeeCode"/> is provided, the check is scoped to that host
+        /// only (same visitor may request a different host).
         /// </summary>
         public static bool HasActiveVisit(string mobile, string email, int branchId, string hostEmployeeCode = null)
         {
@@ -153,7 +152,7 @@ namespace AnmolDristi
                     WHERE TargetBranchID = @BranchId
                       AND (
                             (ApprovalStatus = 'Pending' AND ISNULL(RequestedValidUpto, ValidUpto) >= GETDATE())
-                            OR (ApprovalStatus = 'Approved' AND ValidUpto >= GETDATE() AND ISNULL(VisitStatus, '') <> 'Checked-Out')
+                            OR (ApprovalStatus = 'Approved' AND ValidUpto >= GETDATE())
                           )
                       AND (
                             VisitorMobile = @Mobile

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
-using System.Web.Services;
-using System.Web.Script.Services;
 using QRCoder;
 using AnmolDristi.DAL;
 
@@ -11,19 +9,6 @@ namespace AnmolDristi
     public partial class VMS_DigitalPass : System.Web.UI.Page
     {
         private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
-
-        // FIX-3: Session keepalive WebMethod
-        [WebMethod]
-        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static bool KeepAlive()
-        {
-            if (System.Web.HttpContext.Current.Session != null)
-            {
-                string mobile = System.Web.HttpContext.Current.Session["VerifiedMobile"] as string;
-                return !string.IsNullOrEmpty(mobile);
-            }
-            return false;
-        }
 
         protected void Page_Load(object sender, EventArgs e)
         {

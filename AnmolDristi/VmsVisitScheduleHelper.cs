@@ -264,9 +264,12 @@ namespace AnmolDristi
 
         /// <summary>
         /// Day-aware check-in. Returns true only when both DayLog and VisitLog
-        /// transitioned from Scheduled (rowsAffected == 1 each).
+        /// transitioned (rowsAffected == 1 each).
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
+        /// DayLog may be Scheduled or Checked-Out (same-day re-entry).
+        /// Parent may be Scheduled or Checked-Out (SingleDay after checkout is Checked-Out).
+        /// ActualInTime keeps the first stamp on re-entry.
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -278,7 +281,8 @@ namespace AnmolDristi
             int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE d
-                SET d.VisitStatus = 'Checked-In', d.ActualInTime = GETDATE()
+                SET d.VisitStatus = 'Checked-In',
+                    d.ActualInTime = COALESCE(d.ActualInTime, GETDATE())
                 FROM VMS_VisitDayLog d
                 INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
                 WHERE d.DayLogID = @DayLogID
@@ -349,17 +353,20 @@ namespace AnmolDristi
             if (dayRows != 1)
                 return false;
 
-            // FIX-2: Always reset to Scheduled for re-entry
+            bool hasFutureDays = HasFutureApprovedDays(con, logId, DateTime.Now.Date, trans);
+            string nextVisitStatus = hasFutureDays ? "Scheduled" : "Checked-Out";
+
             int visitRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
-                SET VisitStatus = 'Scheduled',
+                SET VisitStatus = @VisitStatus,
                     ActualOutTime = GETDATE(),
                     CheckedOutBy = @GuardId
                 WHERE LogID = @LogID
                   AND VisitStatus = 'Checked-In'
                   AND ApprovalStatus = 'Approved'", con, trans))
             {
+                cmd.Parameters.AddWithValue("@VisitStatus", nextVisitStatus);
                 cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 visitRows = cmd.ExecuteNonQuery();

@@ -11,7 +11,9 @@ namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
     /// Master orchestrator for new-ticket creation (schema §5.1–5.4).
-    /// Coordinates priority, dispatch, SLA, approvals, and NotificationQueue.
+    /// When: 2026-08-21
+    /// What: Snapshot requester.CompanyId onto Ticket.CompanyId at create.
+    /// Why: Ticket tenant must be immutable; live Requester.CompanyId can change in HRMS.
     /// </summary>
     public class TicketService
     {
@@ -64,6 +66,29 @@ namespace AnmolDristi.ITSM.BLL
                             "Requester was not found in MST_UserMaster for code: " + requesterCode);
                     }
 
+                    if (!requester.CompanyId.HasValue || requester.CompanyId.Value <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Requester has no CompanyId on MST_UserMaster; ticket creation is blocked for tenant isolation.");
+                    }
+
+                    // Phase-1 schema §5.4: Tickets.PlantId is INT FK NULL.
+                    // NULL = Corporate Office (no plant assignment).
+                    // Orphaned PlantId (not found in MST_Plant) is normalized to NULL
+                    // rather than blocked, since 4,341 legacy records share this condition.
+                    int? resolvedPlantId = null;
+                    if (requester.PlantId > 0)
+                    {
+                        var plantExists = context.Plants
+                            .AsNoTracking()
+                            .Any(p => p.Id == requester.PlantId);
+
+                        if (plantExists)
+                        {
+                            resolvedPlantId = requester.PlantId;
+                        }
+                    }
+
                     var requestType = context.RequestTypes
                         .AsNoTracking()
                         .FirstOrDefault(r => r.Id == requestTypeId && r.IsActive);
@@ -107,8 +132,9 @@ namespace AnmolDristi.ITSM.BLL
                         Description = description,
                         RequesterCode = requester.EmployeeCode,
                         AssigneeCode = assigneeCode,
-                        PlantId = requester.PlantId,
+                        PlantId = resolvedPlantId,
                         BranchId = requester.BranchId,
+                        CompanyId = requester.CompanyId,
                         CategoryId = categoryId,
                         SubCategoryId = subCategoryId,
                         ItemId = itemId,
@@ -121,6 +147,19 @@ namespace AnmolDristi.ITSM.BLL
                     };
 
                     context.Tickets.Add(ticket);
+                    context.SaveChanges();
+
+                    context.TicketAuditLogs.Add(new TicketAuditLog
+                    {
+                        TicketId = ticket.Id,
+                        CompanyId = ticket.CompanyId.Value,
+                        ActionType = "Created",
+                        OldValue = null,
+                        NewValue = requiresApproval ? "Pending Approval" : "New",
+                        Detail = ticket.TicketNumber,
+                        ActorCode = requester.EmployeeCode,
+                        ActionedOn = createdOn
+                    });
                     context.SaveChanges();
 
                     if (requiresApproval)

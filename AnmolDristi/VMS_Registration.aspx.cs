@@ -48,7 +48,9 @@ namespace AnmolDristi
         }
 
         /// <summary>
-        /// Validates OTP session and BranchId, binds hfBranchId, and redirects if an active pass exists.
+        /// Validates OTP session and BranchId, binds hfBranchId.
+        /// Does not host-blind redirect: an existing pass for Host A must not block
+        /// a new request to Host B. Duplicate checks run at submit against the selected host.
         /// </summary>
         private bool InitializeRegistrationRequest()
         {
@@ -63,10 +65,9 @@ namespace AnmolDristi
             }
 
             hfBranchId.Value = Request.QueryString["BranchId"].ToString();
-
-            // 2. Prevent Duplicate Registration
-            CheckForActivePassAndRedirect();
-
+            int parsedBranchId;
+            if (int.TryParse(hfBranchId.Value, out parsedBranchId) && parsedBranchId > 0)
+                Session["VmsBranchId"] = parsedBranchId;
             return true;
         }
 
@@ -734,19 +735,6 @@ namespace AnmolDristi
             return domain.IndexOf('.') > 0;
         }
 
-        private void CheckForActivePassAndRedirect()
-        {
-            string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
-            string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
-            int branchId = Convert.ToInt32(hfBranchId.Value);
-
-            if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
-            {
-                Response.Redirect("VMS_MyVisits.aspx", false);
-                Context.ApplicationInstance.CompleteRequest();
-            }
-        }
-
         [WebMethod]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static List<HostEmployee> SearchHost(string prefixText, int branchId)
@@ -844,10 +832,13 @@ namespace AnmolDristi
 
                 int branchId = Convert.ToInt32(hfBranchId.Value);
 
-                // FIX-1: Host validation moved before duplicate check
-                string hostEmpCode = hfSelectedHostCode.Value;
-
-                if (string.IsNullOrWhiteSpace(hostEmpCode))
+                // ==========================================================
+                // 3. HOST + SAME-HOST DUPLICATE CHECK
+                // ==========================================================
+                string hostEmpCode = hfSelectedHostCode.Value == null
+                    ? ""
+                    : hfSelectedHostCode.Value.Trim();
+                if (string.IsNullOrEmpty(hostEmpCode))
                 {
                     // 2026-08-22 FIX: Replaced throw new Exception with graceful validation message
                     lblMessage.ForeColor = System.Drawing.Color.Red;
@@ -855,10 +846,9 @@ namespace AnmolDristi
                     return;
                 }
 
-                // FIX-1: Host-aware duplicate check
                 if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId, hostEmpCode))
                 {
-                    Response.Redirect("VMS_MyVisits.aspx", false);
+                    Response.Redirect($"VMS_MyVisits.aspx?BranchId={branchId}", false);
                     Context.ApplicationInstance.CompleteRequest();
                     return;
                 }

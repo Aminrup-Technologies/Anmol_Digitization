@@ -8,23 +8,23 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="WebData/anmol_logo_GPTW.jpg" type="image/ico" />
+    <link rel="icon" href="<%= ResolveUrl("~/WebData/anmol_logo_GPTW.jpg") %>" type="image/ico" />
 
     <title>Anmol Industries</title>
 
-    <link href="Resources/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="Resources/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
-    <link href="Resources/nprogress/nprogress.css" rel="stylesheet" />
-    <link href="Resources/iCheck/skins/flat/green.css" rel="stylesheet" />
-    <link href="Resources/bootstrap-progressbar/css/bootstrap-progressbar-3.3.4.min.css" rel="stylesheet" />
-    <link href="Resources/jqvmap/dist/jqvmap.min.css" rel="stylesheet" />
-    <link href="Resources/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet" />
-    <link href="Resources/DataTables/datatables.min.css" rel="stylesheet" />
-    <link href="Resources/pnotify/dist/pnotify.css" rel="stylesheet" />
-    <link href="Resources/pnotify/dist/pnotify.buttons.css" rel="stylesheet" />
-    <link href="Resources/pnotify/dist/pnotify.nonblock.css" rel="stylesheet" />
-    <link href="Resources/loader/loader.css" rel="stylesheet" />
-    <link href="Resources/custom/custom.css" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/bootstrap/dist/css/bootstrap.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/font-awesome/css/font-awesome.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/nprogress/nprogress.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/iCheck/skins/flat/green.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/bootstrap-progressbar/css/bootstrap-progressbar-3.3.4.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/jqvmap/dist/jqvmap.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/bootstrap-daterangepicker/daterangepicker.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/DataTables/datatables.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.buttons.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.nonblock.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/loader/loader.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/custom/custom.css") %>" rel="stylesheet" />
 
     <style type="text/css">
         /* =========================================================
@@ -90,7 +90,7 @@
     <asp:ContentPlaceHolder ID="head" runat="server">
     </asp:ContentPlaceHolder>
 
-    <script src="Resources/Scripts/jquery-1.7.2.min.js"></script>
+    <script src="<%= ResolveUrl("~/Resources/Scripts/jquery-1.7.2.min.js") %>"></script>
 
     <%-- Server authority: anonymous/public page flag for future visitor-isolation JS.
          Do not duplicate AnonymousAccessPages filenames in client script. --%>
@@ -99,12 +99,19 @@
     </script>
 
     <script type="text/javascript">
+        window.__loginUrl = '<%= ResolveUrl("~/login.aspx") %>';
+        window.__heartbeatUrl = '<%= ResolveUrl("~/heartbeat.aspx/Heartbeat") %>';
+        window.__logoutHandlerUrl = '<%= ResolveUrl("~/LogoutHandler.ashx") %>';
+        window.__logoutUrl = '<%= ResolveUrl("~/logout.aspx/EndSession") %>';
+    </script>
+
+    <script type="text/javascript">
         var idleTimeout;
         var logoutTime;
 
         function startIdleTimer() {
             idleTimeout = setTimeout(function () {
-                location.href = 'login.aspx';
+                location.href = window.__loginUrl;
             }, 10 * 60 * 1000); // 10 minutes in milliseconds
 
             // Calculate the logout time
@@ -141,7 +148,7 @@
 
             // If we've reached 0 minutes and 0 seconds, initiate logout
             if (timeLeft <= 0) {
-                location.href = 'login.aspx';
+                location.href = window.__loginUrl;
                 return;
             }
         }
@@ -186,7 +193,7 @@
         //                    if (xhr && (xhr.status === 401 || xhr.status === 403)) {
         //                        // force client to logout
         //                        sessionStorage.removeItem('ActiveSessionId');
-        //                        window.location.href = 'login.aspx';
+        //                        window.location.href = window.__loginUrl;
         //                    }
         //                    // otherwise, ignore and try again next interval
         //                }
@@ -209,8 +216,8 @@
 
         (function () {
             // CONFIG
-            var HEARTBEAT_URL = '/heartbeat.aspx/Heartbeat';   // accepts { loginToken: "GUID" } and returns { ok: true/false }
-            var LOGOUT_URL = '/logout.aspx/EndSession';       // accepts { loginToken: "GUID" } and returns { ok:true }
+            var HEARTBEAT_URL = window.__heartbeatUrl;   // accepts { loginToken: "GUID" } and returns { ok: true/false }
+            var LOGOUT_URL = window.__logoutUrl;       // accepts { loginToken: "GUID" } and returns { ok:true }
             var CHECK_INTERVAL_MS = 60 * 1000;                // how often to validate token (1 min)
             var MAX_RETRIES = 2;                              // minor retries on transient network errors
 
@@ -227,11 +234,11 @@
                     // If close didn't work within short time, redirect to login as a fallback
                     setTimeout(function () {
                         if (!document.hidden) {
-                            window.location.href = 'login.aspx';
+                            window.location.href = window.__loginUrl;
                         }
                     }, 300);
                 } catch (e) {
-                    window.location.href = 'login.aspx';
+                    window.location.href = window.__loginUrl;
                 }
             }
 
@@ -281,7 +288,7 @@
                 // Redirect this tab to login
                 // Small delay ensures storage event is fired before redirect
                 setTimeout(function () {
-                    window.location.href = 'login.aspx';
+                    window.location.href = window.__loginUrl;
                 }, 150);
             }
 
@@ -293,7 +300,7 @@
 
                 if (token) {
                     // Best-effort call to server to mark session inactive
-                    fetch('/LogoutHandler.ashx?loginToken=' + encodeURIComponent(token), {
+                    fetch(window.__logoutHandlerUrl + '?loginToken=' + encodeURIComponent(token), {
                         method: 'GET'
                     }).catch(function () {
                         // ignore network errors, still proceed
@@ -313,7 +320,7 @@
 
                 // Redirect this tab
                 setTimeout(function () {
-                    window.location.href = 'login.aspx';
+                    window.location.href = window.__loginUrl;
                 }, 150);
             }
 
@@ -418,7 +425,7 @@
                 if (!token) {
                     // no token -> go to login
                     // but allow explicit pages that don't require auth to skip (adjust as needed)
-                    // window.location.href = 'login.aspx';
+                    // window.location.href = window.__loginUrl;
                     return;
                 }
                 startChecks();
@@ -438,7 +445,7 @@
                         var token = sessionStorage.getItem('LoginToken') || null;
                         if (!token) return;
                         var payload = JSON.stringify({ loginToken: token });
-                        fetch('/heartbeat.aspx/Heartbeat', {
+                        fetch(window.__heartbeatUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json;charset=utf-8' },
                             body: payload
@@ -475,7 +482,7 @@
 </head>
 <body class="nav-sm footer_fixed">
     <div id="loader">
-        <img src="WebData/Internal/Hourglass.gif" alt="loadergif" />
+        <img src="<%= ResolveUrl("~/WebData/Internal/Hourglass.gif") %>" alt="loadergif" />
     </div>
     <div style="display: none;" id="content">
         <form id="form1" runat="server">
@@ -509,20 +516,20 @@
                                     <h3>General</h3>
                                     <ul class="nav side-menu">
                                         <li id="HomePage" runat="server" visible="false">
-                                            <a href="home.aspx" title="Dashboard-1"><i class="fa fa-home"></i>Home</a>
+                                            <a href="<%= ResolveUrl("~/home.aspx") %>" title="Dashboard-1"><i class="fa fa-home"></i>Home</a>
                                         </li>
 
                                         <li id="ImputForms" runat="server" visible="false"><a><i class="fa fa-pencil-square-o"></i>Forms<span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
                                                 <li id="frms_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="frms_qc" runat="server" visible="false" class="sub_menu"><a href="qaqc_qahome.aspx">Quality Assurance</a></li>
-                                                        <li id="frms_qa" runat="server" visible="false"><a href="qaqc_qchome.aspx">Quality Control</a></li>
+                                                        <li id="frms_qc" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/qaqc_qahome.aspx") %>">Quality Assurance</a></li>
+                                                        <li id="frms_qa" runat="server" visible="false"><a href="<%= ResolveUrl("~/qaqc_qchome.aspx") %>">Quality Control</a></li>
                                                     </ul>
                                                 </li>
                                                 <li id="frms_production" runat="server" visible="false"><a>Production<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="frms_prod" runat="server" visible="false" class="sub_menu"><a href="prod_misc.aspx">No Category</a></li>
+                                                        <li id="frms_prod" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/prod_misc.aspx") %>">No Category</a></li>
                                                     </ul>
                                                 </li>
                                             </ul>
@@ -532,8 +539,8 @@
                                             <ul class="nav child_menu">
                                                 <li id="app_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="app_qa" runat="server" visible="false" class="sub_menu"><a href="qaqc_qaapprovals.aspx">Quality Assurance</a></li>
-                                                        <li id="app_qc" runat="server" visible="false"><a href="qaqc_qcapprovals.aspx">Quality Control</a></li>
+                                                        <li id="app_qa" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/qaqc_qaapprovals.aspx") %>">Quality Assurance</a></li>
+                                                        <li id="app_qc" runat="server" visible="false"><a href="<%= ResolveUrl("~/qaqc_qcapprovals.aspx") %>">Quality Control</a></li>
                                                     </ul>
                                                 </li>
                                             </ul>
@@ -543,13 +550,13 @@
                                             <ul class="nav child_menu">
                                                 <li id="rpts_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="rpts_qa" runat="server" visible="false" class="sub_menu"><a href="qaqc_qahome_rpt.aspx">Quality Assurance</a></li>
-                                                        <li id="rpts_qc" runat="server" visible="false"><a href="qaqc_qchome_rpt.aspx">Quality Control</a></li>
+                                                        <li id="rpts_qa" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/qaqc_qahome_rpt.aspx") %>">Quality Assurance</a></li>
+                                                        <li id="rpts_qc" runat="server" visible="false"><a href="<%= ResolveUrl("~/qaqc_qchome_rpt.aspx") %>">Quality Control</a></li>
                                                     </ul>
                                                 </li>
                                                 <li id="rpts_production" runat="server" visible="false"><a>Production<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="rpts_prod" runat="server" visible="false" class="sub_menu"><a href="prod_misc_rpts.aspx">No Category</a></li>
+                                                        <li id="rpts_prod" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/prod_misc_rpts.aspx") %>">No Category</a></li>
                                                     </ul>
                                                 </li>
                                             </ul>
@@ -557,38 +564,48 @@
 
                                         <li id="AdminControl" runat="server" visible="false"><a><i class="fa fa-database"></i>ADMIN Control <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="DataMST" runat="server" visible="false"><a href="datamastering_home.aspx">Data Mastering<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="QualityAdmin" runat="server" visible="false"><a href="qualitydatamastering_home.aspx">Quality Admin<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="DataMST" runat="server" visible="false"><a href="<%= ResolveUrl("~/datamastering_home.aspx") %>">Data Mastering<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="QualityAdmin" runat="server" visible="false"><a href="<%= ResolveUrl("~/qualitydatamastering_home.aspx") %>">Quality Admin<span class="label label-success pull-right">Click !!</span></a></li>
                                                 <li id="AccessMST" runat="server" visible="false"><a href="#">Access Controls<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 
                                         <li id="WebLogins" runat="server" visible="false"><a><i class="fa fa-database"></i>Web Logins <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="WebLogins_Add" runat="server" visible="false"><a href="webdetails.aspx">Add/Modify<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="WebLogins_Viewall" runat="server" visible="false"><a href="WebsiteCredentialsView.aspx">View All<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="WebLogins_Add" runat="server" visible="false"><a href="<%= ResolveUrl("~/webdetails.aspx") %>">Add/Modify<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="WebLogins_Viewall" runat="server" visible="false"><a href="<%= ResolveUrl("~/WebsiteCredentialsView.aspx") %>">View All<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 
                                         <li id="SO_TaDa_Module" runat="server" visible="false"><a><i class="fa fa-database"></i>TA/Da <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="SO_TaDa_AdminConfig" runat="server" visible="false"><a href="Claims_Config.aspx">Admin Config.<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="SO_TaDa_Submit" runat="server" visible="false"><a href="SalesMonthlyReview.aspx">Apply Claims<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="SO_TaDa_View" runat="server" visible="false"><a href="MyClaimsView_v2.aspx">View Claims<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="SO_TaDa_Approve" runat="server" visible="false"><a href="ClaimsApproval_v2.aspx">View Pending<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="SO_TaDa_ViewApproved" runat="server" visible="false"><a href="ApprovedClaimsView.aspx">View Approved<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_AdminConfig" runat="server" visible="false"><a href="<%= ResolveUrl("~/Claims_Config.aspx") %>">Admin Config.<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_Submit" runat="server" visible="false"><a href="<%= ResolveUrl("~/SalesMonthlyReview.aspx") %>">Apply Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_View" runat="server" visible="false"><a href="<%= ResolveUrl("~/MyClaimsView_v2.aspx") %>">View Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_Approve" runat="server" visible="false"><a href="<%= ResolveUrl("~/ClaimsApproval_v2.aspx") %>">View Pending<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_ViewApproved" runat="server" visible="false"><a href="<%= ResolveUrl("~/ApprovedClaimsView.aspx") %>">View Approved<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 
                                         <li id="VMS_Module" runat="server" visible="false"><a><i class="fa fa-database"></i>Anmol VMS <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="VMS_OrganizationDetails" runat="server" visible="false"><a href="VMS_OrganizationDetails.aspx">Org. Details<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <%--<li id="VMS_SelfLogin" runat="server" visible="false"><a href="VMS_SelfLogin.aspx">View All<span class="label label-success pull-right">Click !!</span></a></li>--%>
-                                                <li id="VMS_MyVisitors" runat="server" visible="false"><a href="VMS_MyVisitors.aspx">My Visitors<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="VMS_MyVisits" runat="server" visible="false"><a href="VMS_MyVisits.aspx">My Visits<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="VMS_GateScanner" runat="server" visible="false"><a href="VMS_GateScanner.aspx">Gate Scanner<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="VMS_AdminPending" runat="server" visible="false"><a href="VMS_AdminPending.aspx">Admin Pending<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="VMS_ReceptionistLogs" runat="server" visible="false"><a href="VMS_ReceptionistLogs.aspx">Reception View<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_OrganizationDetails" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_OrganizationDetails.aspx") %>">Org. Details<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <%--<li id="VMS_SelfLogin" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_SelfLogin.aspx") %>">View All<span class="label label-success pull-right">Click !!</span></a></li>--%>
+                                                <li id="VMS_MyVisitors" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_MyVisitors.aspx") %>">My Visitors<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_MyVisits" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_MyVisits.aspx") %>">My Visits<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_GateScanner" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_GateScanner.aspx") %>">Gate Scanner<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_AdminPending" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_AdminPending.aspx") %>">Admin Pending<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_ReceptionistLogs" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_ReceptionistLogs.aspx") %>">Reception View<span class="label label-success pull-right">Click !!</span></a></li>
+                                            </ul>
+                                        </li>
+
+                                        <%-- PermissionHelper maps control ID -> UI.{ID}.View.
+                                             Hidden until dbo.Permission catalog keys exist and are granted
+                                             (see Database/Scripts/010_ITSM_Sidebar_Permissions.sql). --%>
+                                        <li id="ITSM_Module" runat="server" visible="false"><a><i class="fa fa-ticket"></i> ITSM <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="ITSM_TicketList" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/TicketList.aspx") %>">Ticket Queue</a></li>
+                                                <li id="ITSM_CreateTicket" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/CreateTicket.aspx") %>">Create Ticket</a></li>
                                             </ul>
                                         </li>
 
@@ -624,7 +641,7 @@
                                             <img id="ProfilePic_2" runat="server" alt="" src="~/WebData/No_Image.jpg"><asp:Label ID="lbl_loginusername2" runat="server" Text="Login_Name"></asp:Label>
                                         </a>
                                         <div class="dropdown-menu dropdown-usermenu pull-right" aria-labelledby="navbarDropdown">
-                                            <a class="dropdown-item" href="pwdchange.aspx">Change Password</a>
+                                            <a class="dropdown-item" href="<%= ResolveUrl("~/pwdchange.aspx") %>">Change Password</a>
                                             <%--<a class="dropdown-item" target="_blank" href="#">Support</a>--%>
                                             <%--<a class="dropdown-item" href="#"><i class="fa fa-sign-out pull-right"></i>Log Out</a>--%>
                                             <button type="button" class="dropdown-item btn btn-primary btn-sm" id="btn_Logout" data-toggle="modal" data-target="#MyModal_Logout">Logout</button>
@@ -713,31 +730,31 @@
                 }
             </script>
 
-            <script src="Resources/jquery/dist/jquery.min.js"></script>
-            <script src="Resources/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="Resources/fastclick/lib/fastclick.js"></script>
-            <script src="Resources/nprogress/nprogress.js"></script>
-            <script src="Resources/Chart.js/dist/Chart.min.js"></script>
-            <script src="Resources/gauge.js/dist/gauge.min.js"></script>
-            <script src="Resources/bootstrap-progressbar/bootstrap-progressbar.min.js"></script>
-            <script src="Resources/iCheck/icheck.min.js"></script>
-            <script src="Resources/skycons/skycons.js"></script>
-            <script src="Resources/Flot/jquery.flot.js"></script>
-            <script src="Resources/Flot/jquery.flot.pie.js"></script>
-            <script src="Resources/Flot/jquery.flot.time.js"></script>
-            <script src="Resources/Flot/jquery.flot.stack.js"></script>
-            <script src="Resources/Flot/jquery.flot.resize.js"></script>
-            <script src="Resources/flot.orderbars/js/jquery.flot.orderBars.js"></script>
-            <script src="Resources/flot-spline/js/jquery.flot.spline.min.js"></script>
-            <script src="Resources/flot.curvedlines/curvedLines.js"></script>
-            <script src="Resources/DateJS/build/date.js"></script>
-            <script src="Resources/moment/min/moment.min.js"></script>
-            <script src="Resources/bootstrap-daterangepicker/daterangepicker.js"></script>
-            <script src="Resources/custom/custom.js"></script>
-            <script src="Resources//pnotify/dist/pnotify.js"></script>
-            <script src="Resources//pnotify/dist/pnotify.buttons.js"></script>
-            <script src="Resources//pnotify/dist/pnotify.nonblock.js"></script>
-            <script src="Resources//jQuery-Smart-Wizard/js/jquery.smartWizard.js"></script>
+            <script src="<%= ResolveUrl("~/Resources/jquery/dist/jquery.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/bootstrap/dist/js/bootstrap.bundle.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/fastclick/lib/fastclick.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/nprogress/nprogress.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Chart.js/dist/Chart.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/gauge.js/dist/gauge.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/bootstrap-progressbar/bootstrap-progressbar.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/iCheck/icheck.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/skycons/skycons.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.pie.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.time.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.stack.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.resize.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/flot.orderbars/js/jquery.flot.orderBars.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/flot-spline/js/jquery.flot.spline.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/flot.curvedlines/curvedLines.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/DateJS/build/date.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/moment/min/moment.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/bootstrap-daterangepicker/daterangepicker.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/custom/custom.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.buttons.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.nonblock.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/jQuery-Smart-Wizard/js/jquery.smartWizard.js") %>"></script>
 
             <script type="text/javascript">
                 $(document).ready(function () {

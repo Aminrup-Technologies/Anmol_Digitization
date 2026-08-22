@@ -110,7 +110,7 @@ namespace AnmolDristi.DAL
                     ISNULL(dept.Department_Description, 'General') AS HostDepartment,
                     ISNULL(b.Branch_Description, 'Unknown Branch') AS VisitBranchName,
                     d.DayLogID, d.DayValidFrom, d.DayValidUpto, d.VisitStatus AS DayVisitStatus,
-                    d.ActualInTime AS DayActualInTime, d.IsDayApproved
+                    d.ActualInTime AS DayActualInTime, d.ActualOutTime AS DayActualOutTime, d.IsDayApproved
                 FROM VMS_VisitLog v
                 INNER JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
                 LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode

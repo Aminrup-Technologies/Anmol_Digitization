@@ -9,6 +9,9 @@ namespace AnmolDristi.ITSM.DAL
     /// EF6 DbContext for the ITSM modular monolith.
     /// Uses the shared <c>DbConn</c> connection string; new tables live in the <c>itsm</c> schema.
     /// Legacy <c>dbo</c> masters are read-only — <see cref="SaveChanges"/> rejects any tracked writes.
+    /// When: 2026-08-21
+    /// What: Added read-only Company (dbo.MST_Company) for ticket tenant display name.
+    /// Why: Ticket.CompanyId snapshots MST_UserMaster.CompanyId (= MST_Company.Company_ID).
     /// </summary>
     public class ItsmDbContext : DbContext
     {
@@ -31,6 +34,11 @@ namespace AnmolDristi.ITSM.DAL
         public DbSet<Calendar> Calendars { get; set; }
 
         public DbSet<PlantTimings> PlantTimings { get; set; }
+
+        /// <summary>
+        /// Read-only dbo.MST_Company. Join on Company_ID (not Id) — that is the value stored on UserMaster/Ticket.CompanyId.
+        /// </summary>
+        public DbSet<Company> Companies { get; set; }
 
         // --- ITSM masters (itsm schema) ---
 
@@ -64,11 +72,18 @@ namespace AnmolDristi.ITSM.DAL
 
         public DbSet<TicketApproval> TicketApprovals { get; set; }
 
+        /// <summary>
+        /// Immutable ITGC audit trail for ticket mutations (what / who / when).
+        /// </summary>
+        public DbSet<TicketAuditLog> TicketAuditLogs { get; set; }
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultSchema("itsm");
             // Disable global cascade deletes for required Foreign Keys
             modelBuilder.Conventions.Remove<System.Data.Entity.ModelConfiguration.Conventions.OneToManyCascadeDeleteConvention>();
+            // Ticket.CompanyId is an integer snapshot of MST_Company.Company_ID, not an FK to Company.Id.
+            // No navigation is mapped; do not invent a relationship.
             base.OnModelCreating(modelBuilder);
         }
 
@@ -79,7 +94,7 @@ namespace AnmolDristi.ITSM.DAL
         }
 
         /// <summary>
-        /// Blocks Added / Modified / Deleted states for the six legacy dbo.* entities.
+        /// Blocks Added / Modified / Deleted states for legacy dbo.* entities.
         /// </summary>
         private void AssertNoLegacyMasterWrites()
         {
@@ -105,7 +120,8 @@ namespace AnmolDristi.ITSM.DAL
                 || entity is Branch
                 || entity is Department
                 || entity is Calendar
-                || entity is PlantTimings;
+                || entity is PlantTimings
+                || entity is Company;
         }
     }
 }

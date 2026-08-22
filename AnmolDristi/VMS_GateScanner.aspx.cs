@@ -322,6 +322,7 @@ namespace AnmolDristi
             DateTime? parentValidUpto = null;
             string dayStatus = "Scheduled";
             DateTime? dayActualInTime = null;
+            DateTime? dayActualOutTime = null;
             bool passMatchedForToday = false;
 
             if (scanDt.Rows.Count > 0)
@@ -355,6 +356,8 @@ namespace AnmolDristi
                     : "Scheduled";
                 if (sdr["DayActualInTime"] != DBNull.Value)
                     dayActualInTime = Convert.ToDateTime(sdr["DayActualInTime"]);
+                if (sdr["DayActualOutTime"] != DBNull.Value)
+                    dayActualOutTime = Convert.ToDateTime(sdr["DayActualOutTime"]);
 
                 hfCurrentLogId.Value = logId.ToString();
                 hfHostEmail.Value = sdr["HostEmail"].ToString();
@@ -482,20 +485,33 @@ namespace AnmolDristi
                         photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                 }
             }
-            // FIX-2: Re-entry support when pass is still valid
             else if (dayStatus == "Checked-Out")
             {
-                if (hasEffectiveWindow && now <= effectiveUpto)
+                btnManualCheckOut.Enabled = false;
+                if (dayActualInTime.HasValue)
+                {
+                    liCheckInTime.Visible = true;
+                    lblDetInTime.Text = dayActualInTime.Value.ToString("dd MMM, hh:mm tt");
+                }
+
+                bool windowOpen = hasEffectiveWindow && now >= effectiveFrom && now <= effectiveUpto;
+                if (windowOpen)
                 {
                     btnManualCheckIn.Enabled = true;
-                    btnManualCheckOut.Enabled = false;
-                    liCheckInTime.Visible = false;
+                    btnManualCheckIn.Text = "Confirm Check-IN";
+                    if (dayActualOutTime.HasValue && now < dayActualOutTime.Value.AddMinutes(10))
+                    {
+                        btnManualCheckIn.Enabled = false;
+                        btnManualCheckIn.Text = "Cannot Check-IN yet (< 10 mins)";
+                    }
+
                     ShowResult("result-card result-info", "Ready for Re-Entry",
-                        $"{visName} has already checked out today but the pass is valid until {effectiveUpto:hh:mm tt}. Verify photo and confirm Check-IN for re-entry.",
+                        $"Validity window is still open until {effectiveUpto:hh:mm tt}. Verify photo and confirm Check-IN.",
                         photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);
                 }
                 else
                 {
+                    btnManualCheckIn.Enabled = false;
                     ShowResult("result-card result-danger", "Already Checked-Out Today",
                         $"{visName} has already completed today's gate check-out.",
                         photoPath, visName, company, contact, hostName, hostDept, validUptoDisplay);

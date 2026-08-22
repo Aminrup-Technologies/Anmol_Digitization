@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Data;
-using System.Web.UI;
-using System.Web.UI.WebControls;
+using System.Web;
 using System.Web.Services;
-using System.Web.Script.Services;
+using System.Web.UI.WebControls;
+using System.Web.UI;
 using AnmolDristi.DAL;
 
 namespace AnmolDristi
@@ -11,19 +11,6 @@ namespace AnmolDristi
     public partial class VMS_MyVisits : System.Web.UI.Page
     {
         private readonly VmsVisitorRepository _repository = new VmsVisitorRepository();
-
-        // FIX-3: Session keepalive WebMethod
-        [WebMethod]
-        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static bool KeepAlive()
-        {
-            if (System.Web.HttpContext.Current.Session != null)
-            {
-                string mobile = System.Web.HttpContext.Current.Session["VerifiedMobile"] as string;
-                return !string.IsNullOrEmpty(mobile);
-            }
-            return false;
-        }
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -33,7 +20,30 @@ namespace AnmolDristi
                     return;
 
                 LoadVisitorHistory();
+                BindAnotherHostLink();
             }
+        }
+
+        /// <summary>
+        /// Shows a Registration link when the plant BranchId is known (query or session)
+        /// so a visitor with a pass for Host A can still request Host B.
+        /// </summary>
+        private void BindAnotherHostLink()
+        {
+            pnlAnotherHost.Visible = false;
+
+            int branchId = 0;
+            string queryBranch = Request.QueryString["BranchId"];
+            if (!string.IsNullOrEmpty(queryBranch) && int.TryParse(queryBranch, out branchId) && branchId > 0)
+                Session["VmsBranchId"] = branchId;
+            else if (Session["VmsBranchId"] != null)
+                int.TryParse(Session["VmsBranchId"].ToString(), out branchId);
+
+            if (branchId <= 0)
+                return;
+
+            pnlAnotherHost.Visible = true;
+            lnkAnotherHost.NavigateUrl = $"VMS_Registration.aspx?BranchId={branchId}";
         }
 
         private bool ValidateVisitorSession()
@@ -192,6 +202,21 @@ namespace AnmolDristi
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Sliding session ping for the visitor MyVisits page only.
+        /// DigitalPass is token-authenticated and must not use this.
+        /// </summary>
+        [WebMethod(EnableSession = true)]
+        public static bool KeepAlive()
+        {
+            var session = HttpContext.Current != null ? HttpContext.Current.Session : null;
+            if (session == null)
+                return false;
+
+            object mobile = session["VerifiedMobile"];
+            return mobile != null && !string.IsNullOrEmpty(mobile.ToString());
         }
     }
 }
