@@ -65,6 +65,14 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfIsFacilityOpen;
+
+        /// <summary>
+        /// hfCameraActive control.
+        /// </summary>
+        /// <remarks>
+        /// 2026-08-22: Added to track camera activation state for photo validation.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfCameraActive;
         
         /// <summary>
         /// divQuickHosts control.
@@ -158,6 +166,14 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox txtCompany;
         
         /// <summary>
+        /// rfvCompany control.
+        /// </summary>
+        /// <remarks>
+        /// 2026-08-22: Added for Company Name mandatory validation.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvCompany;
+        
+        /// <summary>
         /// txtDesignation control.
         /// </summary>
         /// <remarks>
@@ -165,6 +181,14 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txtDesignation;
+
+        /// <summary>
+        /// rfvDesignation control.
+        /// </summary>
+        /// <remarks>
+        /// 2026-08-22: Added for Designation mandatory validation.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvDesignation;
         
         /// <summary>
         /// btnSubmit control.
