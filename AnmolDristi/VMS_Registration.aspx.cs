@@ -50,7 +50,10 @@ namespace AnmolDristi
         }
 
         /// <summary>
-        /// Validates OTP session and BranchId, binds hfBranchId, and redirects if an active pass exists.
+        /// 2026-08-22: Validates OTP session and BranchId, binds hfBranchId.
+        /// Does NOT host-blind redirect: an existing pass for Host A must not block
+        /// a new request to Host B. Duplicate checks run at submit against the selected host.
+        /// Restores Session["VmsBranchId"] for downstream page compatibility.
         /// </summary>
         private bool InitializeRegistrationRequest()
         {
@@ -66,8 +69,10 @@ namespace AnmolDristi
 
             hfBranchId.Value = Request.QueryString["BranchId"].ToString();
 
-            // 2. Prevent Duplicate Registration
-            CheckForActivePassAndRedirect();
+            // 2. Restore Session VmsBranchId for downstream pages
+            int parsedBranchId;
+            if (int.TryParse(hfBranchId.Value, out parsedBranchId) && parsedBranchId > 0)
+                Session["VmsBranchId"] = parsedBranchId;
 
             return true;
         }
@@ -689,19 +694,6 @@ namespace AnmolDristi
             return domain.IndexOf('.') > 0;
         }
 
-        private void CheckForActivePassAndRedirect()
-        {
-            string visitorMobile = Session["VerifiedMobile"] != null ? Session["VerifiedMobile"].ToString() : "";
-            string visitorEmail = Session["VerifiedEmail"] != null ? Session["VerifiedEmail"].ToString() : "";
-            int branchId = Convert.ToInt32(hfBranchId.Value);
-
-            if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
-            {
-                Response.Redirect("VMS_MyVisits.aspx", false);
-                Context.ApplicationInstance.CompleteRequest();
-            }
-        }
-
         [WebMethod]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static List<HostEmployee> SearchHost(string prefixText, int branchId)
@@ -797,11 +789,24 @@ namespace AnmolDristi
                 int branchId = Convert.ToInt32(hfBranchId.Value);
 
                 // ==========================================================
-                // 3. DUPLICATE ACTIVE PASS CHECK
+                // 3. HOST + SAME-HOST DUPLICATE CHECK
+                // 2026-08-22: Preserves PR #166 host-aware duplicate logic.
+                // Host validation MUST come before duplicate check so that
+                // HasActiveVisit receives the selected host code.
                 // ==========================================================
-                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId))
+                string hostEmpCode = hfSelectedHostCode.Value == null
+                    ? ""
+                    : hfSelectedHostCode.Value.Trim();
+                if (string.IsNullOrEmpty(hostEmpCode))
                 {
-                    Response.Redirect("VMS_MyVisits.aspx", false);
+                    lblMessage.ForeColor = System.Drawing.Color.Red;
+                    lblMessage.Text = "Selecting a Host Employee is mandatory to generate a pass.";
+                    return;
+                }
+
+                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId, hostEmpCode))
+                {
+                    Response.Redirect($"VMS_MyVisits.aspx?BranchId={branchId}", false);
                     Context.ApplicationInstance.CompleteRequest();
                     return;
                 }
@@ -812,19 +817,6 @@ namespace AnmolDristi
                 string photoPath = PersistSelfie();
                 fullPath = Server.MapPath("~" + photoPath);
                 dbPhotoPath = photoPath;
-
-                // ==========================================================
-                // 5. HOST VALIDATION
-                // 2026-08-22: Replaced throw with graceful return (existing pattern).
-                // ==========================================================
-                string hostEmpCode = hfSelectedHostCode.Value;
-
-                if (string.IsNullOrWhiteSpace(hostEmpCode))
-                {
-                    lblMessage.ForeColor = System.Drawing.Color.Red;
-                    lblMessage.Text = "Selecting a Host Employee is mandatory to generate a pass.";
-                    return;
-                }
 
                 // ==========================================================
                 // 6. DEFAULT VISIT VALUES / APPROVAL RESOLUTION
