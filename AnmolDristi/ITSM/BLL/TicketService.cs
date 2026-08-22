@@ -14,6 +14,17 @@ namespace AnmolDristi.ITSM.BLL
     /// When: 2026-08-21
     /// What: Snapshot requester.CompanyId onto Ticket.CompanyId at create.
     /// Why: Ticket tenant must be immutable; live Requester.CompanyId can change in HRMS.
+    /// When: 2026-08-22
+    /// What: Resolve legacy BranchId (MST_Branch.Branch_ID) → MST_Branch.Id for
+    ///       Tickets.BranchId FK and DispatchService routing. Resolve PlantId
+    ///       deterministically — return NULL when PlantID_ID maps to multiple
+    ///       MST_Plant rows (ambiguous) or zero rows (missing).
+    /// Why: MST_UserMaster.BranchId stores legacy Branch_ID (not MST_Branch.Id).
+    ///      MST_UserMaster.PlantId stores legacy PlantID_ID (not MST_Plant.Id).
+    ///      Tickets.BranchId FK references MST_Branch.Id. Tickets.PlantId FK
+    ///      references MST_Plant.Id. PlantID_ID is not globally unique (e.g.
+    ///      PlantID_ID=3277 → Id 40 "Greater Noida" + Id 41 "Nirmali").
+    ///      Branch is mandatory (routing + dispatch); Plant is optional (location context).
     /// </summary>
     public class TicketService
     {
@@ -72,22 +83,35 @@ namespace AnmolDristi.ITSM.BLL
                             "Requester has no CompanyId on MST_UserMaster; ticket creation is blocked for tenant isolation.");
                     }
 
-                    // Phase-1 schema §5.4: Tickets.PlantId is INT FK NULL.
-                    // NULL = Corporate Office (no plant assignment).
-                    // Orphaned PlantId (not found in MST_Plant) is normalized to NULL
-                    // rather than blocked, since 4,341 legacy records share this condition.
-                    int? resolvedPlantId = null;
-                    if (requester.PlantId > 0)
-                    {
-                        var plantExists = context.Plants
-                            .AsNoTracking()
-                            .Any(p => p.Id == requester.PlantId);
+                    // ── Branch resolution ──────────────────────────────────────
+                    // MST_UserMaster.BranchId stores legacy Branch_ID (e.g. 1966),
+                    // NOT MST_Branch.Id (identity PK, e.g. 4).
+                    // Tickets.BranchId FK references MST_Branch.Id.
+                    // DispatchService.ResolveAssignee also expects MST_Branch.Id
+                    // (SupportMapping.BranchId FK → MST_Branch.Id).
+                    // Branch_ID is verified unique — exactly one match expected.
+                    var branch = context.Branches
+                        .AsNoTracking()
+                        .FirstOrDefault(b => b.Branch_ID == requester.BranchId);
 
-                        if (plantExists)
-                        {
-                            resolvedPlantId = requester.PlantId;
-                        }
+                    if (branch == null)
+                    {
+                        throw new InvalidOperationException(
+                            "Requester BranchId " + requester.BranchId
+                            + " does not resolve to MST_Branch.Branch_ID for EmployeeCode: "
+                            + requester.EmployeeCode + ".");
                     }
+
+                    var resolvedBranchId = branch.Id;
+
+                    // ── Plant resolution ───────────────────────────────────────
+                    // MST_UserMaster.PlantId stores legacy PlantID_ID (business key),
+                    // NOT MST_Plant.Id (identity PK). Tickets.PlantId FK references
+                    // MST_Plant.Id.
+                    // PlantID_ID is NOT globally unique — e.g. PlantID_ID=3277 maps
+                    // to both Id=40 (Greater Noida) and Id=41 (Nirmali).
+                    // Semantics: NULL when <= 0, missing, or ambiguous (multiple matches).
+                    int? resolvedPlantId = ResolvePlantId(context, requester.PlantId);
 
                     var requestType = context.RequestTypes
                         .AsNoTracking()
@@ -107,13 +131,19 @@ namespace AnmolDristi.ITSM.BLL
 
                     var resolutionHours = priority != null ? priority.SlaResolutionHours : 0;
                     var createdOn = DateTime.Now;
+
+                    // SlaService uses VMS_PlantTimings.Branch_ID which stores the
+                    // legacy Branch_ID value (not MST_Branch.Id), so we pass the
+                    // original legacy value from the requester.
                     var sla = _slaService.CalculateSla(
                         requester.BranchId,
                         createdOn,
                         resolutionHours);
 
+                    // DispatchService.ResolveAssignee expects MST_Branch.Id
+                    // (SupportMapping.BranchId FK → MST_Branch.Id).
                     var assigneeCode = _dispatchService.ResolveAssignee(
-                        requester.BranchId,
+                        resolvedBranchId,
                         categoryId,
                         subCategoryId,
                         itemId);
@@ -133,7 +163,7 @@ namespace AnmolDristi.ITSM.BLL
                         RequesterCode = requester.EmployeeCode,
                         AssigneeCode = assigneeCode,
                         PlantId = resolvedPlantId,
-                        BranchId = requester.BranchId,
+                        BranchId = resolvedBranchId,
                         CompanyId = requester.CompanyId,
                         CategoryId = categoryId,
                         SubCategoryId = subCategoryId,
@@ -207,6 +237,42 @@ namespace AnmolDristi.ITSM.BLL
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// Resolves legacy MST_UserMaster.PlantId (PlantID_ID business key) to
+        /// MST_Plant.Id (identity PK) for the Tickets.PlantId FK.
+        ///
+        /// Returns NULL when:
+        ///   - PlantId &lt;= 0 (no plant assignment — Corporate Office)
+        ///   - Zero MST_Plant rows match PlantID_ID
+        ///   - Multiple MST_Plant rows match PlantID_ID (ambiguous — data quality issue)
+        ///
+        /// Returns MST_Plant.Id only when exactly one row matches (deterministic).
+        /// Does NOT use FirstOrDefault, Min, Max, or any ordering to break ties.
+        /// </summary>
+        private static int? ResolvePlantId(ItsmDbContext context, int legacyPlantId)
+        {
+            if (legacyPlantId <= 0)
+            {
+                return null;
+            }
+
+            var matchingPlantIds = context.Plants
+                .AsNoTracking()
+                .Where(p => p.PlantID_ID == legacyPlantId)
+                .Select(p => (int?)p.Id)
+                .ToList();
+
+            if (matchingPlantIds.Count == 1)
+            {
+                return matchingPlantIds[0];
+            }
+
+            // Zero matches: PlantID_ID does not exist in MST_Plant.
+            // Multiple matches: PlantID_ID is ambiguous (e.g. 3277 → Id 40 + 41).
+            // In both cases, return NULL (Corporate Office / unresolved).
+            return null;
         }
 
         private static string GenerateTicketNumber(

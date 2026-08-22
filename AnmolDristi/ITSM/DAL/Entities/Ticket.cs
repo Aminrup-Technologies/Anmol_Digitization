@@ -48,12 +48,14 @@ namespace AnmolDristi.ITSM.DAL.Entities
         public string AssigneeCode { get; set; }
 
         /// <summary>
-        /// FK → dbo.MST_Plant.Id — routing/location from requester at create. Not the ticket tenant.
+        /// FK → dbo.MST_Plant.Id (identity PK) — resolved from legacy MST_UserMaster.PlantId
+        /// (which stores PlantID_ID) by TicketService at create. Not the ticket tenant.
         /// </summary>
         public int? PlantId { get; set; }
 
         /// <summary>
-        /// FK → dbo.MST_Branch.Id — routing/location from requester at create; drives dispatch.
+        /// FK → dbo.MST_Branch.Id (identity PK) — resolved from legacy MST_UserMaster.BranchId
+        /// (which stores Branch_ID) by TicketService at create. Drives dispatch routing.
         /// Not the ticket tenant.
         /// </summary>
         [Required]
