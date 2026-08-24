@@ -871,9 +871,9 @@
     <Compile Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.Designer.cs">
       <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
     </Compile>
-    <Compile Include="ITSM\DAL\Migrations\202608220200000_AddApprovalConfiguration.cs" />
-    <Compile Include="ITSM\DAL\Migrations\202608220200000_AddApprovalConfiguration.Designer.cs">
-      <DependentUpon>202608220200000_AddApprovalConfiguration.cs</DependentUpon>
+    <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.designer.cs">
+      <DependentUpon>202608240451107_AddApprovalConfiguration.cs</DependentUpon>
     </Compile>
     <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />
     <Compile Include="LeakAndSlant_Detailed.aspx.cs">
@@ -1795,8 +1795,8 @@
     <EmbeddedResource Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.resx">
       <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ITSM\DAL\Migrations\202608220200000_AddApprovalConfiguration.resx">
-      <DependentUpon>202608220200000_AddApprovalConfiguration.cs</DependentUpon>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.resx">
+      <DependentUpon>202608240451107_AddApprovalConfiguration.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
