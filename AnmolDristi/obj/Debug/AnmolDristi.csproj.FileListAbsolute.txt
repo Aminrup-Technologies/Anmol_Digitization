@@ -190,3 +190,6 @@ D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csprojResolveAssemblyReference.cache
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.ITSM.DAL.Migrations.InitialItsmSchema.resources
 D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.csproj.GenerateResource.Cache
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.ITSM.DAL.Migrations.AddTicketAuditLog.resources
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.ITSM.DAL.Migrations.AddTicketCompanyId.resources
+D:\PersonalRnD\AminrupWorks\Anmol_Digitization\AnmolDristi\obj\Debug\AnmolDristi.ITSM.DAL.Migrations.AddApprovalConfiguration.resources

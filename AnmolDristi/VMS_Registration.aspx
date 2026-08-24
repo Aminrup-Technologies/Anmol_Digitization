@@ -32,6 +32,8 @@
                     <asp:HiddenField ID="hfSelfieBase64" runat="server" />
                     <asp:HiddenField ID="hfSelectedHostCode" runat="server" />
                     <asp:HiddenField ID="hfIsFacilityOpen" runat="server" />
+                    <!-- 2026-08-22: Added hfCameraActive to track whether getUserMedia succeeded. Used by client+server validation to distinguish camera capture from manual POST. -->
+                    <asp:HiddenField ID="hfCameraActive" runat="server" Value="false" />
 
                     <div class="form-group">
                         <label class="form-label">Visit Schedule *</label>
@@ -115,14 +117,24 @@
                         </div>
                     </div>
 
+                    <!-- 2026-08-22: Company Name validation — RequiredFieldValidator added. Mandatory administrative data. -->
                     <div class="form-group">
-                        <label class="form-label">Company Name *</label>
+                        <label class="form-label">Company Name <span style="color: red;">*</span></label>
                         <asp:TextBox ID="txtCompany" runat="server" CssClass="form-control" placeholder="Where are you from?"></asp:TextBox>
+                        <asp:RequiredFieldValidator ID="rfvCompany" runat="server" ControlToValidate="txtCompany"
+                            ErrorMessage="Company Name is required." Display="Dynamic"
+                            ForeColor="Red" Font-Size="Small" SetFocusOnError="true"
+                            ValidationGroup="Registration" CssClass="text-danger" />
                     </div>
 
+                    <!-- 2026-08-22: Designation validation — label updated with *, RequiredFieldValidator added. Mandatory administrative data. -->
                     <div class="form-group">
-                        <label class="form-label">Designation</label>
+                        <label class="form-label">Designation <span style="color: red;">*</span></label>
                         <asp:TextBox ID="txtDesignation" runat="server" CssClass="form-control" placeholder="Your Job Title"></asp:TextBox>
+                        <asp:RequiredFieldValidator ID="rfvDesignation" runat="server" ControlToValidate="txtDesignation"
+                            ErrorMessage="Designation is required." Display="Dynamic"
+                            ForeColor="Red" Font-Size="Small" SetFocusOnError="true"
+                            ValidationGroup="Registration" CssClass="text-danger" />
                     </div>
 
                     <div class="form-group">
@@ -142,7 +154,8 @@
                         </div>
                     </div>
 
-                    <asp:Button ID="btnSubmit" runat="server" CssClass="btn btn-proceed" Text="Submit Registration" OnClientClick="return validateForm();" OnClick="btnSubmit_Click" />
+                    <!-- 2026-08-22: ValidationGroup="Registration" added to coordinate ASP.NET validators. -->
+                    <asp:Button ID="btnSubmit" runat="server" CssClass="btn btn-proceed" Text="Submit Registration" OnClientClick="return validateForm();" OnClick="btnSubmit_Click" ValidationGroup="Registration" />
                 </asp:Panel>
 
                 <asp:Panel ID="pnlSuccess" runat="server" Visible="false" CssClass="mobile-form text-center">
@@ -199,14 +212,18 @@
             const retake = document.getElementById('btnRetake');
             const hfSelfie = document.getElementById('<%= hfSelfieBase64.ClientID %>');
 
+            // 2026-08-22: Camera initialization updated — hfCameraActive flag set on successful getUserMedia.
+            // This flag is checked in validateForm() and sent to server for validation.
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
                     .then(function (stream) {
                         video.srcObject = stream;
+                        document.getElementById('<%= hfCameraActive.ClientID %>').value = "true";
                     })
                     .catch(function (error) {
                         console.error("Camera Error:", error);
-                        alert("Camera access is required to take a visitor photo.");
+                        document.getElementById('<%= hfCameraActive.ClientID %>').value = "false";
+                        alert("Camera access is required to take a visitor photo. Please enable camera permissions and refresh the page.");
                     });
             }
 
@@ -283,11 +300,35 @@
         }
 
         // Basic Client-Side Validation
+        // 2026-08-22: validateForm() updated — Company Name, Designation mandatory checks added.
+        // Camera activation check added to require live camera capture.
         function validateForm() {
-            if ($("#<%= hfSelfieBase64.ClientID %>").val() === "") {
-                alert("Please take a selfie photo before submitting.");
+            // Company Name mandatory
+            var companyVal = $("#<%= txtCompany.ClientID %>").val();
+            if (!companyVal || companyVal.trim() === "") {
+                alert("Please enter your Company Name.");
+                $("#<%= txtCompany.ClientID %>").focus();
                 return false;
             }
+
+            // Designation mandatory
+            var designationVal = $("#<%= txtDesignation.ClientID %>").val();
+            if (!designationVal || designationVal.trim() === "") {
+                alert("Please enter your Designation.");
+                $("#<%= txtDesignation.ClientID %>").focus();
+                return false;
+            }
+
+            // Photo mandatory — requires camera activation and capture
+            if ($("#<%= hfCameraActive.ClientID %>").val() !== "true") {
+                alert("Camera access is required. Please allow camera permissions and take a photo.");
+                return false;
+            }
+            if ($("#<%= hfSelfieBase64.ClientID %>").val() === "") {
+                alert("Please take a photo using the camera before submitting.");
+                return false;
+            }
+
             if ($("#<%= ddlPurpose.ClientID %>").val() === "") {
                 alert("Please select the purpose of your visit.");
                 return false;
