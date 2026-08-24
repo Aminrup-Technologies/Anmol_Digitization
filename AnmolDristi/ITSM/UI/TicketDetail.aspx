@@ -122,7 +122,9 @@
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
-        <div class="ticket-detail-grid">
+        <div class="row">
+            <div class="col-md-12 col-sm-12 col-xs-12">
+                <div class="ticket-detail-grid">
 
             <!-- Tenant Badge (requirement §23) — populated from ticket data, read-only -->
             <asp:Panel ID="pnlTenantBadge" runat="server" Visible="false">
@@ -435,6 +437,8 @@
                         <asp:HiddenField ID="hfRowVersion" runat="server" />
 
                     </asp:Panel>
+                </div>
+            </div>
                 </div>
             </div>
         </div>
