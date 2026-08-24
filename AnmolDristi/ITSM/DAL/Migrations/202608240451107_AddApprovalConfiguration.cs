@@ -20,18 +20,23 @@ namespace AnmolDristi.ITSM.DAL.Migrations
                 .PrimaryKey(t => t.Id)
                 .ForeignKey("dbo.MST_UserMaster", t => t.ItHeadApproverCode)
                 .Index(t => t.ItHeadApproverCode);
-            
-            // Filtered unique index: only one active IT Head configuration may exist.
-            // SQL Server supports filtered indexes; EF6 migration SQL handles this directly.
+
             Sql(@"
                 CREATE UNIQUE INDEX UIX_MST_ApprovalConfiguration_IsActive
                 ON itsm.MST_ApprovalConfiguration (IsActive)
                 WHERE IsActive = 1;
             ");
+
         }
         
         public override void Down()
         {
+            Sql(@"
+                DROP INDEX UIX_MST_ApprovalConfiguration_IsActive
+                ON itsm.MST_ApprovalConfiguration;
+            ");
+
+            DropForeignKey("itsm.MST_ApprovalConfiguration", "ItHeadApproverCode", "dbo.MST_UserMaster");
             DropIndex("itsm.MST_ApprovalConfiguration", new[] { "ItHeadApproverCode" });
             DropTable("itsm.MST_ApprovalConfiguration");
         }
