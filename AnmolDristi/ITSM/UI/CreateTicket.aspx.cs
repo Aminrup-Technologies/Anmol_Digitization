@@ -1,6 +1,16 @@
+// ========================================================================
+// When: 2026-08-24
+// What: Post/Redirect/Get after successful ticket creation; session
+//       gatekeeping now validates WORKMAN+USERID+BRANCH on every request.
+// Why: The post-success BindInitialLookups() rebind caused the POST to
+//      hang indefinitely. PRG eliminates the unnecessary re-render and
+//      navigates the user directly to the new ticket detail page.
+// ========================================================================
+
 using System;
 using System.Data.Entity;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Web.UI.WebControls;
 using AnmolDristi.ITSM.BLL;
@@ -16,14 +26,17 @@ namespace AnmolDristi.ITSM.UI
     {
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Session gatekeeping on every request (not only !IsPostBack).
+            if (Session["WORKMAN"] == null
+                || Session["USERID"] == null
+                || Session["BRANCH"] == null)
+            {
+                Response.Redirect("~/login.aspx");
+                return;
+            }
+
             if (!IsPostBack)
             {
-                if (Session["WORKMAN"] == null)
-                {
-                    Response.Redirect("~/login.aspx");
-                    return;
-                }
-
                 BindInitialLookups();
                 ResetChildDropdowns();
             }
@@ -74,7 +87,7 @@ namespace AnmolDristi.ITSM.UI
                 }
 
                 var ticketService = new TicketService();
-                ticketService.CreateTicket(
+                int newTicketId = ticketService.CreateTicket(
                     requesterCode,
                     requestTypeId,
                     txtTitle.Text.Trim(),
@@ -85,10 +98,14 @@ namespace AnmolDristi.ITSM.UI
                     impactId,
                     urgencyId);
 
-                ShowMessage("Ticket created successfully.", true);
-                ResetFormInputs();
-                BindInitialLookups();
-                ResetChildDropdowns();
+                // Post/Redirect/Get: navigate to TicketDetail so the browser
+                // issues a fresh GET instead of repeating the POST.
+                // When: 2026-08-24 — prevents indefinite POST hang.
+                string redirectUrl = ResolveUrl("~/ITSM/UI/TicketDetail.aspx?id="
+                    + newTicketId.ToString(CultureInfo.InvariantCulture));
+                Response.Redirect(redirectUrl, false);
+                Context.ApplicationInstance.CompleteRequest();
+                return;
             }
             catch (Exception ex)
             {
