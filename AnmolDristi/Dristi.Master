@@ -606,6 +606,7 @@
                                             <ul class="nav child_menu">
                                                 <li id="ITSM_TicketList" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/TicketList.aspx") %>">Ticket Queue</a></li>
                                                 <li id="ITSM_CreateTicket" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/CreateTicket.aspx") %>">Create Ticket</a></li>
+                                                <li id="ITSM_ApprovalConfig" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/ApprovalConfig.aspx") %>">Approval Config</a></li>
                                             </ul>
                                         </li>
 

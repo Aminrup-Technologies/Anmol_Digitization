@@ -415,6 +415,11 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_CreateTicket;
         
         /// <summary>
+        /// ITSM_ApprovalConfig control. Visibility: UI.ITSM_ApprovalConfig.View
+        /// </summary>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_ApprovalConfig;
+
+        /// <summary>
         /// ProfilePic_2 control.
         /// </summary>
         /// <remarks>
