@@ -420,6 +420,11 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_ApprovalConfig;
 
         /// <summary>
+        /// ITSM_MasterData control. Visibility: UI.ITSM_MasterData.View
+        /// </summary>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_MasterData;
+
+        /// <summary>
         /// ProfilePic_2 control.
         /// </summary>
         /// <remarks>
