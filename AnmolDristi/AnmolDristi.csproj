@@ -876,7 +876,7 @@
       <DependentUpon>202608220132564_AddBranchLegacyId.cs</DependentUpon>
     </Compile>
     <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.cs" />
-    <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.designer.cs">
+    <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.Designer.cs">
       <DependentUpon>202608240451107_AddApprovalConfiguration.cs</DependentUpon>
     </Compile>
     <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />

@@ -49,7 +49,8 @@ namespace AnmolDristi.ITSM.BLL
         /// Creates a ticket: resolves requester context, priority, assignee,
         /// ticket number, optional manager/IT Head approval, and queues an email notification.
         /// </summary>
-        public void CreateTicket(
+        /// <returns>The Id of the newly created ticket.</returns>
+        public int CreateTicket(
             string requesterCode,
             int requestTypeId,
             string title,
@@ -279,6 +280,9 @@ namespace AnmolDristi.ITSM.BLL
                         sla.DueDate);
 
                     transaction.Commit();
+
+                    // Return the ticket Id only after Commit() succeeds.
+                    return ticket.Id;
                 }
                 catch
                 {
@@ -286,6 +290,9 @@ namespace AnmolDristi.ITSM.BLL
                     throw;
                 }
             }
+
+            // Unreachable — the try block always returns or throws.
+            throw new InvalidOperationException("Ticket creation failed unexpectedly.");
         }
 
         /// <summary>
