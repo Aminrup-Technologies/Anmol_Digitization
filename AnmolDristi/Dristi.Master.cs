@@ -192,6 +192,14 @@ namespace AnmolDristi
                 PermissionHelper.ApplyUiPermissions(this);
                 DumpControls(this); // or pass your sidebar wrapper control
 
+                // ITSM module is visible to every authenticated employee.
+                // Individual ITSM capabilities (queues, approvals, config)
+                // remain gated by their own UI.*.View permission keys.
+                if (ITSM_Module != null)
+                {
+                    ITSM_Module.Visible = true;
+                }
+
 
                 //---- Added on 17-Sep-2025------//
                 //UiPermissionController.Apply(this);// apply to whole master

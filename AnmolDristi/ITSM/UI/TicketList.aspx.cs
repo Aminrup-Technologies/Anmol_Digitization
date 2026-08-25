@@ -30,10 +30,48 @@ namespace AnmolDristi.ITSM.UI
 
             if (!IsPostBack)
             {
-                SetActiveTab("MyQueue");
+                ApplyTabVisibility();
+                string defaultTab = GetDefaultTab();
+                SetActiveTab(defaultTab);
                 BindFilterLookups();
                 BindQueue();
             }
+            else
+            {
+                ApplyTabVisibility();
+            }
+        }
+
+        /// <summary>
+        /// Sets server-side visibility on agent/approval tabs based on
+        /// RBAC permissions. UI visibility is NOT the security boundary —
+        /// each service method enforces its own predicate independently.
+        /// ITSM.Queue.View gates My Queue and All Open.
+        /// ITSM.Approval.View gates Pending Approvals.
+        /// My Tickets is visible to all authenticated employees.
+        /// </summary>
+        private void ApplyTabVisibility()
+        {
+            bool hasQueueView = HasPermission("ITSM.Queue.View");
+            bool hasApprovalView = HasPermission("ITSM.Approval.View");
+
+            tabMyQueue.Visible = hasQueueView;
+            tabAllOpen.Visible = hasQueueView;
+            tabMyTickets.Visible = true; // all authenticated employees
+            tabApprovals.Visible = hasApprovalView;
+        }
+
+        /// <summary>
+        /// Returns the default tab based on what is actually visible.
+        /// Agents see My Queue; normal employees see My Tickets.
+        /// </summary>
+        private string GetDefaultTab()
+        {
+            if (tabMyQueue.Visible) return "MyQueue";
+            if (tabMyTickets.Visible) return "MyTickets";
+            if (tabAllOpen.Visible) return "AllOpen";
+            if (tabApprovals.Visible) return "Approvals";
+            return "MyTickets";
         }
 
         protected void lnkMyQueue_Click(object sender, EventArgs e)
@@ -124,6 +162,13 @@ namespace AnmolDristi.ITSM.UI
 
         private void SetActiveTab(string tab)
         {
+            // Only allow tabs that are actually visible.
+            // This prevents a hidden tab from being set active via postback manipulation.
+            if (tab == "MyQueue" && !tabMyQueue.Visible) tab = GetDefaultTab();
+            if (tab == "AllOpen" && !tabAllOpen.Visible) tab = GetDefaultTab();
+            if (tab == "MyTickets" && !tabMyTickets.Visible) tab = GetDefaultTab();
+            if (tab == "Approvals" && !tabApprovals.Visible) tab = GetDefaultTab();
+
             ViewState[VS_ACTIVE_TAB] = tab;
             lnkMyQueue.CssClass = tab == "MyQueue" ? "active" : "";
             lnkAllOpen.CssClass = tab == "AllOpen" ? "active" : "";
