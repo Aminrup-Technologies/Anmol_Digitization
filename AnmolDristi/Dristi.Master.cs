@@ -200,6 +200,13 @@ namespace AnmolDristi
                     ITSM_Module.Visible = true;
                 }
 
+                // Ticket Queue is always visible for all authenticated employees.
+                // Tab visibility inside TicketList.aspx is permission-gated separately.
+                if (ITSM_TicketList != null)
+                {
+                    ITSM_TicketList.Visible = true;
+                }
+
 
                 //---- Added on 17-Sep-2025------//
                 //UiPermissionController.Apply(this);// apply to whole master
