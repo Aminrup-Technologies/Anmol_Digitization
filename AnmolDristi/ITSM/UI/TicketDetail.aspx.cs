@@ -3,8 +3,12 @@
 // What: Session gate WORKMAN+USERID+BRANCH; detail/update without actor
 //       CompanyId; tenant badge = MST_Company.Company_Description;
 //       AddComment passes RowVersion; reassign agents are all Active users.
+//       2026-08-24: Added ITSM.Ticket.View permission check with tenant
+//       isolation — permission grants view only for tickets in the
+//       user's authorized company (ItsmTenantContext.ResolveCompanyId).
 // Why: Ticket.CompanyId is the tenant. Session CompanyID / actor company
-//      must not gate shared-service processing.
+//      must not gate shared-service processing. The permission gate
+//      prevents cross-company access via ?id=.
 // ========================================================================
 
 using System;
@@ -205,7 +209,16 @@ namespace AnmolDristi.ITSM.UI
 
         private void LoadTicket(int ticketId)
         {
-            var dto = new TicketDetailService().GetTicketDetail(ticketId, GetActorCode());
+            // RBAC: resolve permission and authorized tenant at the UI layer.
+            // BLL remains System.Web-agnostic.
+            var hasTicketViewPermission = HasPermission("ITSM.Ticket.View");
+            var authorizedCompanyId = ItsmTenantContext.ResolveCompanyId(GetActorCode());
+
+            var dto = new TicketDetailService().GetTicketDetail(
+                ticketId,
+                GetActorCode(),
+                hasTicketViewPermission,
+                authorizedCompanyId);
             if (dto == null)
             {
                 ShowNotFound();

@@ -97,7 +97,17 @@ namespace AnmolDristi.ITSM.BLL
     /// </summary>
     public class TicketDetailService
     {
-        public TicketDetailDto GetTicketDetail(int ticketId, string actorCode)
+        /// <summary>
+        /// Returns ticket detail with full authorization check.
+        /// The hasTicketViewPermission and authorizedCompanyId parameters
+        /// are resolved by the UI layer (BasePage.HasPermission + tenant
+        /// resolution). BLL remains System.Web-agnostic.
+        /// </summary>
+        public TicketDetailDto GetTicketDetail(
+            int ticketId,
+            string actorCode,
+            bool hasTicketViewPermission,
+            int authorizedCompanyId)
         {
             if (string.IsNullOrWhiteSpace(actorCode))
             {
@@ -155,7 +165,10 @@ namespace AnmolDristi.ITSM.BLL
                     ticketId,
                     actorCode,
                     dto.RequesterCode,
-                    dto.AssigneeCode))
+                    dto.AssigneeCode,
+                    hasTicketViewPermission,
+                    authorizedCompanyId,
+                    dto.CompanyId))
                 {
                     return null;
                 }
