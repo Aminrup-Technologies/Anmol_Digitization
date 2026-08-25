@@ -4,6 +4,14 @@
 //       lookup no longer use actor CompanyId. Queues stay DTO-bound.
 // Why: Shared-service queues must not be restricted by agent company.
 //      Session CompanyID is not the authentication model.
+// When: 2026-08-25
+// What: Centralized server-side authorization for every queue operation.
+//       BindQueue() is the single chokepoint — it validates the active
+//       tab against RBAC permissions before calling any service method.
+//       UI visibility (ApplyTabVisibility) is cosmetic only.
+// Why:  Hidden tabs must not be invocable via crafted postback.
+//       The security boundary is the authorization check inside BindQueue,
+//       not the HTML/server-control visibility.
 // ========================================================================
 
 using System;
@@ -162,13 +170,6 @@ namespace AnmolDristi.ITSM.UI
 
         private void SetActiveTab(string tab)
         {
-            // Only allow tabs that are actually visible.
-            // This prevents a hidden tab from being set active via postback manipulation.
-            if (tab == "MyQueue" && !tabMyQueue.Visible) tab = GetDefaultTab();
-            if (tab == "AllOpen" && !tabAllOpen.Visible) tab = GetDefaultTab();
-            if (tab == "MyTickets" && !tabMyTickets.Visible) tab = GetDefaultTab();
-            if (tab == "Approvals" && !tabApprovals.Visible) tab = GetDefaultTab();
-
             ViewState[VS_ACTIVE_TAB] = tab;
             lnkMyQueue.CssClass = tab == "MyQueue" ? "active" : "";
             lnkAllOpen.CssClass = tab == "AllOpen" ? "active" : "";
@@ -179,6 +180,27 @@ namespace AnmolDristi.ITSM.UI
         private string GetActiveTab()
         {
             return ViewState[VS_ACTIVE_TAB] as string ?? "MyQueue";
+        }
+
+        /// <summary>
+        /// Returns whether the current user is authorized to operate on
+        /// the given tab. This is the SERVER-SIDE SECURITY BOUNDARY.
+        /// UI visibility is cosmetic only; this method is the authority.
+        /// </summary>
+        private bool IsTabAuthorized(string tab)
+        {
+            switch (tab)
+            {
+                case "MyQueue":
+                case "AllOpen":
+                    return HasPermission("ITSM.Queue.View");
+                case "Approvals":
+                    return HasPermission("ITSM.Approval.View");
+                case "MyTickets":
+                    return true; // all authenticated employees
+                default:
+                    return false;
+            }
         }
 
         private TicketListFilter BuildFilter()
@@ -214,16 +236,38 @@ namespace AnmolDristi.ITSM.UI
             return filter;
         }
 
+        /// <summary>
+        /// Single chokepoint for all queue operations. Authorizes the
+        /// active tab BEFORE calling any service method. If unauthorized,
+        /// falls back to an authorized tab — no service call is made.
+        /// Every postback handler (click, filter, search, pagination)
+        /// routes through this method.
+        /// </summary>
         private void BindQueue()
         {
             ClearMessage();
+
+            var tab = GetActiveTab();
+
+            // ── Server-side authorization gate ──────────────────────
+            // This is the security boundary. UI visibility is cosmetic.
+            // A crafted postback cannot invoke an unauthorized service
+            // call because this check executes before any BLL method.
+            if (!IsTabAuthorized(tab))
+            {
+                string fallback = GetDefaultTab();
+                SetActiveTab(fallback);
+                tab = fallback;
+                ShowMessage(
+                    "You do not have access to that queue. Showing authorized view.",
+                    false);
+            }
 
             try
             {
                 var workman = Session["WORKMAN"].ToString();
                 var filter = BuildFilter();
                 var service = new TicketListService();
-                var tab = GetActiveTab();
 
                 switch (tab)
                 {
@@ -240,7 +284,7 @@ namespace AnmolDristi.ITSM.UI
                         gvTickets.DataSource = service.GetApprovalQueue(workman);
                         break;
                     default:
-                        gvTickets.DataSource = service.GetAgentQueue(workman, filter);
+                        gvTickets.DataSource = service.GetMyTickets(workman, filter);
                         break;
                 }
 
