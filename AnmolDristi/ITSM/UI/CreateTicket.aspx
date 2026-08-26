@@ -9,11 +9,12 @@
               navigates the user directly to the new ticket detail page.
      When:    2026-08-26 (UX refactor)
      What:    Eliminated postbacks for Category/SubCategory/Item selection.
-              All category hierarchy data is loaded once as JSON on initial GET
-              and filtered client-side. Category is now clickable cards instead
-              of a dropdown. Impact/Urgency are compact button groups.
+              Category hierarchy loaded once as strongly typed DTOs, serialized
+              via JavaScriptSerializer. Category cards rendered server-side once;
+              JS uses event delegation for clicks and JSON for sub/item filtering.
+              Impact/Urgency rendered as compact button groups.
      Why:     Product decision — faster ticket creation (5 fewer postbacks),
-              better UX with clear category cards, and zero unnecessary DB
+              better UX with clear category cards, zero unnecessary DB
               round-trips for dependent selections.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Create Ticket" Language="C#" MasterPageFile="~/Dristi.Master"
@@ -23,173 +24,76 @@
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style>
         /* --- Section layout --- */
-        .ticket-section {
-            margin-bottom: 28px;
-        }
+        .ticket-section { margin-bottom: 28px; }
         .ticket-section-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 10px;
-            padding-bottom: 6px;
+            font-size: 14px; font-weight: 700; color: #333;
+            margin-bottom: 10px; padding-bottom: 6px;
             border-bottom: 2px solid #e8e8e8;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: flex; align-items: center; gap: 8px;
         }
         .ticket-section-title .step-num {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: #17a2b8;
-            color: #fff;
-            font-size: 12px;
-            font-weight: 700;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #17a2b8; color: #fff; font-size: 12px; font-weight: 700;
         }
 
         /* --- Category cards --- */
         .category-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 10px;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;
         }
         .category-card {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            padding: 14px 10px;
-            border: 2px solid #d9d9d9;
-            border-radius: 8px;
-            background: #fafafa;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            text-align: center;
-            user-select: none;
-            min-height: 80px;
-            justify-content: center;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 14px 10px; border: 2px solid #d9d9d9; border-radius: 8px;
+            background: #fafafa; cursor: pointer; transition: all 0.15s ease;
+            text-align: center; user-select: none; min-height: 80px; justify-content: center;
         }
-        .category-card:hover {
-            border-color: #17a2b8;
-            background: #e8f8fb;
-        }
-        .category-card:focus {
-            outline: 2px solid #17a2b8;
-            outline-offset: 2px;
-        }
+        .category-card:hover { border-color: #17a2b8; background: #e8f8fb; }
+        .category-card:focus { outline: 2px solid #17a2b8; outline-offset: 2px; }
         .category-card.active {
-            border-color: #17a2b8;
-            background: #d1ecf1;
+            border-color: #17a2b8; background: #d1ecf1;
             box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.25);
         }
-        .category-card.active .category-icon {
-            color: #0c5460;
-        }
-        .category-card .category-icon {
-            font-size: 24px;
-            color: #6c757d;
-        }
-        .category-card .category-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: #333;
-            line-height: 1.2;
-        }
-        .category-card.active .category-name {
-            color: #0c5460;
-        }
+        .category-card.active .category-icon { color: #0c5460; }
+        .category-card .category-icon { font-size: 24px; color: #6c757d; }
+        .category-card .category-name { font-size: 13px; font-weight: 600; color: #333; line-height: 1.2; }
+        .category-card.active .category-name { color: #0c5460; }
 
         /* --- Impact / Urgency button groups --- */
-        .btn-group-flat {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
+        .btn-group-flat { display: flex; flex-wrap: wrap; gap: 8px; }
         .btn-group-flat .btn-flat {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 7px 14px;
-            border: 2px solid #d9d9d9;
-            border-radius: 6px;
-            background: #fafafa;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            color: #555;
-            transition: all 0.15s ease;
-            user-select: none;
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 7px 14px; border: 2px solid #d9d9d9; border-radius: 6px;
+            background: #fafafa; cursor: pointer; font-size: 13px; font-weight: 500;
+            color: #555; transition: all 0.15s ease; user-select: none;
         }
-        .btn-group-flat .btn-flat:hover {
-            border-color: #17a2b8;
-            background: #e8f8fb;
-        }
-        .btn-group-flat .btn-flat:focus {
-            outline: 2px solid #17a2b8;
-            outline-offset: 2px;
-        }
-        .btn-group-flat .btn-flat.active {
-            border-color: #17a2b8;
-            background: #17a2b8;
-            color: #fff;
-        }
+        .btn-group-flat .btn-flat:hover { border-color: #17a2b8; background: #e8f8fb; }
+        .btn-group-flat .btn-flat:focus { outline: 2px solid #17a2b8; outline-offset: 2px; }
+        .btn-group-flat .btn-flat.active { border-color: #17a2b8; background: #17a2b8; color: #fff; }
 
         /* --- Form styling --- */
-        .ticket-form-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 4px;
-        }
-        .ticket-form-label .required {
-            color: #dc3545;
-            margin-left: 2px;
-        }
+        .ticket-form-label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
+        .ticket-form-label .required { color: #dc3545; margin-left: 2px; }
         .ticket-form-control {
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            padding: 8px 12px;
-            font-size: 14px;
-            transition: border-color 0.15s;
+            border-radius: 6px; border: 1px solid #ccc; padding: 8px 12px;
+            font-size: 14px; transition: border-color 0.15s;
         }
-        .ticket-form-control:focus {
-            border-color: #17a2b8;
-            box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.15);
-        }
-        .validation-msg {
-            font-size: 12px;
-            margin-top: 3px;
-            color: #dc3545;
-        }
+        .ticket-form-control:focus { border-color: #17a2b8; box-shadow: 0 0 0 2px rgba(23, 162, 184, 0.15); }
+        .validation-msg { font-size: 12px; margin-top: 3px; color: #dc3545; }
 
         /* --- Submit area --- */
-        .submit-area {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            padding-top: 8px;
-        }
-        .btn-create-ticket {
-            padding: 10px 28px;
-            font-size: 15px;
-            font-weight: 600;
-            border-radius: 6px;
-        }
-        .btn-cancel-ticket {
-            padding: 10px 20px;
-            font-size: 14px;
-            border-radius: 6px;
-        }
+        .submit-area { display: flex; gap: 12px; align-items: center; padding-top: 8px; }
+        .btn-create-ticket { padding: 10px 28px; font-size: 15px; font-weight: 600; border-radius: 6px; }
+        .btn-cancel-ticket { padding: 10px 20px; font-size: 14px; border-radius: 6px; }
 
-        /* --- Subcategory/Item section --- */
-        .dependent-section {
+        /* --- Dependent sections (shown/hidden by JS) --- */
+        .dependent-section { display: none; }
+        .dependent-section.visible { display: block; }
+
+        /* --- Client-side error banner --- */
+        .client-error-msg {
+            background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;
+            padding: 8px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 12px;
             display: none;
-        }
-        .dependent-section.visible {
-            display: block;
         }
     </style>
 </asp:Content>
@@ -207,8 +111,11 @@
                         <asp:Label ID="lblMessage" runat="server" Font-Bold="true"
                             Style="display: block; margin-bottom: 15px;"></asp:Label>
 
+                        <%-- Client-side validation error banner (replaces alert()) --%>
+                        <div id="clientError" class="client-error-msg"></div>
+
                         <%-- ============================================================
-                             SECTION 1 — Category (clickable cards, client-side filtered)
+                             SECTION 1 — Category (server-rendered cards, event delegation)
                              ============================================================ --%>
                         <div class="ticket-section" id="secCategory">
                             <div class="ticket-section-title">
@@ -216,7 +123,8 @@
                                 <span class="text-danger" style="font-size: 12px;">* required</span>
                             </div>
                             <div class="category-cards" id="categoryCards" runat="server">
-                                <%-- Populated server-side as <div> elements --%>
+                                <%-- Server-rendered category cards. JS attaches click handlers
+                                     via event delegation — no client-side card recreation. --%>
                             </div>
                             <asp:HiddenField ID="hfSelectedCategoryId" runat="server" />
                             <asp:HiddenField ID="hfSelectedSubCategoryId" runat="server" />
@@ -228,7 +136,7 @@
                                 ValidationGroup="CreateTicket" />
                         </div>
 
-                        <%-- SubCategory (appears after category selection) --%>
+                        <%-- SubCategory (appears after category selection, client-side filtered) --%>
                         <div class="ticket-section dependent-section" id="secSubCategory">
                             <div class="ticket-section-title">
                                 <span class="step-num">2</span> Sub Category
@@ -236,7 +144,7 @@
                             </div>
                             <div style="max-width: 400px;">
                                 <select id="ddlSubCategoryClient" class="form-control ticket-form-control"
-                                    onchange="onSubCategoryChange()">
+                                    onchange="ITSM.CreateTicket.onSubCategoryChange(this.value)">
                                     <option value="">-- Select Sub Category --</option>
                                 </select>
                             </div>
@@ -255,7 +163,7 @@
                             </div>
                             <div style="max-width: 400px;">
                                 <select id="ddlItemClient" class="form-control ticket-form-control"
-                                    onchange="onItemChange()">
+                                    onchange="ITSM.CreateTicket.onItemChange(this.value)">
                                     <option value="">-- Select Item (optional) --</option>
                                 </select>
                             </div>
@@ -266,14 +174,14 @@
                              ============================================================ --%>
                         <div class="ticket-section">
                             <div class="ticket-section-title">
-                                <span class="step-num" id="stepPriority">4</span> Impact &amp; Urgency
+                                <span class="step-num">4</span> Impact &amp; Urgency
                                 <span class="text-danger" style="font-size: 12px;">* required</span>
                             </div>
                             <div class="row">
                                 <div class="col-md-6 col-sm-6 col-xs-12" style="margin-bottom: 12px;">
                                     <div class="ticket-form-label">Impact <span class="required">*</span></div>
                                     <div class="btn-group-flat" id="impactButtons" runat="server">
-                                        <%-- Populated server-side as <span> elements --%>
+                                        <%-- Server-rendered impact buttons --%>
                                     </div>
                                     <asp:HiddenField ID="hfSelectedImpactId" runat="server" />
                                     <asp:RequiredFieldValidator ID="rfvImpact" runat="server"
@@ -285,7 +193,7 @@
                                 <div class="col-md-6 col-sm-6 col-xs-12" style="margin-bottom: 12px;">
                                     <div class="ticket-form-label">Urgency <span class="required">*</span></div>
                                     <div class="btn-group-flat" id="urgencyButtons" runat="server">
-                                        <%-- Populated server-side as <span> elements --%>
+                                        <%-- Server-rendered urgency buttons --%>
                                     </div>
                                     <asp:HiddenField ID="hfSelectedUrgencyId" runat="server" />
                                     <asp:RequiredFieldValidator ID="rfvUrgency" runat="server"
@@ -302,7 +210,7 @@
                              ============================================================ --%>
                         <div class="ticket-section">
                             <div class="ticket-section-title">
-                                <span class="step-num" id="stepRequestType">5</span> Request Type
+                                <span class="step-num">5</span> Request Type
                                 <span class="text-danger" style="font-size: 12px;">* required</span>
                             </div>
                             <div style="max-width: 400px;">
@@ -324,7 +232,7 @@
                              ============================================================ --%>
                         <div class="ticket-section">
                             <div class="ticket-section-title">
-                                <span class="step-num" id="stepDetails">6</span> Ticket Details
+                                <span class="step-num">6</span> Ticket Details
                                 <span class="text-danger" style="font-size: 12px;">* Title required</span>
                             </div>
                             <div class="row">
@@ -361,7 +269,7 @@
                                 <asp:Button ID="btnSubmit" runat="server" Text="Create Ticket"
                                     CssClass="btn btn-success btn-create-ticket"
                                     ValidationGroup="CreateTicket"
-                                    OnClientClick="if (!validateForm()) return false;"
+                                    OnClientClick="return ITSM.CreateTicket.onSubmit();"
                                     OnClick="btnSubmit_Click" />
                                 <asp:Button ID="btnReset" runat="server" Text="Cancel"
                                     CssClass="btn btn-default btn-cancel-ticket"
@@ -378,109 +286,86 @@
         </div>
     </div>
 
-    <%-- JSON data for client-side filtering --%>
+    <%-- JSON data for client-side subcategory/item filtering only.
+         Category cards are server-rendered; this JSON is NOT used to
+         recreate them. --%>
     <asp:HiddenField ID="hfCategoryData" runat="server" />
 
     <script type="text/javascript">
         // ======================================================================
-        // Client-side category/subcategory/item filtering.
-        // Data is loaded once on GET as JSON in hfCategoryData.
-        // No postbacks for selection filtering.
+        // ITSM.CreateTicket — client-side dependent selection.
+        //
+        // Architecture:
+        //   - Category cards: server-rendered, event-delegated click handlers
+        //   - SubCategory/Item: filtered client-side from JSON in hfCategoryData
+        //   - Impact/Urgency: server-rendered button groups, JS toggles active
+        //   - No postbacks for any selection before submit
+        //
+        // Security: client-side filtering is UX only. Server validates all IDs
+        // and hierarchy relationships on submit.
         // ======================================================================
-        (function () {
+        var ITSM = ITSM || {};
+        ITSM.CreateTicket = (function () {
             var categoryData = [];
-            var selectedCategoryId = '';
-            var selectedSubCategoryId = '';
-            var selectedItemId = '';
 
             function init() {
                 var raw = document.getElementById('<%= hfCategoryData.ClientID %>');
-                if (!raw || !raw.value) return;
-
-                try {
-                    categoryData = JSON.parse(raw.value);
-                } catch (e) {
-                    return;
+                if (raw && raw.value) {
+                    try { categoryData = JSON.parse(raw.value); } catch (e) { categoryData = []; }
                 }
-
-                renderCategoryCards();
+                attachCategoryCardHandlers();
             }
 
-            function renderCategoryCards() {
+            // Event delegation: single handler on the container, not per-card.
+            function attachCategoryCardHandlers() {
                 var container = document.getElementById('<%= categoryCards.ClientID %>');
                 if (!container) return;
-                container.innerHTML = '';
-
-                for (var i = 0; i < categoryData.length; i++) {
-                    var cat = categoryData[i];
-                    var card = document.createElement('div');
-                    card.className = 'category-card';
-                    card.setAttribute('tabindex', '0');
-                    card.setAttribute('role', 'button');
-                    card.setAttribute('aria-label', 'Select category: ' + cat.Name);
-                    card.setAttribute('data-id', cat.Id);
-
-                    card.innerHTML =
-                        '<span class="category-icon"><i class="fa ' + (cat.Icon || 'fa-folder') + '"></i></span>' +
-                        '<span class="category-name">' + escapeHtml(cat.Name) + '</span>';
-
-                    card.onclick = (function (id) {
-                        return function () { onCategoryClick(id); };
-                    })(cat.Id);
-
-                    card.onkeydown = (function (id) {
-                        return function (e) {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                onCategoryClick(id);
-                            }
-                        };
-                    })(cat.Id);
-
-                    container.appendChild(card);
-                }
-
-                // Restore previous selection if any
-                var hfCat = document.getElementById('<%= hfSelectedCategoryId.ClientID %>');
-                if (hfCat && hfCat.value) {
-                    onCategoryClick(parseInt(hfCat.value, 10));
-                }
+                container.addEventListener('click', function (e) {
+                    var card = e.target.closest('.category-card');
+                    if (card) {
+                        var id = parseInt(card.getAttribute('data-id'), 10);
+                        if (!isNaN(id)) onCategoryClick(id);
+                    }
+                });
+                container.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        var card = e.target.closest('.category-card');
+                        if (card) {
+                            e.preventDefault();
+                            var id = parseInt(card.getAttribute('data-id'), 10);
+                            if (!isNaN(id)) onCategoryClick(id);
+                        }
+                    }
+                });
             }
 
             function onCategoryClick(categoryId) {
-                selectedCategoryId = categoryId;
-                selectedSubCategoryId = '';
-                selectedItemId = '';
-
-                // Update hidden fields
                 document.getElementById('<%= hfSelectedCategoryId.ClientID %>').value = categoryId;
                 document.getElementById('<%= hfSelectedSubCategoryId.ClientID %>').value = '';
                 document.getElementById('<%= hfSelectedItemId.ClientID %>').value = '';
 
-                // Update card active states
+                // Toggle active class on server-rendered cards
                 var cards = document.querySelectorAll('#<%= categoryCards.ClientID %> .category-card');
                 for (var i = 0; i < cards.length; i++) {
-                    if (parseInt(cards[i].getAttribute('data-id'), 10) === categoryId) {
+                    var id = parseInt(cards[i].getAttribute('data-id'), 10);
+                    if (id === categoryId) {
                         cards[i].classList.add('active');
                     } else {
                         cards[i].classList.remove('active');
                     }
                 }
 
-                // Show and populate subcategory section
-                var secSub = document.getElementById('secSubCategory');
-                secSub.classList.add('visible');
+                // Show subcategory section, populate from JSON
+                document.getElementById('secSubCategory').classList.add('visible');
                 populateSubCategories(categoryId);
 
                 // Hide item section
-                var secItem = document.getElementById('secItem');
-                secItem.classList.remove('visible');
+                document.getElementById('secItem').classList.remove('visible');
             }
 
             function populateSubCategories(categoryId) {
                 var ddl = document.getElementById('ddlSubCategoryClient');
                 ddl.innerHTML = '<option value="">-- Select Sub Category --</option>';
-
                 for (var i = 0; i < categoryData.length; i++) {
                     if (categoryData[i].Id === categoryId) {
                         var subs = categoryData[i].SubCategories || [];
@@ -495,29 +380,24 @@
                 }
             }
 
-            function onSubCategoryChange() {
-                var ddl = document.getElementById('ddlSubCategoryClient');
-                selectedSubCategoryId = ddl.value;
-                selectedItemId = '';
-
-                document.getElementById('<%= hfSelectedSubCategoryId.ClientID %>').value = selectedSubCategoryId;
+            function onSubCategoryChange(value) {
+                document.getElementById('<%= hfSelectedSubCategoryId.ClientID %>').value = value;
                 document.getElementById('<%= hfSelectedItemId.ClientID %>').value = '';
 
-                if (selectedSubCategoryId) {
-                    var secItem = document.getElementById('secItem');
-                    secItem.classList.add('visible');
-                    populateItems(selectedCategoryId, parseInt(selectedSubCategoryId, 10));
+                if (value) {
+                    document.getElementById('secItem').classList.add('visible');
+                    populateItems(parseInt(value, 10));
                 } else {
                     document.getElementById('secItem').classList.remove('visible');
                 }
             }
 
-            function populateItems(categoryId, subCategoryId) {
+            function populateItems(subCategoryId) {
                 var ddl = document.getElementById('ddlItemClient');
                 ddl.innerHTML = '<option value="">-- Select Item (optional) --</option>';
-
+                var catId = parseInt(document.getElementById('<%= hfSelectedCategoryId.ClientID %>').value, 10);
                 for (var i = 0; i < categoryData.length; i++) {
-                    if (categoryData[i].Id === categoryId) {
+                    if (categoryData[i].Id === catId) {
                         var subs = categoryData[i].SubCategories || [];
                         for (var j = 0; j < subs.length; j++) {
                             if (subs[j].Id === subCategoryId) {
@@ -536,73 +416,99 @@
                 }
             }
 
-            function onItemChange() {
-                var ddl = document.getElementById('ddlItemClient');
-                selectedItemId = ddl.value;
-                document.getElementById('<%= hfSelectedItemId.ClientID %>').value = selectedItemId;
+            function onItemChange(value) {
+                document.getElementById('<%= hfSelectedItemId.ClientID %>').value = value;
             }
 
-            // Impact / Urgency button group handlers
-            window.onImpactSelect = function (id) {
-                document.getElementById('<%= hfSelectedImpactId.ClientID %>').value = id;
-                var btns = document.querySelectorAll('#<%= impactButtons.ClientID %> .btn-flat');
+            // Impact / Urgency button group selection
+            function selectButtonGroup(containerId, hiddenFieldId, id) {
+                document.getElementById(hiddenFieldId).value = id;
+                var btns = document.querySelectorAll('#' + containerId + ' .btn-flat');
                 for (var i = 0; i < btns.length; i++) {
-                    if (parseInt(btns[i].getAttribute('data-id'), 10) === id) {
+                    var btnId = parseInt(btns[i].getAttribute('data-id'), 10);
+                    if (btnId === id) {
                         btns[i].classList.add('active');
                     } else {
                         btns[i].classList.remove('active');
                     }
                 }
-            };
+            }
 
-            window.onUrgencySelect = function (id) {
-                document.getElementById('<%= hfSelectedUrgencyId.ClientID %>').value = id;
-                var btns = document.querySelectorAll('#<%= urgencyButtons.ClientID %> .btn-flat');
-                for (var i = 0; i < btns.length; i++) {
-                    if (parseInt(btns[i].getAttribute('data-id'), 10) === id) {
-                        btns[i].classList.add('active');
-                    } else {
-                        btns[i].classList.remove('active');
-                    }
-                }
-            };
+            function showError(msg) {
+                var el = document.getElementById('clientError');
+                el.textContent = msg;
+                el.style.display = 'block';
+            }
 
-            // Form validation (client-side)
-            window.validateForm = function () {
+            function hideError() {
+                var el = document.getElementById('clientError');
+                el.textContent = '';
+                el.style.display = 'none';
+            }
+
+            // Submit handler — validates client-side, disables button, returns true to postback
+            function onSubmit() {
+                hideError();
                 var cat = document.getElementById('<%= hfSelectedCategoryId.ClientID %>').value;
                 var sub = document.getElementById('<%= hfSelectedSubCategoryId.ClientID %>').value;
                 var impact = document.getElementById('<%= hfSelectedImpactId.ClientID %>').value;
                 var urgency = document.getElementById('<%= hfSelectedUrgencyId.ClientID %>').value;
 
-                if (!cat) { alert('Please select a category.'); return false; }
-                if (!sub) { alert('Please select a sub category.'); return false; }
-                if (!impact) { alert('Please select an impact level.'); return false; }
-                if (!urgency) { alert('Please select an urgency level.'); return false; }
+                if (!cat) { showError('Please select a category.'); return false; }
+                if (!sub) { showError('Please select a sub category.'); return false; }
+                if (!impact) { showError('Please select an impact level.'); return false; }
+                if (!urgency) { showError('Please select an urgency level.'); return false; }
 
-                // Disable submit button to prevent duplicate submission
+                // Prevent duplicate submission
                 var btn = document.getElementById('<%= btnSubmit.ClientID %>');
-                if (btn) {
-                    btn.disabled = true;
-                    btn.value = 'Creating...';
-                }
+                if (btn) { btn.disabled = true; btn.value = 'Creating...'; }
                 var spinner = document.getElementById('submitSpinner');
                 if (spinner) spinner.style.display = 'inline';
-
                 return true;
+            }
+
+            // Reset — restores page to initial state without DB reload
+            function onReset() {
+                hideError();
+                // Clear hidden fields
+                document.getElementById('<%= hfSelectedCategoryId.ClientID %>').value = '';
+                document.getElementById('<%= hfSelectedSubCategoryId.ClientID %>').value = '';
+                document.getElementById('<%= hfSelectedItemId.ClientID %>').value = '';
+                document.getElementById('<%= hfSelectedImpactId.ClientID %>').value = '';
+                document.getElementById('<%= hfSelectedUrgencyId.ClientID %>').value = '';
+                // Remove active states from cards
+                var cards = document.querySelectorAll('#<%= categoryCards.ClientID %> .category-card');
+                for (var i = 0; i < cards.length; i++) cards[i].classList.remove('active');
+                // Remove active states from button groups
+                var flatBtns = document.querySelectorAll('.btn-group-flat .btn-flat');
+                for (var j = 0; j < flatBtns.length; j++) flatBtns[j].classList.remove('active');
+                // Hide dependent sections
+                document.getElementById('secSubCategory').classList.remove('visible');
+                document.getElementById('secItem').classList.remove('visible');
+                // Reset client-side selects
+                var subDdl = document.getElementById('ddlSubCategoryClient');
+                if (subDdl) subDdl.innerHTML = '<option value="">-- Select Sub Category --</option>';
+                var itemDdl = document.getElementById('ddlItemClient');
+                if (itemDdl) itemDdl.innerHTML = '<option value="">-- Select Item (optional) --</option>';
+            }
+
+            // Public API
+            return {
+                init: init,
+                onSubCategoryChange: onSubCategoryChange,
+                onItemChange: onItemChange,
+                onSubmit: onSubmit,
+                onReset: onReset,
+                onImpactSelect: function (id) { selectButtonGroup('<%= impactButtons.ClientID %>', '<%= hfSelectedImpactId.ClientID %>', id); },
+                onUrgencySelect: function (id) { selectButtonGroup('<%= urgencyButtons.ClientID %>', '<%= hfSelectedUrgencyId.ClientID %>', id); }
             };
-
-            function escapeHtml(text) {
-                var div = document.createElement('div');
-                div.appendChild(document.createTextNode(text));
-                return div.innerHTML;
-            }
-
-            // Initialize on DOM ready
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
-            }
         })();
+
+        // Initialize on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', ITSM.CreateTicket.init);
+        } else {
+            ITSM.CreateTicket.init();
+        }
     </script>
 </asp:Content>

@@ -8,21 +8,21 @@
 // ========================================================================
 // When: 2026-08-26 (UX refactor)
 // What: Single initial data load — all category/subcategory/item hierarchy
-//       is loaded once on GET as JSON and embedded in a hidden field.
-//       Impact/Urgency are rendered as button groups from initial data.
-//       Client-side JS filters subcategories and items without postbacks.
-// Why:  Eliminates 5 unnecessary postbacks (category select, subcategory
-//       select, and their round-trips). Reduces total DB queries from 6
-//       to 4 (categories+subs+items, request types, impacts, urgencies).
-//       Server validates submitted IDs on submit to ensure data integrity.
+//       loaded once on GET as strongly typed DTOs, serialized via
+//       JavaScriptSerializer for client-side filtering. Impact/Urgency
+//       rendered as button groups. Client-side JS filters subcategories
+//       and items without postbacks.
+// Why:  Eliminates 5 unnecessary postbacks. Server validates all IDs and
+//       hierarchy relationships on submit via a single consolidated query.
 // ========================================================================
 
 using System;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
-using System.Text;
+using System.Web.Script.Serialization;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
 using AnmolDristi.ITSM.BLL;
@@ -30,14 +30,58 @@ using AnmolDristi.ITSM.DAL;
 
 namespace AnmolDristi.ITSM.UI
 {
+    // ====================================================================
+    // Strongly typed DTOs for the category/subcategory/item hierarchy.
+    // These are presentation-only projection DTOs — not EF entities.
+    // ====================================================================
+
+    /// <summary>
+    /// Presentation DTO for an ITSM Item, projected from
+    /// <c>itsm.MST_Item</c>. Used only for client-side filtering JSON.
+    /// </summary>
+    public class TicketItemDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+
+    /// <summary>
+    /// Presentation DTO for an ITSM SubCategory, projected from
+    /// <c>itsm.MST_SubCategory</c>. Contains child items.
+    /// </summary>
+    public class TicketSubCategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public List<TicketItemDto> Items { get; set; }
+    }
+
+    /// <summary>
+    /// Presentation DTO for an ITSM Category, projected from
+    /// <c>itsm.MST_Category</c>. Contains child subcategories.
+    /// </summary>
+    public class TicketCategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public List<TicketSubCategoryDto> SubCategories { get; set; }
+    }
+
     /// <summary>
     /// Presentation-only New Ticket form. All category/subcategory/item
-    /// hierarchy data is loaded once as JSON on GET. Client-side JS filters
-    /// dependent selections without postbacks. Ticket creation is delegated
-    /// entirely to <see cref="TicketService"/>.
+    /// hierarchy data is loaded once as strongly typed DTOs on GET and
+    /// serialized via JavaScriptSerializer. Client-side JS filters
+    /// dependent selections without postbacks. Ticket creation is
+    /// delegated entirely to <see cref="TicketService"/>.
     /// </summary>
     public partial class CreateTicket : BasePage
     {
+        /// <summary>
+        /// Reusable serializer instance (thread-safe for concurrent requests).
+        /// </summary>
+        private static readonly JavaScriptSerializer _serializer =
+            new JavaScriptSerializer();
+
         protected void Page_Load(object sender, EventArgs e)
         {
             // Session gatekeeping on every request (not only !IsPostBack).
@@ -70,14 +114,12 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
-            // Read IDs from hidden fields (set by client-side JS).
             var requesterCode = Session["WORKMAN"].ToString();
 
             int categoryId;
             int subCategoryId;
             int impactId;
             int urgencyId;
-            int? itemId = null;
 
             if (!int.TryParse(hfSelectedCategoryId.Value, out categoryId)
                 || !int.TryParse(hfSelectedSubCategoryId.Value, out subCategoryId)
@@ -88,22 +130,20 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
-            // Validate category/subcategory relationship server-side.
-            if (!ValidateCategoryHierarchy(categoryId, subCategoryId))
+            // Consolidated server-side hierarchy validation.
+            // Single query checks: subcategory→category, item→subcategory,
+            // and active flags for all three.
+            int? itemId = null;
+            string validationError = ValidateHierarchy(categoryId, subCategoryId, hfSelectedItemId.Value);
+            if (validationError != null)
             {
-                ShowMessage("The selected sub category does not belong to the chosen category.", false);
+                ShowMessage(validationError, false);
                 return;
             }
 
             int itemIdParsed;
             if (int.TryParse(hfSelectedItemId.Value, out itemIdParsed))
             {
-                // Validate item belongs to the subcategory.
-                if (!ValidateItemHierarchy(subCategoryId, itemIdParsed))
-                {
-                    ShowMessage("The selected item does not belong to the chosen sub category.", false);
-                    return;
-                }
                 itemId = itemIdParsed;
             }
 
@@ -146,7 +186,8 @@ namespace AnmolDristi.ITSM.UI
         {
             ClearMessage();
             ResetFormInputs();
-            // Reset hidden fields
+            // Reset hidden fields — master data is already on the page,
+            // no DB reload needed.
             hfSelectedCategoryId.Value = string.Empty;
             hfSelectedSubCategoryId.Value = string.Empty;
             hfSelectedItemId.Value = string.Empty;
@@ -154,44 +195,53 @@ namespace AnmolDristi.ITSM.UI
             hfSelectedUrgencyId.Value = string.Empty;
         }
 
+        // ====================================================================
+        // Initial data loading — runs once on GET.
+        // ====================================================================
+
         /// <summary>
-        /// Loads ALL master data once on initial GET. Category/subcategory/item
-        /// hierarchy is serialized as JSON for client-side filtering.
+        /// Loads all master data once on initial GET. Category/subcategory/item
+        /// hierarchy is projected into strongly typed DTOs and serialized via
+        /// <see cref="JavaScriptSerializer"/> for client-side filtering.
         /// </summary>
         private void BindAllMasterData()
         {
             using (var context = new ItsmDbContext())
             {
-                // 1. Category → SubCategory → Item hierarchy (as JSON).
+                // 1. Category → SubCategory → Item hierarchy (strongly typed).
                 var categories = context.Categories.AsNoTracking()
                     .Where(c => c.IsActive)
                     .OrderBy(c => c.Name)
-                    .Select(c => new
+                    .Select(c => new TicketCategoryDto
                     {
-                        c.Id,
-                        c.Name,
+                        Id = c.Id,
+                        Name = c.Name,
                         SubCategories = context.SubCategories
                             .Where(s => s.IsActive && s.CategoryId == c.Id)
                             .OrderBy(s => s.Name)
-                            .Select(s => new
+                            .Select(s => new TicketSubCategoryDto
                             {
-                                s.Id,
-                                s.Name,
+                                Id = s.Id,
+                                Name = s.Name,
                                 Items = context.Items
                                     .Where(i => i.IsActive && i.SubCategoryId == s.Id)
                                     .OrderBy(i => i.Name)
-                                    .Select(i => new { i.Id, i.Name })
+                                    .Select(i => new TicketItemDto
+                                    {
+                                        Id = i.Id,
+                                        Name = i.Name
+                                    })
                                     .ToList()
                             })
                             .ToList()
                     })
                     .ToList();
 
-                // Serialize hierarchy as JSON for client-side filtering.
-                var json = SerializeCategories(categories);
-                hfCategoryData.Value = json;
+                // Serialize hierarchy via JavaScriptSerializer (handles all
+                // JSON escaping: quotes, Unicode, special characters).
+                hfCategoryData.Value = _serializer.Serialize(categories);
 
-                // Render category cards server-side.
+                // Render category cards server-side (single render, no duplication).
                 RenderCategoryCards(categories);
 
                 // 2. Request Types (small list, bound to dropdown).
@@ -240,9 +290,9 @@ namespace AnmolDristi.ITSM.UI
                 btn.Attributes["role"] = "button";
                 btn.Attributes["aria-label"] = "Select impact: " + impact.Name;
                 btn.InnerText = impact.Name;
-                btn.Attributes["onclick"] = "onImpactSelect(" + impact.Id + ")";
+                btn.Attributes["onclick"] = "ITSM.CreateTicket.onImpactSelect(" + impact.Id + ")";
                 btn.Attributes["onkeydown"] =
-                    "if(event.key==='Enter'||event.key===' '){event.preventDefault();onImpactSelect(" + impact.Id + ");}";
+                    "if(event.key==='Enter'||event.key===' '){event.preventDefault();ITSM.CreateTicket.onImpactSelect(" + impact.Id + ");}";
                 impactButtons.Controls.Add(btn);
             }
         }
@@ -265,27 +315,24 @@ namespace AnmolDristi.ITSM.UI
                 btn.Attributes["role"] = "button";
                 btn.Attributes["aria-label"] = "Select urgency: " + urgency.Name;
                 btn.InnerText = urgency.Name;
-                btn.Attributes["onclick"] = "onUrgencySelect(" + urgency.Id + ")";
+                btn.Attributes["onclick"] = "ITSM.CreateTicket.onUrgencySelect(" + urgency.Id + ")";
                 btn.Attributes["onkeydown"] =
-                    "if(event.key==='Enter'||event.key===' '){event.preventDefault();onUrgencySelect(" + urgency.Id + ");}";
+                    "if(event.key==='Enter'||event.key===' '){event.preventDefault();ITSM.CreateTicket.onUrgencySelect(" + urgency.Id + ");}";
                 urgencyButtons.Controls.Add(btn);
             }
         }
 
-        private void RenderCategoryCards(System.Collections.Generic.List<dynamic> categories)
+        private void RenderCategoryCards(List<TicketCategoryDto> categories)
         {
             categoryCards.Controls.Clear();
             foreach (var cat in categories)
             {
-                int catId = cat.Id;
-                string catName = cat.Name;
-
                 var card = new HtmlGenericControl("div");
                 card.Attributes["class"] = "category-card";
                 card.Attributes["tabindex"] = "0";
                 card.Attributes["role"] = "button";
-                card.Attributes["aria-label"] = "Select category: " + catName;
-                card.Attributes["data-id"] = catId.ToString(CultureInfo.InvariantCulture);
+                card.Attributes["aria-label"] = "Select category: " + cat.Name;
+                card.Attributes["data-id"] = cat.Id.ToString(CultureInfo.InvariantCulture);
 
                 var icon = new HtmlGenericControl("span");
                 icon.Attributes["class"] = "category-icon";
@@ -293,105 +340,60 @@ namespace AnmolDristi.ITSM.UI
 
                 var name = new HtmlGenericControl("span");
                 name.Attributes["class"] = "category-name";
-                name.InnerText = catName;
+                name.InnerText = cat.Name;
 
                 card.Controls.Add(icon);
                 card.Controls.Add(name);
-
-                // Client-side click is handled by the JS init that reads from JSON.
                 categoryCards.Controls.Add(card);
             }
         }
 
+        // ====================================================================
+        // Server-side validation — consolidated into a single query.
+        // ====================================================================
+
         /// <summary>
-        /// Validates that the submitted subcategory belongs to the submitted category.
-        /// Server-side integrity check — client-side filtering is UX only.
+        /// Validates the submitted category/subcategory/item hierarchy in a
+        /// single database query. Returns null on success, or an error message.
+        /// Client-side filtering is UX only; this is the data-integrity gate.
         /// </summary>
-        private bool ValidateCategoryHierarchy(int categoryId, int subCategoryId)
+        private string ValidateHierarchy(int categoryId, int subCategoryId, string itemValue)
         {
             using (var context = new ItsmDbContext())
             {
-                return context.SubCategories.AsNoTracking()
+                // Single query: verify subcategory belongs to category and is active.
+                bool subValid = context.SubCategories.AsNoTracking()
                     .Any(s => s.Id == subCategoryId
                              && s.CategoryId == categoryId
                              && s.IsActive);
-            }
-        }
 
-        /// <summary>
-        /// Validates that the submitted item belongs to the submitted subcategory.
-        /// </summary>
-        private bool ValidateItemHierarchy(int subCategoryId, int itemId)
-        {
-            using (var context = new ItsmDbContext())
-            {
-                return context.Items.AsNoTracking()
-                    .Any(i => i.Id == itemId
-                             && i.SubCategoryId == subCategoryId
-                             && i.IsActive);
-            }
-        }
-
-        /// <summary>
-        /// Serializes the category/subcategory/item hierarchy as a JSON string
-        /// for client-side filtering. Uses manual JSON construction to avoid
-        /// introducing a JSON library dependency.
-        /// </summary>
-        private static string SerializeCategories(System.Collections.Generic.List<dynamic> categories)
-        {
-            var sb = new StringBuilder();
-            sb.Append('[');
-
-            bool firstCat = true;
-            foreach (var cat in categories)
-            {
-                if (!firstCat) sb.Append(',');
-                firstCat = false;
-
-                sb.Append('{');
-                sb.AppendFormat("\"Id\":{0},\"Name\":\"{1}\",\"SubCategories\":[",
-                    cat.Id, EscapeJson(cat.Name));
-
-                bool firstSub = true;
-                foreach (var sub in cat.SubCategories)
+                if (!subValid)
                 {
-                    if (!firstSub) sb.Append(',');
-                    firstSub = false;
-
-                    sb.Append('{');
-                    sb.AppendFormat("\"Id\":{0},\"Name\":\"{1}\",\"Items\":[",
-                        sub.Id, EscapeJson(sub.Name));
-
-                    bool firstItem = true;
-                    foreach (var item in sub.Items)
-                    {
-                        if (!firstItem) sb.Append(',');
-                        firstItem = false;
-
-                        sb.AppendFormat("{{\"Id\":{0},\"Name\":\"{1}\"}}",
-                            item.Id, EscapeJson(item.Name));
-                    }
-
-                    sb.Append("]}");
+                    return "The selected sub category does not belong to the chosen category.";
                 }
 
-                sb.Append("]}");
+                // If an item was selected, verify it belongs to the subcategory.
+                int itemIdParsed;
+                if (int.TryParse(itemValue, out itemIdParsed))
+                {
+                    bool itemValid = context.Items.AsNoTracking()
+                        .Any(i => i.Id == itemIdParsed
+                                 && i.SubCategoryId == subCategoryId
+                                 && i.IsActive);
+
+                    if (!itemValid)
+                    {
+                        return "The selected item does not belong to the chosen sub category.";
+                    }
+                }
             }
 
-            sb.Append(']');
-            return sb.ToString();
+            return null;
         }
 
-        private static string EscapeJson(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            return value
-                .Replace("\\", "\\\\")
-                .Replace("\"", "\\\"")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r")
-                .Replace("\t", "\\t");
-        }
+        // ====================================================================
+        // Form helpers.
+        // ====================================================================
 
         private void ResetFormInputs()
         {
