@@ -205,9 +205,8 @@ namespace AnmolDristi.ITSM.UI
             // Render category cards server-side (single render, no duplication).
             RenderCategoryCards(categories);
 
-            // 2. Request Types (small list, rendered as segmented cards + hidden dropdown).
+            // 2. Request Types (small list, rendered as selectable cards).
             List<TicketLookupItemDto> requestTypes = masterService.GetRequestTypes();
-            BindRequestTypes(requestTypes);
             RenderRequestTypeCards(requestTypes);
 
             // 3. Impacts (small list, rendered as button group).
@@ -217,17 +216,6 @@ namespace AnmolDristi.ITSM.UI
             // 4. Urgencies (small list, rendered as button group).
             List<TicketLookupItemDto> urgencies = masterService.GetUrgencies();
             BindUrgencies(urgencies);
-        }
-
-        private void BindRequestTypes(List<TicketLookupItemDto> types)
-        {
-            ddlRequestType.Items.Clear();
-            ddlRequestType.AppendDataBoundItems = true;
-            ddlRequestType.Items.Add(new ListItem("-- Select Request Type --", string.Empty));
-            ddlRequestType.DataSource = types;
-            ddlRequestType.DataTextField = "Name";
-            ddlRequestType.DataValueField = "Id";
-            ddlRequestType.DataBind();
         }
 
         private void BindImpacts(List<TicketLookupItemDto> impacts)
@@ -274,18 +262,18 @@ namespace AnmolDristi.ITSM.UI
             foreach (var cat in categories)
             {
                 var card = new HtmlGenericControl("div");
-                card.Attributes["class"] = "category-card";
+                card.Attributes["class"] = "itsm-ct__option";
                 card.Attributes["tabindex"] = "0";
                 card.Attributes["role"] = "button";
                 card.Attributes["aria-label"] = "Select category: " + cat.Name;
                 card.Attributes["data-id"] = cat.Id.ToString(CultureInfo.InvariantCulture);
 
                 var icon = new HtmlGenericControl("span");
-                icon.Attributes["class"] = "category-icon";
+                icon.Attributes["class"] = "itsm-ct__option-icon";
                 icon.InnerHtml = "<i class='fa fa-folder'></i>";
 
                 var name = new HtmlGenericControl("span");
-                name.Attributes["class"] = "category-name";
+                name.Attributes["class"] = "itsm-ct__option-name";
                 name.InnerText = cat.Name;
 
                 card.Controls.Add(icon);
@@ -328,7 +316,6 @@ namespace AnmolDristi.ITSM.UI
         {
             txtTitle.Text = string.Empty;
             txtDescription.Text = string.Empty;
-            if (ddlRequestType.Items.Count > 0) ddlRequestType.SelectedIndex = 0;
             hfSelectedRequestTypeId.Value = string.Empty;
         }
 
