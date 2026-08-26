@@ -16,19 +16,19 @@
 //       better UX with clear category cards, zero unnecessary DB
 //       round-trips for dependent selections.
 // ========================================================================
-// When: 2026-08-26 (architecture hardening)
-// What: Removed all direct EF6/ItsmDbContext access from code-behind.
-//       All master-data queries delegated to TicketMasterDataService (BLL).
-//       Hierarchy validation uses single consolidated BLL query.
-//       Broad catch(Exception) removed — only specific business exceptions
-//       are caught. Static JavaScriptSerializer replaced with instance.
-//       Company/tenant isolation enforced via BLL service.
-// Why:  Architecture enforcement: UI contains zero database access.
-//       UI → BLL → DAL. Master data reads are company-scoped.
+// When: 2026-08-26 (submit reliability)
+// What: Recreate dynamic master-data controls on every request (including
+//       postback). Never disable btnSubmit. Restore selected card/button
+//       classes from HiddenFields after a failed POST.
+// Why:  HtmlGenericControl children are not rebuilt from ViewState. A
+//       disabled submit input is omitted from the POST, so Click never
+//       fires. Enabled=false at the start of Click left the button stuck
+//       after any server-side validation or exception.
 // ========================================================================
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Web.Script.Serialization;
 using System.Web.UI.HtmlControls;
@@ -63,20 +63,20 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
-            if (!IsPostBack)
-            {
-                BindAllMasterData();
-            }
+            RestoreSubmitButton();
+
+            // Dynamic HtmlGenericControl cards/buttons are not restored from
+            // ViewState. Recreate them on every request, including postback,
+            // so a failed submit does not render an empty form.
+            EnsureMasterDataControls();
         }
 
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
-            // Disable button server-side to prevent duplicate submission.
-            // Client-side onSubmit() also disables it, but this covers the
-            // case where the client disable was bypassed or the postback
-            // was re-triggered.
-            btnSubmit.Enabled = false;
-
+            // Proves the Click event ran (server Trace). Do not disable the
+            // submit control — a failed request must leave it usable.
+            Trace.TraceInformation("ITSM CreateTicket btnSubmit_Click");
+            RestoreSubmitButton();
             ClearMessage();
 
             if (!Page.IsValid)
@@ -155,6 +155,10 @@ namespace AnmolDristi.ITSM.UI
                     impactId,
                     urgencyId);
 
+                Trace.TraceInformation(
+                    "ITSM CreateTicket btnSubmit_Click created ticket "
+                    + newTicketId.ToString(CultureInfo.InvariantCulture));
+
                 // Post/Redirect/Get: navigate to TicketDetail so the browser
                 // issues a fresh GET instead of repeating the POST.
                 string redirectUrl = ResolveUrl("~/ITSM/UI/TicketDetail.aspx?id="
@@ -165,14 +169,25 @@ namespace AnmolDristi.ITSM.UI
             }
             catch (InvalidOperationException ex)
             {
-                // Known business exception from TicketService — show message only.
+                RestoreSubmitButton();
                 ShowMessage(ex.Message, false);
             }
-            catch (Exception)
+            catch (ArgumentException ex)
             {
-                // Unexpected failure — show a safe generic message.
-                // Do not expose raw exception details to the user.
-                ShowMessage("An unexpected error occurred while creating the ticket. Please try again.", false);
+                RestoreSubmitButton();
+                ShowMessage(ex.Message, false);
+            }
+            catch (Exception ex)
+            {
+                RestoreSubmitButton();
+                var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
+                Trace.TraceError(
+                    "ITSM CreateTicket unexpected failure ["
+                    + correlationId + "] " + ex.GetType().FullName);
+                ShowMessage(
+                    "An unexpected error occurred while creating the ticket. Please try again. Reference: "
+                    + correlationId,
+                    false);
             }
         }
 
@@ -190,53 +205,93 @@ namespace AnmolDristi.ITSM.UI
         }
 
         // ====================================================================
-        // Initial data loading — runs once on GET via BLL service.
+        // Master-data controls — recreated on GET and POST.
         // ====================================================================
 
         /// <summary>
-        /// Loads all master data once on initial GET via
-        /// <see cref="TicketMasterDataService"/>. Category/subcategory/item
-        /// hierarchy is projected into strongly typed DTOs and serialized
-        /// via <see cref="JavaScriptSerializer"/> for client-side filtering.
+        /// Rebuilds Request Type / Category / Impact / Urgency controls.
+        /// Category hierarchy JSON is reused from <see cref="hfCategoryData"/>
+        /// on postback to avoid repeating the nested master-data query.
+        /// Lookup lists (request types, impacts, urgencies) are small and
+        /// re-read via BLL. HiddenField values remain the selection source.
         /// </summary>
-        private void BindAllMasterData()
+        private void EnsureMasterDataControls()
         {
             var masterService = new TicketMasterDataService();
 
-            // Resolve company for tenant-scoped reads.
-            var workman = Session["WORKMAN"] != null
-                ? Session["WORKMAN"].ToString()
-                : string.Empty;
-            int companyId = masterService.ResolveCompanyId(workman);
+            List<TicketCategoryDto> categories = TryReadPostedCategoryData();
+            if (categories == null)
+            {
+                var workman = Session["WORKMAN"] != null
+                    ? Session["WORKMAN"].ToString()
+                    : string.Empty;
+                int companyId = masterService.ResolveCompanyId(workman);
+                categories = masterService.GetCategoryHierarchy(companyId);
+                hfCategoryData.Value = _serializer.Serialize(categories);
+            }
 
-            // 1. Category → SubCategory → Item hierarchy (strongly typed DTOs).
-            List<TicketCategoryDto> categories = masterService
-                .GetCategoryHierarchy(companyId);
-            hfCategoryData.Value = _serializer.Serialize(categories);
+            int selectedCategoryId = ParseHiddenId(hfSelectedCategoryId.Value);
+            int selectedRequestTypeId = ParseHiddenId(hfSelectedRequestTypeId.Value);
+            int selectedImpactId = ParseHiddenId(hfSelectedImpactId.Value);
+            int selectedUrgencyId = ParseHiddenId(hfSelectedUrgencyId.Value);
 
-            // Render category cards server-side (single render, no duplication).
-            RenderCategoryCards(categories);
-
-            // 2. Request Types (small list, rendered as selectable cards).
-            List<TicketLookupItemDto> requestTypes = masterService.GetRequestTypes();
-            RenderRequestTypeCards(requestTypes);
-
-            // 3. Impacts (small list, rendered as button group).
-            List<TicketLookupItemDto> impacts = masterService.GetImpacts();
-            BindImpacts(impacts);
-
-            // 4. Urgencies (small list, rendered as button group).
-            List<TicketLookupItemDto> urgencies = masterService.GetUrgencies();
-            BindUrgencies(urgencies);
+            RenderCategoryCards(categories, selectedCategoryId);
+            RenderRequestTypeCards(masterService.GetRequestTypes(), selectedRequestTypeId);
+            BindImpacts(masterService.GetImpacts(), selectedImpactId);
+            BindUrgencies(masterService.GetUrgencies(), selectedUrgencyId);
         }
 
-        private void BindImpacts(List<TicketLookupItemDto> impacts)
+        private List<TicketCategoryDto> TryReadPostedCategoryData()
+        {
+            if (!IsPostBack || string.IsNullOrEmpty(hfCategoryData.Value))
+            {
+                return null;
+            }
+
+            try
+            {
+                var parsed = _serializer.Deserialize<List<TicketCategoryDto>>(
+                    hfCategoryData.Value);
+                if (parsed == null || parsed.Count == 0)
+                {
+                    return null;
+                }
+
+                return parsed;
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
+            catch (Exception)
+            {
+                // Malformed posted JSON — reload hierarchy from BLL.
+                return null;
+            }
+        }
+
+        private static int ParseHiddenId(string value)
+        {
+            int id;
+            if (int.TryParse(value, out id) && id > 0)
+            {
+                return id;
+            }
+
+            return 0;
+        }
+
+        private void BindImpacts(List<TicketLookupItemDto> impacts, int selectedId)
         {
             impactButtons.Controls.Clear();
             foreach (var impact in impacts)
             {
                 var btn = new HtmlGenericControl("span");
-                btn.Attributes["class"] = "itsm-ct__btn";
+                btn.Attributes["class"] = ButtonClass(impact.Id, selectedId);
                 btn.Attributes["data-id"] = impact.Id.ToString(CultureInfo.InvariantCulture);
                 btn.Attributes["tabindex"] = "0";
                 btn.Attributes["role"] = "button";
@@ -249,13 +304,13 @@ namespace AnmolDristi.ITSM.UI
             }
         }
 
-        private void BindUrgencies(List<TicketLookupItemDto> urgencies)
+        private void BindUrgencies(List<TicketLookupItemDto> urgencies, int selectedId)
         {
             urgencyButtons.Controls.Clear();
             foreach (var urgency in urgencies)
             {
                 var btn = new HtmlGenericControl("span");
-                btn.Attributes["class"] = "itsm-ct__btn";
+                btn.Attributes["class"] = ButtonClass(urgency.Id, selectedId);
                 btn.Attributes["data-id"] = urgency.Id.ToString(CultureInfo.InvariantCulture);
                 btn.Attributes["tabindex"] = "0";
                 btn.Attributes["role"] = "button";
@@ -268,13 +323,13 @@ namespace AnmolDristi.ITSM.UI
             }
         }
 
-        private void RenderCategoryCards(List<TicketCategoryDto> categories)
+        private void RenderCategoryCards(List<TicketCategoryDto> categories, int selectedId)
         {
             categoryCards.Controls.Clear();
             foreach (var cat in categories)
             {
                 var card = new HtmlGenericControl("div");
-                card.Attributes["class"] = "itsm-ct__option";
+                card.Attributes["class"] = OptionClass(cat.Id, selectedId);
                 card.Attributes["tabindex"] = "0";
                 card.Attributes["role"] = "button";
                 card.Attributes["aria-label"] = "Select category: " + cat.Name;
@@ -298,13 +353,13 @@ namespace AnmolDristi.ITSM.UI
         // Form helpers.
         // ====================================================================
 
-        private void RenderRequestTypeCards(List<TicketLookupItemDto> types)
+        private void RenderRequestTypeCards(List<TicketLookupItemDto> types, int selectedId)
         {
             requestTypeCards.Controls.Clear();
             foreach (var rt in types)
             {
                 var card = new HtmlGenericControl("div");
-                card.Attributes["class"] = "itsm-ct__option";
+                card.Attributes["class"] = OptionClass(rt.Id, selectedId);
                 card.Attributes["tabindex"] = "0";
                 card.Attributes["role"] = "button";
                 card.Attributes["aria-label"] = "Select request type: " + rt.Name;
@@ -322,6 +377,32 @@ namespace AnmolDristi.ITSM.UI
                 card.Controls.Add(name);
                 requestTypeCards.Controls.Add(card);
             }
+        }
+
+        private static string OptionClass(int id, int selectedId)
+        {
+            if (selectedId > 0 && id == selectedId)
+            {
+                return "itsm-ct__option itsm-ct__option--selected";
+            }
+
+            return "itsm-ct__option";
+        }
+
+        private static string ButtonClass(int id, int selectedId)
+        {
+            if (selectedId > 0 && id == selectedId)
+            {
+                return "itsm-ct__btn itsm-ct__btn--selected";
+            }
+
+            return "itsm-ct__btn";
+        }
+
+        private void RestoreSubmitButton()
+        {
+            btnSubmit.Enabled = true;
+            btnSubmit.Text = "Create Ticket";
         }
 
         private void ResetFormInputs()

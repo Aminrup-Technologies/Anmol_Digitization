@@ -1,14 +1,13 @@
 <%-- ========================================================================
      File:    CreateTicket.aspx
      Layer:   UI — Presentation
-     When:    2026-08-26 (UX v2)
-     What:    Modernized ticket creation form. Request Type is now Step 1 as
-              segmented cards. Category cards remain Step 2. Progressive
-              disclosure reveals dependent sections. BEM-scoped CSS under
-              .itsm-create-ticket. Theme-consistent with Dristi.
-     Why:     Product decision — Request Type is the first business decision
-              and should be visually prominent. Progressive disclosure improves
-              workflow clarity. BEM scoping prevents theme conflicts.
+     When:    2026-08-26 (submit reliability)
+     What:    onSubmit() must not disable the ASP.NET submit input. A disabled
+              submit control is omitted from the POST, so btnSubmit_Click never
+              runs and the page stays on "Creating...". Busy state is the
+              non-submit #submitSpinner plus a JS _submitting flag.
+     Why:     Web Forms postback requires the clicked submit control to remain
+              a successful form control until the request is sent.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Create Ticket" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="CreateTicket.aspx.cs"
@@ -296,6 +295,7 @@
         var ITSM = ITSM || {};
         ITSM.CreateTicket = (function () {
             var _catData = [];
+            var _submitting = false;
             var _el = {
                 catCards: '<%= categoryCards.ClientID %>',
                 rtCards: '<%= requestTypeCards.ClientID %>',
@@ -316,6 +316,7 @@
                     try { _catData = JSON.parse(raw.value); } catch (e) { _catData = []; }
                 }
                 attachHandlers();
+                restoreFromHidden();
             }
 
             function attachHandlers() {
@@ -364,25 +365,14 @@
 
             function onRequestTypeSelect(id) {
                 document.getElementById(_el.hfRt).value = id;
-                // Toggle active state on cards
-                var cards = document.querySelectorAll('#' + _el.rtCards + ' .itsm-ct__option');
-                for (var j = 0; j < cards.length; j++) {
-                    var cid = parseInt(cards[j].getAttribute('data-id'), 10);
-                    if (cid === id) cards[j].classList.add('itsm-ct__option--selected');
-                    else cards[j].classList.remove('itsm-ct__option--selected');
-                }
+                selectOptionCards(_el.rtCards, id);
             }
 
             function onCategoryClick(categoryId) {
                 document.getElementById(_el.hfCat).value = categoryId;
                 document.getElementById(_el.hfSub).value = '';
                 document.getElementById(_el.hfItem).value = '';
-                var cards = document.querySelectorAll('#' + _el.catCards + ' .itsm-ct__option');
-                for (var i = 0; i < cards.length; i++) {
-                    var cid = parseInt(cards[i].getAttribute('data-id'), 10);
-                    if (cid === categoryId) cards[i].classList.add('itsm-ct__option--selected');
-                    else cards[i].classList.remove('itsm-ct__option--selected');
-                }
+                selectOptionCards(_el.catCards, categoryId);
                 unlockSection('secSubCategory');
                 populateSubCategories(categoryId);
                 lockSection('secItem');
@@ -459,8 +449,55 @@
                 el.textContent = ''; el.style.display = 'none';
             }
 
+            function restoreFromHidden() {
+                var rtVal = document.getElementById(_el.hfRt).value;
+                if (rtVal) {
+                    selectOptionCards(_el.rtCards, parseInt(rtVal, 10));
+                }
+
+                var catVal = document.getElementById(_el.hfCat).value;
+                if (catVal) {
+                    var catId = parseInt(catVal, 10);
+                    selectOptionCards(_el.catCards, catId);
+                    unlockSection('secSubCategory');
+                    populateSubCategories(catId);
+                    var subVal = document.getElementById(_el.hfSub).value;
+                    if (subVal) {
+                        var subDdl = document.getElementById('ddlSubCategoryClient');
+                        if (subDdl) subDdl.value = subVal;
+                        unlockSection('secItem');
+                        populateItems(parseInt(subVal, 10));
+                        var itemVal = document.getElementById(_el.hfItem).value;
+                        var itemDdl = document.getElementById('ddlItemClient');
+                        if (itemVal && itemDdl) itemDdl.value = itemVal;
+                    }
+                }
+
+                var impactVal = document.getElementById(_el.hfImpact).value;
+                if (impactVal) {
+                    selectBtnGroup(_el.impactBtns, _el.hfImpact, parseInt(impactVal, 10));
+                }
+                var urgencyVal = document.getElementById(_el.hfUrgency).value;
+                if (urgencyVal) {
+                    selectBtnGroup(_el.urgencyBtns, _el.hfUrgency, parseInt(urgencyVal, 10));
+                }
+            }
+
+            function selectOptionCards(containerId, id) {
+                var cards = document.querySelectorAll('#' + containerId + ' .itsm-ct__option');
+                for (var i = 0; i < cards.length; i++) {
+                    var cid = parseInt(cards[i].getAttribute('data-id'), 10);
+                    if (cid === id) cards[i].classList.add('itsm-ct__option--selected');
+                    else cards[i].classList.remove('itsm-ct__option--selected');
+                }
+            }
+
             function onSubmit() {
                 hideError();
+                if (_submitting) {
+                    return false;
+                }
+
                 var rt = document.getElementById(_el.hfRt).value;
                 var cat = document.getElementById(_el.hfCat).value;
                 var sub = document.getElementById(_el.hfSub).value;
@@ -473,22 +510,30 @@
                 if (!impact) { showError('Please select an impact level.'); return false; }
                 if (!urgency) { showError('Please select an urgency level.'); return false; }
 
-                // Run ASP.NET client-side validators (e.g. rfvTitle) BEFORE
-                // disabling the button. If validation fails, the button
-                // remains usable and no postback occurs.
+                // ASP.NET client validators (rfvTitle) must run BEFORE any busy
+                // state. Failure: no POST, button stays a successful submit control.
                 if (typeof Page_ClientValidate === 'function' &&
                     !Page_ClientValidate('CreateTicket')) {
                     return false;
                 }
 
-                var btn = document.getElementById(_el.btnSubmit);
-                if (btn) { btn.disabled = true; btn.value = 'Creating...'; }
+                // Do NOT disable the submit input before the postback. A
+                // disabled submit is omitted from the POST, so ASP.NET never
+                // raises btnSubmit_Click. After this handler returns true the
+                // current submit is already in progress; delay-disable only
+                // to block a second click on the still-visible page.
+                _submitting = true;
                 var sp = document.getElementById('submitSpinner');
                 if (sp) sp.style.display = 'inline';
+                var btn = document.getElementById(_el.btnSubmit);
+                if (btn) {
+                    window.setTimeout(function () { btn.disabled = true; }, 0);
+                }
                 return true;
             }
 
             function onReset() {
+                _submitting = false;
                 hideError();
                 // Clear hidden fields
                 var hfs = [_el.hfRt, _el.hfCat, _el.hfSub, _el.hfItem, _el.hfImpact, _el.hfUrgency];
