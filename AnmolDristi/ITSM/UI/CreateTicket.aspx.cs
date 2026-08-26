@@ -269,18 +269,18 @@ namespace AnmolDristi.ITSM.UI
             foreach (var cat in categories)
             {
                 var card = new HtmlGenericControl("div");
-                card.Attributes["class"] = "category-card";
+                card.Attributes["class"] = "itsm-ct__option";
                 card.Attributes["tabindex"] = "0";
                 card.Attributes["role"] = "button";
                 card.Attributes["aria-label"] = "Select category: " + cat.Name;
                 card.Attributes["data-id"] = cat.Id.ToString(CultureInfo.InvariantCulture);
 
                 var icon = new HtmlGenericControl("span");
-                icon.Attributes["class"] = "category-icon";
+                icon.Attributes["class"] = "itsm-ct__option-icon";
                 icon.InnerHtml = "<i class='fa fa-folder'></i>";
 
                 var name = new HtmlGenericControl("span");
-                name.Attributes["class"] = "category-name";
+                name.Attributes["class"] = "itsm-ct__option-name";
                 name.InnerText = cat.Name;
 
                 card.Controls.Add(icon);
