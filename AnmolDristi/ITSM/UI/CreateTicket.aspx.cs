@@ -7,79 +7,49 @@
 //      navigates the user directly to the new ticket detail page.
 // ========================================================================
 // When: 2026-08-26 (UX refactor)
-// What: Single initial data load — all category/subcategory/item hierarchy
-//       loaded once on GET as strongly typed DTOs, serialized via
-//       JavaScriptSerializer for client-side filtering. Impact/Urgency
-//       rendered as button groups. Client-side JS filters subcategories
-//       and items without postbacks.
-// Why:  Eliminates 5 unnecessary postbacks. Server validates all IDs and
-//       hierarchy relationships on submit via a single consolidated query.
+// What: Eliminated postbacks for Category/SubCategory/Item selection.
+//       All category hierarchy data is loaded once as strongly typed DTOs,
+//       serialized via JavaScriptSerializer for client-side filtering.
+//       Impact/Urgency rendered as button groups. Client-side JS filters
+//       subcategories and items without postbacks.
+// Why:  Product decision — faster ticket creation (5 fewer postbacks),
+//       better UX with clear category cards, zero unnecessary DB
+//       round-trips for dependent selections.
+// ========================================================================
+// When: 2026-08-26 (architecture hardening)
+// What: Removed all direct EF6/ItsmDbContext access from code-behind.
+//       All master-data queries delegated to TicketMasterDataService (BLL).
+//       Hierarchy validation uses single consolidated BLL query.
+//       Broad catch(Exception) removed — only specific business exceptions
+//       are caught. Static JavaScriptSerializer replaced with instance.
+//       Company/tenant isolation enforced via BLL service.
+// Why:  Architecture enforcement: UI contains zero database access.
+//       UI → BLL → DAL. Master data reads are company-scoped.
 // ========================================================================
 
 using System;
 using System.Collections.Generic;
-using System.Data.Entity;
-using System.Drawing;
 using System.Globalization;
-using System.Linq;
 using System.Web.Script.Serialization;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
 using AnmolDristi.ITSM.BLL;
-using AnmolDristi.ITSM.DAL;
 
 namespace AnmolDristi.ITSM.UI
 {
-    // ====================================================================
-    // Strongly typed DTOs for the category/subcategory/item hierarchy.
-    // These are presentation-only projection DTOs — not EF entities.
-    // ====================================================================
-
     /// <summary>
-    /// Presentation DTO for an ITSM Item, projected from
-    /// <c>itsm.MST_Item</c>. Used only for client-side filtering JSON.
-    /// </summary>
-    public class TicketItemDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-    }
-
-    /// <summary>
-    /// Presentation DTO for an ITSM SubCategory, projected from
-    /// <c>itsm.MST_SubCategory</c>. Contains child items.
-    /// </summary>
-    public class TicketSubCategoryDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public List<TicketItemDto> Items { get; set; }
-    }
-
-    /// <summary>
-    /// Presentation DTO for an ITSM Category, projected from
-    /// <c>itsm.MST_Category</c>. Contains child subcategories.
-    /// </summary>
-    public class TicketCategoryDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public List<TicketSubCategoryDto> SubCategories { get; set; }
-    }
-
-    /// <summary>
-    /// Presentation-only New Ticket form. All category/subcategory/item
-    /// hierarchy data is loaded once as strongly typed DTOs on GET and
-    /// serialized via JavaScriptSerializer. Client-side JS filters
-    /// dependent selections without postbacks. Ticket creation is
+    /// Presentation-only New Ticket form. All master-data queries are
+    /// delegated to <see cref="TicketMasterDataService"/>. Client-side JS
+    /// filters dependent selections without postbacks. Ticket creation is
     /// delegated entirely to <see cref="TicketService"/>.
     /// </summary>
     public partial class CreateTicket : BasePage
     {
         /// <summary>
-        /// Reusable serializer instance (thread-safe for concurrent requests).
+        /// Per-request serializer instance. JavaScriptSerializer is safe for
+        /// concurrent use, but an instance avoids any shared-state concern.
         /// </summary>
-        private static readonly JavaScriptSerializer _serializer =
+        private readonly JavaScriptSerializer _serializer =
             new JavaScriptSerializer();
 
         protected void Page_Load(object sender, EventArgs e)
@@ -130,21 +100,22 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
-            // Consolidated server-side hierarchy validation.
-            // Single query checks: subcategory→category, item→subcategory,
-            // and active flags for all three.
+            // Server-side hierarchy validation via BLL (single consolidated query).
             int? itemId = null;
-            string validationError = ValidateHierarchy(categoryId, subCategoryId, hfSelectedItemId.Value);
-            if (validationError != null)
-            {
-                ShowMessage(validationError, false);
-                return;
-            }
-
             int itemIdParsed;
             if (int.TryParse(hfSelectedItemId.Value, out itemIdParsed))
             {
                 itemId = itemIdParsed;
+            }
+
+            var masterService = new TicketMasterDataService();
+            var hierarchyResult = masterService.ValidateHierarchy(
+                categoryId, subCategoryId, itemId);
+
+            if (!hierarchyResult.IsValid)
+            {
+                ShowMessage(hierarchyResult.Error, false);
+                return;
             }
 
             int requestTypeId;
@@ -176,9 +147,10 @@ namespace AnmolDristi.ITSM.UI
                 Context.ApplicationInstance.CompleteRequest();
                 return;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                ShowMessage("Unable to create ticket: " + ex.Message, false);
+                // Known business exception from TicketService — show message only.
+                ShowMessage(ex.Message, false);
             }
         }
 
@@ -187,7 +159,7 @@ namespace AnmolDristi.ITSM.UI
             ClearMessage();
             ResetFormInputs();
             // Reset hidden fields — master data is already on the page,
-            // no DB reload needed.
+            // no DB reload needed. Client-side JS resets visual state.
             hfSelectedCategoryId.Value = string.Empty;
             hfSelectedSubCategoryId.Value = string.Empty;
             hfSelectedItemId.Value = string.Empty;
@@ -196,90 +168,59 @@ namespace AnmolDristi.ITSM.UI
         }
 
         // ====================================================================
-        // Initial data loading — runs once on GET.
+        // Initial data loading — runs once on GET via BLL service.
         // ====================================================================
 
         /// <summary>
-        /// Loads all master data once on initial GET. Category/subcategory/item
-        /// hierarchy is projected into strongly typed DTOs and serialized via
-        /// <see cref="JavaScriptSerializer"/> for client-side filtering.
+        /// Loads all master data once on initial GET via
+        /// <see cref="TicketMasterDataService"/>. Category/subcategory/item
+        /// hierarchy is projected into strongly typed DTOs and serialized
+        /// via <see cref="JavaScriptSerializer"/> for client-side filtering.
         /// </summary>
         private void BindAllMasterData()
         {
-            using (var context = new ItsmDbContext())
-            {
-                // 1. Category → SubCategory → Item hierarchy (strongly typed).
-                var categories = context.Categories.AsNoTracking()
-                    .Where(c => c.IsActive)
-                    .OrderBy(c => c.Name)
-                    .Select(c => new TicketCategoryDto
-                    {
-                        Id = c.Id,
-                        Name = c.Name,
-                        SubCategories = context.SubCategories
-                            .Where(s => s.IsActive && s.CategoryId == c.Id)
-                            .OrderBy(s => s.Name)
-                            .Select(s => new TicketSubCategoryDto
-                            {
-                                Id = s.Id,
-                                Name = s.Name,
-                                Items = context.Items
-                                    .Where(i => i.IsActive && i.SubCategoryId == s.Id)
-                                    .OrderBy(i => i.Name)
-                                    .Select(i => new TicketItemDto
-                                    {
-                                        Id = i.Id,
-                                        Name = i.Name
-                                    })
-                                    .ToList()
-                            })
-                            .ToList()
-                    })
-                    .ToList();
+            var masterService = new TicketMasterDataService();
 
-                // Serialize hierarchy via JavaScriptSerializer (handles all
-                // JSON escaping: quotes, Unicode, special characters).
-                hfCategoryData.Value = _serializer.Serialize(categories);
+            // Resolve company for tenant-scoped reads.
+            var workman = Session["WORKMAN"] != null
+                ? Session["WORKMAN"].ToString()
+                : string.Empty;
+            int companyId = masterService.ResolveCompanyId(workman);
 
-                // Render category cards server-side (single render, no duplication).
-                RenderCategoryCards(categories);
+            // 1. Category → SubCategory → Item hierarchy (strongly typed DTOs).
+            List<TicketCategoryDto> categories = masterService
+                .GetCategoryHierarchy(companyId);
+            hfCategoryData.Value = _serializer.Serialize(categories);
 
-                // 2. Request Types (small list, bound to dropdown).
-                BindRequestTypes(context);
+            // Render category cards server-side (single render, no duplication).
+            RenderCategoryCards(categories);
 
-                // 3. Impacts (small list, rendered as button group).
-                BindImpacts(context);
+            // 2. Request Types (small list, bound to dropdown).
+            List<TicketLookupItemDto> requestTypes = masterService.GetRequestTypes();
+            BindRequestTypes(requestTypes);
 
-                // 4. Urgencies (small list, rendered as button group).
-                BindUrgencies(context);
-            }
+            // 3. Impacts (small list, rendered as button group).
+            List<TicketLookupItemDto> impacts = masterService.GetImpacts();
+            BindImpacts(impacts);
+
+            // 4. Urgencies (small list, rendered as button group).
+            List<TicketLookupItemDto> urgencies = masterService.GetUrgencies();
+            BindUrgencies(urgencies);
         }
 
-        private void BindRequestTypes(ItsmDbContext context)
+        private void BindRequestTypes(List<TicketLookupItemDto> types)
         {
-            var types = context.RequestTypes.AsNoTracking()
-                .Where(r => r.IsActive)
-                .OrderBy(r => r.Name)
-                .Select(r => new { r.Id, Display = r.Code + " - " + r.Name })
-                .ToList();
-
             ddlRequestType.Items.Clear();
             ddlRequestType.AppendDataBoundItems = true;
             ddlRequestType.Items.Add(new ListItem("-- Select Request Type --", string.Empty));
             ddlRequestType.DataSource = types;
-            ddlRequestType.DataTextField = "Display";
+            ddlRequestType.DataTextField = "Name";
             ddlRequestType.DataValueField = "Id";
             ddlRequestType.DataBind();
         }
 
-        private void BindImpacts(ItsmDbContext context)
+        private void BindImpacts(List<TicketLookupItemDto> impacts)
         {
-            var impacts = context.Impacts.AsNoTracking()
-                .Where(i => i.IsActive)
-                .OrderBy(i => i.SortOrder)
-                .Select(i => new { i.Id, i.Name })
-                .ToList();
-
             impactButtons.Controls.Clear();
             foreach (var impact in impacts)
             {
@@ -297,14 +238,8 @@ namespace AnmolDristi.ITSM.UI
             }
         }
 
-        private void BindUrgencies(ItsmDbContext context)
+        private void BindUrgencies(List<TicketLookupItemDto> urgencies)
         {
-            var urgencies = context.Urgencies.AsNoTracking()
-                .Where(u => u.IsActive)
-                .OrderBy(u => u.SortOrder)
-                .Select(u => new { u.Id, u.Name })
-                .ToList();
-
             urgencyButtons.Controls.Clear();
             foreach (var urgency in urgencies)
             {
@@ -349,49 +284,6 @@ namespace AnmolDristi.ITSM.UI
         }
 
         // ====================================================================
-        // Server-side validation — consolidated into a single query.
-        // ====================================================================
-
-        /// <summary>
-        /// Validates the submitted category/subcategory/item hierarchy in a
-        /// single database query. Returns null on success, or an error message.
-        /// Client-side filtering is UX only; this is the data-integrity gate.
-        /// </summary>
-        private string ValidateHierarchy(int categoryId, int subCategoryId, string itemValue)
-        {
-            using (var context = new ItsmDbContext())
-            {
-                // Single query: verify subcategory belongs to category and is active.
-                bool subValid = context.SubCategories.AsNoTracking()
-                    .Any(s => s.Id == subCategoryId
-                             && s.CategoryId == categoryId
-                             && s.IsActive);
-
-                if (!subValid)
-                {
-                    return "The selected sub category does not belong to the chosen category.";
-                }
-
-                // If an item was selected, verify it belongs to the subcategory.
-                int itemIdParsed;
-                if (int.TryParse(itemValue, out itemIdParsed))
-                {
-                    bool itemValid = context.Items.AsNoTracking()
-                        .Any(i => i.Id == itemIdParsed
-                                 && i.SubCategoryId == subCategoryId
-                                 && i.IsActive);
-
-                    if (!itemValid)
-                    {
-                        return "The selected item does not belong to the chosen sub category.";
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        // ====================================================================
         // Form helpers.
         // ====================================================================
 
@@ -410,7 +302,7 @@ namespace AnmolDristi.ITSM.UI
         private void ShowMessage(string message, bool success)
         {
             lblMessage.Text = message;
-            lblMessage.ForeColor = success ? Color.Green : Color.Red;
+            lblMessage.ForeColor = success ? System.Drawing.Color.Green : System.Drawing.Color.Red;
         }
     }
 }

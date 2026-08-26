@@ -1572,6 +1572,7 @@
     <Compile Include="ITSM\BLL\TicketListService.cs" />
     <Compile Include="ITSM\BLL\TicketDetailService.cs" />
     <Compile Include="ITSM\BLL\TicketUpdateService.cs" />
+    <Compile Include="ITSM\BLL\TicketMasterDataService.cs" />
     <Compile Include="ITSM\UI\CreateTicket.aspx.cs">
       <DependentUpon>CreateTicket.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
