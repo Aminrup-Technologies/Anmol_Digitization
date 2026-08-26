@@ -128,8 +128,6 @@
             font-size: 12px; color: #888;
         }
         .itsm-ct__lock-msg i { font-size: 11px; }
-        /* Ensure category section is always interactive regardless of other sections */
-        #secCategory, #secCategory * { pointer-events: auto !important; }
     </style>
 </asp:Content>
 

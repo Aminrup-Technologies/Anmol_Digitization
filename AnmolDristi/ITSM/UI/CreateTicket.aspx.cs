@@ -205,9 +205,8 @@ namespace AnmolDristi.ITSM.UI
             // Render category cards server-side (single render, no duplication).
             RenderCategoryCards(categories);
 
-            // 2. Request Types (small list, rendered as segmented cards + hidden dropdown).
+            // 2. Request Types (small list, rendered as selectable cards).
             List<TicketLookupItemDto> requestTypes = masterService.GetRequestTypes();
-            BindRequestTypes(requestTypes);
             RenderRequestTypeCards(requestTypes);
 
             // 3. Impacts (small list, rendered as button group).
@@ -217,12 +216,6 @@ namespace AnmolDristi.ITSM.UI
             // 4. Urgencies (small list, rendered as button group).
             List<TicketLookupItemDto> urgencies = masterService.GetUrgencies();
             BindUrgencies(urgencies);
-        }
-
-        private void BindRequestTypes(List<TicketLookupItemDto> types)
-        {
-            // Request types are rendered as visible cards (RenderRequestTypeCards).
-            // No hidden DropDownList needed — validation is client-side + BLL.
         }
 
         private void BindImpacts(List<TicketLookupItemDto> impacts)
