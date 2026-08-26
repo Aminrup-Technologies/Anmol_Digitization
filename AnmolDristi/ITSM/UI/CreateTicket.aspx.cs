@@ -28,7 +28,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Web.Script.Serialization;
 using System.Web.UI.HtmlControls;
@@ -73,9 +72,10 @@ namespace AnmolDristi.ITSM.UI
 
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
-            // Proves the Click event ran (server Trace). Do not disable the
-            // submit control — a failed request must leave it usable.
-            Trace.TraceInformation("ITSM CreateTicket btnSubmit_Click");
+            // Proves the Click event ran. Must use System.Diagnostics.Trace —
+            // Page.Trace is System.Web.TraceContext and has no TraceInformation.
+            // Do not disable the submit control; a failed request must leave it usable.
+            System.Diagnostics.Trace.TraceInformation("ITSM CreateTicket btnSubmit_Click");
             RestoreSubmitButton();
             ClearMessage();
 
@@ -155,7 +155,7 @@ namespace AnmolDristi.ITSM.UI
                     impactId,
                     urgencyId);
 
-                Trace.TraceInformation(
+                System.Diagnostics.Trace.TraceInformation(
                     "ITSM CreateTicket btnSubmit_Click created ticket "
                     + newTicketId.ToString(CultureInfo.InvariantCulture));
 
@@ -181,7 +181,7 @@ namespace AnmolDristi.ITSM.UI
             {
                 RestoreSubmitButton();
                 var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
-                Trace.TraceError(
+                System.Diagnostics.Trace.TraceError(
                     "ITSM CreateTicket unexpected failure ["
                     + correlationId + "] " + ex.GetType().FullName);
                 ShowMessage(
