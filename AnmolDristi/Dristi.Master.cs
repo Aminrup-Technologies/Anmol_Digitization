@@ -207,6 +207,12 @@ namespace AnmolDristi
                     ITSM_TicketList.Visible = true;
                 }
 
+                // Create Ticket is available to all authenticated employees.
+                // Business authorization is session-based (WORKMAN/USERID/BRANCH).
+                if (ITSM_CreateTicket != null)
+                {
+                    ITSM_CreateTicket.Visible = true;
+                }
 
                 //---- Added on 17-Sep-2025------//
                 //UiPermissionController.Apply(this);// apply to whole master
