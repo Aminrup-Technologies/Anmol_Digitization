@@ -237,6 +237,41 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         /// <summary>
+        /// Validates that the submitted Impact, Urgency, and RequestType IDs
+        /// exist and are active. Returns a <see cref="HierarchyValidationResult"/>
+        /// with null Error on success.
+        /// </summary>
+        public HierarchyValidationResult ValidateMasterDataIds(
+            int impactId, int urgencyId, int requestTypeId)
+        {
+            using (var context = new ItsmDbContext())
+            {
+                if (!context.Impacts.AsNoTracking()
+                    .Any(i => i.Id == impactId && i.IsActive))
+                {
+                    return HierarchyValidationResult.Fail(
+                        "The selected impact level is not valid.");
+                }
+
+                if (!context.Urgencies.AsNoTracking()
+                    .Any(u => u.Id == urgencyId && u.IsActive))
+                {
+                    return HierarchyValidationResult.Fail(
+                        "The selected urgency level is not valid.");
+                }
+
+                if (!context.RequestTypes.AsNoTracking()
+                    .Any(r => r.Id == requestTypeId && r.IsActive))
+                {
+                    return HierarchyValidationResult.Fail(
+                        "The selected request type is not valid.");
+                }
+            }
+
+            return HierarchyValidationResult.Success();
+        }
+
+        /// <summary>
         /// Resolves the employee's CompanyId from MST_UserMaster.
         /// Returns 0 if not found (caller should deny access).
         /// </summary>

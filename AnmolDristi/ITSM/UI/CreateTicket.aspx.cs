@@ -125,6 +125,16 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
+            // Validate impact, urgency, and request type exist and are active.
+            var masterDataResult = masterService.ValidateMasterDataIds(
+                impactId, urgencyId, requestTypeId);
+
+            if (!masterDataResult.IsValid)
+            {
+                ShowMessage(masterDataResult.Error, false);
+                return;
+            }
+
             try
             {
                 var ticketService = new TicketService();

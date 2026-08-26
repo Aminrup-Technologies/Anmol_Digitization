@@ -129,11 +129,9 @@
                             <asp:HiddenField ID="hfSelectedCategoryId" runat="server" />
                             <asp:HiddenField ID="hfSelectedSubCategoryId" runat="server" />
                             <asp:HiddenField ID="hfSelectedItemId" runat="server" />
-                            <asp:RequiredFieldValidator ID="rfvCategory" runat="server"
-                                ControlToValidate="hfSelectedCategoryId" InitialValue=""
-                                ErrorMessage="Please select a category."
-                                Display="Dynamic" CssClass="validation-msg"
-                                ValidationGroup="CreateTicket" />
+                            <%-- rfvCategory removed: ASP.NET RequiredFieldValidator cannot target HiddenField.
+                                 Category validation: client-side in ITSM.CreateTicket.onSubmit(),
+                                 server-side in btnSubmit_Click via ValidateHierarchy(). --%>
                         </div>
 
                         <%-- SubCategory (appears after category selection, client-side filtered) --%>
@@ -148,11 +146,9 @@
                                     <option value="">-- Select Sub Category --</option>
                                 </select>
                             </div>
-                            <asp:RequiredFieldValidator ID="rfvSubCategory" runat="server"
-                                ControlToValidate="hfSelectedSubCategoryId" InitialValue=""
-                                ErrorMessage="Please select a sub category."
-                                Display="Dynamic" CssClass="validation-msg"
-                                ValidationGroup="CreateTicket" />
+                            <%-- rfvSubCategory removed: ASP.NET RequiredFieldValidator cannot target HiddenField.
+                                 SubCategory validation: client-side in ITSM.CreateTicket.onSubmit(),
+                                 server-side in btnSubmit_Click via ValidateHierarchy(). --%>
                         </div>
 
                         <%-- Item (appears after subcategory selection, optional) --%>
@@ -184,11 +180,9 @@
                                         <%-- Server-rendered impact buttons --%>
                                     </div>
                                     <asp:HiddenField ID="hfSelectedImpactId" runat="server" />
-                                    <asp:RequiredFieldValidator ID="rfvImpact" runat="server"
-                                        ControlToValidate="hfSelectedImpactId" InitialValue=""
-                                        ErrorMessage="Please select an impact level."
-                                        Display="Dynamic" CssClass="validation-msg"
-                                        ValidationGroup="CreateTicket" />
+                                    <%-- rfvImpact removed: ASP.NET RequiredFieldValidator cannot target HiddenField.
+                                         Impact validation: client-side in ITSM.CreateTicket.onSubmit(),
+                                         server-side in btnSubmit_Click via ValidateMasterData(). --%>
                                 </div>
                                 <div class="col-md-6 col-sm-6 col-xs-12" style="margin-bottom: 12px;">
                                     <div class="ticket-form-label">Urgency <span class="required">*</span></div>
@@ -196,11 +190,9 @@
                                         <%-- Server-rendered urgency buttons --%>
                                     </div>
                                     <asp:HiddenField ID="hfSelectedUrgencyId" runat="server" />
-                                    <asp:RequiredFieldValidator ID="rfvUrgency" runat="server"
-                                        ControlToValidate="hfSelectedUrgencyId" InitialValue=""
-                                        ErrorMessage="Please select an urgency level."
-                                        Display="Dynamic" CssClass="validation-msg"
-                                        ValidationGroup="CreateTicket" />
+                                    <%-- rfvUrgency removed: ASP.NET RequiredFieldValidator cannot target HiddenField.
+                                         Urgency validation: client-side in ITSM.CreateTicket.onSubmit(),
+                                         server-side in btnSubmit_Click via ValidateMasterData(). --%>
                                 </div>
                             </div>
                         </div>
