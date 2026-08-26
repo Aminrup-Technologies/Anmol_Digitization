@@ -1,6 +1,7 @@
 using System;
 using System.Data.Entity;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -49,6 +50,10 @@ namespace AnmolDristi.ITSM.BLL
         /// Creates a ticket: resolves requester context, priority, assignee,
         /// ticket number, optional manager/IT Head approval, and queues an email notification.
         /// </summary>
+        /// <param name="onStage">
+        /// Optional diagnostic callback invoked at major execution boundaries.
+        /// Parameters: stage name, elapsed milliseconds. Does not affect behavior.
+        /// </param>
         /// <returns>The Id of the newly created ticket.</returns>
         public int CreateTicket(
             string requesterCode,
@@ -59,7 +64,8 @@ namespace AnmolDristi.ITSM.BLL
             int subCategoryId,
             int? itemId,
             int impactId,
-            int urgencyId)
+            int urgencyId,
+            Action<string, long> onStage = null)
         {
             if (string.IsNullOrWhiteSpace(requesterCode))
             {
@@ -74,8 +80,11 @@ namespace AnmolDristi.ITSM.BLL
             using (var context = new ItsmDbContext())
             using (var transaction = context.Database.BeginTransaction())
             {
+                var tick = new Stopwatch();
                 try
                 {
+                    OnStage(onStage, "TicketService entered", tick);
+
                     var requester = context.UserMasters
                         .AsNoTracking()
                         .FirstOrDefault(u => u.EmployeeCode == requesterCode);
@@ -112,6 +121,8 @@ namespace AnmolDristi.ITSM.BLL
                     }
 
                     var resolvedBranchId = branch.Id;
+
+                    OnStage(onStage, "Requester/branch resolution", tick);
 
                     // ── Plant resolution ───────────────────────────────────────
                     // MST_UserMaster.PlantId stores legacy PlantID_ID (business key),
@@ -157,8 +168,12 @@ namespace AnmolDristi.ITSM.BLL
                         subCategoryId,
                         itemId);
 
+                    OnStage(onStage, "Priority/SLA/dispatch", tick);
+
                     var ticketNumber = GenerateTicketNumber(
                         context, requestType, createdOn);
+
+                    OnStage(onStage, "Ticket number generation", tick);
 
                     // ── Approval policy (configurable) ────────────────────────
                     // Approval configuration is evaluated at creation time.
@@ -196,6 +211,8 @@ namespace AnmolDristi.ITSM.BLL
                     context.Tickets.Add(ticket);
                     context.SaveChanges();
 
+                    OnStage(onStage, "Ticket persist (SaveChanges)", tick);
+
                     context.TicketAuditLogs.Add(new TicketAuditLog
                     {
                         TicketId = ticket.Id,
@@ -209,6 +226,8 @@ namespace AnmolDristi.ITSM.BLL
                         ActionedOn = createdOn
                     });
                     context.SaveChanges();
+
+                    OnStage(onStage, "Audit log", tick);
 
                     // ── Manager approval row ───────────────────────────────────
                     if (requiresManagerApproval)
@@ -279,7 +298,11 @@ namespace AnmolDristi.ITSM.BLL
                         sla.SlaStartTime,
                         sla.DueDate);
 
+                    OnStage(onStage, "Notifications", tick);
+
                     transaction.Commit();
+
+                    OnStage(onStage, "Transaction commit", tick);
 
                     // Return the ticket Id only after Commit() succeeds.
                     return ticket.Id;
@@ -427,6 +450,20 @@ namespace AnmolDristi.ITSM.BLL
             }
 
             return fallback.Value;
+        }
+
+        /// <summary>
+        /// Diagnostic helper: invoke the callback with the current stage name
+        /// and elapsed milliseconds. No-op when callback is null.
+        /// </summary>
+        private static void OnStage(Action<string, long> onStage, string stage, Stopwatch tick)
+        {
+            if (onStage != null)
+            {
+                tick.Stop();
+                onStage(stage, tick.ElapsedMilliseconds);
+                tick.Restart();
+            }
         }
 
         private static void EnqueueTicketCreatedNotification(
