@@ -1,11 +1,13 @@
 // ========================================================================
 // When: 2026-08-26
 // What: Lightweight request-scoped diagnostic tracker for the CreateTicket
-//       submission pipeline. Records stage-by-stage timing to identify
+//       submission pipeline. Records BEGIN/END stage events to identify
 //       exactly where a submission request spends time or fails.
 // Why:  Production CreateTicket submissions show an indefinite "Creating..."
 //       state with no ticket created, no error, and no redirect. We need
-//       to establish the exact failure/delay point before applying fixes.
+//       BEGIN events emitted BEFORE potentially blocking operations so
+//       that if the operation hangs, the last diagnostic event identifies
+//       the in-progress operation.
 // ========================================================================
 
 using System;
@@ -16,16 +18,10 @@ namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
     /// Request-scoped diagnostic tracker for the CreateTicket submission
-    /// pipeline. Captures stage-by-stage timing, success/failure, and
-    /// exception details for server-side logging.
+    /// pipeline. Emits explicit BEGIN/END stage events for server-side logging.
     ///
-    /// Usage:
-    ///   var diag = new CreateTicketDiagnostics();
-    ///   diag.BeginStage("Request received");
-    ///   diag.EndStage();
-    ///   // ... or on failure:
-    ///   diag.FailStage(ex);
-    ///   Trace.TraceInformation(diag.GetSummary());
+    /// Key property: if a request hangs or is interrupted, the last BEGIN
+    /// event without a matching END identifies the operation that blocked.
     ///
     /// Thread safety: Not thread-safe. Intended for single-request use only.
     /// </summary>
@@ -34,9 +30,8 @@ namespace AnmolDristi.ITSM.BLL
         private readonly Stopwatch _totalStopwatch = new Stopwatch();
         private readonly StringBuilder _timeline = new StringBuilder();
         private readonly string _correlationId;
-        private Stopwatch _stageStopwatch;
         private string _currentStage;
-        private string _failedStage;
+        private Stopwatch _stageStopwatch;
         private Exception _exception;
         private bool _completed;
 
@@ -47,12 +42,36 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         /// <summary>
-        /// Correlation ID for this request (8-char hex, e.g. "CT-7F31A2").
+        /// Correlation ID for this request (e.g. "CT-7F31A2AB").
         /// Include in user-facing error messages for support correlation.
         /// </summary>
         public string CorrelationId
         {
             get { return "CT-" + _correlationId; }
+        }
+
+        /// <summary>
+        /// The name of the stage currently in progress, or null if no stage
+        /// is active. If the request hangs, this identifies the blocking
+        /// operation.
+        /// </summary>
+        public string CurrentStage
+        {
+            get { return _currentStage; }
+        }
+
+        /// <summary>
+        /// Elapsed milliseconds since the current stage was started.
+        /// Returns 0 if no stage is active.
+        /// </summary>
+        public long CurrentStageElapsedMs
+        {
+            get
+            {
+                return _stageStopwatch != null && _stageStopwatch.IsRunning
+                    ? _stageStopwatch.ElapsedMilliseconds
+                    : 0;
+            }
         }
 
         /// <summary>
@@ -64,12 +83,12 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         /// <summary>
-        /// Begin timing a named stage. If a previous stage is still in
-        /// progress, it is implicitly ended first.
+        /// Emit a BEGIN event for a named stage. If a previous stage is
+        /// still in progress, it is implicitly ended first.
         /// </summary>
         public void BeginStage(string stageName)
         {
-            // End previous stage if still running.
+            // End previous stage if still running (implicit end).
             if (_stageStopwatch != null && _stageStopwatch.IsRunning)
             {
                 EndStageInternal();
@@ -78,10 +97,12 @@ namespace AnmolDristi.ITSM.BLL
             _currentStage = stageName;
             _stageStopwatch = new Stopwatch();
             _stageStopwatch.Start();
+            _timeline.AppendLine("[CT] BEGIN " + stageName);
         }
 
         /// <summary>
-        /// End the current stage and record it as successful.
+        /// Emit an END event for the current stage, recording it as
+        /// successfully completed with elapsed time.
         /// </summary>
         public void EndStage()
         {
@@ -92,26 +113,36 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         /// <summary>
-        /// End the current stage and record it as failed with an exception.
+        /// Emit a FAIL event for the current stage, recording the exception.
         /// </summary>
         public void FailStage(Exception ex)
         {
-            _failedStage = _currentStage;
             _exception = ex;
 
             if (_stageStopwatch != null && _stageStopwatch.IsRunning)
             {
                 _stageStopwatch.Stop();
-                AppendEntry(_currentStage, _stageStopwatch.ElapsedMilliseconds, false, null);
+                string classification = ClassifyDuration(_stageStopwatch.ElapsedMilliseconds);
+                _timeline.AppendLine("[CT] FAIL " + _currentStage + "  "
+                    + _stageStopwatch.ElapsedMilliseconds + " ms"
+                    + classification
+                    + "  " + ex.GetType().Name);
                 _stageStopwatch = null;
+            }
+            else
+            {
+                _timeline.AppendLine("[CT] FAIL " + (_currentStage ?? "unknown")
+                    + "  " + ex.GetType().Name);
             }
         }
 
         /// <summary>
-        /// Stop the total timer and finalize diagnostics.
+        /// Mark diagnostics as completed. Call after the ticket is created
+        /// but BEFORE Response.Redirect.
         /// </summary>
         public void Complete()
         {
+            // End any remaining stage.
             if (_stageStopwatch != null && _stageStopwatch.IsRunning)
             {
                 EndStageInternal();
@@ -126,79 +157,78 @@ namespace AnmolDristi.ITSM.BLL
         /// </summary>
         public string GetDurationClassification()
         {
-            long ms = _totalStopwatch.ElapsedMilliseconds;
-            if (ms < 1000) return "normal";
-            if (ms < 3000) return "slow";
-            if (ms < 10000) return "very slow";
-            return "critical";
+            return ClassifyDuration(_totalStopwatch.ElapsedMilliseconds);
         }
 
         /// <summary>
         /// Build a complete diagnostic summary for server-side logging.
         /// Contains NO sensitive user data, SQL, or credentials.
+        ///
+        /// If the request hangs, the last BEGIN without a matching END
+        /// identifies the blocking operation.
         /// </summary>
         public string GetSummary()
         {
             var sb = new StringBuilder();
-            sb.AppendLine("=== CreateTicket Diagnostics ===");
-            sb.AppendLine("Correlation: " + CorrelationId);
-            sb.AppendLine("Total: " + _totalStopwatch.ElapsedMilliseconds + " ms (" + GetDurationClassification() + ")");
-            sb.AppendLine("Timeline:");
+            sb.AppendLine("[CT] Correlation: " + CorrelationId);
             sb.Append(_timeline);
 
             if (_exception != null)
             {
-                sb.AppendLine("FAILED at: " + (_failedStage ?? "unknown"));
-                sb.AppendLine("Exception: " + _exception.GetType().Name + ": " + _exception.Message);
+                sb.AppendLine("[CT] Exception: " + _exception.GetType().Name
+                    + ": " + _exception.Message);
                 if (_exception.InnerException != null)
                 {
-                    sb.AppendLine("Inner: " + _exception.InnerException.GetType().Name
+                    sb.AppendLine("[CT] Inner: " + _exception.InnerException.GetType().Name
                         + ": " + _exception.InnerException.Message);
                 }
             }
             else if (_completed)
             {
-                sb.AppendLine("Status: COMPLETED");
+                sb.AppendLine("[CT] Status: COMPLETED  Total: "
+                    + _totalStopwatch.ElapsedMilliseconds + " ms ("
+                    + GetDurationClassification() + ")");
             }
             else
             {
-                sb.AppendLine("Status: INCOMPLETE (request may have been interrupted)");
+                // Request was interrupted/hung. Identify the last in-progress stage.
+                sb.AppendLine("[CT] Status: INCOMPLETE (request interrupted)");
+                if (_currentStage != null)
+                {
+                    sb.AppendLine("[CT] Last stage: " + _currentStage
+                        + "  elapsed: " + CurrentStageElapsedMs + " ms");
+                }
             }
 
             return sb.ToString();
         }
 
         /// <summary>
-        /// Get a safe, user-facing error message that includes the correlation
-        /// ID for support purposes. Contains no exception details.
+        /// Get a safe, user-facing error message with correlation ID.
+        /// Contains no exception details.
         /// </summary>
         public string GetUserFacingMessage()
         {
-            if (_failedStage != null)
-            {
-                return "We could not create the ticket. Please try again. Reference: " + CorrelationId;
-            }
-
-            return "An unexpected error occurred while creating the ticket. Please try again. Reference: " + CorrelationId;
+            return "An unexpected error occurred while creating the ticket. "
+                + "Please try again. Reference: " + CorrelationId;
         }
 
         private void EndStageInternal()
         {
             _stageStopwatch.Stop();
-            AppendEntry(_currentStage, _stageStopwatch.ElapsedMilliseconds, true, null);
+            string classification = ClassifyDuration(_stageStopwatch.ElapsedMilliseconds);
+            _timeline.AppendLine("[CT] END   " + _currentStage + "  "
+                + _stageStopwatch.ElapsedMilliseconds + " ms"
+                + classification);
             _stageStopwatch = null;
         }
 
-        private void AppendEntry(string stage, long elapsedMs, bool success, string detail)
+        private static string ClassifyDuration(long ms)
         {
-            string classification;
-            if (elapsedMs < 1000) classification = "";
-            else if (elapsedMs < 3000) classification = " [slow]";
-            else if (elapsedMs < 10000) classification = " [VERY SLOW]";
-            else classification = " [CRITICAL]";
-
-            string status = success ? "ok" : "FAIL";
-            _timeline.AppendLine("  " + stage.PadRight(35) + elapsedMs.ToString().PadLeft(8) + " ms  " + status + classification);
+            if (ms < 1000) return "";
+            if (ms < 3000) return "  [slow]";
+            if (ms < 10000) return "  [VERY SLOW]";
+            return "  [CRITICAL]";
         }
     }
 }

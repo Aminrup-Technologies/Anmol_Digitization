@@ -71,12 +71,10 @@ namespace AnmolDristi.ITSM.UI
 
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
-            // Diagnostic tracking for this submission attempt.
             var diag = new CreateTicketDiagnostics();
 
             try
             {
-                // Disable button server-side to prevent duplicate submission.
                 btnSubmit.Enabled = false;
 
                 diag.BeginStage("Request received");
@@ -85,8 +83,7 @@ namespace AnmolDristi.ITSM.UI
                 if (!Page.IsValid)
                 {
                     diag.EndStage();
-                    System.Diagnostics.Trace.TraceInformation(
-                        "[CT] " + diag.GetSummary());
+                    System.Diagnostics.Trace.TraceInformation(diag.GetSummary());
                     return;
                 }
 
@@ -113,8 +110,7 @@ namespace AnmolDristi.ITSM.UI
                     || !int.TryParse(hfSelectedUrgencyId.Value, out urgencyId))
                 {
                     diag.FailStage(new InvalidOperationException("Required field parse failed"));
-                    System.Diagnostics.Trace.TraceWarning(
-                        "[CT] " + diag.GetSummary());
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
                     ShowMessage("Please complete all required fields.", false);
                     return;
                 }
@@ -136,8 +132,7 @@ namespace AnmolDristi.ITSM.UI
                 if (!hierarchyResult.IsValid)
                 {
                     diag.FailStage(new InvalidOperationException(hierarchyResult.Error));
-                    System.Diagnostics.Trace.TraceWarning(
-                        "[CT] " + diag.GetSummary());
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
                     ShowMessage(hierarchyResult.Error, false);
                     return;
                 }
@@ -149,8 +144,7 @@ namespace AnmolDristi.ITSM.UI
                 if (!int.TryParse(hfSelectedRequestTypeId.Value, out requestTypeId))
                 {
                     diag.FailStage(new InvalidOperationException("RequestType parse failed"));
-                    System.Diagnostics.Trace.TraceWarning(
-                        "[CT] " + diag.GetSummary());
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
                     ShowMessage("Please select a valid request type.", false);
                     return;
                 }
@@ -161,8 +155,7 @@ namespace AnmolDristi.ITSM.UI
                 if (!masterDataResult.IsValid)
                 {
                     diag.FailStage(new InvalidOperationException(masterDataResult.Error));
-                    System.Diagnostics.Trace.TraceWarning(
-                        "[CT] " + diag.GetSummary());
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
                     ShowMessage(masterDataResult.Error, false);
                     return;
                 }
@@ -172,12 +165,9 @@ namespace AnmolDristi.ITSM.UI
                 diag.BeginStage("TicketService.CreateTicket");
                 var ticketService = new TicketService();
 
-                // Diagnostic callback: record each major BLL stage.
-                Action<string, long> onBllStage = (stage, elapsedMs) =>
-                {
-                    System.Diagnostics.Trace.TraceInformation(
-                        "[CT] " + diag.CorrelationId + " BLL: " + stage + " " + elapsedMs + " ms");
-                };
+                // Wire BLL diagnostic callbacks to the request-scoped tracker.
+                Action<string> onBllBegin = stage => diag.BeginStage(stage);
+                Action<string, long> onBllEnd = (stage, ms) => diag.EndStage();
 
                 int newTicketId = ticketService.CreateTicket(
                     requesterCode,
@@ -189,15 +179,15 @@ namespace AnmolDristi.ITSM.UI
                     itemId,
                     impactId,
                     urgencyId,
-                    onBllStage);
+                    onBllBegin,
+                    onBllEnd);
 
                 diag.EndStage();
 
-                // ── PRG redirect ─────────────────────────────────────────────
-                diag.BeginStage("PRG redirect");
+                // ── Ticket created — log and redirect ────────────────────────
+                // Complete() marks the diagnostic as finished BEFORE redirect.
                 diag.Complete();
-                System.Diagnostics.Trace.TraceInformation(
-                    "[CT] " + diag.GetSummary());
+                System.Diagnostics.Trace.TraceInformation(diag.GetSummary());
 
                 string redirectUrl = ResolveUrl("~/ITSM/UI/TicketDetail.aspx?id="
                     + newTicketId.ToString(CultureInfo.InvariantCulture));
@@ -208,15 +198,15 @@ namespace AnmolDristi.ITSM.UI
             catch (InvalidOperationException ex)
             {
                 diag.FailStage(ex);
-                System.Diagnostics.Trace.TraceWarning(
-                    "[CT] " + diag.GetSummary());
+                System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                // Business exception: preserve existing message + add correlation.
                 ShowMessage(ex.Message + " Reference: " + diag.CorrelationId, false);
             }
             catch (Exception ex)
             {
                 diag.FailStage(ex);
-                System.Diagnostics.Trace.TraceError(
-                    "[CT] " + diag.GetSummary());
+                System.Diagnostics.Trace.TraceError(diag.GetSummary());
+                // Unexpected: safe generic message only.
                 ShowMessage(diag.GetUserFacingMessage(), false);
             }
         }
