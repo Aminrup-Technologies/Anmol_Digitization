@@ -15,11 +15,19 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.Label lblMessage;
 
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabMyQueue;
+
         protected global::System.Web.UI.WebControls.LinkButton lnkMyQueue;
+
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabAllOpen;
 
         protected global::System.Web.UI.WebControls.LinkButton lnkAllOpen;
 
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabMyTickets;
+
         protected global::System.Web.UI.WebControls.LinkButton lnkMyTickets;
+
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabApprovals;
 
         protected global::System.Web.UI.WebControls.LinkButton lnkApprovals;
 

@@ -60,21 +60,26 @@
                         <asp:Label ID="lblMessage" runat="server" Font-Bold="true"
                             Style="display: block; margin-bottom: 10px;"></asp:Label>
 
-                        <!-- Queue Tabs -->
+                        <!-- Queue Tabs
+                             MyQueue / AllOpen: visible when ITSM.Queue.View permission is granted.
+                             MyTickets: visible to all authenticated employees.
+                             Approvals: visible when ITSM.Approval.View permission is granted.
+                             Server-side visibility ensures tabs cannot be exposed via URL manipulation.
+                             -->
                         <ul class="nav nav-tabs" role="tablist">
-                            <li role="presentation" class="active">
+                            <li id="tabMyQueue" runat="server" visible="false" role="presentation" class="active">
                                 <asp:LinkButton ID="lnkMyQueue" runat="server" OnClick="lnkMyQueue_Click"
                                     Text="My Queue" />
                             </li>
-                            <li role="presentation">
+                            <li id="tabAllOpen" runat="server" visible="false" role="presentation">
                                 <asp:LinkButton ID="lnkAllOpen" runat="server" OnClick="lnkAllOpen_Click"
                                     Text="All Open" />
                             </li>
-                            <li role="presentation">
+                            <li id="tabMyTickets" runat="server" visible="false" role="presentation">
                                 <asp:LinkButton ID="lnkMyTickets" runat="server" OnClick="lnkMyTickets_Click"
                                     Text="My Tickets" />
                             </li>
-                            <li role="presentation">
+                            <li id="tabApprovals" runat="server" visible="false" role="presentation">
                                 <asp:LinkButton ID="lnkApprovals" runat="server" OnClick="lnkApprovals_Click"
                                     Text="Pending Approvals" />
                             </li>
