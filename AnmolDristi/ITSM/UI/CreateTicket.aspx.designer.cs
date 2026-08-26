@@ -13,6 +13,14 @@ namespace AnmolDristi.ITSM.UI
     {
         protected global::System.Web.UI.WebControls.Label lblMessage;
 
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl requestTypeCards;
+
+        protected global::System.Web.UI.WebControls.HiddenField hfSelectedRequestTypeId;
+
+        protected global::System.Web.UI.WebControls.DropDownList ddlRequestType;
+
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvRequestType;
+
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl categoryCards;
 
         protected global::System.Web.UI.WebControls.HiddenField hfSelectedCategoryId;
@@ -28,10 +36,6 @@ namespace AnmolDristi.ITSM.UI
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl urgencyButtons;
 
         protected global::System.Web.UI.WebControls.HiddenField hfSelectedUrgencyId;
-
-        protected global::System.Web.UI.WebControls.DropDownList ddlRequestType;
-
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvRequestType;
 
         protected global::System.Web.UI.WebControls.TextBox txtTitle;
 
