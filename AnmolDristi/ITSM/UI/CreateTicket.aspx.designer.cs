@@ -13,27 +13,33 @@ namespace AnmolDristi.ITSM.UI
     {
         protected global::System.Web.UI.WebControls.Label lblMessage;
 
-        protected global::System.Web.UI.WebControls.DropDownList ddlRequestType;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl categoryCards;
 
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvRequestType;
+        protected global::System.Web.UI.WebControls.HiddenField hfSelectedCategoryId;
 
-        protected global::System.Web.UI.WebControls.DropDownList ddlCategory;
+        protected global::System.Web.UI.WebControls.HiddenField hfSelectedSubCategoryId;
+
+        protected global::System.Web.UI.WebControls.HiddenField hfSelectedItemId;
 
         protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvCategory;
 
-        protected global::System.Web.UI.WebControls.DropDownList ddlSubCategory;
-
         protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvSubCategory;
 
-        protected global::System.Web.UI.WebControls.DropDownList ddlItem;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl impactButtons;
 
-        protected global::System.Web.UI.WebControls.DropDownList ddlImpact;
+        protected global::System.Web.UI.WebControls.HiddenField hfSelectedImpactId;
 
         protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvImpact;
 
-        protected global::System.Web.UI.WebControls.DropDownList ddlUrgency;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl urgencyButtons;
+
+        protected global::System.Web.UI.WebControls.HiddenField hfSelectedUrgencyId;
 
         protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvUrgency;
+
+        protected global::System.Web.UI.WebControls.DropDownList ddlRequestType;
+
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvRequestType;
 
         protected global::System.Web.UI.WebControls.TextBox txtTitle;
 
@@ -44,5 +50,7 @@ namespace AnmolDristi.ITSM.UI
         protected global::System.Web.UI.WebControls.Button btnSubmit;
 
         protected global::System.Web.UI.WebControls.Button btnReset;
+
+        protected global::System.Web.UI.WebControls.HiddenField hfCategoryData;
     }
 }
