@@ -71,6 +71,12 @@ namespace AnmolDristi.ITSM.UI
 
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
+            // Disable button server-side to prevent duplicate submission.
+            // Client-side onSubmit() also disables it, but this covers the
+            // case where the client disable was bypassed or the postback
+            // was re-triggered.
+            btnSubmit.Enabled = false;
+
             ClearMessage();
 
             if (!Page.IsValid)
@@ -161,6 +167,12 @@ namespace AnmolDristi.ITSM.UI
             {
                 // Known business exception from TicketService — show message only.
                 ShowMessage(ex.Message, false);
+            }
+            catch (Exception)
+            {
+                // Unexpected failure — show a safe generic message.
+                // Do not expose raw exception details to the user.
+                ShowMessage("An unexpected error occurred while creating the ticket. Please try again.", false);
             }
         }
 
