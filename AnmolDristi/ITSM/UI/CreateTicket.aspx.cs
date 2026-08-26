@@ -224,7 +224,7 @@ namespace AnmolDristi.ITSM.UI
             foreach (var impact in impacts)
             {
                 var btn = new HtmlGenericControl("span");
-                btn.Attributes["class"] = "btn-flat";
+                btn.Attributes["class"] = "itsm-ct__btn";
                 btn.Attributes["data-id"] = impact.Id.ToString(CultureInfo.InvariantCulture);
                 btn.Attributes["tabindex"] = "0";
                 btn.Attributes["role"] = "button";
@@ -243,7 +243,7 @@ namespace AnmolDristi.ITSM.UI
             foreach (var urgency in urgencies)
             {
                 var btn = new HtmlGenericControl("span");
-                btn.Attributes["class"] = "btn-flat";
+                btn.Attributes["class"] = "itsm-ct__btn";
                 btn.Attributes["data-id"] = urgency.Id.ToString(CultureInfo.InvariantCulture);
                 btn.Attributes["tabindex"] = "0";
                 btn.Attributes["role"] = "button";
