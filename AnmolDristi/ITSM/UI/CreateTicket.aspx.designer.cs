@@ -17,10 +17,6 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.HiddenField hfSelectedRequestTypeId;
 
-        protected global::System.Web.UI.WebControls.DropDownList ddlRequestType;
-
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator rfvRequestType;
-
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl categoryCards;
 
         protected global::System.Web.UI.WebControls.HiddenField hfSelectedCategoryId;

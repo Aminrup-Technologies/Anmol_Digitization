@@ -128,6 +128,8 @@
             font-size: 12px; color: #888;
         }
         .itsm-ct__lock-msg i { font-size: 11px; }
+        /* Ensure category section is always interactive regardless of other sections */
+        #secCategory, #secCategory * { pointer-events: auto !important; }
     </style>
 </asp:Content>
 
@@ -158,15 +160,6 @@
                                 <%-- Server-rendered request-type cards --%>
                             </div>
                             <asp:HiddenField ID="hfSelectedRequestTypeId" runat="server" />
-                            <asp:DropDownList ID="ddlRequestType" runat="server" CssClass="form-control itsm-ct__field-input"
-                                Style="display:none;" AppendDataBoundItems="true">
-                                <asp:ListItem Text="-- Select Request Type --" Value="" />
-                            </asp:DropDownList>
-                            <asp:RequiredFieldValidator ID="rfvRequestType" runat="server"
-                                ControlToValidate="ddlRequestType" InitialValue=""
-                                ErrorMessage="Request Type is required."
-                                Display="Dynamic" CssClass="validation-msg"
-                                ValidationGroup="CreateTicket" />
                         </div>
 
                         <%-- ============================================================
@@ -314,7 +307,6 @@
                 hfImpact: '<%= hfSelectedImpactId.ClientID %>',
                 hfUrgency: '<%= hfSelectedUrgencyId.ClientID %>',
                 hfRt: '<%= hfSelectedRequestTypeId.ClientID %>',
-                ddlRt: '<%= ddlRequestType.ClientID %>',
                 impactBtns: '<%= impactButtons.ClientID %>',
                 urgencyBtns: '<%= urgencyButtons.ClientID %>',
                 btnSubmit: '<%= btnSubmit.ClientID %>'
@@ -374,13 +366,6 @@
 
             function onRequestTypeSelect(id) {
                 document.getElementById(_el.hfRt).value = id;
-                // Sync hidden DropDownList for server-side rfvRequestType
-                var ddl = document.getElementById(_el.ddlRt);
-                if (ddl) {
-                    for (var i = 0; i < ddl.options.length; i++) {
-                        if (ddl.options[i].value === String(id)) { ddl.selectedIndex = i; break; }
-                    }
-                }
                 // Toggle active state on cards
                 var cards = document.querySelectorAll('#' + _el.rtCards + ' .itsm-ct__option');
                 for (var j = 0; j < cards.length; j++) {
@@ -484,7 +469,7 @@
                 var impact = document.getElementById(_el.hfImpact).value;
                 var urgency = document.getElementById(_el.hfUrgency).value;
 
-                if (!rt) { showError('Please select a request type.'); return false; }
+                if (!rt || rt === '') { showError('Please select a request type.'); return false; }
                 if (!cat) { showError('Please select a category.'); return false; }
                 if (!sub) { showError('Please select a sub category.'); return false; }
                 if (!impact) { showError('Please select an impact level.'); return false; }
@@ -502,9 +487,6 @@
                 // Clear hidden fields
                 var hfs = [_el.hfRt, _el.hfCat, _el.hfSub, _el.hfItem, _el.hfImpact, _el.hfUrgency];
                 for (var i = 0; i < hfs.length; i++) document.getElementById(hfs[i]).value = '';
-                // Sync dropdown
-                var ddl = document.getElementById(_el.ddlRt);
-                if (ddl) ddl.selectedIndex = 0;
                 // Remove active from all option cards
                 var opts = document.querySelectorAll('.itsm-ct__option--selected');
                 for (var j = 0; j < opts.length; j++) opts[j].classList.remove('itsm-ct__option--selected');
