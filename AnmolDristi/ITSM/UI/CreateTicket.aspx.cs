@@ -221,13 +221,8 @@ namespace AnmolDristi.ITSM.UI
 
         private void BindRequestTypes(List<TicketLookupItemDto> types)
         {
-            ddlRequestType.Items.Clear();
-            ddlRequestType.AppendDataBoundItems = true;
-            ddlRequestType.Items.Add(new ListItem("-- Select Request Type --", string.Empty));
-            ddlRequestType.DataSource = types;
-            ddlRequestType.DataTextField = "Name";
-            ddlRequestType.DataValueField = "Id";
-            ddlRequestType.DataBind();
+            // Request types are rendered as visible cards (RenderRequestTypeCards).
+            // No hidden DropDownList needed — validation is client-side + BLL.
         }
 
         private void BindImpacts(List<TicketLookupItemDto> impacts)
@@ -328,7 +323,7 @@ namespace AnmolDristi.ITSM.UI
         {
             txtTitle.Text = string.Empty;
             txtDescription.Text = string.Empty;
-            if (ddlRequestType.Items.Count > 0) ddlRequestType.SelectedIndex = 0;
+
             hfSelectedRequestTypeId.Value = string.Empty;
         }
 
