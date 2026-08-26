@@ -71,79 +71,104 @@ namespace AnmolDristi.ITSM.UI
 
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
-            // Disable button server-side to prevent duplicate submission.
-            // Client-side onSubmit() also disables it, but this covers the
-            // case where the client disable was bypassed or the postback
-            // was re-triggered.
-            btnSubmit.Enabled = false;
-
-            ClearMessage();
-
-            if (!Page.IsValid)
-            {
-                return;
-            }
-
-            if (Session["WORKMAN"] == null)
-            {
-                Response.Redirect("~/login.aspx");
-                return;
-            }
-
-            var requesterCode = Session["WORKMAN"].ToString();
-
-            int categoryId;
-            int subCategoryId;
-            int impactId;
-            int urgencyId;
-
-            if (!int.TryParse(hfSelectedCategoryId.Value, out categoryId)
-                || !int.TryParse(hfSelectedSubCategoryId.Value, out subCategoryId)
-                || !int.TryParse(hfSelectedImpactId.Value, out impactId)
-                || !int.TryParse(hfSelectedUrgencyId.Value, out urgencyId))
-            {
-                ShowMessage("Please complete all required fields.", false);
-                return;
-            }
-
-            // Server-side hierarchy validation via BLL (single consolidated query).
-            int? itemId = null;
-            int itemIdParsed;
-            if (int.TryParse(hfSelectedItemId.Value, out itemIdParsed))
-            {
-                itemId = itemIdParsed;
-            }
-
-            var masterService = new TicketMasterDataService();
-            var hierarchyResult = masterService.ValidateHierarchy(
-                categoryId, subCategoryId, itemId);
-
-            if (!hierarchyResult.IsValid)
-            {
-                ShowMessage(hierarchyResult.Error, false);
-                return;
-            }
-
-            int requestTypeId;
-            if (!int.TryParse(hfSelectedRequestTypeId.Value, out requestTypeId))
-            {
-                ShowMessage("Please select a valid request type.", false);
-                return;
-            }
-
-            // Validate impact, urgency, and request type exist and are active.
-            var masterDataResult = masterService.ValidateMasterDataIds(
-                impactId, urgencyId, requestTypeId);
-
-            if (!masterDataResult.IsValid)
-            {
-                ShowMessage(masterDataResult.Error, false);
-                return;
-            }
+            var diag = new CreateTicketDiagnostics();
 
             try
             {
+                btnSubmit.Enabled = false;
+
+                diag.BeginStage("Request received");
+                ClearMessage();
+
+                if (!Page.IsValid)
+                {
+                    diag.EndStage();
+                    System.Diagnostics.Trace.TraceInformation(diag.GetSummary());
+                    return;
+                }
+
+                if (Session["WORKMAN"] == null)
+                {
+                    diag.EndStage();
+                    Response.Redirect("~/login.aspx");
+                    return;
+                }
+
+                var requesterCode = Session["WORKMAN"].ToString();
+                diag.EndStage();
+
+                // ── Parse hidden fields ──────────────────────────────────────
+                diag.BeginStage("Field parsing");
+                int categoryId;
+                int subCategoryId;
+                int impactId;
+                int urgencyId;
+
+                if (!int.TryParse(hfSelectedCategoryId.Value, out categoryId)
+                    || !int.TryParse(hfSelectedSubCategoryId.Value, out subCategoryId)
+                    || !int.TryParse(hfSelectedImpactId.Value, out impactId)
+                    || !int.TryParse(hfSelectedUrgencyId.Value, out urgencyId))
+                {
+                    diag.FailStage(new InvalidOperationException("Required field parse failed"));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    ShowMessage("Please complete all required fields.", false);
+                    return;
+                }
+                diag.EndStage();
+
+                // ── Hierarchy validation ─────────────────────────────────────
+                diag.BeginStage("ValidateHierarchy");
+                int? itemId = null;
+                int itemIdParsed;
+                if (int.TryParse(hfSelectedItemId.Value, out itemIdParsed))
+                {
+                    itemId = itemIdParsed;
+                }
+
+                var masterService = new TicketMasterDataService();
+                var hierarchyResult = masterService.ValidateHierarchy(
+                    categoryId, subCategoryId, itemId);
+
+                if (!hierarchyResult.IsValid)
+                {
+                    diag.FailStage(new InvalidOperationException(hierarchyResult.Error));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    ShowMessage(hierarchyResult.Error, false);
+                    return;
+                }
+                diag.EndStage();
+
+                // ── Master-data validation ───────────────────────────────────
+                diag.BeginStage("ValidateMasterDataIds");
+                int requestTypeId;
+                if (!int.TryParse(hfSelectedRequestTypeId.Value, out requestTypeId))
+                {
+                    diag.FailStage(new InvalidOperationException("RequestType parse failed"));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    ShowMessage("Please select a valid request type.", false);
+                    return;
+                }
+
+                var masterDataResult = masterService.ValidateMasterDataIds(
+                    impactId, urgencyId, requestTypeId);
+
+                if (!masterDataResult.IsValid)
+                {
+                    diag.FailStage(new InvalidOperationException(masterDataResult.Error));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    ShowMessage(masterDataResult.Error, false);
+                    return;
+                }
+                diag.EndStage();
+
+                // ── TicketService.CreateTicket ────────────────────────────────
+                diag.BeginStage("TicketService.CreateTicket");
                 var ticketService = new TicketService();
+
+                // Wire BLL diagnostic callbacks to the request-scoped tracker.
+                Action<string> onBllBegin = stage => diag.BeginStage(stage);
+                Action<string, long> onBllEnd = (stage, ms) => diag.EndStage();
+
                 int newTicketId = ticketService.CreateTicket(
                     requesterCode,
                     requestTypeId,
@@ -153,10 +178,17 @@ namespace AnmolDristi.ITSM.UI
                     subCategoryId,
                     itemId,
                     impactId,
-                    urgencyId);
+                    urgencyId,
+                    onBllBegin,
+                    onBllEnd);
 
-                // Post/Redirect/Get: navigate to TicketDetail so the browser
-                // issues a fresh GET instead of repeating the POST.
+                diag.EndStage();
+
+                // ── Ticket created — log and redirect ────────────────────────
+                // Complete() marks the diagnostic as finished BEFORE redirect.
+                diag.Complete();
+                System.Diagnostics.Trace.TraceInformation(diag.GetSummary());
+
                 string redirectUrl = ResolveUrl("~/ITSM/UI/TicketDetail.aspx?id="
                     + newTicketId.ToString(CultureInfo.InvariantCulture));
                 Response.Redirect(redirectUrl, false);
@@ -165,14 +197,17 @@ namespace AnmolDristi.ITSM.UI
             }
             catch (InvalidOperationException ex)
             {
-                // Known business exception from TicketService — show message only.
-                ShowMessage(ex.Message, false);
+                diag.FailStage(ex);
+                System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                // Business exception: preserve existing message + add correlation.
+                ShowMessage(ex.Message + " Reference: " + diag.CorrelationId, false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Unexpected failure — show a safe generic message.
-                // Do not expose raw exception details to the user.
-                ShowMessage("An unexpected error occurred while creating the ticket. Please try again.", false);
+                diag.FailStage(ex);
+                System.Diagnostics.Trace.TraceError(diag.GetSummary());
+                // Unexpected: safe generic message only.
+                ShowMessage(diag.GetUserFacingMessage(), false);
             }
         }
 

@@ -49,6 +49,15 @@ namespace AnmolDristi.ITSM.BLL
         /// Creates a ticket: resolves requester context, priority, assignee,
         /// ticket number, optional manager/IT Head approval, and queues an email notification.
         /// </summary>
+        /// <param name="onStageBegin">
+        /// Optional diagnostic callback invoked BEFORE each major execution
+        /// boundary. Parameter: stage name. Does not affect behavior.
+        /// </param>
+        /// <param name="onStageEnd">
+        /// Optional diagnostic callback invoked AFTER each major execution
+        /// boundary completes. Parameters: stage name, elapsed milliseconds.
+        /// Does not affect behavior.
+        /// </param>
         /// <returns>The Id of the newly created ticket.</returns>
         public int CreateTicket(
             string requesterCode,
@@ -59,7 +68,9 @@ namespace AnmolDristi.ITSM.BLL
             int subCategoryId,
             int? itemId,
             int impactId,
-            int urgencyId)
+            int urgencyId,
+            Action<string> onStageBegin = null,
+            Action<string, long> onStageEnd = null)
         {
             if (string.IsNullOrWhiteSpace(requesterCode))
             {
@@ -72,227 +83,219 @@ namespace AnmolDristi.ITSM.BLL
             }
 
             using (var context = new ItsmDbContext())
-            using (var transaction = context.Database.BeginTransaction())
             {
-                try
+                OnBegin(onStageBegin, "ItsmDbContext");
+                OnEnd(onStageEnd, "ItsmDbContext");
+
+                OnBegin(onStageBegin, "BeginTransaction");
+                using (var transaction = context.Database.BeginTransaction())
                 {
-                    var requester = context.UserMasters
-                        .AsNoTracking()
-                        .FirstOrDefault(u => u.EmployeeCode == requesterCode);
+                    OnEnd(onStageEnd, "BeginTransaction");
 
-                    if (requester == null)
+                    try
                     {
-                        throw new InvalidOperationException(
-                            "Requester was not found in MST_UserMaster for code: " + requesterCode);
-                    }
-
-                    if (!requester.CompanyId.HasValue || requester.CompanyId.Value <= 0)
-                    {
-                        throw new InvalidOperationException(
-                            "Requester has no CompanyId on MST_UserMaster; ticket creation is blocked for tenant isolation.");
-                    }
-
-                    // ── Branch resolution ──────────────────────────────────────
-                    // MST_UserMaster.BranchId stores legacy Branch_ID (e.g. 1966),
-                    // NOT MST_Branch.Id (identity PK, e.g. 4).
-                    // Tickets.BranchId FK references MST_Branch.Id.
-                    // DispatchService.ResolveAssignee also expects MST_Branch.Id
-                    // (SupportMapping.BranchId FK → MST_Branch.Id).
-                    // Branch_ID is verified unique — exactly one match expected.
-                    var branch = context.Branches
-                        .AsNoTracking()
-                        .FirstOrDefault(b => b.Branch_ID == requester.BranchId);
-
-                    if (branch == null)
-                    {
-                        throw new InvalidOperationException(
-                            "Requester BranchId " + requester.BranchId
-                            + " does not resolve to MST_Branch.Branch_ID for EmployeeCode: "
-                            + requester.EmployeeCode + ".");
-                    }
-
-                    var resolvedBranchId = branch.Id;
-
-                    // ── Plant resolution ───────────────────────────────────────
-                    // MST_UserMaster.PlantId stores legacy PlantID_ID (business key),
-                    // NOT MST_Plant.Id (identity PK). Tickets.PlantId FK references
-                    // MST_Plant.Id.
-                    // PlantID_ID is NOT globally unique — e.g. PlantID_ID=3277 maps
-                    // to both Id=40 (Greater Noida) and Id=41 (Nirmali).
-                    // Semantics: NULL when <= 0, missing, or ambiguous (multiple matches).
-                    int? resolvedPlantId = ResolvePlantId(context, requester.PlantId);
-
-                    var requestType = context.RequestTypes
-                        .AsNoTracking()
-                        .FirstOrDefault(r => r.Id == requestTypeId && r.IsActive);
-
-                    if (requestType == null)
-                    {
-                        throw new InvalidOperationException(
-                            "Request type was not found or is inactive: " + requestTypeId);
-                    }
-
-                    var priorityId = _priorityService.CalculatePriorityId(impactId, urgencyId);
-
-                    var priority = context.Priorities
-                        .AsNoTracking()
-                        .FirstOrDefault(p => p.Id == priorityId);
-
-                    var resolutionHours = priority != null ? priority.SlaResolutionHours : 0;
-                    var createdOn = DateTime.Now;
-
-                    // SlaService uses VMS_PlantTimings.Branch_ID which stores the
-                    // legacy Branch_ID value (not MST_Branch.Id), so we pass the
-                    // original legacy value from the requester.
-                    var sla = _slaService.CalculateSla(
-                        requester.BranchId,
-                        createdOn,
-                        resolutionHours);
-
-                    // DispatchService.ResolveAssignee expects MST_Branch.Id
-                    // (SupportMapping.BranchId FK → MST_Branch.Id).
-                    var assigneeCode = _dispatchService.ResolveAssignee(
-                        resolvedBranchId,
-                        categoryId,
-                        subCategoryId,
-                        itemId);
-
-                    var ticketNumber = GenerateTicketNumber(
-                        context, requestType, createdOn);
-
-                    // ── Approval policy (configurable) ────────────────────────
-                    // Approval configuration is evaluated at creation time.
-                    // Existing tickets retain their approval rows regardless of
-                    // later configuration changes (see Prompt 1.6 §10).
-                    var requiresManagerApproval = requestType.RequiresManagerApproval;
-                    var requiresItHeadApproval = requestType.RequiresItHeadApproval;
-
-                    var statusId = ResolveInitialStatusId(
-                        context,
-                        requiresManagerApproval || requiresItHeadApproval);
-
-                    var ticket = new Ticket
-                    {
-                        TicketNumber = ticketNumber,
-                        RequestTypeId = requestType.Id,
-                        Title = title.Trim(),
-                        Description = description,
-                        RequesterCode = requester.EmployeeCode,
-                        AssigneeCode = assigneeCode,
-                        PlantId = resolvedPlantId,
-                        BranchId = resolvedBranchId,
-                        CompanyId = requester.CompanyId,
-                        CategoryId = categoryId,
-                        SubCategoryId = subCategoryId,
-                        ItemId = itemId,
-                        ImpactId = impactId,
-                        UrgencyId = urgencyId,
-                        PriorityId = priorityId,
-                        StatusId = statusId,
-                        CreatedOn = createdOn,
-                        CreatedByCode = requester.EmployeeCode
-                    };
-
-                    context.Tickets.Add(ticket);
-                    context.SaveChanges();
-
-                    context.TicketAuditLogs.Add(new TicketAuditLog
-                    {
-                        TicketId = ticket.Id,
-                        CompanyId = ticket.CompanyId.Value,
-                        ActionType = "Created",
-                        OldValue = null,
-                        NewValue = (requiresManagerApproval || requiresItHeadApproval)
-                            ? "Pending Approval" : "New",
-                        Detail = ticket.TicketNumber,
-                        ActorCode = requester.EmployeeCode,
-                        ActionedOn = createdOn
-                    });
-                    context.SaveChanges();
-
-                    // ── Manager approval row ───────────────────────────────────
-                    if (requiresManagerApproval)
-                    {
-                        if (string.IsNullOrWhiteSpace(requester.ReportingManagerCode))
-                        {
-                            throw new InvalidOperationException(
-                                "Manager approval is enabled for this request type, "
-                                + "but the requester has no ReportingManagerCode on MST_UserMaster.");
-                        }
-
-                        // SoD: requester cannot approve their own CR/SR (compliance §3).
-                        if (string.Equals(
-                            requester.EmployeeCode,
-                            requester.ReportingManagerCode,
-                            StringComparison.OrdinalIgnoreCase))
-                        {
-                            throw new InvalidOperationException(
-                                "Separation of Duties violation: RequesterCode cannot match ApproverCode.");
-                        }
-
-                        context.TicketApprovals.Add(new TicketApproval
-                        {
-                            TicketId = ticket.Id,
-                            ApprovalLevel = "Manager",
-                            ApproverCode = requester.ReportingManagerCode,
-                            ApprovalStatus = "Pending",
-                            CreatedOn = createdOn
-                        });
-                        context.SaveChanges();
-                    }
-
-                    // ── IT Head approval row (configurable) ───────────────────
-                    if (requiresItHeadApproval)
-                    {
-                        var itHeadCode = ResolveActiveItHead(context);
-
-                        // Validate IT Head employee is active.
-                        var itHeadEmployee = context.UserMasters
+                        // ── Requester/branch resolution ──────────────────────
+                        OnBegin(onStageBegin, "Requester/branch resolution");
+                        var requester = context.UserMasters
                             .AsNoTracking()
-                            .FirstOrDefault(u => u.EmployeeCode == itHeadCode
-                                                 && u.EmployeeStatus == "Active");
+                            .FirstOrDefault(u => u.EmployeeCode == requesterCode);
 
-                        if (itHeadEmployee == null)
+                        if (requester == null)
                         {
                             throw new InvalidOperationException(
-                                "IT Head approval is enabled for this request type, "
-                                + "but no active IT Head approver is configured. "
-                                + "Please contact an ITSM administrator.");
+                                "Requester was not found in MST_UserMaster for code: " + requesterCode);
                         }
 
-                        context.TicketApprovals.Add(new TicketApproval
+                        if (!requester.CompanyId.HasValue || requester.CompanyId.Value <= 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Requester has no CompanyId on MST_UserMaster; ticket creation is blocked for tenant isolation.");
+                        }
+
+                        var branch = context.Branches
+                            .AsNoTracking()
+                            .FirstOrDefault(b => b.Branch_ID == requester.BranchId);
+
+                        if (branch == null)
+                        {
+                            throw new InvalidOperationException(
+                                "Requester BranchId " + requester.BranchId
+                                + " does not resolve to MST_Branch.Branch_ID for EmployeeCode: "
+                                + requester.EmployeeCode + ".");
+                        }
+
+                        var resolvedBranchId = branch.Id;
+
+                        int? resolvedPlantId = ResolvePlantId(context, requester.PlantId);
+                        OnEnd(onStageEnd, "Requester/branch resolution");
+
+                        // ── Request type / priority / SLA / dispatch ──────────
+                        OnBegin(onStageBegin, "Priority/SLA/dispatch");
+                        var requestType = context.RequestTypes
+                            .AsNoTracking()
+                            .FirstOrDefault(r => r.Id == requestTypeId && r.IsActive);
+
+                        if (requestType == null)
+                        {
+                            throw new InvalidOperationException(
+                                "Request type was not found or is inactive: " + requestTypeId);
+                        }
+
+                        var priorityId = _priorityService.CalculatePriorityId(impactId, urgencyId);
+                        var priority = context.Priorities
+                            .AsNoTracking()
+                            .FirstOrDefault(p => p.Id == priorityId);
+                        var resolutionHours = priority != null ? priority.SlaResolutionHours : 0;
+                        var createdOn = DateTime.Now;
+
+                        var sla = _slaService.CalculateSla(
+                            requester.BranchId, createdOn, resolutionHours);
+                        var assigneeCode = _dispatchService.ResolveAssignee(
+                            resolvedBranchId, categoryId, subCategoryId, itemId);
+                        OnEnd(onStageEnd, "Priority/SLA/dispatch");
+
+                        // ── Ticket number generation ──────────────────────────
+                        OnBegin(onStageBegin, "Ticket number generation");
+                        var ticketNumber = GenerateTicketNumber(
+                            context, requestType, createdOn);
+                        OnEnd(onStageEnd, "Ticket number generation");
+
+                        // ── Status resolution ─────────────────────────────────
+                        var requiresManagerApproval = requestType.RequiresManagerApproval;
+                        var requiresItHeadApproval = requestType.RequiresItHeadApproval;
+                        var statusId = ResolveInitialStatusId(
+                            context, requiresManagerApproval || requiresItHeadApproval);
+
+                        // ── Ticket persist (SaveChanges) ──────────────────────
+                        var ticket = new Ticket
+                        {
+                            TicketNumber = ticketNumber,
+                            RequestTypeId = requestType.Id,
+                            Title = title.Trim(),
+                            Description = description,
+                            RequesterCode = requester.EmployeeCode,
+                            AssigneeCode = assigneeCode,
+                            PlantId = resolvedPlantId,
+                            BranchId = resolvedBranchId,
+                            CompanyId = requester.CompanyId,
+                            CategoryId = categoryId,
+                            SubCategoryId = subCategoryId,
+                            ItemId = itemId,
+                            ImpactId = impactId,
+                            UrgencyId = urgencyId,
+                            PriorityId = priorityId,
+                            StatusId = statusId,
+                            CreatedOn = createdOn,
+                            CreatedByCode = requester.EmployeeCode
+                        };
+
+                        context.Tickets.Add(ticket);
+                        OnBegin(onStageBegin, "Ticket persist (SaveChanges)");
+                        context.SaveChanges();
+                        OnEnd(onStageEnd, "Ticket persist (SaveChanges)");
+
+                        // ── Audit log ────────────────────────────────────────
+                        context.TicketAuditLogs.Add(new TicketAuditLog
                         {
                             TicketId = ticket.Id,
-                            ApprovalLevel = "ItHead",
-                            ApproverCode = itHeadCode,
-                            ApprovalStatus = "Pending",
-                            CreatedOn = createdOn
+                            CompanyId = ticket.CompanyId.Value,
+                            ActionType = "Created",
+                            OldValue = null,
+                            NewValue = (requiresManagerApproval || requiresItHeadApproval)
+                                ? "Pending Approval" : "New",
+                            Detail = ticket.TicketNumber,
+                            ActorCode = requester.EmployeeCode,
+                            ActionedOn = createdOn
                         });
+                        OnBegin(onStageBegin, "Audit log (SaveChanges)");
                         context.SaveChanges();
+                        OnEnd(onStageEnd, "Audit log (SaveChanges)");
+
+                        // ── Manager approval row ──────────────────────────────
+                        if (requiresManagerApproval)
+                        {
+                            if (string.IsNullOrWhiteSpace(requester.ReportingManagerCode))
+                            {
+                                throw new InvalidOperationException(
+                                    "Manager approval is enabled for this request type, "
+                                    + "but the requester has no ReportingManagerCode on MST_UserMaster.");
+                            }
+
+                            if (string.Equals(
+                                requester.EmployeeCode,
+                                requester.ReportingManagerCode,
+                                StringComparison.OrdinalIgnoreCase))
+                            {
+                                throw new InvalidOperationException(
+                                    "Separation of Duties violation: RequesterCode cannot match ApproverCode.");
+                            }
+
+                            context.TicketApprovals.Add(new TicketApproval
+                            {
+                                TicketId = ticket.Id,
+                                ApprovalLevel = "Manager",
+                                ApproverCode = requester.ReportingManagerCode,
+                                ApprovalStatus = "Pending",
+                                CreatedOn = createdOn
+                            });
+                            OnBegin(onStageBegin, "Manager approval (SaveChanges)");
+                            context.SaveChanges();
+                            OnEnd(onStageEnd, "Manager approval (SaveChanges)");
+                        }
+
+                        // ── IT Head approval row ─────────────────────────────
+                        if (requiresItHeadApproval)
+                        {
+                            OnBegin(onStageBegin, "IT Head approval");
+                            var itHeadCode = ResolveActiveItHead(context);
+                            var itHeadEmployee = context.UserMasters
+                                .AsNoTracking()
+                                .FirstOrDefault(u => u.EmployeeCode == itHeadCode
+                                                     && u.EmployeeStatus == "Active");
+
+                            if (itHeadEmployee == null)
+                            {
+                                throw new InvalidOperationException(
+                                    "IT Head approval is enabled for this request type, "
+                                    + "but no active IT Head approver is configured. "
+                                    + "Please contact an ITSM administrator.");
+                            }
+
+                            context.TicketApprovals.Add(new TicketApproval
+                            {
+                                TicketId = ticket.Id,
+                                ApprovalLevel = "ItHead",
+                                ApproverCode = itHeadCode,
+                                ApprovalStatus = "Pending",
+                                CreatedOn = createdOn
+                            });
+                            OnBegin(onStageBegin, "IT Head approval (SaveChanges)");
+                            context.SaveChanges();
+                            OnEnd(onStageEnd, "IT Head approval (SaveChanges)");
+                            OnEnd(onStageEnd, "IT Head approval");
+                        }
+
+                        // ── Notification queue ───────────────────────────────
+                        OnBegin(onStageBegin, "Notification queue");
+                        EnqueueTicketCreatedNotification(
+                            context, ticket, requester, assigneeCode,
+                            sla.SlaStartTime, sla.DueDate);
+                        OnEnd(onStageEnd, "Notification queue");
+
+                        // ── Transaction commit ───────────────────────────────
+                        OnBegin(onStageBegin, "Transaction commit");
+                        transaction.Commit();
+                        OnEnd(onStageEnd, "Transaction commit");
+
+                        return ticket.Id;
                     }
-
-                    EnqueueTicketCreatedNotification(
-                        context,
-                        ticket,
-                        requester,
-                        assigneeCode,
-                        sla.SlaStartTime,
-                        sla.DueDate);
-
-                    transaction.Commit();
-
-                    // Return the ticket Id only after Commit() succeeds.
-                    return ticket.Id;
-                }
-                catch
-                {
-                    transaction.Rollback();
-                    throw;
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
                 }
             }
-
-            // Unreachable — the try block always returns or throws.
-            throw new InvalidOperationException("Ticket creation failed unexpectedly.");
         }
 
         /// <summary>
@@ -427,6 +430,16 @@ namespace AnmolDristi.ITSM.BLL
             }
 
             return fallback.Value;
+        }
+
+        private static void OnBegin(Action<string> cb, string stage)
+        {
+            if (cb != null) cb(stage);
+        }
+
+        private static void OnEnd(Action<string, long> cb, string stage)
+        {
+            if (cb != null) cb(stage, 0);
         }
 
         private static void EnqueueTicketCreatedNotification(
