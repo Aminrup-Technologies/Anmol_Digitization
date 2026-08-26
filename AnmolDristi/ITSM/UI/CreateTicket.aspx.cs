@@ -72,78 +72,110 @@ namespace AnmolDristi.ITSM.UI
 
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
-            // Proves the Click event ran. Must use System.Diagnostics.Trace —
-            // Page.Trace is System.Web.TraceContext and has no TraceInformation.
-            // Do not disable the submit control; a failed request must leave it usable.
-            System.Diagnostics.Trace.TraceInformation("ITSM CreateTicket btnSubmit_Click");
+            var diag = new CreateTicketDiagnostics();
+
+            // Do not disable the submit control. A failed request must leave
+            // it usable. Page.Trace is TraceContext — use System.Diagnostics.Trace.
             RestoreSubmitButton();
-            ClearMessage();
-
-            if (!Page.IsValid)
-            {
-                return;
-            }
-
-            if (Session["WORKMAN"] == null)
-            {
-                Response.Redirect("~/login.aspx");
-                return;
-            }
-
-            var requesterCode = Session["WORKMAN"].ToString();
-
-            int categoryId;
-            int subCategoryId;
-            int impactId;
-            int urgencyId;
-
-            if (!int.TryParse(hfSelectedCategoryId.Value, out categoryId)
-                || !int.TryParse(hfSelectedSubCategoryId.Value, out subCategoryId)
-                || !int.TryParse(hfSelectedImpactId.Value, out impactId)
-                || !int.TryParse(hfSelectedUrgencyId.Value, out urgencyId))
-            {
-                ShowMessage("Please complete all required fields.", false);
-                return;
-            }
-
-            // Server-side hierarchy validation via BLL (single consolidated query).
-            int? itemId = null;
-            int itemIdParsed;
-            if (int.TryParse(hfSelectedItemId.Value, out itemIdParsed))
-            {
-                itemId = itemIdParsed;
-            }
-
-            var masterService = new TicketMasterDataService();
-            var hierarchyResult = masterService.ValidateHierarchy(
-                categoryId, subCategoryId, itemId);
-
-            if (!hierarchyResult.IsValid)
-            {
-                ShowMessage(hierarchyResult.Error, false);
-                return;
-            }
-
-            int requestTypeId;
-            if (!int.TryParse(hfSelectedRequestTypeId.Value, out requestTypeId))
-            {
-                ShowMessage("Please select a valid request type.", false);
-                return;
-            }
-
-            // Validate impact, urgency, and request type exist and are active.
-            var masterDataResult = masterService.ValidateMasterDataIds(
-                impactId, urgencyId, requestTypeId);
-
-            if (!masterDataResult.IsValid)
-            {
-                ShowMessage(masterDataResult.Error, false);
-                return;
-            }
 
             try
             {
+                diag.BeginStage("Request received");
+                ClearMessage();
+
+                if (!Page.IsValid)
+                {
+                    diag.EndStage();
+                    System.Diagnostics.Trace.TraceInformation(diag.GetSummary());
+                    RestoreSubmitButton();
+                    return;
+                }
+
+                if (Session["WORKMAN"] == null)
+                {
+                    diag.EndStage();
+                    Response.Redirect("~/login.aspx");
+                    return;
+                }
+
+                var requesterCode = Session["WORKMAN"].ToString();
+                diag.EndStage();
+
+                // ── Parse hidden fields ──────────────────────────────────────
+                diag.BeginStage("Field parsing");
+                int categoryId;
+                int subCategoryId;
+                int impactId;
+                int urgencyId;
+
+                if (!int.TryParse(hfSelectedCategoryId.Value, out categoryId)
+                    || !int.TryParse(hfSelectedSubCategoryId.Value, out subCategoryId)
+                    || !int.TryParse(hfSelectedImpactId.Value, out impactId)
+                    || !int.TryParse(hfSelectedUrgencyId.Value, out urgencyId))
+                {
+                    diag.FailStage(new InvalidOperationException("Required field parse failed"));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    RestoreSubmitButton();
+                    ShowMessage("Please complete all required fields.", false);
+                    return;
+                }
+                diag.EndStage();
+
+                // ── Hierarchy validation ─────────────────────────────────────
+                diag.BeginStage("ValidateHierarchy");
+                int? itemId = null;
+                int itemIdParsed;
+                if (int.TryParse(hfSelectedItemId.Value, out itemIdParsed))
+                {
+                    itemId = itemIdParsed;
+                }
+
+                var masterService = new TicketMasterDataService();
+                var hierarchyResult = masterService.ValidateHierarchy(
+                    categoryId, subCategoryId, itemId);
+
+                if (!hierarchyResult.IsValid)
+                {
+                    diag.FailStage(new InvalidOperationException(hierarchyResult.Error));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    RestoreSubmitButton();
+                    ShowMessage(hierarchyResult.Error, false);
+                    return;
+                }
+                diag.EndStage();
+
+                // ── Master-data validation ───────────────────────────────────
+                diag.BeginStage("ValidateMasterDataIds");
+                int requestTypeId;
+                if (!int.TryParse(hfSelectedRequestTypeId.Value, out requestTypeId))
+                {
+                    diag.FailStage(new InvalidOperationException("RequestType parse failed"));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    RestoreSubmitButton();
+                    ShowMessage("Please select a valid request type.", false);
+                    return;
+                }
+
+                var masterDataResult = masterService.ValidateMasterDataIds(
+                    impactId, urgencyId, requestTypeId);
+
+                if (!masterDataResult.IsValid)
+                {
+                    diag.FailStage(new InvalidOperationException(masterDataResult.Error));
+                    System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                    RestoreSubmitButton();
+                    ShowMessage(masterDataResult.Error, false);
+                    return;
+                }
+                diag.EndStage();
+
+                // ── TicketService.CreateTicket ────────────────────────────────
+                diag.BeginStage("TicketService.CreateTicket");
                 var ticketService = new TicketService();
+
+                Action<string> onBllBegin = stage => diag.BeginStage(stage);
+                Action<string, long> onBllEnd = (stage, ms) => diag.EndStage();
+
                 int newTicketId = ticketService.CreateTicket(
                     requesterCode,
                     requestTypeId,
@@ -153,14 +185,15 @@ namespace AnmolDristi.ITSM.UI
                     subCategoryId,
                     itemId,
                     impactId,
-                    urgencyId);
+                    urgencyId,
+                    onBllBegin,
+                    onBllEnd);
 
-                System.Diagnostics.Trace.TraceInformation(
-                    "ITSM CreateTicket btnSubmit_Click created ticket "
-                    + newTicketId.ToString(CultureInfo.InvariantCulture));
+                diag.EndStage();
 
-                // Post/Redirect/Get: navigate to TicketDetail so the browser
-                // issues a fresh GET instead of repeating the POST.
+                diag.Complete();
+                System.Diagnostics.Trace.TraceInformation(diag.GetSummary());
+
                 string redirectUrl = ResolveUrl("~/ITSM/UI/TicketDetail.aspx?id="
                     + newTicketId.ToString(CultureInfo.InvariantCulture));
                 Response.Redirect(redirectUrl, false);
@@ -170,24 +203,23 @@ namespace AnmolDristi.ITSM.UI
             catch (InvalidOperationException ex)
             {
                 RestoreSubmitButton();
-                ShowMessage(ex.Message, false);
+                diag.FailStage(ex);
+                System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                ShowMessage(ex.Message + " Reference: " + diag.CorrelationId, false);
             }
             catch (ArgumentException ex)
             {
                 RestoreSubmitButton();
-                ShowMessage(ex.Message, false);
+                diag.FailStage(ex);
+                System.Diagnostics.Trace.TraceWarning(diag.GetSummary());
+                ShowMessage(ex.Message + " Reference: " + diag.CorrelationId, false);
             }
             catch (Exception ex)
             {
                 RestoreSubmitButton();
-                var correlationId = Guid.NewGuid().ToString("N").Substring(0, 8);
-                System.Diagnostics.Trace.TraceError(
-                    "ITSM CreateTicket unexpected failure ["
-                    + correlationId + "] " + ex.GetType().FullName);
-                ShowMessage(
-                    "An unexpected error occurred while creating the ticket. Please try again. Reference: "
-                    + correlationId,
-                    false);
+                diag.FailStage(ex);
+                System.Diagnostics.Trace.TraceError(diag.GetSummary());
+                ShowMessage(diag.GetUserFacingMessage(), false);
             }
         }
 
