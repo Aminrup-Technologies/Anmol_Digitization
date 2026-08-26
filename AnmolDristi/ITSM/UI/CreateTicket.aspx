@@ -1,14 +1,20 @@
 <%-- ========================================================================
      File:    CreateTicket.aspx
      Layer:   UI — Presentation
-     When:    2026-08-26 (UX v2)
-     What:    Modernized ticket creation form. Request Type is now Step 1 as
-              segmented cards. Category cards remain Step 2. Progressive
-              disclosure reveals dependent sections. BEM-scoped CSS under
-              .itsm-create-ticket. Theme-consistent with Dristi.
-     Why:     Product decision — Request Type is the first business decision
-              and should be visually prominent. Progressive disclosure improves
-              workflow clarity. BEM scoping prevents theme conflicts.
+     When:    2026-08-26 (submit reliability)
+     What:    onSubmit() must not disable the ASP.NET submit input. A disabled
+              submit control is omitted from the POST, so btnSubmit_Click never
+              runs and the page stays on "Creating...". Busy state is the
+              non-submit #submitSpinner plus a JS _submitting flag.
+     Why:     Web Forms postback requires the clicked submit control to remain
+              a successful form control until the request is sent.
+     When:    2026-08-26 (semantic colour UX)
+     What:    Request Type = blue, Root Category = Dristi green, Impact =
+              green/amber/red, Urgency = blue/amber/red. Selected state uses
+              a stronger semantic border + checkmark badge. SubCategory/Item
+              stay neutral Dristi dropdowns. Visual-only CSS/JS.
+     Why:     Product UX — colour encodes meaning without changing postback,
+              validation, HiddenFields, or server rendering of card IDs.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Create Ticket" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="CreateTicket.aspx.cs"
@@ -17,10 +23,20 @@
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <style>
         /* ================================================================
-           CreateTicket — scoped BEM CSS
-           Root: .itsm-ct
-           Theme-consistent: uses Dristi panel, button, form-control classes
+           CreateTicket — scoped BEM CSS (.itsm-ct)
+           Semantic colours: Dristi/Gentelella tokens with hex fallbacks.
            ================================================================ */
+        .itsm-ct {
+            --itsm-blue: #3498DB;
+            --itsm-blue-dark: #2471A3;
+            --itsm-green: #1ABB9C;
+            --itsm-green-dark: #148F77;
+            --itsm-amber: #F39C12;
+            --itsm-amber-dark: #B9770E;
+            --itsm-red: #E74C3C;
+            --itsm-red-dark: #C0392B;
+            --itsm-text: #333333;
+        }
 
         /* --- Section layout --- */
         .itsm-ct__section { margin-bottom: 24px; }
@@ -34,61 +50,184 @@
         .itsm-ct__step {
             display: inline-flex; align-items: center; justify-content: center;
             width: 22px; height: 22px; border-radius: 50%;
-            background: #1ABB9C; color: #fff; font-size: 12px; font-weight: 700;
-            flex-shrink: 0;
+            background: #1ABB9C; background: var(--itsm-green); color: #fff;
+            font-size: 12px; font-weight: 700; flex-shrink: 0;
         }
-        .itsm-ct__step--active { background: #1ABB9C; }
+        .itsm-ct__step--active { background: #1ABB9C; background: var(--itsm-green); }
         .itsm-ct__step--done { background: #26b99a; }
         .itsm-ct__label { font-size: 12px; color: #999; margin-left: 4px; }
 
-        /* --- Selectable option cards (Request Type + Category) --- */
+        /* --- Selectable option cards --- */
         .itsm-ct__options {
             display: grid; gap: 10px;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
         .itsm-ct__option {
+            position: relative;
             display: flex; flex-direction: column; align-items: center;
-            gap: 6px; padding: 14px 12px;
+            gap: 6px; padding: 14px 16px 14px 12px;
             border: 2px solid #d9d9d9; border-radius: 8px;
             background: #fafafa; cursor: pointer;
-            transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+            transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.15s;
             text-align: center; user-select: none;
             min-height: 72px; justify-content: center;
         }
-        .itsm-ct__option:hover {
-            border-color: #1ABB9C; background: #e8f8f2;
-        }
-        .itsm-ct__option:focus {
-            outline: 2px solid #1ABB9C; outline-offset: 2px;
-        }
-        .itsm-ct__option--selected {
-            border-color: #1ABB9C; background: #d4edda;
-            box-shadow: 0 0 0 2px rgba(26, 187, 156, 0.25);
-        }
-        .itsm-ct__option--selected .itsm-ct__option-icon { color: #147a5e; }
-        .itsm-ct__option--selected .itsm-ct__option-name { color: #147a5e; font-weight: 700; }
         .itsm-ct__option-icon { font-size: 22px; color: #6c757d; }
         .itsm-ct__option-name {
-            font-size: 13px; font-weight: 600; color: #333; line-height: 1.2;
+            font-size: 13px; font-weight: 600; color: #333; color: var(--itsm-text);
+            line-height: 1.2;
+        }
+        .itsm-ct__option--selected::after,
+        .itsm-ct__btn--selected::after {
+            content: "\f00c";
+            font-family: FontAwesome;
+            position: absolute;
+            top: 4px; right: 6px;
+            width: 16px; height: 16px; line-height: 16px;
+            font-size: 10px; text-align: center;
+            border-radius: 50%;
+            color: #fff;
+        }
+
+        /* Request Type — blue */
+        .itsm-ct__options--request-type .itsm-ct__option-icon { color: #3498DB; color: var(--itsm-blue); }
+        .itsm-ct__options--request-type .itsm-ct__option:hover {
+            border-color: #3498DB; border-color: var(--itsm-blue);
+            background: rgba(52, 152, 219, 0.08);
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.22);
+        }
+        .itsm-ct__options--request-type .itsm-ct__option:focus {
+            outline: 2px solid #3498DB; outline: 2px solid var(--itsm-blue); outline-offset: 2px;
+        }
+        .itsm-ct__options--request-type .itsm-ct__option--selected {
+            border-width: 3px;
+            border-color: #2471A3; border-color: var(--itsm-blue-dark);
+            background: rgba(52, 152, 219, 0.10);
+            box-shadow: 0 0 0 1px rgba(52, 152, 219, 0.25);
+        }
+        .itsm-ct__options--request-type .itsm-ct__option--selected .itsm-ct__option-icon,
+        .itsm-ct__options--request-type .itsm-ct__option--selected .itsm-ct__option-name {
+            color: #2471A3; color: var(--itsm-blue-dark); font-weight: 700;
+        }
+        .itsm-ct__options--request-type .itsm-ct__option--selected::after {
+            background: #3498DB; background: var(--itsm-blue);
+        }
+
+        /* Root Category — Dristi green */
+        .itsm-ct__options--category .itsm-ct__option-icon { color: #1ABB9C; color: var(--itsm-green); }
+        .itsm-ct__options--category .itsm-ct__option:hover {
+            border-color: #1ABB9C; border-color: var(--itsm-green);
+            background: rgba(26, 187, 156, 0.08);
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(26, 187, 156, 0.22);
+        }
+        .itsm-ct__options--category .itsm-ct__option:focus {
+            outline: 2px solid #1ABB9C; outline: 2px solid var(--itsm-green); outline-offset: 2px;
+        }
+        .itsm-ct__options--category .itsm-ct__option--selected {
+            border-width: 3px;
+            border-color: #148F77; border-color: var(--itsm-green-dark);
+            background: rgba(26, 187, 156, 0.10);
+            box-shadow: 0 0 0 1px rgba(26, 187, 156, 0.25);
+        }
+        .itsm-ct__options--category .itsm-ct__option--selected .itsm-ct__option-icon,
+        .itsm-ct__options--category .itsm-ct__option--selected .itsm-ct__option-name {
+            color: #148F77; color: var(--itsm-green-dark); font-weight: 700;
+        }
+        .itsm-ct__options--category .itsm-ct__option--selected::after {
+            background: #1ABB9C; background: var(--itsm-green);
         }
 
         /* --- Impact / Urgency button groups --- */
         .itsm-ct__btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
         .itsm-ct__btn {
-            display: inline-flex; align-items: center; gap: 4px;
-            padding: 7px 14px; border: 2px solid #d9d9d9; border-radius: 6px;
+            position: relative;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 22px 8px 12px; border: 2px solid #d9d9d9; border-radius: 6px;
             background: #fafafa; cursor: pointer; font-size: 13px; font-weight: 500;
-            color: #555; transition: border-color 0.15s, background 0.15s, color 0.15s;
+            color: #555;
+            transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s, transform 0.15s;
             user-select: none;
         }
-        .itsm-ct__btn:hover { border-color: #1ABB9C; background: #e8f8f2; }
+        .itsm-ct__btn-icon { font-size: 14px; }
+        .itsm-ct__btn:hover { transform: scale(1.02); }
         .itsm-ct__btn:focus { outline: 2px solid #1ABB9C; outline-offset: 2px; }
-        .itsm-ct__btn--selected {
-            border-color: #1ABB9C; background: #1ABB9C; color: #fff;
-        }
-        .itsm-ct__btn--selected:hover { background: #17a689; }
 
-        /* --- Form elements --- */
+        /* Impact Low / Urgency Medium-High share level tokens */
+        .itsm-ct__btn-group--impact .itsm-ct__btn--low {
+            border-color: rgba(26, 187, 156, 0.55); color: #148F77; color: var(--itsm-green-dark);
+            background: rgba(26, 187, 156, 0.08);
+        }
+        .itsm-ct__btn-group--impact .itsm-ct__btn--low .itsm-ct__btn-icon { color: #1ABB9C; color: var(--itsm-green); }
+        .itsm-ct__btn-group--impact .itsm-ct__btn--low:hover {
+            border-color: #1ABB9C; border-color: var(--itsm-green);
+            box-shadow: 0 4px 10px rgba(26, 187, 156, 0.22);
+        }
+        .itsm-ct__btn-group--impact .itsm-ct__btn--low:focus { outline-color: #1ABB9C; }
+        .itsm-ct__btn-group--impact .itsm-ct__btn--low.itsm-ct__btn--selected {
+            border-width: 3px; border-color: #148F77; border-color: var(--itsm-green-dark);
+            background: rgba(26, 187, 156, 0.14); color: #0E5C4C;
+        }
+        .itsm-ct__btn-group--impact .itsm-ct__btn--low.itsm-ct__btn--selected::after {
+            background: #1ABB9C; background: var(--itsm-green);
+        }
+
+        .itsm-ct__btn-group--urgency .itsm-ct__btn--low {
+            border-color: rgba(52, 152, 219, 0.55); color: #2471A3; color: var(--itsm-blue-dark);
+            background: rgba(52, 152, 219, 0.08);
+        }
+        .itsm-ct__btn-group--urgency .itsm-ct__btn--low .itsm-ct__btn-icon { color: #3498DB; color: var(--itsm-blue); }
+        .itsm-ct__btn-group--urgency .itsm-ct__btn--low:hover {
+            border-color: #3498DB; border-color: var(--itsm-blue);
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.22);
+        }
+        .itsm-ct__btn-group--urgency .itsm-ct__btn--low:focus { outline-color: #3498DB; }
+        .itsm-ct__btn-group--urgency .itsm-ct__btn--low.itsm-ct__btn--selected {
+            border-width: 3px; border-color: #2471A3; border-color: var(--itsm-blue-dark);
+            background: rgba(52, 152, 219, 0.14); color: #1A5276;
+        }
+        .itsm-ct__btn-group--urgency .itsm-ct__btn--low.itsm-ct__btn--selected::after {
+            background: #3498DB; background: var(--itsm-blue);
+        }
+
+        .itsm-ct__btn--medium {
+            border-color: rgba(243, 156, 18, 0.55); color: #B9770E; color: var(--itsm-amber-dark);
+            background: rgba(243, 156, 18, 0.08);
+        }
+        .itsm-ct__btn--medium .itsm-ct__btn-icon { color: #F39C12; color: var(--itsm-amber); }
+        .itsm-ct__btn--medium:hover {
+            border-color: #F39C12; border-color: var(--itsm-amber);
+            box-shadow: 0 4px 10px rgba(243, 156, 18, 0.22);
+        }
+        .itsm-ct__btn--medium:focus { outline-color: #F39C12; }
+        .itsm-ct__btn--medium.itsm-ct__btn--selected {
+            border-width: 3px; border-color: #B9770E; border-color: var(--itsm-amber-dark);
+            background: rgba(243, 156, 18, 0.14); color: #7D6608;
+        }
+        .itsm-ct__btn--medium.itsm-ct__btn--selected::after {
+            background: #F39C12; background: var(--itsm-amber);
+        }
+
+        .itsm-ct__btn--high {
+            border-color: rgba(231, 76, 60, 0.55); color: #C0392B; color: var(--itsm-red-dark);
+            background: rgba(231, 76, 60, 0.08);
+        }
+        .itsm-ct__btn--high .itsm-ct__btn-icon { color: #E74C3C; color: var(--itsm-red); }
+        .itsm-ct__btn--high:hover {
+            border-color: #E74C3C; border-color: var(--itsm-red);
+            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.22);
+        }
+        .itsm-ct__btn--high:focus { outline-color: #E74C3C; }
+        .itsm-ct__btn--high.itsm-ct__btn--selected {
+            border-width: 3px; border-color: #C0392B; border-color: var(--itsm-red-dark);
+            background: rgba(231, 76, 60, 0.14); color: #922B21;
+        }
+        .itsm-ct__btn--high.itsm-ct__btn--selected::after {
+            background: #E74C3C; background: var(--itsm-red);
+        }
+
+        /* --- Form elements (SubCategory / Item stay Dristi-neutral) --- */
         .itsm-ct__field { margin-bottom: 14px; }
         .itsm-ct__field-label {
             display: block; font-size: 13px; font-weight: 600;
@@ -128,6 +267,21 @@
             font-size: 12px; color: #888;
         }
         .itsm-ct__lock-msg i { font-size: 11px; }
+
+        @media (max-width: 767px) {
+            .itsm-ct__options {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+            .itsm-ct__btn { width: 100%; justify-content: flex-start; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .itsm-ct__option, .itsm-ct__btn {
+                transition: none;
+            }
+            .itsm-ct__option:hover, .itsm-ct__btn:hover {
+                transform: none;
+            }
+        }
     </style>
 </asp:Content>
 
@@ -140,7 +294,7 @@
                         <h2><i class="fa fa-ticket"></i> Create ITSM Ticket</h2>
                         <div class="clearfix"></div>
                     </div>
-                    <div class="x_content">
+                    <div class="x_content itsm-ct">
                         <asp:Label ID="lblMessage" runat="server" Font-Bold="true"
                             Style="display: block; margin-bottom: 15px;"></asp:Label>
 
@@ -154,7 +308,7 @@
                                 <span class="itsm-ct__step">1</span> Request Type
                                 <span class="itsm-ct__label">* required</span>
                             </div>
-                            <div class="itsm-ct__options" id="requestTypeCards" runat="server">
+                            <div class="itsm-ct__options itsm-ct__options--request-type" id="requestTypeCards" runat="server">
                                 <%-- Server-rendered request-type cards --%>
                             </div>
                             <asp:HiddenField ID="hfSelectedRequestTypeId" runat="server" />
@@ -168,7 +322,7 @@
                                 <span class="itsm-ct__step">2</span> Root Category
                                 <span class="itsm-ct__label">* required</span>
                             </div>
-                            <div class="itsm-ct__options" id="categoryCards" runat="server">
+                            <div class="itsm-ct__options itsm-ct__options--category" id="categoryCards" runat="server">
                                 <%-- Server-rendered category cards --%>
                             </div>
                             <asp:HiddenField ID="hfSelectedCategoryId" runat="server" />
@@ -223,12 +377,12 @@
                             <div class="row">
                                 <div class="col-md-6 col-sm-6 col-xs-12" style="margin-bottom: 12px;">
                                     <div class="itsm-ct__field-label">Impact <span class="itsm-ct__required">*</span></div>
-                                    <div class="itsm-ct__btn-group" id="impactButtons" runat="server"></div>
+                                    <div class="itsm-ct__btn-group itsm-ct__btn-group--impact" id="impactButtons" runat="server"></div>
                                     <asp:HiddenField ID="hfSelectedImpactId" runat="server" />
                                 </div>
                                 <div class="col-md-6 col-sm-6 col-xs-12" style="margin-bottom: 12px;">
                                     <div class="itsm-ct__field-label">Urgency <span class="itsm-ct__required">*</span></div>
-                                    <div class="itsm-ct__btn-group" id="urgencyButtons" runat="server"></div>
+                                    <div class="itsm-ct__btn-group itsm-ct__btn-group--urgency" id="urgencyButtons" runat="server"></div>
                                     <asp:HiddenField ID="hfSelectedUrgencyId" runat="server" />
                                 </div>
                             </div>
@@ -296,6 +450,7 @@
         var ITSM = ITSM || {};
         ITSM.CreateTicket = (function () {
             var _catData = [];
+            var _submitting = false;
             var _el = {
                 catCards: '<%= categoryCards.ClientID %>',
                 rtCards: '<%= requestTypeCards.ClientID %>',
@@ -316,6 +471,8 @@
                     try { _catData = JSON.parse(raw.value); } catch (e) { _catData = []; }
                 }
                 attachHandlers();
+                applySemanticStyles();
+                restoreFromHidden();
             }
 
             function attachHandlers() {
@@ -364,25 +521,14 @@
 
             function onRequestTypeSelect(id) {
                 document.getElementById(_el.hfRt).value = id;
-                // Toggle active state on cards
-                var cards = document.querySelectorAll('#' + _el.rtCards + ' .itsm-ct__option');
-                for (var j = 0; j < cards.length; j++) {
-                    var cid = parseInt(cards[j].getAttribute('data-id'), 10);
-                    if (cid === id) cards[j].classList.add('itsm-ct__option--selected');
-                    else cards[j].classList.remove('itsm-ct__option--selected');
-                }
+                selectOptionCards(_el.rtCards, id);
             }
 
             function onCategoryClick(categoryId) {
                 document.getElementById(_el.hfCat).value = categoryId;
                 document.getElementById(_el.hfSub).value = '';
                 document.getElementById(_el.hfItem).value = '';
-                var cards = document.querySelectorAll('#' + _el.catCards + ' .itsm-ct__option');
-                for (var i = 0; i < cards.length; i++) {
-                    var cid = parseInt(cards[i].getAttribute('data-id'), 10);
-                    if (cid === categoryId) cards[i].classList.add('itsm-ct__option--selected');
-                    else cards[i].classList.remove('itsm-ct__option--selected');
-                }
+                selectOptionCards(_el.catCards, categoryId);
                 unlockSection('secSubCategory');
                 populateSubCategories(categoryId);
                 lockSection('secItem');
@@ -440,6 +586,41 @@
 
             function onItemChange(val) { document.getElementById(_el.hfItem).value = val; }
 
+            function semanticLevel(text, index) {
+                var t = (text || '').toLowerCase();
+                if (t.indexOf('high') !== -1) return 'high';
+                if (t.indexOf('medium') !== -1) return 'medium';
+                if (t.indexOf('low') !== -1) return 'low';
+                if (index === 0) return 'low';
+                if (index === 1) return 'medium';
+                return 'high';
+            }
+
+            function ensureBtnIcon(el, faClass) {
+                if (!el || el.querySelector('.itsm-ct__btn-icon')) return;
+                var icon = document.createElement('i');
+                icon.className = 'fa ' + faClass + ' itsm-ct__btn-icon';
+                icon.setAttribute('aria-hidden', 'true');
+                el.insertBefore(icon, el.firstChild);
+            }
+
+            function applySemanticGroup(containerId, kind) {
+                var icons = kind === 'impact'
+                    ? { low: 'fa-user', medium: 'fa-users', high: 'fa-building' }
+                    : { low: 'fa-clock-o', medium: 'fa-line-chart', high: 'fa-hand-paper-o' };
+                var btns = document.querySelectorAll('#' + containerId + ' .itsm-ct__btn');
+                for (var i = 0; i < btns.length; i++) {
+                    var level = semanticLevel(btns[i].textContent, i);
+                    btns[i].classList.add('itsm-ct__btn--' + level);
+                    ensureBtnIcon(btns[i], icons[level]);
+                }
+            }
+
+            function applySemanticStyles() {
+                applySemanticGroup(_el.impactBtns, 'impact');
+                applySemanticGroup(_el.urgencyBtns, 'urgency');
+            }
+
             function selectBtnGroup(containerId, hfId, id) {
                 document.getElementById(hfId).value = id;
                 var btns = document.querySelectorAll('#' + containerId + ' .itsm-ct__btn');
@@ -459,8 +640,55 @@
                 el.textContent = ''; el.style.display = 'none';
             }
 
+            function restoreFromHidden() {
+                var rtVal = document.getElementById(_el.hfRt).value;
+                if (rtVal) {
+                    selectOptionCards(_el.rtCards, parseInt(rtVal, 10));
+                }
+
+                var catVal = document.getElementById(_el.hfCat).value;
+                if (catVal) {
+                    var catId = parseInt(catVal, 10);
+                    selectOptionCards(_el.catCards, catId);
+                    unlockSection('secSubCategory');
+                    populateSubCategories(catId);
+                    var subVal = document.getElementById(_el.hfSub).value;
+                    if (subVal) {
+                        var subDdl = document.getElementById('ddlSubCategoryClient');
+                        if (subDdl) subDdl.value = subVal;
+                        unlockSection('secItem');
+                        populateItems(parseInt(subVal, 10));
+                        var itemVal = document.getElementById(_el.hfItem).value;
+                        var itemDdl = document.getElementById('ddlItemClient');
+                        if (itemVal && itemDdl) itemDdl.value = itemVal;
+                    }
+                }
+
+                var impactVal = document.getElementById(_el.hfImpact).value;
+                if (impactVal) {
+                    selectBtnGroup(_el.impactBtns, _el.hfImpact, parseInt(impactVal, 10));
+                }
+                var urgencyVal = document.getElementById(_el.hfUrgency).value;
+                if (urgencyVal) {
+                    selectBtnGroup(_el.urgencyBtns, _el.hfUrgency, parseInt(urgencyVal, 10));
+                }
+            }
+
+            function selectOptionCards(containerId, id) {
+                var cards = document.querySelectorAll('#' + containerId + ' .itsm-ct__option');
+                for (var i = 0; i < cards.length; i++) {
+                    var cid = parseInt(cards[i].getAttribute('data-id'), 10);
+                    if (cid === id) cards[i].classList.add('itsm-ct__option--selected');
+                    else cards[i].classList.remove('itsm-ct__option--selected');
+                }
+            }
+
             function onSubmit() {
                 hideError();
+                if (_submitting) {
+                    return false;
+                }
+
                 var rt = document.getElementById(_el.hfRt).value;
                 var cat = document.getElementById(_el.hfCat).value;
                 var sub = document.getElementById(_el.hfSub).value;
@@ -473,22 +701,30 @@
                 if (!impact) { showError('Please select an impact level.'); return false; }
                 if (!urgency) { showError('Please select an urgency level.'); return false; }
 
-                // Run ASP.NET client-side validators (e.g. rfvTitle) BEFORE
-                // disabling the button. If validation fails, the button
-                // remains usable and no postback occurs.
+                // ASP.NET client validators (rfvTitle) must run BEFORE any busy
+                // state. Failure: no POST, button stays a successful submit control.
                 if (typeof Page_ClientValidate === 'function' &&
                     !Page_ClientValidate('CreateTicket')) {
                     return false;
                 }
 
-                var btn = document.getElementById(_el.btnSubmit);
-                if (btn) { btn.disabled = true; btn.value = 'Creating...'; }
+                // Do NOT disable the submit input before the postback. A
+                // disabled submit is omitted from the POST, so ASP.NET never
+                // raises btnSubmit_Click. After this handler returns true the
+                // current submit is already in progress; delay-disable only
+                // to block a second click on the still-visible page.
+                _submitting = true;
                 var sp = document.getElementById('submitSpinner');
                 if (sp) sp.style.display = 'inline';
+                var btn = document.getElementById(_el.btnSubmit);
+                if (btn) {
+                    window.setTimeout(function () { btn.disabled = true; }, 0);
+                }
                 return true;
             }
 
             function onReset() {
+                _submitting = false;
                 hideError();
                 // Clear hidden fields
                 var hfs = [_el.hfRt, _el.hfCat, _el.hfSub, _el.hfItem, _el.hfImpact, _el.hfUrgency];
