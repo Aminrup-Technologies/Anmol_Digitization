@@ -316,6 +316,16 @@
                     try { _catData = JSON.parse(raw.value); } catch (e) { _catData = []; }
                 }
                 attachHandlers();
+                // Re-enable submit button if ASP.NET client-side validation fails.
+                // This handles the case where onSubmit() disabled the button but
+                // a RequiredFieldValidator blocks the postback.
+                if (typeof ValidatorEnable === 'function') {
+                    var origValidatorEnable = ValidatorEnable;
+                    ValidatorEnable = function (val, enable) {
+                        origValidatorEnable(val, enable);
+                        if (!enable) _onValidatorFailed();
+                    };
+                }
             }
 
             function attachHandlers() {
@@ -478,6 +488,19 @@
                 var sp = document.getElementById('submitSpinner');
                 if (sp) sp.style.display = 'inline';
                 return true;
+            }
+
+            function _reEnableSubmit() {
+                var btn = document.getElementById(_el.btnSubmit);
+                if (btn) { btn.disabled = false; btn.value = 'Create Ticket'; }
+                var sp = document.getElementById('submitSpinner');
+                if (sp) sp.style.display = 'none';
+            }
+
+            function _onValidatorFailed() {
+                if (typeof Page_IsValid !== 'undefined' && !Page_IsValid) {
+                    _reEnableSubmit();
+                }
             }
 
             function onReset() {
