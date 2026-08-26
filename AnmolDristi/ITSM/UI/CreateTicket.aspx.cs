@@ -119,7 +119,7 @@ namespace AnmolDristi.ITSM.UI
             }
 
             int requestTypeId;
-            if (!int.TryParse(ddlRequestType.SelectedValue, out requestTypeId))
+            if (!int.TryParse(hfSelectedRequestTypeId.Value, out requestTypeId))
             {
                 ShowMessage("Please select a valid request type.", false);
                 return;
@@ -205,9 +205,10 @@ namespace AnmolDristi.ITSM.UI
             // Render category cards server-side (single render, no duplication).
             RenderCategoryCards(categories);
 
-            // 2. Request Types (small list, bound to dropdown).
+            // 2. Request Types (small list, rendered as segmented cards + hidden dropdown).
             List<TicketLookupItemDto> requestTypes = masterService.GetRequestTypes();
             BindRequestTypes(requestTypes);
+            RenderRequestTypeCards(requestTypes);
 
             // 3. Impacts (small list, rendered as button group).
             List<TicketLookupItemDto> impacts = masterService.GetImpacts();
@@ -297,11 +298,38 @@ namespace AnmolDristi.ITSM.UI
         // Form helpers.
         // ====================================================================
 
+        private void RenderRequestTypeCards(List<TicketLookupItemDto> types)
+        {
+            requestTypeCards.Controls.Clear();
+            foreach (var rt in types)
+            {
+                var card = new HtmlGenericControl("div");
+                card.Attributes["class"] = "itsm-ct__option";
+                card.Attributes["tabindex"] = "0";
+                card.Attributes["role"] = "button";
+                card.Attributes["aria-label"] = "Select request type: " + rt.Name;
+                card.Attributes["data-id"] = rt.Id.ToString(CultureInfo.InvariantCulture);
+
+                var icon = new HtmlGenericControl("span");
+                icon.Attributes["class"] = "itsm-ct__option-icon";
+                icon.InnerHtml = "<i class='fa fa-file-text-o'></i>";
+
+                var name = new HtmlGenericControl("span");
+                name.Attributes["class"] = "itsm-ct__option-name";
+                name.InnerText = rt.Name;
+
+                card.Controls.Add(icon);
+                card.Controls.Add(name);
+                requestTypeCards.Controls.Add(card);
+            }
+        }
+
         private void ResetFormInputs()
         {
             txtTitle.Text = string.Empty;
             txtDescription.Text = string.Empty;
             if (ddlRequestType.Items.Count > 0) ddlRequestType.SelectedIndex = 0;
+            hfSelectedRequestTypeId.Value = string.Empty;
         }
 
         private void ClearMessage()
