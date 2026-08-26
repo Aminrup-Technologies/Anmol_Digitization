@@ -116,9 +116,18 @@
             display: none; margin-left: 12px; color: #666; font-size: 13px;
         }
 
-        /* --- Dependent section visibility --- */
-        .itsm-ct__dependent { display: none; }
-        .itsm-ct__dependent--visible { display: block; }
+        /* --- Dependent section states --- */
+        .itsm-ct__dependent--locked .itsm-ct__field { display: none; }
+        .itsm-ct__dependent--locked .itsm-ct__lock-msg { display: flex; }
+        .itsm-ct__dependent--locked .itsm-ct__heading { opacity: 0.45; }
+        .itsm-ct__dependent--unlocked .itsm-ct__lock-msg { display: none; }
+        .itsm-ct__lock-msg {
+            display: none; align-items: center; gap: 6px;
+            padding: 8px 12px; margin-top: 4px;
+            background: #f8f9fa; border: 1px dashed #ccc; border-radius: 4px;
+            font-size: 12px; color: #888;
+        }
+        .itsm-ct__lock-msg i { font-size: 11px; }
     </style>
 </asp:Content>
 
@@ -179,11 +188,12 @@
                         <%-- ============================================================
                              STEP 3 — Sub Category (client-side filtered dropdown)
                              ============================================================ --%>
-                        <div class="itsm-ct__section itsm-ct__dependent" id="secSubCategory">
+                        <div class="itsm-ct__section itsm-ct__dependent itsm-ct__dependent--locked" id="secSubCategory">
                             <div class="itsm-ct__heading">
                                 <span class="itsm-ct__step">3</span> Sub Category
                                 <span class="itsm-ct__label">* required</span>
                             </div>
+                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a root category first</div>
                             <div class="itsm-ct__field">
                                 <select id="ddlSubCategoryClient"
                                     class="form-control itsm-ct__field-input"
@@ -196,11 +206,12 @@
                         <%-- ============================================================
                              STEP 4 — Item (client-side filtered, optional)
                              ============================================================ --%>
-                        <div class="itsm-ct__section itsm-ct__dependent" id="secItem">
+                        <div class="itsm-ct__section itsm-ct__dependent itsm-ct__dependent--locked" id="secItem">
                             <div class="itsm-ct__heading">
                                 <span class="itsm-ct__step">4</span> Item
                                 <span class="itsm-ct__label">optional</span>
                             </div>
+                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a sub-category first</div>
                             <div class="itsm-ct__field">
                                 <select id="ddlItemClient"
                                     class="form-control itsm-ct__field-input"
@@ -348,6 +359,19 @@
                 }
             }
 
+            function lockSection(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.classList.add('itsm-ct__dependent--locked');
+                el.classList.remove('itsm-ct__dependent--unlocked');
+            }
+            function unlockSection(id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                el.classList.remove('itsm-ct__dependent--locked');
+                el.classList.add('itsm-ct__dependent--unlocked');
+            }
+
             function onRequestTypeSelect(id) {
                 document.getElementById(_el.hfRt).value = id;
                 // Sync hidden DropDownList for server-side rfvRequestType
@@ -376,10 +400,9 @@
                     if (cid === categoryId) cards[i].classList.add('itsm-ct__option--selected');
                     else cards[i].classList.remove('itsm-ct__option--selected');
                 }
-                document.getElementById('secSubCategory').classList.add('itsm-ct__dependent--visible');
-                document.getElementById('secSubCategory').classList.remove('itsm-ct__section--disabled');
+                unlockSection('secSubCategory');
                 populateSubCategories(categoryId);
-                document.getElementById('secItem').classList.remove('itsm-ct__dependent--visible');
+                lockSection('secItem');
             }
 
             function populateSubCategories(catId) {
@@ -402,11 +425,10 @@
                 document.getElementById(_el.hfSub).value = val;
                 document.getElementById(_el.hfItem).value = '';
                 if (val) {
-                    document.getElementById('secItem').classList.add('itsm-ct__dependent--visible');
-                    document.getElementById('secItem').classList.remove('itsm-ct__section--disabled');
+                    unlockSection('secItem');
                     populateItems(parseInt(val, 10));
                 } else {
-                    document.getElementById('secItem').classList.remove('itsm-ct__dependent--visible');
+                    lockSection('secItem');
                 }
             }
 
@@ -489,9 +511,9 @@
                 // Remove active from btn groups
                 var btns = document.querySelectorAll('.itsm-ct__btn--selected');
                 for (var k = 0; k < btns.length; k++) btns[k].classList.remove('itsm-ct__btn--selected');
-                // Hide dependent sections
-                document.getElementById('secSubCategory').classList.remove('itsm-ct__dependent--visible');
-                document.getElementById('secItem').classList.remove('itsm-ct__dependent--visible');
+                // Lock dependent sections
+                lockSection('secSubCategory');
+                lockSection('secItem');
                 // Reset selects
                 var subDdl = document.getElementById('ddlSubCategoryClient');
                 if (subDdl) subDdl.innerHTML = '<option value="">-- Select Sub Category --</option>';
