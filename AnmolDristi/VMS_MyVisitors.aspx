@@ -49,7 +49,7 @@
                                                 <asp:BoundField DataField="CreatedDate" HeaderText="Arrived At" DataFormatString="{0:dd MMM hh:mm tt}" />
                                                 <asp:TemplateField HeaderText="Action">
                                                     <ItemTemplate>
-                                                        <asp:LinkButton ID="btnApprove" runat="server" CommandName="ApproveVisit" CommandArgument='<%# Container.DataItemIndex %>' CssClass="btn btn-success btn-xs"><i class="fa fa-check"></i> Approve</asp:LinkButton>
+                                                        <asp:LinkButton ID="btnApprove" runat="server" CommandName="ApproveVisit" CommandArgument='<%# Container.DataItemIndex %>' CssClass="btn btn-success btn-xs" OnClientClick="return confirm('Approve this visitor and generate Gate Pass?');"><i class="fa fa-check"></i> Approve</asp:LinkButton>
                                                         <asp:LinkButton ID="btnReject" runat="server" CommandName="RejectVisit" CommandArgument='<%# Container.DataItemIndex %>' CssClass="btn btn-danger btn-xs" OnClientClick="return confirm('Are you sure you want to reject this visitor?');"><i class="fa fa-times"></i> Reject</asp:LinkButton>
                                                     </ItemTemplate>
                                                 </asp:TemplateField>

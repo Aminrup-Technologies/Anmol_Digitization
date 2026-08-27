@@ -93,7 +93,6 @@ namespace AnmolDristi
                     ViewState["ModalVisName"] = visName;
                     BindModalDays(logId);
                     PrefillApprovedValidityTimes(logId);
-                    lblModalMsg.Text = "";
                     ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
                         "$('#ScheduleApprovalModal').modal('show');", true);
                 }
@@ -131,16 +130,23 @@ namespace AnmolDristi
                 con.Open();
 
                 int branchId = 0;
+                DateTime? requestedValidFrom = null;
                 using (SqlCommand branchCmd = new SqlCommand(
-                    "SELECT ISNULL(TargetBranchID, 0) FROM VMS_VisitLog WHERE LogID = @LogID", con))
+                    "SELECT ISNULL(TargetBranchID, 0) AS TargetBranchID, RequestedValidFrom FROM VMS_VisitLog WHERE LogID = @LogID", con))
                 {
                     branchCmd.Parameters.AddWithValue("@LogID", logId);
-                    object branchResult = branchCmd.ExecuteScalar();
-                    if (branchResult != null && branchResult != DBNull.Value)
-                        branchId = Convert.ToInt32(branchResult);
+                    using (SqlDataReader visitReader = branchCmd.ExecuteReader())
+                    {
+                        if (visitReader.Read())
+                        {
+                            branchId = Convert.ToInt32(visitReader["TargetBranchID"]);
+                            if (visitReader["RequestedValidFrom"] != DBNull.Value)
+                                requestedValidFrom = Convert.ToDateTime(visitReader["RequestedValidFrom"]);
+                        }
+                    }
                 }
 
-                if (branchId > 0)
+                if (branchId > 0 && requestedValidFrom.HasValue)
                 {
                     using (SqlCommand timeCmd = new SqlCommand(@"
                         SELECT OpenTime, CloseTime
@@ -148,7 +154,7 @@ namespace AnmolDristi
                         WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek", con))
                     {
                         timeCmd.Parameters.AddWithValue("@BranchID", branchId);
-                        timeCmd.Parameters.AddWithValue("@DayOfWeek", DateTime.Now.ToString("dddd"));
+                        timeCmd.Parameters.AddWithValue("@DayOfWeek", requestedValidFrom.Value.ToString("dddd"));
                         using (SqlDataReader reader = timeCmd.ExecuteReader())
                         {
                             if (reader.Read())
@@ -163,31 +169,11 @@ namespace AnmolDristi
                 }
             }
 
-            DateTime now = DateTime.Now;
-            DateTime plantOpenToday = now.Date.Add(plantOpen);
-            DateTime plantCloseToday = now.Date.Add(plantClose);
+            txtApprovedTimeFrom.Text = plantOpen.ToString(@"hh\:mm");
+            txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
 
-            if (now < plantOpenToday)
-            {
-                // Before hours: start validity from now, still end at plant close
-                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
-                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
-            }
-            else if (now > plantCloseToday)
-            {
-                // After hours: start now and allow a short 2-hour window (same calendar day)
-                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
-                DateTime afterHoursEnd = now.AddHours(2);
-                if (afterHoursEnd.Date > now.Date)
-                    afterHoursEnd = now.Date.AddHours(23).AddMinutes(59);
-                txtApprovedTimeTo.Text = afterHoursEnd.ToString("HH:mm");
-            }
-            else
-            {
-                // Within plant hours: default to standard open/close
-                txtApprovedTimeFrom.Text = plantOpen.ToString(@"hh\:mm");
-                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
-            }
+            lblModalMsg.ForeColor = Color.FromArgb(0x73, 0x87, 0x9C);
+            lblModalMsg.Text = "Branch hours: " + plantOpen.ToString(@"hh\:mm") + " - " + plantClose.ToString(@"hh\:mm");
         }
 
         private void BindModalDays(int logId)
@@ -230,6 +216,7 @@ namespace AnmolDristi
 
             if (!anySelected)
             {
+                lblModalMsg.ForeColor = Color.Red;
                 lblModalMsg.Text = "Please select at least one day to approve.";
                 ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
                     "$('#ScheduleApprovalModal').modal('show');", true);
@@ -241,6 +228,7 @@ namespace AnmolDristi
             if (!TimeSpan.TryParse(txtApprovedTimeFrom.Text, out approvedFromTime) ||
                 !TimeSpan.TryParse(txtApprovedTimeTo.Text, out approvedToTime))
             {
+                lblModalMsg.ForeColor = Color.Red;
                 lblModalMsg.Text = "Please enter valid From and Until times.";
                 ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
                     "$('#ScheduleApprovalModal').modal('show');", true);
@@ -249,6 +237,7 @@ namespace AnmolDristi
 
             if (approvedToTime <= approvedFromTime)
             {
+                lblModalMsg.ForeColor = Color.Red;
                 lblModalMsg.Text = "Valid Until must be after Valid From.";
                 ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
                     "$('#ScheduleApprovalModal').modal('show');", true);
@@ -281,6 +270,7 @@ namespace AnmolDristi
             }
             else
             {
+                lblModalMsg.ForeColor = Color.Red;
                 lblModalMsg.Text = FormatApprovalFailureMessage(result.FailureReason);
                 ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
                     "$('#ScheduleApprovalModal').modal('show');", true);
