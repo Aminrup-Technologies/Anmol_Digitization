@@ -95,20 +95,11 @@ namespace AnmolDristi
                 v.ApprovedOn,
                 v.ActualInTime, 
                 v.ActualOutTime,
-                hist.VisitHistory,
                 b.Branch_ID, 
                 b.Branch_Description
             FROM VMS_VisitLog v
             LEFT JOIN MST_Branch b ON v.TargetBranchID = b.Branch_ID
             LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
-            OUTER APPLY (
-                SELECT STUFF((
-                    SELECT ' | ' + CONVERT(varchar(5), h.CheckInTime, 108) + '-' + CONVERT(varchar(5), h.CheckOutTime, 108)
-                    FROM VMS_VisitAttendanceHistory h
-                    WHERE h.LogID = v.LogID
-                    ORDER BY h.HistoryID
-                    FOR XML PATH(''), TYPE).value('.', 'nvarchar(max)'), 1, 3, '') AS VisitHistory
-            ) hist
             WHERE CAST(v.CreatedDate as DATE) >= @FromDate 
               AND CAST(v.CreatedDate as DATE) <= @ToDate ";
 

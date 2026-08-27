@@ -269,8 +269,8 @@ namespace AnmolDristi
         /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
         /// DayLog may be Scheduled or Checked-Out (same-day re-entry).
         /// Parent may be Scheduled or Checked-Out (SingleDay after checkout is Checked-Out).
-        /// ActualInTime is always the latest active check-in. Prior completed cycles
-        /// are preserved in VMS_VisitAttendanceHistory by CheckOutDay.
+        /// ActualInTime is the latest active check-in stamp for this DayLog row.
+        /// One DayLog exists per (LogID, VisitDate); this UPDATE is that row's current state.
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -324,8 +324,6 @@ namespace AnmolDristi
         /// transitioned from Checked-In (rowsAffected == 1 each).
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
-        /// Completed In/Out for this cycle is recorded in VMS_VisitAttendanceHistory
-        /// before a later same-day check-in can replace DayLog/VisitLog times.
         /// </summary>
         public static bool CheckOutDay(
             SqlConnection con,
@@ -358,8 +356,6 @@ namespace AnmolDristi
             if (dayRows != 1)
                 return false;
 
-            RecordCompletedAttendance(con, trans, logId, dayLogId);
-
             bool hasFutureDays = HasFutureApprovedDays(con, logId, DateTime.Now.Date, trans);
             string nextVisitStatus = hasFutureDays ? "Scheduled" : "Checked-Out";
 
@@ -380,32 +376,6 @@ namespace AnmolDristi
             }
 
             return visitRows == 1;
-        }
-
-        /// <summary>
-        /// Persists the DayLog's completed In/Out pair so a later same-day check-in
-        /// cannot overwrite prior visit times on VMS_VisitDayLog / VMS_VisitLog.
-        /// </summary>
-        private static void RecordCompletedAttendance(
-            SqlConnection con,
-            SqlTransaction trans,
-            int logId,
-            int dayLogId)
-        {
-            using (SqlCommand cmd = new SqlCommand(@"
-                INSERT INTO VMS_VisitAttendanceHistory
-                    (LogID, DayLogID, VisitDate, CheckInTime, CheckOutTime)
-                SELECT d.LogID, d.DayLogID, d.VisitDate, d.ActualInTime, d.ActualOutTime
-                FROM VMS_VisitDayLog d
-                WHERE d.DayLogID = @DayLogID
-                  AND d.LogID = @LogID
-                  AND d.ActualInTime IS NOT NULL
-                  AND d.ActualOutTime IS NOT NULL", con, trans))
-            {
-                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.ExecuteNonQuery();
-            }
         }
 
         public static string FormatScheduleSummary(VisitScheduleRequest schedule)
