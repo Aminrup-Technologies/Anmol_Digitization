@@ -269,7 +269,8 @@ namespace AnmolDristi
         /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
         /// DayLog may be Scheduled or Checked-Out (same-day re-entry).
         /// Parent may be Scheduled or Checked-Out (SingleDay after checkout is Checked-Out).
-        /// ActualInTime keeps the first stamp on re-entry.
+        /// ActualInTime is always the latest active check-in. Prior completed cycles
+        /// are preserved in VMS_VisitAttendanceHistory by CheckOutDay.
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -282,7 +283,8 @@ namespace AnmolDristi
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE d
                 SET d.VisitStatus = 'Checked-In',
-                    d.ActualInTime = COALESCE(d.ActualInTime, GETDATE())
+                    d.ActualInTime = GETDATE(),
+                    d.ActualOutTime = NULL
                 FROM VMS_VisitDayLog d
                 INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
                 WHERE d.DayLogID = @DayLogID
@@ -304,7 +306,8 @@ namespace AnmolDristi
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET VisitStatus = 'Checked-In',
-                    ActualInTime = COALESCE(ActualInTime, GETDATE())
+                    ActualInTime = GETDATE(),
+                    ActualOutTime = NULL
                 WHERE LogID = @LogID
                   AND VisitStatus IN ('Scheduled', 'Checked-Out')
                   AND ApprovalStatus = 'Approved'", con, trans))
@@ -321,6 +324,8 @@ namespace AnmolDristi
         /// transitioned from Checked-In (rowsAffected == 1 each).
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
+        /// Completed In/Out for this cycle is recorded in VMS_VisitAttendanceHistory
+        /// before a later same-day check-in can replace DayLog/VisitLog times.
         /// </summary>
         public static bool CheckOutDay(
             SqlConnection con,
@@ -353,6 +358,8 @@ namespace AnmolDristi
             if (dayRows != 1)
                 return false;
 
+            RecordCompletedAttendance(con, trans, logId, dayLogId);
+
             bool hasFutureDays = HasFutureApprovedDays(con, logId, DateTime.Now.Date, trans);
             string nextVisitStatus = hasFutureDays ? "Scheduled" : "Checked-Out";
 
@@ -373,6 +380,32 @@ namespace AnmolDristi
             }
 
             return visitRows == 1;
+        }
+
+        /// <summary>
+        /// Persists the DayLog's completed In/Out pair so a later same-day check-in
+        /// cannot overwrite prior visit times on VMS_VisitDayLog / VMS_VisitLog.
+        /// </summary>
+        private static void RecordCompletedAttendance(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            int dayLogId)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                INSERT INTO VMS_VisitAttendanceHistory
+                    (LogID, DayLogID, VisitDate, CheckInTime, CheckOutTime)
+                SELECT d.LogID, d.DayLogID, d.VisitDate, d.ActualInTime, d.ActualOutTime
+                FROM VMS_VisitDayLog d
+                WHERE d.DayLogID = @DayLogID
+                  AND d.LogID = @LogID
+                  AND d.ActualInTime IS NOT NULL
+                  AND d.ActualOutTime IS NOT NULL", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.ExecuteNonQuery();
+            }
         }
 
         public static string FormatScheduleSummary(VisitScheduleRequest schedule)

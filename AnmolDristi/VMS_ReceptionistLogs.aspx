@@ -132,6 +132,7 @@
                                                     <div class="text-primary"><strong>App:</strong> <%# Eval("ApprovedOn") != DBNull.Value ? Eval("ApprovedOn", "{0:dd-MMM HH:mm:tt}") : "Pending" %></div>
                                                     <div class="text-success"><strong>In:</strong> <%# Eval("ActualInTime") != DBNull.Value ? Eval("ActualInTime", "{0:dd-MMM HH:mm:tt}") : "--:--" %></div>
                                                     <div class="text-warning"><strong>Out:</strong> <%# Eval("ActualOutTime") != DBNull.Value ? Eval("ActualOutTime", "{0:dd-MMM HH:mm:tt}") : "--:--" %></div>
+                                                    <div class="text-muted"><strong>Visits:</strong> <%# Eval("VisitHistory") == DBNull.Value || string.IsNullOrEmpty(Convert.ToString(Eval("VisitHistory"))) ? "—" : Eval("VisitHistory") %></div>
                                                 </div>
                                             </ItemTemplate>
                                         </asp:TemplateField>
@@ -316,9 +317,16 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: { stacked: true }, // Optional: Stacks the bars so they don't take up too much width
+                            x: {
+                                stacked: true,
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 90,
+                                    minRotation: 45
+                                }
+                            },
                             y: {
-                                stacked: true,    // Optional: Turn this off if you prefer them side-by-side
+                                stacked: true,
                                 beginAtZero: true,
                                 ticks: { stepSize: 1 }
                             }
