@@ -1398,7 +1398,7 @@ namespace AnmolDristi.DAL
             TimeSpan approvedFromTime,
             TimeSpan approvedToTime)
         {
-            // Preserve calendar date from Valid*/RequestedValid*; replace only the time portion.
+            // Preserve MyVisitors calendar-date behavior; replace only the time portion.
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, RequestedValidFrom) AS date) AS datetime)),

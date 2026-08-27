@@ -140,7 +140,7 @@ namespace AnmolDristi
                     WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek", con))
                 {
                     timeCmd.Parameters.AddWithValue("@BranchID", branchId);
-                    timeCmd.Parameters.AddWithValue("@DayOfWeek", requestedValidFrom.Value.ToString("dddd"));
+                    timeCmd.Parameters.AddWithValue("@DayOfWeek", requestedValidFrom.Value.Date.ToString("dddd"));
                     using (SqlDataReader reader = timeCmd.ExecuteReader())
                     {
                         if (reader.Read())
@@ -154,13 +154,31 @@ namespace AnmolDristi
                 }
             }
 
-            txtApprovedTimeFrom.Text = plantOpen.ToString(@"hh\:mm");
-            txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
+            DateTime now = DateTime.Now;
+            DateTime plantOpenToday = now.Date.Add(plantOpen);
+            DateTime plantCloseToday = now.Date.Add(plantClose);
 
-            string hoursText = plantOpen.ToString(@"hh\:mm") + " - " + plantClose.ToString(@"hh\:mm");
-            btnApprove.OnClientClick =
-                "return confirm('Branch hours: " + hoursText
-                + "\\n\\nApprove this visitor and generate Gate Pass?');";
+            if (now < plantOpenToday)
+            {
+                // Before hours: start validity from now, still end at plant close
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
+            }
+            else if (now > plantCloseToday)
+            {
+                // After hours: start now and allow a short 2-hour window (same calendar day)
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                DateTime afterHoursEnd = now.AddHours(2);
+                if (afterHoursEnd.Date > now.Date)
+                    afterHoursEnd = now.Date.AddHours(23).AddMinutes(59);
+                txtApprovedTimeTo.Text = afterHoursEnd.ToString("HH:mm");
+            }
+            else
+            {
+                // Within plant hours: default to standard open/close
+                txtApprovedTimeFrom.Text = plantOpen.ToString(@"hh\:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
+            }
         }
 
         private void BindRequestedDays(SqlConnection con, string visitId)
