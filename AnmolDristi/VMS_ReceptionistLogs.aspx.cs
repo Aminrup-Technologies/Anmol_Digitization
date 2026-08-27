@@ -93,13 +93,15 @@ namespace AnmolDristi
                 v.VisitStatus, 
                 v.CreatedDate,
                 v.ApprovedOn,
-                v.ActualInTime, 
-                v.ActualOutTime,
+                CASE WHEN d.DayLogID IS NOT NULL THEN d.ActualInTime ELSE v.ActualInTime END AS ActualInTime,
+                CASE WHEN d.DayLogID IS NOT NULL THEN d.ActualOutTime ELSE v.ActualOutTime END AS ActualOutTime,
                 b.Branch_ID, 
                 b.Branch_Description
             FROM VMS_VisitLog v
             LEFT JOIN MST_Branch b ON v.TargetBranchID = b.Branch_ID
             LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
+            LEFT JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
+                AND d.VisitDate = CAST(GETDATE() AS date)
             WHERE CAST(v.CreatedDate as DATE) >= @FromDate 
               AND CAST(v.CreatedDate as DATE) <= @ToDate ";
 

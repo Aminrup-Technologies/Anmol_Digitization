@@ -80,7 +80,7 @@ namespace AnmolDristi.DAL
                 query += " AND v.TargetBranchID = @BranchId";
             }
 
-            query += " ORDER BY v.ActualInTime DESC";
+            query += " ORDER BY COALESCE(d.ActualInTime, v.ActualInTime) DESC";
 
             using (SqlConnection con = new SqlConnection(_connectionString))
             using (SqlCommand cmd = new SqlCommand(query, con))
