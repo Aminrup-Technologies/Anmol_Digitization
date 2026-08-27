@@ -101,7 +101,7 @@ namespace AnmolDristi
             LEFT JOIN MST_Branch b ON v.TargetBranchID = b.Branch_ID
             LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
             LEFT JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
-                AND d.VisitDate = CAST(GETDATE() AS date)
+                AND d.VisitDate = CAST(ISNULL(v.ValidFrom, v.RequestedValidFrom) AS date)
             WHERE CAST(v.CreatedDate as DATE) >= @FromDate 
               AND CAST(v.CreatedDate as DATE) <= @ToDate ";
 
