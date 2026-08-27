@@ -1401,10 +1401,10 @@ namespace AnmolDristi.DAL
             // Preserve MyVisitors calendar-date behavior; replace only the time portion.
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
-                SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, GETDATE()) AS date) AS datetime)),
-                    ValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ValidUpto, GETDATE()) AS date) AS datetime)),
-                    ApprovedValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ApprovedValidFrom, ISNULL(ValidFrom, GETDATE())) AS date) AS datetime)),
-                    ApprovedValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ApprovedValidUpto, ISNULL(ValidUpto, GETDATE())) AS date) AS datetime))
+                SET ValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ValidFrom, RequestedValidFrom) AS date) AS datetime)),
+                    ValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ValidUpto, RequestedValidUpto) AS date) AS datetime)),
+                    ApprovedValidFrom = DATEADD(MINUTE, @FromMinutes, CAST(CAST(ISNULL(ApprovedValidFrom, ISNULL(ValidFrom, RequestedValidFrom)) AS date) AS datetime)),
+                    ApprovedValidUpto = DATEADD(MINUTE, @ToMinutes, CAST(CAST(ISNULL(ApprovedValidUpto, ISNULL(ValidUpto, RequestedValidUpto)) AS date) AS datetime))
                 WHERE LogID = @LogID", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);

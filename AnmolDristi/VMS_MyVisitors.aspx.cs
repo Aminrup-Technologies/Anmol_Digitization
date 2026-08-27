@@ -131,16 +131,23 @@ namespace AnmolDristi
                 con.Open();
 
                 int branchId = 0;
+                DateTime? requestedValidFrom = null;
                 using (SqlCommand branchCmd = new SqlCommand(
-                    "SELECT ISNULL(TargetBranchID, 0) FROM VMS_VisitLog WHERE LogID = @LogID", con))
+                    "SELECT ISNULL(TargetBranchID, 0) AS TargetBranchID, RequestedValidFrom FROM VMS_VisitLog WHERE LogID = @LogID", con))
                 {
                     branchCmd.Parameters.AddWithValue("@LogID", logId);
-                    object branchResult = branchCmd.ExecuteScalar();
-                    if (branchResult != null && branchResult != DBNull.Value)
-                        branchId = Convert.ToInt32(branchResult);
+                    using (SqlDataReader visitReader = branchCmd.ExecuteReader())
+                    {
+                        if (visitReader.Read())
+                        {
+                            branchId = Convert.ToInt32(visitReader["TargetBranchID"]);
+                            if (visitReader["RequestedValidFrom"] != DBNull.Value)
+                                requestedValidFrom = Convert.ToDateTime(visitReader["RequestedValidFrom"]);
+                        }
+                    }
                 }
 
-                if (branchId > 0)
+                if (branchId > 0 && requestedValidFrom.HasValue)
                 {
                     using (SqlCommand timeCmd = new SqlCommand(@"
                         SELECT OpenTime, CloseTime
@@ -148,7 +155,7 @@ namespace AnmolDristi
                         WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek", con))
                     {
                         timeCmd.Parameters.AddWithValue("@BranchID", branchId);
-                        timeCmd.Parameters.AddWithValue("@DayOfWeek", DateTime.Now.ToString("dddd"));
+                        timeCmd.Parameters.AddWithValue("@DayOfWeek", requestedValidFrom.Value.Date.ToString("dddd"));
                         using (SqlDataReader reader = timeCmd.ExecuteReader())
                         {
                             if (reader.Read())

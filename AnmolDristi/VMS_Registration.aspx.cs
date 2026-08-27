@@ -1243,42 +1243,6 @@ namespace AnmolDristi
             }
         }
 
-        private bool IsFacilityOpen(int branchId)
-        {
-            using (SqlConnection con = new SqlConnection(connStr))
-            {
-                DateTime now = DateTime.Now;
-                string currentDay = now.ToString("dddd");
-
-                string timingQuery = "SELECT CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek";
-
-                using (SqlCommand cmd = new SqlCommand(timingQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@BranchID", branchId);
-                    cmd.Parameters.AddWithValue("@DayOfWeek", currentDay);
-
-                    con.Open();
-                    object closeTimeObj = cmd.ExecuteScalar();
-
-                    if (closeTimeObj != null && closeTimeObj != DBNull.Value)
-                    {
-                        TimeSpan closingTime = (TimeSpan)closeTimeObj;
-                        DateTime closingDateTime = new DateTime(now.Year, now.Month, now.Day, closingTime.Hours, closingTime.Minutes, closingTime.Seconds);
-
-                        // If the current time is past the official closing time, return false
-                        if (now >= closingDateTime)
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            // Defaults to true so that if a branch forgets to configure their timings in the DB, 
-            // it doesn't accidentally lock everyone out.
-            return true;
-        }
-
-
         [WebMethod]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static List<HostEmployee> GetPreconfiguredHosts(int branchId)
