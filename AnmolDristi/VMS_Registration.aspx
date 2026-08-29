@@ -388,20 +388,70 @@
             return names[d.getDay()];
         }
 
-        function isWindowOutsideTiming(startMin, endMin, timing) {
-            if (!timing) return false;
-            if (!timing.open && !timing.close) return true;
-            var openMin = parseTimeSpan(timing.open);
-            var closeMin = parseTimeSpan(timing.close);
-            if (openMin !== null && startMin < openMin) return true;
-            if (closeMin !== null && (startMin >= closeMin || endMin > closeMin)) return true;
-            return false;
+        function formatClock(minutes) {
+            if (minutes === null || minutes === undefined) return "";
+            var h = Math.floor(minutes / 60);
+            var m = minutes % 60;
+            var suffix = h >= 12 ? "PM" : "AM";
+            var hour12 = h % 12;
+            if (hour12 === 0) hour12 = 12;
+            return (hour12 < 10 ? "0" : "") + hour12 + ":" + (m < 10 ? "0" : "") + m + " " + suffix;
         }
 
         function formatNoticeDate(dateValue) {
             var d = new Date(dateValue + "T00:00:00");
             var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            return weekdayName(dateValue) + " " + ("0" + d.getDate()).slice(-2) + " " + months[d.getMonth()] + " – Outside hours";
+            return weekdayName(dateValue) + " " + ("0" + d.getDate()).slice(-2) + " " + months[d.getMonth()];
+        }
+
+        function classifyPlantHourWindow(startMin, endMin, timing) {
+            var result = { plantClosed: false, arrivalBeforeOpen: false, arrivalAfterClose: false, departureAfterClose: false, openMin: null, closeMin: null, hasViolation: false };
+            if (!timing) return result;
+            result.openMin = parseTimeSpan(timing.open);
+            result.closeMin = parseTimeSpan(timing.close);
+            if (!timing.open && !timing.close) {
+                result.plantClosed = true;
+                result.hasViolation = true;
+                return result;
+            }
+            if (result.openMin !== null && startMin < result.openMin) result.arrivalBeforeOpen = true;
+            if (result.closeMin !== null) {
+                if (startMin >= result.closeMin) result.arrivalAfterClose = true;
+                if (endMin > result.closeMin) result.departureAfterClose = true;
+            }
+            result.hasViolation = result.plantClosed || result.arrivalBeforeOpen || result.arrivalAfterClose || result.departureAfterClose;
+            return result;
+        }
+
+        function describeCurrentTimeViolation(nowMin, timing, context) {
+            if (!timing) return "";
+            var leadIn = context === "approval"
+                ? "Current approval is outside today's working hours."
+                : "Current registration is outside today's working hours.";
+            if (!timing.open && !timing.close)
+                return leadIn + " The plant is closed today.";
+            var openMin = parseTimeSpan(timing.open);
+            var closeMin = parseTimeSpan(timing.close);
+            if (openMin !== null && nowMin < openMin)
+                return leadIn + " The plant opens at " + formatClock(openMin) + ".";
+            if (closeMin !== null && nowMin >= closeMin)
+                return leadIn + " The plant closed at " + formatClock(closeMin) + ".";
+            return "";
+        }
+
+        function formatDayViolationBlock(dateValue, startMin, endMin, classification) {
+            var block = formatNoticeDate(dateValue);
+            if (classification.plantClosed) {
+                block += "\n• The plant is closed this day.";
+                return block;
+            }
+            if (classification.arrivalBeforeOpen)
+                block += "\n• Arrival time (" + formatClock(startMin) + ") is before plant opening (" + formatClock(classification.openMin) + ").";
+            if (classification.arrivalAfterClose)
+                block += "\n• Arrival time (" + formatClock(startMin) + ") is after plant closing (" + formatClock(classification.closeMin) + ").";
+            if (classification.departureAfterClose)
+                block += "\n• Departure time (" + formatClock(endMin) + ") is after plant closing (" + formatClock(classification.closeMin) + ").";
+            return block;
         }
 
         function buildVisitorHoursNotice() {
@@ -416,7 +466,7 @@
             var now = new Date();
             var todayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
             var nowMin = now.getHours() * 60 + now.getMinutes();
-            var currentAfter = isWindowOutsideTiming(nowMin, nowMin, timings[todayName]);
+            var currentViolation = describeCurrentTimeViolation(nowMin, timings[todayName], "registration");
 
             var fromDate = $("#<%= txtVisitFromDate.ClientID %>").val();
             var toDate = $("#<%= ddlScheduleType.ClientID %>").val() === "MultiDay"
@@ -425,7 +475,7 @@
             var timeFrom = parseTimeSpan($("#<%= txtTimeFrom.ClientID %>").val());
             var timeTo = parseTimeSpan($("#<%= txtTimeTo.ClientID %>").val());
 
-            var affected = [];
+            var dayBlocks = [];
             if (fromDate && timeFrom !== null && timeTo !== null) {
                 var cursor = new Date(fromDate + "T00:00:00");
                 var end = new Date((toDate || fromDate) + "T00:00:00");
@@ -434,30 +484,21 @@
                     var iso = cursor.getFullYear() + "-" +
                         ("0" + (cursor.getMonth() + 1)).slice(-2) + "-" +
                         ("0" + cursor.getDate()).slice(-2);
-                    if (isWindowOutsideTiming(timeFrom, timeTo, timings[weekdayName(iso)])) {
-                        affected.push(iso);
-                    }
+                    var classification = classifyPlantHourWindow(timeFrom, timeTo, timings[weekdayName(iso)]);
+                    if (classification.hasViolation)
+                        dayBlocks.push(formatDayViolationBlock(iso, timeFrom, timeTo, classification));
                     cursor.setDate(cursor.getDate() + 1);
                 }
             }
 
-            if (!currentAfter && affected.length === 0)
+            if (!currentViolation && dayBlocks.length === 0)
                 return "";
 
-            var msg = "Notice: Your visit falls outside the organization's normal working hours. Your host may still approve this request as an exception.";
-            if (currentAfter && affected.length > 0)
-                msg += "\n\nYou are submitting outside current plant hours, and the requested visit window is also outside hours.";
-            else if (currentAfter)
-                msg += "\n\nYou are submitting outside current plant hours.";
-            else
-                msg += "\n\nThe requested visit window is outside plant hours.";
-
-            if (affected.length > 0) {
-                msg += "\n";
-                for (var i = 0; i < affected.length; i++) {
-                    msg += "\n- " + formatNoticeDate(affected[i]);
-                }
-            }
+            var msg = "Notice: Your visit falls outside the organization's normal working hours.\n\nYour host may still approve this request as an exception.";
+            if (currentViolation)
+                msg += "\n\n" + currentViolation;
+            if (dayBlocks.length)
+                msg += "\n\n" + dayBlocks.join("\n\n");
             return msg;
         }
     </script>

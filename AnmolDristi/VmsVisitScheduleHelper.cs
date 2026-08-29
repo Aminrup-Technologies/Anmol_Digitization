@@ -39,11 +39,56 @@ namespace AnmolDristi
         public TimeSpan? CloseTime { get; set; }
     }
 
+    public class PlantHourWindowClassification
+    {
+        public bool ArrivalBeforeOpen { get; set; }
+        public bool ArrivalAfterClose { get; set; }
+        public bool DepartureAfterClose { get; set; }
+        public bool PlantClosed { get; set; }
+        public TimeSpan? OpenTime { get; set; }
+        public TimeSpan? CloseTime { get; set; }
+
+        public bool HasViolation
+        {
+            get
+            {
+                return PlantClosed || ArrivalBeforeOpen || ArrivalAfterClose || DepartureAfterClose;
+            }
+        }
+
+        public bool HasBothArrivalAndDepartureViolation
+        {
+            get
+            {
+                return (ArrivalBeforeOpen || ArrivalAfterClose) && DepartureAfterClose;
+            }
+        }
+    }
+
+    public class VisitDayHoursViolation
+    {
+        public DateTime VisitDate { get; set; }
+        public PlantHourWindowClassification Classification { get; set; }
+        public TimeSpan Arrival { get; set; }
+        public TimeSpan Departure { get; set; }
+    }
+
+    public enum HoursNoticeContext
+    {
+        Registration = 0,
+        Approval = 1
+    }
+
     public class VisitHoursEvaluation
     {
         public bool IsCurrentAfterHours { get; set; }
         public bool IsScheduledAfterHours { get; set; }
         public List<DateTime> AffectedDates { get; set; }
+        public string CurrentViolation { get; set; }
+        public bool ArrivalViolation { get; set; }
+        public bool DepartureViolation { get; set; }
+        public List<string> ViolationMessages { get; set; }
+        public List<VisitDayHoursViolation> DayViolations { get; set; }
         public string WarningMessage { get; set; }
         public string HostWarningMessage { get; set; }
         public TimeSpan? PlantOpenTime { get; set; }
@@ -53,6 +98,9 @@ namespace AnmolDristi
         public VisitHoursEvaluation()
         {
             AffectedDates = new List<DateTime>();
+            ViolationMessages = new List<string>();
+            DayViolations = new List<VisitDayHoursViolation>();
+            CurrentViolation = string.Empty;
         }
 
         public bool RequiresNotice
@@ -68,6 +116,10 @@ namespace AnmolDristi
             "Notice: Your visit falls outside the organization's normal working hours. Your host may still approve this request as an exception.";
         public const string AfterHoursHostWarning =
             "Warning: This visit falls outside configured plant working hours. Approving this request will be recorded as an after-hours approval.";
+        public const string CurrentTimeRegistrationLeadIn =
+            "Current registration is outside today's working hours.";
+        public const string CurrentTimeApprovalLeadIn =
+            "Current approval is outside today's working hours.";
 
         public static VisitScheduleRequest ParseSchedule(
             string scheduleType,
@@ -522,7 +574,8 @@ namespace AnmolDristi
             {
                 result.PlantOpenTime = todayTiming.OpenTime;
                 result.PlantCloseTime = todayTiming.CloseTime;
-                result.IsCurrentAfterHours = IsTimeOutsidePlantHours(now.TimeOfDay, now.TimeOfDay, todayTiming);
+                result.CurrentViolation = DescribeCurrentTimeViolation(now.TimeOfDay, todayTiming);
+                result.IsCurrentAfterHours = !string.IsNullOrEmpty(result.CurrentViolation);
             }
             else
             {
@@ -541,19 +594,32 @@ namespace AnmolDristi
                 if (!timings.TryGetValue(weekday, out dayTiming))
                     continue;
 
-                if (IsTimeOutsidePlantHours(timeFrom, timeTo, dayTiming))
+                PlantHourWindowClassification classification = ClassifyPlantHourWindow(timeFrom, timeTo, dayTiming);
+                if (!classification.HasViolation)
+                    continue;
+
+                result.IsScheduledAfterHours = true;
+                result.AffectedDates.Add(day.Date);
+                result.DayViolations.Add(new VisitDayHoursViolation
                 {
-                    result.IsScheduledAfterHours = true;
-                    result.AffectedDates.Add(day.Date);
-                    if (!result.FirstAffectedDate.HasValue)
-                    {
-                        result.FirstAffectedDate = day.Date;
-                        result.PlantOpenTime = dayTiming.OpenTime;
-                        result.PlantCloseTime = dayTiming.CloseTime;
-                    }
+                    VisitDate = day.Date,
+                    Classification = classification,
+                    Arrival = timeFrom,
+                    Departure = timeTo
+                });
+                if (classification.ArrivalBeforeOpen || classification.ArrivalAfterClose)
+                    result.ArrivalViolation = true;
+                if (classification.DepartureAfterClose)
+                    result.DepartureViolation = true;
+                if (!result.FirstAffectedDate.HasValue)
+                {
+                    result.FirstAffectedDate = day.Date;
+                    result.PlantOpenTime = dayTiming.OpenTime;
+                    result.PlantCloseTime = dayTiming.CloseTime;
                 }
             }
 
+            result.ViolationMessages = BuildViolationMessages(result);
             result.WarningMessage = BuildVisitorHoursNotice(result);
             result.HostWarningMessage = BuildHostHoursWarning(result);
             return result;
@@ -636,6 +702,15 @@ namespace AnmolDristi
                 }
 
                 var eval = EvaluateVisitHours(branchId, DateTime.Now, fromDate, toDate, timeFrom, timeTo, con, trans);
+                eval.DayViolations.RemoveAll(v =>
+                {
+                    foreach (DateTime selected in selectedDates)
+                    {
+                        if (selected.Date == v.VisitDate.Date)
+                            return false;
+                    }
+                    return true;
+                });
                 eval.AffectedDates.RemoveAll(d =>
                 {
                     foreach (DateTime selected in selectedDates)
@@ -645,7 +720,19 @@ namespace AnmolDristi
                     }
                     return true;
                 });
-                eval.IsScheduledAfterHours = eval.AffectedDates.Count > 0;
+                eval.IsScheduledAfterHours = eval.DayViolations.Count > 0;
+                eval.ArrivalViolation = false;
+                eval.DepartureViolation = false;
+                foreach (VisitDayHoursViolation dayViolation in eval.DayViolations)
+                {
+                    if (dayViolation.Classification == null)
+                        continue;
+                    if (dayViolation.Classification.ArrivalBeforeOpen || dayViolation.Classification.ArrivalAfterClose)
+                        eval.ArrivalViolation = true;
+                    if (dayViolation.Classification.DepartureAfterClose)
+                        eval.DepartureViolation = true;
+                }
+                eval.ViolationMessages = BuildViolationMessages(eval);
                 eval.WarningMessage = BuildVisitorHoursNotice(eval);
                 eval.HostWarningMessage = BuildHostHoursWarning(eval);
                 return eval;
@@ -664,26 +751,174 @@ namespace AnmolDristi
             return $"{schedule.FromDate:dd MMM yyyy}, {schedule.TimeFrom:hh\\:mm} - {schedule.TimeTo:hh\\:mm}";
         }
 
-        public static bool IsTimeOutsidePlantHours(TimeSpan windowStart, TimeSpan windowEnd, PlantDayTiming timing)
+        public static PlantHourWindowClassification ClassifyPlantHourWindow(
+            TimeSpan arrival,
+            TimeSpan departure,
+            PlantDayTiming timing)
         {
+            var classification = new PlantHourWindowClassification();
             if (timing == null)
-                return false;
+                return classification;
+
+            classification.OpenTime = timing.OpenTime;
+            classification.CloseTime = timing.CloseTime;
 
             if (!timing.OpenTime.HasValue && !timing.CloseTime.HasValue)
-                return true;
+            {
+                classification.PlantClosed = true;
+                return classification;
+            }
 
-            if (timing.OpenTime.HasValue && windowStart < timing.OpenTime.Value)
-                return true;
+            if (timing.OpenTime.HasValue && arrival < timing.OpenTime.Value)
+                classification.ArrivalBeforeOpen = true;
 
             if (timing.CloseTime.HasValue)
             {
-                if (windowStart >= timing.CloseTime.Value)
-                    return true;
-                if (windowEnd > timing.CloseTime.Value)
-                    return true;
+                if (arrival >= timing.CloseTime.Value)
+                    classification.ArrivalAfterClose = true;
+                if (departure > timing.CloseTime.Value)
+                    classification.DepartureAfterClose = true;
             }
 
-            return false;
+            return classification;
+        }
+
+        public static bool IsTimeOutsidePlantHours(TimeSpan windowStart, TimeSpan windowEnd, PlantDayTiming timing)
+        {
+            return ClassifyPlantHourWindow(windowStart, windowEnd, timing).HasViolation;
+        }
+
+        public static string FormatClockTime(TimeSpan time)
+        {
+            DateTime clock = DateTime.Today.Add(time);
+            return clock.ToString("hh:mm tt", CultureInfo.InvariantCulture);
+        }
+
+        public static string CurrentTimeViolationLeadIn(HoursNoticeContext context)
+        {
+            return context == HoursNoticeContext.Approval
+                ? CurrentTimeApprovalLeadIn
+                : CurrentTimeRegistrationLeadIn;
+        }
+
+        public static string FormatCurrentTimeViolation(string currentViolation, HoursNoticeContext context)
+        {
+            if (string.IsNullOrEmpty(currentViolation))
+                return string.Empty;
+
+            string leadIn = CurrentTimeViolationLeadIn(context);
+            if (currentViolation.StartsWith(leadIn, StringComparison.Ordinal))
+                return currentViolation;
+
+            if (currentViolation.StartsWith(CurrentTimeRegistrationLeadIn, StringComparison.Ordinal))
+                return leadIn + currentViolation.Substring(CurrentTimeRegistrationLeadIn.Length);
+
+            if (currentViolation.StartsWith(CurrentTimeApprovalLeadIn, StringComparison.Ordinal))
+                return leadIn + currentViolation.Substring(CurrentTimeApprovalLeadIn.Length);
+
+            return currentViolation;
+        }
+
+        public static string DescribeCurrentTimeViolation(
+            TimeSpan now,
+            PlantDayTiming timing,
+            HoursNoticeContext context = HoursNoticeContext.Registration)
+        {
+            if (timing == null)
+                return string.Empty;
+
+            string reason;
+            if (!timing.OpenTime.HasValue && !timing.CloseTime.HasValue)
+                reason = "The plant is closed today.";
+            else if (timing.OpenTime.HasValue && now < timing.OpenTime.Value)
+                reason = "The plant opens at " + FormatClockTime(timing.OpenTime.Value) + ".";
+            else if (timing.CloseTime.HasValue && now >= timing.CloseTime.Value)
+                reason = "The plant closed at " + FormatClockTime(timing.CloseTime.Value) + ".";
+            else
+                return string.Empty;
+
+            return CurrentTimeViolationLeadIn(context) + " " + reason;
+        }
+
+        public static List<string> BuildDayViolationLines(VisitDayHoursViolation dayViolation)
+        {
+            var lines = new List<string>();
+            if (dayViolation == null || dayViolation.Classification == null)
+                return lines;
+
+            PlantHourWindowClassification c = dayViolation.Classification;
+            if (c.PlantClosed)
+            {
+                lines.Add("The plant is closed this day.");
+                return lines;
+            }
+
+            if (c.ArrivalBeforeOpen && c.OpenTime.HasValue)
+            {
+                lines.Add("Arrival time (" + FormatClockTime(dayViolation.Arrival) +
+                    ") is before plant opening (" + FormatClockTime(c.OpenTime.Value) + ").");
+            }
+
+            if (c.ArrivalAfterClose && c.CloseTime.HasValue)
+            {
+                lines.Add("Arrival time (" + FormatClockTime(dayViolation.Arrival) +
+                    ") is after plant closing (" + FormatClockTime(c.CloseTime.Value) + ").");
+            }
+
+            if (c.DepartureAfterClose && c.CloseTime.HasValue)
+            {
+                lines.Add("Departure time (" + FormatClockTime(dayViolation.Departure) +
+                    ") is after plant closing (" + FormatClockTime(c.CloseTime.Value) + ").");
+            }
+
+            return lines;
+        }
+
+        private static List<string> BuildViolationMessages(VisitHoursEvaluation evaluation)
+        {
+            var messages = new List<string>();
+            if (evaluation == null)
+                return messages;
+
+            if (!string.IsNullOrEmpty(evaluation.CurrentViolation))
+                messages.Add(evaluation.CurrentViolation);
+
+            if (evaluation.DayViolations != null)
+            {
+                foreach (VisitDayHoursViolation dayViolation in evaluation.DayViolations)
+                {
+                    foreach (string line in BuildDayViolationLines(dayViolation))
+                        messages.Add(line);
+                }
+            }
+
+            return messages;
+        }
+
+        private static void AppendDayViolationDetails(
+            StringBuilder sb,
+            VisitHoursEvaluation evaluation,
+            bool leadingBlankLine = true)
+        {
+            if (evaluation.DayViolations == null)
+                return;
+
+            bool first = true;
+            foreach (VisitDayHoursViolation dayViolation in evaluation.DayViolations)
+            {
+                if (first && !leadingBlankLine)
+                    sb.Append("\n");
+                else
+                    sb.Append("\n\n");
+                first = false;
+
+                sb.Append(dayViolation.VisitDate.ToString("dddd dd MMM", CultureInfo.InvariantCulture));
+                foreach (string line in BuildDayViolationLines(dayViolation))
+                {
+                    sb.Append("\n• ");
+                    sb.Append(line);
+                }
+            }
         }
 
         public static string BuildVisitorHoursNotice(VisitHoursEvaluation evaluation)
@@ -692,16 +927,16 @@ namespace AnmolDristi
                 return string.Empty;
 
             var sb = new StringBuilder();
-            sb.Append(AfterHoursVisitorNotice);
+            sb.Append("Notice: Your visit falls outside the organization's normal working hours.");
+            sb.Append("\n\nYour host may still approve this request as an exception.");
 
-            if (evaluation.IsCurrentAfterHours && evaluation.IsScheduledAfterHours)
-                sb.Append("\n\nYou are submitting outside current plant hours, and the requested visit window is also outside hours.");
-            else if (evaluation.IsCurrentAfterHours)
-                sb.Append("\n\nYou are submitting outside current plant hours.");
-            else
-                sb.Append("\n\nThe requested visit window is outside plant hours.");
+            if (!string.IsNullOrEmpty(evaluation.CurrentViolation))
+            {
+                sb.Append("\n\n");
+                sb.Append(FormatCurrentTimeViolation(evaluation.CurrentViolation, HoursNoticeContext.Registration));
+            }
 
-            AppendAffectedDates(sb, evaluation);
+            AppendDayViolationDetails(sb, evaluation);
             return sb.ToString();
         }
 
@@ -711,25 +946,22 @@ namespace AnmolDristi
                 return string.Empty;
 
             var sb = new StringBuilder();
-            sb.Append(AfterHoursHostWarning);
-            AppendAffectedDates(sb, evaluation);
-            return sb.ToString();
-        }
+            sb.Append("Warning:");
 
-        private static void AppendAffectedDates(StringBuilder sb, VisitHoursEvaluation evaluation)
-        {
-            if (evaluation.AffectedDates == null || evaluation.AffectedDates.Count == 0)
-                return;
+            string currentViolation = FormatCurrentTimeViolation(
+                evaluation.CurrentViolation,
+                HoursNoticeContext.Approval);
 
-            sb.Append("\n");
-            foreach (DateTime day in evaluation.AffectedDates)
+            if (!string.IsNullOrEmpty(currentViolation))
             {
-                sb.Append("\n- ");
-                sb.Append(day.ToString("dddd", CultureInfo.InvariantCulture));
-                sb.Append(" ");
-                sb.Append(day.ToString("dd MMM", CultureInfo.InvariantCulture));
-                sb.Append(" – Outside hours");
+                sb.Append("\n");
+                sb.Append(currentViolation);
             }
+
+            AppendDayViolationDetails(sb, evaluation, !string.IsNullOrEmpty(currentViolation));
+
+            sb.Append("\n\nApproving this visit will be recorded as an after-hours approval.");
+            return sb.ToString();
         }
 
         private static string JsonEscape(string value)
