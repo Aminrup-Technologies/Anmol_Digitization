@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.Text;
 
 namespace AnmolDristi
 {
@@ -30,9 +32,42 @@ namespace AnmolDristi
         public bool IsDayApproved { get; set; }
     }
 
+    public class PlantDayTiming
+    {
+        public string DayOfWeek { get; set; }
+        public TimeSpan? OpenTime { get; set; }
+        public TimeSpan? CloseTime { get; set; }
+    }
+
+    public class VisitHoursEvaluation
+    {
+        public bool IsCurrentAfterHours { get; set; }
+        public bool IsScheduledAfterHours { get; set; }
+        public List<DateTime> AffectedDates { get; set; }
+        public string WarningMessage { get; set; }
+        public string HostWarningMessage { get; set; }
+        public TimeSpan? PlantOpenTime { get; set; }
+        public TimeSpan? PlantCloseTime { get; set; }
+        public DateTime? FirstAffectedDate { get; set; }
+
+        public VisitHoursEvaluation()
+        {
+            AffectedDates = new List<DateTime>();
+        }
+
+        public bool RequiresNotice
+        {
+            get { return IsCurrentAfterHours || IsScheduledAfterHours; }
+        }
+    }
+
     public static class VmsVisitScheduleHelper
     {
         public const int MaxScheduleDays = 30;
+        public const string AfterHoursVisitorNotice =
+            "Notice: Your visit falls outside the organization's normal working hours. Your host may still approve this request as an exception.";
+        public const string AfterHoursHostWarning =
+            "Warning: This visit falls outside configured plant working hours. Approving this request will be recorded as an after-hours approval.";
 
         public static VisitScheduleRequest ParseSchedule(
             string scheduleType,
@@ -271,6 +306,7 @@ namespace AnmolDristi
         /// Parent may be Scheduled or Checked-Out (SingleDay after checkout is Checked-Out).
         /// ActualInTime is the latest active check-in stamp for this DayLog row.
         /// One DayLog exists per (LogID, VisitDate); this UPDATE is that row's current state.
+        /// Also appends VMS_VisitAttendanceHistory: auto-closes any open cycle, then inserts a new open row.
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -316,7 +352,11 @@ namespace AnmolDristi
                 visitRows = cmd.ExecuteNonQuery();
             }
 
-            return visitRows == 1;
+            if (visitRows != 1)
+                return false;
+
+            WriteCheckInHistory(con, trans, dayLogId, logId, guardId);
+            return true;
         }
 
         /// <summary>
@@ -324,6 +364,7 @@ namespace AnmolDristi
         /// transitioned from Checked-In (rowsAffected == 1 each).
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
         /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
+        /// Closes the open VMS_VisitAttendanceHistory row for this DayLog; does not insert a second row.
         /// </summary>
         public static bool CheckOutDay(
             SqlConnection con,
@@ -375,7 +416,242 @@ namespace AnmolDristi
                 visitRows = cmd.ExecuteNonQuery();
             }
 
-            return visitRows == 1;
+            if (visitRows != 1)
+                return false;
+
+            CloseOpenAttendanceHistory(con, trans, dayLogId);
+            return true;
+        }
+
+        public static Dictionary<string, PlantDayTiming> LoadPlantTimings(
+            int branchId,
+            SqlConnection con = null,
+            SqlTransaction trans = null)
+        {
+            var timings = new Dictionary<string, PlantDayTiming>(StringComparer.OrdinalIgnoreCase);
+            bool ownsConnection = con == null;
+            if (ownsConnection)
+                con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString);
+
+            try
+            {
+                if (ownsConnection)
+                    con.Open();
+
+                using (SqlCommand cmd = new SqlCommand(@"
+                    SELECT DayOfWeek, OpenTime, CloseTime
+                    FROM VMS_PlantTimings
+                    WHERE Branch_ID = @BranchID", con, trans))
+                {
+                    cmd.Parameters.AddWithValue("@BranchID", branchId);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string day = reader["DayOfWeek"] == DBNull.Value
+                                ? string.Empty
+                                : reader["DayOfWeek"].ToString();
+                            if (string.IsNullOrWhiteSpace(day))
+                                continue;
+
+                            timings[day.Trim()] = new PlantDayTiming
+                            {
+                                DayOfWeek = day.Trim(),
+                                OpenTime = reader["OpenTime"] == DBNull.Value ? (TimeSpan?)null : (TimeSpan)reader["OpenTime"],
+                                CloseTime = reader["CloseTime"] == DBNull.Value ? (TimeSpan?)null : (TimeSpan)reader["CloseTime"]
+                            };
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                if (ownsConnection)
+                    con.Dispose();
+            }
+
+            return timings;
+        }
+
+        public static string GetPlantTimingsJson(int branchId)
+        {
+            Dictionary<string, PlantDayTiming> timings = LoadPlantTimings(branchId);
+            var sb = new StringBuilder();
+            sb.Append("{");
+            bool first = true;
+            foreach (KeyValuePair<string, PlantDayTiming> pair in timings)
+            {
+                if (!first)
+                    sb.Append(",");
+                first = false;
+                sb.Append("\"").Append(JsonEscape(pair.Key)).Append("\":{");
+                sb.Append("\"open\":");
+                sb.Append(pair.Value.OpenTime.HasValue
+                    ? "\"" + pair.Value.OpenTime.Value.ToString(@"hh\:mm", CultureInfo.InvariantCulture) + "\""
+                    : "null");
+                sb.Append(",\"close\":");
+                sb.Append(pair.Value.CloseTime.HasValue
+                    ? "\"" + pair.Value.CloseTime.Value.ToString(@"hh\:mm", CultureInfo.InvariantCulture) + "\""
+                    : "null");
+                sb.Append("}");
+            }
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Evaluates current time and the requested/approved visit window against VMS_PlantTimings.
+        /// Missing plant-timing rows are treated as open (same as IsFacilityOpen).
+        /// A day with a row but null Open and Close is treated as closed.
+        /// </summary>
+        public static VisitHoursEvaluation EvaluateVisitHours(
+            int branchId,
+            DateTime now,
+            DateTime fromDate,
+            DateTime toDate,
+            TimeSpan timeFrom,
+            TimeSpan timeTo,
+            SqlConnection con = null,
+            SqlTransaction trans = null)
+        {
+            Dictionary<string, PlantDayTiming> timings = LoadPlantTimings(branchId, con, trans);
+            var result = new VisitHoursEvaluation();
+
+            PlantDayTiming todayTiming;
+            if (timings.TryGetValue(now.ToString("dddd", CultureInfo.InvariantCulture), out todayTiming))
+            {
+                result.PlantOpenTime = todayTiming.OpenTime;
+                result.PlantCloseTime = todayTiming.CloseTime;
+                result.IsCurrentAfterHours = IsTimeOutsidePlantHours(now.TimeOfDay, now.TimeOfDay, todayTiming);
+            }
+            else
+            {
+                result.IsCurrentAfterHours = false;
+            }
+
+            DateTime start = fromDate.Date;
+            DateTime end = toDate.Date;
+            if (end < start)
+                end = start;
+
+            for (DateTime day = start; day <= end; day = day.AddDays(1))
+            {
+                string weekday = day.ToString("dddd", CultureInfo.InvariantCulture);
+                PlantDayTiming dayTiming;
+                if (!timings.TryGetValue(weekday, out dayTiming))
+                    continue;
+
+                if (IsTimeOutsidePlantHours(timeFrom, timeTo, dayTiming))
+                {
+                    result.IsScheduledAfterHours = true;
+                    result.AffectedDates.Add(day.Date);
+                    if (!result.FirstAffectedDate.HasValue)
+                    {
+                        result.FirstAffectedDate = day.Date;
+                        result.PlantOpenTime = dayTiming.OpenTime;
+                        result.PlantCloseTime = dayTiming.CloseTime;
+                    }
+                }
+            }
+
+            result.WarningMessage = BuildVisitorHoursNotice(result);
+            result.HostWarningMessage = BuildHostHoursWarning(result);
+            return result;
+        }
+
+        public static VisitHoursEvaluation EvaluateVisitHoursForLog(
+            SqlConnection con,
+            int logId,
+            TimeSpan? approvedFromTime = null,
+            TimeSpan? approvedToTime = null,
+            IList<DateTime> selectedDates = null,
+            SqlTransaction trans = null)
+        {
+            int branchId = 0;
+            DateTime fromDate = DateTime.Now.Date;
+            DateTime toDate = DateTime.Now.Date;
+            TimeSpan timeFrom = new TimeSpan(9, 0, 0);
+            TimeSpan timeTo = new TimeSpan(18, 0, 0);
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT ISNULL(TargetBranchID, 0) AS TargetBranchID,
+                       RequestedValidFrom, RequestedValidUpto,
+                       ValidFrom, ValidUpto,
+                       DailyTimeFrom, DailyTimeTo
+                FROM VMS_VisitLog
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        branchId = Convert.ToInt32(reader["TargetBranchID"]);
+                        DateTime? requestedFrom = reader["RequestedValidFrom"] == DBNull.Value
+                            ? (DateTime?)null : Convert.ToDateTime(reader["RequestedValidFrom"]);
+                        DateTime? requestedTo = reader["RequestedValidUpto"] == DBNull.Value
+                            ? (DateTime?)null : Convert.ToDateTime(reader["RequestedValidUpto"]);
+                        DateTime? validFrom = reader["ValidFrom"] == DBNull.Value
+                            ? (DateTime?)null : Convert.ToDateTime(reader["ValidFrom"]);
+                        DateTime? validTo = reader["ValidUpto"] == DBNull.Value
+                            ? (DateTime?)null : Convert.ToDateTime(reader["ValidUpto"]);
+
+                        DateTime start = (requestedFrom ?? validFrom ?? DateTime.Now).Date;
+                        DateTime end = (requestedTo ?? validTo ?? start).Date;
+                        fromDate = start;
+                        toDate = end;
+
+                        if (reader["DailyTimeFrom"] != DBNull.Value)
+                            timeFrom = (TimeSpan)reader["DailyTimeFrom"];
+                        else if (requestedFrom.HasValue)
+                            timeFrom = requestedFrom.Value.TimeOfDay;
+                        else if (validFrom.HasValue)
+                            timeFrom = validFrom.Value.TimeOfDay;
+
+                        if (reader["DailyTimeTo"] != DBNull.Value)
+                            timeTo = (TimeSpan)reader["DailyTimeTo"];
+                        else if (requestedTo.HasValue)
+                            timeTo = requestedTo.Value.TimeOfDay;
+                        else if (validTo.HasValue)
+                            timeTo = validTo.Value.TimeOfDay;
+                    }
+                }
+            }
+
+            if (approvedFromTime.HasValue)
+                timeFrom = approvedFromTime.Value;
+            if (approvedToTime.HasValue)
+                timeTo = approvedToTime.Value;
+
+            if (selectedDates != null && selectedDates.Count > 0)
+            {
+                fromDate = selectedDates[0].Date;
+                toDate = selectedDates[0].Date;
+                foreach (DateTime d in selectedDates)
+                {
+                    if (d.Date < fromDate)
+                        fromDate = d.Date;
+                    if (d.Date > toDate)
+                        toDate = d.Date;
+                }
+
+                var eval = EvaluateVisitHours(branchId, DateTime.Now, fromDate, toDate, timeFrom, timeTo, con, trans);
+                eval.AffectedDates.RemoveAll(d =>
+                {
+                    foreach (DateTime selected in selectedDates)
+                    {
+                        if (selected.Date == d.Date)
+                            return false;
+                    }
+                    return true;
+                });
+                eval.IsScheduledAfterHours = eval.AffectedDates.Count > 0;
+                eval.WarningMessage = BuildVisitorHoursNotice(eval);
+                eval.HostWarningMessage = BuildHostHoursWarning(eval);
+                return eval;
+            }
+
+            return EvaluateVisitHours(branchId, DateTime.Now, fromDate, toDate, timeFrom, timeTo, con, trans);
         }
 
         public static string FormatScheduleSummary(VisitScheduleRequest schedule)
@@ -386,6 +662,137 @@ namespace AnmolDristi
             }
 
             return $"{schedule.FromDate:dd MMM yyyy}, {schedule.TimeFrom:hh\\:mm} - {schedule.TimeTo:hh\\:mm}";
+        }
+
+        public static bool IsTimeOutsidePlantHours(TimeSpan windowStart, TimeSpan windowEnd, PlantDayTiming timing)
+        {
+            if (timing == null)
+                return false;
+
+            if (!timing.OpenTime.HasValue && !timing.CloseTime.HasValue)
+                return true;
+
+            if (timing.OpenTime.HasValue && windowStart < timing.OpenTime.Value)
+                return true;
+
+            if (timing.CloseTime.HasValue)
+            {
+                if (windowStart >= timing.CloseTime.Value)
+                    return true;
+                if (windowEnd > timing.CloseTime.Value)
+                    return true;
+            }
+
+            return false;
+        }
+
+        public static string BuildVisitorHoursNotice(VisitHoursEvaluation evaluation)
+        {
+            if (evaluation == null || !evaluation.RequiresNotice)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.Append(AfterHoursVisitorNotice);
+
+            if (evaluation.IsCurrentAfterHours && evaluation.IsScheduledAfterHours)
+                sb.Append("\n\nYou are submitting outside current plant hours, and the requested visit window is also outside hours.");
+            else if (evaluation.IsCurrentAfterHours)
+                sb.Append("\n\nYou are submitting outside current plant hours.");
+            else
+                sb.Append("\n\nThe requested visit window is outside plant hours.");
+
+            AppendAffectedDates(sb, evaluation);
+            return sb.ToString();
+        }
+
+        public static string BuildHostHoursWarning(VisitHoursEvaluation evaluation)
+        {
+            if (evaluation == null || !evaluation.RequiresNotice)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.Append(AfterHoursHostWarning);
+            AppendAffectedDates(sb, evaluation);
+            return sb.ToString();
+        }
+
+        private static void AppendAffectedDates(StringBuilder sb, VisitHoursEvaluation evaluation)
+        {
+            if (evaluation.AffectedDates == null || evaluation.AffectedDates.Count == 0)
+                return;
+
+            sb.Append("\n");
+            foreach (DateTime day in evaluation.AffectedDates)
+            {
+                sb.Append("\n- ");
+                sb.Append(day.ToString("dddd", CultureInfo.InvariantCulture));
+                sb.Append(" ");
+                sb.Append(day.ToString("dd MMM", CultureInfo.InvariantCulture));
+                sb.Append(" – Outside hours");
+            }
+        }
+
+        private static string JsonEscape(string value)
+        {
+            return (value ?? string.Empty)
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"");
+        }
+
+        private static string ResolveAttendanceSource(string actor)
+        {
+            string value = (actor ?? string.Empty).Trim();
+            if (string.Equals(value, "HostManual", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(value, "Host", StringComparison.OrdinalIgnoreCase))
+                return "Host";
+            if (value.IndexOf("Reception", StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Reception";
+            return "Gate";
+        }
+
+        private static void WriteCheckInHistory(
+            SqlConnection con,
+            SqlTransaction trans,
+            int dayLogId,
+            int logId,
+            string actor)
+        {
+            CloseOpenAttendanceHistory(con, trans, dayLogId);
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                IF OBJECT_ID('dbo.VMS_VisitAttendanceHistory', 'U') IS NOT NULL
+                BEGIN
+                    INSERT INTO VMS_VisitAttendanceHistory
+                        (LogID, DayLogID, CheckInTime, CheckOutTime, Source, Actor, CreatedOn)
+                    VALUES
+                        (@LogID, @DayLogID, GETDATE(), NULL, @Source, @Actor, GETDATE())
+                END", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                cmd.Parameters.AddWithValue("@Source", ResolveAttendanceSource(actor));
+                cmd.Parameters.AddWithValue("@Actor", actor ?? "SecurityGate");
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void CloseOpenAttendanceHistory(
+            SqlConnection con,
+            SqlTransaction trans,
+            int dayLogId)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                IF OBJECT_ID('dbo.VMS_VisitAttendanceHistory', 'U') IS NOT NULL
+                BEGIN
+                    UPDATE VMS_VisitAttendanceHistory
+                    SET CheckOutTime = GETDATE()
+                    WHERE DayLogID = @DayLogID
+                      AND CheckOutTime IS NULL
+                END", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                cmd.ExecuteNonQuery();
+            }
         }
 
         private static VisitDayLogInfo MapDayLog(SqlDataReader reader)

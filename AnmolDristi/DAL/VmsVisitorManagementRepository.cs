@@ -1243,6 +1243,13 @@ namespace AnmolDristi.DAL
 
                         DateTime? validUpto = LoadValidUpto(con, trans, request.LogId);
 
+                        TryWriteAfterHoursApprovalAudit(
+                            con,
+                            trans,
+                            request,
+                            hostEmployeeCode,
+                            authMode);
+
                         trans.Commit();
 
                         return new VisitorApprovalResult
@@ -1367,6 +1374,122 @@ namespace AnmolDristi.DAL
                 if (result == null || result == DBNull.Value)
                     return null;
                 return Convert.ToDateTime(result);
+            }
+        }
+
+        private static void TryWriteAfterHoursApprovalAudit(
+            SqlConnection con,
+            SqlTransaction trans,
+            VisitorApprovalRequest request,
+            string hostEmployeeCode,
+            ApprovalAuthorizationMode authMode)
+        {
+            var selectedDates = new List<DateTime>();
+            if (request.SelectedDays != null)
+            {
+                foreach (SelectedVisitDay day in request.SelectedDays)
+                {
+                    if (day.IsApproved)
+                        selectedDates.Add(day.VisitDate.Date);
+                }
+            }
+
+            VisitHoursEvaluation evaluation = VmsVisitScheduleHelper.EvaluateVisitHoursForLog(
+                con,
+                request.LogId,
+                request.ApprovedFromTime,
+                request.ApprovedToTime,
+                selectedDates.Count > 0 ? selectedDates : null,
+                trans);
+
+            if (evaluation == null || !evaluation.RequiresNotice)
+                return;
+
+            int branchId = 0;
+            DateTime scheduledFrom = DateTime.Now;
+            DateTime scheduledTo = DateTime.Now;
+            string visitHost = hostEmployeeCode ?? string.Empty;
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT ISNULL(TargetBranchID, 0) AS TargetBranchID,
+                       HostEmployeeCode,
+                       ISNULL(ValidFrom, ISNULL(RequestedValidFrom, GETDATE())) AS ValidFrom,
+                       ISNULL(ValidUpto, ISNULL(RequestedValidUpto, GETDATE())) AS ValidUpto
+                FROM VMS_VisitLog
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", request.LogId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return;
+                    branchId = Convert.ToInt32(reader["TargetBranchID"]);
+                    if (reader["HostEmployeeCode"] != DBNull.Value)
+                        visitHost = reader["HostEmployeeCode"].ToString();
+                    scheduledFrom = Convert.ToDateTime(reader["ValidFrom"]);
+                    scheduledTo = Convert.ToDateTime(reader["ValidUpto"]);
+                }
+            }
+
+            DateTime scheduledDate = evaluation.FirstAffectedDate ?? scheduledFrom.Date;
+            int? dayLogId = null;
+            using (SqlCommand dayCmd = new SqlCommand(@"
+                SELECT TOP 1 DayLogID
+                FROM VMS_VisitDayLog
+                WHERE LogID = @LogID AND VisitDate = @VisitDate", con, trans))
+            {
+                dayCmd.Parameters.AddWithValue("@LogID", request.LogId);
+                dayCmd.Parameters.AddWithValue("@VisitDate", scheduledDate);
+                object dayIdObj = dayCmd.ExecuteScalar();
+                if (dayIdObj != null && dayIdObj != DBNull.Value)
+                    dayLogId = Convert.ToInt32(dayIdObj);
+            }
+
+            string approvedBy = !string.IsNullOrWhiteSpace(hostEmployeeCode)
+                ? hostEmployeeCode.Trim()
+                : (authMode == ApprovalAuthorizationMode.PendingOnly ? "Receptionist" : "Host");
+
+            string reason = evaluation.HostWarningMessage ?? string.Empty;
+            if (reason.Length > 500)
+                reason = reason.Substring(0, 500);
+
+            using (SqlCommand insertCmd = new SqlCommand(@"
+                IF OBJECT_ID('dbo.VMS_AfterHoursApprovalAudit', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1 FROM VMS_AfterHoursApprovalAudit WHERE LogID = @LogID
+                   )
+                BEGIN
+                    INSERT INTO VMS_AfterHoursApprovalAudit
+                    (
+                        LogID, DayLogID, BranchID, HostEmpCode,
+                        ScheduledDate, ScheduledFrom, ScheduledTo,
+                        PlantOpenTime, PlantCloseTime,
+                        ApprovedOn, ApprovedBy, Reason
+                    )
+                    VALUES
+                    (
+                        @LogID, @DayLogID, @BranchID, @HostEmpCode,
+                        @ScheduledDate, @ScheduledFrom, @ScheduledTo,
+                        @PlantOpenTime, @PlantCloseTime,
+                        GETDATE(), @ApprovedBy, @Reason
+                    )
+                END", con, trans))
+            {
+                insertCmd.Parameters.AddWithValue("@LogID", request.LogId);
+                insertCmd.Parameters.AddWithValue("@DayLogID", (object)dayLogId ?? DBNull.Value);
+                insertCmd.Parameters.AddWithValue("@BranchID", branchId);
+                insertCmd.Parameters.AddWithValue("@HostEmpCode",
+                    string.IsNullOrWhiteSpace(visitHost) ? (object)DBNull.Value : visitHost);
+                insertCmd.Parameters.AddWithValue("@ScheduledDate", scheduledDate);
+                insertCmd.Parameters.AddWithValue("@ScheduledFrom", scheduledFrom);
+                insertCmd.Parameters.AddWithValue("@ScheduledTo", scheduledTo);
+                insertCmd.Parameters.AddWithValue("@PlantOpenTime",
+                    evaluation.PlantOpenTime.HasValue ? (object)evaluation.PlantOpenTime.Value : DBNull.Value);
+                insertCmd.Parameters.AddWithValue("@PlantCloseTime",
+                    evaluation.PlantCloseTime.HasValue ? (object)evaluation.PlantCloseTime.Value : DBNull.Value);
+                insertCmd.Parameters.AddWithValue("@ApprovedBy", approvedBy);
+                insertCmd.Parameters.AddWithValue("@Reason",
+                    string.IsNullOrEmpty(reason) ? (object)DBNull.Value : reason);
+                insertCmd.ExecuteNonQuery();
             }
         }
 

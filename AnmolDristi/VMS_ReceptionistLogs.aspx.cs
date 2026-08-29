@@ -77,33 +77,86 @@ namespace AnmolDristi
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 string query = @"
-            SELECT 
-                v.LogID, 
-                v.VisitorName, 
-                v.VisitorCompany, 
-                v.PassCategory, 
+            SELECT
+                v.LogID,
+                v.VisitorName,
+                v.VisitorCompany,
+                v.PassCategory,
                 v.PhotoPath,
                 v.VisitorMobile,
                 v.VisitorEmail,
                 v.ApprovalStatus,
-                v.HostEmployeeCode, 
+                v.HostEmployeeCode,
                 ISNULL(u.EmployeeName, 'Unknown Host') AS HostName,
-                ISNULL(u.Mobile, 'N/A') AS HostMobile, 
+                ISNULL(u.Mobile, 'N/A') AS HostMobile,
                 ISNULL(u.Email, 'N/A') AS HostEmail,
-                v.VisitStatus, 
+                v.VisitStatus,
                 v.CreatedDate,
                 v.ApprovedOn,
-                CASE WHEN d.DayLogID IS NOT NULL THEN d.ActualInTime ELSE v.ActualInTime END AS ActualInTime,
-                CASE WHEN d.DayLogID IS NOT NULL THEN d.ActualOutTime ELSE v.ActualOutTime END AS ActualOutTime,
-                b.Branch_ID, 
+                src.AttendanceDate,
+                src.ActualInTime,
+                src.ActualOutTime,
+                src.CycleStatus,
+                b.Branch_ID,
                 b.Branch_Description
-            FROM VMS_VisitLog v
+            FROM (
+                SELECT
+                    h.LogID,
+                    CAST(h.CheckInTime AS date) AS AttendanceDate,
+                    h.CheckInTime AS ActualInTime,
+                    h.CheckOutTime AS ActualOutTime,
+                    CASE WHEN h.CheckOutTime IS NULL THEN 'Active' ELSE 'Checked-Out' END AS CycleStatus
+                FROM VMS_VisitAttendanceHistory h
+                WHERE CAST(h.CheckInTime AS date) >= @FromDate
+                  AND CAST(h.CheckInTime AS date) <= @ToDate
+
+                UNION ALL
+
+                SELECT
+                    d.LogID,
+                    CAST(ISNULL(d.ActualInTime, d.VisitDate) AS date) AS AttendanceDate,
+                    d.ActualInTime,
+                    d.ActualOutTime,
+                    CASE
+                        WHEN d.VisitStatus = 'Checked-In' THEN 'Active'
+                        WHEN d.ActualOutTime IS NOT NULL THEN 'Checked-Out'
+                        ELSE ISNULL(d.VisitStatus, 'Scheduled')
+                    END AS CycleStatus
+                FROM VMS_VisitDayLog d
+                WHERE d.ActualInTime IS NOT NULL
+                  AND CAST(ISNULL(d.ActualInTime, d.VisitDate) AS date) >= @FromDate
+                  AND CAST(ISNULL(d.ActualInTime, d.VisitDate) AS date) <= @ToDate
+                  AND NOT EXISTS (
+                            SELECT 1 FROM VMS_VisitAttendanceHistory hx WHERE hx.DayLogID = d.DayLogID
+                        )
+
+                UNION ALL
+
+                SELECT
+                    v2.LogID,
+                    CAST(ISNULL(v2.ValidFrom, ISNULL(v2.RequestedValidFrom, v2.CreatedDate)) AS date) AS AttendanceDate,
+                    CAST(NULL AS datetime) AS ActualInTime,
+                    CAST(NULL AS datetime) AS ActualOutTime,
+                    ISNULL(v2.VisitStatus, 'Scheduled') AS CycleStatus
+                FROM VMS_VisitLog v2
+                WHERE CAST(ISNULL(v2.ValidFrom, ISNULL(v2.RequestedValidFrom, v2.CreatedDate)) AS date) >= @FromDate
+                  AND CAST(ISNULL(v2.ValidFrom, ISNULL(v2.RequestedValidFrom, v2.CreatedDate)) AS date) <= @ToDate
+                  AND (
+                        ISNULL(v2.ApprovalStatus, '') = 'Pending'
+                        OR (ISNULL(v2.ApprovalStatus, '') = 'Approved' AND ISNULL(v2.VisitStatus, '') = 'Scheduled')
+                      )
+                  AND NOT EXISTS (
+                        SELECT 1 FROM VMS_VisitDayLog dx
+                        WHERE dx.LogID = v2.LogID AND dx.ActualInTime IS NOT NULL
+                  )
+                  AND NOT EXISTS (
+                            SELECT 1 FROM VMS_VisitAttendanceHistory hx WHERE hx.LogID = v2.LogID
+                        )
+            ) src
+            INNER JOIN VMS_VisitLog v ON v.LogID = src.LogID
             LEFT JOIN MST_Branch b ON v.TargetBranchID = b.Branch_ID
             LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
-            LEFT JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
-                AND d.VisitDate = CAST(ISNULL(v.ValidFrom, v.RequestedValidFrom) AS date)
-            WHERE CAST(v.CreatedDate as DATE) >= @FromDate 
-              AND CAST(v.CreatedDate as DATE) <= @ToDate ";
+            WHERE 1 = 1 ";
 
                 // Apply Branch Filter
                 if (ddlBranch.SelectedValue != "0") query += " AND v.TargetBranchID = @BranchID ";
@@ -117,12 +170,24 @@ namespace AnmolDristi
                 {
                     query += " AND (ISNULL(v.VisitStatus, '') IN ('Cancelled', 'Rejected') OR ISNULL(v.ApprovalStatus, '') = 'Rejected') ";
                 }
+                else if (ddlStatus.SelectedValue == "Checked-In")
+                {
+                    query += " AND src.CycleStatus = 'Active' ";
+                }
+                else if (ddlStatus.SelectedValue == "Checked-Out")
+                {
+                    query += " AND src.CycleStatus = 'Checked-Out' ";
+                }
+                else if (ddlStatus.SelectedValue == "Scheduled")
+                {
+                    query += " AND ISNULL(src.CycleStatus, '') = 'Scheduled' ";
+                }
                 else if (ddlStatus.SelectedValue != "All")
                 {
                     query += " AND ISNULL(v.VisitStatus, '') = @Status ";
                 }
 
-                query += " ORDER BY v.CreatedDate DESC";
+                query += " ORDER BY src.AttendanceDate DESC, src.ActualInTime DESC";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
@@ -158,16 +223,30 @@ namespace AnmolDristi
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 string query = @"
-            SELECT 
-                CAST(v.CreatedDate as DATE) AS VisitDate,
+            SELECT
+                src.AttendanceDate AS VisitDate,
                 SUM(CASE WHEN v.PassCategory = 'I Work Here' THEN 1 ELSE 0 END) AS InternalCount,
                 SUM(CASE WHEN v.PassCategory = 'Meeting Appointment' THEN 1 ELSE 0 END) AS MeetingCount,
                 SUM(CASE WHEN v.PassCategory = 'Delivery' THEN 1 ELSE 0 END) AS DeliveryCount,
                 SUM(CASE WHEN v.PassCategory = 'Service' THEN 1 ELSE 0 END) AS ServiceCount,
                 SUM(CASE WHEN v.PassCategory = 'Interview' THEN 1 ELSE 0 END) AS InterviewCount
-            FROM VMS_VisitLog v
-            WHERE CAST(v.CreatedDate as DATE) >= @FromDate 
-              AND CAST(v.CreatedDate as DATE) <= @ToDate ";
+            FROM (
+                SELECT h.LogID, CAST(h.CheckInTime AS date) AS AttendanceDate
+                FROM VMS_VisitAttendanceHistory h
+                WHERE CAST(h.CheckInTime AS date) >= @FromDate
+                  AND CAST(h.CheckInTime AS date) <= @ToDate
+                UNION ALL
+                SELECT d.LogID, CAST(ISNULL(d.ActualInTime, d.VisitDate) AS date) AS AttendanceDate
+                FROM VMS_VisitDayLog d
+                WHERE d.ActualInTime IS NOT NULL
+                  AND CAST(ISNULL(d.ActualInTime, d.VisitDate) AS date) >= @FromDate
+                  AND CAST(ISNULL(d.ActualInTime, d.VisitDate) AS date) <= @ToDate
+                  AND NOT EXISTS (
+                        SELECT 1 FROM VMS_VisitAttendanceHistory hx WHERE hx.DayLogID = d.DayLogID
+                  )
+            ) src
+            INNER JOIN VMS_VisitLog v ON v.LogID = src.LogID
+            WHERE 1 = 1 ";
 
                 // Apply Branch Filter
                 if (ddlBranch.SelectedValue != "0") query += " AND v.TargetBranchID = @BranchID ";
@@ -181,12 +260,20 @@ namespace AnmolDristi
                 {
                     query += " AND (ISNULL(v.VisitStatus, '') IN ('Cancelled', 'Rejected') OR ISNULL(v.ApprovalStatus, '') = 'Rejected') ";
                 }
+                else if (ddlStatus.SelectedValue == "Checked-In")
+                {
+                    query += " AND 1 = 1 ";
+                }
+                else if (ddlStatus.SelectedValue == "Checked-Out")
+                {
+                    query += " AND 1 = 1 ";
+                }
                 else if (ddlStatus.SelectedValue != "All")
                 {
                     query += " AND ISNULL(v.VisitStatus, '') = @Status ";
                 }
 
-                query += " GROUP BY CAST(v.CreatedDate as DATE) ORDER BY CAST(v.CreatedDate as DATE) ASC";
+                query += " GROUP BY src.AttendanceDate ORDER BY src.AttendanceDate ASC";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
@@ -337,6 +424,32 @@ namespace AnmolDristi
 
                 LoadDashboardData();
                 return;
+            }
+        }
+
+        protected void gvVisitorLogs_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow)
+                return;
+
+            LinkButton lnkApprove = e.Row.FindControl("lnkApprove") as LinkButton;
+            if (lnkApprove == null || !lnkApprove.Visible)
+                return;
+
+            int logId = Convert.ToInt32(DataBinder.Eval(e.Row.DataItem, "LogID"));
+            VisitHoursEvaluation evaluation;
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                evaluation = VmsVisitScheduleHelper.EvaluateVisitHoursForLog(con, logId);
+            }
+
+            if (evaluation != null && evaluation.RequiresNotice)
+            {
+                string message = evaluation.HostWarningMessage ?? VmsVisitScheduleHelper.AfterHoursHostWarning;
+                lnkApprove.OnClientClick = "return confirm('" +
+                    message.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n") +
+                    "');";
             }
         }
 

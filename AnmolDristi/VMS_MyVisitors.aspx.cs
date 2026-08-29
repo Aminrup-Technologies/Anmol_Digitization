@@ -69,9 +69,61 @@ namespace AnmolDristi
             gvPending.DataBind();
             badgeCount.InnerText = dtPending.Rows.Count.ToString();
 
+            BindPlantTimingsJson(dtPending);
+
             DataTable dtHistory = _repository.GetHostVisitHistory(empCode);
             gvHistory.DataSource = dtHistory;
             gvHistory.DataBind();
+        }
+
+        private void BindPlantTimingsJson(DataTable pending)
+        {
+            int branchId = 0;
+            if (pending != null && pending.Columns.Contains("TargetBranchID"))
+            {
+                foreach (DataRow row in pending.Rows)
+                {
+                    if (row["TargetBranchID"] == DBNull.Value)
+                        continue;
+                    branchId = Convert.ToInt32(row["TargetBranchID"]);
+                    if (branchId > 0)
+                        break;
+                }
+            }
+
+            hfPlantTimingsJson.Value = branchId > 0
+                ? VmsVisitScheduleHelper.GetPlantTimingsJson(branchId)
+                : "{}";
+        }
+
+        protected void gvPending_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow)
+                return;
+
+            LinkButton btnApprove = e.Row.FindControl("btnApprove") as LinkButton;
+            if (btnApprove == null)
+                return;
+
+            int logId = Convert.ToInt32(DataBinder.Eval(e.Row.DataItem, "LogID"));
+            VisitHoursEvaluation evaluation;
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                evaluation = VmsVisitScheduleHelper.EvaluateVisitHoursForLog(con, logId);
+            }
+
+            if (evaluation != null && evaluation.RequiresNotice)
+                btnApprove.OnClientClick = ToJsConfirm(evaluation.HostWarningMessage);
+        }
+
+        private static string ToJsConfirm(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return "return true;";
+            return "return confirm('" +
+                message.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n") +
+                "');";
         }
 
         protected void gvPending_RowCommand(object sender, GridViewCommandEventArgs e)
