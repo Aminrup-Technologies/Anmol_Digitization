@@ -254,6 +254,7 @@
     <Content Include="ITSM\UI\TicketList.aspx" />
     <Content Include="ITSM\UI\TicketDetail.aspx" />
     <Content Include="ITSM\UI\ApprovalConfig.aspx" />
+    <Content Include="ITSM\UI\MasterData.aspx" />
     <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
@@ -1601,6 +1602,13 @@
     </Compile>
     <Compile Include="ITSM\UI\ApprovalConfig.aspx.designer.cs">
       <DependentUpon>ApprovalConfig.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\MasterData.aspx.cs">
+      <DependentUpon>MasterData.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\MasterData.aspx.designer.cs">
+      <DependentUpon>MasterData.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
