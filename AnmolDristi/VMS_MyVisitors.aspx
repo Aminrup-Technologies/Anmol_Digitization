@@ -30,7 +30,7 @@
                                 
                                 <div role="tabpanel" class="tab-pane fade active in" id="tab_pending" aria-labelledby="home-tab">
                                     <div class="table-responsive" style="margin-top:15px;">
-                                        <asp:GridView ID="gvPending" runat="server" AutoGenerateColumns="False" CssClass="table table-striped jambo_table bulk_action" OnRowCommand="gvPending_RowCommand" DataKeyNames="LogID,VisitorEmail,VisitorMobile,VisitorName">
+                                        <asp:GridView ID="gvPending" runat="server" AutoGenerateColumns="False" CssClass="table table-striped jambo_table bulk_action" OnRowCommand="gvPending_RowCommand" OnRowDataBound="gvPending_RowDataBound" DataKeyNames="LogID,VisitorEmail,VisitorMobile,VisitorName">
                                             <EmptyDataTemplate>
                                                 <div class="text-center" style="padding: 30px; color: #73879C;">
                                                     <i class="fa fa-coffee fa-3x"></i>
@@ -139,7 +139,8 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                            <asp:Button ID="btnConfirmSchedule" runat="server" Text="Confirm Approval" CssClass="btn btn-success" OnClick="btnConfirmSchedule_Click" />
+                            <asp:HiddenField ID="hfPlantTimingsJson" runat="server" />
+                            <asp:Button ID="btnConfirmSchedule" runat="server" Text="Confirm Approval" CssClass="btn btn-success" OnClick="btnConfirmSchedule_Click" OnClientClick="return confirmHostScheduleApproval();" />
                         </div>
                     </ContentTemplate>
                     <Triggers>
@@ -149,4 +150,64 @@
             </div>
         </div>
     </div>
+
+    <script type="text/javascript">
+        function parseTimeSpan(value) {
+            if (!value) return null;
+            var parts = value.split(":");
+            if (parts.length < 2) return null;
+            var h = parseInt(parts[0], 10);
+            var m = parseInt(parts[1], 10);
+            if (isNaN(h) || isNaN(m)) return null;
+            return (h * 60) + m;
+        }
+        function weekdayName(dateValue) {
+            var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            var d = new Date(dateValue + "T00:00:00");
+            return names[d.getDay()];
+        }
+        function isWindowOutsideTiming(startMin, endMin, timing) {
+            if (!timing) return false;
+            if (!timing.open && !timing.close) return true;
+            var openMin = parseTimeSpan(timing.open);
+            var closeMin = parseTimeSpan(timing.close);
+            if (openMin !== null && startMin < openMin) return true;
+            if (closeMin !== null && (startMin >= closeMin || endMin > closeMin)) return true;
+            return false;
+        }
+        function confirmHostScheduleApproval() {
+            var timings = {};
+            try {
+                var raw = $("#<%= hfPlantTimingsJson.ClientID %>").val();
+                if (raw) timings = JSON.parse(raw);
+            } catch (e) { timings = {}; }
+
+            var timeFrom = parseTimeSpan($("#<%= txtApprovedTimeFrom.ClientID %>").val());
+            var timeTo = parseTimeSpan($("#<%= txtApprovedTimeTo.ClientID %>").val());
+            var affected = [];
+            $("#<%= cblModalDays.ClientID %> input:checked").each(function () {
+                var iso = $(this).val();
+                if (timeFrom !== null && timeTo !== null && isWindowOutsideTiming(timeFrom, timeTo, timings[weekdayName(iso)]))
+                    affected.push(iso);
+            });
+
+            var now = new Date();
+            var todayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
+            var nowMin = now.getHours() * 60 + now.getMinutes();
+            var currentAfter = isWindowOutsideTiming(nowMin, nowMin, timings[todayName]);
+            if (!currentAfter && affected.length === 0)
+                return true;
+
+            var msg = "Warning: This visit falls outside configured plant working hours. Approving this request will be recorded as an after-hours approval.";
+            if (affected.length > 0) {
+                msg += "\n";
+                for (var i = 0; i < affected.length; i++) {
+                    var d = new Date(affected[i] + "T00:00:00");
+                    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    msg += "\n- " + weekdayName(affected[i]) + " " + ("0" + d.getDate()).slice(-2) + " " + months[d.getMonth()] + " – Outside hours";
+                }
+            }
+            return confirm(msg);
+        }
+    </script>
 </asp:Content>

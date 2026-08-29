@@ -86,6 +86,7 @@ namespace AnmolDristi
             string closedMsg;
             bool isOpen = VmsHelper.IsFacilityOpen(Convert.ToInt32(hfBranchId.Value), out closedMsg);
             hfIsFacilityOpen.Value = isOpen.ToString().ToLower();
+            hfPlantTimingsJson.Value = VmsVisitScheduleHelper.GetPlantTimingsJson(Convert.ToInt32(hfBranchId.Value));
 
             // Bind quick-select host chips from branch preconfigured hosts
             BindQuickHosts();
@@ -790,10 +791,9 @@ namespace AnmolDristi
                 int branchId = Convert.ToInt32(hfBranchId.Value);
 
                 // ==========================================================
-                // 3. HOST + SAME-HOST DUPLICATE CHECK
-                // 2026-08-22: Preserves PR #166 host-aware duplicate logic.
+                // 3. HOST + SAME-HOST SAME-CALENDAR-DAY DUPLICATE CHECK
                 // Host validation MUST come before duplicate check so that
-                // HasActiveVisit receives the selected host code.
+                // HasSameCalendarDayVisitForHost receives the selected host code.
                 // ==========================================================
                 string hostEmpCode = hfSelectedHostCode.Value == null
                     ? ""
@@ -805,10 +805,23 @@ namespace AnmolDristi
                     return;
                 }
 
-                if (VmsHelper.HasActiveVisit(visitorMobile, visitorEmail, branchId, hostEmpCode))
+                VisitScheduleRequest visitSchedule = VmsVisitScheduleHelper.ParseSchedule(
+                    ddlScheduleType.SelectedValue,
+                    txtVisitFromDate.Text,
+                    txtVisitToDate.Text,
+                    txtTimeFrom.Text,
+                    txtTimeTo.Text);
+
+                if (VmsHelper.HasSameCalendarDayVisitForHost(
+                    visitorMobile,
+                    visitorEmail,
+                    branchId,
+                    hostEmpCode,
+                    visitSchedule.FromDate,
+                    visitSchedule.ToDate))
                 {
-                    Response.Redirect($"VMS_MyVisits.aspx?BranchId={branchId}", false);
-                    Context.ApplicationInstance.CompleteRequest();
+                    lblMessage.ForeColor = System.Drawing.Color.Red;
+                    lblMessage.Text = "A visit request for this host already exists for the selected date.";
                     return;
                 }
 
@@ -860,13 +873,6 @@ namespace AnmolDristi
                     lblMessage.Text = "Designation is mandatory. Please enter your designation.";
                     return;
                 }
-
-                VisitScheduleRequest visitSchedule = VmsVisitScheduleHelper.ParseSchedule(
-                    ddlScheduleType.SelectedValue,
-                    txtVisitFromDate.Text,
-                    txtVisitToDate.Text,
-                    txtTimeFrom.Text,
-                    txtTimeTo.Text);
 
                 string scheduleSummary = VmsVisitScheduleHelper.FormatScheduleSummary(visitSchedule);
 

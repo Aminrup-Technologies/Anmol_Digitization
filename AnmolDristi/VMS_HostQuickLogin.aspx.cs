@@ -36,7 +36,8 @@ namespace AnmolDristi
                     SELECT v.VisitorName, v.VisitorCompany, v.PurposeOfVisit, v.ApprovalStatus, 
                            ISNULL(NULLIF(v.VisitorMobile, ''), v.VisitorEmail) AS ContactInfo,
                            ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
-                           v.RequestedValidFrom, v.RequestedValidUpto
+                           v.RequestedValidFrom, v.RequestedValidUpto,
+                           ISNULL(v.TargetBranchID, 0) AS TargetBranchID
                     FROM VMS_VisitLog v
                     INNER JOIN MST_UserMaster u
                         ON u.EmployeeCode = v.HostEmployeeCode
@@ -45,6 +46,7 @@ namespace AnmolDristi
 
                 string scheduleType = "SingleDay";
                 bool isPending = false;
+                int loadedBranchId = 0;
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
@@ -74,11 +76,16 @@ namespace AnmolDristi
                                     lblSchedule.Text = scheduleType == "MultiDay"
                                         ? $"{reqFrom:dd MMM yyyy} to {reqTo:dd MMM yyyy}, daily {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}"
                                         : $"{reqFrom:dd MMM yyyy}, {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}";
+                                    hfVisitFromDate.Value = reqFrom.ToString("yyyy-MM-dd");
+                                    hfVisitToDate.Value = reqTo.ToString("yyyy-MM-dd");
                                 }
                                 else
                                 {
                                     lblSchedule.Text = "Not specified";
                                 }
+
+                                int branchId = Convert.ToInt32(sdr["TargetBranchID"]);
+                                loadedBranchId = branchId;
 
                                 pnlAction.Visible = true;
                                 lblMessage.Visible = false;
@@ -96,6 +103,13 @@ namespace AnmolDristi
                             lblMessage.Text = "Visitor not found or you are not authorized to view this request.";
                         }
                     }
+                }
+
+                if (isPending)
+                {
+                    hfPlantTimingsJson.Value = loadedBranchId > 0
+                        ? VmsVisitScheduleHelper.GetPlantTimingsJson(loadedBranchId)
+                        : "{}";
                 }
 
                 if (isPending && scheduleType == "MultiDay")

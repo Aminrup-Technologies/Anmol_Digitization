@@ -32,6 +32,7 @@
                     <asp:HiddenField ID="hfSelfieBase64" runat="server" />
                     <asp:HiddenField ID="hfSelectedHostCode" runat="server" />
                     <asp:HiddenField ID="hfIsFacilityOpen" runat="server" />
+                    <asp:HiddenField ID="hfPlantTimingsJson" runat="server" />
                     <!-- 2026-08-22: Added hfCameraActive to track whether getUserMedia succeeded. Used by client+server validation to distinguish camera capture from manual POST. -->
                     <asp:HiddenField ID="hfCameraActive" runat="server" Value="false" />
 
@@ -354,11 +355,12 @@
                 return false;
             }
 
-            // Off-Hours Soft Warning
-            if ($("#<%= hfIsFacilityOpen.ClientID %>").val() === "false") {
-                var proceed = confirm("NOTICE: You are requesting entry outside of standard office hours.\n\nYour pass validity will be entirely dependent on your Host's approval. Do you wish to proceed?");
+            // Off-Hours Soft Warning — current time and/or scheduled window (one notice)
+            var hoursNotice = buildVisitorHoursNotice();
+            if (hoursNotice) {
+                var proceed = confirm(hoursNotice);
                 if (!proceed) {
-                    return false; // Stop submission if they click Cancel
+                    return false;
                 }
             }
             
@@ -368,6 +370,95 @@
             submitBtn.after('<button type="button" class="btn btn-proceed" disabled><i class="fa fa-spinner fa-spin"></i> Processing...</button>');
             
             return true;
+        }
+
+        function parseTimeSpan(value) {
+            if (!value) return null;
+            var parts = value.split(":");
+            if (parts.length < 2) return null;
+            var h = parseInt(parts[0], 10);
+            var m = parseInt(parts[1], 10);
+            if (isNaN(h) || isNaN(m)) return null;
+            return (h * 60) + m;
+        }
+
+        function weekdayName(dateValue) {
+            var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            var d = new Date(dateValue + "T00:00:00");
+            return names[d.getDay()];
+        }
+
+        function isWindowOutsideTiming(startMin, endMin, timing) {
+            if (!timing) return false;
+            if (!timing.open && !timing.close) return true;
+            var openMin = parseTimeSpan(timing.open);
+            var closeMin = parseTimeSpan(timing.close);
+            if (openMin !== null && startMin < openMin) return true;
+            if (closeMin !== null && (startMin >= closeMin || endMin > closeMin)) return true;
+            return false;
+        }
+
+        function formatNoticeDate(dateValue) {
+            var d = new Date(dateValue + "T00:00:00");
+            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return weekdayName(dateValue) + " " + ("0" + d.getDate()).slice(-2) + " " + months[d.getMonth()] + " – Outside hours";
+        }
+
+        function buildVisitorHoursNotice() {
+            var timings = {};
+            try {
+                var raw = $("#<%= hfPlantTimingsJson.ClientID %>").val();
+                if (raw) timings = JSON.parse(raw);
+            } catch (e) {
+                timings = {};
+            }
+
+            var now = new Date();
+            var todayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
+            var nowMin = now.getHours() * 60 + now.getMinutes();
+            var currentAfter = isWindowOutsideTiming(nowMin, nowMin, timings[todayName]);
+
+            var fromDate = $("#<%= txtVisitFromDate.ClientID %>").val();
+            var toDate = $("#<%= ddlScheduleType.ClientID %>").val() === "MultiDay"
+                ? $("#<%= txtVisitToDate.ClientID %>").val()
+                : fromDate;
+            var timeFrom = parseTimeSpan($("#<%= txtTimeFrom.ClientID %>").val());
+            var timeTo = parseTimeSpan($("#<%= txtTimeTo.ClientID %>").val());
+
+            var affected = [];
+            if (fromDate && timeFrom !== null && timeTo !== null) {
+                var cursor = new Date(fromDate + "T00:00:00");
+                var end = new Date((toDate || fromDate) + "T00:00:00");
+                if (end < cursor) end = cursor;
+                while (cursor <= end) {
+                    var iso = cursor.getFullYear() + "-" +
+                        ("0" + (cursor.getMonth() + 1)).slice(-2) + "-" +
+                        ("0" + cursor.getDate()).slice(-2);
+                    if (isWindowOutsideTiming(timeFrom, timeTo, timings[weekdayName(iso)])) {
+                        affected.push(iso);
+                    }
+                    cursor.setDate(cursor.getDate() + 1);
+                }
+            }
+
+            if (!currentAfter && affected.length === 0)
+                return "";
+
+            var msg = "Notice: Your visit falls outside the organization's normal working hours. Your host may still approve this request as an exception.";
+            if (currentAfter && affected.length > 0)
+                msg += "\n\nYou are submitting outside current plant hours, and the requested visit window is also outside hours.";
+            else if (currentAfter)
+                msg += "\n\nYou are submitting outside current plant hours.";
+            else
+                msg += "\n\nThe requested visit window is outside plant hours.";
+
+            if (affected.length > 0) {
+                msg += "\n";
+                for (var i = 0; i < affected.length; i++) {
+                    msg += "\n- " + formatNoticeDate(affected[i]);
+                }
+            }
+            return msg;
         }
     </script>
 </asp:Content>

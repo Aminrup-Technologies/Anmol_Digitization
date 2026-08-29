@@ -77,7 +77,7 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="chart-container">
-                        <h4>Visitor Trends (By Category)</h4>
+                        <h4>Physical Attendance (By Category)</h4>
                         <canvas id="visitorTrendChart" height="250"></canvas>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
                         <asp:UpdatePanel ID="UpdatePanelGrid" runat="server">
                             <ContentTemplate>
                                 <asp:GridView ID="gvVisitorLogs" runat="server" AutoGenerateColumns="False"
-                                    CssClass="table table-striped table-bordered" OnRowCommand="gvVisitorLogs_RowCommand" DataKeyNames="LogID">
+                                    CssClass="table table-striped table-bordered" OnRowCommand="gvVisitorLogs_RowCommand" OnRowDataBound="gvVisitorLogs_RowDataBound" DataKeyNames="LogID">
                                     <Columns>
                                         <asp:BoundField DataField="LogID" HeaderText="ID" ItemStyle-Width="50px" />
 
@@ -125,20 +125,26 @@
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
+                                        <asp:TemplateField HeaderText="Date">
+                                            <ItemTemplate>
+                                                <%# Eval("AttendanceDate") != DBNull.Value ? Convert.ToDateTime(Eval("AttendanceDate")).ToString("dd-MMM-yyyy") : "--" %>
+                                            </ItemTemplate>
+                                        </asp:TemplateField>
+
                                         <asp:TemplateField HeaderText="Timeline">
                                             <ItemTemplate>
                                                 <div style="font-size: 11px; line-height: 1.4;">
                                                     <div class="text-muted"><strong>Req:</strong> <%# Eval("CreatedDate", "{0:dd-MMM HH:mm:tt}") %></div>
                                                     <div class="text-primary"><strong>App:</strong> <%# Eval("ApprovedOn") != DBNull.Value ? Eval("ApprovedOn", "{0:dd-MMM HH:mm:tt}") : "Pending" %></div>
                                                     <div class="text-success"><strong>In:</strong> <%# Eval("ActualInTime") != DBNull.Value ? Eval("ActualInTime", "{0:dd-MMM HH:mm:tt}") : "--:--" %></div>
-                                                    <div class="text-warning"><strong>Out:</strong> <%# Eval("ActualOutTime") != DBNull.Value ? Eval("ActualOutTime", "{0:dd-MMM HH:mm:tt}") : "--:--" %></div>
+                                                    <div class="text-warning"><strong>Out:</strong> <%# Eval("ActualOutTime") != DBNull.Value ? Eval("ActualOutTime", "{0:dd-MMM HH:mm:tt}") : (Convert.ToString(Eval("CycleStatus")) == "Active" ? "Active" : "--:--") %></div>
                                                 </div>
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
                                         <asp:TemplateField HeaderText="Status" ItemStyle-Width="100px">
                                             <ItemTemplate>
-                                                <strong><%# Eval("VisitStatus") %></strong>
+                                                <strong><%# Eval("CycleStatus") %></strong>
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
@@ -162,7 +168,7 @@
 
                                                 <asp:LinkButton ID="lnkCheckOut" runat="server" CommandName="CheckOutVisit" CommandArgument='<%# Eval("LogID") %>'
                                                     CssClass="btn btn-warning btn-xs" ToolTip="Manual Check-Out"
-                                                    Visible='<%# Eval("VisitStatus").ToString() == "Checked-In" %>'
+                                                    Visible='<%# Eval("VisitStatus").ToString() == "Checked-In" && Convert.ToString(Eval("CycleStatus")) == "Active" %>'
                                                     OnClientClick="return confirm('Are you sure you want to manually Check-Out this visitor?');">
                                                     <i class="fa fa-sign-out"></i>
                                                 </asp:LinkButton>

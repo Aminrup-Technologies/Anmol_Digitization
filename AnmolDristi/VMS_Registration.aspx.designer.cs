@@ -67,6 +67,11 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.HiddenField hfIsFacilityOpen;
 
         /// <summary>
+        /// hfPlantTimingsJson control.
+        /// </summary>
+        protected global::System.Web.UI.WebControls.HiddenField hfPlantTimingsJson;
+
+        /// <summary>
         /// hfCameraActive control.
         /// </summary>
         /// <remarks>

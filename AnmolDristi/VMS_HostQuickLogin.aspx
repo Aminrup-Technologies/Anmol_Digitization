@@ -50,6 +50,9 @@
 
                 <div class="validity-window">
                     <span class="hint">Adjust the valid access window for this visitor if required.</span>
+                    <asp:HiddenField ID="hfPlantTimingsJson" runat="server" />
+                    <asp:HiddenField ID="hfVisitFromDate" runat="server" />
+                    <asp:HiddenField ID="hfVisitToDate" runat="server" />
                     <div class="validity-row">
                         <div class="field">
                             <label for="<%= txtApprovedTimeFrom.ClientID %>">Valid From</label>
@@ -63,7 +66,7 @@
                 </div>
 
                 <div>
-                    <asp:Button ID="btnApprove" runat="server" Text="✓ Approve" CssClass="btn btn-approve" OnClick="btnApprove_Click" OnClientClick="return confirm('Approve this visitor and generate Gate Pass?');" />
+                    <asp:Button ID="btnApprove" runat="server" Text="✓ Approve" CssClass="btn btn-approve" OnClick="btnApprove_Click" OnClientClick="return confirmHostQuickApprove();" />
                     <asp:Button ID="btnReject" runat="server" Text="✗ Reject" CssClass="btn btn-reject" OnClick="btnReject_Click" OnClientClick="return confirm('Reject this visitor?');" />
                     <div class="clearfix"></div>
                 </div>
@@ -72,5 +75,88 @@
             <asp:Label ID="lblMessage" runat="server" CssClass="error"></asp:Label>
         </div>
     </form>
+    <script type="text/javascript">
+        function parseTimeSpan(value) {
+            if (!value) return null;
+            var parts = value.split(":");
+            if (parts.length < 2) return null;
+            var h = parseInt(parts[0], 10);
+            var m = parseInt(parts[1], 10);
+            if (isNaN(h) || isNaN(m)) return null;
+            return (h * 60) + m;
+        }
+        function weekdayName(dateValue) {
+            var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            var d = new Date(dateValue + "T00:00:00");
+            return names[d.getDay()];
+        }
+        function isWindowOutsideTiming(startMin, endMin, timing) {
+            if (!timing) return false;
+            if (!timing.open && !timing.close) return true;
+            var openMin = parseTimeSpan(timing.open);
+            var closeMin = parseTimeSpan(timing.close);
+            if (openMin !== null && startMin < openMin) return true;
+            if (closeMin !== null && (startMin >= closeMin || endMin > closeMin)) return true;
+            return false;
+        }
+        function ymd(d) {
+            return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+        }
+        function confirmHostQuickApprove() {
+            var timings = {};
+            try {
+                var raw = document.getElementById("<%= hfPlantTimingsJson.ClientID %>").value;
+                if (raw) timings = JSON.parse(raw);
+            } catch (e) { timings = {}; }
+
+            var timeFromEl = document.getElementById("<%= txtApprovedTimeFrom.ClientID %>");
+            var timeToEl = document.getElementById("<%= txtApprovedTimeTo.ClientID %>");
+            var timeFrom = parseTimeSpan(timeFromEl ? timeFromEl.value : "");
+            var timeTo = parseTimeSpan(timeToEl ? timeToEl.value : "");
+
+            var dates = [];
+            var dayList = document.getElementById("<%= cblRequestedDays.ClientID %>");
+            if (dayList && dayList.style.display !== "none") {
+                var checks = dayList.querySelectorAll("input[type=checkbox]:checked");
+                for (var i = 0; i < checks.length; i++) dates.push(checks[i].value);
+            }
+            if (dates.length === 0) {
+                var fromIso = document.getElementById("<%= hfVisitFromDate.ClientID %>").value;
+                var toIso = document.getElementById("<%= hfVisitToDate.ClientID %>").value || fromIso;
+                if (fromIso) {
+                    var cursor = new Date(fromIso + "T00:00:00");
+                    var end = new Date((toIso || fromIso) + "T00:00:00");
+                    while (cursor <= end) {
+                        dates.push(ymd(cursor));
+                        cursor.setDate(cursor.getDate() + 1);
+                    }
+                }
+            }
+
+            var now = new Date();
+            var todayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
+            var nowMin = now.getHours() * 60 + now.getMinutes();
+            var currentAfter = isWindowOutsideTiming(nowMin, nowMin, timings[todayName]);
+            var affected = [];
+            for (var j = 0; j < dates.length; j++) {
+                if (timeFrom !== null && timeTo !== null && isWindowOutsideTiming(timeFrom, timeTo, timings[weekdayName(dates[j])]))
+                    affected.push(dates[j]);
+            }
+
+            var msg = "Approve this visitor and generate Gate Pass?";
+            if (currentAfter || affected.length > 0) {
+                msg = "Warning: This visit falls outside configured plant working hours. Approving this request will be recorded as an after-hours approval.";
+                if (affected.length > 0) {
+                    msg += "\n";
+                    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    for (var k = 0; k < affected.length; k++) {
+                        var d = new Date(affected[k] + "T00:00:00");
+                        msg += "\n- " + weekdayName(affected[k]) + " " + ("0" + d.getDate()).slice(-2) + " " + months[d.getMonth()] + " – Outside hours";
+                    }
+                }
+            }
+            return confirm(msg);
+        }
+    </script>
 </body>
 </html>

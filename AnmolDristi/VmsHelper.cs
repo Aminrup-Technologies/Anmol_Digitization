@@ -129,6 +129,8 @@ namespace AnmolDristi
         /// so same-day re-entry does not open a duplicate request). When
         /// <paramref name="hostEmployeeCode"/> is provided, the check is scoped to that host
         /// only (same visitor may request a different host).
+        /// Used by Self-Login routing; registration duplicate blocking uses
+        /// <see cref="HasSameCalendarDayVisitForHost"/>.
         /// </summary>
         public static bool HasActiveVisit(string mobile, string email, int branchId, string hostEmployeeCode = null)
         {
@@ -176,6 +178,73 @@ namespace AnmolDristi
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// True when the same visitor already has a non-cancelled request for the same host
+        /// that overlaps any calendar day in <paramref name="fromDate"/>–<paramref name="toDate"/>.
+        /// A different host on the same date is allowed.
+        /// </summary>
+        public static bool HasSameCalendarDayVisitForHost(
+            string mobile,
+            string email,
+            int branchId,
+            string hostEmployeeCode,
+            DateTime fromDate,
+            DateTime toDate)
+        {
+            if (string.IsNullOrWhiteSpace(hostEmployeeCode))
+                return false;
+
+            string normalizedMobile = NormalizeMobile(mobile);
+            string normalizedEmail = NormalizeEmail(email);
+            DateTime rangeStart = fromDate.Date;
+            DateTime rangeEnd = toDate.Date;
+            if (rangeEnd < rangeStart)
+                rangeEnd = rangeStart;
+
+            using (SqlConnection con = new SqlConnection(ConnStr))
+            {
+                string query = @"
+                    SELECT TOP 1 v.LogID
+                    FROM VMS_VisitLog v
+                    WHERE v.TargetBranchID = @BranchId
+                      AND v.HostEmployeeCode = @HostEmployeeCode
+                      AND ISNULL(v.ApprovalStatus, '') NOT IN ('Rejected')
+                      AND ISNULL(v.VisitStatus, '') NOT IN ('Cancelled', 'Rejected')
+                      AND (
+                            v.VisitorMobile = @Mobile
+                            OR (@Email <> 'N/A' AND v.VisitorEmail = @Email)
+                          )
+                      AND (
+                            EXISTS (
+                                SELECT 1
+                                FROM VMS_VisitDayLog d
+                                WHERE d.LogID = v.LogID
+                                  AND ISNULL(d.VisitStatus, '') <> 'Cancelled'
+                                  AND d.VisitDate >= @FromDate
+                                  AND d.VisitDate <= @ToDate
+                            )
+                            OR (
+                                NOT EXISTS (SELECT 1 FROM VMS_VisitDayLog d2 WHERE d2.LogID = v.LogID)
+                                AND CAST(ISNULL(v.RequestedValidFrom, v.ValidFrom) AS date) <= @ToDate
+                                AND CAST(ISNULL(v.RequestedValidUpto, v.ValidUpto) AS date) >= @FromDate
+                            )
+                          )";
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Mobile", normalizedMobile);
+                    cmd.Parameters.AddWithValue("@Email", normalizedEmail);
+                    cmd.Parameters.AddWithValue("@BranchId", branchId);
+                    cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode.Trim());
+                    cmd.Parameters.AddWithValue("@FromDate", rangeStart);
+                    cmd.Parameters.AddWithValue("@ToDate", rangeEnd);
+                    con.Open();
+                    object result = cmd.ExecuteScalar();
+                    return result != null && result != DBNull.Value;
+                }
+            }
         }
 
         public static bool IsFacilityOpen(int branchId, out string closedMessage)
