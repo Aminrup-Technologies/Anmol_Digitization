@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Globalization;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Text;
@@ -23,9 +24,12 @@ namespace AnmolDristi
             {
                 BindBranches();
 
-                // Default Date Range: Last 7 Days to Today
-                txtFromDate.Text = DateTime.Now.AddDays(-3).ToString("yyyy-MM-dd");
-                txtToDate.Text = DateTime.Now.ToString("yyyy-MM-dd");
+                // Month-wise report: first day through last day of the current month
+                DateTime today = DateTime.Now.Date;
+                DateTime monthStart = new DateTime(today.Year, today.Month, 1);
+                DateTime monthEnd = monthStart.AddMonths(1).AddDays(-1);
+                txtFromDate.Text = monthStart.ToString("yyyy-MM-dd");
+                txtToDate.Text = monthEnd.ToString("yyyy-MM-dd");
 
                 LoadDashboardData();
             }
@@ -65,6 +69,11 @@ namespace AnmolDristi
 
         private void BindGrid()
         {
+            DateTime fromDate;
+            DateTime toDate;
+            if (!TryGetInclusiveReportRange(out fromDate, out toDate))
+                return;
+
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 string query = @"
@@ -84,13 +93,15 @@ namespace AnmolDristi
                 v.VisitStatus, 
                 v.CreatedDate,
                 v.ApprovedOn,
-                v.ActualInTime, 
-                v.ActualOutTime,
+                CASE WHEN d.DayLogID IS NOT NULL THEN d.ActualInTime ELSE v.ActualInTime END AS ActualInTime,
+                CASE WHEN d.DayLogID IS NOT NULL THEN d.ActualOutTime ELSE v.ActualOutTime END AS ActualOutTime,
                 b.Branch_ID, 
                 b.Branch_Description
             FROM VMS_VisitLog v
             LEFT JOIN MST_Branch b ON v.TargetBranchID = b.Branch_ID
             LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
+            LEFT JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
+                AND d.VisitDate = CAST(ISNULL(v.ValidFrom, v.RequestedValidFrom) AS date)
             WHERE CAST(v.CreatedDate as DATE) >= @FromDate 
               AND CAST(v.CreatedDate as DATE) <= @ToDate ";
 
@@ -115,8 +126,8 @@ namespace AnmolDristi
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
-                    cmd.Parameters.AddWithValue("@FromDate", txtFromDate.Text);
-                    cmd.Parameters.AddWithValue("@ToDate", txtToDate.Text);
+                    cmd.Parameters.AddWithValue("@FromDate", fromDate);
+                    cmd.Parameters.AddWithValue("@ToDate", toDate);
 
                     if (ddlBranch.SelectedValue != "0") cmd.Parameters.AddWithValue("@BranchID", ddlBranch.SelectedValue);
                     if (ddlStatus.SelectedValue != "ActiveDefault" && ddlStatus.SelectedValue != "Cancelled" && ddlStatus.SelectedValue != "All")
@@ -139,11 +150,16 @@ namespace AnmolDristi
 
         private void BindChart()
         {
+            DateTime fromDate;
+            DateTime toDate;
+            if (!TryGetInclusiveReportRange(out fromDate, out toDate))
+                return;
+
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 string query = @"
             SELECT 
-                FORMAT(v.CreatedDate, 'dd-MMM') AS VisitDate,
+                CAST(v.CreatedDate as DATE) AS VisitDate,
                 SUM(CASE WHEN v.PassCategory = 'I Work Here' THEN 1 ELSE 0 END) AS InternalCount,
                 SUM(CASE WHEN v.PassCategory = 'Meeting Appointment' THEN 1 ELSE 0 END) AS MeetingCount,
                 SUM(CASE WHEN v.PassCategory = 'Delivery' THEN 1 ELSE 0 END) AS DeliveryCount,
@@ -170,18 +186,38 @@ namespace AnmolDristi
                     query += " AND ISNULL(v.VisitStatus, '') = @Status ";
                 }
 
-                query += " GROUP BY FORMAT(v.CreatedDate, 'dd-MMM'), CAST(v.CreatedDate as DATE) ORDER BY CAST(v.CreatedDate as DATE) ASC";
+                query += " GROUP BY CAST(v.CreatedDate as DATE) ORDER BY CAST(v.CreatedDate as DATE) ASC";
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
                 {
-                    cmd.Parameters.AddWithValue("@FromDate", txtFromDate.Text);
-                    cmd.Parameters.AddWithValue("@ToDate", txtToDate.Text);
+                    cmd.Parameters.AddWithValue("@FromDate", fromDate);
+                    cmd.Parameters.AddWithValue("@ToDate", toDate);
 
                     if (ddlBranch.SelectedValue != "0") cmd.Parameters.AddWithValue("@BranchID", ddlBranch.SelectedValue);
                     if (ddlStatus.SelectedValue != "ActiveDefault" && ddlStatus.SelectedValue != "Cancelled" && ddlStatus.SelectedValue != "All")
                     {
                         cmd.Parameters.AddWithValue("@Status", ddlStatus.SelectedValue);
                     }
+
+                    Dictionary<DateTime, int[]> countsByDate = new Dictionary<DateTime, int[]>();
+
+                    con.Open();
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read())
+                        {
+                            DateTime visitDate = Convert.ToDateTime(sdr["VisitDate"]).Date;
+                            countsByDate[visitDate] = new int[]
+                            {
+                                Convert.ToInt32(sdr["InternalCount"]),
+                                Convert.ToInt32(sdr["MeetingCount"]),
+                                Convert.ToInt32(sdr["DeliveryCount"]),
+                                Convert.ToInt32(sdr["ServiceCount"]),
+                                Convert.ToInt32(sdr["InterviewCount"])
+                            };
+                        }
+                    }
+                    con.Close();
 
                     List<string> labels = new List<string>();
                     List<int> internalData = new List<int>();
@@ -190,20 +226,20 @@ namespace AnmolDristi
                     List<int> serviceData = new List<int>();
                     List<int> interviewData = new List<int>();
 
-                    con.Open();
-                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    // Inclusive first-through-last day of the selected range, including zero-visit days.
+                    for (DateTime day = fromDate.Date; day <= toDate.Date; day = day.AddDays(1))
                     {
-                        while (sdr.Read())
-                        {
-                            labels.Add(sdr["VisitDate"].ToString());
-                            internalData.Add(Convert.ToInt32(sdr["InternalCount"]));
-                            meetingData.Add(Convert.ToInt32(sdr["MeetingCount"]));
-                            deliveryData.Add(Convert.ToInt32(sdr["DeliveryCount"]));
-                            serviceData.Add(Convert.ToInt32(sdr["ServiceCount"]));
-                            interviewData.Add(Convert.ToInt32(sdr["InterviewCount"]));
-                        }
+                        labels.Add(day.ToString("dd-MMM", CultureInfo.InvariantCulture));
+                        int[] counts;
+                        if (!countsByDate.TryGetValue(day, out counts))
+                            counts = new int[] { 0, 0, 0, 0, 0 };
+
+                        internalData.Add(counts[0]);
+                        meetingData.Add(counts[1]);
+                        deliveryData.Add(counts[2]);
+                        serviceData.Add(counts[3]);
+                        interviewData.Add(counts[4]);
                     }
-                    con.Close();
 
                     string jsonLabels = labels.Count > 0 ? "[\"" + string.Join("\",\"", labels) + "\"]" : "[]";
                     string jsonInternal = "[" + string.Join(",", internalData) + "]";
@@ -216,6 +252,25 @@ namespace AnmolDristi
                         $"renderChart('{jsonLabels}', '{jsonInternal}', '{jsonMeeting}', '{jsonDelivery}', '{jsonService}', '{jsonInterview}');", true);
                 }
             }
+        }
+
+        private bool TryGetInclusiveReportRange(out DateTime fromDate, out DateTime toDate)
+        {
+            DateTime today = DateTime.Now.Date;
+            DateTime monthStart = new DateTime(today.Year, today.Month, 1);
+            DateTime monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+            if (!DateTime.TryParse(txtFromDate.Text, CultureInfo.InvariantCulture, DateTimeStyles.None, out fromDate))
+                fromDate = monthStart;
+            if (!DateTime.TryParse(txtToDate.Text, CultureInfo.InvariantCulture, DateTimeStyles.None, out toDate))
+                toDate = monthEnd;
+
+            fromDate = fromDate.Date;
+            toDate = toDate.Date;
+            if (toDate < fromDate)
+                toDate = fromDate;
+
+            return true;
         }
 
         protected void gvVisitorLogs_RowCommand(object sender, GridViewCommandEventArgs e)

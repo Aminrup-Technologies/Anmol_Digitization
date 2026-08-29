@@ -590,6 +590,9 @@ namespace AnmolDristi
             lblScanTitle.Text = "<i class='fa fa-check-circle'></i> Check-In Confirmed";
             lblScanMessage.Text = "The visitor has been logged in. Please guide them to their host.";
 
+            liCheckInTime.Visible = true;
+            lblDetInTime.Text = DateTime.Now.ToString("dd MMM, hh:mm tt");
+
             BindInsideVisitors();
             KeepTabActive("scanner-tab");
         }

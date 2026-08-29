@@ -269,7 +269,8 @@ namespace AnmolDristi
         /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
         /// DayLog may be Scheduled or Checked-Out (same-day re-entry).
         /// Parent may be Scheduled or Checked-Out (SingleDay after checkout is Checked-Out).
-        /// ActualInTime keeps the first stamp on re-entry.
+        /// ActualInTime is the latest active check-in stamp for this DayLog row.
+        /// One DayLog exists per (LogID, VisitDate); this UPDATE is that row's current state.
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -282,7 +283,8 @@ namespace AnmolDristi
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE d
                 SET d.VisitStatus = 'Checked-In',
-                    d.ActualInTime = COALESCE(d.ActualInTime, GETDATE())
+                    d.ActualInTime = GETDATE(),
+                    d.ActualOutTime = NULL
                 FROM VMS_VisitDayLog d
                 INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
                 WHERE d.DayLogID = @DayLogID
@@ -304,7 +306,8 @@ namespace AnmolDristi
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET VisitStatus = 'Checked-In',
-                    ActualInTime = COALESCE(ActualInTime, GETDATE())
+                    ActualInTime = GETDATE(),
+                    ActualOutTime = NULL
                 WHERE LogID = @LogID
                   AND VisitStatus IN ('Scheduled', 'Checked-Out')
                   AND ApprovalStatus = 'Approved'", con, trans))

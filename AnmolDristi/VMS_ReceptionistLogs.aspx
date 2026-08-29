@@ -316,9 +316,16 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: { stacked: true }, // Optional: Stacks the bars so they don't take up too much width
+                            x: {
+                                stacked: true,
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 90,
+                                    minRotation: 45
+                                }
+                            },
                             y: {
-                                stacked: true,    // Optional: Turn this off if you prefer them side-by-side
+                                stacked: true,
                                 beginAtZero: true,
                                 ticks: { stepSize: 1 }
                             }
