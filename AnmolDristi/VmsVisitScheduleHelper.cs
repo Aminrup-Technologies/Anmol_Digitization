@@ -73,6 +73,12 @@ namespace AnmolDristi
         public TimeSpan Departure { get; set; }
     }
 
+    public enum HoursNoticeContext
+    {
+        Registration = 0,
+        Approval = 1
+    }
+
     public class VisitHoursEvaluation
     {
         public bool IsCurrentAfterHours { get; set; }
@@ -110,6 +116,10 @@ namespace AnmolDristi
             "Notice: Your visit falls outside the organization's normal working hours. Your host may still approve this request as an exception.";
         public const string AfterHoursHostWarning =
             "Warning: This visit falls outside configured plant working hours. Approving this request will be recorded as an after-hours approval.";
+        public const string CurrentTimeRegistrationLeadIn =
+            "Current registration is outside today's working hours.";
+        public const string CurrentTimeApprovalLeadIn =
+            "Current approval is outside today's working hours.";
 
         public static VisitScheduleRequest ParseSchedule(
             string scheduleType,
@@ -784,27 +794,50 @@ namespace AnmolDristi
             return clock.ToString("hh:mm tt", CultureInfo.InvariantCulture);
         }
 
-        public static string DescribeCurrentTimeViolation(TimeSpan now, PlantDayTiming timing)
+        public static string CurrentTimeViolationLeadIn(HoursNoticeContext context)
+        {
+            return context == HoursNoticeContext.Approval
+                ? CurrentTimeApprovalLeadIn
+                : CurrentTimeRegistrationLeadIn;
+        }
+
+        public static string FormatCurrentTimeViolation(string currentViolation, HoursNoticeContext context)
+        {
+            if (string.IsNullOrEmpty(currentViolation))
+                return string.Empty;
+
+            string leadIn = CurrentTimeViolationLeadIn(context);
+            if (currentViolation.StartsWith(leadIn, StringComparison.Ordinal))
+                return currentViolation;
+
+            if (currentViolation.StartsWith(CurrentTimeRegistrationLeadIn, StringComparison.Ordinal))
+                return leadIn + currentViolation.Substring(CurrentTimeRegistrationLeadIn.Length);
+
+            if (currentViolation.StartsWith(CurrentTimeApprovalLeadIn, StringComparison.Ordinal))
+                return leadIn + currentViolation.Substring(CurrentTimeApprovalLeadIn.Length);
+
+            return currentViolation;
+        }
+
+        public static string DescribeCurrentTimeViolation(
+            TimeSpan now,
+            PlantDayTiming timing,
+            HoursNoticeContext context = HoursNoticeContext.Registration)
         {
             if (timing == null)
                 return string.Empty;
 
+            string reason;
             if (!timing.OpenTime.HasValue && !timing.CloseTime.HasValue)
-                return "Current registration is outside today's working hours. The plant is closed today.";
+                reason = "The plant is closed today.";
+            else if (timing.OpenTime.HasValue && now < timing.OpenTime.Value)
+                reason = "The plant opens at " + FormatClockTime(timing.OpenTime.Value) + ".";
+            else if (timing.CloseTime.HasValue && now >= timing.CloseTime.Value)
+                reason = "The plant closed at " + FormatClockTime(timing.CloseTime.Value) + ".";
+            else
+                return string.Empty;
 
-            if (timing.OpenTime.HasValue && now < timing.OpenTime.Value)
-            {
-                return "Current registration is outside today's working hours. The plant opens at " +
-                    FormatClockTime(timing.OpenTime.Value) + ".";
-            }
-
-            if (timing.CloseTime.HasValue && now >= timing.CloseTime.Value)
-            {
-                return "Current registration is outside today's working hours. The plant closed at " +
-                    FormatClockTime(timing.CloseTime.Value) + ".";
-            }
-
-            return string.Empty;
+            return CurrentTimeViolationLeadIn(context) + " " + reason;
         }
 
         public static List<string> BuildDayViolationLines(VisitDayHoursViolation dayViolation)
@@ -900,7 +933,7 @@ namespace AnmolDristi
             if (!string.IsNullOrEmpty(evaluation.CurrentViolation))
             {
                 sb.Append("\n\n");
-                sb.Append(evaluation.CurrentViolation);
+                sb.Append(FormatCurrentTimeViolation(evaluation.CurrentViolation, HoursNoticeContext.Registration));
             }
 
             AppendDayViolationDetails(sb, evaluation);
@@ -915,13 +948,17 @@ namespace AnmolDristi
             var sb = new StringBuilder();
             sb.Append("Warning:");
 
-            if (!string.IsNullOrEmpty(evaluation.CurrentViolation))
+            string currentViolation = FormatCurrentTimeViolation(
+                evaluation.CurrentViolation,
+                HoursNoticeContext.Approval);
+
+            if (!string.IsNullOrEmpty(currentViolation))
             {
                 sb.Append("\n");
-                sb.Append(evaluation.CurrentViolation);
+                sb.Append(currentViolation);
             }
 
-            AppendDayViolationDetails(sb, evaluation, !string.IsNullOrEmpty(evaluation.CurrentViolation));
+            AppendDayViolationDetails(sb, evaluation, !string.IsNullOrEmpty(currentViolation));
 
             sb.Append("\n\nApproving this visit will be recorded as an after-hours approval.");
             return sb.ToString();

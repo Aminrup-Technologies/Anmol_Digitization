@@ -122,16 +122,19 @@
             result.hasViolation = result.plantClosed || result.arrivalBeforeOpen || result.arrivalAfterClose || result.departureAfterClose;
             return result;
         }
-        function describeCurrentTimeViolation(nowMin, timing) {
+        function describeCurrentTimeViolation(nowMin, timing, context) {
             if (!timing) return "";
+            var leadIn = context === "approval"
+                ? "Current approval is outside today's working hours."
+                : "Current registration is outside today's working hours.";
             if (!timing.open && !timing.close)
-                return "Current registration is outside today's working hours. The plant is closed today.";
+                return leadIn + " The plant is closed today.";
             var openMin = parseTimeSpan(timing.open);
             var closeMin = parseTimeSpan(timing.close);
             if (openMin !== null && nowMin < openMin)
-                return "Current registration is outside today's working hours. The plant opens at " + formatClock(openMin) + ".";
+                return leadIn + " The plant opens at " + formatClock(openMin) + ".";
             if (closeMin !== null && nowMin >= closeMin)
-                return "Current registration is outside today's working hours. The plant closed at " + formatClock(closeMin) + ".";
+                return leadIn + " The plant closed at " + formatClock(closeMin) + ".";
             return "";
         }
         function formatDayViolationBlock(dateValue, startMin, endMin, classification) {
@@ -185,7 +188,7 @@
             var now = new Date();
             var todayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
             var nowMin = now.getHours() * 60 + now.getMinutes();
-            var currentViolation = describeCurrentTimeViolation(nowMin, timings[todayName]);
+            var currentViolation = describeCurrentTimeViolation(nowMin, timings[todayName], "approval");
             var dayBlocks = [];
             if (timeFrom !== null && timeTo !== null) {
                 for (var j = 0; j < dates.length; j++) {
