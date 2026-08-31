@@ -50,6 +50,11 @@ namespace AnmolDristi.DAL
 
         public string OnBehalfHostEmail { get; set; }
         public string OnBehalfHostName { get; set; }
+
+        /// <summary>
+        /// After-hours audit actor. Host uses employee code; Admin/Receptionist pass "Admin:…" / "Receptionist:…".
+        /// </summary>
+        public string ApprovedBy { get; set; }
     }
 
     public class VisitorApprovalResult
@@ -1444,9 +1449,15 @@ namespace AnmolDristi.DAL
                     dayLogId = Convert.ToInt32(dayIdObj);
             }
 
-            string approvedBy = !string.IsNullOrWhiteSpace(hostEmployeeCode)
-                ? hostEmployeeCode.Trim()
-                : (authMode == ApprovalAuthorizationMode.PendingOnly ? "Receptionist" : "Host");
+            string approvedBy;
+            if (!string.IsNullOrWhiteSpace(request.ApprovedBy))
+                approvedBy = request.ApprovedBy.Trim();
+            else if (!string.IsNullOrWhiteSpace(hostEmployeeCode))
+                approvedBy = hostEmployeeCode.Trim();
+            else
+                approvedBy = authMode == ApprovalAuthorizationMode.PendingOnly ? "Receptionist" : "Host";
+            if (approvedBy.Length > 50)
+                approvedBy = approvedBy.Substring(0, 50);
 
             string reason = evaluation.HostWarningMessage ?? string.Empty;
             if (reason.Length > 500)

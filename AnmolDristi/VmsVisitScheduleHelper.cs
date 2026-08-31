@@ -131,6 +131,11 @@ namespace AnmolDristi
             "Current registration is outside today's working hours.";
         public const string CurrentTimeApprovalLeadIn =
             "Current approval is outside today's working hours.";
+        public const string OverrideApprovesAllRequestedDays =
+            "This will approve all requested days at the requested hours.";
+        public const string ApproveOnBehalfConfirm = "Approve ON BEHALF of host?";
+        public const string DefaultApproveConfirm = "Are you sure you want to approve this visitor?";
+        private const int AfterHoursApprovedByMaxLength = 50;
 
         public static VisitScheduleRequest ParseSchedule(
             string scheduleType,
@@ -1057,6 +1062,70 @@ namespace AnmolDristi
             return context == HoursNoticeContext.Approval
                 ? CurrentTimeApprovalLeadIn
                 : CurrentTimeRegistrationLeadIn;
+        }
+
+        public static bool IsMultiDaySchedule(string scheduleType, IList<VisitDayLogInfo> days)
+        {
+            if (string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return days != null && days.Count > 1;
+        }
+
+        public static string HoursWarningText(VisitHoursEvaluation evaluation)
+        {
+            if (evaluation == null || !evaluation.RequiresNotice)
+                return null;
+            return string.IsNullOrWhiteSpace(evaluation.HostWarningMessage)
+                ? AfterHoursHostWarning
+                : evaluation.HostWarningMessage;
+        }
+
+        public static string BuildOverrideApprovalConfirm(
+            string hoursWarning,
+            bool isMultiDay,
+            bool onBehalf)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(hoursWarning))
+                parts.Add(hoursWarning.Trim());
+            if (isMultiDay)
+                parts.Add(OverrideApprovesAllRequestedDays);
+            if (onBehalf)
+                parts.Add(ApproveOnBehalfConfirm);
+            if (parts.Count == 0)
+                parts.Add(DefaultApproveConfirm);
+            return string.Join("\n\n", parts);
+        }
+
+        public static string ToJsConfirm(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return "return true;";
+            return "return confirm('" +
+                message.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n") +
+                "');";
+        }
+
+        public static string FormatOverrideApprovedBy(string role, params string[] identityCandidates)
+        {
+            string identity = null;
+            if (identityCandidates != null)
+            {
+                foreach (string candidate in identityCandidates)
+                {
+                    if (string.IsNullOrWhiteSpace(candidate))
+                        continue;
+                    identity = candidate.Trim();
+                    break;
+                }
+            }
+
+            string value = string.IsNullOrEmpty(identity)
+                ? (role ?? string.Empty)
+                : (role ?? string.Empty) + ":" + identity;
+            if (value.Length > AfterHoursApprovedByMaxLength)
+                return value.Substring(0, AfterHoursApprovedByMaxLength);
+            return value;
         }
 
         public static string FormatCurrentTimeViolation(string currentViolation, HoursNoticeContext context)

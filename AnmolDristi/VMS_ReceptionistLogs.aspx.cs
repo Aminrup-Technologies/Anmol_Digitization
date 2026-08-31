@@ -415,13 +415,19 @@ namespace AnmolDristi
             if (actionType == "Approve")
             {
                 // AR-VMS-02: shared VisitLog+DayLog approval (QR, RequestedValid*, pass notify, Pending guard, tx).
-                _visitorManagementRepository.ApproveVisitByReceptionist(
+                VisitorApprovalResult result = _visitorManagementRepository.ApproveVisitByReceptionist(
                     new VisitorApprovalRequest
                     {
                         LogId = logId,
                         ApprovalRemarksSuffix =
-                            "[Reception Override] Force Approved on " + DateTime.Now.ToString("dd-MMM-yy HH:mm")
+                            "[Reception Override] Force Approved on " + DateTime.Now.ToString("dd-MMM-yy HH:mm"),
+                        ApprovedBy = ResolveReceptionistApprovedBy()
                     });
+
+                if (!result.Succeeded)
+                {
+                    RegisterAlertScript(FormatReceptionistApprovalFailure(result.FailureReason), "ReceptionistApprovalFail");
+                }
 
                 LoadDashboardData();
                 return;
@@ -473,13 +479,17 @@ namespace AnmolDristi
                 evaluation = VmsVisitScheduleHelper.EvaluateVisitHoursForLog(con, logId);
             }
 
-            if (evaluation != null && evaluation.RequiresNotice)
-            {
-                string message = evaluation.HostWarningMessage ?? VmsVisitScheduleHelper.AfterHoursHostWarning;
-                lnkApprove.OnClientClick = "return confirm('" +
-                    message.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n") +
-                    "');";
-            }
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+
+            lnkApprove.OnClientClick = VmsVisitScheduleHelper.ToJsConfirm(
+                VmsVisitScheduleHelper.BuildOverrideApprovalConfirm(
+                    VmsVisitScheduleHelper.HoursWarningText(evaluation),
+                    VmsVisitScheduleHelper.IsMultiDaySchedule(
+                        Convert.ToString(DataBinder.Eval(e.Row.DataItem, "ScheduleType")),
+                        days),
+                    onBehalf: false));
         }
 
         private void BindScheduleCell(GridViewRow row)
@@ -516,11 +526,16 @@ namespace AnmolDristi
 
         private void RegisterAttendanceFailureScript(string message)
         {
+            RegisterAlertScript(message, "ReceptionistAttendanceFail");
+        }
+
+        private void RegisterAlertScript(string message, string scriptKey)
+        {
             string safe = (message ?? string.Empty).Replace("\\", "\\\\").Replace("'", "\\'");
             ScriptManager.RegisterStartupScript(
                 UpdatePanelGrid,
                 UpdatePanelGrid.GetType(),
-                "ReceptionistAttendanceFail",
+                scriptKey,
                 "alert('" + safe + "');",
                 true);
         }
@@ -544,6 +559,28 @@ namespace AnmolDristi
                         ? "Unable to Check-In. Please refresh and try again."
                         : "Unable to Check-Out. Please refresh and try again.";
             }
+        }
+
+        private static string FormatReceptionistApprovalFailure(ApprovalFailureReason reason)
+        {
+            switch (reason)
+            {
+                case ApprovalFailureReason.NotFoundOrNotOwned:
+                    return "Unable to approve this visit. It was not found.";
+                case ApprovalFailureReason.NotPending:
+                    return "Unable to approve this visit. It is no longer pending.";
+                default:
+                    return "Unable to approve this visit. Please refresh and try again.";
+            }
+        }
+
+        private string ResolveReceptionistApprovedBy()
+        {
+            return VmsVisitScheduleHelper.FormatOverrideApprovedBy(
+                "Receptionist",
+                Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : null,
+                Session["EmpCode"] != null ? Session["EmpCode"].ToString() : null,
+                Session["UserName"] != null ? Session["UserName"].ToString() : null);
         }
 
         private void PopulateModal(int logId)
