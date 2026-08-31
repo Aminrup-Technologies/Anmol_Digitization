@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
-using AnmolDristi.BLL;
 
 namespace AnmolDristi.DAL
 {
@@ -56,9 +55,6 @@ namespace AnmolDristi.DAL
         /// After-hours audit actor. Host uses employee code; Admin/Receptionist pass "Admin:…" / "Receptionist:…".
         /// </summary>
         public string ApprovedBy { get; set; }
-
-        /// <summary>Host, Admin, or Receptionist. Used for VMS_AuditEvent only.</summary>
-        public string ActorRole { get; set; }
     }
 
     public class VisitorApprovalResult
@@ -223,13 +219,6 @@ namespace AnmolDristi.DAL
                         }
 
                         CancelVisitDayLogs(con, logId, trans);
-                        AuditEventService.Publish(
-                            con,
-                            trans,
-                            logId,
-                            AuditEventType.Rejected,
-                            AuditActorRole.Host,
-                            resolvedHost);
                         trans.Commit();
                         return true;
                     }
@@ -373,14 +362,6 @@ namespace AnmolDristi.DAL
                             return false;
                         }
 
-                        if (!useDayLogPath)
-                        {
-                            AuditEventService.Publish(
-                                con, trans, logId, AuditEventType.CheckedIn,
-                                AuditActorRole.Host, resolvedHost,
-                                metadata: AuditEventService.Metadata("source", "Host"));
-                        }
-
                         trans.Commit();
                         return true;
                     }
@@ -446,14 +427,6 @@ namespace AnmolDristi.DAL
                         {
                             try { trans.Rollback(); } catch { }
                             return false;
-                        }
-
-                        if (!useDayLogPath)
-                        {
-                            AuditEventService.Publish(
-                                con, trans, logId, AuditEventType.CheckedOut,
-                                AuditActorRole.Host, resolvedHost,
-                                metadata: AuditEventService.Metadata("source", "Host"));
                         }
 
                         trans.Commit();
@@ -603,14 +576,6 @@ namespace AnmolDristi.DAL
                             return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
                         }
 
-                        if (!useDayLogPath)
-                        {
-                            AuditEventService.Publish(
-                                con, trans, logId, AuditEventType.CheckedIn,
-                                AuditActorRole.Receptionist, "Receptionist",
-                                metadata: AuditEventService.Metadata("source", "Reception"));
-                        }
-
                         trans.Commit();
                         return new ReceptionistAttendanceResult
                         {
@@ -680,14 +645,6 @@ namespace AnmolDristi.DAL
                         {
                             try { trans.Rollback(); } catch { }
                             return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
-                        }
-
-                        if (!useDayLogPath)
-                        {
-                            AuditEventService.Publish(
-                                con, trans, logId, AuditEventType.CheckedOut,
-                                AuditActorRole.Receptionist, "Receptionist",
-                                metadata: AuditEventService.Metadata("source", "Reception"));
                         }
 
                         trans.Commit();
@@ -846,16 +803,6 @@ namespace AnmolDristi.DAL
 
                         AppendAdminCorrectionRemark(con, trans, logId, auditTrail);
 
-                        int? inDayLogId = useDayLogPath ? (int?)todayLog.DayLogId : null;
-                        AuditEventService.Publish(
-                            con, trans, logId, AuditEventType.GateOverride,
-                            AuditActorRole.Admin, auditName, inDayLogId,
-                            AuditEventService.Metadata(new Dictionary<string, string>
-                            {
-                                { "field", "InTime" },
-                                { "source", "AdminInline" }
-                            }));
-
                         trans.Commit();
                         return new AdminCorrectionResult
                         {
@@ -931,16 +878,6 @@ namespace AnmolDristi.DAL
                             $" | [Check-Out Time: {oldRecord}->{adminOutTime:dd-MMM HH:mm} by {auditName}] Rsn: {reason}";
 
                         AppendAdminCorrectionRemark(con, trans, logId, auditTrail);
-
-                        int? outDayLogId = useDayLogPath ? (int?)todayLog.DayLogId : null;
-                        AuditEventService.Publish(
-                            con, trans, logId, AuditEventType.GateOverride,
-                            AuditActorRole.Admin, auditName, outDayLogId,
-                            AuditEventService.Metadata(new Dictionary<string, string>
-                            {
-                                { "field", "OutTime" },
-                                { "source", "AdminInline" }
-                            }));
 
                         trans.Commit();
                         return new AdminCorrectionResult
@@ -1308,23 +1245,6 @@ namespace AnmolDristi.DAL
                                 request.ApprovedToTime.Value);
                         }
 
-                        string approvalActorRole = ResolveApprovalActorRole(request, authMode);
-                        string approvalActorId = !string.IsNullOrWhiteSpace(request.ApprovedBy)
-                            ? request.ApprovedBy
-                            : hostEmployeeCode;
-                        AuditEventService.Publish(
-                            con,
-                            trans,
-                            request.LogId,
-                            AuditEventType.Approved,
-                            approvalActorRole,
-                            approvalActorId,
-                            metadata: AuditEventService.Metadata(
-                                "mode",
-                                authMode == ApprovalAuthorizationMode.HostOwnership
-                                    ? "Host"
-                                    : "OverrideFullRange"));
-
                         string visitorName;
                         string visitorEmail;
                         string visitorMobile;
@@ -1659,36 +1579,7 @@ namespace AnmolDristi.DAL
                 outcome.Written = insertCmd.ExecuteNonQuery() > 0;
             }
 
-            if (outcome.Written)
-            {
-                AuditEventService.Publish(
-                    con,
-                    trans,
-                    request.LogId,
-                    AuditEventType.AfterHoursApproved,
-                    ResolveApprovalActorRole(request, authMode),
-                    approvedBy,
-                    dayLogId);
-            }
-
             return outcome;
-        }
-
-        private static string ResolveApprovalActorRole(
-            VisitorApprovalRequest request,
-            ApprovalAuthorizationMode authMode)
-        {
-            if (request != null && !string.IsNullOrWhiteSpace(request.ActorRole))
-                return request.ActorRole.Trim();
-            if (authMode == ApprovalAuthorizationMode.HostOwnership)
-                return AuditActorRole.Host;
-            if (request != null && request.QueueHostOnBehalfNotification)
-                return AuditActorRole.Admin;
-            string approvedBy = request != null ? request.ApprovedBy : null;
-            if (!string.IsNullOrWhiteSpace(approvedBy) &&
-                approvedBy.StartsWith("Admin", StringComparison.OrdinalIgnoreCase))
-                return AuditActorRole.Admin;
-            return AuditActorRole.Receptionist;
         }
 
         private static void ApplySelectedDayApprovals(

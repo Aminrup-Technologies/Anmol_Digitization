@@ -991,11 +991,6 @@ namespace AnmolDristi
                 DateTime validUpto = visitSchedule.RequestedValidUpto;
 
                 VmsVisitorRepository visitorRepository = new VmsVisitorRepository();
-                bool otpVerified = Session["VerifiedMobile"] != null
-                    && !string.IsNullOrEmpty(Session["VerifiedMobile"].ToString());
-                bool employeeConfirmed = ddlPurpose.SelectedValue == "I Work Here"
-                    && hfInternalEmpConfirmed != null
-                    && string.Equals(hfInternalEmpConfirmed.Value, "true", StringComparison.OrdinalIgnoreCase);
                 newVisitId = visitorRepository.CreateVisitorVisit(
                     ddlPurpose.SelectedValue,
                     fullName,
@@ -1016,9 +1011,7 @@ namespace AnmolDristi
                     currentVisitStatus,
                     actualInTime,
                     approvedOn,
-                    visitSchedule,
-                    otpVerified,
-                    employeeConfirmed);
+                    visitSchedule);
 
                 QueueNotifications(
                     newVisitId,
