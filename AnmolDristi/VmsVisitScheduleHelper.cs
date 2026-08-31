@@ -940,6 +940,75 @@ namespace AnmolDristi
             return $"{schedule.FromDate:dd MMM yyyy}, {schedule.TimeFrom:hh\\:mm} - {schedule.TimeTo:hh\\:mm}";
         }
 
+        public static string FormatVisitScheduleSummary(
+            string scheduleType,
+            DateTime? requestedFrom,
+            DateTime? requestedTo,
+            DateTime? validFrom = null,
+            DateTime? validTo = null,
+            string approvalStatus = null)
+        {
+            DateTime? from = requestedFrom;
+            DateTime? to = requestedTo;
+            if (string.Equals(approvalStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                && validFrom.HasValue
+                && validTo.HasValue)
+            {
+                from = validFrom;
+                to = validTo;
+            }
+
+            if (!from.HasValue || !to.HasValue)
+                return "Not specified";
+
+            string timeFrom = FormatClockTime(from.Value.TimeOfDay);
+            string timeTo = FormatClockTime(to.Value.TimeOfDay);
+
+            if (string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
+                return from.Value.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) + " to " +
+                    to.Value.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) +
+                    ", daily " + timeFrom + " - " + timeTo;
+
+            return from.Value.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) + ", " +
+                timeFrom + " - " + timeTo;
+        }
+
+        public static string FormatDayCheckboxLabel(VisitDayLogInfo day)
+        {
+            if (day == null)
+                return string.Empty;
+
+            return day.VisitDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) +
+                "  •  " + FormatClockTime(day.DayValidFrom.TimeOfDay) +
+                " – " + FormatClockTime(day.DayValidUpto.TimeOfDay);
+        }
+
+        public static string BuildHostScheduleDisplayHtml(
+            string scheduleType,
+            string approvalStatus,
+            DateTime? requestedFrom,
+            DateTime? requestedTo,
+            DateTime? validFrom,
+            DateTime? validTo,
+            IList<VisitDayLogInfo> days)
+        {
+            var sb = new StringBuilder();
+            sb.Append("<div class=\"schedule-summary\">");
+            sb.Append(HtmlEncode(FormatVisitScheduleSummary(
+                scheduleType, requestedFrom, requestedTo, validFrom, validTo, approvalStatus)));
+            sb.Append("</div>");
+
+            bool isMultiDay = string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase)
+                || (days != null && days.Count > 1);
+            if (isMultiDay && days != null && days.Count > 0)
+            {
+                List<VisitDayScheduleRow> rows = BuildVisitorDaySchedule(days, approvalStatus);
+                sb.Append(BuildVisitorDayScheduleHtml(rows));
+            }
+
+            return sb.ToString();
+        }
+
         public static PlantHourWindowClassification ClassifyPlantHourWindow(
             TimeSpan arrival,
             TimeSpan departure,

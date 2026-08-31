@@ -6,6 +6,13 @@
         .badge-pending { background-color: #f0ad4e; }
         .badge-approved { background-color: #1ABB9C; }
         .badge-rejected { background-color: #d9534f; }
+        .schedule-summary { font-size: 12px; color: #333; font-weight: 600; margin-bottom: 8px; }
+        .day-window { margin-top: 4px; min-width: 280px; }
+        .day-window-title { font-size: 11px; font-weight: 700; color: #73879C; margin-bottom: 6px; text-transform: uppercase; }
+        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 3px 8px 5px 0; border-bottom: 1px solid #eee; }
+        .day-window-table td { padding: 5px 8px 5px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; white-space: nowrap; }
+        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; color: #fff; }
     </style>
 </asp:Content>
 
@@ -46,6 +53,11 @@
                                                 <asp:BoundField DataField="VisitorName" HeaderText="Visitor Name" />
                                                 <asp:BoundField DataField="VisitorCompany" HeaderText="Company" />
                                                 <asp:BoundField DataField="PurposeOfVisit" HeaderText="Purpose" />
+                                                <asp:TemplateField HeaderText="Visit Window">
+                                                    <ItemTemplate>
+                                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                                    </ItemTemplate>
+                                                </asp:TemplateField>
                                                 <asp:BoundField DataField="CreatedDate" HeaderText="Arrived At" DataFormatString="{0:dd MMM hh:mm tt}" />
                                                 <asp:TemplateField HeaderText="Action">
                                                     <ItemTemplate>
@@ -61,11 +73,16 @@
 
                                 <div role="tabpanel" class="tab-pane fade" id="tab_history" aria-labelledby="profile-tab">
                                     <div class="table-responsive" style="margin-top:15px;">
-                                        <asp:GridView ID="gvHistory" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-bordered" DataKeyNames="LogID" OnRowCommand="gvHistory_RowCommand">
+                                        <asp:GridView ID="gvHistory" runat="server" AutoGenerateColumns="False" CssClass="table table-striped table-bordered" DataKeyNames="LogID" OnRowCommand="gvHistory_RowCommand" OnRowDataBound="gvHistory_RowDataBound">
                                             <Columns>
                                                 <asp:BoundField DataField="VisitorName" HeaderText="Visitor Name" />
                                                 <asp:BoundField DataField="VisitorCompany" HeaderText="Company" />
-                                                <asp:BoundField DataField="CreatedDate" HeaderText="Date" DataFormatString="{0:dd MMM yyyy}" />
+                                                <asp:TemplateField HeaderText="Visit Window">
+                                                    <ItemTemplate>
+                                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                                    </ItemTemplate>
+                                                </asp:TemplateField>
+                                                <asp:BoundField DataField="CreatedDate" HeaderText="Requested" DataFormatString="{0:dd MMM yyyy}" />
                                                 <asp:TemplateField HeaderText="Status">
                                                     <ItemTemplate>
                                                         <span class='badge <%# Eval("ApprovalStatus").ToString() == "Approved" ? "badge-approved" : "badge-rejected" %>'>
@@ -117,7 +134,7 @@
                             <h4 class="modal-title">Select Days to Approve</h4>
                         </div>
                         <div class="modal-body">
-                            <p>Choose which days to approve for this multi-day visit:</p>
+                            <p>Choose which days to approve for this multi-day visit. Requested entry and exit hours are shown beside each day. Valid From / Until below applies to the days you approve.</p>
                             <asp:HiddenField ID="hfModalLogId" runat="server" />
                             <asp:CheckBoxList ID="cblModalDays" runat="server" RepeatDirection="Vertical" CssClass="checkbox" />
 

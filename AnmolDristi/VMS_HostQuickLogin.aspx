@@ -26,6 +26,16 @@
         .validity-row label { display: block; font-size: 12px; color: #73879C; font-weight: 600; margin-bottom: 4px; }
         .validity-row input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px; }
         .clearfix { clear: both; }
+        .day-window-wrap { text-align: left; margin: 16px 0 8px 0; }
+        .schedule-summary { font-size: 13px; color: #333; font-weight: 600; margin-bottom: 8px; }
+        .day-window-title { font-size: 11px; font-weight: 700; color: #73879C; margin-bottom: 6px; text-transform: uppercase; }
+        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 3px 6px 5px 0; border-bottom: 1px solid #eee; }
+        .day-window-table td { padding: 5px 6px 5px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; }
+        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; color: #fff; }
+        .badge-pending { background-color: #f0ad4e; }
+        .badge-approved { background-color: #1ABB9C; }
+        .badge-rejected { background-color: #d9534f; }
     </style>
 </head>
 <body>
@@ -44,6 +54,8 @@
                     <b>Requested Schedule:</b> <asp:Label ID="lblSchedule" runat="server"></asp:Label><br />
                     <b>Contact:</b> <asp:Label ID="lblContact" runat="server"></asp:Label>
                 </div>
+
+                <asp:Literal ID="litPendingVisitDays" runat="server"></asp:Literal>
 
                 <asp:CheckBoxList ID="cblRequestedDays" runat="server" Visible="false"
                     CssClass="day-checklist" RepeatDirection="Vertical" />
@@ -70,6 +82,10 @@
                     <asp:Button ID="btnReject" runat="server" Text="✗ Reject" CssClass="btn btn-reject" OnClick="btnReject_Click" OnClientClick="return confirm('Reject this visitor?');" />
                     <div class="clearfix"></div>
                 </div>
+            </asp:Panel>
+
+            <asp:Panel ID="pnlVisitDaysRecap" runat="server" Visible="false" CssClass="day-window-wrap">
+                <asp:Literal ID="litVisitDaysRecap" runat="server"></asp:Literal>
             </asp:Panel>
 
             <asp:Label ID="lblMessage" runat="server" CssClass="error"></asp:Label>
