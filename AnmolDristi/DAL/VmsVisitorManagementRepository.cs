@@ -1697,5 +1697,14 @@ namespace AnmolDristi.DAL
                 return VmsVisitScheduleHelper.GetDayLogsForVisit(con, logId);
             }
         }
+
+        public Dictionary<int, List<VisitDayLogInfo>> GetDayLogsForVisits(IList<int> logIds)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                return VmsVisitScheduleHelper.GetDayLogsForVisits(con, logIds);
+            }
+        }
     }
 }

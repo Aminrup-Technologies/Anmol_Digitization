@@ -37,6 +37,7 @@ namespace AnmolDristi
                            ISNULL(NULLIF(v.VisitorMobile, ''), v.VisitorEmail) AS ContactInfo,
                            ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
                            v.RequestedValidFrom, v.RequestedValidUpto,
+                           v.ValidFrom, v.ValidUpto,
                            ISNULL(v.TargetBranchID, 0) AS TargetBranchID
                     FROM VMS_VisitLog v
                     INNER JOIN MST_UserMaster u
@@ -45,7 +46,13 @@ namespace AnmolDristi
                     WHERE v.LogID = @VisitId AND v.HostEmployeeCode = @EmpCode";
 
                 string scheduleType = "SingleDay";
+                string approvalStatus = string.Empty;
+                DateTime? requestedFrom = null;
+                DateTime? requestedTo = null;
+                DateTime? validFrom = null;
+                DateTime? validTo = null;
                 bool isPending = false;
+                bool found = false;
                 int loadedBranchId = 0;
 
                 using (SqlCommand cmd = new SqlCommand(query, con))
@@ -58,34 +65,31 @@ namespace AnmolDristi
                     {
                         if (sdr.Read())
                         {
-                            string status = sdr["ApprovalStatus"].ToString();
+                            found = true;
+                            approvalStatus = sdr["ApprovalStatus"].ToString();
+                            scheduleType = sdr["ScheduleType"].ToString();
+                            if (sdr["RequestedValidFrom"] != DBNull.Value)
+                                requestedFrom = Convert.ToDateTime(sdr["RequestedValidFrom"]);
+                            if (sdr["RequestedValidUpto"] != DBNull.Value)
+                                requestedTo = Convert.ToDateTime(sdr["RequestedValidUpto"]);
+                            if (sdr["ValidFrom"] != DBNull.Value)
+                                validFrom = Convert.ToDateTime(sdr["ValidFrom"]);
+                            if (sdr["ValidUpto"] != DBNull.Value)
+                                validTo = Convert.ToDateTime(sdr["ValidUpto"]);
+                            loadedBranchId = Convert.ToInt32(sdr["TargetBranchID"]);
 
-                            if (status == "Pending")
+                            if (approvalStatus == "Pending")
                             {
-                                // Show the visitor details and action buttons
                                 lblVisName.Text = sdr["VisitorName"].ToString();
                                 lblCompany.Text = sdr["VisitorCompany"].ToString();
                                 lblPurpose.Text = sdr["PurposeOfVisit"].ToString();
                                 lblContact.Text = sdr["ContactInfo"].ToString();
-                                scheduleType = sdr["ScheduleType"].ToString();
-
-                                if (sdr["RequestedValidFrom"] != DBNull.Value && sdr["RequestedValidUpto"] != DBNull.Value)
-                                {
-                                    DateTime reqFrom = Convert.ToDateTime(sdr["RequestedValidFrom"]);
-                                    DateTime reqTo = Convert.ToDateTime(sdr["RequestedValidUpto"]);
-                                    lblSchedule.Text = scheduleType == "MultiDay"
-                                        ? $"{reqFrom:dd MMM yyyy} to {reqTo:dd MMM yyyy}, daily {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}"
-                                        : $"{reqFrom:dd MMM yyyy}, {reqFrom:hh:mm tt} - {reqTo:hh:mm tt}";
-                                    hfVisitFromDate.Value = reqFrom.ToString("yyyy-MM-dd");
-                                    hfVisitToDate.Value = reqTo.ToString("yyyy-MM-dd");
-                                }
-                                else
-                                {
-                                    lblSchedule.Text = "Not specified";
-                                }
-
-                                int branchId = Convert.ToInt32(sdr["TargetBranchID"]);
-                                loadedBranchId = branchId;
+                                lblSchedule.Text = VmsVisitScheduleHelper.FormatVisitScheduleSummary(
+                                    scheduleType, requestedFrom, requestedTo);
+                                if (requestedFrom.HasValue)
+                                    hfVisitFromDate.Value = requestedFrom.Value.ToString("yyyy-MM-dd");
+                                if (requestedTo.HasValue)
+                                    hfVisitToDate.Value = requestedTo.Value.ToString("yyyy-MM-dd");
 
                                 pnlAction.Visible = true;
                                 lblMessage.Visible = false;
@@ -93,9 +97,8 @@ namespace AnmolDristi
                             }
                             else
                             {
-                                // Pass is already processed (e.g. Host clicked the link twice, or Admin handled it)
                                 lblMessage.CssClass = "success";
-                                lblMessage.Text = $"This request has already been processed.<br/>Current Status: {status}";
+                                lblMessage.Text = $"This request has already been processed.<br/>Current Status: {approvalStatus}";
                             }
                         }
                         else
@@ -110,17 +113,114 @@ namespace AnmolDristi
                     hfPlantTimingsJson.Value = loadedBranchId > 0
                         ? VmsVisitScheduleHelper.GetPlantTimingsJson(loadedBranchId)
                         : "{}";
+                    BindPendingVisitDays(con, visitId, scheduleType);
                 }
 
                 if (isPending && scheduleType == "MultiDay")
                 {
-                    BindRequestedDays(con, visitId.ToString(CultureInfo.InvariantCulture));
+                    BindRequestedDays(con, visitId);
                 }
 
                 if (isPending)
                 {
                     PrefillApprovedValidityTimes(con, visitId.ToString(CultureInfo.InvariantCulture));
                 }
+
+                if (found && !isPending)
+                {
+                    BindVisitDaysRecap(
+                        con,
+                        visitId,
+                        scheduleType,
+                        approvalStatus,
+                        requestedFrom,
+                        requestedTo,
+                        validFrom,
+                        validTo);
+                }
+            }
+        }
+
+        private void BindPendingVisitDays(SqlConnection con, int visitId, string scheduleType)
+        {
+            List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
+            bool isMultiDay = string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase)
+                || days.Count > 1;
+            if (!isMultiDay || days.Count == 0)
+            {
+                litPendingVisitDays.Text = string.Empty;
+                return;
+            }
+
+            List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, "Pending");
+            litPendingVisitDays.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
+        }
+
+        private void BindVisitDaysRecap(
+            SqlConnection con,
+            int visitId,
+            string scheduleType,
+            string approvalStatus,
+            DateTime? requestedFrom,
+            DateTime? requestedTo,
+            DateTime? validFrom,
+            DateTime? validTo)
+        {
+            List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
+            litVisitDaysRecap.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+                scheduleType,
+                approvalStatus,
+                requestedFrom,
+                requestedTo,
+                validFrom,
+                validTo,
+                days);
+            pnlVisitDaysRecap.Visible = !string.IsNullOrEmpty(litVisitDaysRecap.Text);
+        }
+
+        private void BindVisitDaysRecap(int visitId, string approvalStatus)
+        {
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                string scheduleType = "SingleDay";
+                DateTime? requestedFrom = null;
+                DateTime? requestedTo = null;
+                DateTime? validFrom = null;
+                DateTime? validTo = null;
+                using (SqlCommand cmd = new SqlCommand(@"
+                    SELECT ISNULL(ScheduleType, 'SingleDay') AS ScheduleType,
+                           RequestedValidFrom, RequestedValidUpto, ValidFrom, ValidUpto
+                    FROM VMS_VisitLog
+                    WHERE LogID = @LogID", con))
+                {
+                    cmd.Parameters.AddWithValue("@LogID", visitId);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            scheduleType = reader["ScheduleType"].ToString();
+                            if (reader["RequestedValidFrom"] != DBNull.Value)
+                                requestedFrom = Convert.ToDateTime(reader["RequestedValidFrom"]);
+                            if (reader["RequestedValidUpto"] != DBNull.Value)
+                                requestedTo = Convert.ToDateTime(reader["RequestedValidUpto"]);
+                            if (reader["ValidFrom"] != DBNull.Value)
+                                validFrom = Convert.ToDateTime(reader["ValidFrom"]);
+                            if (reader["ValidUpto"] != DBNull.Value)
+                                validTo = Convert.ToDateTime(reader["ValidUpto"]);
+                        }
+                    }
+                }
+
+                BindVisitDaysRecap(
+                    con,
+                    visitId,
+                    scheduleType,
+                    approvalStatus,
+                    requestedFrom,
+                    requestedTo,
+                    validFrom,
+                    validTo);
             }
         }
 
@@ -195,27 +295,17 @@ namespace AnmolDristi
             }
         }
 
-        private void BindRequestedDays(SqlConnection con, string visitId)
+        private void BindRequestedDays(SqlConnection con, int visitId)
         {
             cblRequestedDays.Items.Clear();
-
-            using (SqlCommand dayCmd = new SqlCommand(@"
-                SELECT VisitDate
-                FROM VMS_VisitDayLog
-                WHERE LogID = @LogID
-                ORDER BY VisitDate", con))
+            List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
+            foreach (VisitDayLogInfo day in days)
             {
-                dayCmd.Parameters.AddWithValue("@LogID", visitId);
-                using (SqlDataReader dayReader = dayCmd.ExecuteReader())
-                {
-                    while (dayReader.Read())
-                    {
-                        DateTime visitDate = Convert.ToDateTime(dayReader["VisitDate"]);
-                        var item = new ListItem(visitDate.ToString("dd MMM yyyy"), visitDate.ToString("yyyy-MM-dd"));
-                        item.Selected = true;
-                        cblRequestedDays.Items.Add(item);
-                    }
-                }
+                var item = new ListItem(
+                    VmsVisitScheduleHelper.FormatDayCheckboxLabel(day),
+                    day.VisitDate.ToString("yyyy-MM-dd"));
+                item.Selected = true;
+                cblRequestedDays.Items.Add(item);
             }
 
             cblRequestedDays.Visible = cblRequestedDays.Items.Count > 0;
@@ -320,6 +410,7 @@ namespace AnmolDristi
                 lblMessage.Visible = true;
                 lblMessage.CssClass = "success";
                 lblMessage.Text = "Visitor Approved successfully! The digital gate pass has been sent to them.";
+                BindVisitDaysRecap(logId, "Approved");
                 return;
             }
 
@@ -337,6 +428,7 @@ namespace AnmolDristi
             lblMessage.Visible = true;
             lblMessage.CssClass = "success";
             lblMessage.Text = "Visitor request has been rejected.";
+            BindVisitDaysRecap(logId, "Rejected");
         }
 
         /// <summary>

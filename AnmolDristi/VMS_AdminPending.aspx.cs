@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
@@ -14,6 +15,7 @@ namespace AnmolDristi
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsVisitorManagementRepository _visitorManagementRepository =
             new VmsVisitorManagementRepository();
+        private Dictionary<int, List<VisitDayLogInfo>> _dayLogsByVisit;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -70,7 +72,10 @@ namespace AnmolDristi
                 string pendingQuery = @"
                 SELECT 
                     v.LogID, v.VisitorName, v.VisitorEmail, v.VisitorCompany, v.PhotoPath,
-                    v.PurposeOfVisit, v.CreatedDate, v.TargetBranchID, 
+                    v.PurposeOfVisit, v.CreatedDate, v.TargetBranchID,
+                    ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
+                    v.RequestedValidFrom, v.RequestedValidUpto, v.ValidFrom, v.ValidUpto,
+                    v.ApprovalStatus,
                     u.EmployeeName AS HostName, u.EmployeeCode AS HostEmployeeCode,
                     u.Email AS HostEmail, ISNULL(b.Branch_Description, 'Unknown Location') AS Branch_Description
                 FROM VMS_VisitLog v
@@ -79,19 +84,19 @@ namespace AnmolDristi
                 WHERE v.ApprovalStatus = 'Pending'
                 ORDER BY v.CreatedDate DESC";
 
+                DataTable dtPending = new DataTable();
                 using (SqlDataAdapter sda = new SqlDataAdapter(pendingQuery, con))
                 {
-                    DataTable dtPending = new DataTable();
                     sda.Fill(dtPending);
-                    gvAdminPending.DataSource = dtPending;
-                    gvAdminPending.DataBind();
                 }
 
                 // --- TAB 2: GATE OVERRIDE ---
                 string activeQuery = @"
                 SELECT 
                     v.LogID, v.VisitorName, v.VisitorEmail, v.VisitStatus, v.PhotoPath,
-                    v.ActualInTime, v.ActualOutTime, v.ValidUpto,
+                    v.ActualInTime, v.ActualOutTime, v.ValidFrom, v.ValidUpto,
+                    ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
+                    v.RequestedValidFrom, v.RequestedValidUpto, v.ApprovalStatus,
                     v.CreatedDate, v.ApprovedOn,
                     u.EmployeeName AS HostName, u.DepartmentId, 
                     u.EmployeeCode AS HostEmployeeCode, u.Email AS HostEmail
@@ -102,18 +107,79 @@ namespace AnmolDristi
                           (branchFilter != "0" ? " AND v.TargetBranchID = @BranchID " : "") +
                         " ORDER BY v.ApprovedOn DESC";
 
+                DataTable dtActive = new DataTable();
                 using (SqlCommand cmd = new SqlCommand(activeQuery, con))
                 {
                     if (branchFilter != "0") cmd.Parameters.AddWithValue("@BranchID", branchFilter);
                     using (SqlDataAdapter sdaActive = new SqlDataAdapter(cmd))
                     {
-                        DataTable dtActive = new DataTable();
                         sdaActive.Fill(dtActive);
-                        gvAdminGateOverride.DataSource = dtActive;
-                        gvAdminGateOverride.DataBind();
                     }
                 }
+
+                LoadDayLogs(dtPending, dtActive);
+                gvAdminPending.DataSource = dtPending;
+                gvAdminPending.DataBind();
+                gvAdminGateOverride.DataSource = dtActive;
+                gvAdminGateOverride.DataBind();
             }
+        }
+
+        private void LoadDayLogs(DataTable pending, DataTable active)
+        {
+            var logIds = new List<int>();
+            CollectLogIds(pending, logIds);
+            CollectLogIds(active, logIds);
+            _dayLogsByVisit = logIds.Count == 0
+                ? new Dictionary<int, List<VisitDayLogInfo>>()
+                : _visitorManagementRepository.GetDayLogsForVisits(logIds);
+        }
+
+        private static void CollectLogIds(DataTable dt, List<int> logIds)
+        {
+            if (dt == null || !dt.Columns.Contains("LogID"))
+                return;
+
+            foreach (DataRow row in dt.Rows)
+            {
+                if (row["LogID"] == DBNull.Value)
+                    continue;
+                int logId = Convert.ToInt32(row["LogID"]);
+                if (logId > 0 && !logIds.Contains(logId))
+                    logIds.Add(logId);
+            }
+        }
+
+        private void BindScheduleCell(GridViewRow row, string approvalStatus)
+        {
+            Literal litDayWindow = row.FindControl("litDayWindow") as Literal;
+            if (litDayWindow == null)
+                return;
+
+            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
+            if (logIdObj == null || logIdObj == DBNull.Value)
+                return;
+
+            int logId = Convert.ToInt32(logIdObj);
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+
+            litDayWindow.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+                Convert.ToString(DataBinder.Eval(row.DataItem, "ScheduleType")),
+                approvalStatus,
+                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidFrom")),
+                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidUpto")),
+                ReadDate(DataBinder.Eval(row.DataItem, "ValidFrom")),
+                ReadDate(DataBinder.Eval(row.DataItem, "ValidUpto")),
+                days);
+        }
+
+        private static DateTime? ReadDate(object value)
+        {
+            if (value == null || value == DBNull.Value)
+                return null;
+            return Convert.ToDateTime(value);
         }
 
         // ==========================================
@@ -121,7 +187,10 @@ namespace AnmolDristi
         // ==========================================
         protected void gvAdminPending_RowDataBound(object sender, GridViewRowEventArgs e)
         {
-            // Fired per row if you ever need to apply UI conditions dynamically
+            if (e.Row.RowType != DataControlRowType.DataRow)
+                return;
+
+            BindScheduleCell(e.Row, "Pending");
         }
 
         protected void txtHostCode_TextChanged(object sender, EventArgs e)
@@ -316,6 +385,8 @@ namespace AnmolDristi
         {
             if (e.Row.RowType == DataControlRowType.DataRow)
             {
+                BindScheduleCell(e.Row, "Approved");
+
                 int currentRowLogId = Convert.ToInt32(gvAdminGateOverride.DataKeys[e.Row.RowIndex].Values["LogID"]);
 
                 // Preserve the typed audit reason during postbacks

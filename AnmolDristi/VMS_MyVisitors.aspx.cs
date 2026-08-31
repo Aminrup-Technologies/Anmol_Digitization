@@ -27,6 +27,7 @@ namespace AnmolDristi
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
+        private Dictionary<int, List<VisitDayLogInfo>> _dayLogsByVisit;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -65,15 +66,42 @@ namespace AnmolDristi
             }
 
             DataTable dtPending = _repository.GetPendingVisits(empCode);
+            DataTable dtHistory = _repository.GetHostVisitHistory(empCode);
+            LoadDayLogs(dtPending, dtHistory);
+
             gvPending.DataSource = dtPending;
             gvPending.DataBind();
             badgeCount.InnerText = dtPending.Rows.Count.ToString();
 
             BindPlantTimingsJson(dtPending);
 
-            DataTable dtHistory = _repository.GetHostVisitHistory(empCode);
             gvHistory.DataSource = dtHistory;
             gvHistory.DataBind();
+        }
+
+        private void LoadDayLogs(DataTable pending, DataTable history)
+        {
+            var logIds = new List<int>();
+            CollectLogIds(pending, logIds);
+            CollectLogIds(history, logIds);
+            _dayLogsByVisit = logIds.Count == 0
+                ? new Dictionary<int, List<VisitDayLogInfo>>()
+                : _repository.GetDayLogsForVisits(logIds);
+        }
+
+        private static void CollectLogIds(DataTable dt, List<int> logIds)
+        {
+            if (dt == null || !dt.Columns.Contains("LogID"))
+                return;
+
+            foreach (DataRow row in dt.Rows)
+            {
+                if (row["LogID"] == DBNull.Value)
+                    continue;
+                int logId = Convert.ToInt32(row["LogID"]);
+                if (logId > 0 && !logIds.Contains(logId))
+                    logIds.Add(logId);
+            }
         }
 
         private void BindPlantTimingsJson(DataTable pending)
@@ -101,6 +129,8 @@ namespace AnmolDristi
             if (e.Row.RowType != DataControlRowType.DataRow)
                 return;
 
+            BindHostScheduleCell(e.Row, "Pending");
+
             LinkButton btnApprove = e.Row.FindControl("btnApprove") as LinkButton;
             if (btnApprove == null)
                 return;
@@ -124,6 +154,47 @@ namespace AnmolDristi
             return "return confirm('" +
                 message.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n") +
                 "');";
+        }
+
+        protected void gvHistory_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow)
+                return;
+
+            string approvalStatus = Convert.ToString(DataBinder.Eval(e.Row.DataItem, "ApprovalStatus"));
+            BindHostScheduleCell(e.Row, approvalStatus);
+        }
+
+        private void BindHostScheduleCell(GridViewRow row, string approvalStatus)
+        {
+            Literal litDayWindow = row.FindControl("litDayWindow") as Literal;
+            if (litDayWindow == null)
+                return;
+
+            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
+            if (logIdObj == null || logIdObj == DBNull.Value)
+                return;
+
+            int logId = Convert.ToInt32(logIdObj);
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+
+            litDayWindow.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+                Convert.ToString(DataBinder.Eval(row.DataItem, "ScheduleType")),
+                approvalStatus,
+                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidFrom")),
+                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidUpto")),
+                ReadDate(DataBinder.Eval(row.DataItem, "ValidFrom")),
+                ReadDate(DataBinder.Eval(row.DataItem, "ValidUpto")),
+                days);
+        }
+
+        private static DateTime? ReadDate(object value)
+        {
+            if (value == null || value == DBNull.Value)
+                return null;
+            return Convert.ToDateTime(value);
         }
 
         protected void gvPending_RowCommand(object sender, GridViewCommandEventArgs e)
@@ -253,25 +324,20 @@ namespace AnmolDristi
         {
             cblModalDays.Items.Clear();
 
+            List<VisitDayLogInfo> days;
             using (SqlConnection con = new SqlConnection(connStr))
-            using (SqlCommand dayCmd = new SqlCommand(@"
-                SELECT VisitDate
-                FROM VMS_VisitDayLog
-                WHERE LogID = @LogID
-                ORDER BY VisitDate", con))
             {
-                dayCmd.Parameters.AddWithValue("@LogID", logId);
                 con.Open();
-                using (SqlDataReader dayReader = dayCmd.ExecuteReader())
-                {
-                    while (dayReader.Read())
-                    {
-                        DateTime visitDate = Convert.ToDateTime(dayReader["VisitDate"]);
-                        var item = new ListItem(visitDate.ToString("dd MMM yyyy"), visitDate.ToString("yyyy-MM-dd"));
-                        item.Selected = true;
-                        cblModalDays.Items.Add(item);
-                    }
-                }
+                days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, logId);
+            }
+
+            foreach (VisitDayLogInfo day in days)
+            {
+                var item = new ListItem(
+                    VmsVisitScheduleHelper.FormatDayCheckboxLabel(day),
+                    day.VisitDate.ToString("yyyy-MM-dd"));
+                item.Selected = true;
+                cblModalDays.Items.Add(item);
             }
         }
 

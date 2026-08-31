@@ -9,6 +9,16 @@
         .visitor-photo { width: 45px; height: 45px; border-radius: 50%; margin-right: 12px; border: 1px solid #ddd; object-fit: cover; }
         .email-body-preview { background: #f9f9f9; padding: 10px; border: 1px solid #ddd; font-size: 12px; max-height: 250px; overflow-y: auto; border-radius: 4px; margin-top: 10px; }
         .action-column .btn { margin-bottom: 5px; text-align: left; }
+        .schedule-summary { font-size: 12px; color: #333; font-weight: 600; margin-bottom: 8px; }
+        .day-window { margin-top: 4px; min-width: 260px; }
+        .day-window-title { font-size: 11px; font-weight: 700; color: #73879C; margin-bottom: 6px; text-transform: uppercase; }
+        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 3px 8px 5px 0; border-bottom: 1px solid #eee; }
+        .day-window-table td { padding: 5px 8px 5px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; white-space: nowrap; }
+        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; color: #fff; }
+        .badge-pending { background-color: #f0ad4e; }
+        .badge-approved { background-color: #1ABB9C; }
+        .badge-rejected { background-color: #d9534f; }
     </style>
 </asp:Content>
 
@@ -96,6 +106,12 @@
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
+                                                    <asp:TemplateField HeaderText="Visit Window">
+                                                        <ItemTemplate>
+                                                            <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
+
                                                     <asp:TemplateField HeaderText="On-Behalf Settings" ItemStyle-Width="220px">
                                                         <ItemTemplate>
                                                             <asp:TextBox ID="txtScheduleDate" runat="server" TextMode="DateTimeLocal" CssClass="form-control input-sm" style="margin-bottom: 5px;" ToolTip="Schedule Date & Time"></asp:TextBox>
@@ -163,6 +179,12 @@
                                                         <ItemTemplate>
                                                             <strong style="color: #555;"><%# Eval("HostName") %></strong>
                                                             <small><i class="fa fa-id-badge"></i>Code: <%# Eval("HostEmployeeCode") %></small>
+                                                        </ItemTemplate>
+                                                    </asp:TemplateField>
+
+                                                    <asp:TemplateField HeaderText="Visit Window">
+                                                        <ItemTemplate>
+                                                            <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
