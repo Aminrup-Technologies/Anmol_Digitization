@@ -6,6 +6,7 @@ using System.Configuration;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Web;
 using System.Web.Services;
 using System.Web.Script.Services;
 using AnmolDristi.DAL;
@@ -598,6 +599,17 @@ namespace AnmolDristi
                         "You must provide your internal Employee Code to self-approve your pass.");
                 }
 
+                string confirmedCode = hfConfirmedEmpCode != null
+                    ? hfConfirmedEmpCode.Value.Trim()
+                    : string.Empty;
+                bool confirmed = hfInternalEmpConfirmed != null
+                    && string.Equals(hfInternalEmpConfirmed.Value, "true", StringComparison.OrdinalIgnoreCase);
+                if (!confirmed || !string.Equals(internalCode, confirmedCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new Exception(
+                        "Please look up your Employee Code and confirm your details before submitting.");
+                }
+
                 using (SqlConnection conCheck =
                     new SqlConnection(connStr))
                 {
@@ -694,6 +706,102 @@ namespace AnmolDristi
 
             string domain = email.Substring(at + 1);
             return domain.IndexOf('.') > 0;
+        }
+
+        public class InternalEmployeeLookupResult
+        {
+            public bool Found { get; set; }
+            public string Message { get; set; }
+            public string EmpCode { get; set; }
+            public string EmployeeName { get; set; }
+            public string FirstName { get; set; }
+            public string LastName { get; set; }
+            public string Email { get; set; }
+            public string Mobile { get; set; }
+            public string DepartmentName { get; set; }
+            public string DesignationName { get; set; }
+            public string CompanyName { get; set; }
+        }
+
+        [WebMethod(EnableSession = true)]
+        [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
+        public static InternalEmployeeLookupResult LookupInternalEmployee(string empCode)
+        {
+            var result = new InternalEmployeeLookupResult
+            {
+                Found = false,
+                Message = "The Employee Code entered is invalid or inactive.",
+                CompanyName = "Anmol Industries Ltd."
+            };
+
+            if (HttpContext.Current == null
+                || HttpContext.Current.Session == null
+                || HttpContext.Current.Session["VerifiedMobile"] == null)
+            {
+                result.Message = "Please verify your mobile number before looking up an employee code.";
+                return result;
+            }
+
+            if (string.IsNullOrWhiteSpace(empCode))
+            {
+                result.Message = "Please enter your Employee Code.";
+                return result;
+            }
+
+            empCode = empCode.Trim();
+            if (empCode.Length > 30)
+            {
+                result.Message = "The Employee Code entered is invalid or inactive.";
+                return result;
+            }
+
+            string query = @"
+                SELECT TOP 1
+                    u.EmployeeCode,
+                    u.EmployeeName,
+                    u.Email,
+                    u.Mobile,
+                    ISNULL(d.Department_Description, '') AS DepartmentName,
+                    ISNULL(desg.Designation_Description, '') AS DesignationName
+                FROM MST_UserMaster u
+                LEFT JOIN MST_Department d ON u.DepartmentId = CAST(d.Department_ID AS INT)
+                LEFT JOIN MST_Designation desg ON TRY_CAST(u.Designation_ID AS INT) = desg.Id
+                WHERE u.EmployeeCode = @EmpCode
+                  AND u.EmployeeStatus = 'Active'";
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            using (SqlCommand cmd = new SqlCommand(query, con))
+            {
+                cmd.Parameters.AddWithValue("@EmpCode", empCode);
+                con.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return result;
+
+                    string employeeName = reader["EmployeeName"] == DBNull.Value
+                        ? string.Empty
+                        : reader["EmployeeName"].ToString().Trim();
+                    string[] parts = employeeName.Split(new[] { ' ' }, 2);
+
+                    result.Found = true;
+                    result.Message = null;
+                    result.EmpCode = reader["EmployeeCode"].ToString();
+                    result.EmployeeName = employeeName;
+                    result.FirstName = parts.Length > 0 ? parts[0] : employeeName;
+                    result.LastName = parts.Length > 1 ? parts[1] : string.Empty;
+                    result.Email = reader["Email"] == DBNull.Value ? string.Empty : reader["Email"].ToString().Trim();
+                    result.Mobile = reader["Mobile"] == DBNull.Value ? string.Empty : reader["Mobile"].ToString().Trim();
+                    result.DepartmentName = reader["DepartmentName"] == DBNull.Value
+                        ? string.Empty
+                        : reader["DepartmentName"].ToString().Trim();
+                    result.DesignationName = reader["DesignationName"] == DBNull.Value
+                        ? string.Empty
+                        : reader["DesignationName"].ToString().Trim();
+                }
+            }
+
+            return result;
         }
 
         [WebMethod]
