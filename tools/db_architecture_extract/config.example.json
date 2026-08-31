@@ -1,0 +1,41 @@
+{
+  "server": "YOUR_SQL_SERVER",
+  "database": "AnmolDristi",
+  "schema": "dbo",
+  "driver": "ODBC Driver 17 for SQL Server",
+  "trusted_connection": true,
+  "username": "",
+  "password": "",
+
+  "seed_objects": [
+    "SalesDailyActivity",
+    "SalesDailyExpense",
+    "SalesApprovalRequest",
+    "SalesApprovalRequestDetail",
+    "SalesDailyActivityKMHistory",
+    "MST_EmployeeTolerance"
+  ],
+
+  "seed_procedures": [
+    "usp_GetSalesDailyActivity_Month",
+    "usp_GetPendingApprovalsForUser_Filters",
+    "usp_GetApprovalRequestDetails",
+    "usp_GetApprovalRequest",
+    "usp_ProcessSalesApprovalRequestDetail",
+    "usp_ProcessApprovalAction",
+    "usp_GetResolvedPolicy",
+    "usp_GetEmployeeTolerance",
+    "usp_SaveEmployeeTolerance",
+    "usp_DeleteEmployeeTolerance"
+  ],
+
+  "include_procedure_definitions": true,
+  "include_views": true,
+  "include_functions": true,
+  "include_triggers": true,
+  "include_dependencies": true,
+
+  "dependency_depth": 5,
+  "output_directory": "output",
+  "read_only": true
+}
