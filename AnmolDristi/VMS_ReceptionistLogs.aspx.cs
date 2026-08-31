@@ -10,6 +10,7 @@ using System.IO;
 using System.Collections.Generic;
 using AnmolDristi.DAL;
 using AnmolDristi.BLL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -492,27 +493,8 @@ namespace AnmolDristi
 
         private void BindScheduleCell(GridViewRow row)
         {
-            Literal litDayWindow = row.FindControl("litDayWindow") as Literal;
-            if (litDayWindow == null)
-                return;
-
-            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
-            if (logIdObj == null || logIdObj == DBNull.Value)
-                return;
-
-            int logId = Convert.ToInt32(logIdObj);
-            List<VisitDayLogInfo> days = null;
-            if (_dayLogsByVisit != null)
-                _dayLogsByVisit.TryGetValue(logId, out days);
-
-            litDayWindow.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
-                Convert.ToString(DataBinder.Eval(row.DataItem, "ScheduleType")),
-                Convert.ToString(DataBinder.Eval(row.DataItem, "ApprovalStatus")),
-                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidFrom")),
-                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidUpto")),
-                ReadDate(DataBinder.Eval(row.DataItem, "ValidFrom")),
-                ReadDate(DataBinder.Eval(row.DataItem, "ValidUpto")),
-                days);
+            string approvalStatus = Convert.ToString(DataBinder.Eval(row.DataItem, "ApprovalStatus"));
+            VisitWindowControl.BindHostFromRow(row, approvalStatus, _dayLogsByVisit);
         }
 
         private static DateTime? ReadDate(object value)
@@ -570,7 +552,7 @@ namespace AnmolDristi
 
         private void PopulateModal(int logId)
         {
-            litMdlVisitDays.Text = string.Empty;
+            ucMdlVisitDays.Clear();
             lblMdlValidFrom.Text = "--";
             lblMdlValid.Text = "--";
 
@@ -603,7 +585,7 @@ namespace AnmolDristi
                             lblMdlHost.Text = sdr["HostEmployeeCode"].ToString();
                             lblMdlPurpose.Text = sdr["PurposeOfVisit"].ToString();
                             lblMdlStatus.Text = sdr["VisitStatus"].ToString();
-                            lblMdlStatusBadge.Text = sdr["VisitStatus"].ToString();
+                            ucMdlStatusBadge.Bind(sdr["VisitStatus"].ToString());
                             lblMdlMeal.Text = Convert.ToBoolean(sdr["IsMealRequired"]) ? "Yes" : "No";
 
                             scheduleType = Convert.ToString(sdr["ScheduleType"]);
@@ -634,7 +616,7 @@ namespace AnmolDristi
                         return;
 
                     List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, logId);
-                    litMdlVisitDays.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+                    ucMdlVisitDays.BindHostSchedule(
                         scheduleType,
                         approvalStatus,
                         requestedFrom,

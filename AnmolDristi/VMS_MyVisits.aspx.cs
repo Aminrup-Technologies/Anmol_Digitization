@@ -6,6 +6,7 @@ using System.Web.Services;
 using System.Web.UI.WebControls;
 using System.Web.UI;
 using AnmolDristi.DAL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -189,18 +190,13 @@ namespace AnmolDristi
         {
             if (e.Item.ItemType == ListItemType.Item || e.Item.ItemType == ListItemType.AlternatingItem)
             {
-                // 1. Style the Status Badge dynamically
-                Label lblStatus = (Label)e.Item.FindControl("lblStatus");
-                string status = lblStatus.Text.ToLower();
+                StatusBadgeControl ucStatus = (StatusBadgeControl)e.Item.FindControl("ucStatus");
+                if (ucStatus != null)
+                    ucStatus.Bind(Convert.ToString(DataBinder.Eval(e.Item.DataItem, "ApprovalStatus")));
 
-                if (status == "approved")
-                    lblStatus.CssClass = "badge badge-approved";
-                else if (status == "rejected")
-                    lblStatus.CssClass = "badge badge-rejected";
-                else
-                    lblStatus.CssClass = "badge badge-pending";
+                string status = Convert.ToString(DataBinder.Eval(e.Item.DataItem, "ApprovalStatus")).ToLower();
 
-                BindVisitDayWindow(e.Item);
+                VisitWindowControl.BindHostFromRepeater(e.Item, _dayLogsByVisit);
 
                 // 2. Process Digital Pass Footer
                 Panel pnlFooter = (Panel)e.Item.FindControl("pnlFooter");
@@ -247,34 +243,6 @@ namespace AnmolDristi
                     }
                 }
             }
-        }
-
-        private void BindVisitDayWindow(RepeaterItem item)
-        {
-            Literal litDayWindow = item.FindControl("litDayWindow") as Literal;
-            if (litDayWindow == null)
-                return;
-
-            litDayWindow.Text = string.Empty;
-            string scheduleType = Convert.ToString(DataBinder.Eval(item.DataItem, "ScheduleType"));
-            if (!string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
-                return;
-
-            object logIdObj = DataBinder.Eval(item.DataItem, "LogID");
-            if (logIdObj == null || logIdObj == DBNull.Value)
-                return;
-
-            int logId = Convert.ToInt32(logIdObj);
-            List<VisitDayLogInfo> days = null;
-            if (_dayLogsByVisit != null)
-                _dayLogsByVisit.TryGetValue(logId, out days);
-
-            if (days == null || days.Count == 0)
-                return;
-
-            string approvalStatus = Convert.ToString(DataBinder.Eval(item.DataItem, "ApprovalStatus"));
-            List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, approvalStatus);
-            litDayWindow.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
         }
 
         /// <summary>

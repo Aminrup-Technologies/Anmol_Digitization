@@ -1,6 +1,9 @@
 ﻿<%@ Page Title="Visitor Registration" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="VMS_Registration.aspx.cs" Inherits="AnmolDristi.VMS_Registration" %>
+<%@ Register Src="~/Controls/HoursWarningControl.ascx" TagPrefix="vms" TagName="HoursWarning" %>
+<%@ Register Src="~/Controls/EmployeeCardControl.ascx" TagPrefix="vms" TagName="EmployeeCard" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <link href="css/vms-ui.css" rel="stylesheet" />
     <style>
         .mobile-form { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 30px; }
         .form-label { font-weight: 600; color: #333; margin-top: 10px; }
@@ -10,23 +13,9 @@
         .ui-autocomplete { max-height: 200px; overflow-y: auto; overflow-x: hidden; z-index: 9999; }
         .quick-hosts-container .badge { display: inline-block; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
         .quick-hosts-container .badge:hover { opacity: 0.85; }
-        .internal-emp-lookup { display: flex; gap: 8px; align-items: stretch; }
-        .internal-emp-lookup input { flex: 1; }
-        .internal-emp-card {
-            margin-top: 10px;
-            padding: 12px 14px;
-            border: 1px solid #1ABB9C;
-            border-radius: 8px;
-            background: #f6fffd;
-        }
-        .internal-emp-card h5 { margin: 0 0 8px 0; color: #1ABB9C; font-weight: 700; font-size: 13px; }
-        .internal-emp-card dl { margin: 0 0 10px 0; }
-        .internal-emp-card dt { font-size: 11px; color: #73879C; text-transform: uppercase; margin-top: 6px; }
-        .internal-emp-card dd { margin: 0; font-weight: 600; color: #333; }
-        .internal-emp-error { margin-top: 8px; color: #d9534f; font-size: 13px; font-weight: 600; }
-        .internal-emp-confirmed { color: #1ABB9C; font-weight: 700; font-size: 12px; }
     </style>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="Scripts/VMS_UI.js"></script>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -83,6 +72,7 @@
                         </div>
                     </div>
                     <p class="text-muted" style="font-size: 12px; margin-bottom: 15px;">You may register anytime. Your host will approve the dates and daily hours. Security will check you in and out on each approved visit day.</p>
+                    <vms:HoursWarning ID="ucHoursWarning" runat="server" />
 
                     <div class="form-group">
                         <label class="form-label">Visitor Photo *</label>
@@ -114,27 +104,7 @@
                             <button type="button" id="btnLookupInternalEmp" class="btn btn-info">Look up</button>
                         </div>
                         <small class="text-muted">Enter your code to fetch your employee details for confirmation.</small>
-                        <div id="divInternalEmpError" class="internal-emp-error" style="display: none;"></div>
-                        <div id="divInternalEmpConfirm" class="internal-emp-card" style="display: none;">
-                            <h5>Confirm your details</h5>
-                            <p class="internal-emp-confirmed" id="lblInternalEmpConfirmed" style="display: none;"><i class="fa fa-check-circle"></i> Confirmed — you can continue.</p>
-                            <dl>
-                                <dt>Employee Code</dt>
-                                <dd id="lblEmpConfirmCode"></dd>
-                                <dt>Name</dt>
-                                <dd id="lblEmpConfirmName"></dd>
-                                <dt>Department</dt>
-                                <dd id="lblEmpConfirmDept"></dd>
-                                <dt>Designation</dt>
-                                <dd id="lblEmpConfirmDesig"></dd>
-                                <dt>Email</dt>
-                                <dd id="lblEmpConfirmEmail"></dd>
-                                <dt>Mobile (HR record)</dt>
-                                <dd id="lblEmpConfirmMobile"></dd>
-                            </dl>
-                            <button type="button" id="btnConfirmInternalEmp" class="btn btn-success btn-sm">Yes, this is me</button>
-                            <button type="button" id="btnChangeInternalEmp" class="btn btn-default btn-sm">Change code</button>
-                        </div>
+                        <vms:EmployeeCard ID="ucEmployeeCard" runat="server" />
                     </div>
 
                     <div class="row">
@@ -572,6 +542,7 @@
             // Off-Hours Soft Warning — current time and/or scheduled window (one notice)
             var hoursNotice = buildVisitorHoursNotice();
             if (hoursNotice) {
+                if (window.VmsUI) VmsUI.setHoursWarning(hoursNotice);
                 var proceed = confirm(hoursNotice);
                 if (!proceed) {
                     return false;
@@ -586,134 +557,26 @@
             return true;
         }
 
-        function parseTimeSpan(value) {
-            if (!value) return null;
-            var parts = value.split(":");
-            if (parts.length < 2) return null;
-            var h = parseInt(parts[0], 10);
-            var m = parseInt(parts[1], 10);
-            if (isNaN(h) || isNaN(m)) return null;
-            return (h * 60) + m;
-        }
-
-        function weekdayName(dateValue) {
-            var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-            var d = new Date(dateValue + "T00:00:00");
-            return names[d.getDay()];
-        }
-
-        function formatClock(minutes) {
-            if (minutes === null || minutes === undefined) return "";
-            var h = Math.floor(minutes / 60);
-            var m = minutes % 60;
-            var suffix = h >= 12 ? "PM" : "AM";
-            var hour12 = h % 12;
-            if (hour12 === 0) hour12 = 12;
-            return (hour12 < 10 ? "0" : "") + hour12 + ":" + (m < 10 ? "0" : "") + m + " " + suffix;
-        }
-
-        function formatNoticeDate(dateValue) {
-            var d = new Date(dateValue + "T00:00:00");
-            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            return weekdayName(dateValue) + " " + ("0" + d.getDate()).slice(-2) + " " + months[d.getMonth()];
-        }
-
-        function classifyPlantHourWindow(startMin, endMin, timing) {
-            var result = { plantClosed: false, arrivalBeforeOpen: false, arrivalAfterClose: false, departureAfterClose: false, openMin: null, closeMin: null, hasViolation: false };
-            if (!timing) return result;
-            result.openMin = parseTimeSpan(timing.open);
-            result.closeMin = parseTimeSpan(timing.close);
-            if (!timing.open && !timing.close) {
-                result.plantClosed = true;
-                result.hasViolation = true;
-                return result;
-            }
-            if (result.openMin !== null && startMin < result.openMin) result.arrivalBeforeOpen = true;
-            if (result.closeMin !== null) {
-                if (startMin >= result.closeMin) result.arrivalAfterClose = true;
-                if (endMin > result.closeMin) result.departureAfterClose = true;
-            }
-            result.hasViolation = result.plantClosed || result.arrivalBeforeOpen || result.arrivalAfterClose || result.departureAfterClose;
-            return result;
-        }
-
-        function describeCurrentTimeViolation(nowMin, timing, context) {
-            if (!timing) return "";
-            var leadIn = context === "approval"
-                ? "Current approval is outside today's working hours."
-                : "Current registration is outside today's working hours.";
-            if (!timing.open && !timing.close)
-                return leadIn + " The plant is closed today.";
-            var openMin = parseTimeSpan(timing.open);
-            var closeMin = parseTimeSpan(timing.close);
-            if (openMin !== null && nowMin < openMin)
-                return leadIn + " The plant opens at " + formatClock(openMin) + ".";
-            if (closeMin !== null && nowMin >= closeMin)
-                return leadIn + " The plant closed at " + formatClock(closeMin) + ".";
-            return "";
-        }
-
-        function formatDayViolationBlock(dateValue, startMin, endMin, classification) {
-            var block = formatNoticeDate(dateValue);
-            if (classification.plantClosed) {
-                block += "\n• The plant is closed this day.";
-                return block;
-            }
-            if (classification.arrivalBeforeOpen)
-                block += "\n• Arrival time (" + formatClock(startMin) + ") is before plant opening (" + formatClock(classification.openMin) + ").";
-            if (classification.arrivalAfterClose)
-                block += "\n• Arrival time (" + formatClock(startMin) + ") is after plant closing (" + formatClock(classification.closeMin) + ").";
-            if (classification.departureAfterClose)
-                block += "\n• Departure time (" + formatClock(endMin) + ") is after plant closing (" + formatClock(classification.closeMin) + ").";
-            return block;
-        }
-
         function buildVisitorHoursNotice() {
-            var timings = {};
-            try {
-                var raw = $("#<%= hfPlantTimingsJson.ClientID %>").val();
-                if (raw) timings = JSON.parse(raw);
-            } catch (e) {
-                timings = {};
-            }
-
-            var now = new Date();
-            var todayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
-            var nowMin = now.getHours() * 60 + now.getMinutes();
-            var currentViolation = describeCurrentTimeViolation(nowMin, timings[todayName], "registration");
-
-            var fromDate = $("#<%= txtVisitFromDate.ClientID %>").val();
-            var toDate = $("#<%= ddlScheduleType.ClientID %>").val() === "MultiDay"
-                ? $("#<%= txtVisitToDate.ClientID %>").val()
-                : fromDate;
-            var timeFrom = parseTimeSpan($("#<%= txtTimeFrom.ClientID %>").val());
-            var timeTo = parseTimeSpan($("#<%= txtTimeTo.ClientID %>").val());
-
-            var dayBlocks = [];
-            if (fromDate && timeFrom !== null && timeTo !== null) {
-                var cursor = new Date(fromDate + "T00:00:00");
-                var end = new Date((toDate || fromDate) + "T00:00:00");
-                if (end < cursor) end = cursor;
-                while (cursor <= end) {
-                    var iso = cursor.getFullYear() + "-" +
-                        ("0" + (cursor.getMonth() + 1)).slice(-2) + "-" +
-                        ("0" + cursor.getDate()).slice(-2);
-                    var classification = classifyPlantHourWindow(timeFrom, timeTo, timings[weekdayName(iso)]);
-                    if (classification.hasViolation)
-                        dayBlocks.push(formatDayViolationBlock(iso, timeFrom, timeTo, classification));
-                    cursor.setDate(cursor.getDate() + 1);
-                }
-            }
-
-            if (!currentViolation && dayBlocks.length === 0)
-                return "";
-
-            var msg = "Notice: Your visit falls outside the organization's normal working hours.\n\nYour host may still approve this request as an exception.";
-            if (currentViolation)
-                msg += "\n\n" + currentViolation;
-            if (dayBlocks.length)
-                msg += "\n\n" + dayBlocks.join("\n\n");
-            return msg;
+            return VmsUI.buildVisitorHoursNotice({
+                timingsJson: $("#<%= hfPlantTimingsJson.ClientID %>").val(),
+                fromDate: $("#<%= txtVisitFromDate.ClientID %>").val(),
+                toDate: $("#<%= ddlScheduleType.ClientID %>").val() === "MultiDay"
+                    ? $("#<%= txtVisitToDate.ClientID %>").val()
+                    : $("#<%= txtVisitFromDate.ClientID %>").val(),
+                timeFrom: $("#<%= txtTimeFrom.ClientID %>").val(),
+                timeTo: $("#<%= txtTimeTo.ClientID %>").val()
+            });
         }
+
+        function refreshHoursWarningLive() {
+            if (!window.VmsUI) return;
+            VmsUI.setHoursWarning(buildVisitorHoursNotice());
+        }
+
+        $(function () {
+            $("#<%= txtVisitFromDate.ClientID %>, #<%= txtVisitToDate.ClientID %>, #<%= txtTimeFrom.ClientID %>, #<%= txtTimeTo.ClientID %>, #<%= ddlScheduleType.ClientID %>")
+                .on("change", refreshHoursWarningLive);
+        });
     </script>
 </asp:Content>

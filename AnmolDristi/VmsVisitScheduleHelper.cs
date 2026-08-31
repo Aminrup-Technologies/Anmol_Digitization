@@ -5,6 +5,7 @@ using System.Data.SqlClient;
 using System.Globalization;
 using System.Text;
 using AnmolDristi.BLL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -401,22 +402,22 @@ namespace AnmolDristi
                 if (string.Equals(parent, "Pending", StringComparison.OrdinalIgnoreCase))
                 {
                     statusText = "Pending";
-                    statusCss = "badge-pending";
+                    statusCss = VmsUiStatus.Pending;
                 }
                 else if (string.Equals(parent, "Rejected", StringComparison.OrdinalIgnoreCase))
                 {
                     statusText = "Rejected";
-                    statusCss = "badge-rejected";
+                    statusCss = VmsUiStatus.Rejected;
                 }
                 else if (day.IsDayApproved)
                 {
                     statusText = "Approved";
-                    statusCss = "badge-approved";
+                    statusCss = VmsUiStatus.Approved;
                 }
                 else
                 {
                     statusText = "Not approved";
-                    statusCss = "badge-rejected";
+                    statusCss = VmsUiStatus.NotApproved;
                 }
 
                 rows.Add(new VisitDayScheduleRow
@@ -443,13 +444,13 @@ namespace AnmolDristi
             var sb = new StringBuilder();
             sb.Append("<div class=\"day-window\">");
             sb.Append("<div class=\"day-window-title\">Visit days</div>");
-            sb.Append("<table class=\"day-window-table\">");
-            sb.Append("<thead><tr><th>Date</th><th>Status</th><th>Entry</th><th>Exit</th></tr></thead><tbody>");
+            sb.Append("<table class=\"day-window-table\" role=\"table\" aria-label=\"Visit days\">");
+            sb.Append("<thead><tr><th scope=\"col\">Date</th><th scope=\"col\">Status</th><th scope=\"col\">Entry</th><th scope=\"col\">Exit</th></tr></thead><tbody>");
             foreach (VisitDayScheduleRow row in rows)
             {
                 sb.Append("<tr>");
                 sb.Append("<td>").Append(HtmlEncode(row.DateText)).Append("</td>");
-                sb.Append("<td><span class=\"badge ").Append(HtmlEncode(row.StatusCss)).Append("\">");
+                sb.Append("<td><span class=\"vms-status-badge badge ").Append(HtmlEncode(row.StatusCss)).Append("\">");
                 sb.Append(HtmlEncode(row.StatusText)).Append("</span></td>");
                 sb.Append("<td>").Append(HtmlEncode(row.EntryWindow)).Append("</td>");
                 sb.Append("<td>").Append(HtmlEncode(row.ExitWindow)).Append("</td>");

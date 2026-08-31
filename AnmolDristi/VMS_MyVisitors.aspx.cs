@@ -21,6 +21,7 @@ using System.Web.UI.WebControls;
 using System.Drawing;
 using AnmolDristi.DAL;
 using AnmolDristi.BLL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -165,38 +166,19 @@ namespace AnmolDristi
 
             string approvalStatus = Convert.ToString(DataBinder.Eval(e.Row.DataItem, "ApprovalStatus"));
             BindHostScheduleCell(e.Row, approvalStatus);
+
+            StatusBadgeControl approvalBadge = e.Row.FindControl("ucApprovalStatus") as StatusBadgeControl;
+            if (approvalBadge != null)
+                approvalBadge.Bind(approvalStatus);
+
+            StatusBadgeControl gateBadge = e.Row.FindControl("ucGateStatus") as StatusBadgeControl;
+            if (gateBadge != null)
+                gateBadge.Bind(Convert.ToString(DataBinder.Eval(e.Row.DataItem, "VisitStatus")));
         }
 
         private void BindHostScheduleCell(GridViewRow row, string approvalStatus)
         {
-            Literal litDayWindow = row.FindControl("litDayWindow") as Literal;
-            if (litDayWindow == null)
-                return;
-
-            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
-            if (logIdObj == null || logIdObj == DBNull.Value)
-                return;
-
-            int logId = Convert.ToInt32(logIdObj);
-            List<VisitDayLogInfo> days = null;
-            if (_dayLogsByVisit != null)
-                _dayLogsByVisit.TryGetValue(logId, out days);
-
-            litDayWindow.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
-                Convert.ToString(DataBinder.Eval(row.DataItem, "ScheduleType")),
-                approvalStatus,
-                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidFrom")),
-                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidUpto")),
-                ReadDate(DataBinder.Eval(row.DataItem, "ValidFrom")),
-                ReadDate(DataBinder.Eval(row.DataItem, "ValidUpto")),
-                days);
-        }
-
-        private static DateTime? ReadDate(object value)
-        {
-            if (value == null || value == DBNull.Value)
-                return null;
-            return Convert.ToDateTime(value);
+            VisitWindowControl.BindHostFromRow(row, approvalStatus, _dayLogsByVisit);
         }
 
         protected void gvPending_RowCommand(object sender, GridViewCommandEventArgs e)
