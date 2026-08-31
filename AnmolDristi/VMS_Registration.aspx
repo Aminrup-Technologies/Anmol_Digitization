@@ -10,6 +10,21 @@
         .ui-autocomplete { max-height: 200px; overflow-y: auto; overflow-x: hidden; z-index: 9999; }
         .quick-hosts-container .badge { display: inline-block; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
         .quick-hosts-container .badge:hover { opacity: 0.85; }
+        .internal-emp-lookup { display: flex; gap: 8px; align-items: stretch; }
+        .internal-emp-lookup input { flex: 1; }
+        .internal-emp-card {
+            margin-top: 10px;
+            padding: 12px 14px;
+            border: 1px solid #1ABB9C;
+            border-radius: 8px;
+            background: #f6fffd;
+        }
+        .internal-emp-card h5 { margin: 0 0 8px 0; color: #1ABB9C; font-weight: 700; font-size: 13px; }
+        .internal-emp-card dl { margin: 0 0 10px 0; }
+        .internal-emp-card dt { font-size: 11px; color: #73879C; text-transform: uppercase; margin-top: 6px; }
+        .internal-emp-card dd { margin: 0; font-weight: 600; color: #333; }
+        .internal-emp-error { margin-top: 8px; color: #d9534f; font-size: 13px; font-weight: 600; }
+        .internal-emp-confirmed { color: #1ABB9C; font-weight: 700; font-size: 12px; }
     </style>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 </asp:Content>
@@ -35,6 +50,8 @@
                     <asp:HiddenField ID="hfPlantTimingsJson" runat="server" />
                     <!-- 2026-08-22: Added hfCameraActive to track whether getUserMedia succeeded. Used by client+server validation to distinguish camera capture from manual POST. -->
                     <asp:HiddenField ID="hfCameraActive" runat="server" Value="false" />
+                    <asp:HiddenField ID="hfInternalEmpConfirmed" runat="server" Value="false" />
+                    <asp:HiddenField ID="hfConfirmedEmpCode" runat="server" Value="" />
 
                     <div class="form-group">
                         <label class="form-label">Visit Schedule *</label>
@@ -92,8 +109,32 @@
 
                     <div id="divInternalEmp" style="display: none;" class="form-group">
                         <label class="form-label">Your Employee Code *</label>
-                        <asp:TextBox ID="txtInternalEmpCode" runat="server" CssClass="form-control" placeholder="Enter your Emp Code (e.g., AIL0000)"></asp:TextBox>
-                        <small class="text-muted">Required for auto-approval bypass.</small>
+                        <div class="internal-emp-lookup">
+                            <asp:TextBox ID="txtInternalEmpCode" runat="server" CssClass="form-control" placeholder="Enter your Emp Code (e.g., AIL0000)" autocomplete="off"></asp:TextBox>
+                            <button type="button" id="btnLookupInternalEmp" class="btn btn-info">Look up</button>
+                        </div>
+                        <small class="text-muted">Enter your code to fetch your employee details for confirmation.</small>
+                        <div id="divInternalEmpError" class="internal-emp-error" style="display: none;"></div>
+                        <div id="divInternalEmpConfirm" class="internal-emp-card" style="display: none;">
+                            <h5>Confirm your details</h5>
+                            <p class="internal-emp-confirmed" id="lblInternalEmpConfirmed" style="display: none;"><i class="fa fa-check-circle"></i> Confirmed — you can continue.</p>
+                            <dl>
+                                <dt>Employee Code</dt>
+                                <dd id="lblEmpConfirmCode"></dd>
+                                <dt>Name</dt>
+                                <dd id="lblEmpConfirmName"></dd>
+                                <dt>Department</dt>
+                                <dd id="lblEmpConfirmDept"></dd>
+                                <dt>Designation</dt>
+                                <dd id="lblEmpConfirmDesig"></dd>
+                                <dt>Email</dt>
+                                <dd id="lblEmpConfirmEmail"></dd>
+                                <dt>Mobile (HR record)</dt>
+                                <dd id="lblEmpConfirmMobile"></dd>
+                            </dl>
+                            <button type="button" id="btnConfirmInternalEmp" class="btn btn-success btn-sm">Yes, this is me</button>
+                            <button type="button" id="btnChangeInternalEmp" class="btn btn-default btn-sm">Change code</button>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -193,18 +234,180 @@
             toggleScheduleFields();
 
             // --- 0. UI Interaction: Internal Employee Logic ---
+            var lastLookedUpEmpCode = "";
+
+            function resetInternalEmpConfirmation(clearFields, focusCode) {
+                $("#<%= hfInternalEmpConfirmed.ClientID %>").val("false");
+                $("#<%= hfConfirmedEmpCode.ClientID %>").val("");
+                $("#divInternalEmpConfirm").hide();
+                $("#lblInternalEmpConfirmed").hide();
+                $("#btnConfirmInternalEmp").show();
+                $("#divInternalEmpError").hide().text("");
+                lastLookedUpEmpCode = "";
+                $("#<%= txtFirstName.ClientID %>, #<%= txtLastName.ClientID %>, #<%= txtCompany.ClientID %>, #<%= txtDesignation.ClientID %>, #<%= txtEmail.ClientID %>")
+                    .prop("readonly", false);
+                if (clearFields) {
+                    $("#<%= txtInternalEmpCode.ClientID %>").val("");
+                    $("#<%= txtInternalEmpCode.ClientID %>").prop("readonly", false);
+                    if (focusCode)
+                        $("#<%= txtInternalEmpCode.ClientID %>").focus();
+                }
+            }
+
+            function setInternalEmpReadonly(isReadonly) {
+                $("#<%= txtFirstName.ClientID %>, #<%= txtLastName.ClientID %>, #<%= txtCompany.ClientID %>")
+                    .prop("readonly", isReadonly);
+                if ($("#<%= txtDesignation.ClientID %>").val())
+                    $("#<%= txtDesignation.ClientID %>").prop("readonly", isReadonly);
+                if ($("#<%= txtEmail.ClientID %>").val())
+                    $("#<%= txtEmail.ClientID %>").prop("readonly", isReadonly);
+            }
+
+            function renderInternalEmployee(emp, confirmed) {
+                $("#lblEmpConfirmCode").text(emp.EmpCode || "");
+                $("#lblEmpConfirmName").text(emp.EmployeeName || "");
+                $("#lblEmpConfirmDept").text(emp.DepartmentName || "—");
+                $("#lblEmpConfirmDesig").text(emp.DesignationName || "—");
+                $("#lblEmpConfirmEmail").text(emp.Email || "—");
+                $("#lblEmpConfirmMobile").text(emp.Mobile || "—");
+                $("#divInternalEmpConfirm").show();
+                $("#divInternalEmpError").hide().text("");
+                if (confirmed) {
+                    $("#lblInternalEmpConfirmed").show();
+                    $("#btnConfirmInternalEmp").hide();
+                } else {
+                    $("#lblInternalEmpConfirmed").hide();
+                    $("#btnConfirmInternalEmp").show();
+                }
+            }
+
+            function applyInternalEmployeeToForm(emp) {
+                $("#<%= txtFirstName.ClientID %>").val(emp.FirstName || "");
+                $("#<%= txtLastName.ClientID %>").val(emp.LastName || "");
+                $("#<%= txtCompany.ClientID %>").val(emp.CompanyName || "Anmol Industries Ltd.");
+                if (emp.DesignationName)
+                    $("#<%= txtDesignation.ClientID %>").val(emp.DesignationName);
+                if (emp.Email)
+                    $("#<%= txtEmail.ClientID %>").val(emp.Email);
+                $("#<%= hfInternalEmpConfirmed.ClientID %>").val("true");
+                $("#<%= hfConfirmedEmpCode.ClientID %>").val(emp.EmpCode || "");
+                setInternalEmpReadonly(true);
+                renderInternalEmployee(emp, true);
+            }
+
+            function lookupInternalEmployee(autoConfirmIfMatched) {
+                var empCode = $("#<%= txtInternalEmpCode.ClientID %>").val().trim();
+                if (!empCode) {
+                    $("#divInternalEmpError").text("Please enter your Employee Code.").show();
+                    $("#divInternalEmpConfirm").hide();
+                    return;
+                }
+
+                if (empCode === lastLookedUpEmpCode && $("#divInternalEmpConfirm").is(":visible"))
+                    return;
+
+                $("#divInternalEmpError").hide().text("");
+                $("#btnLookupInternalEmp").prop("disabled", true).text("Looking up…");
+
+                $.ajax({
+                    url: "VMS_Registration.aspx/LookupInternalEmployee",
+                    data: JSON.stringify({ empCode: empCode }),
+                    dataType: "json",
+                    type: "POST",
+                    contentType: "application/json; charset=utf-8",
+                    success: function (data) {
+                        var emp = data && data.d ? data.d : null;
+                        lastLookedUpEmpCode = empCode;
+                        if (!emp || !emp.Found) {
+                            resetInternalEmpConfirmation(false);
+                            lastLookedUpEmpCode = empCode;
+                            $("#divInternalEmpError").text((emp && emp.Message) ? emp.Message : "Employee code not found or inactive.").show();
+                            return;
+                        }
+                        var alreadyConfirmed = $("#<%= hfInternalEmpConfirmed.ClientID %>").val() === "true"
+                            && ($("#<%= hfConfirmedEmpCode.ClientID %>").val() || "").toLowerCase() === empCode.toLowerCase();
+                        if (autoConfirmIfMatched && alreadyConfirmed) {
+                            applyInternalEmployeeToForm(emp);
+                        } else {
+                            $("#<%= hfInternalEmpConfirmed.ClientID %>").val("false");
+                            renderInternalEmployee(emp, false);
+                            $("#btnConfirmInternalEmp").data("emp", emp);
+                        }
+                    },
+                    error: function () {
+                        resetInternalEmpConfirmation(false);
+                        $("#divInternalEmpError").text("Unable to look up this employee code. Please try again.").show();
+                    },
+                    complete: function () {
+                        $("#btnLookupInternalEmp").prop("disabled", false).text("Look up");
+                    }
+                });
+            }
+
             $("#<%= ddlPurpose.ClientID %>").change(function () {
                 if ($(this).val() === "I Work Here") {
                     $("#divInternalEmp").slideDown();
-                    // Optional UX: Auto-fill company name
                     if ($("#<%= txtCompany.ClientID %>").val() === "") {
                         $("#<%= txtCompany.ClientID %>").val("Anmol Industries Ltd.");
                     }
                 } else {
                     $("#divInternalEmp").slideUp();
-                    $("#<%= txtInternalEmpCode.ClientID %>").val("");
+                    resetInternalEmpConfirmation(true, false);
                 }
             });
+
+            $("#btnLookupInternalEmp").on("click", function () {
+                lastLookedUpEmpCode = "";
+                lookupInternalEmployee(false);
+            });
+
+            $("#<%= txtInternalEmpCode.ClientID %>").on("blur", function () {
+                if ($("#<%= ddlPurpose.ClientID %>").val() !== "I Work Here")
+                    return;
+                if ($(this).val().trim() === "")
+                    return;
+                lookupInternalEmployee(false);
+            });
+
+            $("#<%= txtInternalEmpCode.ClientID %>").on("input", function () {
+                var current = $(this).val().trim();
+                var confirmed = $("#<%= hfConfirmedEmpCode.ClientID %>").val() || "";
+                if (confirmed && current.toLowerCase() !== confirmed.toLowerCase()) {
+                    $("#<%= hfInternalEmpConfirmed.ClientID %>").val("false");
+                    $("#lblInternalEmpConfirmed").hide();
+                    $("#btnConfirmInternalEmp").show();
+                    setInternalEmpReadonly(false);
+                }
+            });
+
+            $("#<%= txtInternalEmpCode.ClientID %>").on("keydown", function (e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    lastLookedUpEmpCode = "";
+                    lookupInternalEmployee(false);
+                }
+            });
+
+            $("#btnConfirmInternalEmp").on("click", function () {
+                var emp = $(this).data("emp");
+                if (!emp || !emp.Found) {
+                    lastLookedUpEmpCode = "";
+                    lookupInternalEmployee(false);
+                    return;
+                }
+                applyInternalEmployeeToForm(emp);
+            });
+
+            $("#btnChangeInternalEmp").on("click", function () {
+                resetInternalEmpConfirmation(true, true);
+            });
+
+            if ($("#<%= ddlPurpose.ClientID %>").val() === "I Work Here") {
+                $("#divInternalEmp").show();
+                if ($("#<%= txtInternalEmpCode.ClientID %>").val().trim() !== "") {
+                    lookupInternalEmployee(true);
+                }
+            }
 
             // --- 1. HTML5 Camera Logic ---
             const video = document.getElementById('videoElement');
@@ -336,7 +539,18 @@
             }
             if ($("#<%= ddlPurpose.ClientID %>").val() === "I Work Here" && $("#<%= txtInternalEmpCode.ClientID %>").val().trim() === "") {
                 alert("Please enter your Employee Code to self-approve your pass.");
+                $("#<%= txtInternalEmpCode.ClientID %>").focus();
                 return false;
+            }
+            if ($("#<%= ddlPurpose.ClientID %>").val() === "I Work Here") {
+                var confirmed = $("#<%= hfInternalEmpConfirmed.ClientID %>").val() === "true";
+                var codeNow = $("#<%= txtInternalEmpCode.ClientID %>").val().trim();
+                var confirmedCode = ($("#<%= hfConfirmedEmpCode.ClientID %>").val() || "").trim();
+                if (!confirmed || codeNow.toLowerCase() !== confirmedCode.toLowerCase()) {
+                    alert("Please look up your Employee Code and confirm that the details shown are yours before submitting.");
+                    $("#<%= txtInternalEmpCode.ClientID %>").focus();
+                    return false;
+                }
             }
             if ($("#<%= hfSelectedHostCode.ClientID %>").val() === "") {
                 alert("Please search and select a valid Host Employee.");
