@@ -25,6 +25,17 @@
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+
+        .schedule-summary { font-size: 12px; color: #333; font-weight: 600; margin-bottom: 8px; }
+        .day-window { margin-top: 4px; min-width: 260px; }
+        .day-window-title { font-size: 11px; font-weight: 700; color: #73879C; margin-bottom: 6px; text-transform: uppercase; }
+        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 3px 8px 5px 0; border-bottom: 1px solid #eee; }
+        .day-window-table td { padding: 5px 8px 5px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; white-space: nowrap; }
+        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; color: #fff; }
+        .badge-pending { background-color: #f0ad4e; }
+        .badge-approved { background-color: #1ABB9C; }
+        .badge-rejected { background-color: #d9534f; }
     </style>
 </asp:Content>
 
@@ -122,6 +133,12 @@
                                                 <span class="text-muted" style="font-size: 12px;"><i class="fa fa-phone"></i>&nbsp;<%# Eval("HostMobile") %><br />
                                                     <i class="fa fa-envelope"></i>&nbsp;<%# Eval("HostEmail") %></span><br />
                                                 <span class="text-muted" style="font-size: 12px;"><i class="fa fa-user"></i>&nbsp;Code: <%# Eval("HostEmployeeCode") %></span>
+                                            </ItemTemplate>
+                                        </asp:TemplateField>
+
+                                        <asp:TemplateField HeaderText="Visit Window">
+                                            <ItemTemplate>
+                                                <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
@@ -246,6 +263,10 @@
                                         <asp:Label ID="lblMdlPurpose" runat="server"></asp:Label>
                                     </p>
                                     <p>
+                                        <strong>Valid From:</strong>
+                                        <asp:Label ID="lblMdlValidFrom" runat="server"></asp:Label>
+                                    </p>
+                                    <p>
                                         <strong>Valid Upto:</strong>
                                         <asp:Label ID="lblMdlValid" runat="server"></asp:Label>
                                     </p>
@@ -257,6 +278,12 @@
                                         <strong>Meal Required:</strong>
                                         <asp:Label ID="lblMdlMeal" runat="server"></asp:Label>
                                     </p>
+                                </div>
+                            </div>
+                            <div class="row" style="margin-top: 15px;">
+                                <div class="col-md-12">
+                                    <h5 style="border-bottom: 2px solid #eee; padding-bottom: 5px; color: #1ABB9C;">Visit Schedule</h5>
+                                    <asp:Literal ID="litMdlVisitDays" runat="server"></asp:Literal>
                                 </div>
                             </div>
                         </div>

@@ -17,6 +17,7 @@ namespace AnmolDristi
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsVisitorManagementRepository _visitorManagementRepository =
             new VmsVisitorManagementRepository();
+        private Dictionary<int, List<VisitDayLogInfo>> _dayLogsByVisit;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -67,6 +68,26 @@ namespace AnmolDristi
             BindChart();
         }
 
+        private void LoadDayLogs(DataTable dt)
+        {
+            var logIds = new List<int>();
+            if (dt != null && dt.Columns.Contains("LogID"))
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    if (row["LogID"] == DBNull.Value)
+                        continue;
+                    int logId = Convert.ToInt32(row["LogID"]);
+                    if (logId > 0 && !logIds.Contains(logId))
+                        logIds.Add(logId);
+                }
+            }
+
+            _dayLogsByVisit = logIds.Count == 0
+                ? new Dictionary<int, List<VisitDayLogInfo>>()
+                : _visitorManagementRepository.GetDayLogsForVisits(logIds);
+        }
+
         private void BindGrid()
         {
             DateTime fromDate;
@@ -86,6 +107,11 @@ namespace AnmolDristi
                 v.VisitorMobile,
                 v.VisitorEmail,
                 v.ApprovalStatus,
+                ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
+                v.RequestedValidFrom,
+                v.RequestedValidUpto,
+                v.ValidFrom,
+                v.ValidUpto,
                 v.HostEmployeeCode,
                 ISNULL(u.EmployeeName, 'Unknown Host') AS HostName,
                 ISNULL(u.Mobile, 'N/A') AS HostMobile,
@@ -204,6 +230,7 @@ namespace AnmolDristi
                     {
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
+                        LoadDayLogs(dt);
                         gvVisitorLogs.DataSource = dt;
                         gvVisitorLogs.DataBind();
 
@@ -432,6 +459,8 @@ namespace AnmolDristi
             if (e.Row.RowType != DataControlRowType.DataRow)
                 return;
 
+            BindScheduleCell(e.Row);
+
             LinkButton lnkApprove = e.Row.FindControl("lnkApprove") as LinkButton;
             if (lnkApprove == null || !lnkApprove.Visible)
                 return;
@@ -451,6 +480,38 @@ namespace AnmolDristi
                     message.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\r", "").Replace("\n", "\\n") +
                     "');";
             }
+        }
+
+        private void BindScheduleCell(GridViewRow row)
+        {
+            Literal litDayWindow = row.FindControl("litDayWindow") as Literal;
+            if (litDayWindow == null)
+                return;
+
+            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
+            if (logIdObj == null || logIdObj == DBNull.Value)
+                return;
+
+            int logId = Convert.ToInt32(logIdObj);
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+
+            litDayWindow.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+                Convert.ToString(DataBinder.Eval(row.DataItem, "ScheduleType")),
+                Convert.ToString(DataBinder.Eval(row.DataItem, "ApprovalStatus")),
+                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidFrom")),
+                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidUpto")),
+                ReadDate(DataBinder.Eval(row.DataItem, "ValidFrom")),
+                ReadDate(DataBinder.Eval(row.DataItem, "ValidUpto")),
+                days);
+        }
+
+        private static DateTime? ReadDate(object value)
+        {
+            if (value == null || value == DBNull.Value)
+                return null;
+            return Convert.ToDateTime(value);
         }
 
         private void RegisterAttendanceFailureScript(string message)
@@ -487,6 +548,10 @@ namespace AnmolDristi
 
         private void PopulateModal(int logId)
         {
+            litMdlVisitDays.Text = string.Empty;
+            lblMdlValidFrom.Text = "--";
+            lblMdlValid.Text = "--";
+
             using (SqlConnection con = new SqlConnection(connStr))
             {
                 string query = @"SELECT * FROM VMS_VisitLog WHERE LogID = @LogID";
@@ -494,10 +559,20 @@ namespace AnmolDristi
                 {
                     cmd.Parameters.AddWithValue("@LogID", logId);
                     con.Open();
+
+                    string scheduleType = "SingleDay";
+                    string approvalStatus = null;
+                    DateTime? requestedFrom = null;
+                    DateTime? requestedUpto = null;
+                    DateTime? validFrom = null;
+                    DateTime? validUpto = null;
+                    bool found = false;
+
                     using (SqlDataReader sdr = cmd.ExecuteReader())
                     {
                         if (sdr.Read())
                         {
+                            found = true;
                             lblMdlName.Text = sdr["VisitorName"].ToString();
                             lblMdlMobile.Text = sdr["VisitorMobile"].ToString();
                             lblMdlEmail.Text = sdr["VisitorEmail"].ToString();
@@ -505,28 +580,53 @@ namespace AnmolDristi
                             lblMdlCategory.Text = sdr["PassCategory"].ToString();
                             lblMdlHost.Text = sdr["HostEmployeeCode"].ToString();
                             lblMdlPurpose.Text = sdr["PurposeOfVisit"].ToString();
-                            lblMdlValid.Text = Convert.ToDateTime(sdr["ValidUpto"]).ToString("dd-MMM-yyyy HH:mm");
                             lblMdlStatus.Text = sdr["VisitStatus"].ToString();
-                            lblMdlStatusBadge.Text = sdr["VisitStatus"].ToString(); // Feeds the nice badge under the photo
+                            lblMdlStatusBadge.Text = sdr["VisitStatus"].ToString();
                             lblMdlMeal.Text = Convert.ToBoolean(sdr["IsMealRequired"]) ? "Yes" : "No";
 
-                            // Handle the Photo Binding
+                            scheduleType = Convert.ToString(sdr["ScheduleType"]);
+                            if (string.IsNullOrWhiteSpace(scheduleType))
+                                scheduleType = "SingleDay";
+                            approvalStatus = Convert.ToString(sdr["ApprovalStatus"]);
+                            requestedFrom = ReadDate(sdr["RequestedValidFrom"]);
+                            requestedUpto = ReadDate(sdr["RequestedValidUpto"]);
+                            validFrom = ReadDate(sdr["ValidFrom"]);
+                            validUpto = ReadDate(sdr["ValidUpto"]);
+
+                            lblMdlValidFrom.Text = FormatModalDateTime(validFrom ?? requestedFrom);
+                            lblMdlValid.Text = FormatModalDateTime(validUpto ?? requestedUpto);
+
                             string photoPath = sdr["PhotoPath"].ToString();
                             if (string.IsNullOrEmpty(photoPath))
                             {
-                                // Fallback image if the visitor didn't snap a photo
                                 imgMdlVisitor.ImageUrl = "WebData/No_Image.jpg";
                             }
                             else
                             {
-                                // Bind the actual physical image path or base64 data
                                 imgMdlVisitor.ImageUrl = photoPath;
                             }
                         }
                     }
-                    con.Close();
+
+                    if (!found)
+                        return;
+
+                    List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, logId);
+                    litMdlVisitDays.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+                        scheduleType,
+                        approvalStatus,
+                        requestedFrom,
+                        requestedUpto,
+                        validFrom,
+                        validUpto,
+                        days);
                 }
             }
+        }
+
+        private static string FormatModalDateTime(DateTime? value)
+        {
+            return value.HasValue ? value.Value.ToString("dd-MMM-yyyy HH:mm") : "--";
         }
 
         protected void btnExport_Click(object sender, EventArgs e)
