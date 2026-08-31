@@ -1531,6 +1531,8 @@
     <Compile Include="PolicyExceptionSerializer.cs" />
     <Compile Include="BLL\PolicyExceptionService.cs" />
     <Compile Include="BLL\PolicyResolutionService.cs" />
+    <Compile Include="BLL\ApprovalModels.cs" />
+    <Compile Include="BLL\ApprovalService.cs" />
     <Compile Include="DAL\PolicyExceptionDataAccess.cs" />
     <Compile Include="DAL\PolicyResolutionDataAccess.cs" />
     <Compile Include="DAL\VmsOtpRepository.cs" />

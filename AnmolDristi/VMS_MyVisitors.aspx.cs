@@ -20,6 +20,7 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Drawing;
 using AnmolDristi.DAL;
+using AnmolDristi.BLL;
 
 namespace AnmolDristi
 {
@@ -27,6 +28,7 @@ namespace AnmolDristi
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
+        private readonly ApprovalService _approvalService = new ApprovalService();
         private Dictionary<int, List<VisitDayLogInfo>> _dayLogsByVisit;
 
         protected void Page_Load(object sender, EventArgs e)
@@ -393,26 +395,26 @@ namespace AnmolDristi
                 });
             }
 
-            VisitorApprovalResult result = ApproveVisitor(
+            ApprovalResult result = ApproveVisitor(
                 logId,
                 selectedDays,
                 approvedFromTime,
                 approvedToTime);
 
-            if (result.Succeeded)
+            if (result.Success)
             {
                 ScriptManager.RegisterStartupScript(this, GetType(), "HideScheduleModal",
                     "$('#ScheduleApprovalModal').modal('hide'); $('body').removeClass('modal-open'); $('.modal-backdrop').remove();", true);
             }
             else
             {
-                lblModalMsg.Text = FormatApprovalFailureMessage(result.FailureReason);
+                lblModalMsg.Text = result.Message;
                 ScriptManager.RegisterStartupScript(this, GetType(), "ShowScheduleModal",
                     "$('#ScheduleApprovalModal').modal('show');", true);
             }
         }
 
-        private VisitorApprovalResult ApproveVisitor(
+        private ApprovalResult ApproveVisitor(
             int logId,
             IList<SelectedVisitDay> selectedDays = null,
             TimeSpan? approvedFromTime = null,
@@ -428,42 +430,27 @@ namespace AnmolDristi
                 hostEmployeeCode = Session["EmpCode"].ToString();
             }
 
-            VisitorApprovalResult result = _repository.ApprovePendingVisit(new VisitorApprovalRequest
-            {
-                LogId = logId,
-                HostEmployeeCode = hostEmployeeCode,
-                SelectedDays = selectedDays,
-                ApprovedFromTime = approvedFromTime,
-                ApprovedToTime = approvedToTime
-            });
+            ApprovalResult result = _approvalService.Execute(ApprovalRequest.ForHost(
+                logId,
+                hostEmployeeCode,
+                selectedDays,
+                approvedFromTime,
+                approvedToTime));
 
-            if (result.Succeeded)
+            if (result.Success)
             {
                 lblPendingMsg.ForeColor = Color.Green;
-                lblPendingMsg.Text = "Visitor Approved! Digital pass sent.";
+                lblPendingMsg.Text = result.Message;
                 BindGrids();
             }
             else
             {
                 lblPendingMsg.ForeColor = Color.Red;
-                lblPendingMsg.Text = FormatApprovalFailureMessage(result.FailureReason);
+                lblPendingMsg.Text = result.Message;
                 BindGrids();
             }
 
             return result;
-        }
-
-        private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)
-        {
-            switch (reason)
-            {
-                case ApprovalFailureReason.NotFoundOrNotOwned:
-                    return "Unable to approve this visit. It was not found or you are not authorized.";
-                case ApprovalFailureReason.NotPending:
-                    return "Unable to approve this visit. It is no longer pending.";
-                default:
-                    return "Unable to approve this visit. Please try again.";
-            }
         }
 
         private void RejectVisitor(int logId)
