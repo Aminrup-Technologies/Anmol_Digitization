@@ -1,7 +1,11 @@
 ﻿<%@ Page Title="Visitor Logs & Reports" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="VMS_ReceptionistLogs.aspx.cs" Inherits="AnmolDristi.VMS_ReceptionistLogs" %>
+<%@ Register Src="~/Controls/VisitWindowControl.ascx" TagPrefix="vms" TagName="VisitWindow" %>
+<%@ Register Src="~/Controls/StatusBadgeControl.ascx" TagPrefix="vms" TagName="StatusBadge" %>
+<%@ Register Src="~/Controls/ApprovalSummaryControl.ascx" TagPrefix="vms" TagName="ApprovalSummary" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="css/vms-ui.css" rel="stylesheet" />
     <style type="text/css">
         .filter-panel {
             background: #fff;
@@ -25,17 +29,6 @@
             border-radius: 5px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        .schedule-summary { font-size: 12px; color: #333; font-weight: 600; margin-bottom: 8px; }
-        .day-window { margin-top: 4px; min-width: 260px; }
-        .day-window-title { font-size: 11px; font-weight: 700; color: #73879C; margin-bottom: 6px; text-transform: uppercase; }
-        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 3px 8px 5px 0; border-bottom: 1px solid #eee; }
-        .day-window-table td { padding: 5px 8px 5px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; white-space: nowrap; }
-        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; color: #fff; }
-        .badge-pending { background-color: #f0ad4e; }
-        .badge-approved { background-color: #1ABB9C; }
-        .badge-rejected { background-color: #d9534f; }
     </style>
 </asp:Content>
 
@@ -138,7 +131,7 @@
 
                                         <asp:TemplateField HeaderText="Visit Window">
                                             <ItemTemplate>
-                                                <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                                <vms:VisitWindow ID="ucVisitWindow" runat="server" />
                                             </ItemTemplate>
                                         </asp:TemplateField>
 
@@ -223,9 +216,7 @@
                                         Style="width: 100%; max-width: 250px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
                                     <br />
                                     <br />
-                                    <span class="label label-primary" style="font-size: 14px; padding: 5px 15px;">Status:
-                                        <asp:Label ID="lblMdlStatusBadge" runat="server"></asp:Label>
-                                    </span>
+                                    <vms:StatusBadge ID="ucMdlStatusBadge" runat="server" />
                                 </div>
 
                                 <div class="col-md-4">
@@ -283,7 +274,7 @@
                             <div class="row" style="margin-top: 15px;">
                                 <div class="col-md-12">
                                     <h5 style="border-bottom: 2px solid #eee; padding-bottom: 5px; color: #1ABB9C;">Visit Schedule</h5>
-                                    <asp:Literal ID="litMdlVisitDays" runat="server"></asp:Literal>
+                                    <vms:ApprovalSummary ID="ucMdlVisitDays" runat="server" />
                                 </div>
                             </div>
                         </div>

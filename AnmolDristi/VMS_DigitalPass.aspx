@@ -1,4 +1,6 @@
 ﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="VMS_DigitalPass.aspx.cs" Inherits="AnmolDristi.VMS_DigitalPass" %>
+<%@ Register Src="~/Controls/VisitWindowControl.ascx" TagPrefix="vms" TagName="VisitWindow" %>
+<%@ Register Src="~/Controls/StatusBadgeControl.ascx" TagPrefix="vms" TagName="StatusBadge" %>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -9,6 +11,7 @@
     <link href="vendors/bootstrap/dist/css/css/bootstrap.min.css" rel="stylesheet">
     <link href="vendors/font-awesome/css/font-awesome.min.css" rel="stylesheet">
     
+    <link href="css/vms-ui.css" rel="stylesheet">
     <style>
         body { background-color: #f7f7f7; font-family: 'Helvetica Neue', Arial, sans-serif; }
         .pass-container { max-width: 400px; margin: 30px auto; }
@@ -20,26 +23,12 @@
         .visitor-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #1ABB9C; margin-bottom: 15px; }
         .qr-box { padding: 20px; text-align: center; background: #fafafa; }
         .qr-box img { max-width: 200px; height: auto; margin: 0 auto; }
-        .status-badge { display: inline-block; padding: 8px 20px; border-radius: 20px; font-weight: bold; font-size: 14px; margin-top: 10px; }
-        .status-valid { background-color: #e8f5e9; color: #2e7d32; }
-        .status-expired { background-color: #ffebee; color: #c62828; }
-        .status-pending { background-color: #fff8e1; color: #f57f17; }
-        .status-inside { background-color: #e3f2fd; color: #1565c0; }
-        .status-completed { background-color: #eceff1; color: #455a64; }
         .status-message { display: block; margin-top: 8px; font-size: 13px; color: #555; }
         .policy-box { padding: 15px 20px; font-size: 12px; color: #666; background: #fff; }
         .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; text-align: left; }
         .info-label { color: #777; font-weight: 600; }
         .info-value { color: #333; font-weight: bold; text-align: right; }
         .day-window { margin-top: 14px; text-align: left; }
-        .day-window-title { font-size: 12px; font-weight: 700; color: #73879C; margin-bottom: 8px; text-transform: uppercase; }
-        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 4px 4px 6px 0; border-bottom: 1px solid #eee; }
-        .day-window-table td { padding: 6px 4px 6px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; }
-        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; }
-        .badge-pending { background-color: #F39C12; color: #fff; }
-        .badge-approved { background-color: #1ABB9C; color: #fff; }
-        .badge-rejected { background-color: #E74C3C; color: #fff; }
     </style>
 </head>
 <body>
@@ -83,11 +72,9 @@
                         <span class="info-label">Approved Dates:</span>
                         <span class="info-value"><asp:Label ID="lblApprovedDates" runat="server"></asp:Label></span>
                     </div>
-                    <asp:Panel ID="pnlVisitDays" runat="server" Visible="false">
-                        <asp:Literal ID="litVisitDays" runat="server"></asp:Literal>
-                    </asp:Panel>
+                    <vms:VisitWindow ID="ucVisitDays" runat="server" />
 
-                    <asp:Label ID="lblStatusBadge" runat="server"></asp:Label>
+                    <vms:StatusBadge ID="ucStatusBadge" runat="server" />
                     <asp:Label ID="lblStatusMessage" runat="server" CssClass="status-message"></asp:Label>
                 </div>
 

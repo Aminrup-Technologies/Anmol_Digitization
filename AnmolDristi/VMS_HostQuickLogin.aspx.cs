@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Web.UI.WebControls;
 using AnmolDristi.DAL;
 using AnmolDristi.BLL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -150,12 +151,11 @@ namespace AnmolDristi
                 || days.Count > 1;
             if (!isMultiDay || days.Count == 0)
             {
-                litPendingVisitDays.Text = string.Empty;
+                ucPendingVisitDays.Clear();
                 return;
             }
 
-            List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, "Pending");
-            litPendingVisitDays.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
+            ucPendingVisitDays.BindVisitorDays(days, "Pending");
         }
 
         private void BindVisitDaysRecap(
@@ -169,7 +169,7 @@ namespace AnmolDristi
             DateTime? validTo)
         {
             List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
-            litVisitDaysRecap.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+            ucVisitDaysRecap.BindHostSchedule(
                 scheduleType,
                 approvalStatus,
                 requestedFrom,
@@ -177,7 +177,7 @@ namespace AnmolDristi
                 validFrom,
                 validTo,
                 days);
-            pnlVisitDaysRecap.Visible = !string.IsNullOrEmpty(litVisitDaysRecap.Text);
+            pnlVisitDaysRecap.Visible = ucVisitDaysRecap.Visible;
         }
 
         private void BindVisitDaysRecap(int visitId, string approvalStatus)

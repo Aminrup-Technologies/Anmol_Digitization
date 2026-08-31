@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using QRCoder;
 using AnmolDristi.DAL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -136,43 +137,43 @@ namespace AnmolDristi
             {
                 case DigitalPassState.NotApprovedForToday:
                     badgeText = "NOT APPROVED FOR TODAY";
-                    badgeCss = "status-badge status-expired";
+                    badgeCss = "vms-status-badge vms-status-lg status-not-approved";
                     message = "This pass is not approved for entry today.";
                     break;
                 case DigitalPassState.PassNotActiveYet:
                     badgeText = "PASS NOT ACTIVE YET";
-                    badgeCss = "status-badge status-pending";
+                    badgeCss = "vms-status-badge vms-status-lg status-pending";
                     message = "Your approved visit window has not started.";
                     break;
                 case DigitalPassState.VisitorCurrentlyInside:
                     badgeText = "VISITOR CURRENTLY INSIDE";
-                    badgeCss = "status-badge status-inside";
+                    badgeCss = "vms-status-badge vms-status-lg status-inside";
                     message = "You have already checked in.";
                     break;
                 case DigitalPassState.VisitCompleted:
                     badgeText = "VISIT COMPLETED";
-                    badgeCss = "status-badge status-completed";
+                    badgeCss = "vms-status-badge vms-status-lg status-completed";
                     message = "You have already checked out for today.";
                     break;
                 case DigitalPassState.TodaysWindowEnded:
                     badgeText = "TODAY'S WINDOW ENDED";
-                    badgeCss = "status-badge status-expired";
+                    badgeCss = "vms-status-badge vms-status-lg status-expired";
                     message = "Today's approved visiting window has ended.";
                     break;
                 case DigitalPassState.Expired:
                     badgeText = "<i class='fa fa-times-circle'></i> EXPIRED";
-                    badgeCss = "status-badge status-expired";
+                    badgeCss = "vms-status-badge vms-status-lg status-expired";
                     message = "";
                     break;
                 case DigitalPassState.ValidPass:
                 default:
                     badgeText = "VALID PASS";
-                    badgeCss = "status-badge status-valid";
+                    badgeCss = "vms-status-badge vms-status-lg status-valid";
                     message = "Show this QR code at the security gate.";
                     break;
             }
 
-            lblStatusBadge.Text = "<span class='" + badgeCss + "'>" + badgeText + "</span>";
+            ucStatusBadge.BindPresentation(badgeText, badgeCss, badgeText.IndexOf('<') >= 0);
             lblStatusMessage.Text = message;
 
             if (state == DigitalPassState.ValidPass)
@@ -196,16 +197,13 @@ namespace AnmolDristi
 
             if (isMultiDay && days != null && days.Count > 0)
             {
-                List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, approvalStatus);
-                litVisitDays.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
-                pnlVisitDays.Visible = true;
+                ucVisitDays.BindVisitorDays(days, approvalStatus);
                 divApprovedDates.Visible = false;
                 lblApprovedDates.Text = "";
                 return;
             }
 
-            pnlVisitDays.Visible = false;
-            litVisitDays.Text = "";
+            ucVisitDays.Clear();
 
             string approvedDatesText = _repository.GetMultiDayApprovedDatesText(logId);
             if (string.IsNullOrEmpty(approvedDatesText))

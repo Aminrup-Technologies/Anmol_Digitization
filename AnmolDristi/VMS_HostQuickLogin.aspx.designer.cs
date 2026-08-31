@@ -38,7 +38,7 @@ namespace AnmolDristi {
         /// <summary>
         /// litVisitDaysRecap control.
         /// </summary>
-        protected global::System.Web.UI.WebControls.Literal litVisitDaysRecap;
+        protected global::AnmolDristi.Controls.ApprovalSummaryControl ucVisitDaysRecap;
         
         /// <summary>
         /// lblVisName control.
@@ -81,7 +81,7 @@ namespace AnmolDristi {
         /// <summary>
         /// litPendingVisitDays control.
         /// </summary>
-        protected global::System.Web.UI.WebControls.Literal litPendingVisitDays;
+        protected global::AnmolDristi.Controls.VisitWindowControl ucPendingVisitDays;
         
         /// <summary>
         /// cblRequestedDays control.

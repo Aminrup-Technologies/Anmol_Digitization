@@ -1,0 +1,275 @@
+/* Shared VMS visual language: Visitor, Host, Admin, Reception, Digital Pass. */
+
+.vms-status-badge,
+.badge-pending,
+.badge-approved,
+.badge-rejected,
+.badge-not-approved,
+.badge-checked-in,
+.badge-checked-out {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 10px;
+    color: #fff;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+}
+
+.vms-status-badge.vms-status-lg,
+.status-badge {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.badge-pending,
+.vms-status-pending,
+.status-pending {
+    background-color: #F39C12;
+    color: #fff;
+}
+
+.status-pending {
+    background-color: #fff8e1;
+    color: #f57f17;
+}
+
+.badge-approved,
+.vms-status-approved,
+.status-valid {
+    background-color: #1ABB9C;
+    color: #fff;
+}
+
+.status-valid {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+
+.badge-checked-in,
+.vms-status-checked-in,
+.status-inside {
+    background-color: #1565c0;
+    color: #fff;
+}
+
+.status-inside {
+    background-color: #e3f2fd;
+    color: #1565c0;
+}
+
+.badge-checked-out,
+.vms-status-checked-out,
+.status-completed {
+    background-color: #78909c;
+    color: #fff;
+}
+
+.status-completed {
+    background-color: #eceff1;
+    color: #455a64;
+}
+
+.badge-rejected,
+.vms-status-rejected,
+.status-expired {
+    background-color: #E74C3C;
+    color: #fff;
+}
+
+.status-expired {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+.badge-not-approved,
+.vms-status-not-approved,
+.status-not-approved {
+    background-color: #E67E22;
+    color: #fff;
+}
+
+.status-not-approved {
+    background-color: #fef5eb;
+    color: #d35400;
+}
+
+.vms-status-badge:focus {
+    outline: 2px solid #1ABB9C;
+    outline-offset: 2px;
+}
+
+.schedule-summary {
+    font-size: 12px;
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.day-window {
+    margin-top: 4px;
+    min-width: 260px;
+}
+
+.day-window-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #73879C;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.day-window-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.day-window-table th {
+    text-align: left;
+    color: #888;
+    font-weight: 600;
+    padding: 3px 8px 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.day-window-table td {
+    padding: 5px 8px 5px 0;
+    color: #333;
+    border-bottom: 1px solid #f3f3f3;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.day-window-wrap {
+    text-align: left;
+    margin: 16px 0 8px 0;
+}
+
+.vms-hours-warning {
+    margin: 12px 0 8px 0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid #f0c36d;
+    background: #fff8e8;
+    color: #6a4b00;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.vms-hours-warning[hidden] {
+    display: none !important;
+}
+
+.vms-hours-warning-title {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.vms-hours-warning-title .fa {
+    margin-right: 6px;
+    color: #F39C12;
+}
+
+.vms-hours-warning-body {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.internal-emp-lookup {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.internal-emp-lookup input {
+    flex: 1;
+}
+
+.internal-emp-card,
+.vms-emp-card {
+    margin-top: 10px;
+    padding: 12px 14px;
+    border: 1px solid #1ABB9C;
+    border-radius: 8px;
+    background: #f6fffd;
+}
+
+.internal-emp-card h5,
+.vms-emp-card h5 {
+    margin: 0 0 8px 0;
+    color: #1ABB9C;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.internal-emp-card dl,
+.vms-emp-card dl {
+    margin: 0 0 10px 0;
+}
+
+.internal-emp-card dt,
+.vms-emp-card dt {
+    font-size: 11px;
+    color: #73879C;
+    text-transform: uppercase;
+    margin-top: 6px;
+}
+
+.internal-emp-card dd,
+.vms-emp-card dd {
+    margin: 0;
+    font-weight: 600;
+    color: #333;
+}
+
+.internal-emp-error,
+.vms-emp-error {
+    margin-top: 8px;
+    color: #E74C3C;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.internal-emp-confirmed {
+    color: #1ABB9C;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.vms-approval-summary {
+    text-align: left;
+}
+
+.btn:focus,
+.btn-proceed:focus,
+a.btn:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid #1ABB9C;
+    outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+    .day-window {
+        min-width: 0;
+    }
+
+    .day-window-table td {
+        white-space: normal;
+    }
+
+    .internal-emp-lookup {
+        flex-direction: column;
+    }
+}
