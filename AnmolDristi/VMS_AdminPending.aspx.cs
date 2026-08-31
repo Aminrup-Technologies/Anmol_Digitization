@@ -191,6 +191,34 @@ namespace AnmolDristi
                 return;
 
             BindScheduleCell(e.Row, "Pending");
+
+            LinkButton btnForceApprove = e.Row.FindControl("btnForceApprove") as LinkButton;
+            if (btnForceApprove == null)
+                return;
+
+            object logIdObj = DataBinder.Eval(e.Row.DataItem, "LogID");
+            if (logIdObj == null || logIdObj == DBNull.Value)
+                return;
+
+            int logId = Convert.ToInt32(logIdObj);
+            VisitHoursEvaluation evaluation;
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                evaluation = VmsVisitScheduleHelper.EvaluateVisitHoursForLog(con, logId);
+            }
+
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+
+            btnForceApprove.OnClientClick = VmsVisitScheduleHelper.ToJsConfirm(
+                VmsVisitScheduleHelper.BuildOverrideApprovalConfirm(
+                    VmsVisitScheduleHelper.HoursWarningText(evaluation),
+                    VmsVisitScheduleHelper.IsMultiDaySchedule(
+                        Convert.ToString(DataBinder.Eval(e.Row.DataItem, "ScheduleType")),
+                        days),
+                    onBehalf: true));
         }
 
         protected void txtHostCode_TextChanged(object sender, EventArgs e)
@@ -783,7 +811,8 @@ namespace AnmolDristi
                 ApprovedOnOverride = schedDate,
                 QueueHostOnBehalfNotification = true,
                 OnBehalfHostEmail = hostEmail,
-                OnBehalfHostName = hostName
+                OnBehalfHostName = hostName,
+                ApprovedBy = ResolveAdminApprovedBy()
             });
 
             if (!result.Succeeded)
@@ -800,6 +829,15 @@ namespace AnmolDristi
             lblMessage.ForeColor = Color.Green;
             lblMessage.Text =
                 $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf (Valid Upto: {validUptoText}).";
+        }
+
+        private string ResolveAdminApprovedBy()
+        {
+            return VmsVisitScheduleHelper.FormatOverrideApprovedBy(
+                "Admin",
+                Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : null,
+                Session["EmpCode"] != null ? Session["EmpCode"].ToString() : null,
+                Session["UserName"] != null ? Session["UserName"].ToString() : null);
         }
 
         private static string FormatOnBehalfFailure(ApprovalFailureReason reason)
