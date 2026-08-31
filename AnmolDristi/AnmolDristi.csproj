@@ -1533,11 +1533,14 @@
     <Compile Include="BLL\PolicyResolutionService.cs" />
     <Compile Include="BLL\ApprovalModels.cs" />
     <Compile Include="BLL\ApprovalService.cs" />
+    <Compile Include="BLL\AuditEventModels.cs" />
+    <Compile Include="BLL\AuditEventService.cs" />
     <Compile Include="DAL\PolicyExceptionDataAccess.cs" />
     <Compile Include="DAL\PolicyResolutionDataAccess.cs" />
     <Compile Include="DAL\VmsOtpRepository.cs" />
     <Compile Include="DAL\VmsVisitorRepository.cs" />
     <Compile Include="DAL\VmsVisitorManagementRepository.cs" />
+    <Compile Include="DAL\VmsAuditEventRepository.cs" />
     <Compile Include="DAL\VmsGateScannerRepository.cs" />
     <Compile Include="ITSM\DAL\Entities\RequestType.cs" />
     <Compile Include="ITSM\DAL\Entities\Category.cs" />

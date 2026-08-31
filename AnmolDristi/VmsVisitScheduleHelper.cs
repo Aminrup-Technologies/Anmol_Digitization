@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data.SqlClient;
 using System.Globalization;
 using System.Text;
+using AnmolDristi.BLL;
 
 namespace AnmolDristi
 {
@@ -601,7 +602,21 @@ namespace AnmolDristi
             if (visitRows != 1)
                 return false;
 
-            WriteCheckInHistory(con, trans, dayLogId, logId, guardId);
+            bool autoClosed = WriteCheckInHistory(con, trans, dayLogId, logId, guardId);
+            string actorRole = AuditEventService.ActorRoleFromAttendanceActor(guardId);
+            string source = ResolveAttendanceSource(guardId);
+            if (autoClosed)
+            {
+                AuditEventService.Publish(
+                    con, trans, logId, AuditEventType.AutoClosed,
+                    AuditActorRole.System, guardId, dayLogId,
+                    AuditEventService.Metadata("source", source));
+            }
+
+            AuditEventService.Publish(
+                con, trans, logId, AuditEventType.CheckedIn,
+                actorRole, guardId, dayLogId,
+                AuditEventService.Metadata("source", source));
             return true;
         }
 
@@ -666,6 +681,12 @@ namespace AnmolDristi
                 return false;
 
             CloseOpenAttendanceHistory(con, trans, dayLogId);
+            AuditEventService.Publish(
+                con, trans, logId, AuditEventType.CheckedOut,
+                AuditEventService.ActorRoleFromAttendanceActor(guardId),
+                guardId,
+                dayLogId,
+                AuditEventService.Metadata("source", ResolveAttendanceSource(guardId)));
             return true;
         }
 
@@ -1309,14 +1330,14 @@ namespace AnmolDristi
             return "Gate";
         }
 
-        private static void WriteCheckInHistory(
+        private static bool WriteCheckInHistory(
             SqlConnection con,
             SqlTransaction trans,
             int dayLogId,
             int logId,
             string actor)
         {
-            CloseOpenAttendanceHistory(con, trans, dayLogId);
+            bool autoClosed = CloseOpenAttendanceHistory(con, trans, dayLogId) > 0;
 
             using (SqlCommand cmd = new SqlCommand(@"
                 IF OBJECT_ID('dbo.VMS_VisitAttendanceHistory', 'U') IS NOT NULL
@@ -1333,9 +1354,11 @@ namespace AnmolDristi
                 cmd.Parameters.AddWithValue("@Actor", actor ?? "SecurityGate");
                 cmd.ExecuteNonQuery();
             }
+
+            return autoClosed;
         }
 
-        private static void CloseOpenAttendanceHistory(
+        private static int CloseOpenAttendanceHistory(
             SqlConnection con,
             SqlTransaction trans,
             int dayLogId)
@@ -1350,7 +1373,7 @@ namespace AnmolDristi
                 END", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
-                cmd.ExecuteNonQuery();
+                return cmd.ExecuteNonQuery();
             }
         }
 
