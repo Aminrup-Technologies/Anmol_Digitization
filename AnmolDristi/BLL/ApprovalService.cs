@@ -146,7 +146,8 @@ namespace AnmolDristi.BLL
                 QueueHostOnBehalfNotification = request.QueueHostOnBehalfNotification,
                 OnBehalfHostEmail = request.OnBehalfHostEmail,
                 OnBehalfHostName = request.OnBehalfHostName,
-                ApprovedBy = approvedBy
+                ApprovedBy = approvedBy,
+                ActorRole = request.ActorRole.ToString()
             };
         }
 

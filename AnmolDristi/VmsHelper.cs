@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data.SqlClient;
 using System.Web;
+using AnmolDristi.BLL;
 
 namespace AnmolDristi
 {
@@ -470,6 +471,8 @@ namespace AnmolDristi
                 </div>";
 
             string normalizedEmail = NormalizeEmail(visitorEmail);
+            bool queuedEmail = false;
+            bool queuedSms = false;
             if (normalizedEmail != "N/A")
             {
                 string emailQuery = @"
@@ -485,6 +488,7 @@ namespace AnmolDristi
                     qCmd.Parameters.AddWithValue("@Name", visitorName);
                     qCmd.Parameters.AddWithValue("@Body", emailBody);
                     qCmd.ExecuteNonQuery();
+                    queuedEmail = true;
                 }
             }
 
@@ -505,7 +509,21 @@ namespace AnmolDristi
                     smsCmd.Parameters.AddWithValue("@Name", visitorName);
                     smsCmd.Parameters.AddWithValue("@Body", smsBody);
                     smsCmd.ExecuteNonQuery();
+                    queuedSms = true;
                 }
+            }
+
+            if (queuedEmail || queuedSms)
+            {
+                string channel = queuedEmail && queuedSms ? "Email,SMS" : (queuedEmail ? "Email" : "SMS");
+                AuditEventService.Publish(
+                    con,
+                    trans,
+                    visitId,
+                    AuditEventType.NotificationSent,
+                    AuditActorRole.System,
+                    "VMS",
+                    metadata: AuditEventService.Metadata("channel", channel));
             }
         }
     }

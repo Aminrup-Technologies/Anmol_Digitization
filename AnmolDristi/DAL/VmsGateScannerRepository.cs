@@ -2,6 +2,7 @@ using System;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using AnmolDristi.BLL;
 
 namespace AnmolDristi.DAL
 {
@@ -245,7 +246,8 @@ namespace AnmolDristi.DAL
                         }
 
                         bool transitionSucceeded;
-                        if (resolvedDayLogId > 0)
+                        bool usedDayLog = resolvedDayLogId > 0;
+                        if (usedDayLog)
                             transitionSucceeded = VmsVisitScheduleHelper.CheckInDay(
                                 con, resolvedDayLogId, logId, resolvedGuardId, trans);
                         else
@@ -269,6 +271,14 @@ namespace AnmolDristi.DAL
                                 FailureReason = GateMutationFailureReason.StateChanged,
                                 LogId = logId
                             };
+                        }
+
+                        if (!usedDayLog)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, logId, AuditEventType.CheckedIn,
+                                AuditActorRole.Gate, resolvedGuardId,
+                                metadata: AuditEventService.Metadata("source", "Gate"));
                         }
 
                         // AR-VMS-09: bind arrival notification to the mutated LogID (same pattern as Check-Out).
@@ -380,7 +390,8 @@ namespace AnmolDristi.DAL
                         }
 
                         bool transitionSucceeded;
-                        if (resolvedDayLogId > 0)
+                        bool usedDayLog = resolvedDayLogId > 0;
+                        if (usedDayLog)
                             transitionSucceeded = VmsVisitScheduleHelper.CheckOutDay(
                                 con, resolvedDayLogId, logId, resolvedGuardId, trans);
                         else
@@ -404,6 +415,14 @@ namespace AnmolDristi.DAL
                                 FailureReason = GateMutationFailureReason.StateChanged,
                                 LogId = logId
                             };
+                        }
+
+                        if (!usedDayLog)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, logId, AuditEventType.CheckedOut,
+                                AuditActorRole.Gate, resolvedGuardId,
+                                metadata: AuditEventService.Metadata("source", "Gate"));
                         }
 
                         if (!string.IsNullOrEmpty(hostEmail))
