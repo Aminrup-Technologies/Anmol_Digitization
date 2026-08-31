@@ -64,15 +64,6 @@ namespace AnmolDristi.DAL
         public int LogId { get; set; }
         public Guid? QrToken { get; set; }
         public DateTime? ValidUpto { get; set; }
-        public bool QrGenerated { get; set; }
-        public bool AuditWritten { get; set; }
-        public string WarningMessage { get; set; }
-    }
-
-    public class AfterHoursAuditOutcome
-    {
-        public bool Written { get; set; }
-        public string WarningMessage { get; set; }
     }
 
     /// <summary>
@@ -1124,39 +1115,38 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Host/MyVisitors approval — Pending + HostEmployeeCode authorization.
-        /// Lifecycle owned by <see cref="ExecuteApprovalLifecycle"/>.
-        /// Prefer <see cref="AnmolDristi.BLL.ApprovalService.Execute"/> from UI callers.
+        /// Lifecycle owned by <see cref="ApproveVisitCore"/>.
         /// </summary>
         public VisitorApprovalResult ApprovePendingVisit(VisitorApprovalRequest request)
         {
-            return ExecuteApprovalLifecycle(request, ApprovalAuthorizationMode.HostOwnership);
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.HostOwnership);
         }
 
         /// <summary>
         /// Admin on-behalf approval — Pending-only authorization (host ownership bypassed).
-        /// Prefer <see cref="AnmolDristi.BLL.ApprovalService.Execute"/> from UI callers.
+        /// Produces the same VisitLog + DayLog + QR + validity + pass-notification lifecycle.
+        /// Valid* comes from ApproveVisitSchedule(RequestedValid*); ApprovedOn may use schedDate override.
         /// </summary>
         public VisitorApprovalResult ApproveVisitOnBehalf(VisitorApprovalRequest request)
         {
-            return ExecuteApprovalLifecycle(request, ApprovalAuthorizationMode.PendingOnly);
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
         }
 
         /// <summary>
         /// Receptionist force-approve — Pending-only authorization.
-        /// Prefer <see cref="AnmolDristi.BLL.ApprovalService.Execute"/> from UI callers.
+        /// Issues QR, DayLog authorization via ApproveVisitSchedule, and visitor pass notification.
         /// </summary>
         public VisitorApprovalResult ApproveVisitByReceptionist(VisitorApprovalRequest request)
         {
-            return ExecuteApprovalLifecycle(request, ApprovalAuthorizationMode.PendingOnly);
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
         }
 
         /// <summary>
-        /// Shared approval lifecycle (AR-VMS-02). Called only through
-        /// <see cref="AnmolDristi.BLL.ApprovalService"/> (or the thin role wrappers above).
-        /// Sequence: load visit → validate status → DayLog flags → QR → VisitLog snapshot →
-        /// ApproveVisitSchedule / validity times → pass notify → after-hours audit → commit.
+        /// Shared approval lifecycle (AR-VMS-02):
+        /// selected days → QR → guarded VisitLog UPDATE → ApproveVisitSchedule →
+        /// re-apply selected days → optional time override → pass notify → optional host on-behalf notify → COMMIT.
         /// </summary>
-        public VisitorApprovalResult ExecuteApprovalLifecycle(
+        private VisitorApprovalResult ApproveVisitCore(
             VisitorApprovalRequest request,
             ApprovalAuthorizationMode authMode)
         {
@@ -1172,27 +1162,6 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
-                        string visitStatus;
-                        string visitHost;
-                        if (!TryLoadVisitForApproval(con, trans, request.LogId, out visitStatus, out visitHost))
-                        {
-                            trans.Rollback();
-                            return FailedApproval(request.LogId, ApprovalFailureReason.NotFoundOrNotOwned);
-                        }
-
-                        if (authMode == ApprovalAuthorizationMode.HostOwnership
-                            && !string.Equals(visitHost, hostEmployeeCode, StringComparison.OrdinalIgnoreCase))
-                        {
-                            trans.Rollback();
-                            return FailedApproval(request.LogId, ApprovalFailureReason.NotFoundOrNotOwned);
-                        }
-
-                        if (!string.Equals(visitStatus, "Pending", StringComparison.OrdinalIgnoreCase))
-                        {
-                            trans.Rollback();
-                            return FailedApproval(request.LogId, ApprovalFailureReason.NotPending);
-                        }
-
                         if (request.SelectedDays != null)
                         {
                             ApplySelectedDayApprovals(con, trans, request.LogId, request.SelectedDays);
@@ -1222,7 +1191,13 @@ namespace AnmolDristi.DAL
                                 // Do not mask the approval failure result.
                             }
 
-                            return FailedApproval(request.LogId, reason);
+                            return new VisitorApprovalResult
+                            {
+                                Succeeded = false,
+                                FailureReason = reason,
+                                LogId = request.LogId,
+                                QrToken = null
+                            };
                         }
 
                         // Full requested range: SelectedDays null → all RequestedValid* days approved;
@@ -1273,7 +1248,7 @@ namespace AnmolDristi.DAL
 
                         DateTime? validUpto = LoadValidUpto(con, trans, request.LogId);
 
-                        AfterHoursAuditOutcome audit = TryWriteAfterHoursApprovalAudit(
+                        TryWriteAfterHoursApprovalAudit(
                             con,
                             trans,
                             request,
@@ -1288,10 +1263,7 @@ namespace AnmolDristi.DAL
                             FailureReason = ApprovalFailureReason.None,
                             LogId = request.LogId,
                             QrToken = qrToken,
-                            ValidUpto = validUpto,
-                            QrGenerated = true,
-                            AuditWritten = audit != null && audit.Written,
-                            WarningMessage = audit != null ? audit.WarningMessage : null
+                            ValidUpto = validUpto
                         };
                     }
                     catch
@@ -1307,51 +1279,6 @@ namespace AnmolDristi.DAL
 
                         throw;
                     }
-                }
-            }
-        }
-
-        private static VisitorApprovalResult FailedApproval(int logId, ApprovalFailureReason reason)
-        {
-            return new VisitorApprovalResult
-            {
-                Succeeded = false,
-                FailureReason = reason,
-                LogId = logId,
-                QrToken = null,
-                QrGenerated = false,
-                AuditWritten = false
-            };
-        }
-
-        private static bool TryLoadVisitForApproval(
-            SqlConnection con,
-            SqlTransaction trans,
-            int logId,
-            out string approvalStatus,
-            out string hostEmployeeCode)
-        {
-            approvalStatus = string.Empty;
-            hostEmployeeCode = string.Empty;
-
-            using (SqlCommand cmd = new SqlCommand(
-                "SELECT HostEmployeeCode, ApprovalStatus FROM VMS_VisitLog WHERE LogID = @LogID",
-                con,
-                trans))
-            {
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                using (SqlDataReader reader = cmd.ExecuteReader())
-                {
-                    if (!reader.Read())
-                        return false;
-
-                    hostEmployeeCode = reader["HostEmployeeCode"] == DBNull.Value
-                        ? string.Empty
-                        : reader["HostEmployeeCode"].ToString();
-                    approvalStatus = reader["ApprovalStatus"] == DBNull.Value
-                        ? string.Empty
-                        : reader["ApprovalStatus"].ToString();
-                    return true;
                 }
             }
         }
@@ -1455,14 +1382,13 @@ namespace AnmolDristi.DAL
             }
         }
 
-        private static AfterHoursAuditOutcome TryWriteAfterHoursApprovalAudit(
+        private static void TryWriteAfterHoursApprovalAudit(
             SqlConnection con,
             SqlTransaction trans,
             VisitorApprovalRequest request,
             string hostEmployeeCode,
             ApprovalAuthorizationMode authMode)
         {
-            var outcome = new AfterHoursAuditOutcome();
             var selectedDates = new List<DateTime>();
             if (request.SelectedDays != null)
             {
@@ -1482,9 +1408,7 @@ namespace AnmolDristi.DAL
                 trans);
 
             if (evaluation == null || !evaluation.RequiresNotice)
-                return outcome;
-
-            outcome.WarningMessage = evaluation.HostWarningMessage;
+                return;
 
             int branchId = 0;
             DateTime scheduledFrom = DateTime.Now;
@@ -1502,7 +1426,7 @@ namespace AnmolDristi.DAL
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (!reader.Read())
-                        return outcome;
+                        return;
                     branchId = Convert.ToInt32(reader["TargetBranchID"]);
                     if (reader["HostEmployeeCode"] != DBNull.Value)
                         visitHost = reader["HostEmployeeCode"].ToString();
@@ -1576,10 +1500,8 @@ namespace AnmolDristi.DAL
                 insertCmd.Parameters.AddWithValue("@ApprovedBy", approvedBy);
                 insertCmd.Parameters.AddWithValue("@Reason",
                     string.IsNullOrEmpty(reason) ? (object)DBNull.Value : reason);
-                outcome.Written = insertCmd.ExecuteNonQuery() > 0;
+                insertCmd.ExecuteNonQuery();
             }
-
-            return outcome;
         }
 
         private static void ApplySelectedDayApprovals(

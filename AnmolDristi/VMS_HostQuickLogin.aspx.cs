@@ -5,7 +5,6 @@ using System.Configuration;
 using System.Globalization;
 using System.Web.UI.WebControls;
 using AnmolDristi.DAL;
-using AnmolDristi.BLL;
 
 namespace AnmolDristi
 {
@@ -13,7 +12,6 @@ namespace AnmolDristi
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
-        private readonly ApprovalService _approvalService = new ApprovalService();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -391,25 +389,27 @@ namespace AnmolDristi
                     }
                 }
 
-                ApprovalResult result = _approvalService.Execute(ApprovalRequest.ForHost(
-                    logId,
-                    hostEmployeeCode,
-                    selectedDays,
-                    approvedFromTime,
-                    approvedToTime));
+                VisitorApprovalResult result = _repository.ApprovePendingVisit(new VisitorApprovalRequest
+                {
+                    LogId = logId,
+                    HostEmployeeCode = hostEmployeeCode,
+                    SelectedDays = selectedDays,
+                    ApprovedFromTime = approvedFromTime,
+                    ApprovedToTime = approvedToTime
+                });
 
-                if (!result.Success)
+                if (!result.Succeeded)
                 {
                     lblMessage.CssClass = "error";
                     lblMessage.Visible = true;
-                    lblMessage.Text = result.Message;
+                    lblMessage.Text = FormatApprovalFailureMessage(result.FailureReason);
                     return;
                 }
 
                 pnlAction.Visible = false;
                 lblMessage.Visible = true;
                 lblMessage.CssClass = "success";
-                lblMessage.Text = result.Message;
+                lblMessage.Text = "Visitor Approved successfully! The digital gate pass has been sent to them.";
                 BindVisitDaysRecap(logId, "Approved");
                 return;
             }
@@ -517,6 +517,19 @@ namespace AnmolDristi
             lblMessage.Visible = true;
             lblMessage.CssClass = "error";
             lblMessage.Text = "This approval link is no longer valid.";
+        }
+
+        private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)
+        {
+            switch (reason)
+            {
+                case ApprovalFailureReason.NotFoundOrNotOwned:
+                    return "Visitor not found or you are not authorized to approve this request.";
+                case ApprovalFailureReason.NotPending:
+                    return "This request has already been processed.";
+                default:
+                    return "Unable to approve this visit. Please try again.";
+            }
         }
 
         private void DispatchVisitorNotification_OBSOLETE(SqlConnection con, string visitId, Guid token)
