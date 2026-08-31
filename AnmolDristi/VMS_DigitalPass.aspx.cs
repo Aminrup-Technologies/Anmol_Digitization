@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using QRCoder;
@@ -68,7 +69,7 @@ namespace AnmolDristi
             ApplyPresentationState(state, tokenStr);
 
             pnlPass.Visible = true;
-            BindApprovedDates(pass.LogId, pass.ScheduleType);
+            BindApprovedDates(pass.LogId, pass.ScheduleType, pass.ApprovalStatus);
         }
 
         private DigitalPassState ResolvePresentationState(DigitalPassDetails pass, out VisitDayLogInfo todayLog)
@@ -84,11 +85,10 @@ namespace AnmolDristi
 
         private void BindValidityDisplay(DigitalPassDetails pass, VisitDayLogInfo todayLog, DigitalPassState state)
         {
+            DateTime? displayFrom = pass.ValidFrom;
             DateTime? displayUpto = pass.ValidUpto;
 
-            if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase)
-                && todayLog != null
-                && todayLog.IsDayApproved)
+            if (todayLog != null && todayLog.IsDayApproved)
             {
                 DateTime effectiveFrom;
                 DateTime effectiveUpto;
@@ -100,10 +100,27 @@ namespace AnmolDristi
                         out effectiveFrom,
                         out effectiveUpto))
                 {
-                    displayUpto = effectiveUpto;
+                    if (!string.Equals(pass.ScheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
+                    {
+                        displayFrom = effectiveFrom;
+                        displayUpto = effectiveUpto;
+                    }
                 }
+
+                divTodayWindow.Visible = true;
+                lblTodayWindow.Text = VmsVisitScheduleHelper.FormatClockTime(todayLog.DayValidFrom.TimeOfDay) +
+                    " – " +
+                    VmsVisitScheduleHelper.FormatClockTime(todayLog.DayValidUpto.TimeOfDay);
+            }
+            else
+            {
+                divTodayWindow.Visible = false;
+                lblTodayWindow.Text = "";
             }
 
+            lblValidFrom.Text = displayFrom.HasValue
+                ? displayFrom.Value.ToString("dd MMM yyyy, hh:mm tt")
+                : "Not set";
             lblValidUpto.Text = displayUpto.HasValue
                 ? displayUpto.Value.ToString("dd MMM yyyy, hh:mm tt")
                 : "Not set";
@@ -171,9 +188,25 @@ namespace AnmolDristi
             }
         }
 
-        private void BindApprovedDates(int logId, string scheduleType)
+        private void BindApprovedDates(int logId, string scheduleType, string approvalStatus)
         {
-            // scheduleType is already loaded with the pass; helper re-checks ScheduleType + day log
+            List<VisitDayLogInfo> days = _repository.GetVisitDayLogs(logId);
+            bool isMultiDay = string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase)
+                || (days != null && days.Count > 1);
+
+            if (isMultiDay && days != null && days.Count > 0)
+            {
+                List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, approvalStatus);
+                litVisitDays.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
+                pnlVisitDays.Visible = true;
+                divApprovedDates.Visible = false;
+                lblApprovedDates.Text = "";
+                return;
+            }
+
+            pnlVisitDays.Visible = false;
+            litVisitDays.Text = "";
+
             string approvedDatesText = _repository.GetMultiDayApprovedDatesText(logId);
             if (string.IsNullOrEmpty(approvedDatesText))
             {

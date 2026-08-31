@@ -31,6 +31,15 @@
         .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; text-align: left; }
         .info-label { color: #777; font-weight: 600; }
         .info-value { color: #333; font-weight: bold; text-align: right; }
+        .day-window { margin-top: 14px; text-align: left; }
+        .day-window-title { font-size: 12px; font-weight: 700; color: #73879C; margin-bottom: 8px; text-transform: uppercase; }
+        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 4px 4px 6px 0; border-bottom: 1px solid #eee; }
+        .day-window-table td { padding: 6px 4px 6px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; }
+        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; }
+        .badge-pending { background-color: #F39C12; color: #fff; }
+        .badge-approved { background-color: #1ABB9C; color: #fff; }
+        .badge-rejected { background-color: #E74C3C; color: #fff; }
     </style>
 </head>
 <body>
@@ -59,13 +68,24 @@
                         <span class="info-value"><asp:Label ID="lblHostName" runat="server"></asp:Label></span>
                     </div>
                     <div class="info-row">
+                        <span class="info-label">Valid From:</span>
+                        <span class="info-value"><asp:Label ID="lblValidFrom" runat="server"></asp:Label></span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">Valid Until:</span>
                         <span class="info-value"><asp:Label ID="lblValidUpto" runat="server"></asp:Label></span>
+                    </div>
+                    <div class="info-row" id="divTodayWindow" runat="server" visible="false">
+                        <span class="info-label">Today's Window:</span>
+                        <span class="info-value"><asp:Label ID="lblTodayWindow" runat="server"></asp:Label></span>
                     </div>
                     <div class="info-row" id="divApprovedDates" runat="server" visible="false">
                         <span class="info-label">Approved Dates:</span>
                         <span class="info-value"><asp:Label ID="lblApprovedDates" runat="server"></asp:Label></span>
                     </div>
+                    <asp:Panel ID="pnlVisitDays" runat="server" Visible="false">
+                        <asp:Literal ID="litVisitDays" runat="server"></asp:Literal>
+                    </asp:Panel>
 
                     <asp:Label ID="lblStatusBadge" runat="server"></asp:Label>
                     <asp:Label ID="lblStatusMessage" runat="server" CssClass="status-message"></asp:Label>

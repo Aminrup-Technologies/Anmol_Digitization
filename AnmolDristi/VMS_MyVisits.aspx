@@ -123,6 +123,42 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             font-size: 14px;
         }
+
+        .day-window {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+
+        .day-window-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #73879C;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .day-window-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+            .day-window-table th {
+                text-align: left;
+                color: #888;
+                font-weight: 600;
+                padding: 4px 6px 6px 0;
+                border-bottom: 1px solid #eee;
+            }
+
+            .day-window-table td {
+                padding: 6px 6px 6px 0;
+                color: #333;
+                border-bottom: 1px solid #f3f3f3;
+                vertical-align: middle;
+            }
     </style>
 </asp:Content>
 
@@ -177,8 +213,9 @@
                                         </div>
                                         <div class="detail-row">
                                             <span class="detail-label">Schedule:</span>
-                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto")) %></span>
+                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
+                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>
@@ -221,8 +258,9 @@
                                         </div>
                                         <div class="detail-row">
                                             <span class="detail-label">Schedule:</span>
-                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto")) %></span>
+                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
+                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>
@@ -265,8 +303,9 @@
                                         </div>
                                         <div class="detail-row">
                                             <span class="detail-label">Schedule:</span>
-                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto")) %></span>
+                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
+                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>
@@ -308,8 +347,9 @@
                                         </div>
                                         <div class="detail-row">
                                             <span class="detail-label">Schedule:</span>
-                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto")) %></span>
+                                            <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
+                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>

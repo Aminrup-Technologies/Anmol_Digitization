@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
@@ -221,6 +222,15 @@ namespace AnmolDristi.DAL
                         return dt;
                     }
                 }
+            }
+        }
+
+        public Dictionary<int, List<VisitDayLogInfo>> GetDayLogsForVisits(IList<int> logIds)
+        {
+            using (SqlConnection con = new SqlConnection(_connectionString))
+            {
+                con.Open();
+                return VmsVisitScheduleHelper.GetDayLogsForVisits(con, logIds);
             }
         }
     }

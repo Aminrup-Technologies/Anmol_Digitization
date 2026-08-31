@@ -32,6 +32,17 @@ namespace AnmolDristi
         public bool IsDayApproved { get; set; }
     }
 
+    public class VisitDayScheduleRow
+    {
+        public DateTime VisitDate { get; set; }
+        public string DateText { get; set; }
+        public string StatusText { get; set; }
+        public string StatusCss { get; set; }
+        public string EntryWindow { get; set; }
+        public string ExitWindow { get; set; }
+        public bool IsApproved { get; set; }
+    }
+
     public class PlantDayTiming
     {
         public string DayOfWeek { get; set; }
@@ -297,6 +308,184 @@ namespace AnmolDristi
                     return MapDayLog(reader);
                 }
             }
+        }
+
+        public static List<VisitDayLogInfo> GetDayLogsForVisit(
+            SqlConnection con,
+            int logId,
+            SqlTransaction trans = null)
+        {
+            Dictionary<int, List<VisitDayLogInfo>> map = GetDayLogsForVisits(con, new[] { logId }, trans);
+            List<VisitDayLogInfo> days;
+            if (map.TryGetValue(logId, out days))
+                return days;
+            return new List<VisitDayLogInfo>();
+        }
+
+        public static Dictionary<int, List<VisitDayLogInfo>> GetDayLogsForVisits(
+            SqlConnection con,
+            IEnumerable<int> logIds,
+            SqlTransaction trans = null)
+        {
+            var map = new Dictionary<int, List<VisitDayLogInfo>>();
+            var ids = new List<int>();
+            if (logIds != null)
+            {
+                foreach (int id in logIds)
+                {
+                    if (id > 0 && !ids.Contains(id))
+                        ids.Add(id);
+                }
+            }
+
+            if (ids.Count == 0)
+                return map;
+
+            var sql = new StringBuilder();
+            sql.Append(@"
+                SELECT DayLogID, LogID, VisitDate, DayValidFrom, DayValidUpto,
+                       VisitStatus, ActualInTime, ActualOutTime, IsDayApproved
+                FROM VMS_VisitDayLog
+                WHERE LogID IN (");
+            for (int i = 0; i < ids.Count; i++)
+            {
+                if (i > 0)
+                    sql.Append(",");
+                sql.Append("@id").Append(i);
+            }
+            sql.Append(") ORDER BY LogID, VisitDate");
+
+            using (SqlCommand cmd = new SqlCommand(sql.ToString(), con, trans))
+            {
+                for (int i = 0; i < ids.Count; i++)
+                    cmd.Parameters.AddWithValue("@id" + i, ids[i]);
+
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        VisitDayLogInfo info = MapDayLog(reader);
+                        List<VisitDayLogInfo> list;
+                        if (!map.TryGetValue(info.LogId, out list))
+                        {
+                            list = new List<VisitDayLogInfo>();
+                            map[info.LogId] = list;
+                        }
+                        list.Add(info);
+                    }
+                }
+            }
+
+            return map;
+        }
+
+        public static List<VisitDayScheduleRow> BuildVisitorDaySchedule(
+            IList<VisitDayLogInfo> days,
+            string parentApprovalStatus)
+        {
+            var rows = new List<VisitDayScheduleRow>();
+            if (days == null)
+                return rows;
+
+            string parent = (parentApprovalStatus ?? string.Empty).Trim();
+            foreach (VisitDayLogInfo day in days)
+            {
+                string statusText;
+                string statusCss;
+                if (string.Equals(parent, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    statusText = "Pending";
+                    statusCss = "badge-pending";
+                }
+                else if (string.Equals(parent, "Rejected", StringComparison.OrdinalIgnoreCase))
+                {
+                    statusText = "Rejected";
+                    statusCss = "badge-rejected";
+                }
+                else if (day.IsDayApproved)
+                {
+                    statusText = "Approved";
+                    statusCss = "badge-approved";
+                }
+                else
+                {
+                    statusText = "Not approved";
+                    statusCss = "badge-rejected";
+                }
+
+                rows.Add(new VisitDayScheduleRow
+                {
+                    VisitDate = day.VisitDate.Date,
+                    DateText = day.VisitDate.ToString("ddd dd MMM", CultureInfo.InvariantCulture),
+                    StatusText = statusText,
+                    StatusCss = statusCss,
+                    EntryWindow = FormatClockTime(day.DayValidFrom.TimeOfDay),
+                    ExitWindow = FormatClockTime(day.DayValidUpto.TimeOfDay),
+                    IsApproved = day.IsDayApproved &&
+                        string.Equals(parent, "Approved", StringComparison.OrdinalIgnoreCase)
+                });
+            }
+
+            return rows;
+        }
+
+        public static string BuildVisitorDayScheduleHtml(IList<VisitDayScheduleRow> rows)
+        {
+            if (rows == null || rows.Count == 0)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.Append("<div class=\"day-window\">");
+            sb.Append("<div class=\"day-window-title\">Visit days</div>");
+            sb.Append("<table class=\"day-window-table\">");
+            sb.Append("<thead><tr><th>Date</th><th>Status</th><th>Entry</th><th>Exit</th></tr></thead><tbody>");
+            foreach (VisitDayScheduleRow row in rows)
+            {
+                sb.Append("<tr>");
+                sb.Append("<td>").Append(HtmlEncode(row.DateText)).Append("</td>");
+                sb.Append("<td><span class=\"badge ").Append(HtmlEncode(row.StatusCss)).Append("\">");
+                sb.Append(HtmlEncode(row.StatusText)).Append("</span></td>");
+                sb.Append("<td>").Append(HtmlEncode(row.EntryWindow)).Append("</td>");
+                sb.Append("<td>").Append(HtmlEncode(row.ExitWindow)).Append("</td>");
+                sb.Append("</tr>");
+            }
+            sb.Append("</tbody></table></div>");
+            return sb.ToString();
+        }
+
+        public static string BuildVisitorDayScheduleEmailHtml(IList<VisitDayScheduleRow> rows)
+        {
+            if (rows == null || rows.Count == 0)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            sb.Append("<table style=\"width:100%;border-collapse:collapse;font-size:13px;text-align:left;margin:12px 0;\">");
+            sb.Append("<tr>");
+            sb.Append("<th style=\"border-bottom:1px solid #ddd;padding:6px;\">Date</th>");
+            sb.Append("<th style=\"border-bottom:1px solid #ddd;padding:6px;\">Status</th>");
+            sb.Append("<th style=\"border-bottom:1px solid #ddd;padding:6px;\">Entry</th>");
+            sb.Append("<th style=\"border-bottom:1px solid #ddd;padding:6px;\">Exit</th>");
+            sb.Append("</tr>");
+            foreach (VisitDayScheduleRow row in rows)
+            {
+                sb.Append("<tr>");
+                sb.Append("<td style=\"padding:6px;border-bottom:1px solid #eee;\">").Append(HtmlEncode(row.DateText)).Append("</td>");
+                sb.Append("<td style=\"padding:6px;border-bottom:1px solid #eee;\">").Append(HtmlEncode(row.StatusText)).Append("</td>");
+                sb.Append("<td style=\"padding:6px;border-bottom:1px solid #eee;\">").Append(HtmlEncode(row.EntryWindow)).Append("</td>");
+                sb.Append("<td style=\"padding:6px;border-bottom:1px solid #eee;\">").Append(HtmlEncode(row.ExitWindow)).Append("</td>");
+                sb.Append("</tr>");
+            }
+            sb.Append("</table>");
+            return sb.ToString();
+        }
+
+        private static string HtmlEncode(string value)
+        {
+            return (value ?? string.Empty)
+                .Replace("&", "&amp;")
+                .Replace("<", "&lt;")
+                .Replace(">", "&gt;")
+                .Replace("\"", "&quot;");
         }
 
         public static VisitDayLogInfo GetTodayDayLog(SqlConnection con, int logId, SqlTransaction trans = null)

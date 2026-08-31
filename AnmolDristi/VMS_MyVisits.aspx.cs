@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Web;
 using System.Web.Services;
@@ -11,6 +12,7 @@ namespace AnmolDristi
     public partial class VMS_MyVisits : System.Web.UI.Page
     {
         private readonly VmsVisitorRepository _repository = new VmsVisitorRepository();
+        private Dictionary<int, List<VisitDayLogInfo>> _dayLogsByVisit;
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -71,7 +73,28 @@ namespace AnmolDristi
                 : string.Empty;
 
             DataTable dt = _repository.GetVisitorHistory(mobile, email);
+            LoadDayLogs(dt);
             BindStatusTabs(dt);
+        }
+
+        private void LoadDayLogs(DataTable dt)
+        {
+            var logIds = new List<int>();
+            if (dt != null)
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    if (row["LogID"] == DBNull.Value)
+                        continue;
+                    int logId = Convert.ToInt32(row["LogID"]);
+                    if (logId > 0 && !logIds.Contains(logId))
+                        logIds.Add(logId);
+                }
+            }
+
+            _dayLogsByVisit = logIds.Count == 0
+                ? new Dictionary<int, List<VisitDayLogInfo>>()
+                : _repository.GetDayLogsForVisits(logIds);
         }
 
         private void BindStatusTabs(DataTable dt)
@@ -127,7 +150,13 @@ namespace AnmolDristi
             emptyLabel.Visible = categoryRows.Rows.Count == 0;
         }
 
-        protected string FormatVisitSchedule(object scheduleTypeObj, object fromObj, object toObj)
+        protected string FormatVisitSchedule(
+            object scheduleTypeObj,
+            object fromObj,
+            object toObj,
+            object validFromObj = null,
+            object validToObj = null,
+            object approvalStatusObj = null)
         {
             if (fromObj == null || fromObj == DBNull.Value || toObj == null || toObj == DBNull.Value)
                 return "Not specified";
@@ -135,11 +164,25 @@ namespace AnmolDristi
             DateTime from = Convert.ToDateTime(fromObj);
             DateTime to = Convert.ToDateTime(toObj);
             string scheduleType = scheduleTypeObj?.ToString() ?? "SingleDay";
+            string approvalStatus = approvalStatusObj == null || approvalStatusObj == DBNull.Value
+                ? string.Empty
+                : approvalStatusObj.ToString();
+
+            if (string.Equals(approvalStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                && validFromObj != null && validFromObj != DBNull.Value
+                && validToObj != null && validToObj != DBNull.Value)
+            {
+                from = Convert.ToDateTime(validFromObj);
+                to = Convert.ToDateTime(validToObj);
+            }
+
+            string timeFrom = VmsVisitScheduleHelper.FormatClockTime(from.TimeOfDay);
+            string timeTo = VmsVisitScheduleHelper.FormatClockTime(to.TimeOfDay);
 
             if (scheduleType == "MultiDay")
-                return $"{from:dd MMM yyyy} to {to:dd MMM yyyy}, daily {from:HH:mm} - {to:HH:mm}";
+                return $"{from:dd MMM yyyy} to {to:dd MMM yyyy}, daily {timeFrom} - {timeTo}";
 
-            return $"{from:dd MMM yyyy}, {from:HH:mm} - {to:HH:mm}";
+            return $"{from:dd MMM yyyy}, {timeFrom} - {timeTo}";
         }
 
         protected void rptVisits_ItemDataBound(object sender, RepeaterItemEventArgs e)
@@ -156,6 +199,8 @@ namespace AnmolDristi
                     lblStatus.CssClass = "badge badge-rejected";
                 else
                     lblStatus.CssClass = "badge badge-pending";
+
+                BindVisitDayWindow(e.Item);
 
                 // 2. Process Digital Pass Footer
                 Panel pnlFooter = (Panel)e.Item.FindControl("pnlFooter");
@@ -202,6 +247,34 @@ namespace AnmolDristi
                     }
                 }
             }
+        }
+
+        private void BindVisitDayWindow(RepeaterItem item)
+        {
+            Literal litDayWindow = item.FindControl("litDayWindow") as Literal;
+            if (litDayWindow == null)
+                return;
+
+            litDayWindow.Text = string.Empty;
+            string scheduleType = Convert.ToString(DataBinder.Eval(item.DataItem, "ScheduleType"));
+            if (!string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            object logIdObj = DataBinder.Eval(item.DataItem, "LogID");
+            if (logIdObj == null || logIdObj == DBNull.Value)
+                return;
+
+            int logId = Convert.ToInt32(logIdObj);
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+
+            if (days == null || days.Count == 0)
+                return;
+
+            string approvalStatus = Convert.ToString(DataBinder.Eval(item.DataItem, "ApprovalStatus"));
+            List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, approvalStatus);
+            litDayWindow.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
         }
 
         /// <summary>
