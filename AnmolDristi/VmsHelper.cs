@@ -447,9 +447,17 @@ namespace AnmolDristi
         {
             string passUrl = BuildDigitalPassUrl(qrToken);
             string approvedDatesText = GetMultiDayApprovedDatesText(con, visitId, trans);
-            string approvedDatesHtml = string.IsNullOrEmpty(approvedDatesText)
-                ? ""
-                : $"<p><b>Approved Dates:</b> {approvedDatesText}</p>";
+            List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId, trans);
+            string scheduleHtml = string.Empty;
+            if (days != null && days.Count > 1)
+            {
+                List<VisitDayScheduleRow> scheduleRows =
+                    VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, "Approved");
+                scheduleHtml = VmsVisitScheduleHelper.BuildVisitorDayScheduleEmailHtml(scheduleRows);
+            }
+            string approvedDatesHtml = !string.IsNullOrEmpty(scheduleHtml)
+                ? "<p><b>Visit days</b></p>" + scheduleHtml
+                : (string.IsNullOrEmpty(approvedDatesText) ? "" : $"<p><b>Approved Dates:</b> {approvedDatesText}</p>");
 
             string emailBody = $@"
                 <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>

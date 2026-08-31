@@ -94,6 +94,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblHostName;
         
         /// <summary>
+        /// lblValidFrom control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblValidFrom;
+        
+        /// <summary>
         /// lblValidUpto control.
         /// </summary>
         /// <remarks>
@@ -101,6 +110,24 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblValidUpto;
+        
+        /// <summary>
+        /// divTodayWindow control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divTodayWindow;
+        
+        /// <summary>
+        /// lblTodayWindow control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblTodayWindow;
         
         /// <summary>
         /// divApprovedDates control.
@@ -119,6 +146,24 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblApprovedDates;
+        
+        /// <summary>
+        /// pnlVisitDays control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Panel pnlVisitDays;
+        
+        /// <summary>
+        /// litVisitDays control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Literal litVisitDays;
         
         /// <summary>
         /// lblStatusBadge control.
