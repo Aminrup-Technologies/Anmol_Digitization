@@ -168,9 +168,11 @@ BEGIN
     BEGIN
         /* Infer a single-token module when the caller did not pass @Action. */
         DECLARE @ModulesForScope NVARCHAR(200) = UPPER(REPLACE(LTRIM(RTRIM(ISNULL(@Modules, N''))), N' ', N''));
+        DECLARE @ScopeXml XML =
+            CONVERT(XML, N'<r><i>' + REPLACE(@ModulesForScope, N'|', N'</i><i>') + N'</i></r>');
         SET @ModuleCount = (
             SELECT COUNT(1)
-            FROM CONVERT(XML, N'<r><i>' + REPLACE(@ModulesForScope, N'|', N'</i><i>') + N'</i></r>').nodes('/r/i') AS T(c)
+            FROM @ScopeXml.nodes('/r/i') AS T(c)
             WHERE LTRIM(RTRIM(T.c.value('.', 'NVARCHAR(50)'))) <> N''
         );
 
