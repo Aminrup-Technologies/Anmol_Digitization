@@ -13,16 +13,16 @@
     Business key:
       Staging.EmpCode  ↔  MST_UserMaster.EmployeeCode
 
-    FK resolution (staging business code → master row → store master.Id):
-      BranchId        ← MST_Branch.Id
-      DepartmentId    ← MST_Department.Id
-      Designation_ID  ← MST_Designation.Id   (NOT Designation_ID business code)
-      GradeId         ← MST_Grade.Id
-      PlantId         ← MST_Plant.Id
-      RegionId        ← MST_Region.Id
-      DivisionId      ← MST_Division.Id
-      CategoryId      ← MST_Category.Id
-      SubDepartmentId ← MST_SubDepartment.Id
+    Master write contract (lookup by ERP/business ID, then store):
+      BranchId        ← MST_Branch.Branch_ID
+      DepartmentId    ← MST_Department.Department_ID
+      GradeId         ← MST_Grade.Grade_ID
+      PlantId         ← MST_Plant.PlantID_ID
+      RegionId        ← MST_Region.Region_ID
+      DivisionId      ← MST_Division.Division_ID
+      CategoryId      ← MST_Category.Category_ID
+      SubDepartmentId ← MST_SubDepartment.SubDepartment_ID
+      Designation_ID  ← MST_Designation.Id   (INTERNAL PK EXCEPTION; not Designation_ID)
 
     Orchestrator contract (usp_RunHRMSSynchronization):
       @BatchId, @ExecutedBy,
@@ -93,7 +93,8 @@ BEGIN
            Resolve candidates once into a temp table:
              - One row per EmpCode (lowest StagingId wins on duplicates)
              - Skip staging rows already marked Error by validation
-             - Resolve all FKs to master Id values
+             - Resolve masters by ERP/business ID; write ERP IDs for org refs
+             - Designation stores MST_Designation.Id (internal PK exception)
            ------------------------------------------------------------------ */
         IF OBJECT_ID(N'tempdb..#HseInsertCandidates') IS NOT NULL
             DROP TABLE #HseInsertCandidates;
@@ -153,15 +154,15 @@ BEGIN
             r.ReportingManagerCode,
             r.ReportingManagersManagerName,
             r.ReportingManagersManagerCode,
-            BranchId = br.Id,
-            DepartmentId = dep.Id,
+            BranchId = br.Branch_ID,
+            DepartmentId = TRY_CONVERT(INT, dep.Department_ID),
             DesignationId = des.Id,
-            GradeId = gr.Id,
-            PlantId = pl.Id,
-            RegionId = rg.Id,
-            DivisionId = dv.Id,
-            CategoryId = cat.Id,
-            SubDepartmentId = sd.Id,
+            GradeId = TRY_CONVERT(INT, gr.Grade_ID),
+            PlantId = TRY_CONVERT(INT, pl.PlantID_ID),
+            RegionId = TRY_CONVERT(INT, rg.Region_ID),
+            DivisionId = TRY_CONVERT(INT, dv.Division_ID),
+            CategoryId = TRY_CONVERT(INT, cat.Category_ID),
+            SubDepartmentId = TRY_CONVERT(INT, sd.SubDepartment_ID),
             AlreadyExists = CASE
                 WHEN EXISTS (
                     SELECT 1
@@ -174,13 +175,13 @@ BEGIN
             END,
             MissingMasterDetail = CASE
                 WHEN br.Id IS NULL AND pl.Id IS NULL
-                    THEN N'Missing required masters: Branch and Plant could not be resolved to Id.'
+                    THEN N'Missing required masters: Branch and Plant could not be resolved.'
                 WHEN br.Id IS NULL
                     THEN N'Missing required master: Branch_ID ''' + ISNULL(r.BranchCode, N'')
-                         + N''' could not be resolved to MST_Branch.Id.'
+                         + N''' could not be resolved to MST_Branch.'
                 WHEN pl.Id IS NULL
                     THEN N'Missing required master: PlantID_ID ''' + ISNULL(r.PlantCode, N'')
-                         + N''' could not be resolved to MST_Plant.Id.'
+                         + N''' could not be resolved to MST_Plant.'
                 ELSE NULL
             END
         INTO #HseInsertCandidates
