@@ -8,12 +8,16 @@ using System.Web.UI;
 using System.Linq;
 using System.Web.UI.WebControls;
 using System.Collections.Generic;
-using System.Web.UI;
 
 namespace AnmolDristi
 {
     public partial class HrmsBatchManager : AnmolDristi.BasePage
     {
+        private const string ActionMaster = "MASTER";
+        private const string ActionInsert = "INSERT";
+        private const string ActionUpdate = "UPDATE";
+        private const string ActionHierarchy = "HIERARCHY";
+
         private string GetConnectionString()
         {
             return ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -28,7 +32,6 @@ namespace AnmolDristi
                 sm.RegisterPostBackControl(btnExportReport);
             }
 
-            // 1. Enforce Security Gateway
             if (Session["UserId"] == null || string.IsNullOrEmpty(Session["UserId"].ToString()))
             {
                 Response.Redirect("~/Login.aspx?msg=session_expired", true);
@@ -43,8 +46,14 @@ namespace AnmolDristi
 
                 if (batchSelectedFromQuery)
                 {
+                    int batchId;
+                    if (int.TryParse(hfSelectedBatch.Value, out batchId))
+                        LoadSelectedBatchDetails(batchId);
+
                     RegisterScrollToSyncConfiguration();
                 }
+
+                ApplyActionUiState();
             }
         }
 
@@ -65,9 +74,7 @@ namespace AnmolDristi
             if (!BatchExists(batchId))
                 return false;
 
-            string batchIdText = batchId.ToString();
-            hfSelectedBatch.Value = batchIdText;
-            lblSelectedBatch.Text = batchIdText;
+            hfSelectedBatch.Value = batchId.ToString();
             return true;
         }
 
@@ -112,6 +119,24 @@ namespace AnmolDristi
                 true);
         }
 
+        protected void gvBatches_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (!string.Equals(e.CommandName, "SelectBatch", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            int batchId;
+            if (!int.TryParse(Convert.ToString(e.CommandArgument), out batchId) || batchId <= 0)
+            {
+                lblPageError.Text = "Invalid batch selection.";
+                return;
+            }
+
+            hfSelectedBatch.Value = batchId.ToString();
+            LoadSelectedBatchDetails(batchId);
+            LoadBatches();
+            ApplyActionUiState();
+        }
+
         protected void gvBatches_RowDataBound(object sender, GridViewRowEventArgs e)
         {
             if (e.Row.RowType == DataControlRowType.DataRow)
@@ -137,7 +162,6 @@ namespace AnmolDristi
         private void LoadBatches()
         {
             lblPageError.Text = string.Empty;
-            lblRunMessage.Text = string.Empty;
 
             string query = @"
                 SELECT 
@@ -148,7 +172,8 @@ namespace AnmolDristi
                     SUM(CASE WHEN s.ImportStatus = 'Error' THEN 1 ELSE 0 END) AS ErrorCount,
                     SUM(CASE WHEN s.ImportStatus = 'Pending' THEN 1 ELSE 0 END) AS WaitingCount,
                     b.UploadDate AS LastModifiedIST,
-                    b.Status
+                    b.Status,
+                    CASE WHEN ISNULL(b.MasterSyncCompleted, 0) = 1 THEN N'Synced' ELSE N'Not synced' END AS MasterSyncLabel
                 FROM dbo.ImportBatchMaster b
                 LEFT JOIN dbo.Staging_EmployeeData s ON b.BatchId = s.BatchId
                 WHERE 1=1 ";
@@ -171,7 +196,7 @@ namespace AnmolDristi
                 query += " AND b.Status = @Status ";
             }
 
-            query += " GROUP BY b.BatchId, b.FileName, b.UploadDate, b.Status ORDER BY b.UploadDate DESC";
+            query += " GROUP BY b.BatchId, b.FileName, b.UploadDate, b.Status, b.MasterSyncCompleted ORDER BY b.UploadDate DESC";
 
             using (SqlConnection conn = new SqlConnection(GetConnectionString()))
             {
@@ -197,14 +222,95 @@ namespace AnmolDristi
             }
         }
 
+        private void LoadSelectedBatchDetails(int batchId)
+        {
+            const string sql = @"
+                SELECT
+                    b.BatchId,
+                    b.FileName,
+                    b.UploadDate,
+                    b.Status,
+                    ISNULL(b.MasterSyncCompleted, 0) AS MasterSyncCompleted,
+                    b.MasterSyncDate,
+                    COUNT(s.StagingId) AS TotalRows
+                FROM dbo.ImportBatchMaster b
+                LEFT JOIN dbo.Staging_EmployeeData s ON s.BatchId = b.BatchId
+                WHERE b.BatchId = @BatchId
+                GROUP BY b.BatchId, b.FileName, b.UploadDate, b.Status, b.MasterSyncCompleted, b.MasterSyncDate";
+
+            using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@BatchId", batchId);
+                conn.Open();
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                    {
+                        ClearSelection();
+                        lblPageError.Text = "The selected batch was not found.";
+                        return;
+                    }
+
+                    hfSelectedBatch.Value = Convert.ToInt32(reader["BatchId"]).ToString();
+                    lblSelectedBatch.Text = hfSelectedBatch.Value;
+                    lblBatchFileName.Text = reader["FileName"] == DBNull.Value ? "—" : reader["FileName"].ToString();
+                    lblBatchUploadDate.Text = reader["UploadDate"] == DBNull.Value
+                        ? "—"
+                        : Convert.ToDateTime(reader["UploadDate"]).ToString("yyyy-MM-dd HH:mm:ss");
+                    lblBatchStatus.Text = reader["Status"] == DBNull.Value ? "—" : reader["Status"].ToString();
+                    lblBatchTotalRows.Text = reader["TotalRows"] == DBNull.Value ? "0" : Convert.ToInt32(reader["TotalRows"]).ToString();
+
+                    bool masterSynced = Convert.ToBoolean(reader["MasterSyncCompleted"]);
+                    hfMasterSyncCompleted.Value = masterSynced ? "1" : "0";
+
+                    if (masterSynced)
+                    {
+                        string syncedAt = reader["MasterSyncDate"] == DBNull.Value
+                            ? ""
+                            : " at " + Convert.ToDateTime(reader["MasterSyncDate"]).ToString("yyyy-MM-dd HH:mm:ss") + " IST";
+                        lblMasterSyncStatus.Text = "Completed" + syncedAt;
+                        lblMasterSyncStatus.CssClass = "hrms-meta-value text-success";
+                    }
+                    else
+                    {
+                        lblMasterSyncStatus.Text = "Not completed";
+                        lblMasterSyncStatus.CssClass = "hrms-meta-value text-danger";
+                    }
+                }
+            }
+        }
+
         /// <summary>
-        /// Field catalog for mode 2 (@OverwriteFields). Must match FieldCodes accepted by
-        /// dbo.usp_HSE_UpdateChangedEmployees. Bound only on !IsPostBack so checkbox
-        /// state is preserved via ViewState on subsequent postbacks.
+        /// Re-reads MasterSyncCompleted from the database. UI flags are not trusted for the gate.
+        /// </summary>
+        private bool IsMasterSyncCompleted(int batchId)
+        {
+            const string sql = @"
+                SELECT ISNULL(MasterSyncCompleted, 0)
+                FROM dbo.ImportBatchMaster
+                WHERE BatchId = @BatchId";
+
+            using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+            using (SqlCommand cmd = new SqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@BatchId", batchId);
+                conn.Open();
+                object result = cmd.ExecuteScalar();
+                if (result == null || result == DBNull.Value)
+                    return false;
+                return Convert.ToBoolean(result);
+            }
+        }
+
+        /// <summary>
+        /// Field catalog for UPDATE (@OverwriteFields). Must match FieldCodes accepted by
+        /// dbo.usp_HSE_UpdateChangedEmployees. Hierarchy columns are omitted so the
+        /// Update action cannot silently perform hierarchy processing.
+        /// Bound only on !IsPostBack so checkbox state is preserved via ViewState.
         /// </summary>
         private static readonly string[,] OverwriteFieldDefinitions = new string[,]
         {
-            // FieldCode, DisplayName, Category, IsDefault ("1"/"0")
             { "EmployeeName", "Employee Name", "Employee", "1" },
             { "EmployeeStatus", "Employee Status", "Employee", "1" },
             { "Email", "Email", "Employee", "1" },
@@ -219,18 +325,11 @@ namespace AnmolDristi
             { "Region", "Region", "Organization", "1" },
             { "Division", "Division", "Organization", "1" },
             { "Category", "Category", "Organization", "1" },
-            { "SubDepartment", "Sub Department", "Organization", "1" },
-            { "ReportingManager", "Reporting Manager", "Hierarchy", "0" },
-            { "ReportingManagerCode", "Reporting Manager Code", "Hierarchy", "0" },
-            { "ReportingManagersManagerName", "Reporting Manager's Manager Name", "Hierarchy", "0" },
-            { "ReportingManagersManagerCode", "Reporting Manager's Manager Code", "Hierarchy", "0" }
+            { "SubDepartment", "Sub Department", "Organization", "1" }
         };
 
         private void LoadOverwriteFields()
         {
-            // Previously bound from MST_HRMSImportField (often empty / not seeded),
-            // which left rptOverwriteFields with zero items. Bind the HSE-supported
-            // catalog in code so mode 2 always has a selectable field list.
             DataTable dt = new DataTable();
             dt.Columns.Add("FieldCode", typeof(string));
             dt.Columns.Add("DisplayName", typeof(string));
@@ -254,9 +353,38 @@ namespace AnmolDristi
             rptOverwriteFields.DataBind();
         }
 
-        protected void rblProcessingMode_SelectedIndexChanged(object sender, EventArgs e)
+        protected void rblAction_SelectedIndexChanged(object sender, EventArgs e)
         {
-            divOverwriteFields.Visible = rblProcessingMode.SelectedValue == "2";
+            ApplyActionUiState();
+        }
+
+        private void ApplyActionUiState()
+        {
+            bool batchSelected = !string.IsNullOrWhiteSpace(hfSelectedBatch.Value);
+            btnSyncMasters.Enabled = batchSelected;
+
+            bool masterSynced = string.Equals(hfMasterSyncCompleted.Value, "1", StringComparison.Ordinal);
+            bool employeeEnabled = batchSelected && masterSynced;
+
+            lblEmployeeActionsLocked.Visible = batchSelected && !masterSynced;
+            rblAction.Enabled = employeeEnabled;
+
+            string action = rblAction.SelectedValue;
+            if (!employeeEnabled)
+                action = string.Empty;
+
+            pnlInsertConfig.Visible = employeeEnabled && action == ActionInsert;
+            pnlUpdateConfig.Visible = employeeEnabled && action == ActionUpdate;
+            pnlHierarchyConfig.Visible = employeeEnabled && action == ActionHierarchy;
+            pnlNoActionConfig.Visible = !employeeEnabled || string.IsNullOrEmpty(action);
+
+            btnExecuteInsert.Visible = employeeEnabled && action == ActionInsert;
+            btnExecuteUpdate.Visible = employeeEnabled && action == ActionUpdate;
+            btnExecuteHierarchy.Visible = employeeEnabled && action == ActionHierarchy;
+
+            btnExecuteInsert.Enabled = employeeEnabled && action == ActionInsert;
+            btnExecuteUpdate.Enabled = employeeEnabled && action == ActionUpdate;
+            btnExecuteHierarchy.Enabled = employeeEnabled && action == ActionHierarchy;
         }
 
         protected void btnSelectAll_Click(object sender, EventArgs e)
@@ -266,6 +394,7 @@ namespace AnmolDristi
                 CheckBox chk = item.FindControl("chkField") as CheckBox;
                 if (chk != null) chk.Checked = true;
             }
+            ApplyActionUiState();
         }
 
         protected void btnClearAll_Click(object sender, EventArgs e)
@@ -275,6 +404,7 @@ namespace AnmolDristi
                 CheckBox chk = item.FindControl("chkField") as CheckBox;
                 if (chk != null) chk.Checked = false;
             }
+            ApplyActionUiState();
         }
 
         private string GetSelectedOverwriteFields()
@@ -299,6 +429,7 @@ namespace AnmolDristi
         {
             ClearSelection();
             LoadBatches();
+            ApplyActionUiState();
         }
 
         protected void btnClear_Click(object sender, EventArgs e)
@@ -308,40 +439,116 @@ namespace AnmolDristi
             ddlStatus.SelectedIndex = 0;
             ClearSelection();
             LoadBatches();
+            ApplyActionUiState();
         }
 
         private void ClearSelection()
         {
             hfSelectedBatch.Value = string.Empty;
+            hfMasterSyncCompleted.Value = "0";
             lblSelectedBatch.Text = "(none selected)";
+            lblBatchFileName.Text = "—";
+            lblBatchUploadDate.Text = "—";
+            lblBatchTotalRows.Text = "—";
+            lblBatchStatus.Text = "—";
+            lblMasterSyncStatus.Text = "Not completed";
+            lblMasterSyncStatus.CssClass = "hrms-meta-value";
             lblRunMessage.Text = string.Empty;
+            lblEmployeeActionsLocked.Visible = false;
+            rblAction.ClearSelection();
             gvResult.DataSource = null;
             gvResult.DataBind();
         }
 
-        protected void btnRun_Click(object sender, EventArgs e)
+        protected void btnSyncMasters_Click(object sender, EventArgs e)
         {
-            lblPageError.Text = "";
-            lblRunMessage.Text = "";
+            ExecuteIsolatedAction(ActionMaster);
+        }
 
+        protected void btnExecuteInsert_Click(object sender, EventArgs e)
+        {
+            ExecuteIsolatedAction(ActionInsert);
+        }
+
+        protected void btnExecuteUpdate_Click(object sender, EventArgs e)
+        {
+            ExecuteIsolatedAction(ActionUpdate);
+        }
+
+        protected void btnExecuteHierarchy_Click(object sender, EventArgs e)
+        {
+            ExecuteIsolatedAction(ActionHierarchy);
+        }
+
+        private bool TryGetSelectedBatchId(out int batchId)
+        {
+            batchId = 0;
             if (string.IsNullOrWhiteSpace(hfSelectedBatch.Value))
             {
                 lblPageError.Text = "Please select a batch first.";
+                return false;
+            }
+
+            if (!int.TryParse(hfSelectedBatch.Value, out batchId) || batchId <= 0)
+            {
+                lblPageError.Text = "The selected batch is invalid.";
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Validates, then runs exactly one orchestrator action. Never combines MASTER/INSERT/UPDATE/HIERARCHY.
+        /// </summary>
+        private void ExecuteIsolatedAction(string action)
+        {
+            lblPageError.Text = "";
+            lblRunMessage.Text = "";
+            lblRunMessage.CssClass = "font-weight-bold text-success";
+
+            int batchId;
+            if (!TryGetSelectedBatchId(out batchId))
+            {
+                ApplyActionUiState();
                 return;
             }
 
-            int batchId = Convert.ToInt32(hfSelectedBatch.Value);
-            int processingMode = 0;
-            int.TryParse(rblProcessingMode.SelectedValue, out processingMode);
+            if (!BatchExists(batchId))
+            {
+                lblPageError.Text = "The selected batch was not found. No action was executed.";
+                ApplyActionUiState();
+                return;
+            }
 
-            bool allowOverwrite = processingMode != 0;
-            string modules = GetSelectedModules();
-            string overwriteFields = GetSelectedOverwriteFields();
-            string executedBy = Session["UserId"] != null ? Session["UserId"].ToString() : "SYSTEM";
+            if (action != ActionMaster && !IsMasterSyncCompleted(batchId))
+            {
+                lblPageError.Text = "Master synchronization must complete successfully for this batch before employee actions can run.";
+                hfMasterSyncCompleted.Value = "0";
+                LoadSelectedBatchDetails(batchId);
+                LoadBatches();
+                ApplyActionUiState();
+                return;
+            }
+
+            if (action == ActionUpdate)
+            {
+                string selectedFields = GetSelectedOverwriteFields();
+                if (string.IsNullOrWhiteSpace(selectedFields))
+                {
+                    lblPageError.Text = "Select at least one field to update.";
+                    ApplyActionUiState();
+                    return;
+                }
+            }
+
+            int processingMode;
+            string modules;
+            string overwriteFields;
+            GetActionParameters(action, out processingMode, out modules, out overwriteFields);
 
             try
             {
-                // STEP 1: Validate batch before synchronization
                 bool isValid;
                 DataTable dtValidation;
                 string validationMessage;
@@ -354,7 +561,6 @@ namespace AnmolDristi
                     out dtValidation,
                     out validationMessage);
 
-                // STEP 2: Validation failed — do not synchronize
                 if (!isValid)
                 {
                     gvResult.DataSource = dtValidation;
@@ -362,53 +568,160 @@ namespace AnmolDristi
 
                     lblRunMessage.Text = string.Empty;
                     lblPageError.Text = string.IsNullOrWhiteSpace(validationMessage)
-                        ? "Batch validation failed. Synchronization was not executed. Review the validation summary and staging ErrorMessage values."
+                        ? "Batch validation failed. The selected action was not executed. Review the validation summary and staging ErrorMessage values."
                         : validationMessage;
 
+                    LoadSelectedBatchDetails(batchId);
                     LoadBatches();
+                    ApplyActionUiState();
                     return;
                 }
 
-                // STEP 3: Validation passed — existing synchronization flow unchanged
-                using (SqlConnection conn =
-                    new SqlConnection(GetConnectionString()))
-                {
-                    using (SqlCommand cmd = new SqlCommand("usp_RunHRMSSynchronization", conn))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.CommandTimeout = 300;
+                DataTable dtResult = ExecuteOrchestrator(batchId, action, processingMode, modules, overwriteFields);
+                gvResult.DataSource = dtResult;
+                gvResult.DataBind();
+                ApplyRunOutcomeMessage(dtResult, action);
 
-                        cmd.Parameters.AddWithValue("@BatchId", batchId);
-                        cmd.Parameters.AddWithValue("@AllowOverwrite", allowOverwrite);
-                        cmd.Parameters.AddWithValue("@ProcessingMode", processingMode);
-                        cmd.Parameters.AddWithValue("@Modules", modules);
-                        cmd.Parameters.AddWithValue("@OverwriteFields", string.IsNullOrEmpty(overwriteFields) ? (object)DBNull.Value : overwriteFields);
-                        cmd.Parameters.AddWithValue("@ExecutedBy", executedBy);
-
-                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
-                        {
-                            DataTable dt = new DataTable();
-                            da.Fill(dt);
-
-                            gvResult.DataSource = dt;
-                            gvResult.DataBind();
-                        }
-
-                        lblRunMessage.Text = "Synchronization completed successfully.";
-                    }
-                }
-
+                LoadSelectedBatchDetails(batchId);
                 LoadBatches();
+                ApplyActionUiState();
             }
             catch (Exception ex)
             {
                 lblPageError.Text = ex.Message;
+                lblRunMessage.Text = string.Empty;
+                try
+                {
+                    LoadSelectedBatchDetails(batchId);
+                    LoadBatches();
+                }
+                catch (Exception refreshEx)
+                {
+                    lblPageError.Text = ex.Message + " (Also failed to refresh batch details: " + refreshEx.Message + ")";
+                }
+                ApplyActionUiState();
             }
+        }
+
+        private static void GetActionParameters(
+            string action,
+            out int processingMode,
+            out string modules,
+            out string overwriteFields)
+        {
+            processingMode = 0;
+            modules = action;
+            overwriteFields = null;
+
+            if (action == ActionMaster)
+            {
+                processingMode = 0;
+                modules = ActionMaster;
+            }
+            else if (action == ActionInsert)
+            {
+                processingMode = 0;
+                modules = "EMPLOYEE";
+            }
+            else if (action == ActionUpdate)
+            {
+                processingMode = 2;
+                modules = "EMPLOYEE";
+            }
+            else if (action == ActionHierarchy)
+            {
+                processingMode = 0;
+                modules = ActionHierarchy;
+            }
+        }
+
+        private DataTable ExecuteOrchestrator(
+            int batchId,
+            string action,
+            int processingMode,
+            string modules,
+            string overwriteFields)
+        {
+            string executedBy = Session["UserId"] != null ? Session["UserId"].ToString() : "SYSTEM";
+            if (action == ActionUpdate)
+                overwriteFields = GetSelectedOverwriteFields();
+
+            using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+            using (SqlCommand cmd = new SqlCommand("usp_RunHRMSSynchronization", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.CommandTimeout = 300;
+
+                cmd.Parameters.AddWithValue("@BatchId", batchId);
+                cmd.Parameters.AddWithValue("@AllowOverwrite", action == ActionUpdate ? 1 : 0);
+                cmd.Parameters.AddWithValue("@ProcessingMode", processingMode);
+                cmd.Parameters.AddWithValue("@Modules", string.IsNullOrWhiteSpace(modules) ? (object)DBNull.Value : modules);
+                cmd.Parameters.AddWithValue(
+                    "@OverwriteFields",
+                    string.IsNullOrEmpty(overwriteFields) ? (object)DBNull.Value : overwriteFields);
+                cmd.Parameters.AddWithValue("@ExecutedBy", executedBy);
+                cmd.Parameters.AddWithValue("@Action", action);
+
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                {
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+                    return dt;
+                }
+            }
+        }
+
+        private void ApplyRunOutcomeMessage(DataTable dtResult, string action)
+        {
+            if (dtResult == null || dtResult.Rows.Count == 0)
+            {
+                lblRunMessage.CssClass = "font-weight-bold text-danger";
+                lblRunMessage.Text = "The action returned no result. Verify database execution.";
+                return;
+            }
+
+            DataRow row = dtResult.Rows[0];
+            int errorCount = 0;
+            if (dtResult.Columns.Contains("ErrorCount") && row["ErrorCount"] != DBNull.Value)
+                errorCount = Convert.ToInt32(row["ErrorCount"]);
+
+            string status = dtResult.Columns.Contains("Status") && row["Status"] != DBNull.Value
+                ? row["Status"].ToString()
+                : string.Empty;
+
+            string message = dtResult.Columns.Contains("Message") && row["Message"] != DBNull.Value
+                ? row["Message"].ToString()
+                : "Action completed.";
+
+            if (string.Equals(status, "Failed", StringComparison.OrdinalIgnoreCase) || errorCount > 0)
+            {
+                lblRunMessage.CssClass = "font-weight-bold text-warning";
+                lblRunMessage.Text = string.Format(
+                    "{0} finished with errors (ErrorCount={1}, Status={2}). Review the result grid and batch report.",
+                    DescribeAction(action),
+                    errorCount,
+                    string.IsNullOrEmpty(status) ? "unknown" : status);
+            }
+            else
+            {
+                lblRunMessage.CssClass = "font-weight-bold text-success";
+                lblRunMessage.Text = string.IsNullOrWhiteSpace(message)
+                    ? DescribeAction(action) + " completed successfully."
+                    : message;
+            }
+        }
+
+        private static string DescribeAction(string action)
+        {
+            if (action == ActionMaster) return "Master synchronization";
+            if (action == ActionInsert) return "Insert new employees";
+            if (action == ActionUpdate) return "Update existing employees";
+            if (action == ActionHierarchy) return "Update reporting hierarchy";
+            return "Action";
         }
 
         /// <summary>
         /// Executes dbo.usp_HSE_ValidateBatch and returns the OUTPUT IsValid flag plus summary result set.
-        /// Parameter name is @Modules (procedure contract). Callers pass the same Modules string used for sync.
         /// </summary>
         private void ExecuteHseValidateBatch(
             int batchId,
@@ -457,18 +770,6 @@ namespace AnmolDristi
             }
         }
 
-        private string GetSelectedModules()
-        {
-            List<string> modules = new List<string>();
-            foreach (ListItem item in chkModules.Items)
-            {
-                if (item.Selected)
-                    modules.Add(item.Value.Trim().ToUpper());
-            }
-            return string.Join("|", modules);
-        }
-
-        // Bulletproof CSV Field Escaper to prevent layout shifts
         private string EscapeCsvField(string field)
         {
             if (string.IsNullOrEmpty(field))
@@ -492,6 +793,7 @@ namespace AnmolDristi
             if (string.IsNullOrEmpty(hfSelectedBatch.Value))
             {
                 lblPageError.Text = "Please select a batch before downloading a report.";
+                ApplyActionUiState();
                 return;
             }
 

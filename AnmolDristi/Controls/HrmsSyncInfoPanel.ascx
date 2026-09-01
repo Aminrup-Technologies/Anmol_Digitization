@@ -33,33 +33,32 @@
 
         <!-- SECTION 1 -->
         <section id="hrms-help-section-modes" class="hrms-sync-info-section" tabindex="-1">
-            <h4>1. Processing Modes</h4>
+            <h4>1. Isolated Actions</h4>
 
             <div class="mode-block">
-                <span class="mode-title">Insert New Employees Only</span>
-                <p>Only employees not already present in <strong>MST_UserMaster</strong> are inserted. Existing employees are left unchanged.</p>
+                <span class="mode-title">Insert New Employees</span>
+                <p>Only EmpCodes not already present in <strong>MST_UserMaster</strong> are inserted. Existing employees are not updated. The hierarchy procedure is not run.</p>
             </div>
 
             <div class="mode-block">
-                <span class="mode-title">Update All Existing Employees</span>
-                <p>Updates all supported fields of existing employees when values have changed.</p>
+                <span class="mode-title">Update Existing Employees</span>
+                <p>Updates only the fields checked under <strong>Fields to Overwrite</strong>. Unchecked fields remain unchanged. New employees are not inserted.</p>
             </div>
 
             <div class="mode-block">
-                <span class="mode-title">Update Selected Fields Only</span>
-                <p>Updates only the fields checked under <strong>Fields to Overwrite</strong>. Unchecked fields remain unchanged.</p>
+                <span class="mode-title">Update Reporting Hierarchy</span>
+                <p>Updates reporting-manager columns only. Does not insert employees or change other profile fields.</p>
             </div>
         </section>
 
         <!-- SECTION 2 -->
         <section id="hrms-help-section-modules" class="hrms-sync-info-section" tabindex="-1">
-            <h4>2. Synchronization Modules</h4>
+            <h4>2. Workflow Steps</h4>
 
             <div class="module-block">
-                <span class="module-title">Synchronize Masters</span>
-                <p>Inserts / updates master reference data:</p>
+                <span class="module-title">Step 1 — Synchronize Masters</span>
+                <p>Must succeed for the selected batch before employee actions are allowed. Upserts:</p>
                 <ul>
-                    <li>MST_Company</li>
                     <li>MST_Region</li>
                     <li>MST_Division</li>
                     <li>MST_Category</li>
@@ -73,53 +72,31 @@
             </div>
 
             <div class="module-block">
-                <span class="module-title">Synchronize Employees</span>
-                <p>Updates <strong>MST_UserMaster</strong>:</p>
-                <ul>
-                    <li>Insert new employees</li>
-                    <li>Update existing employees</li>
-                </ul>
-                <div class="hrms-code-chain">
-                    Designation_ID is resolved automatically:
-                    <span>HRMS Business Code</span>
-                    <span class="arrow">↓</span>
-                    <span>ERP Identity (MST_Designation.Id → MST_UserMaster.Designation_ID)</span>
-                </div>
-            </div>
-
-            <div class="module-block">
-                <span class="module-title">Synchronize Reporting Hierarchy</span>
-                <p>Updates hierarchy columns on <strong>MST_UserMaster</strong> only:</p>
-                <ul>
-                    <li>ReportingManager</li>
-                    <li>ReportingManagerCode</li>
-                    <li>ReportingManagersManagerName</li>
-                    <li>ReportingManagersManagerCode</li>
-                </ul>
+                <span class="module-title">Step 2 — Choose one employee action</span>
+                <p>Insert, Update, or Hierarchy. Only the selected action executes.</p>
             </div>
         </section>
 
         <!-- SECTION 3 -->
         <section id="hrms-help-section-overwrite" class="hrms-sync-info-section" tabindex="-1">
             <h4>3. Fields to Overwrite</h4>
-            <p>When <strong>Update Selected Fields Only</strong> is selected, only the checked fields are updated on existing employees.</p>
-            <p>Unchecked fields remain unchanged in <strong>MST_UserMaster</strong>.</p>
-            <p class="hrms-sync-info-footnote">This section is hidden for Insert-only and Update-all modes.</p>
+            <p>Shown only for <strong>Update Existing Employees</strong>.</p>
+            <p>Checked fields are sent to the database as <code>@OverwriteFields</code>. Unchecked fields are not updated in <strong>MST_UserMaster</strong>.</p>
+            <p class="hrms-sync-info-footnote">Hierarchy columns are not included here; use the Hierarchy action for those.</p>
         </section>
 
         <!-- SECTION 4 -->
         <section id="hrms-help-section-flow" class="hrms-sync-info-section" tabindex="-1">
             <h4>4. Execution Flow</h4>
             <ol class="hrms-exec-flow">
-                <li><span class="step-num">1</span>Upload CSV</li>
-                <li><span class="step-num">2</span>Validation</li>
+                <li><span class="step-num">1</span>Upload CSV (staging only)</li>
+                <li><span class="step-num">2</span>Select batch</li>
                 <li><span class="step-num">3</span>Synchronize Masters</li>
-                <li><span class="step-num">4</span>Insert New Employees</li>
-                <li><span class="step-num">5</span>Update Existing Employees</li>
-                <li><span class="step-num">6</span>Update Reporting Hierarchy</li>
-                <li><span class="step-num">7</span>Batch Completed</li>
+                <li><span class="step-num">4</span>Select ONE action</li>
+                <li><span class="step-num">5</span>Select columns if updating</li>
+                <li><span class="step-num">6</span>Execute that action only</li>
             </ol>
-            <p class="hrms-sync-info-footnote">Steps 3–6 run only for the modules you select, subject to Processing Mode.</p>
+            <p class="hrms-sync-info-footnote">Employee actions remain locked until master synchronization succeeds for the batch.</p>
         </section>
 
         <!-- SECTION 5 -->
@@ -131,9 +108,7 @@
                 <li>Mandatory fields</li>
                 <li>Duplicate Employee Codes</li>
                 <li>Invalid Master references</li>
-                <li>Missing Reporting Managers</li>
-                <li>Invalid Processing Mode</li>
-                <li>Invalid Modules</li>
+                <li>Invalid Processing Mode / Modules tokens</li>
             </ul>
         </section>
 
@@ -164,7 +139,7 @@
             <h4>7. Batch Status Lifecycle</h4>
             <ul class="hrms-status-flow">
                 <li>Uploaded</li>
-                <li>Validated</li>
+                <li>MastersSynced (MasterSyncCompleted flag also stored)</li>
                 <li>Processing</li>
             </ul>
             <div class="hrms-status-branch">
@@ -208,11 +183,8 @@
                         <ol class="hrms-tech-timeline">
                             <li><code>Validation</code> <span class="text-muted">(UI gate)</span></li>
                             <li><code>dbo.usp_HSE_ValidateBatch</code></li>
-                            <li><code>dbo.usp_RunHRMSSynchronization</code></li>
-                            <li><code>dbo.usp_HSE_SynchronizeMasters</code></li>
-                            <li><code>dbo.usp_HSE_InsertNewEmployees</code></li>
-                            <li><code>dbo.usp_HSE_UpdateChangedEmployees</code></li>
-                            <li><code>dbo.usp_HSE_UpdateReportingHierarchy</code></li>
+                            <li><code>dbo.usp_RunHRMSSynchronization @Action=...</code></li>
+                            <li>Exactly one child: MASTER / INSERT / UPDATE / HIERARCHY</li>
                         </ol>
                     </div>
                 </div>
@@ -229,7 +201,6 @@
                             <div class="hrms-tech-map-title">Synchronize Masters</div>
                             <div class="hrms-tech-map-arrow">↓ Affected Tables</div>
                             <ul class="hrms-tech-table-list">
-                                <li>MST_Company</li>
                                 <li>MST_Region</li>
                                 <li>MST_Division</li>
                                 <li>MST_Category</li>
@@ -287,26 +258,34 @@
                     </div>
                     <div class="card-body">
                         <div class="hrms-tech-mode">
-                            <span class="badge badge-dark">Mode 0</span>
-                            <strong>Insert New Employees Only</strong>
+                            <span class="badge badge-dark">MASTER</span>
+                            <strong>Synchronize Masters</strong>
                             <ul>
-                                <li><code>AllowOverwrite = False</code></li>
+                                <li>Sets <code>MasterSyncCompleted = 1</code></li>
+                                <li>Does not insert or update employees</li>
                             </ul>
                         </div>
                         <div class="hrms-tech-mode">
-                            <span class="badge badge-dark">Mode 1</span>
-                            <strong>Update All Existing Employees</strong>
+                            <span class="badge badge-dark">INSERT</span>
+                            <strong>Insert New Employees</strong>
                             <ul>
-                                <li><code>AllowOverwrite = True</code></li>
-                                <li><code>OverwriteFields</code> ignored</li>
+                                <li>Requires <code>MasterSyncCompleted = 1</code></li>
+                                <li>Does not update existing employees</li>
                             </ul>
                         </div>
                         <div class="hrms-tech-mode">
-                            <span class="badge badge-dark">Mode 2</span>
-                            <strong>Update Selected Fields Only</strong>
+                            <span class="badge badge-dark">UPDATE</span>
+                            <strong>Update Existing Employees</strong>
                             <ul>
-                                <li><code>AllowOverwrite = True</code></li>
-                                <li>Uses selected <code>OverwriteFields</code> list</li>
+                                <li>Requires selected <code>OverwriteFields</code></li>
+                                <li>Does not insert new employees</li>
+                            </ul>
+                        </div>
+                        <div class="hrms-tech-mode">
+                            <span class="badge badge-dark">HIERARCHY</span>
+                            <strong>Update Reporting Hierarchy</strong>
+                            <ul>
+                                <li>Hierarchy columns only</li>
                             </ul>
                         </div>
                     </div>
@@ -340,7 +319,7 @@
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Duplicate Employee Codes</li>
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Duplicate HRMS records</li>
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Master references</li>
-                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Reporting Managers</li>
+                            <li><i class="fa fa-times text-muted" aria-hidden="true"></i> Reporting managers (checked at hierarchy execution, not ValidateBatch)</li>
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Modules</li>
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Processing Mode</li>
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Missing Batch</li>
@@ -361,7 +340,7 @@
                             <div class="hrms-tech-map-title"><code>ImportBatchMaster</code></div>
                             <ol class="hrms-tech-timeline hrms-tech-timeline-compact">
                                 <li>Uploaded</li>
-                                <li>Validated</li>
+                                <li>MastersSynced</li>
                                 <li>Processing</li>
                                 <li>Processed <span class="text-muted">or</span> Failed</li>
                             </ol>

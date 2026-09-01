@@ -12,202 +12,76 @@ namespace AnmolDristi {
     
     public partial class HrmsBatchManager {
         
-        /// <summary>
-        /// lblPageError control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblPageError;
         
-        /// <summary>
-        /// txtFrom control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txtFrom;
         
-        /// <summary>
-        /// txtTo control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.TextBox txtTo;
         
-        /// <summary>
-        /// ddlStatus control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.DropDownList ddlStatus;
         
-        /// <summary>
-        /// btnFilter control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnFilter;
         
-        /// <summary>
-        /// btnClear control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnClear;
         
-        /// <summary>
-        /// upBatches control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.UpdatePanel upBatches;
         
-        /// <summary>
-        /// gvBatches control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.GridView gvBatches;
         
-        /// <summary>
-        /// hfSelectedBatch control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfSelectedBatch;
         
-        /// <summary>
-        /// lblSelectedBatch control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfMasterSyncCompleted;
+        
         protected global::System.Web.UI.WebControls.Label lblSelectedBatch;
         
-        /// <summary>
-        /// rblProcessingMode control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RadioButtonList rblProcessingMode;
+        protected global::System.Web.UI.WebControls.Label lblBatchFileName;
         
-        /// <summary>
-        /// chkModules control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.CheckBoxList chkModules;
+        protected global::System.Web.UI.WebControls.Label lblBatchUploadDate;
         
-        /// <summary>
-        /// divOverwriteFields control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblBatchTotalRows;
+        
+        protected global::System.Web.UI.WebControls.Label lblBatchStatus;
+        
+        protected global::System.Web.UI.WebControls.Label lblMasterSyncStatus;
+        
+        protected global::System.Web.UI.WebControls.Button btnSyncMasters;
+        
+        protected global::System.Web.UI.WebControls.Panel pnlEmployeeActions;
+        
+        protected global::System.Web.UI.WebControls.Label lblEmployeeActionsLocked;
+        
+        protected global::System.Web.UI.WebControls.RadioButtonList rblAction;
+        
+        protected global::System.Web.UI.WebControls.Panel pnlInsertConfig;
+        
+        protected global::System.Web.UI.WebControls.Panel pnlHierarchyConfig;
+        
+        protected global::System.Web.UI.WebControls.Panel pnlUpdateConfig;
+        
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl divOverwriteFields;
         
-        /// <summary>
-        /// btnSelectAll control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnSelectAll;
         
-        /// <summary>
-        /// btnClearAll control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.Button btnClearAll;
         
-        /// <summary>
-        /// rptOverwriteFields control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.Repeater rptOverwriteFields;
         
-        /// <summary>
-        /// btnRun control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btnRun;
+        protected global::System.Web.UI.WebControls.Panel pnlNoActionConfig;
         
-        /// <summary>
-        /// btnExportReport control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnExecuteInsert;
+        
+        protected global::System.Web.UI.WebControls.Button btnExecuteUpdate;
+        
+        protected global::System.Web.UI.WebControls.Button btnExecuteHierarchy;
+        
         protected global::System.Web.UI.WebControls.Button btnExportReport;
         
-        /// <summary>
-        /// lblRunMessage control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblRunMessage;
         
-        /// <summary>
-        /// upResult control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.UpdatePanel upResult;
         
-        /// <summary>
-        /// gvResult control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::System.Web.UI.WebControls.GridView gvResult;
         
-        /// <summary>
-        /// ucHrmsSyncInfoPanel control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
         protected global::AnmolDristi.Controls.HrmsSyncInfoPanel ucHrmsSyncInfoPanel;
     }
 }
