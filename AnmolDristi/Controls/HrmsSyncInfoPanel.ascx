@@ -102,13 +102,13 @@
         <!-- SECTION 5 -->
         <section id="hrms-help-section-validation" class="hrms-sync-info-section" tabindex="-1">
             <h4>5. Validation</h4>
-            <p>Validation runs <strong>before</strong> synchronization. If validation fails, synchronization is not executed.</p>
-            <p>Checks include:</p>
+            <p>Validation runs <strong>before</strong> the selected action. If validation fails, that action is not executed.</p>
+            <p>Row checks are scoped to the action:</p>
             <ul>
-                <li>Mandatory fields</li>
-                <li>Duplicate Employee Codes</li>
-                <li>Invalid Master references</li>
-                <li>Invalid Processing Mode / Modules tokens</li>
+                <li><strong>MASTER</strong> — batch integrity and master createability (code present with empty description). EmpCode/EmpName are not required.</li>
+                <li><strong>INSERT</strong> — EmpCode, EmpName, duplicate EmpCode, and org master references used on insert.</li>
+                <li><strong>UPDATE</strong> — EmpCode, duplicate EmpCode, and master/name checks only for selected update fields.</li>
+                <li><strong>HIERARCHY</strong> — EmpCode identity and duplicate EmpCode. Reporting-manager existence is checked during hierarchy execution, not here.</li>
             </ul>
         </section>
 
@@ -302,7 +302,7 @@
                         <p>Selected fields are converted into <code>FieldCode</code> values.</p>
                         <p>Example:</p>
                         <pre class="hrms-tech-code">EmployeeName|Email|Designation|Branch|Region</pre>
-                        <p class="mb-0">This becomes <code>@OverwriteFields</code> passed to <code>usp_RunHRMSSynchronization</code>.</p>
+                        <p class="mb-0">This becomes <code>@OverwriteFields</code> passed to both <code>usp_HSE_ValidateBatch</code> and <code>usp_RunHRMSSynchronization</code>.</p>
                     </div>
                 </div>
 
@@ -315,10 +315,11 @@
                     </div>
                     <div class="card-body">
                         <ul class="hrms-tech-checklist">
-                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Mandatory fields</li>
-                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Duplicate Employee Codes</li>
-                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Duplicate HRMS records</li>
-                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Master references</li>
+                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Action-scoped row rules (<code>@Action</code>)</li>
+                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> UPDATE field-scoped master/name checks (<code>@OverwriteFields</code>)</li>
+                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Mandatory EmpCode / EmpName when the action consumes them</li>
+                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Duplicate Employee Codes when EmpCode is the match key</li>
+                            <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Master references for masters the action actually writes</li>
                             <li><i class="fa fa-times text-muted" aria-hidden="true"></i> Reporting managers (checked at hierarchy execution, not ValidateBatch)</li>
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Modules</li>
                             <li><i class="fa fa-check text-success" aria-hidden="true"></i> Invalid Processing Mode</li>

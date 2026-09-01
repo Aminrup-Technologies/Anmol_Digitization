@@ -546,6 +546,8 @@ namespace AnmolDristi
             string modules;
             string overwriteFields;
             GetActionParameters(action, out processingMode, out modules, out overwriteFields);
+            if (action == ActionUpdate)
+                overwriteFields = GetSelectedOverwriteFields();
 
             try
             {
@@ -557,6 +559,8 @@ namespace AnmolDristi
                     batchId,
                     processingMode,
                     modules,
+                    action,
+                    overwriteFields,
                     out isValid,
                     out dtValidation,
                     out validationMessage);
@@ -722,11 +726,14 @@ namespace AnmolDristi
 
         /// <summary>
         /// Executes dbo.usp_HSE_ValidateBatch and returns the OUTPUT IsValid flag plus summary result set.
+        /// Passes @Action / @OverwriteFields so row rules match the selected isolated action.
         /// </summary>
         private void ExecuteHseValidateBatch(
             int batchId,
             int processingMode,
             string modules,
+            string action,
+            string overwriteFields,
             out bool isValid,
             out DataTable validationSummary,
             out string validationMessage)
@@ -752,6 +759,13 @@ namespace AnmolDristi
                     Direction = ParameterDirection.Output
                 };
                 cmd.Parameters.Add(pIsValid);
+
+                cmd.Parameters.AddWithValue(
+                    "@Action",
+                    string.IsNullOrWhiteSpace(action) ? (object)DBNull.Value : action);
+                cmd.Parameters.AddWithValue(
+                    "@OverwriteFields",
+                    string.IsNullOrEmpty(overwriteFields) ? (object)DBNull.Value : overwriteFields);
 
                 using (SqlDataAdapter da = new SqlDataAdapter(cmd))
                 {
