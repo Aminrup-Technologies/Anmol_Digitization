@@ -252,11 +252,11 @@ Live stub orchestrator is **INFO**, not FAIL.
 - Update: `NewBranchId` ← `br.Branch_ID`, `NewDesignationId` ← `des.Id`, `@OverwriteFields`
 - Insert+Update contain `Branch_ID`, `Department_ID`, `Grade_ID`, `PlantID_ID`, `Region_ID`, `Division_ID`, `Category_ID`, `SubDepartment_ID`
 - Insert does **not** assign `DesignationId = des.Designation_ID`
-- `HASHBYTES('SHA2_256', OBJECT_DEFINITION)` equals the UAT hashes in `EVIDENCE_HASHES.md`
+- Canonical `HASHBYTES('SHA2_256')` of `sys.sql_modules.definition` after narrow normalization (remove CR; strip leading/trailing CR/LF only; preserve internal whitespace) equals the UAT canonical hashes documented in this script. Raw catalog HASHBYTES is diagnostic only and does not FAIL.
 
 The script does **not** run employee synchronization and does not update `MST_UserMaster`.
 
-Dry-run: `001` and `011` were executed read-only against **AnmolDristiDev** with `@AllowOtherDatabase = 1`. Script `001` produced 0 FAIL rows. Script `011` produced **41/41 PASS**. Neither script was executed against Live.
+Dry-run: `001` and `011` were executed read-only against **AnmolDristiDev** with `@AllowOtherDatabase = 1`. Script `001` produced 0 FAIL rows. Script `011` produced **41/41 PASS** on UAT (raw hashes). After Live deploy, raw HASHBYTES failed 7/7 due to CRLF vs LF; canonical hashes match UAT. Re-run `011` after the hash-normalization change to confirm 41/41 on Live and UAT.
 
 ---
 
