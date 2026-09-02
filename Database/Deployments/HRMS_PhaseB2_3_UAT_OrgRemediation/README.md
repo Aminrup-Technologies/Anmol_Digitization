@@ -80,3 +80,22 @@ One-time migration artifact. Not referenced by application code. Do not create o
 ## Rollback
 
 `D_Rollback.sql` restores `OldValue` only where the current column still equals the audited `NewValue`, scoped to one `RemediationRunId`. Expected restore count = 115. Not executed as part of a successful B2.3 apply.
+
+---
+
+## UAT execution record (AnmolDristiDev)
+
+| Item | Value |
+| --- | --- |
+| Status | COMMITTED |
+| RemediationRunId | `B23-APPLY-2026-09-02T10:53:36` |
+| AppliedAt | 2026-09-02 10:53:36.393259 |
+| Audit rows | 115 `APPLIED` |
+| Column updates | 115 (17/18/6/18/18/15/6/17) |
+| Remaining approved historical non-zero drift | 0 |
+| Fixture drift instances | 32 (unchanged) |
+| Zero-target exclusions | 5 (unchanged) |
+| Designation ERP-code drift | 0 |
+| Rollback executed | **No** |
+
+To prepare a rollback if later authorized, set `@RemediationRunId` in `D_Rollback.sql` to `B23-APPLY-2026-09-02T10:53:36`.

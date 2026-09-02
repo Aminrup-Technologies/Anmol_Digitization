@@ -114,16 +114,17 @@ WHERE IsFixture = 1
 ORDER BY EmployeeCode;
 
 /* Designation: internal Id is compliant; ERP-code would be drift */
+;WITH desig AS (
+    SELECT
+        u.Designation_ID AS StoredValue,
+        CASE WHEN EXISTS (SELECT 1 FROM dbo.MST_Designation d WHERE d.Id = u.Designation_ID) THEN 1 ELSE 0 END AS MatchInternal,
+        CASE WHEN EXISTS (SELECT 1 FROM dbo.MST_Designation d WHERE TRY_CONVERT(INT, d.Designation_ID) = u.Designation_ID) THEN 1 ELSE 0 END AS MatchErp
+    FROM dbo.MST_UserMaster AS u
+)
 SELECT
-    SUM(CASE WHEN u.Designation_ID IS NOT NULL AND u.Designation_ID <> 0
-              AND EXISTS (SELECT 1 FROM dbo.MST_Designation d WHERE d.Id = u.Designation_ID)
-              AND NOT EXISTS (SELECT 1 FROM dbo.MST_Designation d WHERE TRY_CONVERT(INT, d.Designation_ID) = u.Designation_ID)
-             THEN 1 ELSE 0 END) AS DesignationInternalCompliant,
-    SUM(CASE WHEN u.Designation_ID IS NOT NULL AND u.Designation_ID <> 0
-              AND NOT EXISTS (SELECT 1 FROM dbo.MST_Designation d WHERE d.Id = u.Designation_ID)
-              AND EXISTS (SELECT 1 FROM dbo.MST_Designation d WHERE TRY_CONVERT(INT, d.Designation_ID) = u.Designation_ID)
-             THEN 1 ELSE 0 END) AS DesignationErpCodeDrift
-FROM dbo.MST_UserMaster AS u;
+    SUM(CASE WHEN StoredValue IS NOT NULL AND StoredValue <> 0 AND MatchInternal = 1 AND MatchErp = 0 THEN 1 ELSE 0 END) AS DesignationInternalCompliant,
+    SUM(CASE WHEN StoredValue IS NOT NULL AND StoredValue <> 0 AND MatchInternal = 0 AND MatchErp = 1 THEN 1 ELSE 0 END) AS DesignationErpCodeDrift
+FROM desig;
 
 SELECT u.EmployeeCode, u.PlantId
 FROM dbo.MST_UserMaster AS u
