@@ -22,6 +22,7 @@ SET XACT_ABORT ON;
 SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 
 /* ===== OPERATOR: set this to the committed B2.6 run id ===== */
+/* Successful UAT apply (NOT executed by this script): B26-APPLY-2026-09-02T11:34:20 */
 /* Do not default this variable to MAX(RemediationRunId). */
 DECLARE @RemediationRunId varchar(40) = N'<<SET_B26_REMEDIATION_RUN_ID>>';
 

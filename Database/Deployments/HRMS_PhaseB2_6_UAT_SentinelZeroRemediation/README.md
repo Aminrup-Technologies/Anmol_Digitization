@@ -145,9 +145,17 @@ Check constraints:
 
 | Item | Value |
 | --- | --- |
-| Status | *pending apply* |
-| RemediationRunId | *(set after B_ControlledApply.sql commits)* |
-| AppliedAt | |
-| Audit rows | |
-| Column updates | expected 1 / 3 / 1 = 5 |
+| Status | **COMMITTED** |
+| RemediationRunId | `B26-APPLY-2026-09-02T11:34:20` |
+| AppliedAt | 2026-09-02 11:34:20.126880 |
+| Audit object | `dbo.AUDIT_UserMasterOrgSentinelZero_B26` |
+| Audit rows | 5 `APPLIED` |
+| Column updates | 5 (Branch 1 / Division 3 / SubDepartment 1) |
+| Remaining B2.6 zero-target drift | 0 |
+| Remaining approved non-zero drift (B2.3 class) | 0 |
+| Fixture drift instances | 32 (unchanged) |
+| Designation ERP-code drift | 0 |
+| `M2668.PlantId` | 3277 (unchanged) |
 | Rollback executed | **No** |
+
+To prepare a rollback if later authorized, set `@RemediationRunId` in `D_Rollback.sql` to `B26-APPLY-2026-09-02T11:34:20`. Do not execute rollback as part of a successful B2.6 apply.
