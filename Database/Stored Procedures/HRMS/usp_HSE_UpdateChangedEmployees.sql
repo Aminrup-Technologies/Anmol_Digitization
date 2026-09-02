@@ -13,6 +13,19 @@
     Match key:   Staging.EmpCode = MST_UserMaster.EmployeeCode ONLY
                  (never Email / Mobile / Name)
 
+    Master write contract when a field is selected (lookup by ERP/business ID):
+      BranchId        ← MST_Branch.Branch_ID
+      DepartmentId    ← MST_Department.Department_ID
+      GradeId         ← MST_Grade.Grade_ID
+      PlantId         ← MST_Plant.PlantID_ID
+      RegionId        ← MST_Region.Region_ID
+      DivisionId      ← MST_Division.Division_ID
+      CategoryId      ← MST_Category.Category_ID
+      SubDepartmentId ← MST_SubDepartment.SubDepartment_ID
+      Designation_ID  ← MST_Designation.Id   (INTERNAL PK EXCEPTION)
+
+    Unselected fields are left unchanged.
+
     ProcessingMode:
       0 = Insert Only       → no updates
       1 = Overwrite All     → all supported fields eligible
@@ -237,16 +250,17 @@ BEGIN
             NewReportingManagersManagerName = CASE WHEN @UpdReportingManagersManagerName = 1 THEN LEFT(r.ReportingManagersManagerName, 100) ELSE NULL END,
             NewReportingManagersManagerCode = CASE WHEN @UpdReportingManagersManagerCode = 1 THEN LEFT(r.ReportingManagersManagerCode, 50) ELSE NULL END,
 
-            /* Proposed FK Ids (NULL = leave existing; unresolved codes also NULL) */
-            NewBranchId = CASE WHEN @UpdBranch = 1 AND r.BranchCode IS NOT NULL THEN br.Id ELSE NULL END,
-            NewDepartmentId = CASE WHEN @UpdDepartment = 1 AND r.DepartmentCode IS NOT NULL THEN dep.Id ELSE NULL END,
+            /* Proposed UserMaster values (NULL = leave existing; unresolved codes also NULL).
+               Organizational masters write ERP/business IDs. Designation writes MST_Designation.Id. */
+            NewBranchId = CASE WHEN @UpdBranch = 1 AND r.BranchCode IS NOT NULL THEN br.Branch_ID ELSE NULL END,
+            NewDepartmentId = CASE WHEN @UpdDepartment = 1 AND r.DepartmentCode IS NOT NULL THEN TRY_CONVERT(INT, dep.Department_ID) ELSE NULL END,
             NewDesignationId = CASE WHEN @UpdDesignation = 1 AND r.DesignationCode IS NOT NULL THEN des.Id ELSE NULL END,
-            NewGradeId = CASE WHEN @UpdGrade = 1 AND r.GradeCode IS NOT NULL THEN gr.Id ELSE NULL END,
-            NewPlantId = CASE WHEN @UpdPlant = 1 AND r.PlantCode IS NOT NULL THEN pl.Id ELSE NULL END,
-            NewRegionId = CASE WHEN @UpdRegion = 1 AND r.RegionCode IS NOT NULL THEN rg.Id ELSE NULL END,
-            NewDivisionId = CASE WHEN @UpdDivision = 1 AND r.DivisionCode IS NOT NULL THEN dv.Id ELSE NULL END,
-            NewCategoryId = CASE WHEN @UpdCategory = 1 AND r.CategoryCode IS NOT NULL THEN cat.Id ELSE NULL END,
-            NewSubDepartmentId = CASE WHEN @UpdSubDepartment = 1 AND r.SubDepartmentCode IS NOT NULL THEN sd.Id ELSE NULL END,
+            NewGradeId = CASE WHEN @UpdGrade = 1 AND r.GradeCode IS NOT NULL THEN TRY_CONVERT(INT, gr.Grade_ID) ELSE NULL END,
+            NewPlantId = CASE WHEN @UpdPlant = 1 AND r.PlantCode IS NOT NULL THEN TRY_CONVERT(INT, pl.PlantID_ID) ELSE NULL END,
+            NewRegionId = CASE WHEN @UpdRegion = 1 AND r.RegionCode IS NOT NULL THEN TRY_CONVERT(INT, rg.Region_ID) ELSE NULL END,
+            NewDivisionId = CASE WHEN @UpdDivision = 1 AND r.DivisionCode IS NOT NULL THEN TRY_CONVERT(INT, dv.Division_ID) ELSE NULL END,
+            NewCategoryId = CASE WHEN @UpdCategory = 1 AND r.CategoryCode IS NOT NULL THEN TRY_CONVERT(INT, cat.Category_ID) ELSE NULL END,
+            NewSubDepartmentId = CASE WHEN @UpdSubDepartment = 1 AND r.SubDepartmentCode IS NOT NULL THEN TRY_CONVERT(INT, sd.SubDepartment_ID) ELSE NULL END,
 
             ExistsInMaster = CASE WHEN u.EmployeeCode IS NULL THEN 0 ELSE 1 END,
 

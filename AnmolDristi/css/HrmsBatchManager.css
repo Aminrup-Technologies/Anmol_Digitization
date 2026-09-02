@@ -690,6 +690,60 @@ body.hrms-sync-info-open {
     color: #9fb6cc;
 }
 
+/* ---- Phase A step workflow ---- */
+
+.hrms-step-panel {
+    margin-bottom: 12px;
+}
+
+.hrms-batch-meta {
+    margin-bottom: 8px;
+}
+
+.hrms-meta-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #73879c;
+    margin-bottom: 2px;
+}
+
+.hrms-meta-value {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2a3f54;
+}
+
+.hrms-step-block h4 {
+    margin-top: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.hrms-step-badge {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #2a3f54;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.hrms-lock-note {
+    display: block;
+    margin: 8px 0 12px;
+    padding: 8px 10px;
+    border-left: 4px solid #f0ad4e;
+    background: #fcf8e3;
+    color: #8a6d3b;
+    font-weight: 600;
+}
+
 @media (max-width: 575px) {
     .hrms-sync-info-panel {
         width: 100vw;

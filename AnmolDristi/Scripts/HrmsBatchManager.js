@@ -191,54 +191,52 @@
             });
     }
 
-    /* ---- Existing page helpers (ClientIDs from HrmsBatchManagerConfig) ---- */
+    /* ---- Page helpers (ClientIDs from HrmsBatchManagerConfig) ---- */
 
-    window.onRowSelect = function (btnElement, batchId) {
+    function selectedBatchId() {
         var c = cfg();
         var hf = document.getElementById(c.hfSelectedBatchId);
-        var lbl = document.getElementById(c.lblSelectedBatchId);
-        if (hf) {
-            hf.value = batchId;
-        }
-        if (lbl) {
-            lbl.innerText = batchId;
-        }
+        return hf ? (hf.value || '') : '';
+    }
 
-        var rows = document.querySelectorAll('#' + c.gvBatchesId + ' tr');
-        for (var i = 0; i < rows.length; i++) {
-            rows[i].classList.remove('selected-row');
+    function disableButton(buttonId) {
+        if (!buttonId) {
+            return;
         }
-
-        var clickedRow = btnElement.closest ? btnElement.closest('tr') : null;
-        if (!clickedRow && btnElement.parentNode) {
-            var el = btnElement;
-            while (el && el.tagName !== 'TR') {
-                el = el.parentNode;
-            }
-            clickedRow = el;
-        }
-        if (clickedRow) {
-            clickedRow.classList.add('selected-row');
-        }
-    };
-
-    window.confirmRun = function () {
-        var c = cfg();
-        var hf = document.getElementById(c.hfSelectedBatchId);
-        var sel = hf ? hf.value : '';
-        if (!sel) {
-            alert('Please select a batch to run from the grid.');
-            return false;
-        }
-        if (!confirm('Execute processing for batch:\n' + sel + '?')) {
-            return false;
-        }
-
-        var btn = document.getElementById(c.btnRunId);
+        var btn = document.getElementById(buttonId);
         if (btn) {
             btn.value = 'Running...';
             btn.classList.add('disabled');
         }
+    }
+
+    window.confirmSyncMasters = function () {
+        var sel = selectedBatchId();
+        if (!sel) {
+            alert('Please select a batch first.');
+            return false;
+        }
+        if (!confirm('Synchronize organization masters for batch ' + sel + '?\nThis does not insert or update employees.')) {
+            return false;
+        }
+        disableButton(cfg().btnSyncMastersId);
+        return true;
+    };
+
+    window.confirmExecute = function (actionLabel) {
+        var sel = selectedBatchId();
+        if (!sel) {
+            alert('Please select a batch first.');
+            return false;
+        }
+        if (!confirm('Execute "' + actionLabel + '" for batch ' + sel + '?\nOnly this action will run.')) {
+            return false;
+        }
+
+        var c = cfg();
+        disableButton(c.btnExecuteInsertId);
+        disableButton(c.btnExecuteUpdateId);
+        disableButton(c.btnExecuteHierarchyId);
         return true;
     };
 

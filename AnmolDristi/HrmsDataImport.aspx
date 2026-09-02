@@ -93,13 +93,13 @@
 
                             <asp:Panel ID="pnlMapping" runat="server" Visible="false">
                                 <div class="alert alert-info">
-                                    <strong>File Analyzed Successfully!</strong> Please verify the column mappings below. EmpCode is required. After upload, you will be redirected to Batch Manager to run synchronization.
+                                    <strong>File Analyzed Successfully!</strong> Please verify the column mappings below. EmpCode is required. After upload you will be redirected to Batch Manager: synchronize masters first, then choose one employee action.
                                 </div>
 
                                 <div class="row mapping-grid bg-light p-3 border">
                                     <div class="col-md-5 font-weight-bold text-uppercase">Target Database Column</div>
                                     <div class="col-md-2 text-center"><i class="fa fa-arrow-right"></i></div>
-                                    <div class="col-md-5 font-weight-bold text-uppercase">Source Excel Column</div>
+                                    <div class="col-md-5 font-weight-bold text-uppercase">Source CSV Column</div>
                                 </div>
 
                                 <asp:Repeater ID="rptMapping" runat="server" OnItemDataBound="rptMapping_ItemDataBound">
