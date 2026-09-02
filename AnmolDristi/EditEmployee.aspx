@@ -20,6 +20,11 @@
         .tab-pane {
             padding-top: 15px;
         }
+        /* Unresolved organizational value (missing from master dropdown) */
+        select.org-unresolved {
+            border-color: #e6a817;
+            background-color: #fff8e6;
+        }
         /* Console style for logs */
         .log-console {
             background-color: #f8f9fa;

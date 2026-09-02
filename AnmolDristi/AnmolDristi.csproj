@@ -776,6 +776,7 @@
     <Compile Include="EditEmployee.aspx.designer.cs">
       <DependentUpon>EditEmployee.aspx</DependentUpon>
     </Compile>
+    <Compile Include="OrganizationalValueResolver.cs" />
     <Compile Include="EmailNotifier.cs" />
     <Compile Include="EmailRecipientManager.cs" />
     <Compile Include="EmailRecipientMgr.cs" />
