@@ -7,15 +7,23 @@
                  after scripts 002–010. Does not modify employee data and
                  does not execute HRMS synchronization.
 
-    Expected HASHBYTES SHA2_256 of OBJECT_DEFINITION (UAT AnmolDristiDev
-    after CREATE OR ALTER of the approved repository files):
-      usp_HSE_ValidateBatch              0C84CD55BF21274664390C6968A372EE9EA5702E64A13497F36EC321200698CD
-      usp_RunHRMSSynchronization         2589DB21030252A0F0157741A630EA2EB9A45D0E545F4E0DC033F4F2CFCEB325
-      usp_HSE_InsertNewEmployees         97FCB04920457A427DA5CDB8FCB1D5D0F28CC629666F7EB99078C6942A1A04D9
-      usp_HSE_UpdateChangedEmployees     D67DAA1E717BDE279FD7E1DFC0A85008C984304EFF927B318A9FE51CFD6E024E
-      usp_HSE_SynchronizeMasters         E64BC5EBC5A0C14B90BB939548032D98AE06CC730B24B63A87BA97E7FB296A3A
-      usp_HSE_ReconcileValidationWarnings 694BE571F60C8825FF460C0C85E72BDB991B23B22AC721DDBCE926C79AE6EFEC
-      usp_HSE_UpdateReportingHierarchy   5AF50C20DB061560558BB01DC6999B4B0C4B50121E7E92F0ADECFD732E7A4EF1
+    Hash checks (35–41) compare SHA2_256 of a narrowly normalized
+    sys.sql_modules.definition against UAT canonical hashes:
+      1) REPLACE CHAR(13) (CR) with empty
+      2) strip leading CHAR(10)/CHAR(13) only
+      3) strip trailing CHAR(10)/CHAR(13) only
+      Internal whitespace and all other characters are preserved.
+    Raw (unnormalized) HASHBYTES is reported as diagnostic only and
+    does not FAIL the check.
+
+    Canonical SHA2_256 (UAT AnmolDristiDev, same algorithm):
+      usp_HSE_ValidateBatch              7FE29617AFCC9585DA448C8D9E4D06E98511A55557748C5F4F45189795BC4C85
+      usp_RunHRMSSynchronization         5295935F3D8DC017710BC67138CC9308BE9DD926EBB3735C06A4675C42C29A7C
+      usp_HSE_InsertNewEmployees         923BE0655B1315D26B69A91C6892232FB93E96D1246B08E1C9B276416F5DF8FA
+      usp_HSE_UpdateChangedEmployees     5B88645649E1E56CB2185560BDA42A70331F9CF023CDB86D12F2434FBA366E21
+      usp_HSE_SynchronizeMasters         71846323D14433144B47C673612CDDD7B2E16C097A3BAE5E5B77BC1BBD7CCF82
+      usp_HSE_ReconcileValidationWarnings 8DE80860A826B53011D35FC974FFD50345CA4385706BBB22884743011FAE530D
+      usp_HSE_UpdateReportingHierarchy   799FFE1384573014DEC76BECE172B3FA921DB3D4F2F512329FAD7F71BE8858FC
 */
 
 SET NOCOUNT ON;
@@ -215,28 +223,81 @@ SELECT N'Mapping', N'Update write token is THEN des.Id for NewDesignationId (not
            ELSE N'FAIL'
        END;
 
-/* -------------------- HASHBYTES vs UAT expected -------------------- */
-DECLARE @ExpectedHash TABLE (Name sysname PRIMARY KEY, ExpectedSha varchar(64));
-INSERT INTO @ExpectedHash VALUES
-    (N'usp_HSE_ValidateBatch',               '0C84CD55BF21274664390C6968A372EE9EA5702E64A13497F36EC321200698CD'),
-    (N'usp_RunHRMSSynchronization',          '2589DB21030252A0F0157741A630EA2EB9A45D0E545F4E0DC033F4F2CFCEB325'),
-    (N'usp_HSE_InsertNewEmployees',          '97FCB04920457A427DA5CDB8FCB1D5D0F28CC629666F7EB99078C6942A1A04D9'),
-    (N'usp_HSE_UpdateChangedEmployees',      'D67DAA1E717BDE279FD7E1DFC0A85008C984304EFF927B318A9FE51CFD6E024E'),
-    (N'usp_HSE_SynchronizeMasters',          'E64BC5EBC5A0C14B90BB939548032D98AE06CC730B24B63A87BA97E7FB296A3A'),
-    (N'usp_HSE_ReconcileValidationWarnings', '694BE571F60C8825FF460C0C85E72BDB991B23B22AC721DDBCE926C79AE6EFEC'),
-    (N'usp_HSE_UpdateReportingHierarchy',    '5AF50C20DB061560558BB01DC6999B4B0C4B50121E7E92F0ADECFD732E7A4EF1');
+/* -------------------- HASHBYTES vs UAT canonical expected --------------------
+   Narrow normalization only (CR + outer newlines). Not a whitespace collapse.
+   --------------------------------------------------------------------- */
+DECLARE @HashWork TABLE
+(
+    Name sysname PRIMARY KEY,
+    ExpectedCanonicalSha varchar(64) NOT NULL,
+    RawDef nvarchar(max) NULL,
+    NormDef nvarchar(max) NULL,
+    RawSha varchar(64) NULL,
+    CanonicalSha varchar(64) NULL
+);
+
+INSERT INTO @HashWork (Name, ExpectedCanonicalSha) VALUES
+    (N'usp_HSE_ValidateBatch',               '7FE29617AFCC9585DA448C8D9E4D06E98511A55557748C5F4F45189795BC4C85'),
+    (N'usp_RunHRMSSynchronization',          '5295935F3D8DC017710BC67138CC9308BE9DD926EBB3735C06A4675C42C29A7C'),
+    (N'usp_HSE_InsertNewEmployees',          '923BE0655B1315D26B69A91C6892232FB93E96D1246B08E1C9B276416F5DF8FA'),
+    (N'usp_HSE_UpdateChangedEmployees',      '5B88645649E1E56CB2185560BDA42A70331F9CF023CDB86D12F2434FBA366E21'),
+    (N'usp_HSE_SynchronizeMasters',          '71846323D14433144B47C673612CDDD7B2E16C097A3BAE5E5B77BC1BBD7CCF82'),
+    (N'usp_HSE_ReconcileValidationWarnings', '8DE80860A826B53011D35FC974FFD50345CA4385706BBB22884743011FAE530D'),
+    (N'usp_HSE_UpdateReportingHierarchy',    '799FFE1384573014DEC76BECE172B3FA921DB3D4F2F512329FAD7F71BE8858FC');
+
+UPDATE hw
+SET RawDef = m.definition
+FROM @HashWork hw
+LEFT JOIN sys.objects o ON o.name = hw.Name AND o.type IN (N'P', N'PC')
+LEFT JOIN sys.sql_modules m ON m.object_id = o.object_id;
+
+DECLARE @HashName sysname;
+DECLARE @Norm nvarchar(max);
+
+DECLARE hash_cursor CURSOR LOCAL FAST_FORWARD FOR
+    SELECT Name, RawDef FROM @HashWork;
+
+OPEN hash_cursor;
+FETCH NEXT FROM hash_cursor INTO @HashName, @Norm;
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    IF @Norm IS NOT NULL
+    BEGIN
+        SET @Norm = REPLACE(@Norm, CHAR(13), N'');
+        WHILE DATALENGTH(@Norm) >= 2 AND UNICODE(LEFT(@Norm, 1)) IN (10, 13)
+            SET @Norm = STUFF(@Norm, 1, 1, N'');
+        WHILE DATALENGTH(@Norm) >= 2 AND UNICODE(RIGHT(@Norm, 1)) IN (10, 13)
+            SET @Norm = STUFF(@Norm, LEN(@Norm), 1, N'');
+    END;
+
+    UPDATE @HashWork
+    SET
+        NormDef = @Norm,
+        RawSha = CASE WHEN RawDef IS NULL THEN NULL
+                      ELSE CONVERT(varchar(64), HASHBYTES(N'SHA2_256', CONVERT(varbinary(max), RawDef)), 2) END,
+        CanonicalSha = CASE WHEN @Norm IS NULL THEN NULL
+                            ELSE CONVERT(varchar(64), HASHBYTES(N'SHA2_256', CONVERT(varbinary(max), @Norm)), 2) END
+    WHERE Name = @HashName;
+
+    FETCH NEXT FROM hash_cursor INTO @HashName, @Norm;
+END;
+CLOSE hash_cursor;
+DEALLOCATE hash_cursor;
 
 INSERT INTO @V (Area, CheckName, Observed, Result)
-SELECT N'Hash', N'HASHBYTES SHA2_256 ' + e.Name,
-       CONCAT(N'actual=', ISNULL(CONVERT(varchar(64), HASHBYTES(N'SHA2_256', CONVERT(varbinary(max), m.definition)), 2), N'<missing>')),
-       CASE
-           WHEN m.definition IS NULL THEN N'FAIL'
-           WHEN CONVERT(varchar(64), HASHBYTES(N'SHA2_256', CONVERT(varbinary(max), m.definition)), 2) = e.ExpectedSha THEN N'PASS'
-           ELSE N'FAIL'
-       END
-FROM @ExpectedHash e
-LEFT JOIN sys.objects o ON o.name = e.Name AND o.type = N'P'
-LEFT JOIN sys.sql_modules m ON m.object_id = o.object_id;
+SELECT
+    N'Hash',
+    N'HASHBYTES SHA2_256 canonical ' + hw.Name,
+    CONCAT(
+        N'canonical=', ISNULL(hw.CanonicalSha, N'<missing>'),
+        N' expected=', hw.ExpectedCanonicalSha,
+        N' raw=', ISNULL(hw.RawSha, N'<missing>')),
+    CASE
+        WHEN hw.CanonicalSha IS NULL THEN N'FAIL'
+        WHEN hw.CanonicalSha = hw.ExpectedCanonicalSha THEN N'PASS'
+        ELSE N'FAIL'
+    END
+FROM @HashWork hw;
 
 PRINT N'';
 SELECT CheckId, Area, CheckName, Observed, Result
