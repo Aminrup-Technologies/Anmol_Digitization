@@ -12,6 +12,9 @@ namespace AnmolDristi
 {
     public partial class EditEmployee : BasePage
     {
+        private const string ViewStateOrgSnapshot = "ORG_DB_SNAPSHOT";
+        private const string ViewStateOrgUnresolved = "ORG_UNRESOLVED";
+
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
@@ -51,6 +54,21 @@ namespace AnmolDristi
             DatabaseHelper.BindDropDownList("SELECT Branch_Description, Branch_ID FROM MST_Branch", DDL_Branch, "Branch_Description", "Branch_ID", out recordsBound);
         }
 
+        private OrgBinding[] GetOrgBindings()
+        {
+            return new[]
+            {
+                new OrgBinding("RegionId", DDL_Region),
+                new OrgBinding("DivisionId", DDL_Division),
+                new OrgBinding("DepartmentId", DDL_Department),
+                new OrgBinding("SubDepartmentId", DDL_SubDepartment),
+                new OrgBinding("CategoryId", DDL_Category),
+                new OrgBinding("PlantId", DDL_Plant),
+                new OrgBinding("GradeId", DDL_Grade),
+                new OrgBinding("BranchId", DDL_Branch)
+            };
+        }
+
         private void LoadEmployeeDetails(string employeeCode)
         {
             string query = "SELECT * FROM MST_UserMaster WHERE EmployeeCode = @EmployeeCode";
@@ -79,22 +97,63 @@ namespace AnmolDristi
 
                             TB_Password.Text = reader["Password"].ToString();
 
-                            // Set Dropdown Values
-                            SetDropdownValue(DDL_Company, reader["CompanyId"].ToString());
-                            SetDropdownValue(DDL_Region, reader["RegionId"].ToString());
-                            SetDropdownValue(DDL_Division, reader["DivisionId"].ToString());
-                            SetDropdownValue(DDL_Department, reader["DepartmentId"].ToString());
-                            SetDropdownValue(DDL_SubDepartment, reader["SubDepartmentId"].ToString());
-                            SetDropdownValue(DDL_Category, reader["CategoryId"].ToString());
-                            SetDropdownValue(DDL_Plant, reader["PlantId"].ToString());
-                            SetDropdownValue(DDL_Grade, reader["GradeId"].ToString());
-                            SetDropdownValue(DDL_Branch, reader["BranchId"].ToString());
+                            Dictionary<string, string> snapshot = new Dictionary<string, string>();
+                            Dictionary<string, bool> unresolved = new Dictionary<string, bool>();
 
+                            SetDropdownValue(DDL_Company, reader["CompanyId"].ToString());
+
+                            foreach (OrgBinding binding in GetOrgBindings())
+                            {
+                                string persisted = ReadOrgDbValue(reader, binding.Column);
+                                snapshot[binding.Column] = persisted;
+                                ApplyOrganizationalDropdown(binding.List, persisted, unresolved, binding.Column);
+                            }
+
+                            StoreOrgState(snapshot, unresolved);
                             CaptureOriginalValues();
                         }
                     }
                 }
             }
+        }
+
+        private static string ReadOrgDbValue(SqlDataReader reader, string column)
+        {
+            object raw = reader[column];
+            if (raw == null || raw == DBNull.Value)
+                return string.Empty;
+            return OrganizationalValueResolver.Normalize(Convert.ToString(raw));
+        }
+
+        private void ApplyOrganizationalDropdown(DropDownList ddl, string persisted, Dictionary<string, bool> unresolved, string column)
+        {
+            string value = OrganizationalValueResolver.Normalize(persisted);
+            bool existsInDropdown = value.Length > 0 && ddl.Items.FindByValue(value) != null;
+            bool isUnresolved = OrganizationalValueResolver.IsUnresolvedNonZero(value, existsInDropdown);
+
+            if (existsInDropdown)
+            {
+                ddl.ClearSelection();
+                ddl.Items.FindByValue(value).Selected = true;
+            }
+            else if (isUnresolved)
+            {
+                ListItem synthetic = new ListItem(OrganizationalValueResolver.UnresolvedItemText(value), value);
+                int insertAt = ddl.Items.Count > 0 ? 1 : 0;
+                ddl.Items.Insert(insertAt, synthetic);
+                ddl.ClearSelection();
+                ddl.Items.FindByValue(value).Selected = true;
+                AppendUnresolvedCss(ddl);
+            }
+
+            unresolved[column] = isUnresolved;
+        }
+
+        private static void AppendUnresolvedCss(DropDownList ddl)
+        {
+            string css = ddl.CssClass ?? string.Empty;
+            if (css.IndexOf(OrganizationalValueResolver.UnresolvedCssClass, StringComparison.Ordinal) < 0)
+                ddl.CssClass = (css + " " + OrganizationalValueResolver.UnresolvedCssClass).Trim();
         }
 
         private void SetDropdownValue(DropDownList ddl, string value)
@@ -108,7 +167,8 @@ namespace AnmolDristi
 
         protected void BtnSubmit_Click(object sender, EventArgs e)
         {
-            string changes = GetAllFieldChanges();
+            Dictionary<string, string> resolvedOrg = ResolveAllOrganizationalValues();
+            string changes = GetAllFieldChanges(resolvedOrg);
             if (string.IsNullOrEmpty(changes))
             {
                 ShowNotification("No Changes", "No data was modified.", "info");
@@ -133,14 +193,14 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@EmployeeCode", TB_EmpCode.Text);
                         cmd.Parameters.AddWithValue("@EmployeeName", TB_EmpName.Text);
                         cmd.Parameters.AddWithValue("@CompanyId", DDL_Company.SelectedValue);
-                        cmd.Parameters.AddWithValue("@RegionId", DDL_Region.SelectedValue);
-                        cmd.Parameters.AddWithValue("@DivisionId", DDL_Division.SelectedValue);
-                        cmd.Parameters.AddWithValue("@DepartmentId", DDL_Department.SelectedValue);
-                        cmd.Parameters.AddWithValue("@SubDepartmentId", DDL_SubDepartment.SelectedValue);
-                        cmd.Parameters.AddWithValue("@CategoryId", DDL_Category.SelectedValue);
-                        cmd.Parameters.AddWithValue("@PlantId", DDL_Plant.SelectedValue);
-                        cmd.Parameters.AddWithValue("@GradeId", DDL_Grade.SelectedValue);
-                        cmd.Parameters.AddWithValue("@BranchId", DDL_Branch.SelectedValue);
+                        cmd.Parameters.AddWithValue("@RegionId", resolvedOrg["RegionId"]);
+                        cmd.Parameters.AddWithValue("@DivisionId", resolvedOrg["DivisionId"]);
+                        cmd.Parameters.AddWithValue("@DepartmentId", resolvedOrg["DepartmentId"]);
+                        cmd.Parameters.AddWithValue("@SubDepartmentId", resolvedOrg["SubDepartmentId"]);
+                        cmd.Parameters.AddWithValue("@CategoryId", resolvedOrg["CategoryId"]);
+                        cmd.Parameters.AddWithValue("@PlantId", resolvedOrg["PlantId"]);
+                        cmd.Parameters.AddWithValue("@GradeId", resolvedOrg["GradeId"]);
+                        cmd.Parameters.AddWithValue("@BranchId", resolvedOrg["BranchId"]);
                         cmd.Parameters.AddWithValue("@DOJ", TB_DOJ.Text);
                         cmd.Parameters.AddWithValue("@Email", TB_Email.Text);
                         cmd.Parameters.AddWithValue("@Mobile", TB_Mobile.Text);
@@ -151,6 +211,8 @@ namespace AnmolDristi
                         cmd.ExecuteNonQuery();
                     }
                 }
+
+                RefreshOrgStateAfterSave(resolvedOrg);
 
                 // Write to log and reload the log panel
                 LogAudit(TB_EmpCode.Text, "PROFILE_UPDATE", "CHANGES DETECTED:" + Environment.NewLine + changes);
@@ -171,6 +233,63 @@ namespace AnmolDristi
             Response.Redirect($"EditEmployee.aspx?EmployeeCode={empCode}", false);
         }
 
+        private Dictionary<string, string> ResolveAllOrganizationalValues()
+        {
+            Dictionary<string, string> snapshot = GetOrgSnapshot();
+            Dictionary<string, bool> unresolved = GetOrgUnresolved();
+            Dictionary<string, string> resolved = new Dictionary<string, string>();
+
+            foreach (OrgBinding binding in GetOrgBindings())
+            {
+                resolved[binding.Column] = ResolveOrganizationalValue(binding, snapshot, unresolved);
+            }
+
+            return resolved;
+        }
+
+        private static string ResolveOrganizationalValue(
+            OrgBinding binding,
+            Dictionary<string, string> snapshot,
+            Dictionary<string, bool> unresolved)
+        {
+            string original = snapshot.ContainsKey(binding.Column) ? snapshot[binding.Column] : string.Empty;
+            bool wasUnresolved = unresolved.ContainsKey(binding.Column) && unresolved[binding.Column];
+            string selected = binding.List.SelectedValue ?? string.Empty;
+            bool selectedIsKnown = binding.List.Items.FindByValue(selected) != null;
+            return OrganizationalValueResolver.Resolve(original, wasUnresolved, selected, selectedIsKnown);
+        }
+
+        private void RefreshOrgStateAfterSave(Dictionary<string, string> resolvedOrg)
+        {
+            Dictionary<string, bool> unresolved = new Dictionary<string, bool>();
+            foreach (OrgBinding binding in GetOrgBindings())
+            {
+                string written = resolvedOrg.ContainsKey(binding.Column) ? resolvedOrg[binding.Column] : string.Empty;
+                ListItem selectedItem = binding.List.SelectedItem;
+                bool stillSynthetic = selectedItem != null
+                    && string.Equals(OrganizationalValueResolver.Normalize(selectedItem.Value), written, StringComparison.Ordinal)
+                    && (selectedItem.Text ?? string.Empty).StartsWith(OrganizationalValueResolver.UnresolvedItemTextPrefix, StringComparison.Ordinal);
+                unresolved[binding.Column] = stillSynthetic;
+            }
+            StoreOrgState(new Dictionary<string, string>(resolvedOrg), unresolved);
+        }
+
+        private void StoreOrgState(Dictionary<string, string> snapshot, Dictionary<string, bool> unresolved)
+        {
+            ViewState[ViewStateOrgSnapshot] = snapshot;
+            ViewState[ViewStateOrgUnresolved] = unresolved;
+        }
+
+        private Dictionary<string, string> GetOrgSnapshot()
+        {
+            return ViewState[ViewStateOrgSnapshot] as Dictionary<string, string> ?? new Dictionary<string, string>();
+        }
+
+        private Dictionary<string, bool> GetOrgUnresolved()
+        {
+            return ViewState[ViewStateOrgUnresolved] as Dictionary<string, bool> ?? new Dictionary<string, bool>();
+        }
+
         // =========================================================
         // --- AUDIT LOGGING SYSTEM ---
         // =========================================================
@@ -178,17 +297,18 @@ namespace AnmolDristi
         private void CaptureOriginalValues()
         {
             Dictionary<string, string> original = new Dictionary<string, string>();
+            Dictionary<string, string> snapshot = GetOrgSnapshot();
 
             original["EmployeeName"] = TB_EmpName.Text;
             original["CompanyId"] = DDL_Company.SelectedValue;
-            original["RegionId"] = DDL_Region.SelectedValue;
-            original["DivisionId"] = DDL_Division.SelectedValue;
-            original["DepartmentId"] = DDL_Department.SelectedValue;
-            original["SubDepartmentId"] = DDL_SubDepartment.SelectedValue;
-            original["CategoryId"] = DDL_Category.SelectedValue;
-            original["PlantId"] = DDL_Plant.SelectedValue;
-            original["GradeId"] = DDL_Grade.SelectedValue;
-            original["BranchId"] = DDL_Branch.SelectedValue;
+            original["RegionId"] = OrgOriginalForCapture(snapshot, "RegionId", DDL_Region);
+            original["DivisionId"] = OrgOriginalForCapture(snapshot, "DivisionId", DDL_Division);
+            original["DepartmentId"] = OrgOriginalForCapture(snapshot, "DepartmentId", DDL_Department);
+            original["SubDepartmentId"] = OrgOriginalForCapture(snapshot, "SubDepartmentId", DDL_SubDepartment);
+            original["CategoryId"] = OrgOriginalForCapture(snapshot, "CategoryId", DDL_Category);
+            original["PlantId"] = OrgOriginalForCapture(snapshot, "PlantId", DDL_Plant);
+            original["GradeId"] = OrgOriginalForCapture(snapshot, "GradeId", DDL_Grade);
+            original["BranchId"] = OrgOriginalForCapture(snapshot, "BranchId", DDL_Branch);
             original["DOJ"] = TB_DOJ.Text;
             original["Email"] = TB_Email.Text;
             original["Mobile"] = TB_Mobile.Text;
@@ -198,7 +318,14 @@ namespace AnmolDristi
             ViewState["ORIGINAL_DATA"] = original;
         }
 
-        private string GetAllFieldChanges()
+        private static string OrgOriginalForCapture(Dictionary<string, string> snapshot, string column, DropDownList ddl)
+        {
+            if (snapshot != null && snapshot.ContainsKey(column))
+                return snapshot[column] ?? string.Empty;
+            return ddl.SelectedValue ?? string.Empty;
+        }
+
+        private string GetAllFieldChanges(Dictionary<string, string> resolvedOrg)
         {
             if (ViewState["ORIGINAL_DATA"] == null) return "";
 
@@ -207,14 +334,14 @@ namespace AnmolDristi
 
             CompareValue(changes, original, "EmployeeName", TB_EmpName.Text);
             CompareValue(changes, original, "CompanyId", DDL_Company.SelectedValue);
-            CompareValue(changes, original, "RegionId", DDL_Region.SelectedValue);
-            CompareValue(changes, original, "DivisionId", DDL_Division.SelectedValue);
-            CompareValue(changes, original, "DepartmentId", DDL_Department.SelectedValue);
-            CompareValue(changes, original, "SubDepartmentId", DDL_SubDepartment.SelectedValue);
-            CompareValue(changes, original, "CategoryId", DDL_Category.SelectedValue);
-            CompareValue(changes, original, "PlantId", DDL_Plant.SelectedValue);
-            CompareValue(changes, original, "GradeId", DDL_Grade.SelectedValue);
-            CompareValue(changes, original, "BranchId", DDL_Branch.SelectedValue);
+            CompareValue(changes, original, "RegionId", resolvedOrg["RegionId"]);
+            CompareValue(changes, original, "DivisionId", resolvedOrg["DivisionId"]);
+            CompareValue(changes, original, "DepartmentId", resolvedOrg["DepartmentId"]);
+            CompareValue(changes, original, "SubDepartmentId", resolvedOrg["SubDepartmentId"]);
+            CompareValue(changes, original, "CategoryId", resolvedOrg["CategoryId"]);
+            CompareValue(changes, original, "PlantId", resolvedOrg["PlantId"]);
+            CompareValue(changes, original, "GradeId", resolvedOrg["GradeId"]);
+            CompareValue(changes, original, "BranchId", resolvedOrg["BranchId"]);
             CompareValue(changes, original, "DOJ", TB_DOJ.Text);
             CompareValue(changes, original, "Email", TB_Email.Text);
             CompareValue(changes, original, "Mobile", TB_Mobile.Text);
@@ -294,6 +421,18 @@ namespace AnmolDristi
                         }});
                     </script>";
             ClientScript.RegisterStartupScript(this.GetType(), "ShowNotification", script, false);
+        }
+
+        private sealed class OrgBinding
+        {
+            public readonly string Column;
+            public readonly DropDownList List;
+
+            public OrgBinding(string column, DropDownList list)
+            {
+                Column = column;
+                List = list;
+            }
         }
     }
 }
