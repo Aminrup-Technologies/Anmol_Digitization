@@ -19,7 +19,8 @@ namespace AnmolDristi
     {
         private static readonly string[] AllowedHosts =
         {
-            "api-wa.co",              // AiSensy
+            "api-wa.co",              // AiSensy (tenant endpoint, e.g. backend.api-wa.co/campaign/<project>/api/v2)
+            "aisensy.com",            // AiSensy (canonical host, e.g. backend.aisensy.com/campaign/t1/api/v2)
             "graph.facebook.com",     // Meta WhatsApp Cloud API
             "graph.meta.com"          // Meta WhatsApp Cloud API (alt)
         };

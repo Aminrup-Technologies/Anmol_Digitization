@@ -10,7 +10,7 @@ const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 
-const DEFAULT_ALLOW = ["api-wa.co", "graph.facebook.com", "graph.meta.com"];
+const DEFAULT_ALLOW = ["api-wa.co", "aisensy.com", "graph.facebook.com", "graph.meta.com"];
 const ALLOW_HOSTS = (process.env.WA_ALLOW_HOSTS || DEFAULT_ALLOW.join(","))
   .split(",")
   .map((s) => s.trim().toLowerCase())

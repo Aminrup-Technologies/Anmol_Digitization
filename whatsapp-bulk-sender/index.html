@@ -307,9 +307,10 @@ function parseCSV(text) {
 }
 function normalizePhone(p) {
   p = String(p || "").replace(/[^\d+]/g, "");
-  if (p.indexOf("+") === 0) p = p.slice(1);
-  if (p.length === 10 && p[0] !== "0") p = "91" + p; // India default, matches script behaviour
-  return p;
+  var hadPlus = p.charAt(0) === "+";
+  if (hadPlus) p = p.slice(1);
+  if (p.length === 10 && p.charAt(0) !== "0") p = "91" + p; // bare 10-digit => India (+91), per AiSensy docs
+  return (hadPlus ? "+" : "") + p; // docs: +<country><number>; for India the + is optional
 }
 
 /* ---------- file loading ---------- */
