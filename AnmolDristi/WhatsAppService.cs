@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using OfficeOpenXml;  // EPPlus 4.5.3.3 — already in packages
 
@@ -28,9 +29,6 @@ namespace AnmolDristi
         /// </summary>
         public DataTable ParseExcelToDataTable(Stream fileStream, string fileName)
         {
-            // EPPlus 4.5 requires this for non-commercial use; set once per AppDomain.
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
             using (var package = new ExcelPackage(fileStream))
             {
                 var ws = package.Workbook.Worksheets.FirstOrDefault();
