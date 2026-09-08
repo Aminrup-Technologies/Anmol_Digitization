@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -252,7 +253,10 @@ namespace AnmolDristi
             {
                 using (var client = new HttpClient())
                 {
-                    client.Timeout = TimeSpan.FromSeconds(120);
+                    // Explicitly enable TLS 1.2 — .NET 4.5.2 defaults may not include it
+                    ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+                    client.Timeout = TimeSpan.FromSeconds(60);
                     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                     // --- Authentication (configurable) ---
@@ -299,17 +303,36 @@ namespace AnmolDristi
                     };
                 }
             }
+            catch (TaskCanceledException ex)
+            {
+                // Distinguish timeout from cancellation
+                string detail = GetFullExceptionMessage(ex);
+                bool isTimeout = ex.InnerException is TimeoutException
+                    || detail.IndexOf("timed out", StringComparison.OrdinalIgnoreCase) >= 0;
+                string msg = isTimeout
+                    ? "Request timed out after 60 seconds."
+                    : "Request was cancelled: " + detail;
+                return new SendResult { Success = false, StatusCode = 0, ErrorMessage = msg };
+            }
             catch (HttpRequestException ex)
             {
-                return new SendResult { Success = false, StatusCode = 0, ErrorMessage = "Network error: " + ex.Message };
+                // Network/TLS/DNS failure — show full inner chain so the actual cause is visible
+                string detail = GetFullExceptionMessage(ex);
+                return new SendResult
+                {
+                    Success = false,
+                    StatusCode = 0,
+                    ErrorMessage = "Network error: " + detail
+                };
             }
-            catch (TaskCanceledException)
+            catch (WebException ex)
             {
-                return new SendResult { Success = false, StatusCode = 0, ErrorMessage = "Request timed out after 120 seconds." };
+                string detail = GetFullExceptionMessage(ex);
+                return new SendResult { Success = false, StatusCode = (int)(ex.Response != null ? ((HttpWebResponse)ex.Response).StatusCode : 0), ErrorMessage = "Network error: " + detail };
             }
             catch (Exception ex)
             {
-                return new SendResult { Success = false, StatusCode = 0, ErrorMessage = "Unexpected error: " + ex.Message };
+                return new SendResult { Success = false, StatusCode = 0, ErrorMessage = "Unexpected error: " + GetFullExceptionMessage(ex) };
             }
         }
 
@@ -322,6 +345,23 @@ namespace AnmolDristi
             if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
                 return "\"" + value.Replace("\"", "\"\"") + "\"";
             return value;
+        }
+
+        /// <summary>
+        /// Walks the full exception chain and returns all messages joined by " --> ".
+        /// Does NOT expose credentials, headers, or API keys.
+        /// </summary>
+        private static string GetFullExceptionMessage(Exception ex)
+        {
+            var messages = new List<string>();
+            Exception current = ex;
+            while (current != null)
+            {
+                if (!string.IsNullOrWhiteSpace(current.Message))
+                    messages.Add(current.Message);
+                current = current.InnerException;
+            }
+            return messages.Count > 0 ? string.Join(" --> ", messages) : ex.Message;
         }
 
         private static string Truncate(string s, int max)
