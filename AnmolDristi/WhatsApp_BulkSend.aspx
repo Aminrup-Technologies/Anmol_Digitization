@@ -173,6 +173,7 @@
                                         <span class="validation-stat"><strong class="text-success"><asp:Label ID="lblValidCount" runat="server" /></strong></span>
                                         <span class="validation-stat"><strong class="text-danger"><asp:Label ID="lblInvalidCount" runat="server" /></strong></span>
                                         <span class="validation-stat"><strong class="text-danger"><asp:Label ID="lblDuplicateCount" runat="server" /></strong></span>
+                                        <br /><asp:Label ID="lblParseInfo" runat="server" CssClass="text-muted" Style="font-size: 11px; display: block; margin-top: 4px;" Visible="false" />
                                     </div>
                                     <asp:Repeater ID="rptWarnings" runat="server">
                                         <HeaderTemplate><ul class="text-warning" style="margin-top: 4px; padding-left: 18px; font-size: 12px;"></HeaderTemplate>

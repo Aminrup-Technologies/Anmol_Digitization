@@ -22,6 +22,29 @@ namespace AnmolDristi
     }
 
     /// <summary>
+    /// Diagnostic data from Excel parsing — used to trace row lifecycle.
+    /// </summary>
+    public class ParseDiagnostics
+    {
+        public int WorksheetStartRow { get; set; }
+        public int WorksheetEndRow { get; set; }
+        public int WorksheetStartCol { get; set; }
+        public int WorksheetEndCol { get; set; }
+        public string HeaderRowContent { get; set; }
+        public int ExpectedDataRows { get; set; }
+        public int EmptyRowsSkipped { get; set; }
+        public int DataTableRows { get; set; }
+        public int DataTableColumns { get; set; }
+        public string ColumnNames { get; set; }
+
+        public ParseDiagnostics()
+        {
+            HeaderRowContent = string.Empty;
+            ColumnNames = string.Empty;
+        }
+    }
+
+    /// <summary>
     /// Result of validating an uploaded DataTable against the required column mappings.
     /// </summary>
     public class ValidationResult
@@ -33,6 +56,10 @@ namespace AnmolDristi
         public int DuplicateRows { get; set; }
         public List<string> Errors { get; set; }
         public List<string> Warnings { get; set; }
+
+        // Diagnostic: confirm DataTable was not mutated during validation
+        public int InputDataTableRows { get; set; }
+        public int OutputDataTableRows { get; set; }
 
         public ValidationResult()
         {

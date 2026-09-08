@@ -28,13 +28,21 @@ namespace AnmolDristi
         /// Reads the first worksheet from an uploaded .xlsx stream into a DataTable.
         /// Row 1 = column headers, Row 2+ = data.
         /// </summary>
-        public DataTable ParseExcelToDataTable(Stream fileStream, string fileName)
+        public DataTable ParseExcelToDataTable(Stream fileStream, string fileName, out ParseDiagnostics diagnostics)
         {
+            diagnostics = new ParseDiagnostics();
+
             using (var package = new ExcelPackage(fileStream))
             {
                 var ws = package.Workbook.Worksheets.FirstOrDefault();
                 if (ws == null || ws.Dimension == null)
                     throw new InvalidOperationException("The Excel file contains no data.");
+
+                diagnostics.WorksheetStartRow = ws.Dimension.Start.Row;
+                diagnostics.WorksheetEndRow = ws.Dimension.End.Row;
+                diagnostics.WorksheetStartCol = ws.Dimension.Start.Column;
+                diagnostics.WorksheetEndCol = ws.Dimension.End.Column;
+                diagnostics.HeaderRowContent = (ws.Cells[1, ws.Dimension.Start.Column, 1, ws.Dimension.End.Column].Text ?? "").Trim();
 
                 var dt = new DataTable("Recipients");
 
@@ -53,19 +61,35 @@ namespace AnmolDristi
                 }
 
                 // ---- Data rows (Row 2+) ----
+                int expectedDataRows = ws.Dimension.End.Row - ws.Dimension.Start.Row;
+                diagnostics.ExpectedDataRows = expectedDataRows;
+
                 for (int row = ws.Dimension.Start.Row + 1; row <= ws.Dimension.End.Row; row++)
                 {
-                    // Skip completely empty rows
+                    // Skip rows where ALL cells are empty or contain only invisible whitespace
+                    // (spaces, tabs, non-breaking spaces \u00A0, zero-width chars)
                     bool allEmpty = true;
                     for (int col = ws.Dimension.Start.Column; col <= ws.Dimension.End.Column; col++)
                     {
-                        if (!string.IsNullOrWhiteSpace(ws.Cells[row, col].Text))
+                        string cellText = ws.Cells[row, col].Text ?? string.Empty;
+                        // Trim ALL Unicode whitespace, not just ASCII spaces
+                        string trimmed = cellText.Trim();
+                        if (!string.IsNullOrEmpty(trimmed))
                         {
-                            allEmpty = false;
-                            break;
+                            // Additional check: reject cells that are ONLY invisible characters
+                            string stripped = Regex.Replace(trimmed, @"[\s\u00A0\u200B\u200C\u200D\uFEFF]", "");
+                            if (!string.IsNullOrEmpty(stripped))
+                            {
+                                allEmpty = false;
+                                break;
+                            }
                         }
                     }
-                    if (allEmpty) continue;
+                    if (allEmpty)
+                    {
+                        diagnostics.EmptyRowsSkipped++;
+                        continue;
+                    }
 
                     var dr = dt.NewRow();
                     for (int col = ws.Dimension.Start.Column; col <= ws.Dimension.End.Column; col++)
@@ -74,6 +98,10 @@ namespace AnmolDristi
                     }
                     dt.Rows.Add(dr);
                 }
+
+                diagnostics.DataTableRows = dt.Rows.Count;
+                diagnostics.DataTableColumns = dt.Columns.Count;
+                diagnostics.ColumnNames = string.Join(", ", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName));
 
                 return dt;
             }
@@ -114,10 +142,15 @@ namespace AnmolDristi
         /// Validates the DataTable against the user's column mappings.
         /// Checks phone format, non-empty required fields, and reports row-level issues.
         /// </summary>
+        /// <summary>
+        /// READ-ONLY validation. Inspects the DataTable and returns counts/warnings.
+        /// Must NEVER add, remove, merge, or modify rows in the source DataTable.
+        /// </summary>
         public ValidationResult ValidateData(DataTable dt, ColumnMapping phoneMapping)
         {
             var result = new ValidationResult();
             result.TotalRows = dt.Rows.Count;
+            result.InputDataTableRows = dt.Rows.Count;  // diagnostic: confirm no mutation
 
             if (phoneMapping == null)
             {
@@ -164,6 +197,7 @@ namespace AnmolDristi
             result.ValidRows = validCount;
             result.InvalidRows = invalidCount;
             result.DuplicateRows = duplicateCount;
+            result.OutputDataTableRows = dt.Rows.Count;  // diagnostic: confirm no mutation
 
             int totalSkipped = invalidCount + duplicateCount;
             if (totalSkipped > 10)
@@ -179,7 +213,11 @@ namespace AnmolDristi
         /// Converts the DataTable to a UTF-8 CSV byte array suitable for the CEOITBOX API.
         /// First column = Phone (normalised), remaining columns = template variables in order.
         /// </summary>
-        public byte[] ConvertToCsvBytes(DataTable dt, CampaignConfig config)
+        /// <summary>
+        /// Converts the DataTable to CSV. Only includes rows that pass phone validation.
+        /// Returns the bytes AND populates the diagnostics with the filtered row count.
+        /// </summary>
+        public byte[] ConvertToCsvBytes(DataTable dt, CampaignConfig config, out int filteredRowCount)
         {
             var sb = new StringBuilder();
 
@@ -192,6 +230,7 @@ namespace AnmolDristi
             sb.AppendLine(string.Join(",", orderedMappings.Select(m => CsvEscape(m.ExcelColumn))));
 
             // --- Data rows ---
+            int dataRowCount = 0;
             foreach (DataRow row in dt.Rows)
             {
                 var cells = orderedMappings.Select(m =>
@@ -205,8 +244,10 @@ namespace AnmolDristi
                 });
 
                 sb.AppendLine(string.Join(",", cells));
+                dataRowCount++;
             }
 
+            filteredRowCount = dataRowCount;
             return Encoding.UTF8.GetBytes(sb.ToString());
         }
 

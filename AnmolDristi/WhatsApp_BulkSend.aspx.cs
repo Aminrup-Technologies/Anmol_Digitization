@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -14,6 +15,7 @@ namespace AnmolDristi
     {
         private const string SESSION_DATA = "WhatsApp_ExcelData";
         private const string SESSION_CONFIG = "WhatsApp_CampaignConfig";
+        private const string SESSION_PARSE_DIAG = "WhatsApp_ParseDiagnostics";
 
         private WhatsAppService Service { get { return new WhatsAppService(); } }
 
@@ -68,11 +70,27 @@ namespace AnmolDristi
 
             try
             {
+                // ---- CRITICAL: Clear ALL previous campaign state before parsing ----
+                // This ensures a fresh upload never mixes with old session data.
+                Session.Remove(SESSION_DATA);
+                Session.Remove(SESSION_CONFIG);
+                Session.Remove(SESSION_PARSE_DIAG);
+
                 DataTable dt;
+                ParseDiagnostics parseDiag;
                 using (var stream = fuExcel.PostedFile.InputStream)
                 {
-                    dt = Service.ParseExcelToDataTable(stream, fuExcel.FileName);
+                    dt = Service.ParseExcelToDataTable(stream, fuExcel.FileName, out parseDiag);
                 }
+
+                // Store diagnostics for display
+                Session[SESSION_PARSE_DIAG] = parseDiag;
+
+                // Diagnostic: log the parse result
+                System.Diagnostics.Debug.WriteLine(
+                    string.Format("[WhatsApp Upload] Worksheet rows: {0}, Header: \"{1}\", Expected data rows: {2}, Empty skipped: {3}, Parsed DataTable rows: {4}, Columns: {5} ({6})",
+                        parseDiag.WorksheetEndRow, parseDiag.HeaderRowContent, parseDiag.ExpectedDataRows,
+                        parseDiag.EmptyRowsSkipped, parseDiag.DataTableRows, parseDiag.DataTableColumns, parseDiag.ColumnNames));
 
                 if (dt.Rows.Count == 0)
                 {
@@ -80,11 +98,16 @@ namespace AnmolDristi
                     return;
                 }
 
-                // Store in session for postbacks
+                // ---- Store in session — REPLACE, never append ----
                 Session[SESSION_DATA] = dt;
 
+                // Diagnostic: confirm stored row count
+                System.Diagnostics.Debug.WriteLine(
+                    string.Format("[WhatsApp Upload] Session DataTable rows after store: {0}",
+                        ((DataTable)Session[SESSION_DATA]).Rows.Count));
+
                 // Populate preview (first 5 rows)
-                var previewDt = dt.Rows.Count > 5 ? dt.Clone() : dt;
+                var previewDt = dt.Clone();
                 for (int i = 0; i < Math.Min(5, dt.Rows.Count); i++)
                     previewDt.ImportRow(dt.Rows[i]);
 
@@ -142,6 +165,7 @@ namespace AnmolDristi
         {
             Session.Remove(SESSION_DATA);
             Session.Remove(SESSION_CONFIG);
+            Session.Remove(SESSION_PARSE_DIAG);
             pnlPreview.Visible = false;
             pnlResults.Visible = false;
             ClearAlerts();
@@ -161,6 +185,10 @@ namespace AnmolDristi
                 return;
             }
 
+            // Diagnostic: confirm row count from session
+            System.Diagnostics.Debug.WriteLine(
+                string.Format("[WhatsApp Validation] Input DataTable rows from Session: {0}", dt.Rows.Count));
+
             // Read mappings from the GridView
             var mappings = ReadMappings();
             var phoneMapping = mappings.FirstOrDefault(m => m.IsPhone);
@@ -171,8 +199,18 @@ namespace AnmolDristi
                 return;
             }
 
-            // Run validation
+            // Run validation (READ-ONLY — never modifies the DataTable)
             var validation = Service.ValidateData(dt, phoneMapping);
+
+            // Diagnostic: confirm DataTable was not mutated
+            System.Diagnostics.Debug.WriteLine(
+                string.Format("[WhatsApp Validation] Input rows: {0}, Output rows: {1}, Mutated: {2}",
+                    validation.InputDataTableRows, validation.OutputDataTableRows,
+                    validation.InputDataTableRows != validation.OutputDataTableRows ? "YES — BUG!" : "NO"));
+
+            System.Diagnostics.Debug.WriteLine(
+                string.Format("[WhatsApp Validation] Unique valid phones: {0}, Invalid: {0}, Duplicates: {1}",
+                    validation.ValidRows, validation.InvalidRows, validation.DuplicateRows));
 
             lblValidCount.Text = "Valid rows: " + validation.ValidRows;
             lblInvalidCount.Text = validation.InvalidRows > 0
@@ -181,6 +219,17 @@ namespace AnmolDristi
             lblDuplicateCount.Text = validation.DuplicateRows > 0
                 ? "Duplicates: " + validation.DuplicateRows
                 : "";
+
+            // Show parse diagnostics in validation summary for debugging
+            var parseDiag = Session[SESSION_PARSE_DIAG] as ParseDiagnostics;
+            if (parseDiag != null)
+            {
+                lblParseInfo.Text = string.Format(
+                    "Parse info — Worksheet rows: {0}–{1}, Expected data: {2}, Empty skipped: {3}, DataTable rows: {4}",
+                    parseDiag.WorksheetStartRow, parseDiag.WorksheetEndRow,
+                    parseDiag.ExpectedDataRows, parseDiag.EmptyRowsSkipped, parseDiag.DataTableRows);
+                lblParseInfo.Visible = true;
+            }
 
             rptWarnings.DataSource = validation.Warnings.Select(w => new { Text = w });
             rptWarnings.DataBind();
@@ -228,6 +277,10 @@ namespace AnmolDristi
                 return;
             }
 
+            // Diagnostic: confirm row count before send
+            System.Diagnostics.Debug.WriteLine(
+                string.Format("[WhatsApp Send] DataTable rows from Session: {0}", dt.Rows.Count));
+
             // Load API config from Web.config (credentials not in UI)
             var apiConfig = LoadApiConfig();
             if (string.IsNullOrEmpty(apiConfig.ApiKey)) { ShowError("CEOITBOX API Key is not configured. Check Web.config CEOITBOX.ApiKey."); return; }
@@ -260,7 +313,12 @@ namespace AnmolDristi
                 }
 
                 // Convert to CSV
-                byte[] csvBytes = Service.ConvertToCsvBytes(filteredDt, config);
+                int filteredRowCount;
+                byte[] csvBytes = Service.ConvertToCsvBytes(filteredDt, config, out filteredRowCount);
+
+                // Diagnostic: confirm CSV row count matches filtered DataTable
+                System.Diagnostics.Debug.WriteLine(
+                    string.Format("[WhatsApp Send] Filtered DataTable rows: {0}, CSV data rows: {1}", filteredDt.Rows.Count, filteredRowCount));
 
                 // Build and store the CampaignData JSON for display
                 string campaignJson = Service.BuildCampaignJson(config);
