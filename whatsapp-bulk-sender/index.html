@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>WA Bulk — WhatsApp Template Campaign Sender</title>
+<style>
+  :root{
+    --bg:#0a0f14; --panel:#101a22; --panel2:#0d151c; --line:#1d2c38;
+    --ink:#e8f1f7; --mut:#8aa3b5; --brand:#25d366; --brand2:#128c7e;
+    --ok:#25d366; --warn:#f5b942; --err:#ff6b6b; --accent:#4cc3ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:
+      radial-gradient(900px 500px at 85% -10%, rgba(37,211,102,.10), transparent 60%),
+      radial-gradient(700px 400px at -10% 110%, rgba(76,195,255,.08), transparent 60%),
+      var(--bg);
+    color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+  header{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);
+    background:rgba(13,21,28,.8);position:sticky;top:0;backdrop-filter:blur(8px);z-index:10}
+  .logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--brand),var(--brand2));font-weight:700;color:#04140b;font-size:16px}
+  header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.2px}
+  header .sub{color:var(--mut);font-size:12px;margin-left:auto}
+  main{max-width:1180px;margin:0 auto;padding:20px 22px 60px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:960px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+    border-radius:14px;padding:16px;margin-bottom:16px}
+  .card h2{margin:0 0 4px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card h2 .step{width:20px;height:20px;border-radius:6px;background:#12212c;border:1px solid var(--line);
+    color:var(--accent);font-size:11px;display:grid;place-items:center}
+  .card p.hint{margin:0 0 12px;color:var(--mut);font-size:12.5px}
+  label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+  input[type=text],input[type=password],input[type=number],select,input[type=file]{
+    width:100%;background:#0a1219;border:1px solid var(--line);color:var(--ink);border-radius:8px;
+    padding:8px 10px;font:inherit;outline:none}
+  input:focus,select:focus{border-color:var(--brand2)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  button{font:inherit;border-radius:9px;border:1px solid var(--line);background:#12212c;color:var(--ink);
+    padding:9px 14px;cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--brand2)}
+  button.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));border:none;color:#04140b;font-weight:700}
+  button.primary:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent}
+  button.danger{border-color:#5b2323;color:var(--err);background:transparent}
+  .drop{border:1.5px dashed #2a4152;border-radius:12px;padding:22px;text-align:center;color:var(--mut);
+    cursor:pointer;transition:.15s}
+  .drop:hover,.drop.over{border-color:var(--brand);background:rgba(37,211,102,.05)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  @media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:#0a1219;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .stat .n{font-size:20px;font-weight:700}
+  .stat .l{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px}
+  .bar{height:8px;border-radius:6px;background:#0a1219;border:1px solid var(--line);overflow:hidden;margin:6px 0 14px}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--brand2),var(--brand));transition:width .25s}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #14222d;white-space:nowrap}
+  th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;background:var(--panel2)}
+  .wrap{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;border:1px solid}
+  .pill.ok{color:var(--ok);border-color:rgba(37,211,102,.4);background:rgba(37,211,102,.08)}
+  .pill.err{color:var(--err);border-color:rgba(255,107,107,.4);background:rgba(255,107,107,.08)}
+  .pill.pend{color:var(--mut);border-color:var(--line)}
+  .pill.run{color:var(--accent);border-color:rgba(76,195,255,.4);background:rgba(76,195,255,.08)}
+  .pill.warn{color:var(--warn);border-color:rgba(245,185,66,.4);background:rgba(245,185,66,.08)}
+  .tag{font-size:11px;color:var(--mut)}
+  .modal{position:fixed;inset:0;background:rgba(4,8,12,.7);display:none;place-items:center;z-index:50;padding:20px}
+  .modal.open{display:grid}
+  .sheet{width:min(480px,100%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .phone{background:#0b141a;border:1px solid var(--line);border-radius:12px;padding:10px;max-width:330px}
+  .bubble{background:#005c4b;border-radius:10px 4px 10px 10px;padding:9px 11px;color:#e9ffec;font-size:13px}
+  .bubble .tm{display:block;text-align:right;font-size:10px;color:rgba(255,255,255,.55);margin-top:4px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:#12212c;border:1px solid var(--line);
+    border-radius:99px;padding:3px 10px;font-size:12px;margin:3px 4px 0 0;cursor:pointer}
+  .chip:hover{border-color:var(--brand2)}
+  .toast{position:fixed;bottom:18px;right:18px;background:#12212c;border:1px solid var(--line);border-radius:10px;
+    padding:10px 14px;font-size:13px;display:none;z-index:60}
+  .toast.show{display:block}
+  .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .spacer{flex:1}
+  .muted{color:var(--mut)}
+  code{background:#0a1219;border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">WA</div>
+  <h1>WhatsApp Bulk Sender</h1>
+  <span class="sub">Approved templates &middot; CSV campaigns &middot; AiSensy / Meta Cloud API</span>
+</header>
+<main>
+
+  <section class="card">
+    <h2><span class="step">1</span> Connection</h2>
+    <p class="hint">Keys stay in this browser (localStorage) and are sent only to your chosen provider endpoint — directly, or through the bundled <code>serve.js</code> proxy when the provider blocks browser calls (CORS).</p>
+    <div class="row3">
+      <div>
+        <label>Provider</label>
+        <select id="provider">
+          <option value="aisensy">AiSensy (backend.api-wa.co)</option>
+          <option value="meta">Meta WhatsApp Cloud API</option>
+          <option value="custom">Custom endpoint</option>
+        </select>
+      </div>
+      <div>
+        <label>API key / token</label>
+        <input type="password" id="apiKey" placeholder="Paste key — stored locally only"/>
+      </div>
+      <div>
+        <label>Route through proxy (serve.js)</label>
+        <select id="useProxy">
+          <option value="no">Direct from browser</option>
+          <option value="yes">Via /api/send proxy</option>
+        </select>
+      </div>
+    </div>
+    <div id="aisensyFields">
+      <div class="row">
+        <div>
+          <label>Campaign name</label>
+          <input type="text" id="campaignName" placeholder="e.g. ceoitbox-monthly-report"/>
+        </div>
+        <div>
+          <label>Project / API URL</label>
+          <input type="text" id="apiUrl" value="https://backend.api-wa.co/campaign/ceoitbox-/api/v2"/>
+        </div>
+      </div>
+    </div>
+    <div id="metaFields" style="display:none">
+      <div class="row">
+        <div>
+          <label>Phone number ID</label>
+          <input type="text" id="phoneId" placeholder="123456789012345"/>
+        </div>
+        <div>
+          <label>Template name</label>
+          <input type="text" id="tplName" placeholder="monthly_report"/>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Language</label>
+          <input type="text" id="tplLang" value="en"/>
+        </div>
+        <div>
+          <label>API version</label>
+          <input type="text" id="graphVer" value="v21.0"/>
+        </div>
+      </div>
+    </div>
+    <div id="customFields" style="display:none">
+      <label>Endpoint URL (POST, JSON)</label>
+      <input type="text" id="customUrl" placeholder="https://your-endpoint/api/v2/send"/>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">2</span> Upload recipients (CSV)</h2>
+    <p class="hint">Required: <b>Phone</b>. Everything else is optional and can be mapped to template parameters. Duplicate numbers are flagged, not sent twice.</p>
+    <div class="drop" id="drop">Drop your CSV here or click to browse</div>
+    <input type="file" id="file" accept=".csv,text/csv" style="display:none"/>
+    <div class="flex" style="margin-top:10px">
+      <button class="ghost" id="sampleBtn">Download sample CSV</button>
+      <span class="muted" id="fileInfo"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">3</span> Map columns to template parameters</h2>
+    <p class="hint">Positional <code>{{1}}</code>, <code>{{2}}</code> &hellip; map to your approved template's parameter slots. The special <code>name</code> slot feeds AiSensy's <code>userName</code> / Cloud API header text.</p>
+    <div id="mapWrap"></div>
+    <div class="flex" style="margin-top:12px">
+      <button id="addParam">+ Add parameter</button>
+      <span class="spacer"></span>
+      <button class="ghost" id="previewBtn">Preview first row</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">4</span> Send</h2>
+    <div class="row3">
+      <div>
+        <label>Batch size (pause after)</label>
+        <input type="number" id="batchSize" value="25" min="1"/>
+      </div>
+      <div>
+        <label>Pause between batches (s)</label>
+        <input type="number" id="batchPause" value="30" min="0"/>
+      </div>
+      <div>
+        <label>Delay between messages (s)</label>
+        <input type="number" id="delaySec" value="2" min="0"/>
+      </div>
+    </div>
+    <div class="flex" style="margin-top:14px">
+      <button class="primary" id="startBtn" disabled>Start sending</button>
+      <button id="pauseBtn" disabled>Pause</button>
+      <button class="danger" id="stopBtn" disabled>Stop</button>
+      <span class="spacer"></span>
+      <button class="ghost" id="exportBtn" disabled>Export results CSV</button>
+    </div>
+    <div class="bar" style="margin-top:14px"><i id="barFill"></i></div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="stTotal">0</div><div class="l">Total</div></div>
+      <div class="stat"><div class="n" id="stOk" style="color:var(--ok)">0</div><div class="l">Sent</div></div>
+      <div class="stat"><div class="n" id="stFail" style="color:var(--err)">0</div><div class="l">Failed</div></div>
+      <div class="stat"><div class="n" id="stRate" style="color:var(--accent)">–</div><div class="l">Est. time left</div></div>
+    </div>
+    <div class="wrap">
+      <table>
+        <thead><tr><th>#</th><th>Phone</th><th>Name</th><th>Status</th><th>HTTP</th><th>Response</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2 style="margin:0 0 10px;font-size:15px">Message preview</h2>
+    <div class="phone"><div class="bubble" id="pvBody"></div></div>
+    <p class="hint" style="margin-top:10px">Rendered from the first CSV row. WhatsApp renders the approved template body; this approximates parameter substitution.</p>
+    <div class="flex" style="margin-top:12px"><span class="spacer"></span><button id="modalClose">Close</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ---------- state ---------- */
+var S = {
+  headers: [], rows: [], results: [], running: false, paused: false, stop: false,
+  idx: 0, params: [] // [{csv:"Phone"}]
+};
+var $ = function (id) { return document.getElementById(id); };
+
+function toast(msg) {
+  var t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 2600);
+}
+function persist() {
+  try {
+    var keep = { provider: $("provider").value, campaignName: $("campaignName").value,
+      apiUrl: $("apiUrl").value, phoneId: $("phoneId").value, tplName: $("tplName").value,
+      tplLang: $("tplLang").value, graphVer: $("graphVer").value, customUrl: $("customUrl").value,
+      useProxy: $("useProxy").value, params: S.params };
+    localStorage.setItem("waBulkCfg", JSON.stringify(keep));
+  } catch (e) {}
+}
+function restore() {
+  try {
+    var c = JSON.parse(localStorage.getItem("waBulkCfg") || "{}");
+    if (c.provider) $("provider").value = c.provider;
+    if (c.campaignName) $("campaignName").value = c.campaignName;
+    if (c.apiUrl) $("apiUrl").value = c.apiUrl;
+    if (c.phoneId) $("phoneId").value = c.phoneId;
+    if (c.tplName) $("tplName").value = c.tplName;
+    if (c.tplLang) $("tplLang").value = c.tplLang;
+    if (c.graphVer) $("graphVer").value = c.graphVer;
+    if (c.customUrl) $("customUrl").value = c.customUrl;
+    if (c.useProxy) $("useProxy").value = c.useProxy;
+    if (c.params && c.params.length) { S.params = c.params; renderParams(); }
+  } catch (e) {}
+  providerChanged();
+}
+
+/* ---------- provider switching ---------- */
+function providerChanged() {
+  var v = $("provider").value;
+  $("aisensyFields").style.display = v === "aisensy" ? "" : "none";
+  $("metaFields").style.display = v === "meta" ? "" : "none";
+  $("customFields").style.display = v === "custom" ? "" : "none";
+  if (!S.params.length) {
+    S.params = [{ csv: "Phone" }, { csv: "Name" }];
+    renderParams();
+  }
+  persist();
+}
+
+/* ---------- CSV parsing (RFC 4180: quoted fields, escaped quotes) ---------- */
+function parseCSV(text) {
+  var rows = [], row = [], cur = "", q = false, i = 0, c, n;
+  text = text.replace(/^\uFEFF/, "");
+  while (i < text.length) {
+    c = text[i];
+    if (q) {
+      if (c === '"') {
+        n = text[i + 1];
+        if (n === '"') { cur += '"'; i += 2; continue; }
+        q = false; i++; continue;
+      }
+      cur += c; i++; continue;
+    }
+    if (c === '"') { q = true; i++; continue; }
+    if (c === ",") { row.push(cur); cur = ""; i++; continue; }
+    if (c === "\r") { i++; continue; }
+    if (c === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; i++; continue; }
+    cur += c; i++;
+  }
+  row.push(cur); rows.push(row);
+  while (rows.length && rows[rows.length - 1].every(function (x) { return x === ""; })) rows.pop();
+  return rows;
+}
+function normalizePhone(p) {
+  p = String(p || "").replace(/[^\d+]/g, "");
+  if (p.indexOf("+") === 0) p = p.slice(1);
+  if (p.length === 10 && p[0] !== "0") p = "91" + p; // India default, matches script behaviour
+  return p;
+}
+
+/* ---------- file loading ---------- */
+function loadCSVText(text, fname) {
+  var rows = parseCSV(text);
+  if (rows.length < 2) { toast("CSV needs a header row plus at least one data row"); return; }
+  S.headers = rows[0].map(function (h) { return h.trim(); });
+  S.rows = rows.slice(1).map(function (r) {
+    var o = {}; S.headers.forEach(function (h, i) { o[h] = (r[i] == null ? "" : String(r[i])).trim(); }); return o;
+  });
+  S.results = []; S.idx = 0; renderResults();
+  $("fileInfo").textContent = fname + " — " + S.rows.length + " rows, " + S.headers.length + " columns";
+  $("startBtn").disabled = false;
+  var dupes = {}; S.rows.forEach(function (r) {
+    var k = normalizePhone(r.Phone); if (k) dupes[k] = (dupes[k] || 0) + 1;
+  });
+  var d = 0; Object.keys(dupes).forEach(function (k) { if (dupes[k] > 1) d++; });
+  if (d) toast("Note: " + d + " duplicate phone number(s) — each unique number is sent once");
+  if (!S.params.length) { S.params = [{ csv: "Phone" }, { csv: "Name" }]; }
+  renderParams();
+}
+$("drop").addEventListener("click", function () { $("file").click(); });
+$("file").addEventListener("change", function (e) {
+  var f = e.target.files[0]; if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () { loadCSVText(String(rd.result), f.name); };
+  rd.readAsText(f);
+});
+["dragover", "dragenter"].forEach(function (ev) {
+  $("drop").addEventListener(ev, function (e) { e.preventDefault(); $("drop").classList.add("over"); });
+});
+["dragleave", "drop"].forEach(function (ev) {
+  $("drop").addEventListener(ev, function (e) { e.preventDefault(); $("drop").classList.remove("over"); });
+});
+$("drop").addEventListener("drop", function (e) {
+  var f = e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () { loadCSVText(String(rd.result), f.name); };
+  rd.readAsText(f);
+});
+$("sampleBtn").addEventListener("click", function () {
+  var lines = ["Phone,Name,Grp A + B Achv %,Growth",
+    "919876543210,Rahul Sharma,92.4,+12%",
+    "919812345678,Priya Nair,88.1,+9%"];
+  var b = new Blob([lines.join("\n")], { type: "text/csv" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(b); a.download = "Bulk_Whatsapp_Ready_Sample.csv"; a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ---------- parameter mapping ---------- */
+function renderParams() {
+  var w = $("mapWrap"); w.innerHTML = "";
+  S.params.forEach(function (p, i) {
+    var div = document.createElement("div");
+    div.className = "flex"; div.style.margin = "6px 0";
+    var lab = document.createElement("span");
+    lab.className = "tag"; lab.style.minWidth = "84px";
+    lab.textContent = "{{" + (i + 1) + "}} \u2192";
+    var sel = document.createElement("select");
+    sel.style.maxWidth = "280px";
+    var oNone = document.createElement("option"); oNone.value = ""; oNone.textContent = "(skip)";
+    sel.appendChild(oNone);
+    S.headers.forEach(function (h) {
+      var o = document.createElement("option"); o.value = h; o.textContent = h;
+      if (p.csv === h) o.selected = true; sel.appendChild(o);
+    });
+    sel.addEventListener("change", function () { p.csv = sel.value; persist(); });
+    div.appendChild(lab); div.appendChild(sel);
+    if (i >= 2) {
+      var rm = document.createElement("button"); rm.className = "ghost"; rm.textContent = "✕";
+      rm.title = "Remove parameter";
+      rm.addEventListener("click", function () { S.params.splice(i, 1); renderParams(); persist(); });
+      div.appendChild(rm);
+    }
+    w.appendChild(div);
+  });
+}
+$("addParam").addEventListener("click", function () {
+  S.params.push({ csv: "" }); renderParams(); persist();
+});
+$("provider").addEventListener("change", providerChanged);
+["apiKey", "campaignName", "apiUrl", "phoneId", "tplName", "tplLang", "graphVer", "customUrl", "useProxy"]
+  .forEach(function (id) { $(id).addEventListener("change", persist); });
+
+/* ---------- preview ---------- */
+$("previewBtn").addEventListener("click", function () {
+  if (!S.rows.length) { toast("Upload a CSV first"); return; }
+  var r = S.rows[0];
+  var vals = S.params.map(function (p) { return p.csv ? (r[p.csv] || "") : ""; }).filter(Boolean);
+  var name = r.Name || "";
+  var body = "Hi " + name + ", your update: " + vals.join(" | ");
+  $("pvBody").textContent = body;
+  $("modal").classList.add("open");
+});
+$("modalClose").addEventListener("click", function () { $("modal").classList.remove("open"); });
+
+/* ---------- payload builders ---------- */
+function buildPayload(row) {
+  var v = $("provider").value;
+  var vals = S.params.map(function (p) { return p.csv ? (row[p.csv] || "") : ""; });
+  if (v === "aisensy") {
+    return { url: $("apiUrl").value.trim(), headers: {},
+      payload: { apiKey: $("apiKey").value.trim(), campaignName: $("campaignName").value.trim(),
+        destination: normalizePhone(row.Phone), userName: row.Name || "",
+        templateParams: vals } };
+  }
+  if (v === "meta") {
+    var comps = vals.map(function (t) {
+      return { type: "text", text: t };
+    });
+    return { url: "https://graph.facebook.com/" + $("graphVer").value.trim() + "/" + $("phoneId").value.trim() + "/messages",
+      headers: { Authorization: "Bearer " + $("apiKey").value.trim() },
+      payload: { messaging_product: "whatsapp", to: normalizePhone(row.Phone), type: "template",
+        template: { name: $("tplName").value.trim(), language: { code: $("tplLang").value.trim() },
+          components: [{ type: "body", parameters: comps }] } } };
+  }
+  return { url: $("customUrl").value.trim(), headers: { Authorization: "Bearer " + $("apiKey").value.trim() },
+    payload: { destination: normalizePhone(row.Phone), userName: row.Name || "", templateParams: vals } };
+}
+
+/* ---------- sending ---------- */
+function post(url, headers, payload) {
+  if ($("useProxy").value === "yes") {
+    return fetch("/api/send", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url, headers: headers, payload: payload }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { return { status: j.status || 0, body: j.body || j.error || "" }; });
+  }
+  return fetch(url, { method: "POST", headers: headers, body: JSON.stringify(payload) })
+    .then(function (r) { return r.text().then(function (t) { return { status: r.status, body: t.slice(0, 4000) }; }); });
+}
+function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+
+function setStat(id, v) { $(id).textContent = String(v); }
+function updateBar() {
+  var done = S.results.length, total = S.rows.length;
+  $("barFill").style.width = (total ? Math.round(done / total * 100) : 0) + "%";
+  setStat("stTotal", total);
+  setStat("stOk", S.results.filter(function (r) { return r.ok; }).length);
+  setStat("stFail", S.results.filter(function (r) { return !r.ok; }).length);
+  var remain = total - done, per = (Number($("delaySec").value) || 0) + 1;
+  setStat("stRate", S.running ? Math.max(0, Math.round(remain * per / 60)) + "m" : "–");
+}
+function renderResults() {
+  var tb = $("tbody"); tb.innerHTML = "";
+  S.results.forEach(function (r, i) {
+    var tr = document.createElement("tr");
+    var cls = r.ok ? "ok" : "err";
+    tr.innerHTML = "<td>" + (i + 1) + "</td><td>" + escapeHtml(r.phone) + "</td><td>" + escapeHtml(r.name || "") +
+      '</td><td><span class="pill ' + cls + '">' + (r.ok ? "sent" : "failed") + "</span></td><td>" +
+      (r.status || "–") + "</td><td>" + escapeHtml(String(r.body || "").slice(0, 120)) + "</td>";
+    tb.appendChild(tr);
+  });
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function validate() {
+  var v = $("provider").value;
+  if (!$("apiKey").value.trim()) { toast("Enter your API key / token"); return false; }
+  if (v === "aisensy" && !$("campaignName").value.trim()) { toast("Enter the AiSensy campaign name"); return false; }
+  if (v === "meta" && !$("phoneId").value.trim()) { toast("Enter the Meta phone number ID"); return false; }
+  if (v === "custom" && !$("customUrl").value.trim()) { toast("Enter the custom endpoint URL"); return false; }
+  if (!S.rows.length) { toast("Upload a CSV first"); return false; }
+  if (!$("useProxy").value || $("useProxy").value !== "yes") {
+    if (!confirm("Browser-direct calls often fail on provider CORS. Continue directly, or use the bundled serve.js proxy? (OK = continue direct)")) return false;
+  }
+  return true;
+}
+
+$("startBtn").addEventListener("click", function () {
+  if (!validate()) return;
+  S.running = true; S.paused = false; S.stop = false; S.idx = 0;
+  S.results = []; renderResults();
+  $("startBtn").disabled = true; $("pauseBtn").disabled = false; $("stopBtn").disabled = false; $("exportBtn").disabled = true;
+  run();
+});
+$("pauseBtn").addEventListener("click", function () {
+  S.paused = !S.paused;
+  $("pauseBtn").textContent = S.paused ? "Resume" : "Pause";
+});
+$("stopBtn").addEventListener("click", function () { S.stop = true; });
+$("exportBtn").addEventListener("click", function () {
+  var lines = ["Phone,Name,Status,Http,Response"];
+  S.results.forEach(function (r) {
+    lines.push([r.phone, r.name || "", r.ok ? "SENT" : "FAILED", r.status || "", String(r.body || "").replace(/"/g, '""').replace(/[\r\n]+/g, " ")].join('","').replace(/^/, '"').replace(/$/, '"'));
+  });
+  var b = new Blob([lines.join("\n")], { type: "text/csv" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(b); a.download = "wa_bulk_results.csv"; a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+async function run() {
+  var delay = (Number($("delaySec").value) || 0) * 1000;
+  var batch = Number($("batchSize").value) || 25;
+  var pause = (Number($("batchPause").value) || 0) * 1000;
+  var seen = {};
+  for (var i = S.idx; i < S.rows.length; i++) {
+    if (S.stop) break;
+    while (S.paused && !S.stop) { await sleep(400); }
+    if (S.stop) break;
+    var row = S.rows[i];
+    var phone = normalizePhone(row.Phone);
+    if (!phone) { S.results.push({ phone: row.Phone, name: row.Name, ok: false, status: 0, body: "missing phone" }); renderResults(); updateBar(); continue; }
+    if (seen[phone]) { S.results.push({ phone: phone, name: row.Name, ok: false, status: 0, body: "duplicate skipped" }); renderResults(); updateBar(); continue; }
+    seen[phone] = true;
+    var b = buildPayload(row);
+    var res;
+    try { res = await post(b.url, b.headers, b.payload); }
+    catch (e) { res = { status: 0, body: String(e && e.message || e) }; }
+    var ok = res.status >= 200 && res.status < 300;
+    S.results.push({ phone: phone, name: row.Name, ok: ok, status: res.status, body: res.body });
+    renderResults(); updateBar();
+    S.idx = i + 1;
+    if ((i + 1) % batch === 0 && i + 1 < S.rows.length) {
+      toast("Batch done — pausing " + (pause / 1000) + "s");
+      await sleep(pause);
+    } else if (i + 1 < S.rows.length) {
+      await sleep(delay);
+    }
+  }
+  S.running = false;
+  $("startBtn").disabled = false; $("pauseBtn").disabled = true; $("stopBtn").disabled = true; $("exportBtn").disabled = false;
+  $("barFill").style.width = "100%";
+  toast("Finished: " + S.results.filter(function (r) { return r.ok; }).length + " sent, " +
+    S.results.filter(function (r) { return !r.ok; }).length + " failed");
+  updateBar();
+}
+
+restore();
+</script>
+</body>
+</html>
