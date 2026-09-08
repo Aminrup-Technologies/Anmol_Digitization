@@ -347,21 +347,22 @@ namespace AnmolDristi
 
         private void ShowOk(string message)
         {
-            pnlUploadOk.Visible = true;
-            pnlUploadErr.Visible = false;
             lblUploadOk.Text = message;
+            lblUploadOk.Visible = true;
+            lblUploadErr.Visible = false;
         }
 
         private void ShowError(string message)
         {
-            pnlUploadErr.Visible = true;
             lblUploadErr.Text = message;
+            lblUploadErr.Visible = true;
+            lblUploadOk.Visible = false;
         }
 
         private void ClearAlerts()
         {
-            pnlUploadOk.Visible = false;
-            pnlUploadErr.Visible = false;
+            lblUploadOk.Visible = false;
+            lblUploadErr.Visible = false;
         }
     }
 }

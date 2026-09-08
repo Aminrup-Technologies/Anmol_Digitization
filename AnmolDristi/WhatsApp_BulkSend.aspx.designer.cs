@@ -8,9 +8,7 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.FileUpload fuExcel;
         protected global::System.Web.UI.WebControls.Button btnUpload;
         protected global::System.Web.UI.WebControls.Button btnClear;
-        protected global::System.Web.UI.WebControls.Panel pnlUploadOk;
         protected global::System.Web.UI.WebControls.Label lblUploadOk;
-        protected global::System.Web.UI.WebControls.Panel pnlUploadErr;
         protected global::System.Web.UI.WebControls.Label lblUploadErr;
         protected global::System.Web.UI.WebControls.Panel pnlPreview;
         protected global::System.Web.UI.WebControls.GridView gvPreview;
