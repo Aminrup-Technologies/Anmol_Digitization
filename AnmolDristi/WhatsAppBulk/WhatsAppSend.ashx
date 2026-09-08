@@ -1,1 +1,0 @@
-<%@ WebHandler Language="C#" CodeBehind="WhatsAppSend.ashx.cs" Class="AnmolDristi.WhatsAppSend" %>

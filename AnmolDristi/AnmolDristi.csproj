@@ -441,7 +441,6 @@
       <SubType>Designer</SubType>
     </Content>
     <Content Include="PermDump.ashx" />
-    <Content Include="WhatsAppBulk\WhatsAppSend.ashx" />
     <None Include="Properties\PublishProfiles\ailqaqc.aminruptechnologies.co.in - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\LIVE_Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\LocalDeploy.pubxml" />
@@ -973,9 +972,6 @@
     <Compile Include="PasswordHasher.cs" />
     <Compile Include="PermDump.ashx.cs">
       <DependentUpon>PermDump.ashx</DependentUpon>
-    </Compile>
-    <Compile Include="WhatsAppBulk\WhatsAppSend.ashx.cs">
-      <DependentUpon>WhatsAppBulk\WhatsAppSend.ashx</DependentUpon>
     </Compile>
     <Compile Include="PermissionCache.cs" />
     <Compile Include="PermissionHelper.cs" />
