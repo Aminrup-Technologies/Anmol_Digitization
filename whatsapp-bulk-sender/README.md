@@ -1,38 +1,57 @@
 # WhatsApp Bulk Sender
 
 Web UI for bulk WhatsApp messaging using **approved templates** — the web version of your
-`Bulk_Whatsapp_Ready.csv` Python script, with provider flexibility beyond AiSensy.
+`Bulk_Whatsapp_Ready.csv` Python script.
 
-Two deployment options, same UI:
+## Deployment Options
 
-| Option | Location | Runtime | Best for |
-|---|---|---|---|
-| **ASP.NET-integrated** (recommended) | `AnmolDristi/WhatsAppBulk/` | Your existing IIS app — no Node, no separate env | Using your existing platform |
-| Standalone Node server | `whatsapp-bulk-sender/` | `node serve.js` | Quick local run / Freebuff preview |
+| Option | Location | Runtime | API Target | Best for |
+|---|---|---|---|---|
+| **Phase 1 WebForms** (recommended) | `AnmolDristi/WhatsApp_BulkSend.aspx` | Your IIS app + .NET Framework | CEOITBOX bulk CSV endpoint | Production use |
+| ASP.NET ashx relay | `AnmolDristi/WhatsAppBulk/` | Your IIS app | AiSensy per-recipient | Quick integration |
+| Standalone Node server | `whatsapp-bulk-sender/` | `node serve.js` | AiSensy / Meta / Custom | Local dev / preview |
 
-## Option A — ASP.NET-integrated (inside your existing app)
+## Phase 1 — WhatsApp_BulkSend.aspx (Recommended)
 
-Files live in `AnmolDristi/WhatsAppBulk/` and are registered in `AnmolDristi.csproj`
-(`WhatsAppSend.ashx` as Content, `WhatsAppSend.ashx.cs` as Compile).
+The primary integration for your ASP.NET WebForms app. Upload Excel, preview, validate,
+map columns, and submit to CEOITBOX's bulk CSV campaign endpoint in one flow.
 
-1. Build & deploy the app as usual (IIS, .NET Framework 4.8).
-2. Open `https://your-app/WhatsAppBulk/` (signed in — the handler requires a valid session).
-3. In the UI, keep **Route = Server-side via WhatsAppSend.ashx** (default).
+**Files:**
+- `AnmolDristi/WhatsApp_BulkSend.aspx` + `.aspx.cs` + `.aspx.designer.cs` — UI + code-behind
+- `AnmolDristi/WhatsAppService.cs` — service layer (Excel parse, CSV convert, API call)
+- `AnmolDristi/WhatsAppModels.cs` — DTOs (`CEOITBOXConfig`, `CampaignConfig`, `SendResult`)
 
-`WhatsAppSend.ashx` relays `POST` JSON to the provider from the server, so there are **no CORS
-restrictions** and **no Node process**. It only forwards to an allowlist
-(`api-wa.co`, `graph.facebook.com`, `graph.meta.com` — edit `AllowedHosts` in
-`WhatsAppSend.ashx.cs` to extend). The handler requires an authenticated session
-(`Request.IsAuthenticated` + `Session["LoginToken"]`), matching the app's `BasePage` flow.
+**Setup:**
+1. Add CEOITBOX credentials to `Web.config`:
+   ```xml
+   <add key="CEOITBOX.BaseUrl" value="https://official.ceoitbox.com" />
+   <add key="CEOITBOX.ApiKey" value="YOUR_API_KEY" />
+   <add key="CEOITBOX.PhoneId" value="" />
+   <add key="CEOITBOX.UseBasicAuthentication" value="false" />
+   <add key="CEOITBOX.Username" value="" />
+   <add key="CEOITBOX.Password" value="" />
+   ```
+2. Build in Visual Studio (no new NuGet needed — uses EPPlus 4.5 + System.Net.Http).
+3. Navigate to `WhatsApp_BulkSend.aspx`.
 
-## Option B — standalone Node server
+**API endpoint:** `POST /api/v1/whatsapp/sendMessageByCampaign1` (multipart/form-data)
+- `jsonData`: `{ campaignType: "CSV", campaignName, message: { templateName, language } }`
+- `csvFile`: UTF-8 CSV with phone + variable columns
+- Headers: `x-api-key`, `x-phone-id`, optional `Authorization: Basic`
+
+## Standalone Node Server
 
 ```bash
 cd whatsapp-bulk-sender
 node serve.js        # http://localhost:8080
 ```
 
-No dependencies to install. Node 18+ (uses global `fetch`).
+Zero dependencies. Node 18+ (uses global `fetch`).
+
+**Providers:**
+1. **AiSensy** — campaign name + project API URL (`backend.api-wa.co/campaign/<project>/api/v2`).
+2. **Meta WhatsApp Cloud API** — phone number ID + template name + language.
+3. **Custom endpoint** — any POST-JSON API.
 
 ## What it does
 
@@ -44,44 +63,42 @@ No dependencies to install. Node 18+ (uses global `fetch`).
 | `time.sleep(2)` fixed | Configurable delay + batch size + batch pause |
 | Console SUCCESS/FAILED tally | Live table with per-recipient HTTP status + response body, exportable to CSV |
 
-## Providers
-
-1. **AiSensy** (your current setup) — campaign name + project API URL (`backend.api-wa.co/campaign/<project>/api/v2`). `userName` gets the mapped Name column, `templateParams` get your mapped columns in order.
-2. **Meta WhatsApp Cloud API** — phone number ID + template name + language. Builds the `graph.facebook.com/<ver>/<phoneId>/messages` payload with a Bearer token.
-3. **Custom endpoint** — any POST-JSON API; payload shape mirrors AiSensy (`destination`, `userName`, `templateParams`).
-
 ## Why a relay at all?
 
 Browsers block cross-origin calls to `backend.api-wa.co` / `graph.facebook.com` unless the provider
-sends CORS headers (they don't). Both options provide a narrow server-side relay:
+sends CORS headers (they don't). Options provide a narrow server-side relay:
 
-- ASP.NET: `WhatsAppSend.ashx` (session-protected, allowlisted hosts)
-- Node: `serve.js` `POST /api/send` (allowlisted via `WA_ALLOW_HOSTS`)
-
-API keys are typed in the page, kept in `localStorage`, and relayed per-request — never logged or stored server-side.
+- **Phase 1**: `WhatsAppService.cs` calls CEOITBOX directly from the server (no browser CORS)
+- **ashx relay**: `WhatsAppSend.ashx` (session-protected, allowlisted hosts)
+- **Node**: `serve.js` `POST /api/send` (allowlisted via `WA_ALLOW_HOSTS`)
 
 ## CSV format
 
 Header row required. `Phone` is the only mandatory column; any other column can be mapped to a
-template parameter. Phone numbers are normalized (non-digits stripped, `+` removed, bare 10-digit
-numbers get `91` prefixed — matching your script's India assumption; adjust if needed).
+template parameter. Phone numbers are normalized (preserves `+` country code; bare 10-digit
+numbers get `91` prefixed — matching your script's India assumption).
 
 Duplicates are flagged and sent once (first occurrence wins).
 
 ## Safety notes
 
-- **Throttling**: default 2 s between messages, pause every 25 — tune to your provider's rate limits
-  (Meta Cloud API tiers: 250/day → 100k/day; AiSensy sets per-account limits).
-- **Opt-in**: only message recipients who opted in; template sends outside the 24-h customer service
-  window must use approved templates (that's what this tool does).
-- **Meta quality rating**: high failure/unknown-contact rates degrade your number's quality tier.
-- Meta Cloud API tokens should be a **system-user token** with `whatsapp_business_messaging` scope,
-  not a personal token.
+- **Throttling**: tune to your provider's rate limits.
+- **Opt-in**: only message recipients who opted in; template sends must use approved templates.
+- **Credentials**: Phase 1 reads from `Web.config` appSettings — never exposed in UI or source.
 
-## Files
+## All Files
 
+**Phase 1 WebForms:**
+- `AnmolDristi/WhatsApp_BulkSend.aspx(.cs,.designer.cs)` — upload/preview/map/send UI
+- `AnmolDristi/WhatsAppService.cs` — Excel→DataTable→CSV→CEOITBOX API
+- `AnmolDristi/WhatsAppModels.cs` — DTOs
+
+**ASP.NET ashx relay:**
 - `AnmolDristi/WhatsAppBulk/index.html` — UI hosted inside the ASP.NET app
-- `AnmolDristi/WhatsAppBulk/WhatsAppSend.ashx(.cs)` — server-side relay (session-protected, allowlisted)
-- `whatsapp-bulk-sender/index.html` — same UI for the standalone Node option
-- `whatsapp-bulk-sender/serve.js` — static hosting + allowlisted `/api/send` proxy (zero dependencies)
+- `AnmolDristi/WhatsAppBulk/WhatsAppSend.ashx(.cs)` — session-protected relay
+
+**Standalone Node:**
+- `whatsapp-bulk-sender/index.html` — full UI (CSV upload, mapping, send, export)
+- `whatsapp-bulk-sender/serve.js` — static hosting + allowlisted `/api/send` proxy
 - `whatsapp-bulk-sender/package.json` — `npm start` convenience
+- `whatsapp-bulk-sender/README.md` — this file
