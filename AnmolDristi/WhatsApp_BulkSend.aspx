@@ -170,9 +170,11 @@
                                 <asp:Panel ID="pnlValidation" runat="server" Visible="false" style="margin-top: 12px;">
                                     <div class="alert alert-info">
                                         <strong>Validation Summary</strong><br />
+                                        <span class="validation-stat"><strong><asp:Label ID="lblTotalCount" runat="server" /></strong></span>
                                         <span class="validation-stat"><strong class="text-success"><asp:Label ID="lblValidCount" runat="server" /></strong></span>
                                         <span class="validation-stat"><strong class="text-danger"><asp:Label ID="lblInvalidCount" runat="server" /></strong></span>
                                         <span class="validation-stat"><strong class="text-danger"><asp:Label ID="lblDuplicateCount" runat="server" /></strong></span>
+                                        <asp:Label ID="lblWarningsInfo" runat="server" CssClass="text-warning" Style="font-size: 11px; display: block; margin-top: 4px;" Visible="false" />
                                         <br /><asp:Label ID="lblParseInfo" runat="server" CssClass="text-muted" Style="font-size: 11px; display: block; margin-top: 4px;" Visible="false" />
                                     </div>
                                     <asp:Repeater ID="rptWarnings" runat="server">

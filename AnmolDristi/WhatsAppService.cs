@@ -167,26 +167,37 @@ namespace AnmolDristi
             int validCount = 0;
             int invalidCount = 0;
             int duplicateCount = 0;
+            int warningsGenerated = 0;  // total warnings before truncation
             var seenPhones = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            System.Diagnostics.Debug.WriteLine(
+                string.Format("[WhatsApp Validation] DataTable.Rows.Count = {0}", dt.Rows.Count));
 
             for (int i = 0; i < dt.Rows.Count; i++)
             {
                 string phoneRaw = dt.Rows[i][phoneMapping.ExcelColumn] as string ?? "";
                 string phone = ValidateAndNormalizePhone(phoneRaw);
+                int displayRowNumber = i + 2;  // Excel row: header is row 1, first data row is row 2
+
+                System.Diagnostics.Debug.WriteLine(
+                    string.Format("[Duplicate Detection] DataTableIndex={0}, DisplayRowNumber={1}, Phone={2}",
+                        i, displayRowNumber, phone ?? "NULL"));
 
                 if (string.IsNullOrEmpty(phone))
                 {
                     invalidCount++;
-                    if (invalidCount <= 10)
-                        result.Warnings.Add("Row " + (i + 2) + ": invalid phone '" + phoneRaw + "'");
+                    warningsGenerated++;
+                    if (warningsGenerated <= 10)
+                        result.Warnings.Add("Row " + displayRowNumber + ": invalid phone '" + phoneRaw + "'");
                     continue;
                 }
 
                 if (seenPhones.Contains(phone))
                 {
                     duplicateCount++;
-                    if (duplicateCount <= 10)
-                        result.Warnings.Add("Row " + (i + 2) + ": duplicate phone '" + phone + "'");
+                    warningsGenerated++;
+                    if (warningsGenerated <= 10)
+                        result.Warnings.Add("Row " + displayRowNumber + ": duplicate phone '" + phone + "'");
                     continue;
                 }
 
@@ -197,11 +208,12 @@ namespace AnmolDristi
             result.ValidRows = validCount;
             result.InvalidRows = invalidCount;
             result.DuplicateRows = duplicateCount;
+            result.TotalWarningsGenerated = warningsGenerated;
             result.OutputDataTableRows = dt.Rows.Count;  // diagnostic: confirm no mutation
 
             int totalSkipped = invalidCount + duplicateCount;
-            if (totalSkipped > 10)
-                result.Warnings.Add("... and " + (totalSkipped - 10) + " more invalid/duplicate rows.");
+            if (warningsGenerated > 10)
+                result.Warnings.Add("... and " + (warningsGenerated - 10) + " more invalid/duplicate rows.");
 
             return result;
         }

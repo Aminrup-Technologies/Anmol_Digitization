@@ -178,6 +178,16 @@ namespace AnmolDristi
         {
             ClearAlerts();
 
+            // Clear previous validation results before running new validation
+            lblTotalCount.Text = "";
+            lblValidCount.Text = "";
+            lblInvalidCount.Text = "";
+            lblDuplicateCount.Text = "";
+            lblWarningsInfo.Visible = false;
+            lblParseInfo.Visible = false;
+            rptWarnings.DataSource = null;
+            rptWarnings.DataBind();
+
             var dt = Session[SESSION_DATA] as DataTable;
             if (dt == null)
             {
@@ -188,6 +198,9 @@ namespace AnmolDristi
             // Diagnostic: confirm row count from session
             System.Diagnostics.Debug.WriteLine(
                 string.Format("[WhatsApp Validation] Input DataTable rows from Session: {0}", dt.Rows.Count));
+            System.Diagnostics.Debug.WriteLine(
+                string.Format("[WhatsApp Validation] DataTable.Rows.Count = {0}, dt.GetHashCode() = {1}",
+                    dt.Rows.Count, dt.GetHashCode()));
 
             // Read mappings from the GridView
             var mappings = ReadMappings();
@@ -209,9 +222,19 @@ namespace AnmolDristi
                     validation.InputDataTableRows != validation.OutputDataTableRows ? "YES — BUG!" : "NO"));
 
             System.Diagnostics.Debug.WriteLine(
-                string.Format("[WhatsApp Validation] Unique valid phones: {0}, Invalid: {0}, Duplicates: {1}",
-                    validation.ValidRows, validation.InvalidRows, validation.DuplicateRows));
+                string.Format("[WhatsApp Validation] Unique valid phones: {0}, Invalid: {1}, Duplicates: {2}, TotalWarningsGenerated: {3}",
+                    validation.ValidRows, validation.InvalidRows, validation.DuplicateRows, validation.TotalWarningsGenerated));
 
+            // Re-read DataTable from Session AFTER validation to confirm no mutation
+            var dtAfterValidate = Session[SESSION_DATA] as DataTable;
+            if (dtAfterValidate != null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    string.Format("[WhatsApp Validation] DataTable.Rows.Count AFTER validation = {0} (hash={1})",
+                        dtAfterValidate.Rows.Count, dtAfterValidate.GetHashCode()));
+            }
+
+            lblTotalCount.Text = "Total rows: " + validation.TotalRows;
             lblValidCount.Text = "Valid rows: " + validation.ValidRows;
             lblInvalidCount.Text = validation.InvalidRows > 0
                 ? "Invalid rows: " + validation.InvalidRows
@@ -220,14 +243,27 @@ namespace AnmolDristi
                 ? "Duplicates: " + validation.DuplicateRows
                 : "";
 
+            // Show total warnings generated (before truncation) for diagnostic
+            if (validation.TotalWarningsGenerated > validation.Warnings.Count)
+            {
+                lblWarningsInfo.Text = string.Format("({0} warnings shown of {1} total)",
+                    validation.Warnings.Count, validation.TotalWarningsGenerated);
+                lblWarningsInfo.Visible = true;
+            }
+            else
+            {
+                lblWarningsInfo.Visible = false;
+            }
+
             // Show parse diagnostics in validation summary for debugging
             var parseDiag = Session[SESSION_PARSE_DIAG] as ParseDiagnostics;
             if (parseDiag != null)
             {
                 lblParseInfo.Text = string.Format(
-                    "Parse info — Worksheet rows: {0}–{1}, Expected data: {2}, Empty skipped: {3}, DataTable rows: {4}",
+                    "Parse — Worksheet rows: {0}–{1}, Data rows: {2}, Empty skipped: {3}, DataTable rows: {4}, hash: {5}",
                     parseDiag.WorksheetStartRow, parseDiag.WorksheetEndRow,
-                    parseDiag.ExpectedDataRows, parseDiag.EmptyRowsSkipped, parseDiag.DataTableRows);
+                    parseDiag.ExpectedDataRows, parseDiag.EmptyRowsSkipped, parseDiag.DataTableRows,
+                    dt.GetHashCode());
                 lblParseInfo.Visible = true;
             }
 

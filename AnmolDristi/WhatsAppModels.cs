@@ -61,6 +61,9 @@ namespace AnmolDristi
         public int InputDataTableRows { get; set; }
         public int OutputDataTableRows { get; set; }
 
+        /// <summary>Total number of warning messages generated (not truncated).</summary>
+        public int TotalWarningsGenerated { get; set; }
+
         public ValidationResult()
         {
             Errors = new List<string>();

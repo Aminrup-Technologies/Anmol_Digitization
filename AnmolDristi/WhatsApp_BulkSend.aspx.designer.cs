@@ -15,9 +15,11 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.Panel pnlMapping;
         protected global::System.Web.UI.WebControls.GridView gvMapping;
         protected global::System.Web.UI.WebControls.Panel pnlValidation;
+        protected global::System.Web.UI.WebControls.Label lblTotalCount;
         protected global::System.Web.UI.WebControls.Label lblValidCount;
         protected global::System.Web.UI.WebControls.Label lblInvalidCount;
         protected global::System.Web.UI.WebControls.Label lblDuplicateCount;
+        protected global::System.Web.UI.WebControls.Label lblWarningsInfo;
         protected global::System.Web.UI.WebControls.Label lblParseInfo;
         protected global::System.Web.UI.WebControls.Repeater rptWarnings;
         protected global::System.Web.UI.WebControls.Button btnValidate;
