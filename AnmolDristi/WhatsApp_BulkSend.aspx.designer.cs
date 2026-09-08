@@ -2,15 +2,12 @@ namespace AnmolDristi
 {
     public partial class WhatsApp_BulkSend
     {
-        protected global::System.Web.UI.WebControls.TextBox txtBaseUrl;
-        protected global::System.Web.UI.WebControls.TextBox txtApiKey;
-        protected global::System.Web.UI.WebControls.TextBox txtPhoneId;
         protected global::System.Web.UI.WebControls.TextBox txtCampaignName;
         protected global::System.Web.UI.WebControls.TextBox txtTemplateName;
+        protected global::System.Web.UI.WebControls.DropDownList ddlLanguage;
         protected global::System.Web.UI.WebControls.FileUpload fuExcel;
         protected global::System.Web.UI.WebControls.Button btnUpload;
         protected global::System.Web.UI.WebControls.Button btnClear;
-        protected global::System.Web.UI.WebControls.Label lblUploadStatus;
         protected global::System.Web.UI.WebControls.Panel pnlUploadOk;
         protected global::System.Web.UI.WebControls.Label lblUploadOk;
         protected global::System.Web.UI.WebControls.Panel pnlUploadErr;

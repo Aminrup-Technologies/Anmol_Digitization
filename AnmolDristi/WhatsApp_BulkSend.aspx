@@ -25,38 +25,42 @@
     <div class="clearfix"></div>
 
     <!-- ============================================================ -->
-    <!-- STEP 1 — API CONFIGURATION                                   -->
+    <!-- STEP 1 — CAMPAIGN DETAILS                                    -->
     <!-- ============================================================ -->
     <div class="wa-panel">
-        <h4><span class="step">1</span> API Configuration</h4>
+        <h4><span class="step">1</span> Campaign Details</h4>
         <div class="row">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label>CEOITBOX API Base URL</label>
-                    <asp:TextBox ID="txtBaseUrl" runat="server" CssClass="form-control input-sm"
-                        Text="https://official.ceoitbox.com" />
-                    <span class="wa-muted">Confirmed from Swagger UI. Change only if CEOITBOX provides a different gateway URL.</span>
-                </div>
-                <div class="form-group">
-                    <label>API Key <span class="text-danger">*</span></label>
-                    <asp:TextBox ID="txtApiKey" runat="server" CssClass="form-control input-sm" TextMode="Password" />
-                </div>
-                <div class="form-group">
-                    <label>Phone ID (x-phone-id)</label>
-                    <asp:TextBox ID="txtPhoneId" runat="server" CssClass="form-control input-sm" />
-                    <span class="wa-muted">Required only if your account has multiple WhatsApp numbers. Leave blank to auto-resolve.</span>
-                </div>
-            </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="form-group">
                     <label>Campaign Name <span class="text-danger">*</span></label>
                     <asp:TextBox ID="txtCampaignName" runat="server" CssClass="form-control input-sm" />
-                    <span class="wa-muted">A descriptive name for this campaign run (e.g. "May 2026 Attendance Report").</span>
+                    <span class="wa-muted">Descriptive name for this run (e.g. "September Attendance Report").</span>
                 </div>
+            </div>
+            <div class="col-md-4">
                 <div class="form-group">
                     <label>Template Name <span class="text-danger">*</span></label>
                     <asp:TextBox ID="txtTemplateName" runat="server" CssClass="form-control input-sm" />
-                    <span class="wa-muted">Exact name of the pre-approved WhatsApp template in CEOITBOX (case-sensitive).</span>
+                    <span class="wa-muted">Exact name of the pre-approved WhatsApp template in CEOITBOX.</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label>Language</label>
+                    <asp:DropDownList ID="ddlLanguage" runat="server" CssClass="form-control input-sm">
+                        <asp:ListItem Text="English (en)" Value="en" Selected="True" />
+                        <asp:ListItem Text="Hindi (hi)" Value="hi" />
+                        <asp:ListItem Text="Tamil (ta)" Value="ta" />
+                        <asp:ListItem Text="Telugu (te)" Value="te" />
+                        <asp:ListItem Text="Marathi (mr)" Value="mr" />
+                        <asp:ListItem Text="Kannada (kn)" Value="kn" />
+                        <asp:ListItem Text="Bengali (bn)" Value="bn" />
+                        <asp:ListItem Text="Gujarati (gu)" Value="gu" />
+                        <asp:ListItem Text="Malayalam (ml)" Value="ml" />
+                        <asp:ListItem Text="Punjabi (pa)" Value="pa" />
+                        <asp:ListItem Text="Urdu (ur)" Value="ur" />
+                    </asp:DropDownList>
+                    <span class="wa-muted">Must match the template's configured language.</span>
                 </div>
             </div>
         </div>
@@ -66,24 +70,23 @@
     <!-- STEP 2 — UPLOAD EXCEL                                        -->
     <!-- ============================================================ -->
     <div class="wa-panel">
-        <h4><span class="step">2</span> Upload Excel Recipients</h4>
+        <h4><span class="step">2</span> Upload Recipient Data</h4>
         <div class="row">
             <div class="col-md-8">
                 <div class="form-group">
-                    <asp:FileUpload ID="fuExcel" runat="server" accept=".xlsx,.xls" CssClass="form-control input-sm" />
+                    <asp:FileUpload ID="fuExcel" runat="server" accept=".xlsx" CssClass="form-control input-sm" />
                 </div>
                 <asp:Button ID="btnUpload" runat="server" Text="Upload &amp; Preview" CssClass="btn btn-info btn-sm"
                     OnClick="btnUpload_Click" />
                 <asp:Button ID="btnClear" runat="server" Text="Clear" CssClass="btn btn-default btn-sm"
                     OnClick="btnClear_Click" CausesValidation="false" />
-                <asp:Label ID="lblUploadStatus" runat="server" CssClass="wa-muted" style="margin-left:10px;" />
             </div>
-            <div class="col-md-4 text-right">
-                <span class="wa-muted">Accepted: .xlsx, .xls &middot; Max rows recommended: 10,000</span>
+            <div class="col-md-4 text-right" style="padding-top:7px;">
+                <span class="wa-muted">Supported format: <strong>.xlsx</strong> only &middot; Max ~10,000 rows recommended</span>
             </div>
         </div>
 
-        <!-- Upload Status Alerts -->
+        <!-- Alerts -->
         <asp:Panel ID="pnlUploadOk" runat="server" Visible="false" CssClass="alert alert-success" style="margin-top:10px;">
             <asp:Label ID="lblUploadOk" runat="server" />
         </asp:Panel>
@@ -97,10 +100,9 @@
     <!-- ============================================================ -->
     <asp:Panel ID="pnlPreview" runat="server" Visible="false">
         <div class="wa-panel">
-            <h4><span class="step">3</span> Preview &amp; Column Mapping</h4>
-            <p class="wa-muted">First 5 rows shown below. Select which column contains the <strong>phone number</strong> and which columns are <strong>template variables</strong>.</p>
+            <h4><span class="step">3</span> Data Preview &amp; Column Mapping</h4>
+            <p class="wa-muted" style="margin-bottom:10px;">First 5 rows shown below. Select which column contains the <strong>phone number</strong> and check columns that are <strong>template variables</strong>.</p>
 
-            <!-- Preview Table -->
             <div style="overflow-x:auto; margin-bottom:14px;">
                 <asp:GridView ID="gvPreview" runat="server" CssClass="wa-table table table-condensed"
                     AutoGenerateColumns="true" EmptyDataText="No data to preview." />
@@ -109,7 +111,6 @@
             <!-- Column Mapping -->
             <asp:Panel ID="pnlMapping" runat="server">
                 <strong>Column Mapping</strong>
-                <span class="wa-muted" style="margin-left:8px;">Select the phone column &middot; check/uncheck variable columns</span>
                 <div style="margin-top:8px;">
                     <asp:GridView ID="gvMapping" runat="server" CssClass="wa-table table table-condensed"
                         AutoGenerateColumns="false" OnRowDataBound="gvMapping_RowDataBound">
@@ -137,7 +138,7 @@
 
             <!-- Validation Summary -->
             <asp:Panel ID="pnlValidation" runat="server" Visible="false" style="margin-top:12px;">
-                <strong>Validation</strong>
+                <strong>Validation Summary</strong>
                 <div style="margin-top:6px;">
                     <asp:Label ID="lblValidCount" runat="server" CssClass="wa-result-ok" />
                     <asp:Label ID="lblInvalidCount" runat="server" CssClass="wa-result-err" style="margin-left:14px;" />
@@ -149,12 +150,13 @@
                 </asp:Repeater>
             </asp:Panel>
 
-            <!-- Action -->
-            <div style="margin-top:12px;">
-                <asp:Button ID="btnValidate" runat="server" Text="Validate &amp; Map" CssClass="btn btn-warning btn-sm"
+            <!-- Actions -->
+            <div style="margin-top:14px;">
+                <asp:Button ID="btnValidate" runat="server" Text="Validate Data" CssClass="btn btn-warning btn-sm"
                     OnClick="btnValidate_Click" />
-                <asp:Button ID="btnSend" runat="server" Text="Send Campaign" CssClass="btn btn-success btn-sm" Visible="false"
-                    OnClick="btnSend_Click" OnClientClick="if(!confirm('Send bulk WhatsApp campaign?')) return false;" />
+                <asp:Button ID="btnSend" runat="server" Text="Send Bulk WhatsApp" CssClass="btn btn-success btn-sm"
+                    Visible="false" OnClick="btnSend_Click"
+                    OnClientClick="if(!confirm('Are you sure you want to send this WhatsApp campaign? This action cannot be undone.')) return false;" />
             </div>
         </div>
     </asp:Panel>
@@ -167,11 +169,11 @@
             <h4><span class="step">4</span> Campaign Result</h4>
 
             <asp:Panel ID="pnlResultOk" runat="server" Visible="false" CssClass="alert alert-success">
-                <strong><i class="fa fa-check-circle"></i> Campaign submitted successfully.</strong>
+                <strong><i class="fa fa-check-circle"></i> Success</strong>
                 <asp:Label ID="lblResultOk" runat="server" />
             </asp:Panel>
             <asp:Panel ID="pnlResultErr" runat="server" Visible="false" CssClass="alert alert-danger">
-                <strong><i class="fa fa-times-circle"></i> Campaign submission failed.</strong>
+                <strong><i class="fa fa-times-circle"></i> Failed</strong>
                 <asp:Label ID="lblResultErr" runat="server" />
             </asp:Panel>
 
@@ -179,7 +181,7 @@
             <div class="wa-json"><asp:Literal ID="litResponseBody" runat="server" /></div>
 
             <div style="margin-top:10px;">
-                <strong>Campaign Data (jsonData)</strong>
+                <strong>Sent Payload (jsonData)</strong>
                 <div class="wa-json"><asp:Literal ID="litCampaignJson" runat="server" /></div>
             </div>
         </div>

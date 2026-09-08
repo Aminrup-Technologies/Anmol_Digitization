@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.IO;
 using System.Linq;
@@ -15,6 +16,25 @@ namespace AnmolDristi
         private const string SESSION_CONFIG = "WhatsApp_CampaignConfig";
 
         private WhatsAppService Service { get { return new WhatsAppService(); } }
+
+        /// <summary>
+        /// Reads CEOITBOX configuration from Web.config appSettings.
+        /// Credentials never appear in the UI.
+        /// </summary>
+        private CEOITBOXConfig LoadApiConfig()
+        {
+            return new CEOITBOXConfig
+            {
+                BaseUrl = ConfigurationManager.AppSettings["CEOITBOX.BaseUrl"] ?? "https://official.ceoitbox.com",
+                ApiKey = ConfigurationManager.AppSettings["CEOITBOX.ApiKey"] ?? "",
+                PhoneId = ConfigurationManager.AppSettings["CEOITBOX.PhoneId"] ?? "",
+                UseBasicAuthentication = string.Equals(
+                    ConfigurationManager.AppSettings["CEOITBOX.UseBasicAuthentication"], "true",
+                    StringComparison.OrdinalIgnoreCase),
+                Username = ConfigurationManager.AppSettings["CEOITBOX.Username"] ?? "",
+                Password = ConfigurationManager.AppSettings["CEOITBOX.Password"] ?? ""
+            };
+        }
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -35,14 +55,14 @@ namespace AnmolDristi
 
             if (!fuExcel.HasFile)
             {
-                ShowError("Please select an Excel file (.xlsx or .xls) to upload.");
+                ShowError("Please select an Excel file (.xlsx) to upload.");
                 return;
             }
 
             string ext = Path.GetExtension(fuExcel.FileName).ToLowerInvariant();
-            if (ext != ".xlsx" && ext != ".xls")
+            if (ext != ".xlsx")
             {
-                ShowError("Invalid file type. Only .xlsx and .xls files are accepted.");
+                ShowError("Invalid file type. Only .xlsx files are supported in this phase.");
                 return;
             }
 
@@ -171,11 +191,9 @@ namespace AnmolDristi
                 // Store config in session for Step 4
                 var config = new CampaignConfig
                 {
-                    BaseUrl = txtBaseUrl.Text.Trim(),
-                    ApiKey = txtApiKey.Text.Trim(),
-                    PhoneId = txtPhoneId.Text.Trim(),
                     CampaignName = txtCampaignName.Text.Trim(),
                     TemplateName = txtTemplateName.Text.Trim(),
+                    Language = ddlLanguage.SelectedValue,
                     ColumnMappings = mappings
                 };
                 Session[SESSION_CONFIG] = config;
@@ -207,8 +225,11 @@ namespace AnmolDristi
                 return;
             }
 
-            // Re-validate: confirm required fields
-            if (string.IsNullOrEmpty(config.ApiKey)) { ShowError("API Key is required."); return; }
+            // Load API config from Web.config (credentials not in UI)
+            var apiConfig = LoadApiConfig();
+            if (string.IsNullOrEmpty(apiConfig.ApiKey)) { ShowError("CEOITBOX API Key is not configured. Check Web.config CEOITBOX.ApiKey."); return; }
+
+            // Validate required campaign fields
             if (string.IsNullOrEmpty(config.CampaignName)) { ShowError("Campaign Name is required."); return; }
             if (string.IsNullOrEmpty(config.TemplateName)) { ShowError("Template Name is required."); return; }
 
@@ -243,7 +264,7 @@ namespace AnmolDristi
                 litCampaignJson.Text = System.Net.WebUtility.HtmlEncode(campaignJson);
 
                 // Send to CEOITBOX
-                var result = Service.SendBulkCampaign(config, csvBytes);
+                var result = Service.SendBulkCampaign(apiConfig, config, csvBytes);
 
                 pnlResults.Visible = true;
 
@@ -251,14 +272,14 @@ namespace AnmolDristi
                 {
                     pnlResultOk.Visible = true;
                     pnlResultErr.Visible = false;
-                    lblResultOk.Text = string.Format(" {0} recipients submitted. Response code: {1}",
+                    lblResultOk.Text = string.Format(" {0} recipients submitted to CEOITBOX (HTTP {1}).",
                         filteredDt.Rows.Count, result.StatusCode);
                 }
                 else
                 {
                     pnlResultOk.Visible = false;
                     pnlResultErr.Visible = true;
-                    lblResultErr.Text = " " + result.ErrorMessage;
+                    lblResultErr.Text = string.Format(" {0}", result.ErrorMessage);
                 }
 
                 litResponseBody.Text = System.Net.WebUtility.HtmlEncode(

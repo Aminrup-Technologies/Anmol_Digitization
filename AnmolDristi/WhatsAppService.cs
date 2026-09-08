@@ -20,10 +20,10 @@ namespace AnmolDristi
     public class WhatsAppService
     {
         // ---------------------------------------------------------------
-        //  EXCEL PARSING (EPPlus 4.5 — reads .xlsx / .xls)
+        //  EXCEL PARSING (EPPlus 4.5 — reads .xlsx only)
         // ---------------------------------------------------------------
         /// <summary>
-        /// Reads the first worksheet from an uploaded Excel stream into a DataTable.
+        /// Reads the first worksheet from an uploaded .xlsx stream into a DataTable.
         /// Row 1 = column headers, Row 2+ = data.
         /// </summary>
         public DataTable ParseExcelToDataTable(Stream fileStream, string fileName)
@@ -209,28 +209,20 @@ namespace AnmolDristi
 
         /// <summary>
         /// Builds the CampaignData JSON string for the CEOITBOX sendMessageByCampaign1 endpoint.
-        /// NOTE: The exact CampaignData schema must be confirmed against the CEOITBOX OpenAPI spec.
-        /// This structure is based on the Swagger UI screenshots and common WhatsApp bulk campaign patterns.
+        /// Structure confirmed against Swagger-generated request schema:
+        /// { "campaignType": "CSV", "campaignName": "...", "message": { "templateName": "...", "language": "en" } }
         /// </summary>
         public string BuildCampaignJson(CampaignConfig config)
         {
-            var variableColumns = config.ColumnMappings
-                .Where(m => m.IsVariable)
-                .OrderBy(m => m.VariableIndex)
-                .Select(m => m.ExcelColumn)
-                .ToList();
-
-            var data = new Dictionary<string, object>
+            var data = new
             {
-                { "campaignName", config.CampaignName ?? "" },
-                { "template", new Dictionary<string, string>
-                    {
-                        { "name", config.TemplateName ?? "" },
-                        { "language", "en" }
-                    }
-                },
-                { "variableColumns", variableColumns },
-                { "messageType", "template" }
+                campaignType = "CSV",
+                campaignName = config.CampaignName ?? "",
+                message = new
+                {
+                    templateName = config.TemplateName ?? "",
+                    language = string.IsNullOrWhiteSpace(config.Language) ? "en" : config.Language
+                }
             };
 
             var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
@@ -244,41 +236,50 @@ namespace AnmolDristi
         /// Sends the bulk campaign to the CEOITBOX WhatsApp API.
         /// POST /api/v1/whatsapp/sendMessageByCampaign1
         /// Content-Type: multipart/form-data
-        /// Fields: jsonData (string), csvFile (binary)
-        /// Headers: x-api-key, x-phone-id
+        /// Fields: jsonData (JSON string), csvFile (CSV binary)
+        /// Headers: x-api-key, x-phone-id, optional Authorization: Basic
         /// </summary>
-        public SendResult SendBulkCampaign(CampaignConfig config, byte[] csvBytes)
+        public SendResult SendBulkCampaign(CEOITBOXConfig apiConfig, CampaignConfig config, byte[] csvBytes)
         {
             string jsonData = BuildCampaignJson(config);
-            string baseUrl = string.IsNullOrEmpty(config.BaseUrl)
+            string baseUrl = string.IsNullOrEmpty(apiConfig.BaseUrl)
                 ? "https://official.ceoitbox.com"
-                : config.BaseUrl.TrimEnd('/');
+                : apiConfig.BaseUrl.TrimEnd('/');
 
             try
             {
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(120);
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                    // Authentication headers (CEOITBOX Swagger — confirmed from screenshots)
-                    client.DefaultRequestHeaders.Add("x-api-key", config.ApiKey ?? "");
+                    // --- Authentication (configurable) ---
+                    if (!string.IsNullOrWhiteSpace(apiConfig.ApiKey))
+                        client.DefaultRequestHeaders.Add("x-api-key", apiConfig.ApiKey);
 
-                    if (!string.IsNullOrWhiteSpace(config.PhoneId))
-                        client.DefaultRequestHeaders.Add("x-phone-id", config.PhoneId.Trim());
+                    if (!string.IsNullOrWhiteSpace(apiConfig.PhoneId))
+                        client.DefaultRequestHeaders.Add("x-phone-id", apiConfig.PhoneId.Trim());
 
-                    // Multipart body
+                    if (apiConfig.UseBasicAuthentication
+                        && !string.IsNullOrWhiteSpace(apiConfig.Username))
+                    {
+                        string creds = Convert.ToBase64String(
+                            Encoding.ASCII.GetBytes(apiConfig.Username + ":" + (apiConfig.Password ?? "")));
+                        client.DefaultRequestHeaders.Authorization =
+                            new AuthenticationHeaderValue("Basic", creds);
+                    }
+
+                    // --- Multipart body ---
                     var content = new MultipartFormDataContent();
 
-                    // jsonData field — JSON string with CampaignData
                     var jsonContent = new StringContent(jsonData, Encoding.UTF8, "application/json");
                     content.Add(jsonContent, "jsonData");
 
-                    // csvFile field — CSV file with recipients
                     var csvContent = new ByteArrayContent(csvBytes);
                     csvContent.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
                     content.Add(csvContent, "csvFile", "recipients.csv");
 
-                    // POST
+                    // --- POST ---
                     var response = client.PostAsync(baseUrl + "/api/v1/whatsapp/sendMessageByCampaign1", content)
                                           .GetAwaiter().GetResult();
 
@@ -289,7 +290,10 @@ namespace AnmolDristi
                         Success = response.IsSuccessStatusCode,
                         StatusCode = (int)response.StatusCode,
                         ResponseBody = body,
-                        ErrorMessage = response.IsSuccessStatusCode ? "" : "HTTP " + (int)response.StatusCode
+                        Message = response.IsSuccessStatusCode ? "Campaign submitted successfully." : "",
+                        ErrorMessage = response.IsSuccessStatusCode
+                            ? ""
+                            : "HTTP " + (int)response.StatusCode + " — " + Truncate(body, 500)
                     };
                 }
             }
@@ -316,6 +320,12 @@ namespace AnmolDristi
             if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
                 return "\"" + value.Replace("\"", "\"\"") + "\"";
             return value;
+        }
+
+        private static string Truncate(string s, int max)
+        {
+            if (string.IsNullOrEmpty(s) || s.Length <= max) return s ?? "";
+            return s.Substring(0, max);
         }
     }
 }

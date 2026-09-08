@@ -41,20 +41,33 @@ namespace AnmolDristi
     }
 
     /// <summary>
+    /// Reads CEOITBOX integration settings from Web.config appSettings.
+    /// Credentials never appear in the UI or C# source.
+    /// </summary>
+    public class CEOITBOXConfig
+    {
+        public string BaseUrl { get; set; }
+        public string ApiKey { get; set; }
+        public string PhoneId { get; set; }
+        public bool UseBasicAuthentication { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+
+    /// <summary>
     /// Captures the user's campaign configuration from the UI.
     /// </summary>
     public class CampaignConfig
     {
         public string CampaignName { get; set; }
-        public string ApiKey { get; set; }
-        public string PhoneId { get; set; }
         public string TemplateName { get; set; }
-        public string BaseUrl { get; set; }
+        public string Language { get; set; }
         public List<ColumnMapping> ColumnMappings { get; set; }
 
         public CampaignConfig()
         {
             ColumnMappings = new List<ColumnMapping>();
+            Language = "en";
         }
     }
 
@@ -65,11 +78,13 @@ namespace AnmolDristi
     {
         public bool Success { get; set; }
         public int StatusCode { get; set; }
+        public string Message { get; set; }
         public string ResponseBody { get; set; }
         public string ErrorMessage { get; set; }
 
         public SendResult()
         {
+            Message = string.Empty;
             ResponseBody = string.Empty;
             ErrorMessage = string.Empty;
         }
