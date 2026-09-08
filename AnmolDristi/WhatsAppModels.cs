@@ -29,7 +29,8 @@ namespace AnmolDristi
         public bool IsValid { get { return Errors.Count == 0; } }
         public int TotalRows { get; set; }
         public int ValidRows { get; set; }
-        public int InvalidRows { get { return TotalRows - ValidRows; } }
+        public int InvalidRows { get; set; }
+        public int DuplicateRows { get; set; }
         public List<string> Errors { get; set; }
         public List<string> Warnings { get; set; }
 

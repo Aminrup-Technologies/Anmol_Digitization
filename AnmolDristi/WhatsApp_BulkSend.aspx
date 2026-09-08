@@ -142,6 +142,7 @@
                 <div style="margin-top:6px;">
                     <asp:Label ID="lblValidCount" runat="server" CssClass="wa-result-ok" />
                     <asp:Label ID="lblInvalidCount" runat="server" CssClass="wa-result-err" style="margin-left:14px;" />
+                    <asp:Label ID="lblDuplicateCount" runat="server" CssClass="wa-result-err" style="margin-left:14px;" />
                 </div>
                 <asp:Repeater ID="rptWarnings" runat="server">
                     <HeaderTemplate><ul class="wa-warn" style="margin-top:4px; padding-left:18px;"></HeaderTemplate>

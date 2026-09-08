@@ -134,6 +134,7 @@ namespace AnmolDristi
 
             int validCount = 0;
             int invalidCount = 0;
+            int duplicateCount = 0;
             var seenPhones = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             for (int i = 0; i < dt.Rows.Count; i++)
@@ -144,15 +145,15 @@ namespace AnmolDristi
                 if (string.IsNullOrEmpty(phone))
                 {
                     invalidCount++;
-                    if (invalidCount <= 10)  // cap reported errors at 10
+                    if (invalidCount <= 10)
                         result.Warnings.Add("Row " + (i + 2) + ": invalid phone '" + phoneRaw + "'");
                     continue;
                 }
 
                 if (seenPhones.Contains(phone))
                 {
-                    invalidCount++;
-                    if (invalidCount <= 10)
+                    duplicateCount++;
+                    if (duplicateCount <= 10)
                         result.Warnings.Add("Row " + (i + 2) + ": duplicate phone '" + phone + "'");
                     continue;
                 }
@@ -162,9 +163,12 @@ namespace AnmolDristi
             }
 
             result.ValidRows = validCount;
+            result.InvalidRows = invalidCount;
+            result.DuplicateRows = duplicateCount;
 
-            if (invalidCount > 10)
-                result.Warnings.Add("... and " + (invalidCount - 10) + " more invalid/duplicate rows.");
+            int totalSkipped = invalidCount + duplicateCount;
+            if (totalSkipped > 10)
+                result.Warnings.Add("... and " + (totalSkipped - 10) + " more invalid/duplicate rows.");
 
             return result;
         }

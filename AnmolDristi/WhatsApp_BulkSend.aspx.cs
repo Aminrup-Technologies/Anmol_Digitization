@@ -176,7 +176,10 @@ namespace AnmolDristi
 
             lblValidCount.Text = "Valid rows: " + validation.ValidRows;
             lblInvalidCount.Text = validation.InvalidRows > 0
-                ? "Invalid/duplicate rows: " + validation.InvalidRows
+                ? "Invalid rows: " + validation.InvalidRows
+                : "";
+            lblDuplicateCount.Text = validation.DuplicateRows > 0
+                ? "Duplicates: " + validation.DuplicateRows
                 : "";
 
             rptWarnings.DataSource = validation.Warnings.Select(w => new { Text = w });

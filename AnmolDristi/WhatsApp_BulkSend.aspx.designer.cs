@@ -19,6 +19,7 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.Panel pnlValidation;
         protected global::System.Web.UI.WebControls.Label lblValidCount;
         protected global::System.Web.UI.WebControls.Label lblInvalidCount;
+        protected global::System.Web.UI.WebControls.Label lblDuplicateCount;
         protected global::System.Web.UI.WebControls.Repeater rptWarnings;
         protected global::System.Web.UI.WebControls.Button btnValidate;
         protected global::System.Web.UI.WebControls.Button btnSend;
