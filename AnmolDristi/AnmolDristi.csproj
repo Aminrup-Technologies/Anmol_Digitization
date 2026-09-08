@@ -442,6 +442,7 @@
     </Content>
     <Content Include="PermDump.ashx" />
     <Content Include="WhatsAppBulk\WhatsAppSend.ashx" />
+    <Content Include="WhatsApp_BulkSend.aspx" />
     <None Include="Properties\PublishProfiles\ailqaqc.aminruptechnologies.co.in - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\LIVE_Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\LocalDeploy.pubxml" />
@@ -976,6 +977,15 @@
     </Compile>
     <Compile Include="WhatsAppBulk\WhatsAppSend.ashx.cs">
       <DependentUpon>WhatsAppBulk\WhatsAppSend.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="WhatsAppModels.cs" />
+    <Compile Include="WhatsAppService.cs" />
+    <Compile Include="WhatsApp_BulkSend.aspx.cs">
+      <DependentUpon>WhatsApp_BulkSend.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="WhatsApp_BulkSend.aspx.designer.cs">
+      <DependentUpon>WhatsApp_BulkSend.aspx</DependentUpon>
     </Compile>
     <Compile Include="PermissionCache.cs" />
     <Compile Include="PermissionHelper.cs" />
