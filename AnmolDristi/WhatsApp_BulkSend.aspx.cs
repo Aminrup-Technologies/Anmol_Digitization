@@ -17,6 +17,10 @@ namespace AnmolDristi
         private const string SESSION_CONFIG = "WhatsApp_CampaignConfig";
         private const string SESSION_PARSE_DIAG = "WhatsApp_ParseDiagnostics";
 
+        // Phase 2 session keys — metadata only; binaries stay in temp files on disk
+        private const string SESSION_CONTENT = "WhatsApp_ContentConfig";
+        private const string SESSION_DISPATCH_PLAN = "WhatsApp_DispatchPlan";
+
         private WhatsAppService Service { get { return new WhatsAppService(); } }
 
         /// <summary>
@@ -75,6 +79,9 @@ namespace AnmolDristi
                 Session.Remove(SESSION_DATA);
                 Session.Remove(SESSION_CONFIG);
                 Session.Remove(SESSION_PARSE_DIAG);
+                Session.Remove(SESSION_DISPATCH_PLAN);
+                pnlDispatchPlan.Visible = false;
+                pnlDispatchResults.Visible = false;
 
                 DataTable dt;
                 ParseDiagnostics parseDiag;
@@ -152,6 +159,9 @@ namespace AnmolDristi
                 pnlValidation.Visible = false;
                 btnSend.Visible = false;
 
+                // Phase 2: populate mapping/URL column dropdowns from the uploaded Excel
+                BindColumnDropdowns(dt);
+
                 ShowOk(string.Format("Uploaded <strong>{0}</strong> with <strong>{1} rows</strong> and <strong>{2} columns</strong>.",
                     HttpUtility.HtmlEncode(fuExcel.FileName), dt.Rows.Count, dt.Columns.Count));
             }
@@ -163,12 +173,297 @@ namespace AnmolDristi
 
         protected void btnClear_Click(object sender, EventArgs e)
         {
+            // Phase 2: clean temp files + session state
+            CleanupContentTempFiles();
             Session.Remove(SESSION_DATA);
             Session.Remove(SESSION_CONFIG);
             Session.Remove(SESSION_PARSE_DIAG);
+            Session.Remove(SESSION_CONTENT);
+            Session.Remove(SESSION_DISPATCH_PLAN);
             pnlPreview.Visible = false;
             pnlResults.Visible = false;
+            pnlDispatchPlan.Visible = false;
+            pnlDispatchResults.Visible = false;
             ClearAlerts();
+        }
+
+        // ============================================================
+        //  PHASE 2 — CONTENT UPLOAD HANDLERS
+        // ============================================================
+
+        private TemplateHeaderFormat GetSelectedHeaderFormat()
+        {
+            switch (ddlTemplateHeader.SelectedValue)
+            {
+                case "Image": return TemplateHeaderFormat.Image;
+                case "Document": return TemplateHeaderFormat.Document;
+                case "Video": return TemplateHeaderFormat.Video;
+                default: return TemplateHeaderFormat.BodyOnly;
+            }
+        }
+
+        private ContentMode GetSelectedContentMode()
+        {
+            if (rbModeCommon.Checked) return ContentMode.CommonForAll;
+            if (rbModeIndividual.Checked) return ContentMode.IndividualFile;
+            if (rbModeWorkbook.Checked) return ContentMode.WorkbookSheet;
+            if (rbModeUrl.Checked) return ContentMode.ExcelColumnUrl;
+            return ContentMode.None;
+        }
+
+        protected void btnUploadCommon_Click(object sender, EventArgs e)
+        {
+            ShowContentAlerts(null, null);
+
+            if (!fuCommonContent.HasFile)
+            {
+                ShowContentAlerts(null, "Please select a file to upload.");
+                return;
+            }
+
+            try
+            {
+                var svc = Service;
+                var headerFormat = GetSelectedHeaderFormat();
+
+                // Validate BEFORE saving — extension/MIME/size/template compatibility
+                string validationError = svc.ValidateContent(fuCommonContent.FileName, fuCommonContent.PostedFile.ContentLength, headerFormat);
+                if (validationError != null)
+                {
+                    ShowContentAlerts(null, validationError);
+                    return;
+                }
+
+                // Remove previous common file if any
+                var existing = Session[SESSION_CONTENT] as ContentConfig;
+                if (existing != null && !string.IsNullOrEmpty(existing.TempFilePath))
+                    WhatsAppService.CleanupTempFile(existing.TempFilePath);
+
+                string displayName;
+                string tempPath = svc.SaveToTempFile(fuCommonContent.PostedFile.InputStream, fuCommonContent.FileName, out displayName);
+
+                var content = existing ?? new ContentConfig();
+                content.Mode = ContentMode.CommonForAll;
+                content.Type = ContentTypeFromMime(WhatsAppService.GetMimeTypeFromExtension(fuCommonContent.FileName));
+                content.FileName = displayName;
+                content.TempFilePath = tempPath;
+                content.MimeType = WhatsAppService.GetMimeTypeFromExtension(fuCommonContent.FileName);
+                Session[SESSION_CONTENT] = content;
+
+                trCommonInfo.Visible = true;
+                lblCommonFileInfo.Text = string.Format("{0} ({1:N1} KB) — ready. Click Validate to build the dispatch plan.",
+                    HttpUtility.HtmlEncode(displayName), fuCommonContent.PostedFile.ContentLength / 1024.0);
+                ShowContentAlerts("Attachment uploaded: " + HttpUtility.HtmlEncode(displayName), null);
+            }
+            catch (Exception ex)
+            {
+                ShowContentAlerts(null, "Upload failed: " + HttpUtility.HtmlEncode(ex.Message));
+            }
+        }
+
+        protected void btnUploadIndividual_Click(object sender, EventArgs e)
+        {
+            ShowContentAlerts(null, null);
+
+            if (fuIndividualFiles.PostedFiles == null || fuIndividualFiles.PostedFiles.Count == 0)
+            {
+                ShowContentAlerts(null, "Please select one or more files to upload.");
+                return;
+            }
+
+            try
+            {
+                var svc = Service;
+                var headerFormat = GetSelectedHeaderFormat();
+
+                // Validate ALL files first — reject the batch if any file is invalid
+                var validationErrors = new List<string>();
+                foreach (var pf in fuIndividualFiles.PostedFiles)
+                {
+                    string err = svc.ValidateContent(pf.FileName, pf.ContentLength, headerFormat);
+                    if (err != null) validationErrors.Add(pf.FileName + ": " + err);
+                }
+                if (validationErrors.Count > 0)
+                {
+                    ShowContentAlerts(null, string.Join("<br/>", validationErrors.Select(HttpUtility.HtmlEncode).Take(10)));
+                    return;
+                }
+
+                // Fresh temp directory per upload
+                var existing = Session[SESSION_CONTENT] as ContentConfig;
+                if (existing != null && !string.IsNullOrEmpty(existing.IndividualFilesDir))
+                    WhatsAppService.CleanupTempDirectory(existing.IndividualFilesDir);
+
+                string tempDir = System.IO.Path.Combine(
+                    ConfigurationHelper.GetStringSetting("CEOITBOX.TempFileDirectory",
+                        System.IO.Path.Combine(System.IO.Path.GetTempPath(), "CEOITBOX_WhatsApp")),
+                    Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(tempDir);
+
+                var fileMap = new Dictionary<string, string>();
+                var pathMap = new Dictionary<string, string>();
+                foreach (var pf in fuIndividualFiles.PostedFiles)
+                {
+                    // Mapping key = file base name (no extension). Disk name is always a fresh GUID —
+                    // the original filename is never used as a server path.
+                    string baseName = System.IO.Path.GetFileNameWithoutExtension(pf.FileName);
+                    string ext = System.IO.Path.GetExtension(pf.FileName);
+                    if (ext.Length > 10 || ext.Contains("..")) ext = "";
+                    string safeName = Guid.NewGuid().ToString("N") + ext;
+                    string safePath = System.IO.Path.Combine(tempDir, safeName);
+
+                    using (var fs = System.IO.File.Create(safePath))
+                    {
+                        pf.InputStream.Position = 0;
+                        pf.InputStream.CopyTo(fs);
+                    }
+
+                    // key → original display name (for preview) and key → safe server path (for sends)
+                    fileMap[baseName] = System.IO.Path.GetFileName(pf.FileName);
+                    pathMap[baseName] = safePath;
+                }
+
+                var content = new ContentConfig
+                {
+                    Mode = ContentMode.IndividualFile,
+                    Type = ContentType.Document,   // refined per-item during dispatch plan
+                    MappingColumn = ddlIndividualMappingColumn.SelectedValue,
+                    IndividualFilesDir = tempDir,
+                    IndividualFileNames = fileMap,
+                    IndividualFilePaths = pathMap
+                };
+                Session[SESSION_CONTENT] = content;
+
+                trIndividualInfo.Visible = true;
+                lblIndividualFileInfo.Text = string.Format("{0} files stored. Mapping column: {1}. Click Validate to build the dispatch plan.",
+                    fileMap.Count, HttpUtility.HtmlEncode(content.MappingColumn));
+                ShowContentAlerts(fileMap.Count + " files uploaded.", null);
+            }
+            catch (Exception ex)
+            {
+                ShowContentAlerts(null, "Upload failed: " + HttpUtility.HtmlEncode(ex.Message));
+            }
+        }
+
+        protected void btnUploadWorkbook_Click(object sender, EventArgs e)
+        {
+            ShowContentAlerts(null, null);
+
+            if (!fuWorkbook.HasFile)
+            {
+                ShowContentAlerts(null, "Please select a workbook to upload.");
+                return;
+            }
+
+            string ext = System.IO.Path.GetExtension(fuWorkbook.FileName).ToLowerInvariant();
+            if (ext != ".xlsx")
+            {
+                ShowContentAlerts(null, "Only .xlsx workbooks are supported for sheet-per-recipient mode.");
+                return;
+            }
+
+            try
+            {
+                var svc = Service;
+
+                // Remove previous workbook if any
+                var existing = Session[SESSION_CONTENT] as ContentConfig;
+                if (existing != null && !string.IsNullOrEmpty(existing.WorkbookTempPath))
+                    WhatsAppService.CleanupTempFile(existing.WorkbookTempPath);
+
+                string displayName;
+                string tempPath = svc.SaveToTempFile(fuWorkbook.PostedFile.InputStream, fuWorkbook.FileName, out displayName);
+
+                // Read sheet names ONLY — the workbook stays on disk, never in Session
+                var sheetNames = new List<string>();
+                using (var fs = System.IO.File.OpenRead(tempPath))
+                using (var pkg = new OfficeOpenXml.ExcelPackage(fs))
+                {
+                    foreach (var ws in pkg.Workbook.Worksheets)
+                        sheetNames.Add(ws.Name);
+                }
+
+                var content = new ContentConfig
+                {
+                    Mode = ContentMode.WorkbookSheet,
+                    Type = ContentType.Document,
+                    FileName = displayName,
+                    WorkbookTempPath = tempPath,
+                    WorkbookSheetNames = sheetNames,
+                    MappingColumn = ddlWorkbookMappingColumn.SelectedValue
+                };
+                Session[SESSION_CONTENT] = content;
+
+                trWorkbookInfo.Visible = true;
+                lblWorkbookFileInfo.Text = string.Format("{0} — {1} sheets: {2}. Click Validate to build the dispatch plan.",
+                    HttpUtility.HtmlEncode(displayName), sheetNames.Count,
+                    HttpUtility.HtmlEncode(string.Join(", ", sheetNames.Take(10)) + (sheetNames.Count > 10 ? "…" : "")));
+                ShowContentAlerts("Workbook uploaded with " + sheetNames.Count + " sheets.", null);
+            }
+            catch (Exception ex)
+            {
+                ShowContentAlerts(null, "Upload failed: " + HttpUtility.HtmlEncode(ex.Message));
+            }
+        }
+
+        private ContentType ContentTypeFromMime(string mime)
+        {
+            if (string.IsNullOrEmpty(mime)) return ContentType.None;
+            if (mime.StartsWith("image/")) return ContentType.Image;
+            if (mime.StartsWith("video/")) return ContentType.Video;
+            return ContentType.Document;
+        }
+
+        private void ShowContentAlerts(string ok, string error)
+        {
+            if (ok != null) { lblContentOk.Text = ok; lblContentOk.Visible = true; } else lblContentOk.Visible = false;
+            if (error != null) { lblContentErr.Text = error; lblContentErr.Visible = true; } else lblContentErr.Visible = false;
+        }
+
+        private void CleanupContentTempFiles()
+        {
+            var content = Session[SESSION_CONTENT] as ContentConfig;
+            if (content == null) return;
+            if (!string.IsNullOrEmpty(content.TempFilePath)) WhatsAppService.CleanupTempFile(content.TempFilePath);
+            if (!string.IsNullOrEmpty(content.IndividualFilesDir)) WhatsAppService.CleanupTempDirectory(content.IndividualFilesDir);
+            if (!string.IsNullOrEmpty(content.WorkbookTempPath)) WhatsAppService.CleanupTempFile(content.WorkbookTempPath);
+        }
+
+        // ============================================================
+        //  PHASE 2 — COLUMN DROPDOWN BINDING
+        // ============================================================
+        private void BindColumnDropdowns(DataTable dt)
+        {
+            var columns = dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
+
+            ddlIndividualMappingColumn.DataSource = columns;
+            ddlIndividualMappingColumn.DataBind();
+
+            ddlWorkbookMappingColumn.DataSource = columns;
+            ddlWorkbookMappingColumn.DataBind();
+
+            ddlUrlColumn.DataSource = columns;
+            ddlUrlColumn.DataBind();
+
+            // Auto-hint: a column that looks like a mapping key
+            string hint = columns.FirstOrDefault(c =>
+                c.IndexOf("employee", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                c.IndexOf("empcode", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                c.IndexOf("vendor", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                c.IndexOf("customer", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                c.IndexOf("invoice", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (hint != null)
+            {
+                ddlIndividualMappingColumn.SelectedValue = hint;
+                ddlWorkbookMappingColumn.SelectedValue = hint;
+            }
+
+            // Auto-hint: URL column
+            string urlHint = columns.FirstOrDefault(c =>
+                c.IndexOf("url", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                c.IndexOf("link", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (urlHint != null)
+                ddlUrlColumn.SelectedValue = urlHint;
         }
 
         // ============================================================
@@ -288,11 +583,176 @@ namespace AnmolDristi
 
                 if (!validation.IsValid)
                     ShowError("Some rows are invalid. Only valid rows will be included in the campaign.");
+
+                // ============================================================
+                //  PHASE 2 — BUILD DISPATCH PLAN (single source of truth)
+                // ============================================================
+                BuildAndShowDispatchPlan(dt, config, mappings);
             }
             else
             {
                 btnSend.Visible = false;
                 ShowError("No valid rows found. Please check your data and column mapping.");
+            }
+        }
+
+        /// <summary>
+        /// Phase 2: builds the DispatchPlan from the uploaded data + content config,
+        /// then displays the preview grid. The plan — not the UI — is what the send
+        /// engine executes.
+        /// </summary>
+        private void BuildAndShowDispatchPlan(DataTable dt, CampaignConfig config, List<ColumnMapping> mappings)
+        {
+            try
+            {
+                var content = Session[SESSION_CONTENT] as ContentConfig ?? new ContentConfig();
+                content.Mode = GetSelectedContentMode();
+
+                // Sync mode-specific selections made after upload
+                if (content.Mode == ContentMode.IndividualFile)
+                    content.MappingColumn = ddlIndividualMappingColumn.SelectedValue;
+                if (content.Mode == ContentMode.WorkbookSheet)
+                    content.MappingColumn = ddlWorkbookMappingColumn.SelectedValue;
+                if (content.Mode == ContentMode.ExcelColumnUrl)
+                    content.UrlColumn = ddlUrlColumn.SelectedValue;
+
+                // Cross-checks: a file-based mode needs its content uploaded first
+                if (content.Mode == ContentMode.CommonForAll && string.IsNullOrEmpty(content.TempFilePath))
+                {
+                    lblDispatchSummary.Text = "Common attachment mode selected but no file has been uploaded yet.";
+                    pnlDispatchPlan.Visible = true;
+                    gvDispatchPlan.DataSource = null;
+                    gvDispatchPlan.DataBind();
+                    btnSendDispatch.Visible = false;
+                    return;
+                }
+                if (content.Mode == ContentMode.IndividualFile && (content.IndividualFileNames == null || content.IndividualFileNames.Count == 0))
+                {
+                    lblDispatchSummary.Text = "Individual file mode selected but no files have been uploaded yet.";
+                    pnlDispatchPlan.Visible = true;
+                    gvDispatchPlan.DataSource = null;
+                    gvDispatchPlan.DataBind();
+                    btnSendDispatch.Visible = false;
+                    return;
+                }
+                if (content.Mode == ContentMode.WorkbookSheet && string.IsNullOrEmpty(content.WorkbookTempPath))
+                {
+                    lblDispatchSummary.Text = "Workbook mode selected but no workbook has been uploaded yet.";
+                    pnlDispatchPlan.Visible = true;
+                    gvDispatchPlan.DataSource = null;
+                    gvDispatchPlan.DataBind();
+                    btnSendDispatch.Visible = false;
+                    return;
+                }
+
+                var phoneMapping = mappings.FirstOrDefault(m => m.IsPhone);
+                var headerFormat = GetSelectedHeaderFormat();
+
+                var plan = Service.BuildDispatchPlan(dt, config, content, phoneMapping, headerFormat);
+                Session[SESSION_DISPATCH_PLAN] = plan;
+
+                lblDispatchSummary.Text = plan.ValidationSummary;
+                gvDispatchPlan.DataSource = plan.Items.Take(100).Select(i => new
+                {
+                    i.RowNumber,
+                    i.PhoneNumber,
+                    i.MappingKey,
+                    i.MediaFileName,
+                    i.Status,
+                    i.ErrorMessage
+                }).ToList();
+                gvDispatchPlan.DataBind();
+
+                // Phase 1 bulk send stays visible only for None mode;
+                // content modes use the dispatch send button
+                bool hasReady = plan.ReadyCount > 0;
+                btnSendDispatch.Visible = hasReady && content.Mode != ContentMode.None;
+                if (content.Mode == ContentMode.None)
+                    btnSend.Visible = true;
+                else
+                    btnSend.Visible = false;   // per-recipient flow replaces bulk CSV send
+
+                pnlDispatchPlan.Visible = true;
+            }
+            catch (Exception ex)
+            {
+                lblDispatchSummary.Text = "Dispatch plan error: " + HttpUtility.HtmlEncode(ex.Message);
+                pnlDispatchPlan.Visible = true;
+                btnSendDispatch.Visible = false;
+            }
+        }
+
+        // ============================================================
+        //  PHASE 2 — SEND DISPATCH (per-recipient: upload → metaMediaId → send)
+        // ============================================================
+        protected void btnSendDispatch_Click(object sender, EventArgs e)
+        {
+            ClearAlerts();
+
+            var plan = Session[SESSION_DISPATCH_PLAN] as DispatchPlan;
+            if (plan == null)
+            {
+                ShowError("No dispatch plan found. Please validate again.");
+                return;
+            }
+
+            var apiConfig = LoadApiConfig();
+            if (string.IsNullOrEmpty(apiConfig.ApiKey))
+            {
+                ShowError("CEOITBOX API Key is not configured. Check Web.config CEOITBOX.ApiKey.");
+                return;
+            }
+
+            var readyItems = plan.Items.Where(i => i.Status == DispatchStatus.Ready).ToList();
+            if (readyItems.Count == 0)
+            {
+                ShowError("No recipients are Ready to send.");
+                return;
+            }
+
+            try
+            {
+                pnlDispatchResults.Visible = true;
+                divDispatchOk.Visible = false;
+                divDispatchErr.Visible = false;
+
+                var results = Service.ExecuteDispatchPlan(apiConfig, plan);
+
+                // Bind per-recipient results
+                gvDispatchResults.DataSource = plan.Items
+                    .Where(i => i.Status == DispatchStatus.Accepted || i.Status == DispatchStatus.Failed)
+                    .Select(i => new
+                    {
+                        i.PhoneNumber,
+                        i.Status,
+                        i.CeoitboxSystemId,
+                        i.WhatsAppMessageId,
+                        i.ErrorMessage
+                    }).ToList();
+                gvDispatchResults.DataBind();
+
+                int accepted = plan.Items.Count(i => i.Status == DispatchStatus.Accepted);
+                int failed = plan.Items.Count(i => i.Status == DispatchStatus.Failed);
+
+                if (failed == 0)
+                {
+                    divDispatchOk.Visible = true;
+                    lblDispatchOk.Text = string.Format(" {0} of {1} messages accepted by CEOITBOX.", accepted, readyItems.Count);
+                }
+                else
+                {
+                    divDispatchErr.Visible = true;
+                    lblDispatchErr.Text = string.Format(" {0} accepted, {1} failed of {2} attempted.", accepted, failed, readyItems.Count);
+                }
+
+                // Persist the updated plan (statuses now reflect send outcome)
+                Session[SESSION_DISPATCH_PLAN] = plan;
+            }
+            catch (Exception ex)
+            {
+                pnlDispatchResults.Visible = true;
+                divDispatchErr.Visible = true;
+                lblDispatchErr.Text = " Dispatch error: " + HttpUtility.HtmlEncode(ex.Message);
             }
         }
 

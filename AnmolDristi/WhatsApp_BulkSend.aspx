@@ -5,6 +5,26 @@
         .validation-stat { display: inline-block; margin-right: 18px; font-size: 13px; }
         .validation-stat strong { font-size: 14px; }
     </style>
+    <script type="text/javascript">
+        function waToggleContentMode() {
+            var none = document.getElementById('<%= rbModeNone.ClientID %>');
+            var common = document.getElementById('<%= rbModeCommon.ClientID %>');
+            var individual = document.getElementById('<%= rbModeIndividual.ClientID %>');
+            var workbook = document.getElementById('<%= rbModeWorkbook.ClientID %>');
+            var url = document.getElementById('<%= rbModeUrl.ClientID %>');
+            if (!none) return;
+            document.getElementById('<%= pnlCommonContent.ClientID %>').style.display = common.checked ? '' : 'none';
+            document.getElementById('<%= pnlIndividualContent.ClientID %>').style.display = individual.checked ? '' : 'none';
+            document.getElementById('<%= pnlWorkbookContent.ClientID %>').style.display = workbook.checked ? '' : 'none';
+            document.getElementById('<%= pnlUrlContent.ClientID %>').style.display = url.checked ? '' : 'none';
+        }
+        if (window.jQuery) {
+            jQuery(document).ready(function () { waToggleContentMode(); });
+            if (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+                Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () { waToggleContentMode(); });
+            }
+        }
+    </script>
 </asp:Content>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -69,6 +89,20 @@
                                     </div>
                                     <div class="col-md-5 col-sm-3">
                                         <span class="text-muted">Must match the template's configured language.</span>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="control-label col-md-3 col-sm-3 text-right font-weight-bold">Template Header</label>
+                                    <div class="col-md-4 col-sm-6">
+                                        <asp:DropDownList ID="ddlTemplateHeader" runat="server" CssClass="form-control form-control-sm">
+                                            <asp:ListItem Text="Body only (no media)" Value="BodyOnly" Selected="True" />
+                                            <asp:ListItem Text="IMAGE header" Value="Image" />
+                                            <asp:ListItem Text="DOCUMENT header (unvalidated)" Value="Document" />
+                                            <asp:ListItem Text="VIDEO header (unvalidated)" Value="Video" />
+                                        </asp:DropDownList>
+                                    </div>
+                                    <div class="col-md-5 col-sm-3">
+                                        <span class="text-muted">Must match the template's configured header format in WhatsApp.</span>
                                     </div>
                                 </div>
                             </div>
@@ -198,7 +232,223 @@
             </asp:Panel>
 
             <!-- ============================================================ -->
-            <!-- SECTION 4 — Campaign Result                                  -->
+            <!-- SECTION 4 — Content & Attachment Configuration (Phase 2)     -->
+            <!-- ============================================================ -->
+            <div class="row">
+                <div class="col-md-12 col-sm-12">
+                    <div class="x_panel">
+                        <div class="x_title">
+                            <h2>Content &amp; Attachment Configuration</h2>
+                            <ul class="nav navbar-right panel_toolbox">
+                                <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                            </ul>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
+                            <asp:Label ID="lblContentOk" runat="server" CssClass="text-success font-weight-bold d-block mb-2" Visible="false" />
+                            <asp:Label ID="lblContentErr" runat="server" CssClass="text-danger font-weight-bold d-block mb-2" Visible="false" />
+
+                            <div class="form-group">
+                                <label class="control-label font-weight-bold">Message Content Mode</label>
+                                <div class="radio">
+                                    <asp:RadioButton ID="rbModeNone" runat="server" GroupName="contentMode" Text="No Attachment / Template Only" Checked="true" onclick="waToggleContentMode();" />
+                                </div>
+                                <div class="radio">
+                                    <asp:RadioButton ID="rbModeCommon" runat="server" GroupName="contentMode" Text="Common Attachment for All Recipients" onclick="waToggleContentMode();" />
+                                </div>
+                                <div class="radio">
+                                    <asp:RadioButton ID="rbModeIndividual" runat="server" GroupName="contentMode" Text="Individual File per Recipient" onclick="waToggleContentMode();" />
+                                </div>
+                                <div class="radio">
+                                    <asp:RadioButton ID="rbModeWorkbook" runat="server" GroupName="contentMode" Text="Excel Workbook Sheet per Recipient" onclick="waToggleContentMode();" />
+                                </div>
+                                <div class="radio">
+                                    <asp:RadioButton ID="rbModeUrl" runat="server" GroupName="contentMode" Text="Personalized URL from Excel" onclick="waToggleContentMode();" />
+                                </div>
+                            </div>
+
+                            <!-- Common attachment -->
+                            <asp:Panel ID="pnlCommonContent" runat="server" Style="display: none;">
+                                <div class="form-horizontal form-label-left">
+                                    <div class="form-group row">
+                                        <label class="control-label col-md-3 col-sm-3 text-right font-weight-bold">Attachment File</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <asp:FileUpload ID="fuCommonContent" runat="server" CssClass="form-control" accept=".png,.jpg,.jpeg,.webp,.pdf,.xlsx,.xls,.docx,.doc,.pptx,.txt,.mp4" />
+                                            <span class="text-muted">Images: png/jpg/webp (IMAGE templates) &middot; Documents require a DOCUMENT template (unvalidated)</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-md-6 col-sm-6 offset-md-3">
+                                            <asp:Button ID="btnUploadCommon" runat="server" Text="Upload Attachment" CssClass="btn btn-primary" OnClick="btnUploadCommon_Click" CausesValidation="false" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" id="trCommonInfo" runat="server" Visible="false">
+                                        <label class="control-label col-md-3 col-sm-3 text-right">Uploaded</label>
+                                        <div class="col-md-9 col-sm-9">
+                                            <asp:Label ID="lblCommonFileInfo" runat="server" CssClass="text-success" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </asp:Panel>
+
+                            <!-- Individual files -->
+                            <asp:Panel ID="pnlIndividualContent" runat="server" Style="display: none;">
+                                <div class="form-horizontal form-label-left">
+                                    <div class="form-group row">
+                                        <label class="control-label col-md-3 col-sm-3 text-right font-weight-bold">Map Recipient Using</label>
+                                        <div class="col-md-4 col-sm-6">
+                                            <asp:DropDownList ID="ddlIndividualMappingColumn" runat="server" CssClass="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-5 col-sm-3">
+                                            <span class="text-muted">Excel column whose value matches each file name (e.g. EmployeeID → EMP001.pdf).</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label class="control-label col-md-3 col-sm-3 text-right font-weight-bold">Recipient Files</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <asp:FileUpload ID="fuIndividualFiles" runat="server" CssClass="form-control" AllowMultiple="true"
+                                                accept=".png,.jpg,.jpeg,.webp,.pdf,.xlsx,.xls,.docx,.doc,.pptx,.txt,.mp4" />
+                                            <span class="text-muted">Select all files at once. File base name (without extension) must equal the mapping key.</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-md-6 col-sm-6 offset-md-3">
+                                            <asp:Button ID="btnUploadIndividual" runat="server" Text="Upload Files" CssClass="btn btn-primary" OnClick="btnUploadIndividual_Click" CausesValidation="false" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" id="trIndividualInfo" runat="server" Visible="false">
+                                        <label class="control-label col-md-3 col-sm-3 text-right">Uploaded</label>
+                                        <div class="col-md-9 col-sm-9">
+                                            <asp:Label ID="lblIndividualFileInfo" runat="server" CssClass="text-success" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </asp:Panel>
+
+                            <!-- Workbook sheets -->
+                            <asp:Panel ID="pnlWorkbookContent" runat="server" Style="display: none;">
+                                <div class="form-horizontal form-label-left">
+                                    <div class="form-group row">
+                                        <label class="control-label col-md-3 col-sm-3 text-right font-weight-bold">Sheet Name Matches</label>
+                                        <div class="col-md-4 col-sm-6">
+                                            <asp:DropDownList ID="ddlWorkbookMappingColumn" runat="server" CssClass="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-5 col-sm-3">
+                                            <span class="text-muted">Excel column whose value equals a worksheet name in the uploaded workbook.</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <label class="control-label col-md-3 col-sm-3 text-right font-weight-bold">Multi-Sheet Workbook</label>
+                                        <div class="col-md-6 col-sm-6">
+                                            <asp:FileUpload ID="fuWorkbook" runat="server" CssClass="form-control" accept=".xlsx" />
+                                            <span class="text-muted">One .xlsx workbook; each sheet name = one recipient's mapping key.</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-md-6 col-sm-6 offset-md-3">
+                                            <asp:Button ID="btnUploadWorkbook" runat="server" Text="Upload Workbook" CssClass="btn btn-primary" OnClick="btnUploadWorkbook_Click" CausesValidation="false" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" id="trWorkbookInfo" runat="server" Visible="false">
+                                        <label class="control-label col-md-3 col-sm-3 text-right">Uploaded</label>
+                                        <div class="col-md-9 col-sm-9">
+                                            <asp:Label ID="lblWorkbookFileInfo" runat="server" CssClass="text-success" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </asp:Panel>
+
+                            <!-- URL column -->
+                            <asp:Panel ID="pnlUrlContent" runat="server" Style="display: none;">
+                                <div class="form-horizontal form-label-left">
+                                    <div class="form-group row">
+                                        <label class="control-label col-md-3 col-sm-3 text-right font-weight-bold">URL Source Column</label>
+                                        <div class="col-md-4 col-sm-6">
+                                            <asp:DropDownList ID="ddlUrlColumn" runat="server" CssClass="form-control form-control-sm" />
+                                        </div>
+                                        <div class="col-md-5 col-sm-3">
+                                            <span class="text-muted">Excel column containing a full http(s) URL for each recipient.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </asp:Panel>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- SECTION 5 — Dispatch Plan (Phase 2)                          -->
+            <!-- ============================================================ -->
+            <asp:Panel ID="pnlDispatchPlan" runat="server" Visible="false">
+                <div class="row">
+                    <div class="col-md-12 col-sm-12">
+                        <div class="x_panel">
+                            <div class="x_title">
+                                <h2>Dispatch Plan</h2>
+                                <ul class="nav navbar-right panel_toolbox">
+                                    <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
+                                </ul>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="x_content">
+                                <div class="alert alert-info">
+                                    <strong>Validation Summary</strong><br />
+                                    <asp:Label ID="lblDispatchSummary" runat="server" />
+                                </div>
+
+                                <div class="card-box table-responsive">
+                                    <asp:GridView ID="gvDispatchPlan" runat="server" CssClass="table table-striped table-hover table-bordered table-sm"
+                                        AutoGenerateColumns="false" GridLines="None" EmptyDataText="No dispatch items.">
+                                        <Columns>
+                                            <asp:BoundField DataField="RowNumber" HeaderText="Row" />
+                                            <asp:BoundField DataField="PhoneNumber" HeaderText="Phone" />
+                                            <asp:BoundField DataField="MappingKey" HeaderText="Mapping Key" />
+                                            <asp:BoundField DataField="MediaFileName" HeaderText="Content" />
+                                            <asp:BoundField DataField="Status" HeaderText="Status" />
+                                            <asp:BoundField DataField="ErrorMessage" HeaderText="Detail" />
+                                        </Columns>
+                                    </asp:GridView>
+                                </div>
+
+                                <div class="ln_solid"></div>
+                                <div class="form-group">
+                                    <asp:Button ID="btnSendDispatch" runat="server" Text="Send Valid Recipients" CssClass="btn btn-success" OnClick="btnSendDispatch_Click"
+                                        OnClientClick="if(!confirm('Send to all READY recipients now? Blocked recipients will be skipped. This action cannot be undone.')) return false;" />
+                                </div>
+
+                                <!-- Per-recipient send results -->
+                                <asp:Panel ID="pnlDispatchResults" runat="server" Visible="false">
+                                    <h5 class="font-weight-bold">Send Results</h5>
+                                    <div class="card-box table-responsive">
+                                        <asp:GridView ID="gvDispatchResults" runat="server" CssClass="table table-striped table-hover table-bordered table-sm"
+                                            AutoGenerateColumns="false" GridLines="None">
+                                            <Columns>
+                                                <asp:BoundField DataField="PhoneNumber" HeaderText="Phone" />
+                                                <asp:BoundField DataField="Status" HeaderText="Status" />
+                                                <asp:BoundField DataField="CeoitboxSystemId" HeaderText="System ID" />
+                                                <asp:BoundField DataField="WhatsAppMessageId" HeaderText="WhatsApp Msg ID" />
+                                                <asp:BoundField DataField="ErrorMessage" HeaderText="Error" />
+                                            </Columns>
+                                        </asp:GridView>
+                                    </div>
+                                    <div class="alert alert-success" id="divDispatchOk" runat="server" Visible="false">
+                                        <strong><i class="fa fa-check-circle"></i></strong>
+                                        <asp:Label ID="lblDispatchOk" runat="server" />
+                                    </div>
+                                    <div class="alert alert-danger" id="divDispatchErr" runat="server" Visible="false">
+                                        <strong><i class="fa fa-times-circle"></i></strong>
+                                        <asp:Label ID="lblDispatchErr" runat="server" />
+                                    </div>
+                                </asp:Panel>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </asp:Panel>
+
+            <!-- ============================================================ -->
+            <!-- SECTION 6 — Campaign Result (Phase 1 bulk)                   -->
             <!-- ============================================================ -->
             <asp:Panel ID="pnlResults" runat="server" Visible="false">
                 <div class="row">
