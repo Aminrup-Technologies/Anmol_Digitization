@@ -9,6 +9,13 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
+// Type aliases — resolve the ContentType/ContentMode enums explicitly.
+// The ASP.NET WebForms page compiler resolves the bare name 'ContentType'
+// to the string-typed Response.ContentType property in the generated page
+// context, so we MUST use the aliases below for every enum reference.
+using ContentType = AnmolDristi.ContentType;
+using ContentMode = AnmolDristi.ContentMode;
+
 namespace AnmolDristi
 {
     public partial class WhatsApp_BulkSend : System.Web.UI.Page
@@ -111,7 +118,7 @@ namespace AnmolDristi
                 // Diagnostic: confirm stored row count
                 System.Diagnostics.Debug.WriteLine(
                     string.Format("[WhatsApp Upload] Session DataTable rows after store: {0}",
-                        ((DataTable)Session[SESSION_DATA]).Rows.Count));
+                    ((DataTable)Session[SESSION_DATA]).Rows.Count));
 
                 // Populate preview (first 5 rows)
                 var previewDt = dt.Clone();
@@ -307,9 +314,9 @@ namespace AnmolDristi
                     // Mapping key = file base name (no extension). Disk name is always a fresh GUID —
                     // the original filename is never used as a server path.
                     string baseName = System.IO.Path.GetFileNameWithoutExtension(pf.FileName);
-                    string ext = System.IO.Path.GetExtension(pf.FileName);
-                    if (ext.Length > 10 || ext.Contains("..")) ext = "";
-                    string safeName = Guid.NewGuid().ToString("N") + ext;
+                    string fileExt = System.IO.Path.GetExtension(pf.FileName);
+                    if (fileExt.Length > 10 || fileExt.Contains("..")) fileExt = "";
+                    string safeName = Guid.NewGuid().ToString("N") + fileExt;
                     string safePath = System.IO.Path.Combine(tempDir, safeName);
 
                     using (var fs = System.IO.File.Create(safePath))
