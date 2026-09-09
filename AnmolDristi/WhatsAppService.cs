@@ -593,8 +593,8 @@ namespace AnmolDristi
                     RowNumber = i + 2,                       // Excel row (header = row 1)
                     TemplateName = campaign.TemplateName ?? "",
                     Language = string.IsNullOrWhiteSpace(campaign.Language) ? "en" : campaign.Language,
-                    ContentMode = content.Mode,
-                    ContentType = content.Type
+                    ItemContentMode = content.Mode,
+                    ItemContentType = content.MediaType
                 };
 
                 // --- Template variables (selected variable columns, in mapping order) ---
@@ -992,7 +992,7 @@ namespace AnmolDristi
                     // Build template variables as simple string array (positional order)
                     string[] varArray = item.TemplateVariables.Values.ToArray();
 
-                    if (item.ContentMode == ContentMode.ExcelColumnUrl && !string.IsNullOrEmpty(item.ContentReference))
+                    if (item.ItemContentMode == ContentMode.ExcelColumnUrl && !string.IsNullOrEmpty(item.ContentReference))
                     {
                         // Template + file URL (confirmed: fileUrl is top-level)
                         payload = new
@@ -1087,7 +1087,7 @@ namespace AnmolDristi
                     string mediaPath = item.ContentReference;
 
                     // WorkbookSheet mode: materialise the per-recipient temp .xlsx NOW (never during validation)
-                    if (item.ContentMode == ContentMode.WorkbookSheet
+                    if (item.ItemContentMode == ContentMode.WorkbookSheet
                         && !string.IsNullOrEmpty(item.ContentReference)
                         && item.ContentReference.StartsWith("sheet:"))
                     {
@@ -1104,9 +1104,9 @@ namespace AnmolDristi
                     }
 
                     // 1. Upload media (file-based modes) → metaMediaId
-                    if (item.ContentMode == ContentMode.CommonForAll
-                        || item.ContentMode == ContentMode.IndividualFile
-                        || item.ContentMode == ContentMode.WorkbookSheet)
+                    if (item.ItemContentMode == ContentMode.CommonForAll
+                        || item.ItemContentMode == ContentMode.IndividualFile
+                        || item.ItemContentMode == ContentMode.WorkbookSheet)
                     {
                         var upload = UploadMedia(apiConfig, mediaPath, item.MediaFileName, item.MediaMimeType);
                         if (!upload.Success)

@@ -175,7 +175,8 @@ namespace AnmolDristi
     public class ContentConfig
     {
         public ContentMode Mode { get; set; }
-        public ContentType Type { get; set; }
+        /// <summary>Media/content type (Image, Document, Video) for this campaign.</summary>
+        public ContentType MediaType { get; set; }
 
         /// <summary>Original display filename (never used as a server path).</summary>
         public string FileName { get; set; }
@@ -234,8 +235,11 @@ namespace AnmolDristi
         public string TemplateName { get; set; }
         public string Language { get; set; }
         public Dictionary<string, string> TemplateVariables { get; set; }
-        public ContentType ContentType { get; set; }
-        public ContentMode ContentMode { get; set; }
+        /// <summary>Media/content type (Image, Document, Video). Named ItemContentType to avoid shadowing the ContentType enum.</summary>
+        public ContentType ItemContentType { get; set; }
+
+        /// <summary>Content sourcing mode (CommonForAll, IndividualFile, etc). Named ItemContentMode to avoid shadowing the ContentMode enum.</summary>
+        public ContentMode ItemContentMode { get; set; }
 
         /// <summary>Content reference: temp file path, URL, or extracted sheet path.</summary>
         public string ContentReference { get; set; }

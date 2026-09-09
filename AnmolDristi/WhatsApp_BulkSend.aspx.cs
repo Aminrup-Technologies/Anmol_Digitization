@@ -244,7 +244,7 @@ namespace AnmolDristi
 
                 var content = existing ?? new ContentConfig();
                 content.Mode = ContentMode.CommonForAll;
-                content.Type = ContentTypeFromMime(WhatsAppService.GetMimeTypeFromExtension(fuCommonContent.FileName));
+                content.MediaType = ContentTypeFromMime(WhatsAppService.GetMimeTypeFromExtension(fuCommonContent.FileName));
                 content.FileName = displayName;
                 content.TempFilePath = tempPath;
                 content.MimeType = WhatsAppService.GetMimeTypeFromExtension(fuCommonContent.FileName);
@@ -326,7 +326,7 @@ namespace AnmolDristi
                 var content = new ContentConfig
                 {
                     Mode = ContentMode.IndividualFile,
-                    Type = ContentType.Document,   // refined per-item during dispatch plan
+                    MediaType = ContentType.Document,   // refined per-item during dispatch plan
                     MappingColumn = ddlIndividualMappingColumn.SelectedValue,
                     IndividualFilesDir = tempDir,
                     IndividualFileNames = fileMap,
@@ -386,7 +386,7 @@ namespace AnmolDristi
                 var content = new ContentConfig
                 {
                     Mode = ContentMode.WorkbookSheet,
-                    Type = ContentType.Document,
+                    MediaType = ContentType.Document,
                     FileName = displayName,
                     WorkbookTempPath = tempPath,
                     WorkbookSheetNames = sheetNames,
