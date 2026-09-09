@@ -984,88 +984,47 @@ namespace AnmolDristi
             {
                 using (var client = CreateHttpClient(apiConfig))
                 {
+                    // --- CEOITBOX sendMessage schema (confirmed via authenticated OpenAPI spec) ---
+                    // Flat top-level fields: templateName, language, to, templateVariables[],
+                    // optional: metaMediaId, fileUrl. No components[] nesting.
                     object payload;
+
+                    // Build template variables as simple string array (positional order)
+                    string[] varArray = item.TemplateVariables.Values.ToArray();
 
                     if (item.ContentMode == ContentMode.ExcelColumnUrl && !string.IsNullOrEmpty(item.ContentReference))
                     {
-                        // Template + URL (documented example: template + file URL)
+                        // Template + file URL (confirmed: fileUrl is top-level)
                         payload = new
                         {
-                            messaging_product = "whatsapp",
+                            templateName = item.TemplateName,
+                            language = item.Language,
                             to = item.PhoneNumber,
-                            type = "template",
-                            template = new
-                            {
-                                name = item.TemplateName,
-                                language = new { code = item.Language },
-                                components = new object[]
-                                {
-                                    new
-                                    {
-                                        type = "header",
-                                        parameters = new object[]
-                                        {
-                                            new { type = "document", document = new { link = item.ContentReference } }
-                                        }
-                                    }
-                                }
-                            }
+                            fileUrl = item.ContentReference,
+                            templateVariables = varArray
                         };
                     }
                     else if (!string.IsNullOrEmpty(item.MetaMediaId))
                     {
-                        // Template + Meta Media ID (documented example)
+                        // Template + Meta Media ID (confirmed: metaMediaId is top-level)
                         payload = new
                         {
-                            messaging_product = "whatsapp",
+                            templateName = item.TemplateName,
+                            language = item.Language,
                             to = item.PhoneNumber,
-                            type = "template",
-                            template = new
-                            {
-                                name = item.TemplateName,
-                                language = new { code = item.Language },
-                                components = new object[]
-                                {
-                                    new
-                                    {
-                                        type = "header",
-                                        parameters = new object[]
-                                        {
-                                            // PENDING API CONFIRMATION: exact CEOITBOX sendMessage JSON
-                                            // field names must be verified against Swagger before live use.
-                                            // Shape below follows the Meta Cloud API header-parameter convention
-                                            // (CEOITBOX wraps Meta — endpoint is "meta/media/upload").
-                                            item.ContentType == ContentType.Image
-                                                ? (object)new { type = "image", image = new { id = item.MetaMediaId } }
-                                                : (object)new { type = "document", document = new { id = item.MetaMediaId } }
-                                        }
-                                    }
-                                }
-                            }
+                            metaMediaId = item.MetaMediaId,
+                            templateVariables = varArray
                         };
                     }
                     else
                     {
-                        // Template + variables only
-                        var varValues = item.TemplateVariables.Values.Cast<object>().ToArray();
+                        // Template + variables only (body-only, no media)
                         payload = new
                         {
-                            messaging_product = "whatsapp",
+                            templateName = item.TemplateName,
+                            language = item.Language,
                             to = item.PhoneNumber,
-                            type = "template",
-                            template = new
-                            {
-                                name = item.TemplateName,
-                                language = new { code = item.Language },
-                                components = new object[]
-                                {
-                                    new
-                                    {
-                                        type = "body",
-                                        parameters = varValues.Select(v => new { type = "text", text = v }).ToArray()
-                                    }
-                                }
-                            }
+                            templateVariables = varArray
                         };
                     }
 
