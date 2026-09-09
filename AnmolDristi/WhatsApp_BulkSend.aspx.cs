@@ -9,13 +9,6 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 
-// Type aliases — resolve the ContentType/ContentMode enums explicitly.
-// The ASP.NET WebForms page compiler resolves the bare name 'ContentType'
-// to the string-typed Response.ContentType property in the generated page
-// context, so we MUST use the aliases below for every enum reference.
-using ContentType = AnmolDristi.ContentType;
-using ContentMode = AnmolDristi.ContentMode;
-
 namespace AnmolDristi
 {
     public partial class WhatsApp_BulkSend : System.Web.UI.Page
@@ -333,7 +326,7 @@ namespace AnmolDristi
                 var content = new ContentConfig
                 {
                     Mode = ContentMode.IndividualFile,
-                    MediaType = ContentType.Document,   // refined per-item during dispatch plan
+                    MediaType = AnmolDristi.ContentType.Document,   // refined per-item during dispatch plan
                     MappingColumn = ddlIndividualMappingColumn.SelectedValue,
                     IndividualFilesDir = tempDir,
                     IndividualFileNames = fileMap,
@@ -393,7 +386,7 @@ namespace AnmolDristi
                 var content = new ContentConfig
                 {
                     Mode = ContentMode.WorkbookSheet,
-                    MediaType = ContentType.Document,
+                    MediaType = AnmolDristi.ContentType.Document,
                     FileName = displayName,
                     WorkbookTempPath = tempPath,
                     WorkbookSheetNames = sheetNames,
@@ -413,12 +406,15 @@ namespace AnmolDristi
             }
         }
 
-        private ContentType ContentTypeFromMime(string mime)
+        // Bare 'ContentType' in expression context binds to inherited Page.ContentType (string),
+        // not the AnmolDristi.ContentType enum. A using-alias of the same name cannot win
+        // against that instance member; fully-qualify enum member access.
+        private AnmolDristi.ContentType ContentTypeFromMime(string mime)
         {
-            if (string.IsNullOrEmpty(mime)) return ContentType.None;
-            if (mime.StartsWith("image/")) return ContentType.Image;
-            if (mime.StartsWith("video/")) return ContentType.Video;
-            return ContentType.Document;
+            if (string.IsNullOrEmpty(mime)) return AnmolDristi.ContentType.None;
+            if (mime.StartsWith("image/")) return AnmolDristi.ContentType.Image;
+            if (mime.StartsWith("video/")) return AnmolDristi.ContentType.Video;
+            return AnmolDristi.ContentType.Document;
         }
 
         private void ShowContentAlerts(string ok, string error)
