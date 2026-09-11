@@ -192,6 +192,9 @@ namespace AnmolDristi
                 PermissionHelper.ApplyUiPermissions(this);
                 DumpControls(this); // or pass your sidebar wrapper control
 
+                // --- Switch User: show menu link + impersonation banner ---
+                SetupSwitchUserBannerAndMenu();
+
 
                 //---- Added on 17-Sep-2025------//
                 //UiPermissionController.Apply(this);// apply to whole master
@@ -272,6 +275,51 @@ namespace AnmolDristi
                     System.Diagnostics.Debug.WriteLine($"ID={c.ID} Visible={value}");
                 }
                 if (c.HasControls()) DumpControls(c);
+            }
+        }
+
+        /// <summary>
+        /// Controls the impersonation banner and the Switch User sidebar link.
+        /// - Banner: visible only when impersonating
+        /// - Sidebar link: visible only when the caller is in the allowlist
+        /// </summary>
+        private void SetupSwitchUserBannerAndMenu()
+        {
+            try
+            {
+                // --- Impersonation Banner ---
+                if (SwitchUserHelper.IsCurrentlyImpersonating(Session))
+                {
+                    pnlSuBanner.Visible = true;
+                    string currentName = Session["USERNAME"]?.ToString() ?? "Unknown";
+                    string currentCode = Session["WORKMAN"]?.ToString() ?? "Unknown";
+                    string originalName = Session["Original_USERNAME"]?.ToString() ?? "Unknown";
+                    string originalCode = Session["Original_WORKMAN"]?.ToString() ?? "Unknown";
+                    lblSuBannerCurrent.Text = currentName + " (" + currentCode + ")";
+                    lblSuBannerOriginal.Text = originalName + " (" + originalCode + ")";
+                }
+                else
+                {
+                    pnlSuBanner.Visible = false;
+                }
+
+                // --- Switch User sidebar link ---
+                // Only show to authorized users
+                string workman = Session["WORKMAN"]?.ToString();
+                if (!string.IsNullOrEmpty(workman) && SwitchUserHelper.IsEmployeeAuthorized(workman))
+                {
+                    SwitchUserLink.Visible = true;
+                }
+                else
+                {
+                    SwitchUserLink.Visible = false;
+                }
+            }
+            catch
+            {
+                // Fail-closed: hide everything on error
+                try { pnlSuBanner.Visible = false; } catch { }
+                try { SwitchUserLink.Visible = false; } catch { }
             }
         }
 
@@ -440,6 +488,12 @@ namespace AnmolDristi
             bool ended = false;
             try
             {
+                // --- If impersonating, return to original user first (preserve original session on logout) ---
+                if (SwitchUserHelper.IsCurrentlyImpersonating(Session))
+                {
+                    SwitchUserHelper.ReturnToOriginalSession(Session);
+                }
+
                 // 1) Try token-based logout (preferred)
                 if (Session["LoginToken"] != null)
                 {

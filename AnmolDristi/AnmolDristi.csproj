@@ -453,6 +453,7 @@
   <ItemGroup>
     <Content Include="blank.aspx" />
     <Content Include="login.aspx" />
+    <Content Include="SwitchUser.aspx" />
     <Content Include="qaqc_qahome.aspx" />
     <Content Include="qaqc_qchome.aspx" />
     <Content Include="qaqc_qchome_rpt.aspx" />
@@ -880,6 +881,13 @@
     </Compile>
     <Compile Include="login.aspx.designer.cs">
       <DependentUpon>login.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="SwitchUser.aspx.cs">
+      <DependentUpon>SwitchUser.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SwitchUser.aspx.designer.cs">
+      <DependentUpon>SwitchUser.aspx</DependentUpon>
     </Compile>
     <Compile Include="LoginNotifier.cs" />
     <Compile Include="LogoutHandler.ashx.cs">
@@ -1553,6 +1561,7 @@
     <Compile Include="ClaimEditabilityHelper.cs" />
     <Compile Include="SalesApprovalDetailVersionHelper.cs" />
     <Compile Include="SessionHelper.cs" />
+    <Compile Include="SwitchUserHelper.cs" />
     <Compile Include="SubmitClaim.aspx.cs">
       <DependentUpon>SubmitClaim.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
