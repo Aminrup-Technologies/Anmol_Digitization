@@ -420,6 +420,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_ApprovalConfig;
 
         /// <summary>
+        /// SwitchUserLink control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl SwitchUserLink;
+
+        /// <summary>
         /// ProfilePic_2 control.
         /// </summary>
         /// <remarks>
@@ -436,6 +445,33 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_loginusername2;
+
+        /// <summary>
+        /// pnlSuBanner control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Panel pnlSuBanner;
+
+        /// <summary>
+        /// lblSuBannerCurrent control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblSuBannerCurrent;
+
+        /// <summary>
+        /// lblSuBannerOriginal control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblSuBannerOriginal;
         
         /// <summary>
         /// ContentPlaceHolder1 control.

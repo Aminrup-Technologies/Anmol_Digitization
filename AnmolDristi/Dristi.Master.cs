@@ -165,54 +165,11 @@ namespace AnmolDristi
                     ScriptManager.RegisterStartupScript(this, this.GetType(), "setLoginToken", script, true);
                 }
 
-                // Set labels (null-safe)
-                Label lbl1 = Page.Master.FindControl("lbl_loginusername2") as Label;
-                if (lbl1 != null && Session["USERNAME"] != null)
-                    lbl1.Text = Session["USERNAME"].ToString();
-
-                Label lbl2 = Page.Master.FindControl("lbl_loginusername1") as Label;
-                if (lbl2 != null && Session["USERFNAME"] != null)
-                    lbl2.Text = Session["USERFNAME"].ToString();
-
                 // Menu visibility logic - null-safe checks
                 string module = Session["MODULE"] != null ? Session["MODULE"].ToString() : string.Empty;
                 string workman = Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : string.Empty;
 
-
-                // Apply UI permissions to sidebar menu (root of your menu)
-                // If your sidebar markup is inside a server control with ID `sidebar-menu`,
-                // use that control's reference. Example: SidebarMenuControl
-
-                //PermissionHelper.RefreshSessionPermissions();
-                //PermissionHelper.ApplyUiPermissions(this); // will traverse all controls on the master
-                // REMOVE this line:
-                // PermissionHelper.RefreshSessionPermissions(); 
-
-                // KEEP this line:
-                PermissionHelper.ApplyUiPermissions(this);
-                DumpControls(this); // or pass your sidebar wrapper control
-
-                // ITSM module is visible to every authenticated employee.
-                // Individual ITSM capabilities (queues, approvals, config)
-                // remain gated by their own UI.*.View permission keys.
-                if (ITSM_Module != null)
-                {
-                    ITSM_Module.Visible = true;
-                }
-
-                // Ticket Queue is always visible for all authenticated employees.
-                // Tab visibility inside TicketList.aspx is permission-gated separately.
-                if (ITSM_TicketList != null)
-                {
-                    ITSM_TicketList.Visible = true;
-                }
-
-                // Create Ticket is available to all authenticated employees.
-                // Business authorization is session-based (WORKMAN/USERID/BRANCH).
-                if (ITSM_CreateTicket != null)
-                {
-                    ITSM_CreateTicket.Visible = true;
-                }
+                RefreshChromeAfterIdentityChange();
 
                 //---- Added on 17-Sep-2025------//
                 //UiPermissionController.Apply(this);// apply to whole master
@@ -279,6 +236,74 @@ namespace AnmolDristi
                 //    WebLogins.Visible = false;
                 //    WebLogins_Viewall.Visible = false;
                 //}
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds header labels, sidebar UI permissions, and the Switch User banner/menu
+        /// from the current session identity. Used on first GET and immediately after
+        /// impersonation so the sidebar does not wait for a later navigation.
+        /// </summary>
+        public void RefreshChromeAfterIdentityChange()
+        {
+            if (lbl_loginusername2 != null && Session["USERNAME"] != null)
+                lbl_loginusername2.Text = Session["USERNAME"].ToString();
+
+            if (lbl_loginusername1 != null && Session["USERFNAME"] != null)
+                lbl_loginusername1.Text = Session["USERFNAME"].ToString();
+
+            PermissionHelper.ApplyUiPermissions(this);
+            DumpControls(this);
+            SetupSwitchUserBannerAndMenu();
+
+            // ITSM module is visible to every authenticated employee.
+            // Individual ITSM capabilities remain gated by their own UI.*.View keys.
+            if (ITSM_Module != null)
+                ITSM_Module.Visible = true;
+            if (ITSM_TicketList != null)
+                ITSM_TicketList.Visible = true;
+            if (ITSM_CreateTicket != null)
+                ITSM_CreateTicket.Visible = true;
+        }
+
+        /// <summary>
+        /// Controls the impersonation banner and the Switch User sidebar link.
+        /// Banner is visible only while impersonating. Sidebar link is visible only
+        /// when the feature is enabled and the current employee is allowlisted.
+        /// </summary>
+        private void SetupSwitchUserBannerAndMenu()
+        {
+            try
+            {
+                if (SwitchUserHelper.IsCurrentlyImpersonating(Session))
+                {
+                    pnlSuBanner.Visible = true;
+                    string currentName = Session["USERNAME"] != null ? Session["USERNAME"].ToString() : "Unknown";
+                    string currentCode = Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : "Unknown";
+                    string originalName = Session["Original_USERNAME"] != null ? Session["Original_USERNAME"].ToString() : "Unknown";
+                    string originalCode = Session["Original_WORKMAN"] != null ? Session["Original_WORKMAN"].ToString() : "Unknown";
+                    lblSuBannerCurrent.Text = currentName + " (" + currentCode + ")";
+                    lblSuBannerOriginal.Text = originalName + " (" + originalCode + ")";
+                }
+                else
+                {
+                    pnlSuBanner.Visible = false;
+                }
+
+                if (SwitchUserHelper.IsFeatureEnabled())
+                {
+                    string workman = Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : null;
+                    SwitchUserLink.Visible = !string.IsNullOrEmpty(workman) && SwitchUserHelper.IsEmployeeAuthorized(workman);
+                }
+                else
+                {
+                    SwitchUserLink.Visible = false;
+                }
+            }
+            catch
+            {
+                try { pnlSuBanner.Visible = false; } catch { }
+                try { SwitchUserLink.Visible = false; } catch { }
             }
         }
 
@@ -461,6 +486,12 @@ namespace AnmolDristi
             bool ended = false;
             try
             {
+                // If impersonating, restore original identity before ending the active session.
+                if (SwitchUserHelper.IsCurrentlyImpersonating(Session))
+                {
+                    SwitchUserHelper.ReturnToOriginalSession(Session);
+                }
+
                 // 1) Try token-based logout (preferred)
                 if (Session["LoginToken"] != null)
                 {
