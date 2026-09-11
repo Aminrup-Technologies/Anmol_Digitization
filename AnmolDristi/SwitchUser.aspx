@@ -161,7 +161,7 @@
 <asp:Content ID="MainContent" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
 
-        <%-- Impersonation Banner --%>
+        <%-- Page-level banner kept for designer wiring; Master pnlSuBanner is the live banner. --%>
         <asp:Panel ID="pnlImpersonationBanner" runat="server" Visible="false">
             <div class="switch-user-banner">
                 <div class="banner-info">

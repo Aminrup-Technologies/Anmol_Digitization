@@ -54,34 +54,10 @@ namespace AnmolDristi
                 pnlNoAccess.Visible = false;
                 pnlMain.Visible = true;
 
-                // Show impersonation banner if currently impersonating
-                RefreshImpersonationBanner();
-            }
-        }
-
-        #region Banner
-
-        private void RefreshImpersonationBanner()
-        {
-            if (SwitchUserHelper.IsCurrentlyImpersonating(Session))
-            {
-                pnlImpersonationBanner.Visible = true;
-
-                string currentName = Session["USERNAME"]?.ToString() ?? "Unknown";
-                string currentCode = Session["WORKMAN"]?.ToString() ?? "Unknown";
-                lblImpersonatingUser.Text = currentName + " (" + currentCode + ")";
-
-                string originalName = Session["Original_USERNAME"]?.ToString() ?? "Unknown";
-                string originalCode = Session["Original_WORKMAN"]?.ToString() ?? "Unknown";
-                lblOriginalUser.Text = originalName + " (" + originalCode + ")";
-            }
-            else
-            {
+                // Master pnlSuBanner is the only impersonation banner.
                 pnlImpersonationBanner.Visible = false;
             }
         }
-
-        #endregion
 
         #region Search
 
@@ -146,16 +122,15 @@ namespace AnmolDristi
 
                 if (success)
                 {
-                    // Rebuild PH_UserPermSet for the target, then re-apply master sidebar
-                    // on this postback (Master Page_Load already ran before PerformSwitch).
                     RefreshUserPermissions();
                     Dristi master = Master as Dristi;
                     if (master != null)
                         master.RefreshChromeAfterIdentityChange();
 
-                    string targetName = Session["USERNAME"]?.ToString() ?? targetCode;
-                    ShowMessage("Successfully switched to " + System.Net.WebUtility.HtmlEncode(targetName) + " (" + System.Net.WebUtility.HtmlEncode(targetCode) + "). You are now operating as this user.", "success");
-                    RefreshImpersonationBanner();
+                    pnlImpersonationBanner.Visible = false;
+                    Response.Redirect("~/home.aspx", false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
                 }
                 else
                 {
@@ -182,7 +157,7 @@ namespace AnmolDristi
             else
             {
                 ShowMessage(errorMessage, "danger");
-                RefreshImpersonationBanner();
+                pnlImpersonationBanner.Visible = false;
             }
         }
 
