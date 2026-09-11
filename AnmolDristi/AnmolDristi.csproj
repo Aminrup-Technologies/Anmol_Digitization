@@ -458,6 +458,7 @@
       <DependentUpon>add_users.aspx</DependentUpon>
     </Compile>
     <Compile Include="AesEncryptionHelper.cs" />
+    <Content Include="SwitchUser.aspx" />
     <Compile Include="apps.aspx.cs">
       <DependentUpon>apps.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1160,6 +1161,14 @@
     </Compile>
     <Compile Include="WebsiteCredentialsView.aspx.designer.cs">
       <DependentUpon>WebsiteCredentialsView.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="SwitchUserHelper.cs" />
+    <Compile Include="SwitchUser.aspx.cs">
+      <DependentUpon>SwitchUser.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SwitchUser.aspx.designer.cs">
+      <DependentUpon>SwitchUser.aspx</DependentUpon>
     </Compile>
   </ItemGroup>
   <ItemGroup>

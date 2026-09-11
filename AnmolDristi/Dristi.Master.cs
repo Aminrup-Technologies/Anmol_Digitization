@@ -19,6 +19,8 @@ namespace AnmolDristi
                 }
                 else
                 {
+                    // --- Switch User: show menu link + impersonation banner ---
+                    SetupSwitchUserBannerAndMenu();
                     Label lbl1 = (Label)Page.Master.FindControl("lbl_loginusername2");
                     lbl1.Text = Session["USERNAME"].ToString();
 
@@ -49,12 +51,57 @@ namespace AnmolDristi
 
         protected void btn_Logout_Click(object sender, EventArgs e)
         {
-            //dbcl.WriteToFile("User :" + lbl_loginusername1.Text.ToString() + " Singout Successfully");
-            //Update loginstatus and Last Login Information i.e. date
-            //dbcl.UPDT_EmpMuster_LogoutInfo(Session["WORKMAN"].ToString(), Session["USERID"].ToString());
+            // --- If impersonating, return to original user first (preserve original session on logout) ---
+            if (SwitchUserHelper.IsCurrentlyImpersonating(Session))
+            {
+                SwitchUserHelper.ReturnToOriginalSession(Session);
+            }
 
             Session.Abandon();
             Response.Redirect("login.aspx");
+        }
+
+        /// <summary>
+        /// Controls the impersonation banner and the Switch User sidebar link.
+        /// </summary>
+        private void SetupSwitchUserBannerAndMenu()
+        {
+            try
+            {
+                // --- Impersonation Banner ---
+                if (SwitchUserHelper.IsCurrentlyImpersonating(Session))
+                {
+                    pnlSuBanner.Visible = true;
+                    string currentName = Session["USERNAME"]?.ToString() ?? "Unknown";
+                    string currentCode = Session["WORKMAN"]?.ToString() ?? "Unknown";
+                    string originalName = Session["Original_USERNAME"]?.ToString() ?? "Unknown";
+                    string originalCode = Session["Original_WORKMAN"]?.ToString() ?? "Unknown";
+                    lblSuBannerCurrent.Text = currentName + " (" + currentCode + ")";
+                    lblSuBannerOriginal.Text = originalName + " (" + originalCode + ")";
+                }
+                else
+                {
+                    pnlSuBanner.Visible = false;
+                }
+
+                // --- Switch User sidebar link ---
+                // Only show to authorized users when feature is enabled
+                if (SwitchUserHelper.IsFeatureEnabled())
+                {
+                    string workman = Session["WORKMAN"]?.ToString();
+                    SwitchUserLink.Visible = !string.IsNullOrEmpty(workman) && SwitchUserHelper.IsEmployeeAuthorized(workman);
+                }
+                else
+                {
+                    SwitchUserLink.Visible = false;
+                }
+            }
+            catch
+            {
+                // Fail-closed: hide everything on error
+                try { pnlSuBanner.Visible = false; } catch { }
+                try { SwitchUserLink.Visible = false; } catch { }
+            }
         }
     }
 }
