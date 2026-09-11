@@ -4,12 +4,20 @@ using System.Web.UI;
 
 namespace AnmolDristi
 {
-    public partial class SwitchUser : System.Web.UI.Page
+    public partial class SwitchUser : BasePage
     {
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
             {
+                // Gate: feature must be enabled
+                if (!SwitchUserHelper.IsFeatureEnabled())
+                {
+                    Response.Redirect("~/home.aspx", false);
+                    Context.ApplicationInstance.CompleteRequest();
+                    return;
+                }
+
                 // Gate: user must be logged in
                 if (Session["WORKMAN"] == null)
                 {

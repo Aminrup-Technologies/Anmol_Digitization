@@ -304,11 +304,11 @@ namespace AnmolDristi
                 }
 
                 // --- Switch User sidebar link ---
-                // Only show to authorized users
-                string workman = Session["WORKMAN"]?.ToString();
-                if (!string.IsNullOrEmpty(workman) && SwitchUserHelper.IsEmployeeAuthorized(workman))
+                // Only show to authorized users when feature is enabled
+                if (SwitchUserHelper.IsFeatureEnabled())
                 {
-                    SwitchUserLink.Visible = true;
+                    string workman = Session["WORKMAN"]?.ToString();
+                    SwitchUserLink.Visible = !string.IsNullOrEmpty(workman) && SwitchUserHelper.IsEmployeeAuthorized(workman);
                 }
                 else
                 {

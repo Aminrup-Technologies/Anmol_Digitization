@@ -29,6 +29,7 @@ namespace AnmolDristi
         private const string ImpersonationMarkerKey = "IsImpersonating";
         private const string OriginalPrefix = "Original_";
         private const string AppSettingsKey = "SwitchUserAuthorizedUsers";
+        private const string EnabledKey = "SwitchUserEnabled";
         private const string LogSubDir = "SwitchUser";
 
         /// <summary>
@@ -62,6 +63,16 @@ namespace AnmolDristi
         };
 
         #region Authorization Checks
+
+        /// <summary>
+        /// Returns true if the Switch User feature is enabled via AppSettings.
+        /// Fail-closed: returns false if the key is missing or not "true".
+        /// </summary>
+        public static bool IsFeatureEnabled()
+        {
+            string val = ConfigurationManager.AppSettings[EnabledKey];
+            return string.Equals(val, "true", StringComparison.OrdinalIgnoreCase);
+        }
 
         /// <summary>
         /// Returns true if the employee code is in the Web.config allowlist.
@@ -412,6 +423,13 @@ namespace AnmolDristi
             out string errorMessage)
         {
             errorMessage = null;
+
+            // 0. Feature toggle check
+            if (!IsFeatureEnabled())
+            {
+                errorMessage = "Switch User feature is currently disabled.";
+                return false;
+            }
 
             // 1. Validate caller is logged in
             if (session["WORKMAN"] == null)
