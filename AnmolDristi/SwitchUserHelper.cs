@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.IO;
 using System.Web;
+using System.Web.SessionState;
 
 namespace AnmolDristi
 {
@@ -118,7 +119,7 @@ namespace AnmolDristi
         /// <summary>
         /// Returns true if the current session is in impersonation mode (WebForms variant).
         /// </summary>
-        public static bool IsCurrentlyImpersonating(System.Web.HttpSessionState session)
+        public static bool IsCurrentlyImpersonating(HttpSessionState session)
         {
             try
             {
@@ -247,7 +248,7 @@ namespace AnmolDristi
         /// Captures all authentication session values into Original_* keys.
         /// Must be called BEFORE overwriting any session values.
         /// </summary>
-        public static void CaptureOriginalSession(System.Web.HttpSessionState session)
+        public static void CaptureOriginalSession(HttpSessionState session)
         {
             if (session == null) return;
 
@@ -283,7 +284,7 @@ namespace AnmolDristi
         /// Overwrites the session with the target employee's identity.
         /// The session should be indistinguishable from a normal login.
         /// </summary>
-        public static void HydrateTargetSession(System.Web.HttpSessionState session, DataRow targetRow)
+        public static void HydrateTargetSession(HttpSessionState session, DataRow targetRow)
         {
             if (session == null || targetRow == null) return;
 
@@ -365,7 +366,7 @@ namespace AnmolDristi
         /// Restores the original session from Original_* keys and removes impersonation state.
         /// Returns true on success, false if no original session was captured.
         /// </summary>
-        public static bool ReturnToOriginalSession(System.Web.HttpSessionState session)
+        public static bool ReturnToOriginalSession(HttpSessionState session)
         {
             if (session == null) return false;
 
@@ -418,7 +419,7 @@ namespace AnmolDristi
         /// Returns true on success, false with errorMessage on failure.
         /// </summary>
         public static bool PerformSwitch(
-            System.Web.HttpSessionState session,
+            HttpSessionState session,
             string targetEmployeeCode,
             out string errorMessage)
         {
@@ -495,7 +496,7 @@ namespace AnmolDristi
         /// Returns to the original user. Logs audit trail.
         /// Returns true on success.
         /// </summary>
-        public static bool PerformReturn(System.Web.HttpSessionState session, out string errorMessage)
+        public static bool PerformReturn(HttpSessionState session, out string errorMessage)
         {
             errorMessage = null;
 
@@ -533,7 +534,7 @@ namespace AnmolDristi
             string originalEmployeeCode,
             string targetEmployeeCode,
             string action,
-            System.Web.HttpSessionState session,
+            HttpSessionState session,
             string targetName = null)
         {
             try
