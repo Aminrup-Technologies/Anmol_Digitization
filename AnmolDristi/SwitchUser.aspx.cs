@@ -146,13 +146,16 @@ namespace AnmolDristi
 
                 if (success)
                 {
-                    // Show success message and update banner
+                    // Rebuild PH_UserPermSet for the target, then re-apply master sidebar
+                    // on this postback (Master Page_Load already ran before PerformSwitch).
+                    RefreshUserPermissions();
+                    Dristi master = Master as Dristi;
+                    if (master != null)
+                        master.RefreshChromeAfterIdentityChange();
+
                     string targetName = Session["USERNAME"]?.ToString() ?? targetCode;
                     ShowMessage("Successfully switched to " + System.Net.WebUtility.HtmlEncode(targetName) + " (" + System.Net.WebUtility.HtmlEncode(targetCode) + "). You are now operating as this user.", "success");
                     RefreshImpersonationBanner();
-
-                    // Refresh the search results so the user can see they can still search
-                    // (Do NOT redirect — let the admin stay on the Switch User page)
                 }
                 else
                 {
