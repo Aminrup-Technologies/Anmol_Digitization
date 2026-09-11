@@ -610,6 +610,10 @@
                                             </ul>
                                         </li>
 
+                                        <li id="SwitchUserLink" runat="server" visible="false">
+                                            <a href="<%= ResolveUrl("~/SwitchUser.aspx") %>" title="Switch User"><i class="fa fa-user-secret"></i>Switch User</a>
+                                        </li>
+
                                     </ul>
                                 </div>
                             </div>
@@ -654,6 +658,18 @@
                         </div>
                     </div>
                 </div>
+                <%-- Switch User Impersonation Banner (visible only while impersonating) --%>
+                <asp:Panel ID="pnlSuBanner" runat="server" Visible="false" CssClass="su-impersonation-banner" style="background:linear-gradient(135deg,#e67e22,#d35400);color:#fff;padding:10px 20px;border-radius:4px;margin-bottom:15px;font-weight:600;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <i class="fa fa-user-secret" style="font-size:18px;"></i>
+                        <span>
+                            <strong>Impersonating:</strong> <asp:Label ID="lblSuBannerCurrent" runat="server" Text=""></asp:Label>
+                            &nbsp;|&nbsp;
+                            <span style="font-weight:400;font-size:13px;opacity:0.9;"><strong>Original User:</strong> <asp:Label ID="lblSuBannerOriginal" runat="server" Text=""></asp:Label></span>
+                        </span>
+                    </div>
+                    <a href="<%= ResolveUrl("~/SwitchUser.aspx?action=return") %>" class="btn btn-sm" style="background:#fff;color:#d35400;border:none;padding:5px 14px;border-radius:3px;font-weight:600;text-decoration:none;">Return to My Account</a>
+                </asp:Panel>
                 <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
             </div>
             <br />
