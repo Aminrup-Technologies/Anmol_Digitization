@@ -1,3 +1,10 @@
+/* ============================================================================
+   NAME:        allow_returned_km_update
+   WHEN:        2026-09-14
+   WHY:         Line-item Return leaves ClaimStatus=Submitted while DetailStatus=Returned, blocking KM save
+   WHAT:        usp_UpdateActivityKM status gate allows Draft, Returned claim, or latest Returned detail
+   ============================================================================ */
+
 /*
     Object:      [dbo].[usp_UpdateActivityKM]
     Type:        STORED PROCEDURE
@@ -41,9 +48,26 @@ BEGIN
 
         IF @ClaimStatus IS NULL SET @ClaimStatus = 'Draft';
 
-        IF @ClaimStatus <> 'Draft'
+        DECLARE @LatestDetailStatus NVARCHAR(50);
+        SELECT @LatestDetailStatus = d.DetailStatus
+        FROM dbo.SalesApprovalRequestDetail d
+        INNER JOIN (
+            SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+            FROM dbo.SalesApprovalRequestDetail
+            WHERE ActivityId = @ActivityId
+            GROUP BY ActivityId
+        ) latest
+            ON latest.ActivityId = d.ActivityId
+           AND ISNULL(d.DetailVersion, 1) = latest.LatestVersion
+        WHERE d.ActivityId = @ActivityId;
+
+        IF @ClaimStatus IN ('Approved', 'Pending', 'Rejected')
+           OR (
+                @ClaimStatus NOT IN ('Draft', 'Returned')
+                AND ISNULL(@LatestDetailStatus, '') <> 'Returned'
+              )
         BEGIN
-            THROW 50002, 'Cannot modify KM unless ClaimStatus = Draft.', 1;
+            THROW 50002, 'Cannot modify KM unless ClaimStatus is Draft or the activity is Returned.', 1;
         END
 
 		IF @RouteWaypointsJSON IS NOT NULL

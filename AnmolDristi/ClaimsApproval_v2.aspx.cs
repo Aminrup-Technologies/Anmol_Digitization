@@ -742,8 +742,7 @@ namespace AnmolDristi
                     cmd.ExecuteNonQuery();
                 }
 
-                BindRequestsGrid();
-                ScriptManager.RegisterStartupScript(this, GetType(), "closeModal", "$('#detailsModal').modal('hide');", true);
+                CloseDetailsAfterSuccessfulForward();
             }
             catch (Exception ex)
             {
@@ -926,18 +925,10 @@ namespace AnmolDristi
                 }
                 else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
                 {
-                    e.Row.CssClass += " table-warning";
-                    var lblReturnedBadge = e.Row.FindControl("lblReturnedBadge") as Label;
-                    var lblReturnedReason = e.Row.FindControl("lblReturnedReason") as Label;
-                    if (lblReturnedBadge != null) lblReturnedBadge.Visible = true;
                     string remarks = drv.Row.Table.Columns.Contains("DetailRemarks") && drv["DetailRemarks"] != DBNull.Value
                         ? drv["DetailRemarks"].ToString().Trim()
                         : string.Empty;
-                    if (lblReturnedReason != null && !string.IsNullOrWhiteSpace(remarks))
-                    {
-                        lblReturnedReason.Visible = true;
-                        lblReturnedReason.Text = "Reason: " + HttpUtility.HtmlEncode(remarks);
-                    }
+                    ApplyReturnedDayRowState(e.Row, remarks);
                 }
                 else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentLevel)
                 {
@@ -983,6 +974,44 @@ namespace AnmolDristi
             {
                 FillFooterTotals(e.Row);
             }
+        }
+
+        private static void ApplyReturnedDayRowState(GridViewRow row, string remarks)
+        {
+            if (row == null) return;
+
+            if (row.CssClass == null || row.CssClass.IndexOf("table-warning", StringComparison.OrdinalIgnoreCase) < 0)
+                row.CssClass = ((row.CssClass ?? "") + " table-warning").Trim();
+
+            var lblReturnedBadge = row.FindControl("lblReturnedBadge") as Label;
+            if (lblReturnedBadge != null) lblReturnedBadge.Visible = true;
+
+            var lblReturnedReason = row.FindControl("lblReturnedReason") as Label;
+            if (lblReturnedReason != null && !string.IsNullOrWhiteSpace(remarks))
+            {
+                lblReturnedReason.Visible = true;
+                lblReturnedReason.Text = "Reason: " + HttpUtility.HtmlEncode(remarks);
+            }
+
+            var btnApprove = row.FindControl("btnApproveRow") as Button;
+            if (btnApprove != null)
+            {
+                btnApprove.Enabled = false;
+                btnApprove.ToolTip = "Returned days cannot be approved until the employee resubmits.";
+                btnApprove.CssClass = "btn btn-sm btn-outline-secondary";
+            }
+
+            var btnReturn = row.FindControl("btnReturnRow") as Button;
+            if (btnReturn != null)
+            {
+                btnReturn.Enabled = false;
+                btnReturn.Text = "Already Returned";
+                btnReturn.ToolTip = "Already returned to employee.";
+            }
+
+            var lnkReview = row.FindControl("lnkReview") as LinkButton;
+            if (lnkReview != null)
+                lnkReview.Attributes["data-status"] = ClaimStatuses.Returned;
         }
 
         private void ApplyGatekeeperLogic(Button btnApprove, Button btnReturn, Button btnRejectDay, TextBox txtRemark, LinkButton lnkReview, bool hasPendingReceipts, bool isAuditor)
@@ -1239,6 +1268,18 @@ namespace AnmolDristi
             skipReason = null;
             int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
 
+            if (action == DayDetailAction.Return && ctx != null && ClaimStatuses.Equals(ctx.DetailStatus, ClaimStatuses.Returned))
+            {
+                skipReason = "Selected activities are already returned.";
+                return false;
+            }
+
+            if (action == DayDetailAction.Approve && ctx != null && ClaimStatuses.Equals(ctx.DetailStatus, ClaimStatuses.Returned))
+            {
+                skipReason = "Returned days must be resubmitted before approval.";
+                return false;
+            }
+
             if (!IsDetailActionableAtCurrentLevel(ctx, currentLevel))
             {
                 skipReason = "Already processed";
@@ -1300,6 +1341,7 @@ namespace AnmolDristi
             return new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
             {
                 ["Already processed"] = 0,
+                ["Selected activities are already returned."] = 0,
                 ["Pending manual expenses"] = 0,
                 ["Returned expenses"] = 0,
                 ["Mixed expense states"] = 0,
@@ -1405,7 +1447,25 @@ namespace AnmolDristi
 
                 try
                 {
+                    if (action == DayDetailAction.Approve && ShouldConfirmForwardToNextApprover(reqId, detailId))
+                    {
+                        hfPendingBulkApprove.Value = "0";
+                        hfPendingApproveDetailId.Value = detailId.ToString();
+                        hfPendingApproveRemark.Value = remark ?? "";
+                        ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "showForwardNext",
+                            "showForwardNextApproverModal();", true);
+                        upDetails.Update();
+                        return;
+                    }
+
                     ProcessDayDetailAction(detailId, reqId, action, remark);
+                    if (action == DayDetailAction.Return)
+                    {
+                        ApplyReturnedDayRowState(row, remark);
+                        ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "pnotifyReturned",
+                            "showReturnedSuccessNotify();applyReturnedDayRow(" + detailId + ");", true);
+                    }
+
                     ExecuteRecalculationSQL(reqId);
                     BindDetailsGrid(reqId);
                     upDetails.Update();
@@ -1576,6 +1636,11 @@ namespace AnmolDristi
 
         private void ProcessBulkAction(DayDetailAction action)
         {
+            ProcessBulkAction(action, false);
+        }
+
+        private void ProcessBulkAction(DayDetailAction action, bool forwardConfirmed)
+        {
             try
             {
                 if (string.IsNullOrEmpty(hfActionRequestId.Value)) return;
@@ -1655,8 +1720,31 @@ namespace AnmolDristi
                     rowsToProcess.Add(selectedRow);
                 }
 
+                int alreadyReturnedCount;
+                skipReasons.TryGetValue("Selected activities are already returned.", out alreadyReturnedCount);
+                if (action == DayDetailAction.Return && rowsToProcess.Count == 0 && selectedRows.Count > 0 && alreadyReturnedCount == selectedRows.Count)
+                {
+                    lblModalMessage.Text = "Selected activities are already returned.";
+                    lblModalMessage.CssClass = "text-warning font-weight-bold";
+                    BindDetailsGrid(reqId);
+                    upDetails.Update();
+                    return;
+                }
+
                 if (rowsToProcess.Count > 0)
                 {
+                    if (action == DayDetailAction.Approve && !forwardConfirmed
+                        && ShouldConfirmForwardToNextApprover(reqId, rowsToProcess.Select(x => x.Item1).ToList()))
+                    {
+                        hfPendingBulkApprove.Value = "1";
+                        hfPendingApproveDetailId.Value = "";
+                        hfPendingApproveRemark.Value = "";
+                        ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "showForwardNext",
+                            "showForwardNextApproverModal();", true);
+                        upDetails.Update();
+                        return;
+                    }
+
                     using (var con = new SqlConnection(connString))
                     {
                         con.Open();
@@ -1682,9 +1770,22 @@ namespace AnmolDristi
 
                     ExecuteRecalculationSQL(reqId);
                     txtBulkRemarks.Text = "";
+
+                    if (action == DayDetailAction.Return)
+                    {
+                        string jsIds = string.Join(",", rowsToProcess.Select(x => x.Item1.ToString()).ToArray());
+                        ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "pnotifyReturnedBulk",
+                            "showReturnedSuccessNotify();[" + jsIds + "].forEach(function(id){ applyReturnedDayRow(id); });", true);
+                    }
                 }
 
                 int skippedCount = skipReasons.Values.Sum();
+                if (forwardConfirmed && processedCount > 0)
+                {
+                    CloseDetailsAfterSuccessfulForward();
+                    return;
+                }
+
                 if (processedCount == 0 && skippedCount == 0)
                 {
                     lblModalMessage.Text = "Please select at least one row to apply the bulk action.";
@@ -1815,6 +1916,24 @@ namespace AnmolDristi
             return (ctx.Session["WORKMAN"] ?? ctx.Session["workman"]) as string;
         }
 
+        private static string GetLatestDetailStatus(int detailId, int reqId)
+        {
+            using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (var cmd = new SqlCommand(
+                @"SELECT d.DetailStatus
+                  FROM dbo.SalesApprovalRequestDetail d
+                  WHERE d.ApprovalRequestId = @Id
+                    AND d.ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId)
+                    AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim(), con))
+            {
+                cmd.Parameters.AddWithValue("@Id", reqId);
+                cmd.Parameters.AddWithValue("@DetailId", detailId);
+                con.Open();
+                object val = cmd.ExecuteScalar();
+                return val == null || val == DBNull.Value ? string.Empty : val.ToString().Trim();
+            }
+        }
+
         private void ProcessDayDetailAction(int detailId, int reqId, DayDetailAction action, string remark, SqlConnection con = null, SqlTransaction tran = null)
         {
             string user = GetLoggedInEmployeeCode();
@@ -1823,6 +1942,20 @@ namespace AnmolDristi
 
             if (action == DayDetailAction.Return && IsCurrentUserAuditor())
                 throw new Exception("Auditors cannot return days. Managers return days for employee correction.");
+
+            if (action == DayDetailAction.Return)
+            {
+                string detailStatus = GetLatestDetailStatus(detailId, reqId);
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
+                    return;
+            }
+
+            if (action == DayDetailAction.Approve)
+            {
+                string detailStatus = GetLatestDetailStatus(detailId, reqId);
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
+                    throw new Exception("Returned days cannot be approved until the employee resubmits.");
+            }
 
             if (action == DayDetailAction.Reject && !IsCurrentUserAuditor())
                 throw new Exception("Only auditors can reject days.");
@@ -2195,36 +2328,122 @@ namespace AnmolDristi
             catch (Exception ex) { return new { success = false, message = ex.Message }; }
         }
 
-        private void SetFinalApproverFlag(int approvalRequestId)
+        private static bool TryGetApproverLevelBounds(int approvalRequestId, out int current, out int max)
         {
-            using (SqlConnection con = new SqlConnection(connString))
-            using (SqlCommand cmd =
-                new SqlCommand("dbo.usp_GetApprovalRequest", con))
+            current = 0;
+            max = 0;
+            string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            using (SqlConnection con = new SqlConnection(conn))
+            using (SqlCommand cmd = new SqlCommand("dbo.usp_GetApprovalRequest", con))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@ApprovalRequestId", approvalRequestId);
-
                 con.Open();
-
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {
-                    if (dr.Read())
-                    {
-                        int current =
-                            dr["CurrentApproverLevel"] == DBNull.Value
-                                ? 0
-                                : Convert.ToInt32(dr["CurrentApproverLevel"]);
-
-                        int max =
-                            dr["MaxApproverLevel"] == DBNull.Value
-                                ? 0
-                                : Convert.ToInt32(dr["MaxApproverLevel"]);
-
-                        hfIsFinalApprover.Value =
-                            (current == max) ? "1" : "0";
-                    }
+                    if (!dr.Read()) return false;
+                    current = dr["CurrentApproverLevel"] == DBNull.Value ? 0 : Convert.ToInt32(dr["CurrentApproverLevel"]);
+                    max = dr["MaxApproverLevel"] == DBNull.Value ? 0 : Convert.ToInt32(dr["MaxApproverLevel"]);
+                    return true;
                 }
             }
+        }
+
+        private static bool NextApproverExists(int approvalRequestId)
+        {
+            int current, max;
+            return TryGetApproverLevelBounds(approvalRequestId, out current, out max) && current < max;
+        }
+
+        private static int GetLatestUnresolvedDetailCount(int reqId)
+        {
+            string sql = @"
+                SELECT COUNT(1)
+                FROM dbo.SalesApprovalRequestDetail d
+                WHERE d.ApprovalRequestId = @Id
+                  AND ISNULL(d.DetailStatus, '" + ClaimStatuses.Pending + @"') NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"')
+                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim();
+
+            using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (var cmd = new SqlCommand(sql, con))
+            {
+                cmd.Parameters.AddWithValue("@Id", reqId);
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
+        private static bool ShouldConfirmForwardToNextApprover(int reqId, int detailId)
+        {
+            return ShouldConfirmForwardToNextApprover(reqId, new[] { detailId });
+        }
+
+        private static bool ShouldConfirmForwardToNextApprover(int reqId, IList<int> detailIds)
+        {
+            if (detailIds == null || detailIds.Count == 0 || !NextApproverExists(reqId))
+                return false;
+
+            int pendingBefore = GetLatestUnresolvedDetailCount(reqId);
+            int wouldResolve = 0;
+            foreach (int detailId in detailIds.Distinct())
+            {
+                string status = GetLatestDetailStatus(detailId, reqId);
+                if (!ClaimStatuses.Equals(status, ClaimStatuses.Approved) &&
+                    !ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
+                    wouldResolve++;
+            }
+            return wouldResolve > 0 && (pendingBefore - wouldResolve) == 0;
+        }
+
+        protected void btnConfirmForward_Click(object sender, EventArgs e)
+        {
+            if (hfPendingBulkApprove.Value == "1")
+            {
+                hfPendingBulkApprove.Value = "0";
+                hfPendingApproveDetailId.Value = "";
+                hfPendingApproveRemark.Value = "";
+                ProcessBulkAction(DayDetailAction.Approve, true);
+                return;
+            }
+
+            int detailId;
+            int reqId;
+            if (!int.TryParse(hfPendingApproveDetailId.Value, out detailId) ||
+                !int.TryParse(hfActionRequestId.Value, out reqId) ||
+                detailId <= 0 || reqId <= 0)
+                return;
+
+            string remark = hfPendingApproveRemark.Value ?? "";
+            hfPendingApproveDetailId.Value = "";
+            hfPendingApproveRemark.Value = "";
+
+            try
+            {
+                ProcessDayDetailAction(detailId, reqId, DayDetailAction.Approve, remark);
+                ExecuteRecalculationSQL(reqId);
+                CloseDetailsAfterSuccessfulForward();
+            }
+            catch (Exception ex)
+            {
+                lblModalMessage.Text = ex.Message;
+                lblModalMessage.CssClass = "text-danger font-weight-bold";
+                upDetails.Update();
+            }
+        }
+
+        private void CloseDetailsAfterSuccessfulForward()
+        {
+            BindRequestsGrid();
+            ScriptManager.RegisterStartupScript(this, GetType(), "closeModal",
+                "showForwardedSuccessNotify();closeDetailsAfterForward();", true);
+        }
+
+        private void SetFinalApproverFlag(int approvalRequestId)
+        {
+            int current, max;
+            if (!TryGetApproverLevelBounds(approvalRequestId, out current, out max))
+                return;
+            hfIsFinalApprover.Value = (current == max) ? "1" : "0";
         }
 
         private void SetFinalApproverFlag_OLD(int approvalRequestId)
@@ -2621,7 +2840,7 @@ namespace AnmolDristi
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static object ActionDayRowSilent(int detailId, int reqId, string action)
+        public static object ActionDayRowSilent(int detailId, int reqId, string action, bool forwardConfirmed)
         {
             try
             {
@@ -2641,8 +2860,25 @@ namespace AnmolDristi
                 if (isReturn && IsAuditorRole(approverRole))
                     return new { success = false, message = "Auditors cannot return days. Managers return days for employee correction." };
 
+                if (isReturn)
+                {
+                    string detailStatus = GetLatestDetailStatus(detailId, reqId);
+                    if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
+                        return new { success = false, message = "Already returned to employee." };
+                }
+
+                if (isApprove)
+                {
+                    string approveStatus = GetLatestDetailStatus(detailId, reqId);
+                    if (ClaimStatuses.Equals(approveStatus, ClaimStatuses.Returned))
+                        return new { success = false, message = "Returned days cannot be approved until the employee resubmits." };
+                }
+
                 if (isReject && !IsAuditorRole(approverRole))
                     return new { success = false, message = "Only auditors can reject days." };
+
+                if (isApprove && !forwardConfirmed && ShouldConfirmForwardToNextApprover(reqId, detailId))
+                    return new { success = false, needsForwardConfirm = true };
 
                 string remark = AppendUserToRemark(
                     isApprove
@@ -2672,7 +2908,9 @@ namespace AnmolDristi
                     }
                 }
 
-                return new { success = true };
+                return isReturn
+                    ? (object)new { success = true, detailId, detailStatus = ClaimStatuses.Returned }
+                    : new { success = true };
             }
             catch (Exception ex)
             {

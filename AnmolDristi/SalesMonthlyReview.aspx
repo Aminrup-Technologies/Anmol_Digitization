@@ -559,6 +559,27 @@
         .claims-badge-default { background:#e9ecef; color:#495057; border:1px solid #ced4da; }
         .claims-empty-state { text-align:center; padding:40px 20px; color:#6c757d; }
         .row-returned { border-left:3px solid #fd7e14; background-color:#fff8f0 !important; }
+        #pageLoader {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.88);
+            z-index: 20000;
+            text-align: center;
+            padding-top: 18vh;
+            pointer-events: all;
+            cursor: wait;
+        }
+        #pageLoader .page-loader-card {
+            display: inline-block;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 28px 36px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
     </style>
 </asp:Content>
 
@@ -1693,11 +1714,12 @@
             </div>
         </div>
 
-        <div id="pageLoader" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; text-align: center; padding-top: 20%;">
-            <i class="fa fa-spinner fa-spin fa-4x text-success"></i>
-            <br />
-            <br />
-            <span class="text-success h4 font-weight-bold">Processing, please wait...</span>
+        <div id="pageLoader" aria-live="polite" aria-busy="true">
+            <div class="page-loader-card">
+                <i class="fa fa-spinner fa-spin fa-3x text-success mb-3"></i>
+                <h4 id="pageLoaderTitle" class="text-success font-weight-bold mb-2">Processing, please wait...</h4>
+                <p id="pageLoaderSubtitle" class="text-muted mb-0">Please wait.</p>
+            </div>
         </div>
 
         <div class="modal fade" id="policyModal" tabindex="-1" role="dialog" aria-hidden="true">
@@ -1714,7 +1736,9 @@
                     <div class="modal-body bg-light px-4 pt-3 pb-2">
                         <div id="resolvedPolicyLoadError" class="alert alert-danger" style="display:none;"></div>
                         <div id="resolvedPolicyLoading" class="text-muted small mb-2" style="display:none;">
-                            <i class="fa fa-spinner fa-spin mr-1"></i>Loading resolved policy...
+                            <i class="fa fa-spinner fa-spin mr-1"></i>
+                            <strong>Loading policy...</strong>
+                            <span class="d-block">Please hold on.</span>
                         </div>
                         <div class="card border shadow-sm mb-3">
                             <div class="card-body py-3">
@@ -2286,7 +2310,6 @@
                 if (isNaN(dAmt) || dAmt <= 0) { showInlineError($resolve('TXT_DAAmount'), 'DA Amount required'); return false; }
                 if (!fP) { showInlineError($resolve('TXT_DAFromPlace'), 'Required'); return false; }
                 if (!tP) { showInlineError($resolve('TXT_DAToPlace'), 'Required'); return false; }
-                if (fP.toLowerCase() === tP.toLowerCase()) { showInlineError($resolve('TXT_DAToPlace'), 'Cannot be same as From Place'); return false; }
                 if (!tD || tD.length < 5) { showInlineError($resolve('TXT_TravelDescription'), 'Remarks (min 5 chars) required'); return false; }
             } else if (type === 'Hotel') {
                 var from = $resolve('TXT_HotelFromDate').val(), to = $resolve('TXT_HotelToDate').val(), bno = $resolve('TXT_HotelBillNo').val().trim(), hamt = parseNumber($resolve('TXT_HotelAmount').val()), pur = $resolve('TXT_HotelPurpose').val().trim();
@@ -2653,6 +2676,7 @@
 
         function openResolvedPolicyModal(forceRefresh) {
             var requestId = ++resolvedPolicyRequestId;
+            showPageLoader('Loading policy...', 'Please hold on.');
             setResolvedPolicyLoading(true);
             $('#resolvedPolicyLoadError').hide().text('');
             $('#policyModal').modal('show');
@@ -2674,6 +2698,7 @@
                 .always(function () {
                     if (!isResolvedPolicyRequestCurrent(requestId)) return;
                     setResolvedPolicyLoading(false);
+                    hidePageLoader();
                     currentResolvedPolicyRequest = null;
                 });
         }
@@ -2730,32 +2755,31 @@
 
         window.showSubmitModal = function () { $('#submitConfirmModal').modal({ backdrop: 'static', keyboard: false }); return false; };
         window.performSubmitFromModal = function () {
+            if (window.__so_submitInFlight) return;
+            window.__so_submitInFlight = true;
             $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"]').prop('disabled', true).css('opacity', '0.6');
             $('#submitConfirmModal').modal('hide');
-            if (window.ClaimsUx) {
-                ClaimsUx.clearDirty();
-                ClaimsUx.armProcessingForPostback('Submitting claim for approval...');
-                ClaimsUx.showProcessing('Submitting claim for approval...');
-            } else {
-                showPageLoader();
-            }
+            if (window.ClaimsUx) ClaimsUx.clearDirty();
+            showPageLoader('Submitting your claim...', 'Please wait while we send your claim for approval.');
             __doPostBack('<%= btn_submit.UniqueID %>', '');
         };
         window.enableButtonsAfterModalClose = function () {
+            if (window.__so_submitInFlight) return;
             $('#submitModalConfirm, #submitModalCancel, [id$="btn_submit"]').prop('disabled', false).css('opacity', '1');
-            if (window.ClaimsUx) ClaimsUx.hideProcessing();
             hidePageLoader();
         };
 
-        // Deprecated: handleSaveDraftClick — Save as Draft button removed (auto-save model).
-        // window.handleSaveDraftClick = function (btn) { btn.disabled = true; btn.value = "Saving..."; showPageLoader(); return true; };
-        window.showPageLoader = function () {
-            if (window.ClaimsUx) ClaimsUx.showProcessing('Processing, please wait...');
-            var e = document.getElementById("pageLoader"); if (e) e.style.display = "block";
+        window.showPageLoader = function (title, subtitle) {
+            var t = document.getElementById('pageLoaderTitle');
+            var s = document.getElementById('pageLoaderSubtitle');
+            if (t) t.textContent = title || 'Processing, please wait...';
+            if (s) s.textContent = subtitle || '';
+            var e = document.getElementById('pageLoader');
+            if (e) e.style.display = 'block';
         };
         window.hidePageLoader = function () {
-            if (window.ClaimsUx) ClaimsUx.hideProcessing();
-            var e = document.getElementById("pageLoader"); if (e) e.style.display = "none";
+            var e = document.getElementById('pageLoader');
+            if (e) e.style.display = 'none';
         };
 
         window.copyPolicyJson = function () {
@@ -2923,10 +2947,22 @@
         });
 
         function addWaypoint(lat, lon, name) {
-            var exists = window.waypoints.some(function (x) { return x.name === name; });
-            if (exists) {
-                alert('Location already added.');
-                return;
+            var wps = window.waypoints;
+            var n = wps.length;
+            if (n > 0) {
+                if (wps[n - 1].name === name) {
+                    alert('Location already added.');
+                    return;
+                }
+                var isRoundTripClose = (n >= 2 && wps[0].name === name);
+                var blocked = wps.some(function (x, i) {
+                    if (isRoundTripClose && i === 0) return false;
+                    return x.name === name;
+                });
+                if (blocked) {
+                    alert('Location already added.');
+                    return;
+                }
             }
 
             window.waypoints.push({ lat: parseFloat(lat), lon: parseFloat(lon), name: name });

@@ -86,6 +86,7 @@
                                     <asp:DropDownList ID="ddlSearchStatus" runat="server" CssClass="form-control form-control-sm">
                                         <asp:ListItem Text="-- All Statuses --" Value=""></asp:ListItem>
                                         <asp:ListItem Text="Pending" Value="Pending"></asp:ListItem>
+                                        <asp:ListItem Text="Returned" Value="Returned"></asp:ListItem>
                                         <asp:ListItem Text="Approved" Value="Approved"></asp:ListItem>
                                         <asp:ListItem Text="Rejected" Value="Rejected"></asp:ListItem>
                                         <asp:ListItem Text="ReadyForPayment" Value="ReadyForPayment"></asp:ListItem>
@@ -108,7 +109,7 @@
                                 <asp:Panel ID="pnlRequests" runat="server">
                                     <asp:GridView ID="gvRequests" runat="server" CssClass="table table-sm table-striped table-hover table-bordered gentilia-table"
                                         ShowHeaderWhenEmpty="true" AutoGenerateColumns="false" AllowPaging="true" PageSize="20"
-                                        OnRowCommand="gvRequests_RowCommand" OnRowDataBound="gvRequests_RowDataBound" DataKeyNames="ApprovalRequestId" GridLines="None">
+                                        OnRowCommand="gvRequests_RowCommand" OnRowDataBound="gvRequests_RowDataBound" OnPageIndexChanging="gvRequests_PageIndexChanging" DataKeyNames="ApprovalRequestId" GridLines="None">
                                         <HeaderStyle CssClass="gentilia-table-header" />
                                         <RowStyle CssClass="gentilia-row" />
                                         <AlternatingRowStyle CssClass="gentilia-row-alt" />
@@ -142,7 +143,11 @@
                                                 </ItemTemplate>
                                             </asp:TemplateField>
 
-                                            <asp:BoundField DataField="PendingWithRole" HeaderText="Pending With" />
+                                            <asp:TemplateField HeaderText="Pending With">
+                                                <ItemTemplate>
+                                                    <asp:Label ID="lblPendingWith" runat="server" Text='<%# Eval("PendingWithRole") %>'></asp:Label>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
 
                                             <asp:TemplateField HeaderText="Actions">
                                                 <ItemTemplate>

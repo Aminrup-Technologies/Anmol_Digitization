@@ -489,35 +489,8 @@ namespace AnmolDristi
             int actId;
             if (!int.TryParse(activityId, out actId) || actId <= 0) return;
 
-            string claimStatus = ClaimStatuses.Draft;
-            string detailStatus = ClaimStatuses.Draft;
-
-            using (SqlConnection conStat = new SqlConnection(connString))
-            {
-                conStat.Open();
-
-                using (SqlCommand cmdStat = new SqlCommand(
-                    "SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                {
-                    cmdStat.Parameters.AddWithValue("@ActId", actId);
-                    object statObj = cmdStat.ExecuteScalar();
-                    if (statObj != null && statObj != DBNull.Value)
-                        claimStatus = statObj.ToString().Trim();
-                }
-
-                using (SqlCommand cmdDetail = new SqlCommand(
-                    @"SELECT TOP 1 ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"')
-                      FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK)
-                      WHERE ActivityId = @ActId
-                      ORDER BY ApprovalRequestDetailId DESC", conStat))
-                {
-                    cmdDetail.Parameters.AddWithValue("@ActId", actId);
-                    object detailObj = cmdDetail.ExecuteScalar();
-                    if (detailObj != null && detailObj != DBNull.Value)
-                        detailStatus = detailObj.ToString().Trim();
-                }
-            }
-
+            string claimStatus = GetActivityClaimStatus(actId);
+            string detailStatus = GetActivityDetailStatus(actId);
             bool canEditExpense = ClaimEditabilityHelper.CanEditExpense(claimStatus, detailStatus);
 
             if (!canEditExpense)
@@ -1184,7 +1157,18 @@ namespace AnmolDristi
         {
             string detailStatus = ClaimStatuses.Draft;
             using (SqlConnection conStat = new SqlConnection(connString))
-            using (SqlCommand cmdStat = new SqlCommand(@"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC", conStat))
+            using (SqlCommand cmdStat = new SqlCommand(@"
+                SELECT ISNULL(d.DetailStatus, '" + ClaimStatuses.Draft + @"')
+                FROM dbo.SalesApprovalRequestDetail d WITH (NOLOCK)
+                INNER JOIN (
+                    SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                    FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK)
+                    WHERE ActivityId = @ActId
+                    GROUP BY ActivityId
+                ) latest
+                    ON latest.ActivityId = d.ActivityId
+                   AND ISNULL(d.DetailVersion, 1) = latest.LatestVersion
+                WHERE d.ActivityId = @ActId", conStat))
             {
                 cmdStat.Parameters.AddWithValue("@ActId", activityId);
                 conStat.Open();
@@ -1194,14 +1178,40 @@ namespace AnmolDristi
             return detailStatus;
         }
 
+        private bool CanPersistActivityKm(int activityId, out string currentStatus)
+        {
+            string claimStatus = GetActivityClaimStatus(activityId);
+            string detailStatus = GetActivityDetailStatus(activityId);
+
+            if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved)
+                || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending)
+                || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected))
+            {
+                currentStatus = claimStatus;
+                return false;
+            }
+
+            if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Draft)
+                || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Returned)
+                || ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
+            {
+                currentStatus = ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned)
+                    ? ClaimStatuses.Returned
+                    : claimStatus;
+                return true;
+            }
+
+            currentStatus = !string.IsNullOrWhiteSpace(detailStatus) ? detailStatus : claimStatus;
+            return false;
+        }
+
         private void HandleEditRowCommand(string commandArgument)
         {
             int activityId;
             if (!int.TryParse(commandArgument, out activityId)) return;
 
-            string currentStatus = GetActivityClaimStatus(activityId);
-
-            if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
+            string currentStatus;
+            if (!CanPersistActivityKm(activityId, out currentStatus))
             {
                 lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
                     ? "Cannot edit row. This day was rejected by the auditor."
@@ -1223,9 +1233,8 @@ namespace AnmolDristi
         {
             int activityId = Convert.ToInt32(e.CommandArgument);
 
-            string currentStatus = GetActivityClaimStatus(activityId);
-
-            if (!ClaimEditabilityHelper.CanEditActivity(currentStatus))
+            string currentStatus;
+            if (!CanPersistActivityKm(activityId, out currentStatus))
             {
                 lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
                     ? "Update blocked. This day was rejected by the auditor."
@@ -1305,31 +1314,14 @@ namespace AnmolDristi
             if (row != null) PopulateEditKmModalFromRow(row);
             else PopulateEditKmModalFromDb(activityId);
 
-            // ====================================================================
-            // SECURITY GATE: Prevent saving KMs if the month is already submitted
-            // ====================================================================
-            string currentStatus = ClaimStatuses.Draft;
-            string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString; // Adjust if your variable is different
-
-            using (SqlConnection conStat = new SqlConnection(connString))
-            {
-                using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                {
-                    cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                    conStat.Open();
-                    object statObj = cmdStat.ExecuteScalar();
-                    if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
-                }
-            }
-
-            if (!ClaimEditabilityHelper.CanEditActivityKm(currentStatus))
+            string currentStatus;
+            bool canPersistKm = CanPersistActivityKm(activityId, out currentStatus);
+            if (btnSaveKm != null) btnSaveKm.Enabled = canPersistKm;
+            if (!canPersistKm)
             {
                 string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
-                btnSaveKm.Enabled = false;
-                //return; // <--- Instantly blocks the save!
             }
-            // ====================================================================
 
             string hideOuter = "$('#expenseModal').modal('hide');";
             ScriptManager.RegisterStartupScript(this, this.GetType(), "hideExpenseBeforeOpenInner_" + activityId, hideOuter, true);
@@ -1920,32 +1912,13 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 ClearRouteMetadataFields();
             }
 
-            // ====================================================================
-            // SECURITY GATE: Prevent saving KMs if the month is already submitted
-            // ====================================================================
-            string currentStatus = ClaimStatuses.Draft;
-            string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString; // Adjust if your variable is different
-
-            using (SqlConnection conStat = new SqlConnection(connString))
-            {
-                string query1 = @"SELECT ISNULL(DetailStatus, '" + ClaimStatuses.Draft + @"') FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK) WHERE ActivityId = @ActId ORDER BY ApprovalRequestDetailId DESC";
-                //using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-                using (SqlCommand cmdStat = new SqlCommand(query1, conStat))
-                {
-                    cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                    conStat.Open();
-                    object statObj = cmdStat.ExecuteScalar();
-                    if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
-                }
-            }
-
-            if (!ClaimEditabilityHelper.CanEditActivityKm(currentStatus))
+            string currentStatus;
+            if (!CanPersistActivityKm(activityId, out currentStatus))
             {
                 string safeErr = "Cannot modify KMs. The claim for this month is currently " + currentStatus + ".";
                 ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrKM", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
-                return; // <--- Instantly blocks the save!
+                return;
             }
-            // ====================================================================
             string modifiedBy = GetCurrentUserLoginId();
 
             DataRow sessionRow = null;
@@ -2693,7 +2666,6 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 if (txtDaFromStr.Trim().Length > 200) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "From Place cannot exceed 100 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (string.IsNullOrWhiteSpace(txtDaToStr)) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Please enter To Place for DA."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (txtDaToStr.Trim().Length > 200) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "To Place cannot exceed 100 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
-                if (string.Equals(txtDaFromStr.Trim(), txtDaToStr.Trim(), StringComparison.OrdinalIgnoreCase)) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "From Place and To Place cannot be the same for DA."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (string.IsNullOrWhiteSpace(txtTravDescStr)) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Remarks are required for DA."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
                 if (txtTravDescStr.Trim().Length < 5) { if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Remarks must be at least 5 characters."; ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true); return; }
             }
@@ -4477,36 +4449,13 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 if (!requestId.HasValue)
                     return false;
 
-                // Whole-request reopen: submit all rows as a normal submission.
+                // Draft/Rejected = global reopen (ApprovalRequestId NULL) → NEW.
+                // Returned = line-item return; keep ApprovalRequestId and filter to latest Returned rows.
                 if (ClaimStatuses.Equals(requestStatus, ClaimStatuses.Draft) ||
-                    ClaimStatuses.Equals(requestStatus, ClaimStatuses.Rejected) ||
-                    ClaimStatuses.Equals(requestStatus, ClaimStatuses.Returned))
+                    ClaimStatuses.Equals(requestStatus, ClaimStatuses.Rejected))
                     return false;
 
-                var returnedActivityIds = new HashSet<int>();
-                using (SqlCommand cmd = new SqlCommand(
-                    @"SELECT ActivityId
-                      FROM (
-                          SELECT ActivityId, DetailStatus,
-                                 ROW_NUMBER() OVER (
-                                     PARTITION BY ActivityId
-                                     ORDER BY ISNULL(DetailVersion, 1) DESC, ApprovalRequestDetailId DESC
-                                 ) AS rn
-                          FROM dbo.SalesApprovalRequestDetail
-                          WHERE ApprovalRequestId = @Id
-                      ) x
-                      WHERE rn = 1 AND DetailStatus = '" + ClaimStatuses.Returned + @"'", con))
-                {
-                    cmd.Parameters.AddWithValue("@Id", requestId.Value);
-                    using (SqlDataReader rdr = cmd.ExecuteReader())
-                    {
-                        while (rdr.Read())
-                        {
-                            if (rdr["ActivityId"] != DBNull.Value)
-                                returnedActivityIds.Add(Convert.ToInt32(rdr["ActivityId"]));
-                        }
-                    }
-                }
+                var returnedActivityIds = LoadLatestReturnedActivityIds(con, requestId.Value);
 
                 if (returnedActivityIds.Count == 0)
                 {
@@ -4551,6 +4500,32 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             }
         }
 
+        private static HashSet<int> LoadLatestReturnedActivityIds(SqlConnection con, int requestId)
+        {
+            var details = new DataTable();
+            using (SqlCommand cmd = new SqlCommand(
+                @"SELECT d.ApprovalRequestDetailId, d.ActivityId, d.DetailStatus, d.DetailVersion
+                  FROM dbo.SalesApprovalRequestDetail d
+                  WHERE d.ApprovalRequestId = @Id
+                    AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim(), con))
+            {
+                cmd.Parameters.AddWithValue("@Id", requestId);
+                using (var da = new SqlDataAdapter(cmd)) da.Fill(details);
+            }
+
+            details = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(details);
+
+            var returnedActivityIds = new HashSet<int>();
+            foreach (DataRow row in details.Rows)
+            {
+                if (row["ActivityId"] == DBNull.Value) continue;
+                string status = row["DetailStatus"] == DBNull.Value ? string.Empty : row["DetailStatus"].ToString();
+                if (ClaimStatuses.Equals(status, ClaimStatuses.Returned))
+                    returnedActivityIds.Add(Convert.ToInt32(row["ActivityId"]));
+            }
+            return returnedActivityIds;
+        }
+
         private static DataTable FilterActivityUpdatesToReturnedOnly(DataTable source, HashSet<int> returnedActivityIds)
         {
             if (source == null || returnedActivityIds == null || returnedActivityIds.Count == 0)
@@ -4567,11 +4542,85 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             return filtered;
         }
 
-        private int ExecuteSubmitForApproval(DataTable tvp, int year, int month, string remarks)
+#if DEBUG
+        private void LogSubmitTvpDiagnostics(DataTable tvp)
+        {
+            try
+            {
+                var activityIds = tvp.AsEnumerable()
+                    .Where(r => r["ActivityId"] != DBNull.Value)
+                    .Select(r => Convert.ToInt32(r["ActivityId"]))
+                    .ToList();
+
+                string mode = "NEW";
+                string requestIdText = "NULL";
+                var statusByActivity = new Dictionary<int, string>();
+
+                if (activityIds.Count > 0)
+                {
+                    string idList = string.Join(",", activityIds.Select(id => id.ToString()).ToArray());
+                    DataTable details = new DataTable();
+                    using (SqlConnection diagCon = new SqlConnection(connString))
+                    using (SqlCommand cmd = new SqlCommand(
+                        @"SELECT a.ActivityId, a.ApprovalRequestId,
+                                 d.ApprovalRequestDetailId, d.DetailStatus, d.DetailVersion
+                          FROM dbo.SalesDailyActivity a
+                          LEFT JOIN dbo.SalesApprovalRequestDetail d ON d.ActivityId = a.ActivityId
+                          WHERE a.ActivityId IN (" + idList + @")", diagCon))
+                    {
+                        diagCon.Open();
+                        using (var da = new SqlDataAdapter(cmd)) da.Fill(details);
+                    }
+
+                    int? requestId = details.AsEnumerable()
+                        .Where(r => r["ApprovalRequestId"] != DBNull.Value)
+                        .Select(r => (int?)Convert.ToInt32(r["ApprovalRequestId"]))
+                        .FirstOrDefault();
+                    if (requestId.HasValue)
+                    {
+                        mode = "RESUBMIT";
+                        requestIdText = requestId.Value.ToString();
+                    }
+
+                    DataTable withDetailId = details.Clone();
+                    foreach (DataRow row in details.Rows)
+                    {
+                        if (row["ApprovalRequestDetailId"] == DBNull.Value) continue;
+                        withDetailId.ImportRow(row);
+                    }
+
+                    withDetailId = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(withDetailId);
+                    foreach (DataRow row in withDetailId.Rows)
+                    {
+                        int activityId = Convert.ToInt32(row["ActivityId"]);
+                        statusByActivity[activityId] = row["DetailStatus"] == DBNull.Value
+                            ? string.Empty
+                            : row["DetailStatus"].ToString();
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("SubmissionMode=" + mode);
+                System.Diagnostics.Debug.WriteLine("ApprovalRequestId=" + requestIdText);
+                System.Diagnostics.Debug.WriteLine("ActivityIds=" + string.Join(",", activityIds.Select(id => id.ToString()).ToArray()));
+                foreach (int activityId in activityIds)
+                {
+                    string detailStatus;
+                    statusByActivity.TryGetValue(activityId, out detailStatus);
+                    System.Diagnostics.Debug.WriteLine("DetailStatus=" + (detailStatus ?? string.Empty));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[SubmitTvp] diagnostic failed: " + ex.Message);
+            }
+        }
+#endif
+
+        private SubmitResult ExecuteSubmitForApproval(DataTable tvp, int year, int month, string remarks)
         {
             if (Session["RONE_CODE"] == null) throw new Exception("Approval hierarchy not loaded in session.");
 
-            int approvalRequestId = 0;
+            var result = new SubmitResult();
             using (SqlConnection con = new SqlConnection(connString))
             using (SqlCommand cmd = new SqlCommand("dbo.usp_SubmitSalesDailyActivities", con))
             {
@@ -4590,16 +4639,30 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 cmd.Parameters.AddWithValue("@L3Code", DBNull.Value);
                 cmd.Parameters.AddWithValue("@AuditorCode", Session["AUDITOR_CODE"] != null ? (object)Session["AUDITOR_CODE"].ToString() : DBNull.Value);
 
+#if DEBUG
+                LogSubmitTvpDiagnostics(tvp);
+#endif
                 con.Open();
                 using (var rdr = cmd.ExecuteReader())
                 {
                     if (rdr.Read())
                     {
-                        if (rdr.FieldCount >= 1 && !rdr.IsDBNull(0)) approvalRequestId = rdr.GetInt32(0);
+                        result.Success = rdr.FieldCount >= 1 && !rdr.IsDBNull(0) && Convert.ToInt32(rdr[0]) == 1;
+                        if (rdr.FieldCount >= 2 && !rdr.IsDBNull(1)) result.ApprovalRequestId = Convert.ToInt32(rdr[1]);
+                        if (rdr.FieldCount >= 3 && !rdr.IsDBNull(2)) result.SubmissionMode = rdr[2].ToString().Trim();
+                        if (rdr.FieldCount >= 4 && !rdr.IsDBNull(3)) result.Message = rdr[3].ToString().Trim();
                     }
                 }
             }
-            return approvalRequestId;
+            return result;
+        }
+
+        private sealed class SubmitResult
+        {
+            public bool Success { get; set; }
+            public int ApprovalRequestId { get; set; }
+            public string SubmissionMode { get; set; }
+            public string Message { get; set; }
         }
 
         // ============================================================================================
@@ -4785,24 +4848,52 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             return true;
         }
 
-        private void CompleteSubmitSuccess(int approvalRequestId, DataTable tvp)
+        private void CompleteSubmitSuccess(SubmitResult result, DataTable tvp, int year, int month)
         {
             Session.Remove(GetCurrentSessionKey());
-            BindGrid(true);
 
-            if (approvalRequestId > 0)
-            {
-                lbl_msg.Text = string.Format("Submitted {0} rows for approval. Request Id: {1}", tvp.Rows.Count, approvalRequestId);
-                lbl_msg.ForeColor = System.Drawing.Color.Green;
-                string scriptMsg = string.Format("showPNotify('Submitted','Submitted for approval successfully. Request ID: {0}','success');", approvalRequestId);
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmit", scriptMsg, true);
-            }
-            else
+            if (result == null || !result.Success || result.ApprovalRequestId <= 0)
             {
                 lbl_msg.Text = "Submitted for approval (no request id returned).";
                 lbl_msg.ForeColor = System.Drawing.Color.Green;
-                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmit2", "showPNotify('Submitted','Submitted for approval successfully.','success');", true);
+                ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmit2", "showPNotify('Submitted','Submitted for approval successfully.','success'); hidePageLoader();", true);
+                BindGrid(true);
+                return;
             }
+
+            string message = BuildSubmitSuccessMessage(result, tvp != null ? tvp.Rows.Count : 0);
+            lbl_msg.Text = message;
+            lbl_msg.ForeColor = System.Drawing.Color.Green;
+
+            string url = string.Format(
+                "MyClaimsView_v2.aspx?year={0}&month={1}&requestId={2}&open=view&mode={3}&count={4}&msg={5}",
+                year,
+                month,
+                result.ApprovalRequestId,
+                HttpUtility.UrlEncode(result.SubmissionMode ?? string.Empty),
+                tvp != null ? tvp.Rows.Count : 0,
+                HttpUtility.UrlEncode(message));
+            Response.Redirect(url, false);
+            Context.ApplicationInstance.CompleteRequest();
+        }
+
+        private static string BuildSubmitSuccessMessage(SubmitResult result, int activityCount)
+        {
+            if (result != null && !string.IsNullOrWhiteSpace(result.Message)
+                && !string.Equals(result.Message.Trim(), "Claim submitted successfully.", StringComparison.OrdinalIgnoreCase))
+                return result.Message.Trim();
+
+            string mode = result != null ? (result.SubmissionMode ?? string.Empty) : string.Empty;
+            int requestId = result != null ? result.ApprovalRequestId : 0;
+
+            if (string.Equals(mode, "RESUBMIT", StringComparison.OrdinalIgnoreCase))
+            {
+                if (activityCount == 1)
+                    return string.Format("1 returned activity has been resubmitted under Request #{0}.", requestId);
+                return string.Format("{0} returned activities have been resubmitted under Request #{1}.", activityCount, requestId);
+            }
+
+            return string.Format("Monthly claim submitted successfully. Request #{0} has been created and sent for approval.", requestId);
         }
 
         private void HandleSubmitSqlException(SqlException sqx)
@@ -4810,7 +4901,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             lbl_msg.Text = "SQL Error while submitting: " + sqx.Message;
             lbl_msg.ForeColor = System.Drawing.Color.Red;
             string safeErr = sqx.Message.Replace("'", "\\'");
-            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitSqlErr", "showPNotify('SQL Error','" + safeErr + "','error');", true);
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitSqlErr", "hidePageLoader(); showPNotify('SQL Error','" + safeErr + "','error');", true);
         }
 
         private void HandleSubmitException(Exception ex)
@@ -4818,7 +4909,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             lbl_msg.Text = "Error during submit: " + ex.Message;
             lbl_msg.ForeColor = System.Drawing.Color.Red;
             string safeErr = ex.Message.Replace("'", "\\'");
-            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitErr2", "showPNotify('Error','" + safeErr + "','error');", true);
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifySubmitErr2", "hidePageLoader(); showPNotify('Error','" + safeErr + "','error');", true);
         }
 
         protected void btn_submit_Click(object sender, EventArgs e)
@@ -4834,8 +4925,8 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 if (!TryCollectSubmitActivityData(out tvp)) return;
                 if (!TryResolveSubmitTvp(year, month, ref tvp)) return;
 
-                int approvalRequestId = ExecuteSubmitForApproval(tvp, year, month, "Submitted via UI");
-                CompleteSubmitSuccess(approvalRequestId, tvp);
+                SubmitResult result = ExecuteSubmitForApproval(tvp, year, month, "Submitted via UI");
+                CompleteSubmitSuccess(result, tvp, year, month);
             }
             catch (SqlException sqx)
             {

@@ -331,6 +331,8 @@
         .claims-badge-rejected { background: #f8d7da; color: #721c24; border: 1px solid #f1b0b7; }
         .claims-badge-default { background: #e9ecef; color: #495057; border: 1px solid #ced4da; }
 
+        #forwardNextApproverModal { z-index: 1080; }
+
         /* Sticky details modal action footer */
         #detailsModal .modal-content { display: flex; flex-direction: column; max-height: 92vh; }
         #detailsModal .modal-body { flex: 1 1 auto; overflow: hidden; }
@@ -557,6 +559,10 @@
                             <asp:HiddenField ID="hfCurrentUserLevel" runat="server" ClientIDMode="Static" />
                             <asp:HiddenField ID="hfIsFinalApprover" runat="server" />
                             <asp:HiddenField ID="hfIsAuditor" runat="server" ClientIDMode="Static" Value="0" />
+                            <asp:HiddenField ID="hfPendingApproveDetailId" runat="server" />
+                            <asp:HiddenField ID="hfPendingApproveRemark" runat="server" />
+                            <asp:HiddenField ID="hfPendingBulkApprove" runat="server" Value="0" />
+                            <asp:Button ID="btnConfirmForward" runat="server" CssClass="d-none" OnClick="btnConfirmForward_Click" UseSubmitBehavior="false" CausesValidation="false" />
                             <div class="modal-header bg-light">
                                 <h5 class="modal-title font-weight-bold">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
                                 <div class="ml-auto">
@@ -937,6 +943,25 @@
             </div>
         </div>
 
+        <div class="modal fade" id="forwardNextApproverModal" tabindex="-1" role="dialog" data-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-light">
+                        <h5 class="modal-title font-weight-bold">Forward to Next Approver?</h5>
+                        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">All pending activities have been approved.</p>
+                        <p class="mb-0">This request will now be forwarded to the next approval level.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-success" id="btnForwardNextApprover">Forward</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="deductionsModal" tabindex="-1" role="dialog" style="z-index: 1060;">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content border-danger">
@@ -1029,6 +1054,7 @@
             // CHECK LOCK STATE: Is this parent day already "✔ Done"?
             var $btnApproveRow = $row.find('input[id*="btnApproveRow"]');
             var isRowLocked = $btnApproveRow.length > 0 && $btnApproveRow.val().indexOf('Done') !== -1;
+            var isReturned = $row.find('.claims-badge-returned').length > 0;
 
             // Set UI Controls based on user level AND row lock state
             var activeLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(),10) || 0;
@@ -1047,6 +1073,10 @@
                 } else {
                     $('#btnUnifiedReturnDay').show();
                     $('#btnUnifiedRejectDay').hide();
+                }
+                if (isReturned) {
+                    $('#btnUnifiedReturnDay').prop('disabled', true).attr('title', 'Already returned to employee.');
+                    $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'Returned days cannot be approved until the employee resubmits.');
                 }
             } else {
                 $('#divKmControls').hide();
@@ -1071,7 +1101,8 @@
                 expensesJson,
                 isRowLocked,
                 canAction,
-                isAuditor
+                isAuditor,
+                isReturned
             );
 
             // Show Modal
@@ -1131,7 +1162,7 @@
         // =========================================================
         // 2. MODULAR RENDERING LOGIC (PHASE 6 & 7)
         // =========================================================
-        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isAuditor) {
+        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isAuditor, isReturned) {
             let html = '';
 
             // Render Top Summaries
@@ -1237,12 +1268,14 @@
                 // Footer action is always available.
                 // Server will process ONLY the remaining pending line items.
                 $('#btnUnifiedApproveDay')
-                    .prop('disabled', !canAction)
-                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+                    .prop('disabled', !canAction || isReturned)
+                    .attr('title', isReturned
+                        ? 'Returned days cannot be approved until the employee resubmits.'
+                        : (canAction ? '' : 'You are not authorized to perform this action.'));
 
                 $('#btnUnifiedReturnDay')
-                    .prop('disabled', !canAction)
-                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+                    .prop('disabled', !canAction || isReturned)
+                    .attr('title', isReturned ? 'Already returned to employee.' : (canAction ? '' : 'You are not authorized to perform this action.'));
 
                 $('#btnUnifiedRejectDay')
                     .prop('disabled', !canAction)
@@ -1254,7 +1287,13 @@
                 <i class="fa fa-folder-open fa-3x mb-3 d-block text-secondary opacity-50"></i>
                 <h6 class="mb-0">No additional line items (Hotel, Travel, Stationary) claimed for this day.</h6>
             </div>`;
-                $('#btnUnifiedApproveDay').prop('disabled', !canAction).attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+                $('#btnUnifiedApproveDay').prop('disabled', !canAction || isReturned)
+                    .attr('title', isReturned
+                        ? 'Returned days cannot be approved until the employee resubmits.'
+                        : (canAction ? '' : 'You are not authorized to perform this action.'));
+                $('#btnUnifiedReturnDay')
+                    .prop('disabled', !canAction || isReturned)
+                    .attr('title', isReturned ? 'Already returned to employee.' : (canAction ? '' : 'You are not authorized to perform this action.'));
             }
 
             // Inject into the DOM
@@ -1907,7 +1946,84 @@
             executeDayAction(action, detailId, reqId);
         }
 
-        function executeDayAction(action, detailId, reqId) {
+        var pendingAjaxForward = null;
+
+        function showPNotify(title, text, type) {
+            if (typeof PNotify === 'undefined') return;
+            new PNotify({
+                title: title,
+                text: text,
+                type: type || 'success',
+                styling: 'bootstrap3',
+                delay: 4000
+            });
+        }
+
+        function applyReturnedDayRow(detailId) {
+            var id = String(detailId);
+            var $row = $('#<%= gvDetails.ClientID %> tr').filter(function () {
+                var $hf = $(this).find('input[id*="hfApprovalRequestDetailId"]');
+                var $lnk = $(this).find('.btn-day-action');
+                return ($hf.length && String($hf.val()) === id)
+                    || ($lnk.length && String($lnk.data('detailid')) === id);
+            }).first();
+            if (!$row.length) return;
+
+            $row.addClass('table-warning');
+            var $badge = $row.find('[id*="lblReturnedBadge"]');
+            if ($badge.length) {
+                $badge.show();
+            } else {
+                $row.find('td:eq(1)').append('<span class="claims-badge claims-badge-returned d-block mt-1">Returned</span>');
+            }
+
+            var $approve = $row.find('input[id*="btnApproveRow"]');
+            $approve.prop('disabled', true)
+                .attr('title', 'Returned days cannot be approved until the employee resubmits.')
+                .removeClass('btn-success pulse-success text-white')
+                .addClass('btn-outline-secondary');
+
+            var $ret = $row.find('input[id*="btnReturnRow"]');
+            $ret.prop('disabled', true).val('Already Returned')
+                .attr('title', 'Already returned to employee.');
+
+            $row.find('.btn-day-action').attr('data-status', 'Returned').data('status', 'Returned');
+
+            $('#btnUnifiedApproveDay').prop('disabled', true)
+                .attr('title', 'Returned days cannot be approved until the employee resubmits.');
+            $('#btnUnifiedReturnDay').prop('disabled', true)
+                .attr('title', 'Already returned to employee.');
+        }
+
+        function showReturnedSuccessNotify() {
+            showPNotify(
+                'Returned Successfully',
+                'The selected day has been sent to the employee for necessary corrections and resubmission.',
+                'success'
+            );
+        }
+
+        function showForwardedSuccessNotify() {
+            showPNotify(
+                'Forwarded Successfully',
+                'The request has been forwarded to the next approver.',
+                'success'
+            );
+        }
+
+        function closeDetailsAfterForward() {
+            if (window.ClaimsUx) ClaimsUx.clearDirty();
+            pendingAjaxForward = null;
+            $('#forwardNextApproverModal').modal('hide');
+            $('#unifiedDayModal').modal('hide');
+            $('#detailsModal').modal('hide');
+        }
+
+        function showForwardNextApproverModal() {
+            $('#forwardNextApproverModal').appendTo('body').modal('show');
+        }
+
+        function executeDayAction(action, detailId, reqId, forwardConfirmed) {
             $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
                 .prop('disabled', true);
 
@@ -1935,7 +2051,9 @@
 
                     reqId: parseInt(reqId),
 
-                    action: action
+                    action: action,
+
+                    forwardConfirmed: !!forwardConfirmed
 
                 }),
 
@@ -1946,9 +2064,28 @@
                 success: function (r) {
                     if (window.ClaimsUx) ClaimsUx.hideProcessing();
 
+                    if (r.d && r.d.needsForwardConfirm) {
+                        pendingAjaxForward = { detailId: detailId, reqId: reqId };
+                        $('#unifiedDayModal').modal('hide');
+                        $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
+                            .prop('disabled', false);
+                        showForwardNextApproverModal();
+                        return;
+                    }
+
                     if (r.d && r.d.success) {
 
+                        if (action === 'RETURN') {
+                            showReturnedSuccessNotify();
+                            applyReturnedDayRow(r.d.detailId || detailId);
+                        }
+
                         $('#unifiedDayModal').modal('hide');
+
+                        if (forwardConfirmed) {
+                            showForwardedSuccessNotify();
+                            closeDetailsAfterForward();
+                        }
 
                         document.getElementById('btnRefreshCalculations').click();
 
@@ -1989,6 +2126,30 @@
             });
 
         }
+
+        $(document).on('click', '#btnForwardNextApprover', function () {
+            var pending = pendingAjaxForward;
+            pendingAjaxForward = null;
+            $('#forwardNextApproverModal').modal('hide');
+            if (pending) {
+                executeDayAction('APPROVE', pending.detailId, pending.reqId, true);
+                return;
+            }
+            var btn = document.getElementById('<%= btnConfirmForward.ClientID %>');
+            if (!btn) return;
+            if (window.ClaimsUx) {
+                ClaimsUx.armProcessingForPostback('Forwarding request...');
+                ClaimsUx.clearDirty();
+            }
+            $(btn).data('ux-locked', true);
+            setTimeout(function () { __doPostBack(btn.name, ''); }, 0);
+        });
+
+        $(document).on('hidden.bs.modal', '#forwardNextApproverModal', function () {
+            pendingAjaxForward = null;
+            if ($('#detailsModal').hasClass('show'))
+                $('body').addClass('modal-open');
+        });
 
         // =========================================================
         // 5. UI HELPERS & DASHBOARD ACTIONS

@@ -34,11 +34,71 @@ namespace AnmolDristi
                 if (Session["workman"] != null)
                 {
                     PopulateYearDropdown();
-                    SetDefaultClaimMonth();
+                    if (!TryApplyQueryStringContext())
+                        SetDefaultClaimMonth();
                     BindRequestsGrid();
+                    TryOpenSubmittedRequest();
                 }
             }
         }
+
+        private bool TryApplyQueryStringContext()
+        {
+            int year, month;
+            bool hasYear = int.TryParse(Request.QueryString["year"], out year) && year > 0;
+            bool hasMonth = int.TryParse(Request.QueryString["month"], out month) && month >= 1 && month <= 12;
+            if (!hasYear && !hasMonth)
+                return false;
+
+            if (hasYear)
+            {
+                if (ddlSearchYear.Items.FindByValue(year.ToString()) == null)
+                    ddlSearchYear.Items.Add(new ListItem(year.ToString(), year.ToString()));
+                ViewState["FilterYear"] = year;
+            }
+            else
+                ViewState["FilterYear"] = DateTime.Now.AddMonths(-1).Year;
+
+            if (hasMonth)
+                ViewState["FilterMonth"] = month;
+            else
+                ViewState["FilterMonth"] = DateTime.Now.AddMonths(-1).Month;
+
+            ddlSearchStatus.SelectedValue = "";
+            SyncUIWithViewState();
+            return true;
+        }
+
+        private void TryOpenSubmittedRequest()
+        {
+            if (!string.Equals(Request.QueryString["open"], "view", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            int reqId;
+            if (!int.TryParse(Request.QueryString["requestId"], out reqId) || reqId <= 0)
+                return;
+
+            ShowDetailsModal(reqId);
+
+            string message = Request.QueryString["msg"];
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                string mode = Request.QueryString["mode"];
+                int count;
+                int.TryParse(Request.QueryString["count"], out count);
+                if (string.Equals(mode, "RESUBMIT", StringComparison.OrdinalIgnoreCase))
+                    message = count == 1
+                        ? string.Format("1 returned activity has been resubmitted under Request #{0}.", reqId)
+                        : string.Format("{0} returned activities have been resubmitted under Request #{1}.", count, reqId);
+                else
+                    message = string.Format("Monthly claim submitted successfully. Request #{0} has been created and sent for approval.", reqId);
+            }
+
+            string safe = HttpUtility.JavaScriptStringEncode(message);
+            ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyInboundSubmit",
+                "if (typeof PNotify !== 'undefined') { new PNotify({ title: 'Submitted', text: '" + safe + "', type: 'success', delay: 4000, styling: 'bootstrap3' }); }", true);
+        }
+
         private void PopulateYearDropdown()
         {
             ddlSearchYear.Items.Clear();
@@ -81,7 +141,7 @@ namespace AnmolDristi
             ViewState["FilterYear"] = prevMonth.Year;
             ViewState["FilterMonth"] = prevMonth.Month;
             SyncUIWithViewState();
-            BindRequestsGrid();
+            BindRequestsGrid(true);
         }
 
         protected void btnNextMonth_Click(object sender, EventArgs e)
@@ -91,13 +151,13 @@ namespace AnmolDristi
             ViewState["FilterYear"] = nextMonth.Year;
             ViewState["FilterMonth"] = nextMonth.Month;
             SyncUIWithViewState();
-            BindRequestsGrid();
+            BindRequestsGrid(true);
         }
 
         protected void btnCurrentMonth_Click(object sender, EventArgs e)
         {
             SetDefaultClaimMonth();
-            BindRequestsGrid();
+            BindRequestsGrid(true);
         }
 
         protected void btnSearch_Click(object sender, EventArgs e)
@@ -109,17 +169,26 @@ namespace AnmolDristi
                 ViewState["FilterMonth"] = Convert.ToInt32(ddlSearchMonth.SelectedValue);
 
             lblCurrentHeader.Text = "Custom Search Results";
-            BindRequestsGrid();
+            BindRequestsGrid(true);
         }
 
         protected void btnReset_Click(object sender, EventArgs e)
         {
             SetDefaultClaimMonth();
+            BindRequestsGrid(true);
+        }
+
+        protected void gvRequests_PageIndexChanging(object sender, GridViewPageEventArgs e)
+        {
+            gvRequests.PageIndex = e.NewPageIndex;
             BindRequestsGrid();
         }
 
-        protected void BindRequestsGrid()
+        protected void BindRequestsGrid(bool resetPage = false)
         {
+            if (resetPage)
+                gvRequests.PageIndex = 0;
+
             string employeeCode = Session["workman"]?.ToString() ?? "Guest";
             DataTable dt = new DataTable();
 
@@ -151,6 +220,13 @@ namespace AnmolDristi
                     }
                 }
             }
+            if (gvRequests.PageSize > 0)
+            {
+                int pageCount = (int)Math.Ceiling(dt.Rows.Count / (double)gvRequests.PageSize);
+                if (gvRequests.PageIndex < 0 || (pageCount > 0 && gvRequests.PageIndex >= pageCount) || pageCount == 0)
+                    gvRequests.PageIndex = 0;
+            }
+
             gvRequests.DataSource = dt;
             gvRequests.DataBind();
         }
@@ -179,6 +255,15 @@ namespace AnmolDristi
                     string status = drv["RequestStatus"].ToString();
                     Label lblStatus = e.Row.FindControl("lblStatus") as Label;
 
+                    Label lblPendingWith = e.Row.FindControl("lblPendingWith") as Label;
+                    bool isReturned = ClaimStatuses.Equals(status, ClaimStatuses.Returned);
+
+                    if (isReturned && lblPendingWith != null)
+                    {
+                        lblPendingWith.Text = ClaimStatuses.Returned;
+                        lblPendingWith.CssClass = "badge badge-warning text-dark px-2 py-1";
+                    }
+
                     if (lblStatus != null)
                     {
                         if (ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
@@ -186,6 +271,10 @@ namespace AnmolDristi
                             lblStatus.CssClass = "badge badge-danger px-2 py-1";
                             e.Row.Style["background-color"] = "#fff5f5";
                             e.Row.CssClass += " text-muted";
+                        }
+                        else if (isReturned)
+                        {
+                            lblStatus.CssClass = "badge badge-warning text-dark px-2 py-1";
                         }
                         else if (ClaimStatuses.Equals(status, ClaimStatuses.Approved) ||
                                  ClaimStatuses.Equals(status, ClaimStatuses.Completed) ||
@@ -211,6 +300,7 @@ namespace AnmolDristi
         // ==========================================
         private void ExportClaimToExcel(int reqId)
         {
+            if (!UserOwnsRequest(reqId)) RejectUnauthorized();
             DataTable dtExport = new DataTable();
             using (var con = new SqlConnection(connString))
             {
@@ -225,52 +315,60 @@ namespace AnmolDristi
                 }
             }
 
-            if (dtExport.Rows.Count > 0)
+            if (dtExport.Rows.Count == 0)
             {
-                string empCode = dtExport.Rows[0]["Employee Code"].ToString();
-                string fileName = $"Claim_{reqId}_{empCode}.xlsx";
+                ScriptManager.RegisterStartupScript(this, GetType(), "exportEmpty",
+                    "if (typeof PNotify !== 'undefined') { new PNotify({ title: 'Export', text: 'No exportable data found for this claim.', type: 'info', styling: 'bootstrap3', delay: 4000 }); }"
+                    + " else if (window.jQuery) { window.jQuery('.x_content').first().prepend('<div class=\"alert alert-info\">No exportable data found for this claim.</div>'); }", true);
+                return;
+            }
 
-                DataRow totalRow = dtExport.NewRow();
-                totalRow["Claim No"] = DBNull.Value;
-                totalRow["Employee Code"] = DBNull.Value;
-                totalRow["Employee Name"] = DBNull.Value;
-                totalRow["Date"] = DBNull.Value;
-                totalRow["Day"] = "TOTAL:";
-                totalRow["From Place"] = DBNull.Value;
-                totalRow["To Place"] = DBNull.Value;
+            string empCode = dtExport.Rows[0]["Employee Code"].ToString();
+            string fileName = $"Claim_{reqId}_{empCode}.xlsx";
 
-                totalRow["KM Claimed"] = dtExport.Compute("SUM([KM Claimed])", string.Empty);
-                totalRow["TA Bill"] = dtExport.Compute("SUM([TA Bill])", string.Empty);
-                totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
-                totalRow["Hotel"] = dtExport.Compute("SUM([Hotel])", string.Empty);
-                totalRow["Travel / OPA"] = dtExport.Compute("SUM([Travel / OPA])", string.Empty);
-                totalRow["Total DA + Hotel + OPA"] = dtExport.Compute("SUM([Total DA + Hotel + OPA])", string.Empty);
-                totalRow["Final Approved Amount"] = dtExport.Compute("SUM([Final Approved Amount])", string.Empty);
+            DataRow totalRow = dtExport.NewRow();
+            totalRow["Claim No"] = DBNull.Value;
+            totalRow["Employee Code"] = DBNull.Value;
+            totalRow["Employee Name"] = DBNull.Value;
+            totalRow["Date"] = DBNull.Value;
+            totalRow["Day"] = "TOTAL:";
+            totalRow["From Place"] = DBNull.Value;
+            totalRow["To Place"] = DBNull.Value;
 
-                dtExport.Rows.Add(totalRow);
+            totalRow["KM Claimed"] = dtExport.Compute("SUM([KM Claimed])", string.Empty);
+            totalRow["TA Bill"] = dtExport.Compute("SUM([TA Bill])", string.Empty);
+            totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
+            totalRow["Hotel"] = dtExport.Compute("SUM([Hotel])", string.Empty);
+            totalRow["Travel / OPA"] = dtExport.Compute("SUM([Travel / OPA])", string.Empty);
+            totalRow["Stationary"] = dtExport.Compute("SUM([Stationary])", string.Empty);
+            totalRow["Total Expenses (DA+Hotel+Trv+Stat)"] = dtExport.Compute("SUM([Total Expenses (DA+Hotel+Trv+Stat)])", string.Empty);
+            totalRow["Final Approved Amount"] = dtExport.Compute("SUM([Final Approved Amount])", string.Empty);
 
-                using (XLWorkbook wb = new XLWorkbook())
+            dtExport.Rows.Add(totalRow);
+
+            using (XLWorkbook wb = new XLWorkbook())
+            {
+                var ws = wb.Worksheets.Add(dtExport, "My Claim");
+                var lastRow = ws.LastRowUsed();
+                lastRow.Style.Font.Bold = true;
+                lastRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+                ws.Columns().AdjustToContents();
+
+                if (Response.HeadersWritten)
                 {
-                    var ws = wb.Worksheets.Add(dtExport, "My Claim");
-                    var lastRow = ws.LastRowUsed();
-                    lastRow.Style.Font.Bold = true;
-                    lastRow.Style.Fill.BackgroundColor = XLColor.LightGray;
-                    ws.Columns().AdjustToContents();
-
-                    Response.Clear();
-                    Response.Buffer = true;
-                    Response.Charset = "";
-                    Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                    Response.AddHeader("content-disposition", "attachment;filename=" + fileName);
-
-                    using (MemoryStream memoryStream = new MemoryStream())
-                    {
-                        wb.SaveAs(memoryStream);
-                        memoryStream.WriteTo(Response.OutputStream);
-                        Response.Flush();
-                        Response.End();
-                    }
+                    throw new InvalidOperationException(
+                        "Excel export cannot start because HTTP headers have already been sent.");
                 }
+
+                Response.Clear();
+                Response.Buffer = true;
+                Response.Charset = "";
+                Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                Response.AddHeader("Content-Disposition", "attachment;filename=" + fileName);
+                wb.SaveAs(Response.OutputStream);
+                Response.Flush();
+                Response.SuppressContent = true;
+                HttpContext.Current.ApplicationInstance.CompleteRequest();
             }
         }
 
@@ -279,6 +377,7 @@ namespace AnmolDristi
         // ==========================================
         protected void ShowDetailsModal(int reqId)
         {
+            if (!UserOwnsRequest(reqId)) RejectUnauthorized();
             lblModalRequestId.Text = reqId.ToString();
             BindDetailsGrid(reqId);
             ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "openDetailsModal();", true);
@@ -680,6 +779,7 @@ namespace AnmolDristi
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static object GetDeductionBreakdown(int approvalRequestId)
         {
+            if (!UserOwnsRequest(approvalRequestId)) RejectUnauthorized();
             try
             {
                 string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -795,7 +895,7 @@ namespace AnmolDristi
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static object GetKMHistory(int activityId)
         {
-            // (Unchanged existing code for GetKMHistory)
+            if (!UserOwnsActivity(activityId)) RejectUnauthorized();
             try
             {
                 string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -894,6 +994,11 @@ namespace AnmolDristi
                 return;
             }
 
+            foreach (int reqId in selectedReqIds)
+            {
+                if (!UserOwnsRequest(reqId)) RejectUnauthorized();
+            }
+
             using (XLWorkbook wb = new XLWorkbook())
             {
                 using (var con = new SqlConnection(connString))
@@ -983,6 +1088,50 @@ namespace AnmolDristi
                     ScriptManager.RegisterStartupScript(this, GetType(), "alert", "alert('No exportable data found for the selected claims.');", true);
                 }
             }
+        }
+
+        private static string CurrentUserLoginId()
+        {
+            var s = HttpContext.Current != null ? HttpContext.Current.Session : null;
+            if (s == null) return null;
+            return (s["WORKMAN"] ?? s["workman"]) as string;
+        }
+
+        private static bool UserOwnsRequest(int approvalRequestId)
+        {
+            string user = CurrentUserLoginId();
+            if (string.IsNullOrWhiteSpace(user) || approvalRequestId <= 0) return false;
+            using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (var cmd = new SqlCommand("SELECT TOP 1 1 FROM dbo.SalesApprovalRequest WHERE ApprovalRequestId=@Id AND RequesterLoginId=@User", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", approvalRequestId);
+                cmd.Parameters.AddWithValue("@User", user);
+                con.Open();
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+        private static bool UserOwnsActivity(int activityId)
+        {
+            string user = CurrentUserLoginId();
+            if (string.IsNullOrWhiteSpace(user) || activityId <= 0) return false;
+            using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (var cmd = new SqlCommand(@"
+                SELECT TOP 1 1
+                FROM dbo.SalesApprovalRequestDetail d
+                INNER JOIN dbo.SalesApprovalRequest r ON r.ApprovalRequestId = d.ApprovalRequestId
+                WHERE d.ActivityId=@ActivityId AND r.RequesterLoginId=@User", con))
+            {
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                cmd.Parameters.AddWithValue("@User", user);
+                con.Open();
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+        private static void RejectUnauthorized()
+        {
+            throw new HttpException(403, "Unauthorized");
         }
     }
 }

@@ -191,6 +191,7 @@ namespace AnmolDristi
         // ==========================================
         private void ExportClaimToExcel(int reqId)
         {
+            if (!UserIsApproverOnRequest(reqId)) RejectUnauthorized();
             DataTable dtExport = new DataTable();
             using (var con = new SqlConnection(connString))
             {
@@ -262,6 +263,7 @@ namespace AnmolDristi
         // ==========================================
         protected void ShowDetailsModal(int reqId)
         {
+            if (!UserIsApproverOnRequest(reqId)) RejectUnauthorized();
             lblModalRequestId.Text = reqId.ToString();
             BindDetailsGrid(reqId);
             ScriptManager.RegisterStartupScript(this, GetType(), "openModal", "openDetailsModal();", true);
@@ -291,6 +293,8 @@ namespace AnmolDristi
                         da.Fill(dt);
                     }
                 }
+
+                dt = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(dt);
 
                 string sql = "SELECT (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName FROM SalesApprovalRequest r WHERE ApprovalRequestId = @Id";
                 using (var cmd = new SqlCommand(sql, con))
@@ -328,30 +332,50 @@ namespace AnmolDristi
                     ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
                     ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
                 FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"';
+                WHERE d.ApprovalRequestId = @Id
+                  AND ISNULL(d.DetailStatus, '') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
+                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
 
                 SELECT 
                     ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
                     ISNULL(SUM(DeductedKM), 0) AS DeductedKM
                 FROM (
-                    SELECT CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
-                           ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
+                    SELECT 
+                        CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount,
+                        ISNULL(d.Snapshot_TotalDistanceKM, 0) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    WHERE d.ApprovalRequestId = @Id AND d.DetailStatus = '" + ClaimStatuses.Rejected + @"'
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.DetailStatus IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
+
                     UNION ALL
-                    SELECT CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount, 0 AS DeductedKM
+
+                    SELECT 
+                        CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount,
+                        0 AS DeductedKM
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                    " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                     WHERE d.ApprovalRequestId = @Id AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' AND e.IsDeleted = 0 AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
+
                     UNION ALL
-                    SELECT CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount,
-                           (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
+
+                    SELECT 
+                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
+                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
+                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
+                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount,
+                        (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN (
                         SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
-                        FROM dbo.SalesDailyActivityKMHistory GROUP BY ActivityId
+                        FROM dbo.SalesDailyActivityKMHistory
+                        GROUP BY ActivityId
                     ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
+                    WHERE d.ApprovalRequestId = @Id 
+                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM 
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                 ) x;";
 
             using (var con = new SqlConnection(connString))
@@ -468,6 +492,7 @@ namespace AnmolDristi
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static object GetDeductionBreakdown(int approvalRequestId)
         {
+            if (!UserIsApproverOnRequest(approvalRequestId)) RejectUnauthorized();
             try
             {
                 string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -476,23 +501,26 @@ namespace AnmolDristi
                     SELECT 
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                         'Whole Day Rejected' AS DeductionType,
-                        ISNULL(d.DetailRemarks, 'Rejected by Auditor') AS Reason,
+                        ISNULL(d.DetailRemarks, 'Rejected by Approver') AS Reason,
                         CAST((ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId AND d.DetailStatus = '" + ClaimStatuses.Rejected + @"'
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.DetailStatus IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
 
                     UNION ALL
 
                     SELECT 
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                         'Rejected Receipt: ' + e.ExpenseType AS DeductionType,
-                        'Receipt marked as Rejected' AS Reason,
+                        ISNULL(e.Remarks, 'Receipt marked as Rejected') AS Reason,
                         CAST(e.Amount AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesDailyExpense e
                     INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
+                    " + SalesApprovalDetailVersionHelper.LatestDetailJoinForD + @"
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId 
+                    WHERE d.ApprovalRequestId = @Id 
                       AND e.ClaimStatus = '" + ClaimStatuses.Rejected + @"' 
                       AND e.IsDeleted = 0
                       AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
@@ -503,7 +531,10 @@ namespace AnmolDristi
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
                         'KM Reduced (' + CAST(fk.ClaimedKM AS varchar) + ' to ' + CAST(d.Snapshot_TotalDistanceKM AS varchar) + ')' AS DeductionType,
                         ISNULL((SELECT TOP 1 Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = a.ActivityId ORDER BY ModifiedDateTime DESC), 'KM corrected') AS Reason,
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 3.75, 2) AS DECIMAL(18,2)) AS DeductedAmount
+                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
+                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
+                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
+                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
                     INNER JOIN (
@@ -511,15 +542,16 @@ namespace AnmolDristi
                         FROM dbo.SalesDailyActivityKMHistory
                         GROUP BY ActivityId
                     ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @ReqId 
+                    WHERE d.ApprovalRequestId = @Id 
                       AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
-                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'        
+                      AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"        
                     ORDER BY ActivityDate ASC;";
 
                 using (var con = new SqlConnection(connString))
                 using (var cmd = new SqlCommand(sql, con))
                 {
-                    cmd.Parameters.AddWithValue("@ReqId", approvalRequestId);
+                    cmd.Parameters.AddWithValue("@Id", approvalRequestId);
                     con.Open();
                     using (var rdr = cmd.ExecuteReader())
                     {
@@ -547,6 +579,7 @@ namespace AnmolDristi
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static object GetKMHistory(int activityId)
         {
+            if (!UserIsApproverOnActivity(activityId)) RejectUnauthorized();
             try
             {
                 string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
@@ -776,6 +809,11 @@ namespace AnmolDristi
                 return;
             }
 
+            foreach (int reqId in itemsToExport.Keys)
+            {
+                if (!UserIsApproverOnRequest(reqId)) RejectUnauthorized();
+            }
+
             using (XLWorkbook wb = new XLWorkbook())
             {
                 using (var con = new SqlConnection(connString))
@@ -928,6 +966,50 @@ namespace AnmolDristi
                     }
                 }
             }
+        }
+
+        private static string CurrentUserLoginId()
+        {
+            var s = HttpContext.Current != null ? HttpContext.Current.Session : null;
+            if (s == null) return null;
+            return (s["WORKMAN"] ?? s["workman"]) as string;
+        }
+
+        private static bool UserIsApproverOnRequest(int approvalRequestId)
+        {
+            string user = CurrentUserLoginId();
+            if (string.IsNullOrWhiteSpace(user) || approvalRequestId <= 0) return false;
+            using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (var cmd = new SqlCommand("SELECT TOP 1 1 FROM dbo.SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", approvalRequestId);
+                cmd.Parameters.AddWithValue("@User", user);
+                con.Open();
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+        private static bool UserIsApproverOnActivity(int activityId)
+        {
+            string user = CurrentUserLoginId();
+            if (string.IsNullOrWhiteSpace(user) || activityId <= 0) return false;
+            using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            using (var cmd = new SqlCommand(@"
+                SELECT TOP 1 1
+                FROM dbo.SalesApprovalRequestDetail d
+                INNER JOIN dbo.SalesApprovalRequestApprover saa ON saa.ApprovalRequestId = d.ApprovalRequestId
+                WHERE d.ActivityId=@ActivityId AND saa.ApproverLoginId=@User", con))
+            {
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                cmd.Parameters.AddWithValue("@User", user);
+                con.Open();
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+        private static void RejectUnauthorized()
+        {
+            throw new HttpException(403, "Unauthorized");
         }
     }
 }

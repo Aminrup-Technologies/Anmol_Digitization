@@ -1,3 +1,10 @@
+/* ============================================================================
+   NAME:        expense_status_latest_detail
+   WHEN:        2026-09-15
+   WHY:        Receipt status updates targeted any snapshot for the activity
+   WHAT:        usp_UpdateSalesDailyExpenseStatus resolves latest DetailVersion then latest ApprovalRequestDetailId
+   ============================================================================ */
+
 /*
     Object:      [dbo].[usp_UpdateSalesDailyExpenseStatus]
     Type:        STORED PROCEDURE
@@ -36,14 +43,25 @@ BEGIN
         ModifiedOn = SYSUTCDATETIME()
     WHERE ExpenseId = @ExpenseId;
 
-    -- 3️⃣ IDENTIFY PARENT RECORDS
+    -- 3️⃣ IDENTIFY PARENT RECORDS (ActivityId → latest DetailVersion → latest ApprovalRequestDetailId)
     DECLARE @ActivityId INT, @ApprovalRequestDetailId INT, @ApprovalRequestId INT;
 
     SELECT @ActivityId = ActivityId FROM dbo.SalesDailyExpense WHERE ExpenseId = @ExpenseId;
 
-    SELECT @ApprovalRequestDetailId = ApprovalRequestDetailId, @ApprovalRequestId = ApprovalRequestId
-    FROM dbo.SalesApprovalRequestDetail
-    WHERE ActivityId = @ActivityId;
+    SELECT TOP (1)
+        @ApprovalRequestDetailId = d.ApprovalRequestDetailId,
+        @ApprovalRequestId = d.ApprovalRequestId
+    FROM dbo.SalesApprovalRequestDetail d
+    INNER JOIN (
+        SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+        FROM dbo.SalesApprovalRequestDetail
+        WHERE ActivityId = @ActivityId
+        GROUP BY ActivityId
+    ) lv
+        ON lv.ActivityId = d.ActivityId
+       AND ISNULL(d.DetailVersion, 1) = lv.LatestVersion
+    WHERE d.ActivityId = @ActivityId
+    ORDER BY d.ApprovalRequestDetailId DESC;
 
     -- 4️⃣ CHAIN REACTION: RECALCULATE AMOUNTS (FIXED: Respects CK_TA_Calculated constraint)
     IF @ApprovalRequestDetailId IS NOT NULL
@@ -63,16 +81,32 @@ BEGIN
         SET Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0)
         WHERE ApprovalRequestDetailId = @ApprovalRequestDetailId;
 
-        -- C. Recalculate the HEADER (Face Values)
-        -- Sum up the updated snapshots from all rows
+        -- C. Recalculate the HEADER from latest snapshots only (never superseded Returned rows)
         DECLARE @HeaderTotalClaim DECIMAL(18,2);
         DECLARE @HeaderTotalExpense DECIMAL(18,2);
 
-        SELECT 
-            @HeaderTotalClaim = SUM(ISNULL(Snapshot_CalculatedClaimAmount, 0)),
-            @HeaderTotalExpense = SUM(ISNULL(Snapshot_ExpenseTotal, 0))
-        FROM dbo.SalesApprovalRequestDetail
-        WHERE ApprovalRequestId = @ApprovalRequestId;
+        SELECT
+            @HeaderTotalClaim = SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0)),
+            @HeaderTotalExpense = SUM(ISNULL(d.Snapshot_ExpenseTotal, 0))
+        FROM dbo.SalesApprovalRequestDetail d
+        INNER JOIN (
+            SELECT
+                  d2.ActivityId
+                , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+            FROM dbo.SalesApprovalRequestDetail d2
+            INNER JOIN (
+                SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                FROM dbo.SalesApprovalRequestDetail
+                WHERE ApprovalRequestId = @ApprovalRequestId
+                GROUP BY ActivityId
+            ) lv
+                ON lv.ActivityId = d2.ActivityId
+               AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+            WHERE d2.ApprovalRequestId = @ApprovalRequestId
+            GROUP BY d2.ActivityId
+        ) latest
+            ON d.ApprovalRequestDetailId = latest.LatestDetailId
+        WHERE d.ApprovalRequestId = @ApprovalRequestId;
 
         UPDATE dbo.SalesApprovalRequest
         SET 

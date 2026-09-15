@@ -1,3 +1,10 @@
+/* ============================================================================
+   NAME:        forward_latest_version_count
+   WHEN:        2026-09-15
+   WHY:         Forward counted superseded Pending/Returned snapshots after RESUBMIT
+   WHAT:        usp_ForwardApprovalRequest day/expense completeness uses latest DetailVersion then latest ApprovalRequestDetailId
+   ============================================================================ */
+
 /*
     Object:      [dbo].[usp_ForwardApprovalRequest]
     Type:        STORED PROCEDURE
@@ -181,11 +188,22 @@ BEGIN
         INNER JOIN
         (
             SELECT
-                  ActivityId
-                , MAX(ApprovalRequestDetailId) AS LatestDetailId
-            FROM SalesApprovalRequestDetail
-            WHERE ApprovalRequestId = @ApprovalRequestId
-            GROUP BY ActivityId
+                  d2.ActivityId
+                , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+            FROM SalesApprovalRequestDetail d2
+            INNER JOIN
+            (
+                SELECT
+                      ActivityId
+                    , MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                FROM SalesApprovalRequestDetail
+                WHERE ApprovalRequestId = @ApprovalRequestId
+                GROUP BY ActivityId
+            ) lv
+                ON lv.ActivityId = d2.ActivityId
+               AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+            WHERE d2.ApprovalRequestId = @ApprovalRequestId
+            GROUP BY d2.ActivityId
         ) latest
             ON d.ApprovalRequestDetailId = latest.LatestDetailId
         WHERE d.ApprovalRequestId = @ApprovalRequestId
@@ -223,11 +241,22 @@ BEGIN
             INNER JOIN
             (
                 SELECT
-                      ActivityId
-                    , MAX(ApprovalRequestDetailId) AS LatestDetailId
-                FROM SalesApprovalRequestDetail
-                WHERE ApprovalRequestId = @ApprovalRequestId
-                GROUP BY ActivityId
+                      d2.ActivityId
+                    , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                FROM SalesApprovalRequestDetail d2
+                INNER JOIN
+                (
+                    SELECT
+                          ActivityId
+                        , MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                    FROM SalesApprovalRequestDetail
+                    WHERE ApprovalRequestId = @ApprovalRequestId
+                    GROUP BY ActivityId
+                ) lv
+                    ON lv.ActivityId = d2.ActivityId
+                   AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                GROUP BY d2.ActivityId
             ) latest
                 ON d.ApprovalRequestDetailId = latest.LatestDetailId
             WHERE d.ApprovalRequestId = @ApprovalRequestId
