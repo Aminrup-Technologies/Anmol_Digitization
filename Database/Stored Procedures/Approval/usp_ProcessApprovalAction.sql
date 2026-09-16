@@ -1,3 +1,17 @@
+/* ============================================================================
+   NAME:        auditor_unresolved_uses_approval_level
+   WHEN:        2026-09-15
+   WHY:         After L1 Forward, latest rows are Approved at level 1 so Pending/Submitted count was 0 and first Auditor approve wrote Completed
+   WHAT:        Unresolved latest rows include Approved with DetailApprovedLevel < current approver level (same as ClaimsApproval_v2 gatekeeper)
+   ============================================================================ */
+
+/* ============================================================================
+   NAME:        auditor_terminal_completed_status
+   WHEN:        2026-09-15
+   WHY:         Last Auditor approve left header Pending so ReadyForPayment was unreachable
+   WHAT:        usp_ProcessApprovalAction Auditor terminal branch writes Completed and one history row
+   ============================================================================ */
+
 /*
     Object:      [dbo].[usp_ProcessApprovalAction]
     Type:        STORED PROCEDURE
@@ -260,8 +274,13 @@ BEGIN
         SELECT
               @LatestDetailCount   = COUNT(1)
             , @PendingLatestCount  = SUM(CASE
+                                              -- Unresolved at the current approver level (matches ClaimsApproval_v2 gatekeeper).
                                               WHEN ISNULL(ld.DetailStatus, '') IN ('', 'Pending', 'Submitted')
-                                                  THEN 1 ELSE 0
+                                                  THEN 1
+                                              WHEN ISNULL(ld.DetailStatus, '') = 'Approved'
+                                               AND ISNULL(ld.DetailApprovedLevel, 0) < ISNULL(@CurrentApproverLevel, 0)
+                                                  THEN 1
+                                              ELSE 0
                                           END)
             , @ReturnedLatestCount = SUM(CASE
                                               WHEN ISNULL(ld.DetailStatus, '') = 'Returned' THEN 1 ELSE 0
@@ -321,8 +340,9 @@ BEGIN
         END
         ELSE IF @NormalizedAction = 'APPROVE'
         BEGIN
-            -- When every latest detail is resolved at the current level, complete the
-            -- current approver and advance routing (manager -> auditor, etc.).
+            -- When every latest detail is resolved at the current level (Pending/Submitted
+            -- or Approved at a lower DetailApprovedLevel), complete the current approver
+            -- and advance routing (manager -> auditor, etc.).
             IF @PendingLatestCount = 0 AND @ReturnedLatestCount = 0
             BEGIN
                 UPDATE dbo.SalesApprovalRequestApprover
@@ -428,15 +448,38 @@ BEGIN
                 END
                 ELSE
                 BEGIN
-                    -- Auditor pass complete: remain Pending until usp_MarkRequestReadyForPayment.
+                    -- Auditor pass complete: header Completed so usp_MarkRequestReadyForPayment is reachable.
                     UPDATE dbo.SalesApprovalRequest
                     SET
-                          Status      = 'Pending'
-                        , ModifiedBy  = @ActionBy
-                        , ModifiedOn  = @NowUtc
-                    WHERE ApprovalRequestId = @ApprovalRequestId;
+                          Status                 = 'Completed'
+                        , CurrentApproverLevel   = NULL
+                        , CurrentApproverLoginId = NULL
+                        , ModifiedBy             = @ActionBy
+                        , ModifiedOn             = @NowUtc
+                    WHERE ApprovalRequestId = @ApprovalRequestId
+                      AND Status = 'Pending';
 
-                    SET @NewRequestStatus = 'Pending';
+                    IF @@ROWCOUNT > 0
+                    BEGIN
+                        INSERT INTO dbo.ApprovalRequestStatusHistory
+                        (
+                              ApprovalRequestId
+                            , OldStatus
+                            , NewStatus
+                            , ChangedBy
+                            , Remarks
+                        )
+                        VALUES
+                        (
+                              @ApprovalRequestId
+                            , 'Pending'
+                            , 'Completed'
+                            , @ActionBy
+                            , 'Final Auditor Approval'
+                        );
+                    END
+
+                    SET @NewRequestStatus = 'Completed';
                 END
             END
             ELSE
@@ -558,6 +601,11 @@ BEGIN
                @NormalizedAction = 'APPROVE'
                AND @NewRequestStatus = 'Pending'
                AND ISNULL(@OldRequestStatus, 'Pending') = 'Pending'
+           )
+           AND NOT (
+               @NormalizedAction = 'APPROVE'
+               AND @NewRequestStatus = 'Completed'
+               AND ISNULL(@CurrentApproverRole, '') = 'Auditor'
            )
         BEGIN
             INSERT INTO dbo.ApprovalRequestStatusHistory

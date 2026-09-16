@@ -24,6 +24,7 @@ namespace AnmolDristi
         private decimal _totalDA = 0m;
         private decimal _totalHotel = 0m;
         private decimal _totalTravel = 0m;
+        private decimal _totalStationary = 0m;
         // NEW: Track the overall claim status during DataBinding
         private string _currentHeaderStatus = "";
 
@@ -391,6 +392,7 @@ namespace AnmolDristi
             _totalDA = 0m;
             _totalHotel = 0m;
             _totalTravel = 0m;
+            _totalStationary = 0m;
             _currentHeaderStatus = ""; // Reset for safety
 
             DataTable dt = new DataTable();
@@ -696,6 +698,7 @@ namespace AnmolDristi
                 _totalDA += (drv["Snapshot_DAAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_DAAmount"]);
                 _totalHotel += (drv["Snapshot_HotelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_HotelAmount"]);
                 _totalTravel += (drv["Snapshot_TravelAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_TravelAmount"]);
+                _totalStationary += (drv["Snapshot_StationaryAmount"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_StationaryAmount"]);
                 _totalSnapshot += (drv["Snapshot_ExpenseTotal"] == DBNull.Value) ? 0m : Convert.ToDecimal(drv["Snapshot_ExpenseTotal"]);
 
                 string detailStatus = drv["DetailStatus"].ToString();
@@ -765,6 +768,11 @@ namespace AnmolDristi
                 else if (headerText.Contains("Travel"))
                 {
                     footer.Cells[i].Text = "<strong>" + _totalTravel.ToString("N2") + "</strong>";
+                    footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
+                }
+                else if (headerText.Contains("Stat"))
+                {
+                    footer.Cells[i].Text = "<strong>" + _totalStationary.ToString("N2") + "</strong>";
                     footer.Cells[i].HorizontalAlign = HorizontalAlign.Right;
                 }
                 else if (headerText.Contains("Total"))
@@ -1034,7 +1042,8 @@ namespace AnmolDristi
                             totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
                             totalRow["Hotel"] = dtExport.Compute("SUM([Hotel])", string.Empty);
                             totalRow["Travel / OPA"] = dtExport.Compute("SUM([Travel / OPA])", string.Empty);
-                            totalRow["Total DA + Hotel + OPA"] = dtExport.Compute("SUM([Total DA + Hotel + OPA])", string.Empty);
+                            totalRow["Stationary"] = dtExport.Compute("SUM([Stationary])", string.Empty);
+                            totalRow["Total Expenses (DA+Hotel+Trv+Stat)"] = dtExport.Compute("SUM([Total Expenses (DA+Hotel+Trv+Stat)])", string.Empty);
                             totalRow["Final Approved Amount"] = dtExport.Compute("SUM([Final Approved Amount])", string.Empty);
 
                             dtExport.Rows.Add(totalRow);

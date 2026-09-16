@@ -1,3 +1,10 @@
+/* ============================================================================
+   NAME:        mark_ready_named_history_insert
+   WHEN:        2026-09-15
+   WHY:         Positional history INSERT failed after schema drift so ReadyForPayment never persisted
+   WHAT:        usp_MarkRequestReadyForPayment history write uses explicit column list
+   ============================================================================ */
+
 /*
     Object:      [dbo].[usp_MarkRequestReadyForPayment]
     Type:        STORED PROCEDURE
@@ -49,11 +56,20 @@ BEGIN
         ModifiedOn = SYSUTCDATETIME()
     WHERE ApprovalRequestId = @ApprovalRequestId;
 
-    INSERT INTO ApprovalRequestStatusHistory
+    INSERT INTO dbo.ApprovalRequestStatusHistory
+    (
+          ApprovalRequestId
+        , OldStatus
+        , NewStatus
+        , ChangedBy
+        , Remarks
+    )
     VALUES
     (
-        @ApprovalRequestId,'Completed','ReadyForPayment',
-        @ActionBy,SYSUTCDATETIME(),
-        'Auditor marked Ready for Payment'
+          @ApprovalRequestId
+        , 'Completed'
+        , 'ReadyForPayment'
+        , @ActionBy
+        , 'Auditor marked Ready for Payment'
     );
 END

@@ -235,6 +235,7 @@
                                             <asp:BoundField DataField="Snapshot_DAAmount" HeaderText="DA (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_HotelAmount" HeaderText="Hotel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_TravelAmount" HeaderText="Travel (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="Snapshot_StationaryAmount" HeaderText="Stat. (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:BoundField DataField="Snapshot_ExpenseTotal" HeaderText="Total (₹)" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
                                             <asp:TemplateField HeaderText="Status" ItemStyle-CssClass="text-center">
                                                 <ItemTemplate>

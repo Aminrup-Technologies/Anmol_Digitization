@@ -1,4 +1,11 @@
 /* ============================================================================
+   NAME:        expense_total_includes_stationary
+   WHEN:        2026-09-15
+   WHY:         Expense status rewrite omitted Stationary so Snapshot_ExpenseTotal drifted from recalc
+   WHAT:        Latest-detail snapshot writes Stationary and ExpenseTotal = DA+Hotel+Travel+Stationary
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        expense_status_latest_detail
    WHEN:        2026-09-15
    WHY:        Receipt status updates targeted any snapshot for the activity
@@ -73,12 +80,13 @@ BEGIN
             Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> 'Rejected'), 0),
             Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND ExpenseType = 'Hotel' AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> 'Rejected'), 0),
             Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND ExpenseType = 'Travel' AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> 'Rejected'), 0),
+            Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND ExpenseType = 'Stationary' AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> 'Rejected'), 0),
             ModifiedOn = SYSUTCDATETIME()
         WHERE ApprovalRequestDetailId = @ApprovalRequestDetailId;
 
         -- B. Update the Total Expense Snapshot (DO NOT TOUCH Snapshot_CalculatedClaimAmount)
         UPDATE dbo.SalesApprovalRequestDetail
-        SET Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0)
+        SET Snapshot_ExpenseTotal = ISNULL(Snapshot_DAAmount, 0) + ISNULL(Snapshot_HotelAmount, 0) + ISNULL(Snapshot_TravelAmount, 0) + ISNULL(Snapshot_StationaryAmount, 0)
         WHERE ApprovalRequestDetailId = @ApprovalRequestDetailId;
 
         -- C. Recalculate the HEADER from latest snapshots only (never superseded Returned rows)

@@ -226,7 +226,8 @@ namespace AnmolDristi
                 totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
                 totalRow["Hotel"] = dtExport.Compute("SUM([Hotel])", string.Empty);
                 totalRow["Travel / OPA"] = dtExport.Compute("SUM([Travel / OPA])", string.Empty);
-                totalRow["Total DA + Hotel + OPA"] = dtExport.Compute("SUM([Total DA + Hotel + OPA])", string.Empty);
+                totalRow["Stationary"] = dtExport.Compute("SUM([Stationary])", string.Empty);
+                totalRow["Total Expenses (DA+Hotel+Trv+Stat)"] = dtExport.Compute("SUM([Total Expenses (DA+Hotel+Trv+Stat)])", string.Empty);
                 totalRow["Final Approved Amount"] = dtExport.Compute("SUM([Final Approved Amount])", string.Empty);
 
                 dtExport.Rows.Add(totalRow);
@@ -735,7 +736,8 @@ namespace AnmolDristi
                             totalRow["DA"] = dtExport.Compute("SUM([DA])", string.Empty);
                             totalRow["Hotel"] = dtExport.Compute("SUM([Hotel])", string.Empty);
                             totalRow["Travel / OPA"] = dtExport.Compute("SUM([Travel / OPA])", string.Empty);
-                            totalRow["Total DA + Hotel + OPA"] = dtExport.Compute("SUM([Total DA + Hotel + OPA])", string.Empty);
+                            totalRow["Stationary"] = dtExport.Compute("SUM([Stationary])", string.Empty);
+                            totalRow["Total Expenses (DA+Hotel+Trv+Stat)"] = dtExport.Compute("SUM([Total Expenses (DA+Hotel+Trv+Stat)])", string.Empty);
                             totalRow["Final Approved Amount"] = dtExport.Compute("SUM([Final Approved Amount])", string.Empty);
 
                             dtExport.Rows.Add(totalRow);

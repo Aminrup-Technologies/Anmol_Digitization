@@ -251,50 +251,18 @@ namespace AnmolDristi
         protected void BindDetailsGrid(int reqId)
         {
             _totalSnapshot = 0m; _totalTAClaim = 0m; _totalDistance = 0m;
-            _totalDA = 0m; _totalHotel = 0m; _totalTravel = 0m;
+            _totalDA = 0m; _totalHotel = 0m; _totalTravel = 0m; _totalStationary = 0m;
 
             SetCurrentUserApproverDetails(reqId); // Ensure state is fresh
 
             DataTable dt = new DataTable();
-            decimal originalClaimed = 0m;
-            string status = ClaimStatuses.Pending;
             string requesterName = "";
             string requesterCode = "";
+            decimal headerNetPayable = 0m;
+            decimal headerApprovedKM = 0m;
 
-            //using (var con = new SqlConnection(connString))
-            //{
-            //    using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequestDetails", con))
-            //    {
-            //        cmd.CommandType = CommandType.StoredProcedure;
-            //        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-            //        using (var da = new SqlDataAdapter(cmd)) { da.Fill(dt); }
-            //    }
-
-            //    string sql = @"
-            //        SELECT 
-            //            ISNULL(OriginalClaimAmount, ISNULL(TotalClaimAmount,0) + ISNULL(TotalExpenseAmount,0)) as OrigTotal,
-            //            Status,
-            //            RequesterLoginId,
-            //            (SELECT EmployeeName FROM MST_UserMaster WHERE EmployeeCode = r.RequesterLoginId) as EmpName
-            //        FROM SalesApprovalRequest r 
-            //        WHERE ApprovalRequestId = @Id";
-
-            //    using (var cmd = new SqlCommand(sql, con))
-            //    {
-            //        cmd.Parameters.AddWithValue("@Id", reqId);
-            //        con.Open();
-            //        using (var rdr = cmd.ExecuteReader())
-            //        {
-            //            if (rdr.Read())
-            //            {
-            //                originalClaimed = Convert.ToDecimal(rdr["OrigTotal"]);
-            //                status = rdr["Status"].ToString();
-            //                requesterName = rdr["EmpName"].ToString();
-            //                requesterCode = rdr["RequesterLoginId"].ToString();
-            //            }
-            //        }
-            //    }
-            //}
+            // FSOT: SQL owns request approved totals before the modal binds.
+            ExecuteRecalculationSQL(reqId);
 
             using (var con = new SqlConnection(connString))
             {
@@ -312,7 +280,7 @@ namespace AnmolDristi
 
                 dt = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(dt);
 
-                // Header
+                // Header (canonical Approved* / FinalApprovedAmount)
                 using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequest", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
@@ -324,19 +292,21 @@ namespace AnmolDristi
                     {
                         if (rdr.Read())
                         {
-                            originalClaimed =
-                                rdr["OriginalClaimAmount"] == DBNull.Value
-                                    ? 0
-                                    : Convert.ToDecimal(rdr["OriginalClaimAmount"]);
-
-                            status =
-                                rdr["Status"].ToString();
-
                             requesterCode =
                                 rdr["RequesterLoginId"].ToString();
 
                             requesterName =
                                 rdr["RequesterName"].ToString();
+
+                            headerNetPayable =
+                                rdr["FinalApprovedAmount"] == DBNull.Value
+                                    ? 0m
+                                    : Convert.ToDecimal(rdr["FinalApprovedAmount"]);
+
+                            headerApprovedKM =
+                                rdr["ApprovedKM"] == DBNull.Value
+                                    ? 0m
+                                    : Convert.ToDecimal(rdr["ApprovedKM"]);
                         }
                     }
                 }
@@ -357,20 +327,11 @@ namespace AnmolDristi
                 }
             }
 
-            decimal currentApprovedAmount = 0m;
-            decimal currentApprovedKM = 0m;
+            // Informational deduction breakdown only — net payable comes from header.
             decimal totalDeductedAmount = 0m;
             decimal totalDeductedKM = 0m;
 
-            string sqlDashboard = @"
-                SELECT 
-                    ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) AS ApprovedKM,
-                    ISNULL(SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0) + ISNULL(d.Snapshot_ExpenseTotal, 0)), 0) AS ApprovedAmount
-                FROM dbo.SalesApprovalRequestDetail d
-                WHERE d.ApprovalRequestId = @Id
-                  AND ISNULL(d.DetailStatus, '') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"')
-                  AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @";
-
+            string sqlDeduction = @"
                 SELECT 
                     ISNULL(SUM(DeductedAmount), 0) AS DeductedAmount,
                     ISNULL(SUM(DeductedKM), 0) AS DeductedKM
@@ -415,7 +376,7 @@ namespace AnmolDristi
             ";
 
             using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand(sqlDashboard, con))
+            using (var cmd = new SqlCommand(sqlDeduction, con))
             {
                 cmd.Parameters.AddWithValue("@Id", reqId);
                 if (con.State != ConnectionState.Open) con.Open();
@@ -424,26 +385,18 @@ namespace AnmolDristi
                 {
                     if (rdr.Read())
                     {
-                        currentApprovedKM = Convert.ToDecimal(rdr["ApprovedKM"]);
-                        currentApprovedAmount = Convert.ToDecimal(rdr["ApprovedAmount"]);
-                    }
-                    if (rdr.NextResult() && rdr.Read())
-                    {
                         totalDeductedAmount = Convert.ToDecimal(rdr["DeductedAmount"]);
                         totalDeductedKM = Convert.ToDecimal(rdr["DeductedKM"]);
                     }
                 }
             }
 
-            decimal originalClaimedAmount = currentApprovedAmount + totalDeductedAmount;
-            decimal originalClaimedKM = currentApprovedKM + totalDeductedKM;
-
-            lblSummaryOriginal.Text = originalClaimedAmount.ToString("N2");
-            lblSummaryApproved.Text = currentApprovedAmount.ToString("N2");
+            lblSummaryApproved.Text = headerNetPayable.ToString("N2");
+            lblSummaryApprovedKM.Text = headerApprovedKM.ToString("N2");
             lblSummaryDeduction.Text = totalDeductedAmount.ToString("N2");
-            lblSummaryOriginalKM.Text = originalClaimedKM.ToString("N2");
-            lblSummaryApprovedKM.Text = currentApprovedKM.ToString("N2");
             lblSummaryDeductedKM.Text = totalDeductedKM.ToString("N2");
+            lblSummaryOriginal.Text = (headerNetPayable + totalDeductedAmount).ToString("N2");
+            lblSummaryOriginalKM.Text = (headerApprovedKM + totalDeductedKM).ToString("N2");
 
             // =========================================================
             // SMART BUTTON VISIBILITY & COUNTING (Check Parent Rows)
@@ -2155,6 +2108,7 @@ namespace AnmolDristi
 
                 using (var con = new SqlConnection(connString))
                 {
+                    con.Open();
                     using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
@@ -2502,10 +2456,23 @@ namespace AnmolDristi
         {
             string user = GetLoggedInEmployeeCode();
             using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand("SELECT TOP 1 ApproverLevel, ApproverRole FROM SalesApprovalRequestApprover WHERE ApprovalRequestId=@Id AND ApproverLoginId=@User AND Status='" + ClaimStatuses.Pending + @"'", con))
+            using (var cmd = new SqlCommand(@"
+                SELECT TOP 1 a.ApproverLevel, a.ApproverRole
+                FROM dbo.SalesApprovalRequestApprover a
+                INNER JOIN dbo.SalesApprovalRequest r ON r.ApprovalRequestId = a.ApprovalRequestId
+                WHERE a.ApprovalRequestId = @Id
+                  AND a.ApproverLoginId = @User
+                  AND (
+                        a.Status = @Pending
+                     OR (a.ApproverRole = @Auditor AND r.Status = @Completed)
+                  )
+                ORDER BY CASE WHEN a.Status = @Pending THEN 0 ELSE 1 END", con))
             {
                 cmd.Parameters.AddWithValue("@Id", reqId);
                 cmd.Parameters.AddWithValue("@User", user);
+                cmd.Parameters.AddWithValue("@Pending", ClaimStatuses.Pending);
+                cmd.Parameters.AddWithValue("@Auditor", "Auditor");
+                cmd.Parameters.AddWithValue("@Completed", ClaimStatuses.Completed);
                 con.Open();
                 using (var rdr = cmd.ExecuteReader())
                 {
@@ -2756,49 +2723,11 @@ namespace AnmolDristi
 
         private void ExecuteRecalculationSQL(int reqId)
         {
-            string sqlRecalculate = @"
-            -- 1. Update individual category totals (latest detail version per day only)
-            UPDATE d
-            SET 
-                Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'DA' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
-                Snapshot_HotelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Hotel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
-                Snapshot_TravelAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Travel' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
-                Snapshot_StationaryAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense e WHERE e.ActivityId = d.ActivityId AND e.ExpenseType = 'Stationary' AND e.IsDeleted = 0 AND ISNULL(e.ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0)
-            FROM dbo.SalesApprovalRequestDetail d 
-            WHERE d.ApprovalRequestId = @Id
-              AND d.ApprovalRequestDetailId IN (
-                    SELECT MAX(ApprovalRequestDetailId)
-                    FROM dbo.SalesApprovalRequestDetail
-                    WHERE ApprovalRequestId = @Id
-                    GROUP BY ActivityId
-              );
-
-            -- 2. Update the daily grand total (latest versions only)
-            UPDATE d
-            SET Snapshot_ExpenseTotal = ISNULL(d.Snapshot_DAAmount, 0) + ISNULL(d.Snapshot_HotelAmount, 0) + ISNULL(d.Snapshot_TravelAmount, 0) + ISNULL(d.Snapshot_StationaryAmount, 0) 
-            FROM dbo.SalesApprovalRequestDetail d
-            WHERE d.ApprovalRequestId = @Id
-              AND d.ApprovalRequestDetailId IN (
-                    SELECT MAX(ApprovalRequestDetailId)
-                    FROM dbo.SalesApprovalRequestDetail
-                    WHERE ApprovalRequestId = @Id
-                    GROUP BY ActivityId
-              );
-
-            -- 3. Update the header table using latest detail rows only
-            UPDATE dbo.SalesApprovalRequest
-            SET 
-                ApprovedKM = (SELECT ISNULL(SUM(d.Snapshot_TotalDistanceKM), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedClaimAmount = (SELECT ISNULL(SUM(d.Snapshot_CalculatedClaimAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedDAAmount = (SELECT ISNULL(SUM(d.Snapshot_DAAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedHotelAmount = (SELECT ISNULL(SUM(d.Snapshot_HotelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"),
-                ApprovedTravelAmount = (SELECT ISNULL(SUM(d.Snapshot_TravelAmount), 0) FROM dbo.SalesApprovalRequestDetail d WHERE d.ApprovalRequestId = @Id AND ISNULL(d.DetailStatus,'') NOT IN ('" + ClaimStatuses.Rejected + @"', '" + ClaimStatuses.Returned + @"') AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @") 
-            WHERE ApprovalRequestId = @Id;";
-
             using (var con = new SqlConnection(connString))
-            using (var cmd = new SqlCommand(sqlRecalculate, con))
+            using (var cmd = new SqlCommand("dbo.usp_RecalculateApprovalRequest", con))
             {
-                cmd.Parameters.AddWithValue("@Id", reqId);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
                 con.Open();
                 cmd.ExecuteNonQuery();
             }
