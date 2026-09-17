@@ -266,6 +266,7 @@
                                                         data-activityid='<%# Eval("ActivityId") %>'
                                                         data-detailid='<%# Eval("ApprovalRequestDetailId") %>'
                                                         data-expenses='<%# Eval("ExpensesJson") %>'
+                                                        data-status='<%# Eval("DetailStatus") %>'
                                                         data-activitydate='<%# Eval("ActivityDate","{0:dd-MMM-yyyy}") %>'
                                                         data-day='<%# Eval("Day") %>'
                                                         data-distance='<%# Eval("Snapshot_TotalDistanceKM") %>'
@@ -483,6 +484,7 @@
 
     </div>
 
+    <script src="<%= ResolveUrl("~/Scripts/claims-ux-stabilization.js") %>"></script>
     <script type="text/javascript">
         // --- READ-ONLY EXPENSE HANDLING ---
         $(document).on('click', '.btn-expenses', function () {
@@ -514,7 +516,7 @@
                 if (item.ClaimStatus === 'Approved') {
                     statusBadge = '<span class="badge badge-success px-2 py-1"><i class="fa fa-check"></i> Approved</span>';
                 } else if (item.ClaimStatus === 'Rejected') {
-                    statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fa fa-times"></i> Rejected</span>';
+                    statusBadge = '<span class="badge badge-danger px-2 py-1"><i class="fa fa-times"></i> Rejected (Final Deduction)</span>';
                 } else {
                     statusBadge = '<span class="badge badge-warning text-dark px-2 py-1">Pending</span>';
                 }
@@ -663,6 +665,7 @@
 
             var actId = $btn.data('activityid');
             var expensesJson = $btn.attr('data-expenses');
+            var detailStatus = ($btn.attr('data-status') || 'Pending').toString().trim() || 'Pending';
 
             var details = {
                 ActivityDate: $btn.data('activitydate'),
@@ -673,8 +676,10 @@
                 Hotel: $btn.data('hotel'),
                 Travel: $btn.data('travel'),
                 Stationary: $btn.data('stationary'),
-                ClaimStatus: 'Finalized',
-                StatusClass: 'success'
+                ClaimStatus: detailStatus,
+                StatusClass: (window.ClaimsUx && ClaimsUx.dayStatusClass)
+                    ? ClaimsUx.dayStatusClass(detailStatus)
+                    : 'secondary'
             };
 
             // Load KM History automatically
@@ -696,8 +701,6 @@
             // Render Top Summaries
             //html += buildActivitySummary(details);
             //html += buildTADASummary(details);
-            html += renderActivityAndTADASummary(details);
-
             // Parse Line Items
             let expenses = [];
             try {
@@ -707,6 +710,20 @@
             } catch (e) {
                 console.error("Error parsing expenses JSON:", e);
             }
+
+            var expenseCounts = (window.ClaimsUx && ClaimsUx.parseExpenseCounts)
+                ? ClaimsUx.parseExpenseCounts(expenses)
+                : { total: 0, approved: 0, pending: 0, rejected: 0 };
+            details.RejectedCount = expenseCounts.rejected || 0;
+            html += renderActivityAndTADASummary(details);
+            html += '<div class="alert alert-light border small py-2 mb-3">' +
+                '<strong>Expenses (' + expenseCounts.total + ')</strong> &mdash; ' +
+                ((window.ClaimsUx && ClaimsUx.expenseCountLine)
+                    ? ClaimsUx.expenseCountLine(expenseCounts)
+                    : ('Approved: ' + expenseCounts.approved + ', Pending: ' + expenseCounts.pending + ', Rejected: ' + (expenseCounts.rejected || 0))) +
+                '</div>';
+            if (window.ClaimsUx && ClaimsUx.rejectedDeductionHtml)
+                html += ClaimsUx.rejectedDeductionHtml(expenseCounts.rejected);
 
             // Render Individual Expense Cards
             if (expenses.length > 0) {
@@ -875,6 +892,13 @@
 
                                 </span>
                             </div>
+                            ${(details.RejectedCount > 0) ? `
+                            <div class="d-flex justify-content-between mt-2">
+                                <span class="text-muted small font-weight-bold">Deductions</span>
+                                <span class="badge badge-danger">
+                                    ${details.RejectedCount} rejected (final deduction)
+                                </span>
+                            </div>` : ''}
                         </div>
                     </div>
                 </div>
@@ -969,6 +993,9 @@
             let billNo = exp.BillNo || 'N/A';
             let remarks = exp.Purpose || '<em class="text-muted">No remarks provided.</em>';
             let status = (exp.ClaimStatus || 'Pending').trim();
+            let statusLabel = (window.ClaimsUx && ClaimsUx.expenseStatusLabel)
+                ? ClaimsUx.expenseStatusLabel(status, !canAction)
+                : ((status === 'Rejected' && !canAction) ? 'Rejected (Final Deduction)' : status);
 
             let attachmentHtml = '';
             if (exp.AttachmentPath && exp.AttachmentPath.trim() !== '') {
@@ -1194,7 +1221,7 @@
                 actionButtons = `
                     <div class="text-center">
                         <span class="badge badge-${badgeClass} p-2 px-3">
-                            ${status}
+                            ${statusLabel}
                         </span>
                     </div>
                 `;
@@ -1214,7 +1241,7 @@
                                 <small class="d-block mt-1">
                                     Status :
                                     <span class="badge badge-light text-dark">
-                                        ${status}
+                                        ${statusLabel}
                                     </span>
                                 </small>
                             </div>

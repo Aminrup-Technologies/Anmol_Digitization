@@ -40,7 +40,11 @@
         hideProcessing: noop,
         armProcessingForPostback: noop,
         statusBadgeClass: function () { return 'claims-badge claims-badge-default'; },
-        parseExpenseCounts: function () { return { total: 0, approved: 0, pending: 0 }; }
+        parseExpenseCounts: function () { return { total: 0, approved: 0, pending: 0, rejected: 0 }; },
+        dayStatusClass: function () { return 'secondary'; },
+        expenseStatusLabel: function (status) { return status || 'Pending'; },
+        expenseCountLine: function () { return 'Approved: 0, Pending: 0, Rejected: 0'; },
+        rejectedDeductionHtml: function () { return ''; }
     };
 
     window.ClaimsUx = stub;
@@ -233,18 +237,47 @@
         },
 
         parseExpenseCounts: function (json) {
-            var total = 0, approved = 0, pending = 0;
+            var total = 0, approved = 0, pending = 0, rejected = 0;
             try {
                 var list = typeof json === 'string' ? JSON.parse(json) : json;
-                if (!Array.isArray(list)) return { total: 0, approved: 0, pending: 0 };
+                if (!Array.isArray(list)) return { total: 0, approved: 0, pending: 0, rejected: 0 };
                 list.forEach(function (e) {
                     total++;
                     var st = ((e.ClaimStatus || e.claimStatus || '') + '').trim().toLowerCase();
                     if (st === 'approved') approved++;
+                    else if (st === 'rejected') rejected++;
                     else pending++;
                 });
             } catch (ex) { /* ignore */ }
-            return { total: total, approved: approved, pending: pending };
+            return { total: total, approved: approved, pending: pending, rejected: rejected };
+        },
+
+        dayStatusClass: function (status) {
+            var s = (status || '').toString().trim().toLowerCase();
+            if (s === 'approved' || s === 'completed' || s === 'readyforpayment' || s === 'ready for payment') return 'success';
+            if (s === 'rejected') return 'danger';
+            if (s === 'returned' || s === 'pending' || s === 'submitted') return 'warning';
+            return 'secondary';
+        },
+
+        expenseStatusLabel: function (status, readOnly) {
+            var s = ((status || 'Pending') + '').trim();
+            if (readOnly && s.toLowerCase() === 'rejected') return 'Rejected (Final Deduction)';
+            return s;
+        },
+
+        expenseCountLine: function (c) {
+            c = c || {};
+            return 'Approved: ' + (c.approved || 0) + ', Pending: ' + (c.pending || 0) + ', Rejected: ' + (c.rejected || 0);
+        },
+
+        rejectedDeductionHtml: function (rejectedCount) {
+            if (!rejectedCount) return '';
+            return '<div class="alert alert-danger py-2 px-3 mb-3 small">' +
+                '<i class="fa fa-minus-circle mr-1"></i>' +
+                rejectedCount + ' rejected receipt' + (rejectedCount === 1 ? '' : 's') +
+                ' excluded from payable totals (final deduction).' +
+                '</div>';
         },
 
         _resetPostbackButtons: function () {

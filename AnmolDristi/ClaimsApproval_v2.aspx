@@ -1165,11 +1165,6 @@
         function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isAuditor, isReturned) {
             let html = '';
 
-            // Render Top Summaries
-            //html += buildActivitySummary(details);
-            //html += buildTADASummary(details);
-            html += renderActivityAndTADASummary(details);
-
             // Parse Line Items
             let expenses = [];
             try {
@@ -1182,12 +1177,17 @@
 
             var expenseCounts = (window.ClaimsUx && ClaimsUx.parseExpenseCounts)
                 ? ClaimsUx.parseExpenseCounts(expenses)
-                : { total: 0, approved: 0, pending: 0 };
+                : { total: 0, approved: 0, pending: 0, rejected: 0 };
+            details.RejectedCount = expenseCounts.rejected || 0;
+            html += renderActivityAndTADASummary(details);
             html += '<div class="alert alert-light border small py-2 mb-3">' +
                 '<strong>Expenses (' + expenseCounts.total + ')</strong> &mdash; ' +
-                'Approved: <span class="text-success font-weight-bold">' + expenseCounts.approved + '</span>, ' +
-                'Pending: <span class="text-warning font-weight-bold">' + expenseCounts.pending + '</span>' +
+                ((window.ClaimsUx && ClaimsUx.expenseCountLine)
+                    ? ClaimsUx.expenseCountLine(expenseCounts)
+                    : ('Approved: ' + expenseCounts.approved + ', Pending: ' + expenseCounts.pending + ', Rejected: ' + (expenseCounts.rejected || 0))) +
                 '</div>';
+            if (window.ClaimsUx && ClaimsUx.rejectedDeductionHtml)
+                html += ClaimsUx.rejectedDeductionHtml(expenseCounts.rejected);
 
             // Render Individual Expense Cards
             if (expenses.length > 0) {
@@ -1364,6 +1364,13 @@
 
                                 </span>
                             </div>
+                            ${(details.RejectedCount > 0) ? `
+                            <div class="d-flex justify-content-between mt-2">
+                                <span class="text-muted small font-weight-bold">Deductions</span>
+                                <span class="badge badge-danger">
+                                    ${details.RejectedCount} rejected (final deduction)
+                                </span>
+                            </div>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1458,6 +1465,9 @@
             let billNo = exp.BillNo || 'N/A';
             let remarks = exp.Purpose || '<em class="text-muted">No remarks provided.</em>';
             let status = (exp.ClaimStatus || 'Pending').trim();
+            let statusLabel = (window.ClaimsUx && ClaimsUx.expenseStatusLabel)
+                ? ClaimsUx.expenseStatusLabel(status, !canAction)
+                : ((status === 'Rejected' && !canAction) ? 'Rejected (Final Deduction)' : status);
        
             let attachmentHtml = '';
             if (exp.AttachmentPath && exp.AttachmentPath.trim() !== '') {
@@ -1637,7 +1647,7 @@
                 actionButtons = `
                     <div class="text-center">
                         <span class="badge badge-${badgeClass} p-2 px-3">
-                            ${status}
+                            ${statusLabel}
                         </span>
                     </div>
                 `;
@@ -1657,7 +1667,7 @@
                                 <small class="d-block mt-1">
                                     Status :
                                     <span class="badge badge-light text-dark">
-                                        ${status}
+                                        ${statusLabel}
                                     </span>
                                 </small>
                             </div>
@@ -2351,7 +2361,10 @@
                     $(this).after($hint);
                 }
                 if (counts.total > 0) {
-                    $hint.html('Expenses (' + counts.total + ')<br>Approved: ' + counts.approved + ' | Pending: ' + counts.pending);
+                    $hint.html('Expenses (' + counts.total + ')<br>' +
+                        ((ClaimsUx.expenseCountLine)
+                            ? ClaimsUx.expenseCountLine(counts)
+                            : ('Approved: ' + counts.approved + ' | Pending: ' + counts.pending + ' | Rejected: ' + (counts.rejected || 0))));
                 } else {
                     $hint.html('No expenses');
                 }
