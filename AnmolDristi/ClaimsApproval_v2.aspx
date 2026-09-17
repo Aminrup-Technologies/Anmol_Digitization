@@ -877,7 +877,7 @@
                                 data-dismiss="modal">
                                 Close
                             </button>
-                            <button type="button" id="btnUnifiedRejectDay" class="btn btn-outline-danger" onclick="actionDayFromModal('REJECT')"><i class="fa fa-times mr-1"></i>Return Day</button>
+                            <button type="button" id="btnUnifiedRejectDay" class="btn btn-outline-danger" onclick="actionDayFromModal('REJECT')"><i class="fa fa-times mr-1"></i>Reject Day</button>
                             <button type="button" id="btnUnifiedApproveDay" class="btn btn-success" onclick="actionDayFromModal('APPROVE')"><i class="fa fa-check mr-1"></i>Approve Remaining</button>
                         </div>
                     </div>--%>
