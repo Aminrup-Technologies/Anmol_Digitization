@@ -580,6 +580,166 @@
             padding: 28px 36px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.08);
         }
+
+        /* Request #99 — KM Modification modal mobile UX (layout only) */
+        html.km-modal-open,
+        body.km-modal-open {
+            overflow: hidden !important;
+            overscroll-behavior: none;
+        }
+
+        body.km-modal-open {
+            position: fixed;
+            width: 100%;
+            left: 0;
+            right: 0;
+        }
+
+        #editKmModal.modal {
+            overflow: hidden;
+        }
+
+        #editKmModal .modal-dialog {
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+            margin: 5vh auto;
+            width: calc(100% - 1rem);
+        }
+
+        #editKmModal .modal-content {
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+            overflow: hidden;
+        }
+
+        #editKmModal .modal-header {
+            flex: 0 0 auto;
+        }
+
+        #editKmModal .modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        #editKmModal .modal-footer {
+            flex: 0 0 auto;
+            position: sticky;
+            bottom: 0;
+            z-index: 5;
+            display: flex;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            background: #fff;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        #editKmModal .km-route-address {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        #editKmModal .km-accordion-toggle {
+            color: #0c5460;
+            font-weight: 600;
+        }
+
+        #editKmModal .km-route-info-btn {
+            color: #0c5460;
+            font-size: 1.2rem;
+            line-height: 1;
+            min-width: 32px;
+            min-height: 32px;
+            padding: 0;
+        }
+
+        #editKmModal .km-route-info-btn[aria-expanded="true"] {
+            color: #063a42;
+        }
+
+        #editKmModal .km-accordion-chevron {
+            display: inline-block;
+            margin-left: 0.25rem;
+            font-size: 0.75rem;
+            transition: transform 0.15s ease;
+        }
+
+        #editKmModal .km-accordion-toggle[aria-expanded="true"] .km-accordion-chevron {
+            transform: rotate(180deg);
+        }
+
+        #editKmModal .km-history-toggle {
+            color: #00008b;
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            #editKmModal .modal-dialog {
+                margin: 5vh 0.5rem;
+                max-width: calc(100% - 1rem);
+            }
+
+            #editKmModal .modal-header {
+                padding: 0.55rem 0.75rem;
+            }
+
+            #editKmModal .modal-title {
+                font-size: 0.92rem;
+                line-height: 1.3;
+                padding-right: 1.25rem;
+            }
+
+            #editKmModal .modal-body {
+                padding: 0.65rem 0.75rem;
+            }
+
+            #editKmModal .modal-footer {
+                padding: 0.45rem 0.75rem;
+            }
+
+            #editKmModal .km-policy-panel {
+                padding: 0.45rem 0.6rem;
+                margin-bottom: 0.55rem !important;
+            }
+
+            #editKmModal .km-policy-panel .mb-2 {
+                margin-bottom: 0.35rem !important;
+            }
+
+            #editKmModal .policy-row {
+                margin-bottom: 0.15rem;
+                font-size: 0.82rem;
+            }
+
+            #editKmModal .form-group {
+                margin-bottom: 0.5rem;
+            }
+
+            #editKmModal hr {
+                margin: 0.5rem 0;
+            }
+
+            #editKmModal .alert {
+                padding: 0.45rem 0.6rem;
+                margin-bottom: 0.5rem;
+            }
+
+            #editKmModal .km-route-summary {
+                margin-top: 0.4rem !important;
+            }
+
+            #editKmModal textarea.form-control {
+                min-height: 4.25rem;
+            }
+        }
     </style>
 </asp:Content>
 
@@ -1070,7 +1230,7 @@
         </div>
 
         <div class="modal fade" id="editKmModal" tabindex="-1" role="dialog" aria-labelledby="editKmModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="editKmModalLabel">Modify Travelled Distance (in KM) for
@@ -1140,25 +1300,39 @@
                                 </div>
 
                                 <div id="routeSummaryPanel"
-                                    class="alert alert-info mt-2"
+                                    class="alert alert-info mt-2 km-route-summary"
                                     style="display: none;">
 
-                                    <div>
-                                        <strong>Origin:</strong>
-                                        <span id="spRouteOrigin"></span>
-                                    </div>
-
-                                    <div>
-                                        <strong>Destination:</strong>
-                                        <span id="spRouteDestination"></span>
+                                    <div class="km-route-summary-title d-flex align-items-center justify-content-between mb-1">
+                                        <span class="font-weight-bold">Route Summary</span>
+                                        <button type="button"
+                                            class="btn btn-link km-route-info-btn collapsed"
+                                            data-toggle="collapse"
+                                            data-target="#kmRouteDetails"
+                                            aria-expanded="false"
+                                            aria-controls="kmRouteDetails"
+                                            title="Route Details"
+                                            aria-label="Route Details">
+                                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                                        </button>
                                     </div>
                                     <div>
                                         <strong>Distance:</strong>
-                                        <span id="spRouteDistance"></span>KM
+                                        <span id="spRouteDistance"></span> KM
                                     </div>
                                     <div>
                                         <strong>Stops:</strong>
                                         <span id="spWaypointCount"></span>
+                                    </div>
+                                    <div id="kmRouteDetails" class="collapse km-route-details">
+                                        <div class="km-route-address mt-1">
+                                            <strong>Origin:</strong>
+                                            <span id="spRouteOrigin"></span>
+                                        </div>
+                                        <div class="km-route-address">
+                                            <strong>Destination:</strong>
+                                            <span id="spRouteDestination"></span>
+                                        </div>
                                     </div>
 
                                 </div>
@@ -1175,19 +1349,34 @@
 
                         <hr />
 
-                        <h6 style="color: darkblue;">KM Change History</h6>
-                        <div class="table-responsive">
-                            <asp:GridView ID="gvKmHistory" runat="server" AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" CssClass="table table-sm table-bordered table-finance"
-                                EmptyDataText="No history available">
-                                <Columns>
-                                    <asp:BoundField DataField="HistoryId" HeaderText="ID" ItemStyle-Width="5%" />
-                                    <asp:BoundField DataField="ModifiedDateTime" HeaderText="Changed On" DataFormatString="{0:dd-MM-yyyy HH:mm:ss tt}" />
-                                    <asp:BoundField DataField="ModifiedBy" HeaderText="By" />
-                                    <asp:BoundField DataField="OldKM" HeaderText="Old KM" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
-                                    <asp:BoundField DataField="NewKM" HeaderText="New KM" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
-                                    <asp:BoundField DataField="Reason" HeaderText="Reason" />
-                                </Columns>
-                            </asp:GridView>
+                        <div class="km-history-section">
+                            <button type="button"
+                                id="kmHistoryToggle"
+                                class="btn btn-link btn-sm p-0 mb-1 km-history-toggle km-accordion-toggle collapsed"
+                                data-toggle="collapse"
+                                data-target="#kmHistoryCollapse"
+                                aria-expanded="false"
+                                aria-controls="kmHistoryCollapse"
+                                style="display: none;">
+                                KM Change History
+                                <i class="fa fa-chevron-down km-accordion-chevron"></i>
+                            </button>
+                            <div id="kmHistoryCollapse" class="collapse">
+                                <div class="table-responsive km-history-table-wrap">
+                                    <asp:GridView ID="gvKmHistory" runat="server" AutoGenerateColumns="false" ShowHeaderWhenEmpty="false" CssClass="table table-sm table-bordered table-finance"
+                                        EmptyDataText="No previous KM changes.">
+                                        <Columns>
+                                            <asp:BoundField DataField="HistoryId" HeaderText="ID" ItemStyle-Width="5%" />
+                                            <asp:BoundField DataField="ModifiedDateTime" HeaderText="Changed On" DataFormatString="{0:dd-MM-yyyy HH:mm:ss tt}" />
+                                            <asp:BoundField DataField="ModifiedBy" HeaderText="By" />
+                                            <asp:BoundField DataField="OldKM" HeaderText="Old KM" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="NewKM" HeaderText="New KM" DataFormatString="{0:N2}" ItemStyle-HorizontalAlign="Right" />
+                                            <asp:BoundField DataField="Reason" HeaderText="Reason" />
+                                        </Columns>
+                                    </asp:GridView>
+                                </div>
+                            </div>
+                            <p id="kmHistoryEmpty" class="text-muted small mb-0" style="display: none;">No previous KM changes.</p>
                         </div>
                     </div>
 
@@ -2720,6 +2909,9 @@
             Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () {
                 initExpenseModal();
                 activatePolicyModalFirstTab();
+                if ($('#editKmModal').hasClass('show') && typeof refreshKmHistoryPresentation === 'function') {
+                    refreshKmHistoryPresentation();
+                }
             });
         }
 
@@ -2866,6 +3058,91 @@
             setKmSaveWorkflowManual(false);
             if (hideRouteSummary) $('#routeSummaryPanel').hide();
         };
+
+        window.refreshKmHistoryPresentation = function () {
+            var $table = $('#editKmModal table[id$="gvKmHistory"]');
+            var $wrap = $('#editKmModal .km-history-table-wrap');
+            var $toggle = $('#kmHistoryToggle');
+            var $empty = $('#kmHistoryEmpty');
+            var $collapse = $('#kmHistoryCollapse');
+            var hasRows = $table.find('tr').filter(function () {
+                return $(this).children('td').length >= 4;
+            }).length > 0;
+
+            if (hasRows) {
+                $empty.hide();
+                $wrap.show();
+                $toggle.show();
+                if ($collapse.collapse) $collapse.collapse('hide');
+                else $collapse.removeClass('show');
+                $toggle.addClass('collapsed').attr('aria-expanded', 'false');
+            } else {
+                $toggle.hide();
+                if ($collapse.collapse) $collapse.collapse('hide');
+                else $collapse.removeClass('show');
+                $wrap.hide();
+                $empty.show();
+            }
+        };
+
+        (function bindKmModalMobileUx() {
+            var scrollY = 0;
+            var viewportHandler = null;
+
+            function viewportHeight() {
+                return (window.visualViewport && window.visualViewport.height)
+                    ? window.visualViewport.height
+                    : window.innerHeight;
+            }
+
+            function fitKmModalToViewport() {
+                var dialog = document.querySelector('#editKmModal.show .modal-dialog');
+                var content = document.querySelector('#editKmModal.show .modal-content');
+                if (!dialog || !content) return;
+                var max = Math.round(viewportHeight() * 0.9) + 'px';
+                dialog.style.maxHeight = max;
+                content.style.maxHeight = max;
+            }
+
+            function lockPageScroll() {
+                scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+                document.documentElement.classList.add('km-modal-open');
+                document.body.classList.add('km-modal-open');
+                document.body.style.top = '-' + scrollY + 'px';
+            }
+
+            function unlockPageScroll() {
+                document.documentElement.classList.remove('km-modal-open');
+                document.body.classList.remove('km-modal-open');
+                document.body.style.top = '';
+                window.scrollTo(0, scrollY || 0);
+            }
+
+            $(document).on('show.bs.modal', '#editKmModal', function () {
+                lockPageScroll();
+            });
+
+            $(document).on('shown.bs.modal', '#editKmModal', function () {
+                if (typeof refreshKmHistoryPresentation === 'function') refreshKmHistoryPresentation();
+                fitKmModalToViewport();
+                viewportHandler = fitKmModalToViewport;
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', viewportHandler);
+                    window.visualViewport.addEventListener('scroll', viewportHandler);
+                }
+                $(window).on('resize.kmModalUx', viewportHandler);
+            });
+
+            $(document).on('hidden.bs.modal', '#editKmModal', function () {
+                if (window.visualViewport && viewportHandler) {
+                    window.visualViewport.removeEventListener('resize', viewportHandler);
+                    window.visualViewport.removeEventListener('scroll', viewportHandler);
+                }
+                $(window).off('resize.kmModalUx');
+                viewportHandler = null;
+                unlockPageScroll();
+            });
+        })();
 
         $(document).on('input', '#<%=txtModalKM.ClientID%>', function () {
             if (window._kmApplyingRoute) return;
@@ -3089,6 +3366,7 @@
             $('#spRouteDestination').text(route.DestinationName);
             $('#spWaypointCount').text(JSON.parse(route.WaypointsJSON).length);
             $('#routeSummaryPanel').show();
+            if ($('#kmRouteDetails').collapse) $('#kmRouteDetails').collapse('hide');
             $('#routeDistanceModal').modal('hide');
             window._kmApplyingRoute = false;
         }
