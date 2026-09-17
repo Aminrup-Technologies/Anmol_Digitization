@@ -164,18 +164,18 @@ namespace AnmolDristi
         private static void ApplyExpenseCountHint(LinkButton lnkReview, string expensesJson)
         {
             if (lnkReview == null) return;
-            int total = 0, approved = 0, pending = 0;
-            ParseExpenseCounts(expensesJson, out total, out approved, out pending);
+            int total = 0, approved = 0, pending = 0, rejected = 0;
+            ParseExpenseCounts(expensesJson, out total, out approved, out pending, out rejected);
             if (total > 0)
             {
                 lnkReview.Text = "<i class=\"fa fa-folder-open\"></i> (" + total + ")";
-                lnkReview.ToolTip = string.Format("Expenses ({0}) — Approved: {1}, Pending: {2}", total, approved, pending);
+                lnkReview.ToolTip = string.Format("Expenses ({0}) — Approved: {1}, Pending: {2}, Rejected: {3}", total, approved, pending, rejected);
             }
         }
 
-        private static void ParseExpenseCounts(string expensesJson, out int total, out int approved, out int pending)
+        private static void ParseExpenseCounts(string expensesJson, out int total, out int approved, out int pending, out int rejected)
         {
-            total = approved = pending = 0;
+            total = approved = pending = rejected = 0;
             if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]") return;
             try
             {
@@ -187,6 +187,7 @@ namespace AnmolDristi
                     total++;
                     string st = item.ContainsKey("ClaimStatus") ? (item["ClaimStatus"]?.ToString() ?? "") : "";
                     if (ClaimStatuses.Equals(st, ClaimStatuses.Approved)) approved++;
+                    else if (ClaimStatuses.Equals(st, ClaimStatuses.Rejected)) rejected++;
                     else pending++;
                 }
             }
