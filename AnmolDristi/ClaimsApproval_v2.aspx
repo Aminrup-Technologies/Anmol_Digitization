@@ -752,7 +752,7 @@
                                     <asp:Label ID="lblModalMessage" runat="server" CssClass="d-block mb-2 font-weight-bold text-right" />
 
                                     <div class="modal-action-buttons">
-                                        <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0 claims-ux-postback-btn" OnClick="btnRecalculate_Click" OnClientClick="return armRecalculateProcessing(this);" ToolTip="Recalculate approved amounts" data-ux-processing="Recalculating totals..." data-ux-loading="Calculating...">
+                                        <asp:LinkButton ID="lnkRecalculate" runat="server" CssClass="btn btn-info btn-sm m-0" OnClick="btnRecalculate_Click" OnClientClick="return armRecalculateProcessing(this);" ToolTip="Recalculate approved amounts" data-ux-processing="Recalculating totals..." data-ux-loading="Calculating...">
                                             <i class="fa fa-refresh"></i> Re-Calculate
                                         </asp:LinkButton>
                                         <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return" CssClass="btn btn-danger btn-sm m-0 ml-2" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" Visible="true" />
