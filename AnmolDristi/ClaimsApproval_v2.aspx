@@ -562,6 +562,9 @@
                             <asp:HiddenField ID="hfPendingApproveDetailId" runat="server" />
                             <asp:HiddenField ID="hfPendingApproveRemark" runat="server" />
                             <asp:HiddenField ID="hfPendingBulkApprove" runat="server" Value="0" />
+                            <asp:HiddenField ID="hfSummaryDaysApproved" runat="server" Value="0" />
+                            <asp:HiddenField ID="hfSummaryDaysReturned" runat="server" Value="0" />
+                            <asp:HiddenField ID="hfSummaryDaysRejected" runat="server" Value="0" />
                             <asp:Button ID="btnConfirmForward" runat="server" CssClass="d-none" OnClick="btnConfirmForward_Click" UseSubmitBehavior="false" CausesValidation="false" />
                             <div class="modal-header bg-light">
                                 <h5 class="modal-title font-weight-bold">Request #<asp:Label ID="lblModalRequestId" runat="server" Text="0" /></h5>
@@ -2254,16 +2257,9 @@
         }
 
         function showApprovalSummaryConfirm(actionType) {
-            var daysApproved = 0, daysReturned = 0, daysRejected = 0, daysPending = 0;
-            $('#gvDetails tbody tr').each(function () {
-                var $row = $(this);
-                if ($row.find('td').length < 3) return;
-                if ($row.find('.claims-badge-returned').length) { daysReturned++; return; }
-                var cls = $row.attr('class') || '';
-                if (cls.indexOf('table-success') >= 0) daysApproved++;
-                else if (cls.indexOf('table-danger') >= 0) daysRejected++;
-                else daysPending++;
-            });
+            var daysApproved = parseInt($('#<%= hfSummaryDaysApproved.ClientID %>').val() || '0', 10) || 0;
+            var daysReturned = parseInt($('#<%= hfSummaryDaysReturned.ClientID %>').val() || '0', 10) || 0;
+            var daysRejected = parseInt($('#<%= hfSummaryDaysRejected.ClientID %>').val() || '0', 10) || 0;
 
             var deductions = $('#<%= lblSummaryDeduction.ClientID %>').text() || '0.00';
             var deductedKm = $('#<%= lblSummaryDeductedKM.ClientID %>').text() || '0.00';
