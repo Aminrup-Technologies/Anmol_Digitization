@@ -280,6 +280,7 @@ namespace AnmolDristi
                 }
 
                 dt = SalesApprovalDetailVersionHelper.KeepLatestPerActivity(dt);
+                BindLatestDetailSummaryCounts(dt);
 
                 // Header (canonical Approved* / FinalApprovedAmount)
                 using (var cmd = new SqlCommand("dbo.usp_GetApprovalRequest", con))
@@ -579,6 +580,69 @@ namespace AnmolDristi
                 int unresolved = Convert.ToInt32(cmd.ExecuteScalar());
                 if (unresolved > 0)
                     throw new Exception("All day rows and expense lines must be Approved or Rejected before finalization.");
+            }
+        }
+
+        private void BindLatestDetailSummaryCounts(DataTable dt)
+        {
+            int daysApproved = 0;
+            int daysReturned = 0;
+            int daysRejected = 0;
+
+            if (dt != null)
+            {
+                foreach (DataRow row in dt.Rows)
+                {
+                    string status = row.Table.Columns.Contains("DetailStatus") && row["DetailStatus"] != DBNull.Value
+                        ? row["DetailStatus"].ToString()
+                        : string.Empty;
+
+                    if (ClaimStatuses.Equals(status, ClaimStatuses.Approved)) daysApproved++;
+                    else if (ClaimStatuses.Equals(status, ClaimStatuses.Returned)) daysReturned++;
+                    else if (ClaimStatuses.Equals(status, ClaimStatuses.Rejected)) daysRejected++;
+                }
+            }
+
+            hfSummaryDaysApproved.Value = daysApproved.ToString();
+            hfSummaryDaysReturned.Value = daysReturned.ToString();
+            hfSummaryDaysRejected.Value = daysRejected.ToString();
+        }
+
+        private void EnsureHeaderCompletedForPayment(int reqId, string auditor, SqlConnection con)
+        {
+            using (var cmd = new SqlCommand(@"
+                UPDATE dbo.SalesApprovalRequest
+                SET Status = @Completed,
+                    ModifiedBy = @Auditor,
+                    ModifiedOn = SYSUTCDATETIME()
+                WHERE ApprovalRequestId = @Id
+                  AND Status = @Pending;
+
+                IF @@ROWCOUNT > 0
+                BEGIN
+                    INSERT INTO dbo.ApprovalRequestStatusHistory
+                    (
+                          ApprovalRequestId
+                        , OldStatus
+                        , NewStatus
+                        , ChangedBy
+                        , Remarks
+                    )
+                    VALUES
+                    (
+                          @Id
+                        , @Pending
+                        , @Completed
+                        , @Auditor
+                        , N'Auditor finalized all rows before Ready for Payment.'
+                    );
+                END", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", reqId);
+                cmd.Parameters.AddWithValue("@Auditor", auditor ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@Pending", ClaimStatuses.Pending);
+                cmd.Parameters.AddWithValue("@Completed", ClaimStatuses.Completed);
+                cmd.ExecuteNonQuery();
             }
         }
 
@@ -2109,6 +2173,7 @@ namespace AnmolDristi
                 using (var con = new SqlConnection(connString))
                 {
                     con.Open();
+                    EnsureHeaderCompletedForPayment(reqId, auditor, con);
                     using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
