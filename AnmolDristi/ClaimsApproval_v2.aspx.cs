@@ -1938,8 +1938,7 @@ namespace AnmolDristi
                         ExecuteProcessApprovalAction(detailId, "RETURN", remark, user, con, tran);
                         break;
                     case DayDetailAction.Reject:
-                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con, tran);
-                        MarkActivityRejectedForDay(detailId, user, con, tran);
+                        ExecuteProcessApprovalAction(detailId, "REJECT", remark, user, con, tran);
                         break;
                 }
             }
@@ -2833,8 +2832,7 @@ namespace AnmolDristi
                     }
                     else
                     {
-                        ExecuteProcessSalesApprovalRequestDetail(detailId, reqId, "REJECT", remark, user, con);
-                        MarkActivityRejectedForDay(detailId, user, con);
+                        ExecuteProcessApprovalAction(detailId, "REJECT", remark, user, con);
                     }
                 }
 
