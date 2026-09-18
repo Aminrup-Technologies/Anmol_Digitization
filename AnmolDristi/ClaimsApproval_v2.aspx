@@ -332,6 +332,7 @@
         .claims-badge-default { background: #e9ecef; color: #495057; border: 1px solid #ced4da; }
 
         #forwardNextApproverModal { z-index: 1080; }
+        #claimsUxConfirmModal { z-index: 1090; }
 
         /* Sticky details modal action footer */
         #detailsModal .modal-content { display: flex; flex-direction: column; max-height: 92vh; }
@@ -760,7 +761,7 @@
                                         </asp:LinkButton>
                                         <asp:Button ID="btnReturnToEmployee" runat="server" Text="✖ Return" CssClass="btn btn-danger btn-sm m-0 ml-2" OnClick="btnReturnToEmployee_Click" OnClientClick="return promptForReturn();" Visible="true" />
                                         <asp:Button ID="btnForwardLevel" runat="server" Text="✔ Forward" CssClass="btn btn-success btn-sm m-0 ml-2" OnClick="btnForwardLevel_Click" OnClientClick="return showApprovalSummaryConfirm('forward');" Visible="false" />
-                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2" OnClick="btnMarkReadyForPayment_Click" OnClientClick="return showApprovalSummaryConfirm('payment');" Visible="false" />
+                                        <asp:Button ID="btnMarkReadyForPayment" runat="server" Text="✔ Ready for Payment" CssClass="btn btn-warning btn-sm m-0 ml-2" OnClick="btnMarkReadyForPayment_Click" OnClientClick="showApprovalSummaryConfirm('payment'); return false;" UseSubmitBehavior="false" CausesValidation="false" Visible="false" />
                                         <button type="button" class="btn btn-secondary btn-sm m-0 ml-2" data-dismiss="modal">Close</button>
                                     </div>
                                 </div>
@@ -1054,10 +1055,19 @@
                 TotalDA: $(this).data('da'),
             };
 
-            // CHECK LOCK STATE: Is this parent day already "✔ Done"?
+            // CHECK LOCK STATE: "✔ Done" means approved at this level.
+            // Returned is not a completed approval — do not lock line-item actions.
             var $btnApproveRow = $row.find('input[id*="btnApproveRow"]');
-            var isRowLocked = $btnApproveRow.length > 0 && $btnApproveRow.val().indexOf('Done') !== -1;
-            var isReturned = $row.find('.claims-badge-returned').length > 0;
+            var isReturned = $row.find('.claims-badge-returned').length > 0
+                || String($(this).data('status') || '').toLowerCase() === 'returned';
+            var isRowLocked = !isReturned
+                && $btnApproveRow.length > 0
+                && $btnApproveRow.val().indexOf('Done') !== -1;
+
+            if (isReturned) {
+                details.ClaimStatus = 'Returned';
+                details.StatusClass = 'warning';
+            }
 
             // Set UI Controls based on user level AND row lock state
             var activeLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(),10) || 0;
@@ -1114,6 +1124,7 @@
                 document.getElementById('divKmControls')
                     .scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 200);
+            setUnifiedDayModalActive(true);
             $('#unifiedDayModal').modal('show');
         });
 
@@ -1516,9 +1527,22 @@
                     // Pending
                     //-------------------------------------------------
 
+                    case "Returned":
                     case "Pending":
 
                         actionButtons = `
+                ${
+                                    status === "Returned"
+                                    ?
+                                    `
+                <div class="alert alert-warning py-2 mb-2 text-center">
+                    <i class="fa fa-undo mr-1"></i>
+                    Returned for Employee Correction
+                </div>
+                `
+                                    :
+                                    ''
+                        }
                 <small class="text-muted text-uppercase font-weight-bold d-block text-center mb-2">
                     Review Decision
                 </small>
@@ -1549,20 +1573,6 @@
                                     ''
                         }
 
-                </div>
-            `;
-                        break;
-
-                        //-------------------------------------------------
-                        // Returned (awaiting employee correction)
-                        //-------------------------------------------------
-
-                    case "Returned":
-
-                        actionButtons = `
-                <div class="alert alert-warning py-2 mb-2 text-center">
-                    <i class="fa fa-undo mr-1"></i>
-                    Returned for Employee Correction
                 </div>
             `;
                         break;
@@ -1726,6 +1736,7 @@
         // 3. EXPENSE / KM AJAX ACTIONS
         // =========================================================
         function updateExpense(expenseId, action, btn) {
+            if (!unifiedDayModalActive) return;
 
             var remark = "";
 
@@ -1798,6 +1809,8 @@
         }
 
         function saveKM() {
+            if (!unifiedDayModalActive) return;
+
             var $saveBtn = $('#km_modal_save');
             $saveBtn.prop('disabled', true);
             $('#km_modal_message').empty();
@@ -1902,6 +1915,7 @@
         // 4. ACTION ENTIRE DAY FROM FOOTER
         // =========================================================
         function actionDayFromModal(action) {
+            if (!unifiedDayModalActive) return;
 
             var detailId = $('#km_modal_detailid').val();
             var reqId = $('#<%= hfActionRequestId.ClientID %>').val();
@@ -1972,6 +1986,78 @@
             });
         }
 
+        var unifiedDayModalActive = false;
+
+        function setUnifiedDayModalActive(isActive) {
+            unifiedDayModalActive = !!isActive;
+            if (isActive) return;
+            $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay').prop('disabled', true);
+            $('#unifiedDayModal').find('button[onclick*="updateExpense"],#km_modal_save').prop('disabled', true);
+        }
+
+        function hideModalImmediate($modal) {
+            if (!$modal || !$modal.length) return;
+            var inst = $modal.data('bs.modal');
+            var isOpen = (inst && inst._isShown) || $modal.hasClass('show') || $modal.css('display') === 'block';
+            if (!isOpen && !inst) return;
+
+            if (inst) inst._isTransitioning = false;
+            var hadFade = $modal.hasClass('fade');
+            $modal.removeClass('fade');
+            $modal.modal('hide');
+            $modal.removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
+            if (inst) {
+                inst._isShown = false;
+                inst._isTransitioning = false;
+                if (inst._backdrop) {
+                    $(inst._backdrop).remove();
+                    inst._backdrop = null;
+                }
+            }
+            $(document).off('focusin.bs.modal');
+            if (hadFade) $modal.addClass('fade');
+        }
+
+        function restoreDetailsModalStack() {
+            var $details = $('#detailsModal');
+            var detailsInst = $details.data('bs.modal');
+            var detailsOpen = (detailsInst && detailsInst._isShown) || $details.hasClass('show');
+            var $backdrops = $('.modal-backdrop');
+            if (!detailsOpen) {
+                $backdrops.remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
+                return;
+            }
+
+            var owned = detailsInst && detailsInst._backdrop && document.body.contains(detailsInst._backdrop)
+                ? detailsInst._backdrop
+                : null;
+            if (!owned) {
+                owned = $('<div class="modal-backdrop fade show"></div>').appendTo(document.body)[0];
+                if (detailsInst) detailsInst._backdrop = owned;
+            }
+
+            $('.modal-backdrop').each(function () {
+                if (this !== owned) $(this).remove();
+            });
+            $(owned).addClass('show fade');
+            $('body').addClass('modal-open');
+        }
+
+        function closeUnifiedDayModalImmediate() {
+            if (window.ClaimsUx) {
+                ClaimsUx.clearDirty();
+                ClaimsUx.suppressDirtyCheck = true;
+            }
+            setUnifiedDayModalActive(false);
+            hideModalImmediate($('#claimsUxConfirmModal'));
+            hideModalImmediate($('#unifiedDayModal'));
+            restoreDetailsModalStack();
+            if (window.ClaimsUx) {
+                setTimeout(function () { ClaimsUx.suppressDirtyCheck = false; }, 50);
+            }
+        }
+
         function applyReturnedDayRow(detailId) {
             var id = String(detailId);
             var $row = $('#<%= gvDetails.ClientID %> tr').filter(function () {
@@ -1982,7 +2068,7 @@
             }).first();
             if (!$row.length) return;
 
-            $row.addClass('table-warning');
+            $row.removeClass('table-success').addClass('table-warning');
             var $badge = $row.find('[id*="lblReturnedBadge"]');
             if ($badge.length) {
                 $badge.show();
@@ -1992,6 +2078,7 @@
 
             var $approve = $row.find('input[id*="btnApproveRow"]');
             $approve.prop('disabled', true)
+                .val('Approve')
                 .attr('title', 'Returned days cannot be approved until the employee resubmits.')
                 .removeClass('btn-success pulse-success text-white')
                 .addClass('btn-outline-secondary');
@@ -2089,11 +2176,12 @@
                     if (r.d && r.d.success) {
 
                         if (action === 'RETURN') {
+                            closeUnifiedDayModalImmediate();
                             showReturnedSuccessNotify();
                             applyReturnedDayRow(r.d.detailId || detailId);
+                        } else {
+                            $('#unifiedDayModal').modal('hide');
                         }
-
-                        $('#unifiedDayModal').modal('hide');
 
                         if (forwardConfirmed) {
                             showForwardedSuccessNotify();
@@ -2283,6 +2371,7 @@
                 '</table></div>';
 
             if (window.ClaimsUx && ClaimsUx.showConfirm) {
+                if (window.ClaimsUx) ClaimsUx.suppressDirtyCheck = true;
                 ClaimsUx.showConfirm({
                     title: title,
                     message: html,
@@ -2290,6 +2379,7 @@
                     confirmClass: actionType === 'payment' ? 'btn-warning' : 'btn-success',
                     onConfirm: function () {
                         if (window.ClaimsUx) {
+                            ClaimsUx.suppressDirtyCheck = false;
                             ClaimsUx.armProcessingForPostback(actionType === 'payment' ? 'Finalizing request...' : 'Forwarding request...');
                             ClaimsUx.clearDirty();
                         }
@@ -2303,6 +2393,7 @@
                         }
                     }
                 });
+                raiseSummaryConfirmOverDetails();
             } else if (confirm(title + '\n\nProceed?')) {
                 var btn = document.getElementById(actionType === 'payment'
                     ? '<%= btnMarkReadyForPayment.ClientID %>'
@@ -2310,6 +2401,15 @@
                 if (btn) __doPostBack(btn.name, '');
             }
             return false;
+        }
+
+        function raiseSummaryConfirmOverDetails() {
+            var $summary = $('#claimsUxConfirmModal');
+            if (!$summary.length) return;
+            $summary.css('z-index', 1090).appendTo('body');
+            var inst = $summary.data('bs.modal');
+            var $backdrop = inst && inst._backdrop ? $(inst._backdrop) : $('.modal-backdrop').last();
+            $backdrop.css('z-index', 1085);
         }
 
         function armRecalculateProcessing(btn) {
@@ -2439,8 +2539,17 @@
             });
         }
 
+        $(document).on('hidden.bs.modal', '#claimsUxConfirmModal', function () {
+            if (window.ClaimsUx) ClaimsUx.suppressDirtyCheck = false;
+            if ($('#detailsModal').hasClass('show'))
+                $('body').addClass('modal-open');
+        });
+
         var reopenDetailsModal = false;
         $('#unifiedDayModal').on('hidden.bs.modal', function () {
+            setUnifiedDayModalActive(false);
+            if ($('#detailsModal').hasClass('show'))
+                $('body').addClass('modal-open');
 
             if (reopenDetailsModal) {
                 reopenDetailsModal = false;

@@ -998,8 +998,10 @@ namespace AnmolDristi
         {
             if (row == null) return;
 
-            if (row.CssClass == null || row.CssClass.IndexOf("table-warning", StringComparison.OrdinalIgnoreCase) < 0)
-                row.CssClass = ((row.CssClass ?? "") + " table-warning").Trim();
+            string css = (row.CssClass ?? "").Replace("table-success", "").Trim();
+            if (css.IndexOf("table-warning", StringComparison.OrdinalIgnoreCase) < 0)
+                css = (css + " table-warning").Trim();
+            row.CssClass = css;
 
             var lblReturnedBadge = row.FindControl("lblReturnedBadge") as Label;
             if (lblReturnedBadge != null) lblReturnedBadge.Visible = true;
@@ -1015,6 +1017,7 @@ namespace AnmolDristi
             if (btnApprove != null)
             {
                 btnApprove.Enabled = false;
+                btnApprove.Text = "Approve";
                 btnApprove.ToolTip = "Returned days cannot be approved until the employee resubmits.";
                 btnApprove.CssClass = "btn btn-sm btn-outline-secondary";
             }
@@ -1481,7 +1484,7 @@ namespace AnmolDristi
                     {
                         ApplyReturnedDayRowState(row, remark);
                         ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "pnotifyReturned",
-                            "showReturnedSuccessNotify();applyReturnedDayRow(" + detailId + ");", true);
+                            "closeUnifiedDayModalImmediate();showReturnedSuccessNotify();applyReturnedDayRow(" + detailId + ");", true);
                     }
 
                     ExecuteRecalculationSQL(reqId);
@@ -1793,7 +1796,7 @@ namespace AnmolDristi
                     {
                         string jsIds = string.Join(",", rowsToProcess.Select(x => x.Item1.ToString()).ToArray());
                         ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "pnotifyReturnedBulk",
-                            "showReturnedSuccessNotify();[" + jsIds + "].forEach(function(id){ applyReturnedDayRow(id); });", true);
+                            "closeUnifiedDayModalImmediate();showReturnedSuccessNotify();[" + jsIds + "].forEach(function(id){ applyReturnedDayRow(id); });", true);
                     }
                 }
 
