@@ -1830,7 +1830,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             return true;
         }
 
-        private void BindKmHistory(int activityId)
+        private int BindKmHistory(int activityId)
         {
             DataTable dt = new DataTable();
             using (SqlConnection con = new SqlConnection(connString))
@@ -1845,6 +1845,21 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 gvKmHistory.DataSource = dt;
                 gvKmHistory.DataBind();
             }
+            return dt.Rows.Count;
+        }
+
+        private void RegisterKmHistoryPresentationAfterSave(bool expandHistory)
+        {
+            if (!expandHistory) return;
+
+            const string script =
+                "window.__kmHistoryExpandAfterSave = true;" +
+                "setTimeout(function(){" +
+                "  if (typeof refreshKmHistoryPresentation === 'function') {" +
+                "    refreshKmHistoryPresentation({ expand: true });" +
+                "  }" +
+                "}, 200);";
+            ScriptManager.RegisterStartupScript(this, GetType(), "refreshKmHistoryAfterSave", script, true);
         }
 
         protected void btnSaveKm_Click(object sender, EventArgs e)
@@ -2004,7 +2019,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false);
                 NotifyDraftChangeSaved();
-                BindKmHistory(activityId);
+                int historyCount = BindKmHistory(activityId);
                 if (txtKmReason != null) txtKmReason.Text = string.Empty;
                 if (hdnOriginalKm != null) hdnOriginalKm.Value = newKm.ToString("0.##", CultureInfo.InvariantCulture);
                 if (txtModalKM != null) txtModalKM.Text = newKm.ToString("0.##", CultureInfo.InvariantCulture);
@@ -2017,6 +2032,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 }
 
                 ConfigureKmModalDisplay(activityId, newKm, tolerance);
+                RegisterKmHistoryPresentationAfterSave(historyCount > 0);
             }
             catch (SqlException sqlEx)
             {

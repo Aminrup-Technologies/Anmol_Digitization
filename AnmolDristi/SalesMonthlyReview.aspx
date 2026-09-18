@@ -3059,7 +3059,11 @@
             if (hideRouteSummary) $('#routeSummaryPanel').hide();
         };
 
-        window.refreshKmHistoryPresentation = function () {
+        window.refreshKmHistoryPresentation = function (options) {
+            options = options || {};
+            var expand = options.expand === true
+                || window.__kmHistoryExpandAfterSave === true
+                || window.__kmHistoryStayExpandedUntilHidden === true;
             var $table = $('#editKmModal table[id$="gvKmHistory"]');
             var $wrap = $('#editKmModal .km-history-table-wrap');
             var $toggle = $('#kmHistoryToggle');
@@ -3073,9 +3077,21 @@
                 $empty.hide();
                 $wrap.show();
                 $toggle.show();
-                if ($collapse.collapse) $collapse.collapse('hide');
-                else $collapse.removeClass('show');
-                $toggle.addClass('collapsed').attr('aria-expanded', 'false');
+                if (expand) {
+                    if ($collapse.collapse) $collapse.collapse('show');
+                    else $collapse.addClass('show');
+                    $toggle.removeClass('collapsed').attr('aria-expanded', 'true');
+                    if (options.expand === true || window.__kmHistoryExpandAfterSave === true) {
+                        window.__kmHistoryStayExpandedUntilHidden = true;
+                    }
+                    if ($toggle[0] && $toggle[0].scrollIntoView) {
+                        $toggle[0].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                    }
+                } else {
+                    if ($collapse.collapse) $collapse.collapse('hide');
+                    else $collapse.removeClass('show');
+                    $toggle.addClass('collapsed').attr('aria-expanded', 'false');
+                }
             } else {
                 $toggle.hide();
                 if ($collapse.collapse) $collapse.collapse('hide');
@@ -3124,6 +3140,7 @@
 
             $(document).on('shown.bs.modal', '#editKmModal', function () {
                 if (typeof refreshKmHistoryPresentation === 'function') refreshKmHistoryPresentation();
+                window.__kmHistoryExpandAfterSave = false;
                 fitKmModalToViewport();
                 viewportHandler = fitKmModalToViewport;
                 if (window.visualViewport) {
@@ -3134,6 +3151,8 @@
             });
 
             $(document).on('hidden.bs.modal', '#editKmModal', function () {
+                window.__kmHistoryExpandAfterSave = false;
+                window.__kmHistoryStayExpandedUntilHidden = false;
                 if (window.visualViewport && viewportHandler) {
                     window.visualViewport.removeEventListener('resize', viewportHandler);
                     window.visualViewport.removeEventListener('scroll', viewportHandler);
