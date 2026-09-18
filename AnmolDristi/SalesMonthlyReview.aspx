@@ -597,6 +597,11 @@
 
         #editKmModal.modal {
             overflow: hidden;
+            z-index: 10500;
+        }
+
+        #routeDistanceModal.modal {
+            z-index: 10600;
         }
 
         #editKmModal .modal-dialog {
@@ -679,6 +684,14 @@
             font-weight: 700;
             font-size: 0.95rem;
             text-decoration: none;
+        }
+
+        #editKmModal tr.km-history-latest td {
+            background-color: #e8f5e9;
+        }
+
+        #editKmModal tr.km-history-prior {
+            display: none;
         }
 
         @media (max-width: 768px) {
@@ -858,6 +871,8 @@
                                         </div>
                                     </asp:Panel>
 
+                                    <asp:UpdatePanel ID="upKmActivities" runat="server" UpdateMode="Conditional" ChildrenAsTriggers="false">
+                                        <ContentTemplate>
                                     <div class="card-box table-responsive grid-container">
                                         <asp:GridView ID="gvActivities" runat="server" AutoGenerateColumns="false"
                                             CssClass="table table-bordered table-finance" HeaderStyle-CssClass="grid-header" FooterStyle-CssClass="grid-footer"
@@ -1009,6 +1024,12 @@
                                             </Columns>
                                         </asp:GridView>
                                     </div>
+                                        </ContentTemplate>
+                                        <Triggers>
+                                            <asp:AsyncPostBackTrigger ControlID="btnSaveKm" EventName="Click" />
+                                            <asp:PostBackTrigger ControlID="gvActivities" />
+                                        </Triggers>
+                                    </asp:UpdatePanel>
                                 </div>
                             </div>
 
@@ -1242,6 +1263,8 @@
 
                     <div class="modal-body">
                         <asp:HiddenField ID="hdnActivityId" runat="server" />
+                        <asp:UpdatePanel ID="upKmHistory" runat="server" UpdateMode="Conditional" ChildrenAsTriggers="false">
+                            <ContentTemplate>
                         <asp:HiddenField ID="hdnOriginalKm" runat="server" />
                         <asp:HiddenField ID="HF_KmSaveWorkflow" runat="server" Value="Manual" />
 
@@ -1378,6 +1401,11 @@
                             </div>
                             <p id="kmHistoryEmpty" class="text-muted small mb-0" style="display: none;">No previous KM changes.</p>
                         </div>
+                            </ContentTemplate>
+                            <Triggers>
+                                <asp:AsyncPostBackTrigger ControlID="btnSaveKm" EventName="Click" />
+                            </Triggers>
+                        </asp:UpdatePanel>
                     </div>
 
                     <div class="modal-footer">
@@ -2594,7 +2622,7 @@
         $('#expenseModal').on('shown.bs.modal', function () {
             initExpenseModal();
             clearAllInlineErrors();
-            var activityId = $('#<%=hdnActivityId.ClientID%>').val();
+            var activityId = $resolve('HF_ActivityId').val() || $resolve('hdnActivityId').val();
             restoreRouteDataToDAFields(activityId);
         });
 
@@ -2909,8 +2937,18 @@
             Sys.WebForms.PageRequestManager.getInstance().add_endRequest(function () {
                 initExpenseModal();
                 activatePolicyModalFirstTab();
-                if ($('#editKmModal').hasClass('show') && typeof refreshKmHistoryPresentation === 'function') {
-                    refreshKmHistoryPresentation();
+                var kmOpen = $('#editKmModal').hasClass('show') || $('#editKmModal').hasClass('in');
+                if (typeof bindKmModalScrollLock === 'function') {
+                    bindKmModalScrollLock();
+                }
+                if (kmOpen && typeof lockKmModalPageScroll === 'function') {
+                    lockKmModalPageScroll();
+                }
+                if (kmOpen && typeof refreshKmHistoryPresentation === 'function') {
+                    refreshKmHistoryPresentation({
+                        expand: window.__kmHistoryExpandAfterSave === true
+                            || window.__kmHistoryStayExpandedUntilHidden === true
+                    });
                 }
             });
         }
@@ -2931,6 +2969,7 @@
             $('#spClientKmError').hide();
             if (typeof initializeKmModalSessionClient === 'function') initializeKmModalSessionClient(aid, true);
             $('#editKmModal').modal('show');
+            if (typeof lockKmModalPageScroll === 'function') lockKmModalPageScroll();
         };
 
         window.validateGridBeforeSubmit = function () {
@@ -2987,7 +3026,23 @@
             clearAllInlineErrors();
         }
 
+        window.applyExpenseModalActivityContext = function (activityId) {
+            if (!activityId) return;
+            var nextId = String(activityId);
+            $resolve('HF_ActivityId').val(nextId);
+            $resolve('hdnActivityId').val(nextId);
+            if (typeof initializeKmModalSessionClient === 'function') {
+                initializeKmModalSessionClient(nextId, true);
+            } else {
+                $('#<%=HF_RouteActivityId.ClientID%>').val(nextId);
+            }
+        };
+
         window.openExpenseModalSafe = function (activityId, savedMode, remark) {
+            if (typeof applyExpenseModalActivityContext === 'function') {
+                applyExpenseModalActivityContext(activityId);
+            }
+
             // 1. Handle Policy Modes
             window.__so_policy_pending_mode = savedMode;
 
@@ -3069,9 +3124,16 @@
             var $toggle = $('#kmHistoryToggle');
             var $empty = $('#kmHistoryEmpty');
             var $collapse = $('#kmHistoryCollapse');
-            var hasRows = $table.find('tr').filter(function () {
+            var $dataRows = $table.find('tr').filter(function () {
                 return $(this).children('td').length >= 4;
-            }).length > 0;
+            });
+            var hasRows = $dataRows.length > 0;
+
+            $dataRows.removeClass('km-history-latest km-history-prior');
+            if (expand && hasRows) {
+                $dataRows.eq(0).addClass('km-history-latest');
+                $dataRows.slice(1).addClass('km-history-prior');
+            }
 
             if (hasRows) {
                 $empty.hide();
@@ -3079,23 +3141,24 @@
                 $toggle.show();
                 if (expand) {
                     if ($collapse.collapse) $collapse.collapse('show');
-                    else $collapse.addClass('show');
+                    else $collapse.addClass('show').addClass('in');
                     $toggle.removeClass('collapsed').attr('aria-expanded', 'true');
                     if (options.expand === true || window.__kmHistoryExpandAfterSave === true) {
                         window.__kmHistoryStayExpandedUntilHidden = true;
                     }
-                    if ($toggle[0] && $toggle[0].scrollIntoView) {
-                        $toggle[0].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                    var latest = $dataRows.get(0);
+                    if (latest && latest.scrollIntoView) {
+                        latest.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                     }
                 } else {
                     if ($collapse.collapse) $collapse.collapse('hide');
-                    else $collapse.removeClass('show');
+                    else $collapse.removeClass('show').removeClass('in');
                     $toggle.addClass('collapsed').attr('aria-expanded', 'false');
                 }
             } else {
                 $toggle.hide();
                 if ($collapse.collapse) $collapse.collapse('hide');
-                else $collapse.removeClass('show');
+                else $collapse.removeClass('show').removeClass('in');
                 $wrap.hide();
                 $empty.show();
             }
@@ -3121,46 +3184,87 @@
             }
 
             function lockPageScroll() {
-                scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+                var alreadyLocked = document.body.classList.contains('km-modal-open');
+                if (!alreadyLocked) {
+                    scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+                    document.body.style.top = '-' + scrollY + 'px';
+                }
                 document.documentElement.classList.add('km-modal-open');
                 document.body.classList.add('km-modal-open');
-                document.body.style.top = '-' + scrollY + 'px';
             }
 
             function unlockPageScroll() {
+                var wasLocked = document.body.classList.contains('km-modal-open')
+                    || document.documentElement.classList.contains('km-modal-open');
                 document.documentElement.classList.remove('km-modal-open');
                 document.body.classList.remove('km-modal-open');
                 document.body.style.top = '';
-                window.scrollTo(0, scrollY || 0);
+                if (wasLocked) window.scrollTo(0, scrollY || 0);
             }
 
-            $(document).on('show.bs.modal', '#editKmModal', function () {
-                lockPageScroll();
-            });
+            window.lockKmModalPageScroll = lockPageScroll;
+            window.unlockKmModalPageScroll = unlockPageScroll;
 
-            $(document).on('shown.bs.modal', '#editKmModal', function () {
-                if (typeof refreshKmHistoryPresentation === 'function') refreshKmHistoryPresentation();
-                window.__kmHistoryExpandAfterSave = false;
-                fitKmModalToViewport();
-                viewportHandler = fitKmModalToViewport;
-                if (window.visualViewport) {
-                    window.visualViewport.addEventListener('resize', viewportHandler);
-                    window.visualViewport.addEventListener('scroll', viewportHandler);
-                }
-                $(window).on('resize.kmModalUx', viewportHandler);
-            });
+            function bindKmModalScrollLock() {
+                var $km = $('#editKmModal');
+                if (!$km.length) return;
 
-            $(document).on('hidden.bs.modal', '#editKmModal', function () {
-                window.__kmHistoryExpandAfterSave = false;
-                window.__kmHistoryStayExpandedUntilHidden = false;
-                if (window.visualViewport && viewportHandler) {
-                    window.visualViewport.removeEventListener('resize', viewportHandler);
-                    window.visualViewport.removeEventListener('scroll', viewportHandler);
+                $km.off('show.bs.modal.kmUx shown.bs.modal.kmUx hidden.bs.modal.kmUx');
+                $(document).off('show.bs.modal.kmUx shown.bs.modal.kmUx hidden.bs.modal.kmUx', '#editKmModal');
+
+                $km.on('show.bs.modal.kmUx', function () {
+                    lockPageScroll();
+                });
+                $(document).on('show.bs.modal.kmUx', '#editKmModal', function () {
+                    lockPageScroll();
+                });
+
+                $km.on('shown.bs.modal.kmUx', function () {
+                    lockPageScroll();
+                    if (typeof refreshKmHistoryPresentation === 'function') {
+                        refreshKmHistoryPresentation({
+                            expand: window.__kmHistoryExpandAfterSave === true
+                                || window.__kmHistoryStayExpandedUntilHidden === true
+                        });
+                    }
+                    if (!window.__kmHistoryStayExpandedUntilHidden) {
+                        window.__kmHistoryExpandAfterSave = false;
+                    }
+                    fitKmModalToViewport();
+                    viewportHandler = fitKmModalToViewport;
+                    if (window.visualViewport) {
+                        window.visualViewport.addEventListener('resize', viewportHandler);
+                        window.visualViewport.addEventListener('scroll', viewportHandler);
+                    }
+                    $(window).off('resize.kmModalUx').on('resize.kmModalUx', viewportHandler);
+                });
+                $(document).on('shown.bs.modal.kmUx', '#editKmModal', function () {
+                    lockPageScroll();
+                });
+
+                $km.on('hidden.bs.modal.kmUx', function () {
+                    window.__kmHistoryExpandAfterSave = false;
+                    window.__kmHistoryStayExpandedUntilHidden = false;
+                    if (window.visualViewport && viewportHandler) {
+                        window.visualViewport.removeEventListener('resize', viewportHandler);
+                        window.visualViewport.removeEventListener('scroll', viewportHandler);
+                    }
+                    $(window).off('resize.kmModalUx');
+                    viewportHandler = null;
+                    unlockPageScroll();
+                });
+                $(document).on('hidden.bs.modal.kmUx', '#editKmModal', function () {
+                    unlockPageScroll();
+                });
+
+                if ($km.hasClass('show') || $km.hasClass('in')) {
+                    lockPageScroll();
                 }
-                $(window).off('resize.kmModalUx');
-                viewportHandler = null;
-                unlockPageScroll();
-            });
+            }
+
+            window.bindKmModalScrollLock = bindKmModalScrollLock;
+            if (window.jQuery) $(bindKmModalScrollLock);
+            else bindKmModalScrollLock();
         })();
 
         $(document).on('input', '#<%=txtModalKM.ClientID%>', function () {

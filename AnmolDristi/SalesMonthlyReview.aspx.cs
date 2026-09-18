@@ -31,6 +31,8 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapHotelCap;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOutstationDA;
         protected global::System.Web.UI.WebControls.HiddenField HF_SnapOwnArrangementDA;
+        protected global::System.Web.UI.UpdatePanel upKmHistory;
+        protected global::System.Web.UI.UpdatePanel upKmActivities;
         //protected global::System.Web.UI.WebControls.HiddenField HF_FixedTravelAllowance;
         // --------------------------------------------------
 
@@ -557,6 +559,7 @@ namespace AnmolDristi
 
             if (HF_ActivityId != null) HF_ActivityId.Value = "";
             if (HF_ActivityDate != null) HF_ActivityDate.Value = "";
+            if (hdnActivityId != null) hdnActivityId.Value = "";
             if (HF_SnapResolvedDA != null) HF_SnapResolvedDA.Value = "";
             if (HF_SnapPolicyMode != null) HF_SnapPolicyMode.Value = "";
 
@@ -570,6 +573,16 @@ namespace AnmolDristi
 
             string clearScript = string.Format("$('#{0}').val('');", FU_Attachment != null ? FU_Attachment.ClientID : "FU_Attachment");
             ScriptManager.RegisterStartupScript(this, this.GetType(), "clearFile", clearScript, true);
+        }
+
+        private void ApplySelectedActivityContext(string activityId, string activityDate)
+        {
+            string id = activityId ?? string.Empty;
+            string date = activityDate ?? string.Empty;
+            if (HF_ActivityId != null) HF_ActivityId.Value = id;
+            if (HF_ActivityDate != null) HF_ActivityDate.Value = date;
+            if (hdnActivityId != null) hdnActivityId.Value = id;
+            if (HF_RouteActivityId != null) HF_RouteActivityId.Value = id;
         }
 
         private bool SanitizeDecimal(string input, CultureInfo ci, out decimal result)
@@ -964,8 +977,7 @@ namespace AnmolDristi
                 // ⬅️ NEW: Safely extract and decode the remark from the 6th argument
                 string remark = parts.Length > 5 ? HttpUtility.HtmlDecode(parts[5]) : "";
 
-                if (HF_ActivityId != null) HF_ActivityId.Value = activityId;
-                if (HF_ActivityDate != null) HF_ActivityDate.Value = activityDate;
+                ApplySelectedActivityContext(activityId, activityDate);
 
                 DataTable dt = LoadExpenseForActivity(activityId);
 
@@ -1075,7 +1087,7 @@ namespace AnmolDristi
                 if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
                     if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = parsed.ToString("dd-MM-yyyy");
 
-            if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
+            ApplySelectedActivityContext(activityId.ToString(), activityDate);
             if (txtModalKM != null) txtModalKM.Text = currentKm;
             if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
 
@@ -1560,7 +1572,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             string maxText = allowedMax.HasValue ? allowedMax.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
 
             string script = string.Format(
-                "setTimeout(function(){{ $('#editKmModal').modal('show'); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').prop('disabled', {3}); }}, 150);",
+                "setTimeout(function(){{ $('#editKmModal').modal('show'); if (typeof lockKmModalPageScroll === 'function') lockKmModalPageScroll(); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').prop('disabled', {3}); }}, 150);",
                 minText.Replace("'", "\\'"),
                 maxText.Replace("'", "\\'"),
                 btnSaveKm != null ? btnSaveKm.ClientID : string.Empty,
@@ -1845,6 +1857,8 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 gvKmHistory.DataSource = dt;
                 gvKmHistory.DataBind();
             }
+            if (upKmHistory != null)
+                upKmHistory.Update();
             return dt.Rows.Count;
         }
 
@@ -1854,12 +1868,16 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             const string script =
                 "window.__kmHistoryExpandAfterSave = true;" +
+                "window.__kmHistoryStayExpandedUntilHidden = true;" +
+                "if (window.jQuery) { $('#editKmModal').modal('show'); }" +
+                "if (typeof lockKmModalPageScroll === 'function') lockKmModalPageScroll();" +
                 "setTimeout(function(){" +
                 "  if (typeof refreshKmHistoryPresentation === 'function') {" +
                 "    refreshKmHistoryPresentation({ expand: true });" +
                 "  }" +
-                "}, 200);";
-            ScriptManager.RegisterStartupScript(this, GetType(), "refreshKmHistoryAfterSave", script, true);
+                "}, 0);";
+            Control scriptTarget = upKmHistory != null ? (Control)upKmHistory : this;
+            ScriptManager.RegisterStartupScript(scriptTarget, scriptTarget.GetType(), "refreshKmHistoryAfterSave", script, true);
         }
 
         protected void btnSaveKm_Click(object sender, EventArgs e)
@@ -2018,6 +2036,8 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
                 Session.Remove(GetCurrentSessionKey());
                 BindGrid(false);
+                if (upKmActivities != null)
+                    upKmActivities.Update();
                 NotifyDraftChangeSaved();
                 int historyCount = BindKmHistory(activityId);
                 if (txtKmReason != null) txtKmReason.Text = string.Empty;
@@ -3747,54 +3767,14 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                             return;
                         }
 
-                        DateTime matchFrom = DateTime.MinValue, matchTo = DateTime.MinValue;
-                        if (expenseType != null && expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (fromDate.HasValue && toDate.HasValue) { matchFrom = fromDate.Value.Date; matchTo = toDate.Value.Date; }
-                            else if (expDate.HasValue) matchFrom = matchTo = expDate.Value.Date;
-                        }
-                        else if (expenseType != null && expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (expDate.HasValue) matchFrom = matchTo = expDate.Value.Date;
-                        }
-                        else
-                        {
-                            if (expDate.HasValue) matchFrom = matchTo = expDate.Value.Date;
-                        }
+                        bool isDaQualifyingType = !string.IsNullOrEmpty(expenseType) &&
+                            (expenseType.Equals("Hotel", StringComparison.OrdinalIgnoreCase) ||
+                             expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase));
 
                         using (SqlTransaction tx = con.BeginTransaction())
                         {
                             try
                             {
-                                bool isFirstForType = false;
-                                if (matchFrom != DateTime.MinValue)
-                                {
-                                    string firstSql = @"SELECT TOP 1 ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND IsDeleted = 0 AND LOWER(ISNULL(ExpenseType,'')) = LOWER(ISNULL(@ExpenseType,'')) AND CAST(ISNULL(ExpenseDate, GETDATE()) AS DATE) = @MatchDate ORDER BY CASE WHEN ExpenseSeq IS NULL THEN 2147483647 ELSE ExpenseSeq END ASC, ISNULL(CreatedDateTime, '1900-01-01') ASC, ExpenseId ASC";
-                                    using (var firstCmd = new SqlCommand(firstSql, con, tx))
-                                    {
-                                        firstCmd.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityId });
-                                        firstCmd.Parameters.Add(new SqlParameter("@ExpenseType", SqlDbType.NVarChar, 50) { Value = expenseType ?? (object)DBNull.Value });
-                                        firstCmd.Parameters.Add(new SqlParameter("@MatchDate", SqlDbType.Date) { Value = matchFrom });
-                                        object firstObj = firstCmd.ExecuteScalar();
-                                        if (firstObj != null && firstObj != DBNull.Value) isFirstForType = (Convert.ToInt32(firstObj) == expenseId);
-                                        else isFirstForType = true;
-                                    }
-                                }
-
-                                var autoIds = new List<int>();
-                                if (isFirstForType && matchFrom != DateTime.MinValue)
-                                {
-                                    // Make sure to add AND IsDeleted = 0 to this query as well!
-                                    string findAutoSql = @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK) WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1 AND ClaimStatus IN ('" + ClaimStatuses.Draft + @"', '" + ClaimStatuses.Returned + @"') AND IsDeleted = 0 AND CAST(ExpenseDate AS date) BETWEEN @FromDate AND @ToDate";
-                                    using (var findCmd = new SqlCommand(findAutoSql, con, tx))
-                                    {
-                                        findCmd.Parameters.AddWithValue("@ActivityId", activityId);
-                                        findCmd.Parameters.AddWithValue("@FromDate", matchFrom);
-                                        findCmd.Parameters.AddWithValue("@ToDate", matchTo);
-                                        using (var rdr = findCmd.ExecuteReader()) { while (rdr.Read()) autoIds.Add(Convert.ToInt32(rdr["ExpenseId"])); }
-                                    }
-                                }
-
                                 using (var del = new SqlCommand(SoftDeleteExpenseSql, con, tx))
                                 {
                                     del.Parameters.AddWithValue("@ExpenseId", expenseId);
@@ -3812,13 +3792,46 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                     }
                                 }
 
-                                if (autoIds.Count > 0)
+                                // Auto-DA follows Travel/Hotel only. Stationary must not remove it.
+                                if (isDaQualifyingType)
                                 {
-                                    string delAutoSql = BuildSoftDeleteExpenseBatchSql(autoIds);
-                                    using (var delAuto = new SqlCommand(delAutoSql, con, tx))
+                                    bool hasRemainingQualifying = false;
+                                    using (var remainCmd = new SqlCommand(
+                                        @"SELECT CASE WHEN EXISTS (
+                                              SELECT 1 FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
+                                              WHERE ActivityId = @ActivityId AND IsDeleted = 0
+                                                AND LOWER(ISNULL(ExpenseType,'')) IN ('travel','hotel')
+                                          ) THEN 1 ELSE 0 END", con, tx))
                                     {
-                                        AddSoftDeleteParameters(delAuto, Session["WORKMAN"].ToString(), "Auto-DA reversed due to primary expense deletion");
-                                        delAuto.ExecuteNonQuery();
+                                        remainCmd.Parameters.AddWithValue("@ActivityId", activityId);
+                                        hasRemainingQualifying = Convert.ToInt32(remainCmd.ExecuteScalar() ?? 0) == 1;
+                                    }
+
+                                    if (!hasRemainingQualifying)
+                                    {
+                                        var autoIds = new List<int>();
+                                        using (var findCmd = new SqlCommand(
+                                            @"SELECT ExpenseId FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
+                                              WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsAutoDA = 1
+                                                AND ClaimStatus IN ('" + ClaimStatuses.Draft + @"', '" + ClaimStatuses.Returned + @"')
+                                                AND IsDeleted = 0", con, tx))
+                                        {
+                                            findCmd.Parameters.AddWithValue("@ActivityId", activityId);
+                                            using (var rdr = findCmd.ExecuteReader())
+                                            {
+                                                while (rdr.Read()) autoIds.Add(Convert.ToInt32(rdr["ExpenseId"]));
+                                            }
+                                        }
+
+                                        if (autoIds.Count > 0)
+                                        {
+                                            string delAutoSql = BuildSoftDeleteExpenseBatchSql(autoIds);
+                                            using (var delAuto = new SqlCommand(delAutoSql, con, tx))
+                                            {
+                                                AddSoftDeleteParameters(delAuto, Session["WORKMAN"].ToString(), "Auto-DA reversed due to primary expense deletion");
+                                                delAuto.ExecuteNonQuery();
+                                            }
+                                        }
                                     }
                                 }
 
