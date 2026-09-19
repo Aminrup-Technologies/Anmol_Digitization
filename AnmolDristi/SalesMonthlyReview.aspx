@@ -3120,7 +3120,7 @@
                 clearKmRouteMetadataFields();
             }
             if (activityId) $('#<%=HF_RouteActivityId.ClientID%>').val(activityId);
-            setKmSaveWorkflowManual(false);
+            $('#<%=HF_KmSaveWorkflow.ClientID%>').val(KmSaveWorkflowManual);
             if (hideRouteSummary) $('#routeSummaryPanel').hide();
         };
 
@@ -3224,6 +3224,12 @@
 
                 $km.on('show.bs.modal.kmUx', function () {
                     lockPageScroll();
+                    if (typeof refreshKmHistoryPresentation === 'function') {
+                        refreshKmHistoryPresentation({
+                            expand: window.__kmHistoryExpandAfterSave === true
+                                || window.__kmHistoryStayExpandedUntilHidden === true
+                        });
+                    }
                 });
                 $(document).on('show.bs.modal.kmUx', '#editKmModal', function () {
                     lockPageScroll();

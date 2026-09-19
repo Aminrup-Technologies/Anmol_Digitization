@@ -1087,12 +1087,11 @@ namespace AnmolDristi
                 if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
                     if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = parsed.ToString("dd-MM-yyyy");
 
-            ApplySelectedActivityContext(activityId.ToString(), activityDate);
             if (txtModalKM != null) txtModalKM.Text = currentKm;
             if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
 
             InitializeKmModalSession(activityId);
-            BindKmHistory(activityId);
+            RehydrateKmModalOnOpen(activityId, activityDate);
             ApplyExpenseModalViewOnlyStateForKmModal(activityId);
 
             decimal baselineKm;
@@ -1355,7 +1354,7 @@ namespace AnmolDristi
             if (!string.IsNullOrEmpty(activityDate) && lbl_kmmodal_date != null) lbl_kmmodal_date.Text = activityDate;
 
             InitializeKmModalSession(activityId);
-            BindKmHistory(activityId);
+            RehydrateKmModalOnOpen(activityId, activityDate);
 
             var tolerance = ResolveToleranceForActivity(activityId, row);
             ConfigureKmModalDisplay(activityId, totalKm, tolerance);
@@ -1387,7 +1386,7 @@ namespace AnmolDristi
                         if (aDate.HasValue && lbl_kmmodal_date != null) lbl_kmmodal_date.Text = aDate.Value.ToString("dd-MM-yyyy");
 
                         InitializeKmModalSession(activityId);
-                        BindKmHistory(activityId);
+                        RehydrateKmModalOnOpen(activityId, aDate.HasValue ? aDate.Value.ToString("dd-MM-yyyy") : string.Empty);
 
                         var tolerance = ResolveToleranceForActivity(activityId, null);
                         if (rdr["MinAllowedKM"] != DBNull.Value) tolerance.ReductionTolerance = Convert.ToDecimal(rdr["MinAllowedKM"]);
@@ -1451,6 +1450,29 @@ namespace AnmolDristi
                 activityId,
                 hideSummary);
             ScriptManager.RegisterStartupScript(this, GetType(), "initKmModalSession_" + activityId, script, true);
+        }
+
+        private void RehydrateKmModalOnOpen(int activityId, string activityDate)
+        {
+            ApplySelectedActivityContext(activityId.ToString(), activityDate);
+
+            BindKmHistory(activityId);
+            if (activityId > 0)
+                BindRouteData(activityId);
+
+            RegisterKmHistoryPresentationOnOpen();
+        }
+
+        private void RegisterKmHistoryPresentationOnOpen()
+        {
+            const string script =
+                "window.__kmHistoryExpandAfterSave = false;" +
+                "window.__kmHistoryStayExpandedUntilHidden = false;" +
+                "if (typeof refreshKmHistoryPresentation === 'function') {" +
+                "  refreshKmHistoryPresentation({ expand: false });" +
+                "}";
+            Control scriptTarget = upKmHistory != null ? (Control)upKmHistory : this;
+            ScriptManager.RegisterStartupScript(scriptTarget, scriptTarget.GetType(), "refreshKmHistoryOnOpen", script, true);
         }
 
         private int GetKmModificationCount(int activityId)
@@ -3583,6 +3605,21 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             }
             catch
             {
+            }
+
+            bool hasRoute = !string.IsNullOrWhiteSpace(origin)
+                || !string.IsNullOrWhiteSpace(destination)
+                || !string.IsNullOrWhiteSpace(waypointsJson);
+
+            if (!hasRoute)
+            {
+                ScriptManager.RegisterStartupScript(
+                    this,
+                    GetType(),
+                    "RestoreRouteSummary",
+                    "$('#routeSummaryPanel').hide();",
+                    true);
+                return;
             }
 
             string js = string.Format(@"
