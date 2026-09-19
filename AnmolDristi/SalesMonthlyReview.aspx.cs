@@ -1336,6 +1336,9 @@ namespace AnmolDristi
 
             string hideOuter = "$('#expenseModal').modal('hide');";
             ScriptManager.RegisterStartupScript(this, this.GetType(), "hideExpenseBeforeOpenInner_" + activityId, hideOuter, true);
+
+            string reopen = "$('#editKmModal').off('hidden.bs.modal.reopenExpense').one('hidden.bs.modal.reopenExpense', function(){ setTimeout(function(){ $('#expenseModal').modal('show'); }, 0); });";
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "reopenExpenseModal_" + activityId, reopen, true);
         }
 
         private void PopulateEditKmModalFromRow(DataRow row)
@@ -1358,9 +1361,6 @@ namespace AnmolDristi
 
             var tolerance = ResolveToleranceForActivity(activityId, row);
             ConfigureKmModalDisplay(activityId, totalKm, tolerance);
-
-            string reopen = "$('#editKmModal').one('hidden.bs.modal', function(){ $('#expenseModal').modal('show'); });";
-            ScriptManager.RegisterStartupScript(this, this.GetType(), "reopenExpenseModal_" + activityId, reopen, true);
         }
 
         private void PopulateEditKmModalFromDb(int activityId)
@@ -1368,7 +1368,7 @@ namespace AnmolDristi
             if (activityId <= 0) { RegisterClientNotification("Activity not found.", "warning"); return; }
 
             using (SqlConnection con = new SqlConnection(connString))
-            using (SqlCommand cmd = new SqlCommand("SELECT TOP 1 ActivityId, TotalDistanceKM, MinAllowedKM, MaxAllowedKM, ActivityDate FROM dbo.SalesDailyActivity WHERE ActivityId = @ActivityId", con))
+            using (SqlCommand cmd = new SqlCommand("SELECT TOP 1 ActivityId, TotalDistanceKM, ActivityDate FROM dbo.SalesDailyActivity WHERE ActivityId = @ActivityId", con))
             {
                 cmd.Parameters.AddWithValue("@ActivityId", activityId);
                 con.Open();
@@ -1389,8 +1389,6 @@ namespace AnmolDristi
                         RehydrateKmModalOnOpen(activityId, aDate.HasValue ? aDate.Value.ToString("dd-MM-yyyy") : string.Empty);
 
                         var tolerance = ResolveToleranceForActivity(activityId, null);
-                        if (rdr["MinAllowedKM"] != DBNull.Value) tolerance.ReductionTolerance = Convert.ToDecimal(rdr["MinAllowedKM"]);
-                        if (rdr["MaxAllowedKM"] != DBNull.Value) tolerance.IncreaseTolerance = Convert.ToDecimal(rdr["MaxAllowedKM"]);
                         ConfigureKmModalDisplay(activityId, totalKm, tolerance);
                         return;
                     }
@@ -1541,34 +1539,74 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             if (row != null)
                 ApplyToleranceFromRow(row, config);
-            else if (activityId > 0)
+
+            bool hasRange = config.ReductionTolerance.HasValue || config.IncreaseTolerance.HasValue;
+            bool hasModificationLimit = row != null
+                && row.Table.Columns.Contains("MaxKmModificationCount")
+                && row["MaxKmModificationCount"] != DBNull.Value;
+
+            if (!hasRange || !hasModificationLimit)
+                ApplyEmployeeTolerancePolicy(config, !hasRange, !hasModificationLimit);
+
+            return config;
+        }
+
+        private void ApplyEmployeeTolerancePolicy(EmployeeKmToleranceConfig config, bool applyRange, bool applyCount)
+        {
+            if (config == null || (!applyRange && !applyCount)) return;
+
+            string employeeCode = GetLoggedInEmployeeCode();
+            if (string.IsNullOrWhiteSpace(employeeCode))
+            {
+                if (applyCount)
+                    config.MaxModificationCount = KmToleranceHelper.DefaultMaxModificationCount;
+                return;
+            }
+
+            try
             {
                 using (SqlConnection con = new SqlConnection(connString))
-                using (SqlCommand cmd = new SqlCommand("SELECT TOP 1 MinAllowedKM, MaxAllowedKM FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActivityId", con))
+                using (SqlCommand cmd = new SqlCommand(@"
+SELECT TOP 1 MinAllowedKM, MaxAllowedKM, ISNULL(MaxKmModificationCount, 1) AS MaxKmModificationCount
+FROM dbo.MST_EmployeeTolerance WITH (NOLOCK)
+WHERE EmployeeCode = @EmployeeCode
+  AND IsActive = 1
+  AND (EffectiveFrom IS NULL OR EffectiveFrom <= CAST(GETDATE() AS DATE))
+  AND (EffectiveTo IS NULL OR EffectiveTo >= CAST(GETDATE() AS DATE))
+ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 {
-                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                    cmd.Parameters.AddWithValue("@EmployeeCode", employeeCode.Trim());
                     con.Open();
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
-                        if (reader.Read())
+                        if (!reader.Read())
+                        {
+                            if (applyCount)
+                                config.MaxModificationCount = KmToleranceHelper.DefaultMaxModificationCount;
+                            return;
+                        }
+
+                        if (applyRange)
                         {
                             if (reader["MinAllowedKM"] != DBNull.Value)
                                 config.ReductionTolerance = Convert.ToDecimal(reader["MinAllowedKM"]);
                             if (reader["MaxAllowedKM"] != DBNull.Value)
                                 config.IncreaseTolerance = Convert.ToDecimal(reader["MaxAllowedKM"]);
                         }
+
+                        if (applyCount && reader["MaxKmModificationCount"] != DBNull.Value)
+                        {
+                            int count = Convert.ToInt32(reader["MaxKmModificationCount"]);
+                            config.MaxModificationCount = count < 1 ? KmToleranceHelper.DefaultMaxModificationCount : count;
+                        }
                     }
                 }
             }
-
-            bool hasModificationLimit = row != null
-                && row.Table.Columns.Contains("MaxKmModificationCount")
-                && row["MaxKmModificationCount"] != DBNull.Value;
-
-            if (!hasModificationLimit)
-                config.MaxModificationCount = GetMaxModificationCountForEmployee(GetLoggedInEmployeeCode());
-
-            return config;
+            catch
+            {
+                if (applyCount)
+                    config.MaxModificationCount = KmToleranceHelper.DefaultMaxModificationCount;
+            }
         }
 
         private void ConfigureKmModalDisplay(int activityId, decimal currentKm, EmployeeKmToleranceConfig tolerance)
@@ -1582,6 +1620,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             }
 
             BindKmPolicyInformation(activityId, originalKm, currentKm, tolerance);
+            BindParentTravelDistance(currentKm);
 
             int usedCount = GetKmModificationCount(activityId);
             bool canSave = usedCount < tolerance.MaxModificationCount;
@@ -1592,13 +1631,17 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             KmToleranceHelper.ComputeAllowedRange(currentKm, tolerance.ReductionTolerance, tolerance.IncreaseTolerance, out allowedMin, out allowedMax);
             string minText = allowedMin.HasValue ? allowedMin.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
             string maxText = allowedMax.HasValue ? allowedMax.Value.ToString("0.##", CultureInfo.InvariantCulture) : "—";
+            string parentKmText = currentKm.ToString("0.00", CultureInfo.InvariantCulture);
+            string parentKmId = lbl_HQTravelDistance != null ? lbl_HQTravelDistance.ClientID : string.Empty;
 
             string script = string.Format(
-                "setTimeout(function(){{ $('#editKmModal').modal('show'); if (typeof lockKmModalPageScroll === 'function') lockKmModalPageScroll(); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').prop('disabled', {3}); }}, 150);",
+                "setTimeout(function(){{ if (typeof bindKmModalScrollLock === 'function') bindKmModalScrollLock(); $('#editKmModal').modal('show'); if (typeof lockKmModalPageScroll === 'function') lockKmModalPageScroll(); $('#spMinKm').text('{0}'); $('#spMaxKm').text('{1}'); $('#{2}').prop('disabled', {3}); var _td=document.getElementById('{4}'); if(_td) _td.textContent='{5}'; }}, 150);",
                 minText.Replace("'", "\\'"),
                 maxText.Replace("'", "\\'"),
                 btnSaveKm != null ? btnSaveKm.ClientID : string.Empty,
-                canSave ? "false" : "true");
+                canSave ? "false" : "true",
+                parentKmId,
+                parentKmText);
 
             ScriptManager.RegisterStartupScript(this, this.GetType(), "openEditKmModal_" + activityId, script, true);
         }
@@ -1628,6 +1671,12 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 lblKmModLimit.Text = tolerance.MaxModificationCount.ToString();
             if (lblKmModRemaining != null)
                 lblKmModRemaining.Text = remaining;
+        }
+
+        private void BindParentTravelDistance(decimal currentKm)
+        {
+            if (lbl_HQTravelDistance == null) return;
+            lbl_HQTravelDistance.Text = currentKm.ToString("0.00", CultureInfo.InvariantCulture);
         }
 
         private void BindReturnedClaimsBanner(DataTable dt)

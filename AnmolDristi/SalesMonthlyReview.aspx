@@ -3206,72 +3206,74 @@
             function unlockPageScroll() {
                 var wasLocked = document.body.classList.contains('km-modal-open')
                     || document.documentElement.classList.contains('km-modal-open');
-                document.documentElement.classList.remove('km-modal-open');
-                document.body.classList.remove('km-modal-open');
+                document.documentElement.classList.remove('km-modal-open', 'modal-open');
+                document.body.classList.remove('km-modal-open', 'modal-open');
                 document.body.style.top = '';
+                document.body.style.overflow = '';
+                document.documentElement.style.overflow = '';
+                document.body.style.paddingRight = '';
+                document.documentElement.style.paddingRight = '';
+                if (window.jQuery) $('.modal-backdrop').remove();
                 if (wasLocked) window.scrollTo(0, scrollY || 0);
             }
 
             window.lockKmModalPageScroll = lockPageScroll;
             window.unlockKmModalPageScroll = unlockPageScroll;
 
+            function onKmModalShow() {
+                lockPageScroll();
+                if (typeof refreshKmHistoryPresentation === 'function') {
+                    refreshKmHistoryPresentation({
+                        expand: window.__kmHistoryExpandAfterSave === true
+                            || window.__kmHistoryStayExpandedUntilHidden === true
+                    });
+                }
+            }
+
+            function onKmModalShown() {
+                if (typeof refreshKmHistoryPresentation === 'function') {
+                    refreshKmHistoryPresentation({
+                        expand: window.__kmHistoryExpandAfterSave === true
+                            || window.__kmHistoryStayExpandedUntilHidden === true
+                    });
+                }
+                if (!window.__kmHistoryStayExpandedUntilHidden) {
+                    window.__kmHistoryExpandAfterSave = false;
+                }
+                fitKmModalToViewport();
+                viewportHandler = fitKmModalToViewport;
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', viewportHandler);
+                    window.visualViewport.addEventListener('scroll', viewportHandler);
+                }
+                $(window).off('resize.kmModalUx').on('resize.kmModalUx', viewportHandler);
+            }
+
+            function onKmModalHidden() {
+                window.__kmHistoryExpandAfterSave = false;
+                window.__kmHistoryStayExpandedUntilHidden = false;
+                if (window.visualViewport && viewportHandler) {
+                    window.visualViewport.removeEventListener('resize', viewportHandler);
+                    window.visualViewport.removeEventListener('scroll', viewportHandler);
+                }
+                $(window).off('resize.kmModalUx');
+                viewportHandler = null;
+                unlockPageScroll();
+            }
+
             function bindKmModalScrollLock() {
                 var $km = $('#editKmModal');
                 if (!$km.length) return;
 
                 $km.off('show.bs.modal.kmUx shown.bs.modal.kmUx hidden.bs.modal.kmUx');
-                $(document).off('show.bs.modal.kmUx shown.bs.modal.kmUx hidden.bs.modal.kmUx', '#editKmModal');
+                $(document).off('show.bs.modal.kmUx', '#editKmModal');
+                $(document).off('shown.bs.modal.kmUx', '#editKmModal');
+                $(document).off('hidden.bs.modal.kmUx', '#editKmModal');
+                $(document).off('hidden.bs.modal', '#editKmModal', onKmModalHidden);
 
-                $km.on('show.bs.modal.kmUx', function () {
-                    lockPageScroll();
-                    if (typeof refreshKmHistoryPresentation === 'function') {
-                        refreshKmHistoryPresentation({
-                            expand: window.__kmHistoryExpandAfterSave === true
-                                || window.__kmHistoryStayExpandedUntilHidden === true
-                        });
-                    }
-                });
-                $(document).on('show.bs.modal.kmUx', '#editKmModal', function () {
-                    lockPageScroll();
-                });
-
-                $km.on('shown.bs.modal.kmUx', function () {
-                    lockPageScroll();
-                    if (typeof refreshKmHistoryPresentation === 'function') {
-                        refreshKmHistoryPresentation({
-                            expand: window.__kmHistoryExpandAfterSave === true
-                                || window.__kmHistoryStayExpandedUntilHidden === true
-                        });
-                    }
-                    if (!window.__kmHistoryStayExpandedUntilHidden) {
-                        window.__kmHistoryExpandAfterSave = false;
-                    }
-                    fitKmModalToViewport();
-                    viewportHandler = fitKmModalToViewport;
-                    if (window.visualViewport) {
-                        window.visualViewport.addEventListener('resize', viewportHandler);
-                        window.visualViewport.addEventListener('scroll', viewportHandler);
-                    }
-                    $(window).off('resize.kmModalUx').on('resize.kmModalUx', viewportHandler);
-                });
-                $(document).on('shown.bs.modal.kmUx', '#editKmModal', function () {
-                    lockPageScroll();
-                });
-
-                $km.on('hidden.bs.modal.kmUx', function () {
-                    window.__kmHistoryExpandAfterSave = false;
-                    window.__kmHistoryStayExpandedUntilHidden = false;
-                    if (window.visualViewport && viewportHandler) {
-                        window.visualViewport.removeEventListener('resize', viewportHandler);
-                        window.visualViewport.removeEventListener('scroll', viewportHandler);
-                    }
-                    $(window).off('resize.kmModalUx');
-                    viewportHandler = null;
-                    unlockPageScroll();
-                });
-                $(document).on('hidden.bs.modal.kmUx', '#editKmModal', function () {
-                    unlockPageScroll();
-                });
+                $(document).on('show.bs.modal.kmUx', '#editKmModal', onKmModalShow);
+                $(document).on('shown.bs.modal.kmUx', '#editKmModal', onKmModalShown);
+                $(document).on('hidden.bs.modal', '#editKmModal', onKmModalHidden);
 
                 if ($km.hasClass('show') || $km.hasClass('in')) {
                     lockPageScroll();
@@ -3279,8 +3281,8 @@
             }
 
             window.bindKmModalScrollLock = bindKmModalScrollLock;
+            bindKmModalScrollLock();
             if (window.jQuery) $(bindKmModalScrollLock);
-            else bindKmModalScrollLock();
         })();
 
         $(document).on('input', '#<%=txtModalKM.ClientID%>', function () {
