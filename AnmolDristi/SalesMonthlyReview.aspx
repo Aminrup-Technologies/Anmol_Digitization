@@ -2515,6 +2515,7 @@
         $(document).on('change', '[id$="CHK_TravelInvoice"]', function () { updateVisibility(); });
 
         window.validateExpenseForm = function () {
+            if (window.__so_expenseSaveInFlight) return false;
             clearAllInlineErrors();
             var type = $resolve('DDL_ExpenseType').val() || 'DA';
 
@@ -2558,6 +2559,15 @@
                 // ADDED: Require File Attachment for Stationary
                 var f3 = $resolve('FU_Attachment')[0].files;
                 if (!f3 || f3.length === 0) { showInlineError($resolve('FU_Attachment'), 'Invoice attachment is mandatory for Stationary'); return false; }
+            }
+            window.__so_expenseSaveInFlight = true;
+            var $btnSave = $resolve('BTN_SaveExpense');
+            if ($btnSave.length) {
+                $btnSave.css({ 'pointer-events': 'none', 'opacity': '0.6' });
+                setTimeout(function () { $btnSave.prop('disabled', true); }, 0);
+            }
+            if (typeof showPageLoader === 'function') {
+                showPageLoader('Saving expense...', 'Please wait.');
             }
             return true;
         };
