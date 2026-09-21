@@ -3014,13 +3014,8 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
                                     if (autoDA > 0m)
                                     {
-                                        DateTime daDate = DateTime.Now;
-                                        string hfActDateStr2 = HF_ActivityDate != null && HF_ActivityDate.Value != null ? HF_ActivityDate.Value : "";
-                                        if (!string.IsNullOrWhiteSpace(hfActDateStr2)) DateTime.TryParse(hfActDateStr2, out daDate);
-                                        else if (fromDate.HasValue) daDate = fromDate.Value;
-                                        else if (travelDateNullable.HasValue) daDate = travelDateNullable.Value;
-
-                                        EnsureAutoDA(activityId, daDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
+                                        DateTime canonicalDate = Convert.ToDateTime(HF_ActivityDate.Value).Date;
+                                        EnsureAutoDA(activityId, canonicalDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
                                     }
                                 }
                             }
@@ -3076,7 +3071,10 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                             decimal.TryParse(hfOwnDA, out autoDA);
 
                                         if (autoDA > 0m)
-                                            EnsureAutoDA(activityId, travelDateNullable ?? DateTime.Now, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
+                                        {
+                                            DateTime canonicalDate = Convert.ToDateTime(HF_ActivityDate.Value).Date;
+                                            EnsureAutoDA(activityId, canonicalDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
+                                        }
                                     }
                                 }
                             }
