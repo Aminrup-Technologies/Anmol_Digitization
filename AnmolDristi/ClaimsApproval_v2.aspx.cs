@@ -1105,31 +1105,11 @@ namespace AnmolDristi
 
                 bool hasPendingReceipts = expensesJson.Contains("\"ClaimStatus\":\"Pending\"") || expensesJson.Contains("\"ClaimStatus\":\"Returned\"");
 
-                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
-                {
-                    e.Row.CssClass += " table-danger";
-                }
-                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
-                {
-                    string remarks = drv.Row.Table.Columns.Contains("DetailRemarks") && drv["DetailRemarks"] != DBNull.Value
-                        ? drv["DetailRemarks"].ToString().Trim()
-                        : string.Empty;
-                    ApplyReturnedDayRowState(e.Row, remarks);
-                }
-                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentLevel)
-                {
-                    e.Row.CssClass += " table-success";
-                    if (btnApprove != null) { btnApprove.Text = "✔ Done"; btnApprove.CssClass = "btn btn-sm btn-success"; }
-                }
-                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel < currentLevel)
-                {
-                    e.Row.CssClass += " table-warning";
-                    ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
-                }
-                else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
-                {
-                    ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, IsCurrentUserAuditor());
-                }
+                string remarks = drv.Row.Table.Columns.Contains("DetailRemarks") && drv["DetailRemarks"] != DBNull.Value
+                    ? drv["DetailRemarks"].ToString().Trim()
+                    : string.Empty;
+
+                ApplyDayRowState(detailStatus, e.Row, approvedLevel, currentLevel, hasPendingReceipts, remarks);
 
                 if (btnReturn != null)
                     btnReturn.Visible = !IsCurrentUserAuditor();
@@ -1162,6 +1142,290 @@ namespace AnmolDristi
             }
         }
 
+        private void ApplyDayRowState(
+            string detailStatus,
+            GridViewRow row,
+            int approvedLevel,
+            int currentLevel,
+            bool hasPendingReceipts,
+            string remarks)
+        {
+            if (row == null) return;
+
+            var btnApprove = row.FindControl("btnApproveRow") as Button;
+            var btnReturn = row.FindControl("btnReturnRow") as Button;
+            var btnRejectDay = row.FindControl("btnRejectDayRow") as Button;
+            var txtRemark = row.FindControl("txtRowRemark") as TextBox;
+            var lnkReview = row.FindControl("lnkReview") as LinkButton;
+
+            bool isAuditor = IsCurrentUserAuditor();
+            DayActionPermission perm = ResolveDayActionPermissions(
+                detailStatus, approvedLevel, currentLevel, hasPendingReceipts, isAuditor);
+
+            if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
+            {
+                ApplyRejectedDayRowState(row);
+                ApplyActionEnablement(btnApprove, btnReturn, btnRejectDay, perm);
+            }
+            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
+            {
+                ApplyReturnedDayRowState(row, remarks);
+                ApplyActionEnablement(btnApprove, btnReturn, btnRejectDay, perm);
+            }
+            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentLevel)
+            {
+                row.CssClass += " table-success";
+                if (btnApprove != null)
+                {
+                    btnApprove.Text = "✔ Done";
+                    btnApprove.CssClass = "btn btn-sm btn-success";
+                }
+                ApplyActionEnablement(btnApprove, btnReturn, btnRejectDay, perm);
+            }
+            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel < currentLevel)
+            {
+                row.CssClass += " table-warning";
+                ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, isAuditor, perm);
+            }
+            else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Pending))
+            {
+                ApplyGatekeeperLogic(btnApprove, btnReturn, btnRejectDay, txtRemark, lnkReview, hasPendingReceipts, isAuditor, perm);
+            }
+        }
+
+        /// <summary>
+        /// Declarative State × Action contract. Both ApplyDayRowState and the client
+        /// DayActionMatrix must stay aligned (RC-021).
+        /// </summary>
+        private enum DayActionRule
+        {
+            Disabled = 0,
+            Enabled = 1,
+            ManagerOnly = 2,
+            AuditorOnly = 3,
+            GatekeeperApprove = 4,
+            DependsOnLevel = 5
+        }
+
+        private sealed class DayActionMatrixRow
+        {
+            public DayActionRule Approve { get; set; }
+            public DayActionRule Return { get; set; }
+            public DayActionRule Reject { get; set; }
+        }
+
+        private sealed class DayActionPermission
+        {
+            public bool CanApprove { get; set; }
+            public bool CanReturn { get; set; }
+            public bool CanReject { get; set; }
+            public string ApproveTitle { get; set; }
+            public string ReturnTitle { get; set; }
+            public string RejectTitle { get; set; }
+            public bool IsDoneAtLevel { get; set; }
+        }
+
+        private static readonly Dictionary<string, DayActionMatrixRow> DayActionMatrix =
+            new Dictionary<string, DayActionMatrixRow>(StringComparer.OrdinalIgnoreCase)
+            {
+                {
+                    ClaimStatuses.Pending,
+                    new DayActionMatrixRow
+                    {
+                        Approve = DayActionRule.GatekeeperApprove,
+                        Return = DayActionRule.ManagerOnly,
+                        Reject = DayActionRule.AuditorOnly
+                    }
+                },
+                {
+                    ClaimStatuses.Approved,
+                    new DayActionMatrixRow
+                    {
+                        Approve = DayActionRule.DependsOnLevel,
+                        Return = DayActionRule.DependsOnLevel,
+                        Reject = DayActionRule.DependsOnLevel
+                    }
+                },
+                {
+                    ClaimStatuses.Returned,
+                    new DayActionMatrixRow
+                    {
+                        Approve = DayActionRule.Disabled,
+                        Return = DayActionRule.Disabled,
+                        Reject = DayActionRule.Disabled
+                    }
+                },
+                {
+                    ClaimStatuses.Rejected,
+                    new DayActionMatrixRow
+                    {
+                        Approve = DayActionRule.Enabled,
+                        Return = DayActionRule.Disabled,
+                        Reject = DayActionRule.Disabled
+                    }
+                }
+            };
+
+        private static DayActionPermission ResolveDayActionPermissions(
+            string detailStatus,
+            int approvedLevel,
+            int currentLevel,
+            bool hasPendingReceipts,
+            bool isAuditor)
+        {
+            string status = string.IsNullOrEmpty(detailStatus) ? ClaimStatuses.Pending : detailStatus;
+            DayActionMatrixRow row;
+            if (!DayActionMatrix.TryGetValue(status, out row))
+                row = DayActionMatrix[ClaimStatuses.Pending];
+
+            bool approvedAtCurrentLevel = ClaimStatuses.Equals(status, ClaimStatuses.Approved)
+                && approvedLevel == currentLevel;
+
+            var perm = new DayActionPermission
+            {
+                IsDoneAtLevel = approvedAtCurrentLevel,
+                CanApprove = EvaluateDayActionRule(
+                    row.Approve, DayActionRule.GatekeeperApprove,
+                    approvedLevel, currentLevel, hasPendingReceipts, isAuditor),
+                CanReturn = EvaluateDayActionRule(
+                    row.Return, DayActionRule.ManagerOnly,
+                    approvedLevel, currentLevel, hasPendingReceipts, isAuditor),
+                CanReject = EvaluateDayActionRule(
+                    row.Reject, DayActionRule.AuditorOnly,
+                    approvedLevel, currentLevel, hasPendingReceipts, isAuditor)
+            };
+
+            if (ClaimStatuses.Equals(status, ClaimStatuses.Returned))
+            {
+                perm.ApproveTitle = "Returned days cannot be approved until the employee resubmits.";
+                perm.ReturnTitle = "Already returned to employee.";
+                perm.RejectTitle = "Already returned to employee.";
+            }
+            else if (ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
+            {
+                perm.ApproveTitle = perm.CanApprove ? "Approve entire day" : "";
+                perm.RejectTitle = "This day has already been rejected.";
+                perm.ReturnTitle = "";
+            }
+            else if (approvedAtCurrentLevel)
+            {
+                perm.ApproveTitle = "";
+                perm.ReturnTitle = "";
+                perm.RejectTitle = "";
+            }
+            else if (!perm.CanApprove && hasPendingReceipts)
+            {
+                perm.ApproveTitle = "You must open the folder and approve or reject all receipts first.";
+                perm.ReturnTitle = perm.CanReturn ? "Return entire day to employee for correction" : "";
+                perm.RejectTitle = perm.CanReject ? "Permanently reject this day" : "";
+            }
+            else
+            {
+                perm.ApproveTitle = perm.CanApprove ? "Approve entire day" : "";
+                perm.ReturnTitle = perm.CanReturn ? "Return entire day to employee for correction" : "";
+                perm.RejectTitle = perm.CanReject ? "Permanently reject this day" : "";
+            }
+
+            return perm;
+        }
+
+        private static bool EvaluateDayActionRule(
+            DayActionRule rule,
+            DayActionRule dependsFallback,
+            int approvedLevel,
+            int currentLevel,
+            bool hasPendingReceipts,
+            bool isAuditor)
+        {
+            if (rule == DayActionRule.DependsOnLevel)
+            {
+                if (approvedLevel == currentLevel)
+                    return false;
+                if (approvedLevel < currentLevel)
+                    return EvaluateDayActionRule(
+                        dependsFallback, dependsFallback,
+                        approvedLevel, currentLevel, hasPendingReceipts, isAuditor);
+                return false;
+            }
+
+            switch (rule)
+            {
+                case DayActionRule.Enabled:
+                    return true;
+                case DayActionRule.ManagerOnly:
+                    return !isAuditor;
+                case DayActionRule.AuditorOnly:
+                    return isAuditor;
+                case DayActionRule.GatekeeperApprove:
+                    return !hasPendingReceipts;
+                default:
+                    return false;
+            }
+        }
+
+        private static void ApplyActionEnablement(
+            Button btnApprove,
+            Button btnReturn,
+            Button btnRejectDay,
+            DayActionPermission perm)
+        {
+            if (perm == null) return;
+
+            if (btnApprove != null)
+            {
+                btnApprove.Enabled = perm.CanApprove;
+                if (!string.IsNullOrEmpty(perm.ApproveTitle))
+                    btnApprove.ToolTip = perm.ApproveTitle;
+            }
+
+            if (btnReturn != null)
+            {
+                btnReturn.Enabled = perm.CanReturn;
+                if (!string.IsNullOrEmpty(perm.ReturnTitle))
+                    btnReturn.ToolTip = perm.ReturnTitle;
+            }
+
+            if (btnRejectDay != null)
+            {
+                btnRejectDay.Enabled = perm.CanReject;
+                if (!string.IsNullOrEmpty(perm.RejectTitle))
+                    btnRejectDay.ToolTip = perm.RejectTitle;
+            }
+        }
+
+        private static void ApplyRejectedDayRowState(GridViewRow row)
+        {
+            if (row == null) return;
+
+            string css = (row.CssClass ?? "").Replace("table-success", "").Replace("table-warning", "").Trim();
+            if (css.IndexOf("table-danger", StringComparison.OrdinalIgnoreCase) < 0)
+                css = (css + " table-danger").Trim();
+            row.CssClass = css;
+
+            var btnApprove = row.FindControl("btnApproveRow") as Button;
+            if (btnApprove != null)
+            {
+                btnApprove.Text = "Approve";
+                btnApprove.ToolTip = "Approve entire day";
+                btnApprove.CssClass = "btn btn-sm btn-success pulse-success text-white";
+            }
+
+            var btnRejectDay = row.FindControl("btnRejectDayRow") as Button;
+            if (btnRejectDay != null)
+            {
+                btnRejectDay.Text = "Rejected";
+                btnRejectDay.ToolTip = "This day has already been rejected.";
+                btnRejectDay.CssClass = "btn btn-sm btn-outline-danger mt-1 claims-ux-postback-btn";
+            }
+
+            var txtRemark = row.FindControl("txtRowRemark") as TextBox;
+            if (txtRemark != null) txtRemark.ReadOnly = false;
+
+            var lnkReview = row.FindControl("lnkReview") as LinkButton;
+            if (lnkReview != null)
+                lnkReview.Attributes["data-status"] = ClaimStatuses.Rejected;
+        }
+
         private static void ApplyReturnedDayRowState(GridViewRow row, string remarks)
         {
             if (row == null) return;
@@ -1184,7 +1448,6 @@ namespace AnmolDristi
             var btnApprove = row.FindControl("btnApproveRow") as Button;
             if (btnApprove != null)
             {
-                btnApprove.Enabled = false;
                 btnApprove.Text = "Approve";
                 btnApprove.ToolTip = "Returned days cannot be approved until the employee resubmits.";
                 btnApprove.CssClass = "btn btn-sm btn-outline-secondary";
@@ -1193,7 +1456,6 @@ namespace AnmolDristi
             var btnReturn = row.FindControl("btnReturnRow") as Button;
             if (btnReturn != null)
             {
-                btnReturn.Enabled = false;
                 btnReturn.Text = "Already Returned";
                 btnReturn.ToolTip = "Already returned to employee.";
             }
@@ -1203,48 +1465,49 @@ namespace AnmolDristi
                 lnkReview.Attributes["data-status"] = ClaimStatuses.Returned;
         }
 
-        private void ApplyGatekeeperLogic(Button btnApprove, Button btnReturn, Button btnRejectDay, TextBox txtRemark, LinkButton lnkReview, bool hasPendingReceipts, bool isAuditor)
+        private void ApplyGatekeeperLogic(
+            Button btnApprove,
+            Button btnReturn,
+            Button btnRejectDay,
+            TextBox txtRemark,
+            LinkButton lnkReview,
+            bool hasPendingReceipts,
+            bool isAuditor,
+            DayActionPermission perm)
         {
             if (txtRemark != null) txtRemark.ReadOnly = false;
 
-            if (btnReturn != null)
+            if (perm == null)
             {
-                btnReturn.Enabled = !isAuditor;
-                btnReturn.ToolTip = "Return entire day to employee for correction";
+                perm = ResolveDayActionPermissions(
+                    ClaimStatuses.Pending, 0, 0, hasPendingReceipts, isAuditor);
             }
 
-            if (btnRejectDay != null)
+            ApplyActionEnablement(btnApprove, btnReturn, btnRejectDay, perm);
+
+            if (btnApprove != null)
             {
-                btnRejectDay.Enabled = isAuditor;
-                btnRejectDay.ToolTip = "Permanently reject this day";
+                if (perm.CanApprove)
+                {
+                    btnApprove.CssClass = "btn btn-sm btn-success pulse-success text-white";
+                }
+                else
+                {
+                    btnApprove.CssClass = "btn btn-sm btn-outline-secondary";
+                }
             }
 
             if (hasPendingReceipts)
             {
-                if (btnApprove != null)
-                {
-                    btnApprove.Enabled = false;
-                    btnApprove.ToolTip = "You must open the folder and approve or reject all receipts first.";
-                    btnApprove.CssClass = "btn btn-sm btn-outline-secondary";
-                }
                 if (lnkReview != null)
                 {
                     if (!lnkReview.CssClass.Contains("pulse-info"))
                         lnkReview.CssClass += " pulse-info";
                 }
             }
-            else
+            else if (lnkReview != null)
             {
-                if (btnApprove != null)
-                {
-                    btnApprove.Enabled = true;
-                    btnApprove.ToolTip = "Approve entire day";
-                    btnApprove.CssClass = "btn btn-sm btn-success pulse-success text-white";
-                }
-                if (lnkReview != null)
-                {
-                    lnkReview.CssClass = lnkReview.CssClass.Replace("pulse-info", "").Trim();
-                }
+                lnkReview.CssClass = lnkReview.CssClass.Replace("pulse-info", "").Trim();
             }
         }
 
@@ -1650,9 +1913,9 @@ namespace AnmolDristi
                     ProcessDayDetailAction(detailId, reqId, action, remark);
                     if (action == DayDetailAction.Return)
                     {
-                        ApplyReturnedDayRowState(row, remark);
+                        ApplyDayRowState(ClaimStatuses.Returned, row, 0, 0, false, remark);
                         ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "pnotifyReturned",
-                            "closeUnifiedDayModalImmediate();showReturnedSuccessNotify();applyReturnedDayRow(" + detailId + ");", true);
+                            "closeClaimWorkflowAfterReturn();showReturnedSuccessNotify();", true);
                     }
 
                     ExecuteRecalculationSQL(reqId);
@@ -1962,9 +2225,8 @@ namespace AnmolDristi
 
                     if (action == DayDetailAction.Return)
                     {
-                        string jsIds = string.Join(",", rowsToProcess.Select(x => x.Item1.ToString()).ToArray());
                         ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "pnotifyReturnedBulk",
-                            "closeUnifiedDayModalImmediate();showReturnedSuccessNotify();[" + jsIds + "].forEach(function(id){ applyReturnedDayRow(id); });", true);
+                            "closeClaimWorkflowAfterReturn();showReturnedSuccessNotify();", true);
                     }
                 }
 

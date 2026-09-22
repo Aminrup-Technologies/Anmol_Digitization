@@ -1063,8 +1063,10 @@
             // CHECK LOCK STATE: "✔ Done" means approved at this level.
             // Returned is not a completed approval — do not lock line-item actions.
             var $btnApproveRow = $row.find('input[id*="btnApproveRow"]');
+            var rowStatus = String($(this).data('status') || '').toLowerCase();
             var isReturned = $row.find('.claims-badge-returned').length > 0
-                || String($(this).data('status') || '').toLowerCase() === 'returned';
+                || rowStatus === 'returned';
+            var isRejected = rowStatus === 'rejected';
             var isRowLocked = !isReturned
                 && $btnApproveRow.length > 0
                 && $btnApproveRow.val().indexOf('Done') !== -1;
@@ -1072,7 +1074,17 @@
             if (isReturned) {
                 details.ClaimStatus = 'Returned';
                 details.StatusClass = 'warning';
+            } else if (isRejected) {
+                details.ClaimStatus = 'Rejected';
+                details.StatusClass = 'danger';
+            } else if (isRowLocked) {
+                details.ClaimStatus = 'Approved';
+                details.StatusClass = 'success';
+            } else if (!details.ClaimStatus) {
+                details.ClaimStatus = 'Pending';
             }
+
+            var dayStatus = details.ClaimStatus || 'Pending';
 
             // Set UI Controls based on user level AND row lock state
             var activeLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(),10) || 0;
@@ -1081,27 +1093,6 @@
             var currentLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(), 10);
             var finalLevel = parseInt($('#<%=hfIsFinalApprover.ClientID%>').val(), 10);
             var isAuditor = $('#hfIsAuditor').val() === "1";
-
-            if (canAction) {
-                $('#divKmControls').show();
-                $('#btnUnifiedApproveDay').show();
-                if (isAuditor) {
-                    $('#btnUnifiedReturnDay').hide();
-                    $('#btnUnifiedRejectDay').show();
-                } else {
-                    $('#btnUnifiedReturnDay').show();
-                    $('#btnUnifiedRejectDay').hide();
-                }
-                if (isReturned) {
-                    $('#btnUnifiedReturnDay').prop('disabled', true).attr('title', 'Already returned to employee.');
-                    $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'Returned days cannot be approved until the employee resubmits.');
-                }
-            } else {
-                $('#divKmControls').hide();
-                $('#btnUnifiedApproveDay').hide();
-                $('#btnUnifiedReturnDay').hide();
-                $('#btnUnifiedRejectDay').hide();
-            }
 
             // Setup Distance Tab & Hidden Fields
             $('#km_modal_activityid').val(actId);
@@ -1119,9 +1110,25 @@
                 expensesJson,
                 isRowLocked,
                 canAction,
-                isAuditor,
-                isReturned
+                isAuditor
             );
+
+            unifiedDayStateContext = {
+                status: dayStatus,
+                canAction: canAction,
+                isAuditor: isAuditor,
+                approvedAtCurrentLevel: isRowLocked && normalizeDayStatus(dayStatus) === 'Approved',
+                detailId: detailId
+            };
+
+            renderUnifiedDayState(dayStatus, {
+                canAction: canAction,
+                isAuditor: isAuditor,
+                applyVisibility: true,
+                $row: $row,
+                approvedAtCurrentLevel: unifiedDayStateContext.approvedAtCurrentLevel,
+                detailId: detailId
+            });
 
             // Show Modal
             $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
@@ -1168,7 +1175,7 @@
         // =========================================================
         // 2. MODULAR RENDERING LOGIC (PHASE 6 & 7)
         // =========================================================
-        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isAuditor, isReturned) {
+        function renderUnifiedExpensesModal(details, expensesJson, isRowLocked, canAction, isAuditor) {
             let html = '';
 
             // Parse Line Items
@@ -1264,28 +1271,7 @@
             
                 html += '</div>';
 
-                //// THE GATEKEEPER: Lock/Unlock the "Approve Remaining" button
-                //if (hasPending && !isRowLocked) {
-                //    $('#btnUnifiedApproveDay').prop('disabled', true).attr('title', 'You must approve or reject all individual line items above first.');
-                //} else {
-                //    $('#btnUnifiedApproveDay').prop('disabled', false).removeAttr('title');
-                //}
-
-                // Footer action is always available.
-                // Server will process ONLY the remaining pending line items.
-                $('#btnUnifiedApproveDay')
-                    .prop('disabled', !canAction || isReturned)
-                    .attr('title', isReturned
-                        ? 'Returned days cannot be approved until the employee resubmits.'
-                        : (canAction ? '' : 'You are not authorized to perform this action.'));
-
-                $('#btnUnifiedReturnDay')
-                    .prop('disabled', !canAction || isReturned)
-                    .attr('title', isReturned ? 'Already returned to employee.' : (canAction ? '' : 'You are not authorized to perform this action.'));
-
-                $('#btnUnifiedRejectDay')
-                    .prop('disabled', !canAction)
-                    .attr('title', canAction ? '' : 'You are not authorized to perform this action.');
+                // Footer actions owned by renderUnifiedDayState (called by modal open / AJAX).
 
             } else {
                 html += `
@@ -1293,13 +1279,6 @@
                 <i class="fa fa-folder-open fa-3x mb-3 d-block text-secondary opacity-50"></i>
                 <h6 class="mb-0">No additional line items (Hotel, Travel, Stationary) claimed for this day.</h6>
             </div>`;
-                $('#btnUnifiedApproveDay').prop('disabled', !canAction || isReturned)
-                    .attr('title', isReturned
-                        ? 'Returned days cannot be approved until the employee resubmits.'
-                        : (canAction ? '' : 'You are not authorized to perform this action.'));
-                $('#btnUnifiedReturnDay')
-                    .prop('disabled', !canAction || isReturned)
-                    .attr('title', isReturned ? 'Already returned to employee.' : (canAction ? '' : 'You are not authorized to perform this action.'));
             }
 
             // Inject into the DOM
@@ -1984,6 +1963,26 @@
         }
 
         var unifiedDayModalActive = false;
+        var unifiedDayStateContext = {
+            status: 'Pending',
+            canAction: false,
+            isAuditor: false,
+            approvedAtCurrentLevel: false,
+            detailId: null
+        };
+
+        function restoreUnifiedDayActionButtons() {
+            var currentStatus = unifiedDayStateContext.status || 'Pending';
+            var currentCanAction = !!unifiedDayStateContext.canAction;
+            var currentIsAuditor = !!unifiedDayStateContext.isAuditor;
+            renderUnifiedDayState(currentStatus, {
+                canAction: currentCanAction,
+                isAuditor: currentIsAuditor,
+                applyVisibility: true,
+                approvedAtCurrentLevel: !!unifiedDayStateContext.approvedAtCurrentLevel,
+                detailId: unifiedDayStateContext.detailId || $('#km_modal_detailid').val()
+            });
+        }
 
         function setUnifiedDayModalActive(isActive) {
             unifiedDayModalActive = !!isActive;
@@ -2055,41 +2054,207 @@
             }
         }
 
-        function applyReturnedDayRow(detailId) {
+        function closeClaimWorkflowAfterReturn() {
+            closeUnifiedDayModalImmediate();
+            $('#detailsModal').modal('hide');
+        }
+
+        function findDayDetailRow(detailId) {
             var id = String(detailId);
-            var $row = $('#<%= gvDetails.ClientID %> tr').filter(function () {
+            return $('#<%= gvDetails.ClientID %> tr').filter(function () {
                 var $hf = $(this).find('input[id*="hfApprovalRequestDetailId"]');
                 var $lnk = $(this).find('.btn-day-action');
                 return ($hf.length && String($hf.val()) === id)
                     || ($lnk.length && String($lnk.data('detailid')) === id);
             }).first();
-            if (!$row.length) return;
+        }
 
-            $row.removeClass('table-success').addClass('table-warning');
-            var $badge = $row.find('[id*="lblReturnedBadge"]');
-            if ($badge.length) {
-                $badge.show();
+        function normalizeDayStatus(status) {
+            var s = String(status || 'Pending').trim().toLowerCase();
+            if (s === 'returned') return 'Returned';
+            if (s === 'rejected') return 'Rejected';
+            if (s === 'approved') return 'Approved';
+            return 'Pending';
+        }
+
+        // Declarative State × Action contract — must stay aligned with server DayActionMatrix (RC-021).
+        var DayActionMatrix = {
+            Pending:  { approve: 'GatekeeperApprove', returnAction: 'ManagerOnly', reject: 'AuditorOnly' },
+            Approved: { approve: 'DependsOnLevel',     returnAction: 'DependsOnLevel', reject: 'DependsOnLevel' },
+            Returned: { approve: 'Disabled',           returnAction: 'Disabled',      reject: 'Disabled' },
+            Rejected: { approve: 'Enabled',            returnAction: 'Disabled',      reject: 'Disabled' }
+        };
+
+        function evaluateDayActionRule(rule, dependsFallback, ctx) {
+            if (rule === 'DependsOnLevel') {
+                if (ctx.approvedAtCurrentLevel) return false;
+                return evaluateDayActionRule(dependsFallback, dependsFallback, ctx);
+            }
+            switch (rule) {
+                case 'Enabled': return true;
+                case 'ManagerOnly': return !ctx.isAuditor;
+                case 'AuditorOnly': return !!ctx.isAuditor;
+                case 'GatekeeperApprove': return !ctx.hasPendingReceipts;
+                default: return false;
+            }
+        }
+
+        function resolveDayActionPermissions(status, options) {
+            options = options || {};
+            var dayStatus = normalizeDayStatus(status);
+            var row = DayActionMatrix[dayStatus] || DayActionMatrix.Pending;
+            var ctx = {
+                isAuditor: !!options.isAuditor,
+                hasPendingReceipts: !!options.hasPendingReceipts,
+                approvedAtCurrentLevel: !!options.approvedAtCurrentLevel
+            };
+
+            var perm = {
+                canApprove: evaluateDayActionRule(row.approve, 'GatekeeperApprove', ctx),
+                canReturn: evaluateDayActionRule(row.returnAction, 'ManagerOnly', ctx),
+                canReject: evaluateDayActionRule(row.reject, 'AuditorOnly', ctx),
+                approveTitle: '',
+                returnTitle: '',
+                rejectTitle: '',
+                isDoneAtLevel: ctx.approvedAtCurrentLevel && dayStatus === 'Approved'
+            };
+
+            if (dayStatus === 'Returned') {
+                perm.approveTitle = 'Returned days cannot be approved until the employee resubmits.';
+                perm.returnTitle = 'Already returned to employee.';
+                perm.rejectTitle = 'Already returned to employee.';
+            } else if (dayStatus === 'Rejected') {
+                perm.approveTitle = perm.canApprove ? 'Approve entire day' : '';
+                perm.rejectTitle = 'This day has already been rejected.';
+            } else if (perm.isDoneAtLevel) {
+                perm.approveTitle = 'You are not authorized to perform this action.';
+                perm.returnTitle = 'You are not authorized to perform this action.';
+                perm.rejectTitle = 'You are not authorized to perform this action.';
+            } else if (!perm.canApprove && ctx.hasPendingReceipts) {
+                perm.approveTitle = 'You must open the folder and approve or reject all receipts first.';
+                perm.returnTitle = perm.canReturn ? 'Return entire day to employee for correction' : '';
+                perm.rejectTitle = perm.canReject ? 'Permanently reject this day' : '';
             } else {
-                $row.find('td:eq(1)').append('<span class="claims-badge claims-badge-returned d-block mt-1">Returned</span>');
+                perm.approveTitle = perm.canApprove ? 'Approve entire day' : 'You are not authorized to perform this action.';
+                perm.returnTitle = perm.canReturn ? 'Return entire day to employee for correction' : 'You are not authorized to perform this action.';
+                perm.rejectTitle = perm.canReject ? 'Permanently reject this day' : 'You are not authorized to perform this action.';
             }
 
-            var $approve = $row.find('input[id*="btnApproveRow"]');
-            $approve.prop('disabled', true)
-                .val('Approve')
-                .attr('title', 'Returned days cannot be approved until the employee resubmits.')
-                .removeClass('btn-success pulse-success text-white')
-                .addClass('btn-outline-secondary');
+            return perm;
+        }
 
-            var $ret = $row.find('input[id*="btnReturnRow"]');
-            $ret.prop('disabled', true).val('Already Returned')
-                .attr('title', 'Already returned to employee.');
+        // Sole client owner for Pending | Approved | Returned | Rejected day action UI.
+        function renderUnifiedDayState(status, options) {
+            options = options || {};
+            var dayStatus = normalizeDayStatus(status);
+            var canAction = !!options.canAction;
+            var isAuditor = !!options.isAuditor;
+            var unauthorized = 'You are not authorized to perform this action.';
+            var $row = (options.$row && options.$row.length) ? options.$row : null;
+            if (!$row && options.detailId != null && options.detailId !== '') {
+                $row = findDayDetailRow(options.detailId);
+                if (!$row.length) $row = null;
+            }
 
-            $row.find('.btn-day-action').attr('data-status', 'Returned').data('status', 'Returned');
+            if (options.applyVisibility) {
+                if (canAction) {
+                    $('#divKmControls').show();
+                    $('#btnUnifiedApproveDay').show();
+                    if (isAuditor) {
+                        $('#btnUnifiedReturnDay').hide();
+                        $('#btnUnifiedRejectDay').show();
+                    } else {
+                        $('#btnUnifiedReturnDay').show();
+                        $('#btnUnifiedRejectDay').hide();
+                    }
+                } else {
+                    $('#divKmControls').hide();
+                    $('#btnUnifiedApproveDay').hide();
+                    $('#btnUnifiedReturnDay').hide();
+                    $('#btnUnifiedRejectDay').hide();
+                }
+            }
 
-            $('#btnUnifiedApproveDay').prop('disabled', true)
-                .attr('title', 'Returned days cannot be approved until the employee resubmits.');
-            $('#btnUnifiedReturnDay').prop('disabled', true)
-                .attr('title', 'Already returned to employee.');
+            var perm = resolveDayActionPermissions(dayStatus, {
+                isAuditor: isAuditor,
+                hasPendingReceipts: !!options.hasPendingReceipts,
+                approvedAtCurrentLevel: !!options.approvedAtCurrentLevel
+                    || (dayStatus === 'Approved' && !canAction)
+            });
+
+            var approveEnabled = canAction && perm.canApprove;
+            var returnEnabled = canAction && perm.canReturn;
+            var rejectEnabled = canAction && perm.canReject;
+
+            $('#btnUnifiedApproveDay')
+                .prop('disabled', !approveEnabled)
+                .attr('title', approveEnabled ? (perm.approveTitle || '') : (perm.approveTitle || unauthorized));
+            $('#btnUnifiedReturnDay')
+                .prop('disabled', !returnEnabled)
+                .attr('title', returnEnabled ? (perm.returnTitle || '') : (perm.returnTitle || unauthorized));
+            $('#btnUnifiedRejectDay')
+                .prop('disabled', !rejectEnabled)
+                .attr('title', rejectEnabled ? (perm.rejectTitle || '') : (perm.rejectTitle || unauthorized));
+
+            if (options.syncGrid && $row) {
+                if (dayStatus === 'Returned') {
+                    $row.removeClass('table-success').addClass('table-warning');
+                    var $badge = $row.find('[id*="lblReturnedBadge"]');
+                    if ($badge.length) {
+                        $badge.show();
+                    } else if (!$row.find('.claims-badge-returned').length) {
+                        $row.find('td:eq(1)').append('<span class="claims-badge claims-badge-returned d-block mt-1">Returned</span>');
+                    }
+                    $row.find('input[id*="btnApproveRow"]')
+                        .prop('disabled', !perm.canApprove)
+                        .val('Approve')
+                        .attr('title', perm.approveTitle)
+                        .removeClass('btn-success pulse-success text-white')
+                        .addClass('btn-outline-secondary');
+                    $row.find('input[id*="btnReturnRow"]')
+                        .prop('disabled', !perm.canReturn)
+                        .val('Already Returned')
+                        .attr('title', perm.returnTitle);
+                    $row.find('input[id*="btnRejectDayRow"]')
+                        .prop('disabled', !perm.canReject)
+                        .attr('title', perm.rejectTitle);
+                    $row.find('.btn-day-action').attr('data-status', 'Returned').data('status', 'Returned');
+                } else if (dayStatus === 'Rejected') {
+                    $row.removeClass('table-success table-warning').addClass('table-danger');
+                    $row.find('input[id*="btnApproveRow"]')
+                        .prop('disabled', !perm.canApprove)
+                        .val('Approve')
+                        .attr('title', perm.approveTitle)
+                        .removeClass('btn-outline-secondary')
+                        .addClass('btn-success pulse-success text-white');
+                    $row.find('input[id*="btnRejectDayRow"]')
+                        .prop('disabled', !perm.canReject)
+                        .val('Rejected')
+                        .attr('title', perm.rejectTitle)
+                        .removeClass('btn-danger')
+                        .addClass('btn-outline-danger');
+                    $row.find('input[id*="btnReturnRow"]')
+                        .prop('disabled', !perm.canReturn);
+                    $row.find('.btn-day-action').attr('data-status', 'Rejected').data('status', 'Rejected');
+                } else if (dayStatus === 'Approved') {
+                    $row.removeClass('table-warning table-danger').addClass('table-success');
+                    $row.find('input[id*="btnApproveRow"]')
+                        .prop('disabled', !perm.canApprove)
+                        .val(perm.isDoneAtLevel || !perm.canApprove ? '✔ Done' : 'Approve')
+                        .removeClass('btn-outline-secondary pulse-success text-white')
+                        .addClass('btn-success');
+                    $row.find('input[id*="btnReturnRow"]').prop('disabled', !perm.canReturn);
+                    $row.find('input[id*="btnRejectDayRow"]').prop('disabled', !perm.canReject);
+                    $row.find('.btn-day-action').attr('data-status', 'Approved').data('status', 'Approved');
+                } else {
+                    $row.find('.btn-day-action').attr('data-status', 'Pending').data('status', 'Pending');
+                    $row.find('input[id*="btnApproveRow"]').prop('disabled', !perm.canApprove);
+                    $row.find('input[id*="btnReturnRow"]').prop('disabled', !perm.canReturn);
+                    $row.find('input[id*="btnRejectDayRow"]').prop('disabled', !perm.canReject);
+                }
+            }
+
+            return dayStatus;
         }
 
         function showReturnedSuccessNotify() {
@@ -2164,18 +2329,56 @@
                     if (r.d && r.d.needsForwardConfirm) {
                         pendingAjaxForward = { detailId: detailId, reqId: reqId };
                         $('#unifiedDayModal').modal('hide');
-                        $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
-                            .prop('disabled', false);
+                        restoreUnifiedDayActionButtons();
                         showForwardNextApproverModal();
                         return;
                     }
 
                     if (r.d && r.d.success) {
+                        var ajaxIsAuditor = $('#hfIsAuditor').val() === '1';
+                        var ajaxDetailId = (r.d.detailId || detailId);
 
                         if (action === 'RETURN') {
-                            closeUnifiedDayModalImmediate();
+                            unifiedDayStateContext.status = 'Returned';
+                            unifiedDayStateContext.canAction = true;
+                            unifiedDayStateContext.isAuditor = ajaxIsAuditor;
+                            unifiedDayStateContext.approvedAtCurrentLevel = false;
+                            unifiedDayStateContext.detailId = ajaxDetailId;
+                            renderUnifiedDayState('Returned', {
+                                detailId: ajaxDetailId,
+                                canAction: true,
+                                isAuditor: ajaxIsAuditor,
+                                syncGrid: true
+                            });
+                            closeClaimWorkflowAfterReturn();
                             showReturnedSuccessNotify();
-                            applyReturnedDayRow(r.d.detailId || detailId);
+                        } else if (action === 'REJECT') {
+                            unifiedDayStateContext.status = 'Rejected';
+                            unifiedDayStateContext.canAction = true;
+                            unifiedDayStateContext.isAuditor = ajaxIsAuditor;
+                            unifiedDayStateContext.approvedAtCurrentLevel = false;
+                            unifiedDayStateContext.detailId = ajaxDetailId;
+                            renderUnifiedDayState('Rejected', {
+                                detailId: ajaxDetailId,
+                                canAction: true,
+                                isAuditor: ajaxIsAuditor,
+                                syncGrid: true
+                            });
+                            $('#unifiedDayModal').modal('hide');
+                        } else if (action === 'APPROVE') {
+                            unifiedDayStateContext.status = 'Approved';
+                            unifiedDayStateContext.canAction = false;
+                            unifiedDayStateContext.isAuditor = ajaxIsAuditor;
+                            unifiedDayStateContext.approvedAtCurrentLevel = true;
+                            unifiedDayStateContext.detailId = ajaxDetailId;
+                            renderUnifiedDayState('Approved', {
+                                detailId: ajaxDetailId,
+                                canAction: false,
+                                isAuditor: ajaxIsAuditor,
+                                syncGrid: true,
+                                approvedAtCurrentLevel: true
+                            });
+                            $('#unifiedDayModal').modal('hide');
                         } else {
                             $('#unifiedDayModal').modal('hide');
                         }
@@ -2199,8 +2402,7 @@
                         '</span>'
                     );
 
-                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
-                        .prop('disabled', false);
+                    restoreUnifiedDayActionButtons();
 
                 },
 
@@ -2216,8 +2418,7 @@
                         '</span>'
                     );
 
-                    $('#btnUnifiedApproveDay,#btnUnifiedReturnDay,#btnUnifiedRejectDay')
-                        .prop('disabled', false);
+                    restoreUnifiedDayActionButtons();
 
                 }
 
