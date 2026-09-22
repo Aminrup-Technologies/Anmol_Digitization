@@ -2867,15 +2867,24 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 string hfOutDA = Request.Form[HF_OutstationDA.UniqueID] ?? (HF_OutstationDA != null ? HF_OutstationDA.Value : "");
                 string hfOwnDA = Request.Form[HF_OwnArrangementDA.UniqueID] ?? (HF_OwnArrangementDA != null ? HF_OwnArrangementDA.Value : "");
                 string hfHotelCap = Request.Form[HF_ResolvedHotelCap.UniqueID] ?? (HF_ResolvedHotelCap != null ? HF_ResolvedHotelCap.Value : "");
+                string hfMaxKM = Request.Form[HF_ResolvedMaxKM.UniqueID] ?? (HF_ResolvedMaxKM != null ? HF_ResolvedMaxKM.Value : "");
+                string hfRatePerKm = Request.Form[HF_ResolvedRatePerKm.UniqueID] ?? (HF_ResolvedRatePerKm != null ? HF_ResolvedRatePerKm.Value : "");
 
                 policyMode = policyMode.Trim();
 
+                // Persist both legacy keys (backward compatibility) and Resolved_* keys
+                // so ClaimsApproval_v2 can prefer Resolved_* without entering JSON fallback.
                 string policySnapshot = "{"
                     + "\"PolicyMode\":\"" + EscapeJson(policyMode) + "\","
                     + "\"ResolvedDA\":\"" + EscapeJson(hfDA) + "\","
                     + "\"OutstationDA\":\"" + EscapeJson(hfOutDA) + "\","
                     + "\"OwnArrangementDA\":\"" + EscapeJson(hfOwnDA) + "\","
-                    + "\"HotelCap\":\"" + EscapeJson(hfHotelCap) + "\""
+                    + "\"HotelCap\":\"" + EscapeJson(hfHotelCap) + "\","
+                    + "\"Resolved_MaxKM\":\"" + EscapeJson(hfMaxKM) + "\","
+                    + "\"Resolved_RatePerKm\":\"" + EscapeJson(hfRatePerKm) + "\","
+                    + "\"Resolved_DA\":\"" + EscapeJson(hfDA) + "\","
+                    + "\"Resolved_OutstationDA\":\"" + EscapeJson(hfOutDA) + "\","
+                    + "\"Resolved_OwnAllowance\":\"" + EscapeJson(hfOwnDA) + "\""
                     + "}";
 
                 string createdByIp = null;

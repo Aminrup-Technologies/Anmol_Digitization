@@ -1038,7 +1038,12 @@
             var details = {
                 ActivityDate: $row.find('td:nth-child(2)').text().trim(),
                 Day: $row.find('td:nth-child(2) small').text().trim(),
-                PolicyMode: $(this).data('policymode'),
+                PolicyMode: $(this).attr('data-policymode'),
+                ResolvedMaxKM: $(this).attr('data-resolved-maxkm'),
+                ResolvedRatePerKm: $(this).attr('data-resolved-rateperkm'),
+                ResolvedDA: $(this).attr('data-resolved-da'),
+                ResolvedOutstationDA: $(this).attr('data-resolved-outstationda'),
+                ResolvedOwnAllowance: $(this).attr('data-resolved-ownallowance'),
                 Hotel: $(this).data('hotel'),
                 Travel: $(this).data('travel'),
                 Stationary: $(this).data('stationary'),
@@ -1129,48 +1134,35 @@
         });
 
 
-        function buildActivitySummary(details) {
-            return `
-            <div class="card shadow-sm border-0 mb-3">
-                <div class="card-header bg-primary text-white py-2">
-                    <strong>
-                        <i class="fa fa-info-circle mr-2"></i>
-                        Activity Summary
-                    </strong>
-                </div>
+        function policyAmount(value) {
+            if (value === undefined || value === null || String(value).trim() === '') return '';
+            var n = parseFloat(value);
+            return isNaN(n) ? '' : n.toFixed(2);
+        }
 
-                <div class="card-body py-3">
-                    <div class="row">
-                        <div class="col-md-3 mb-2">
-                            <small class="text-muted d-block">Activity Date</small>
-                            <strong>${details.ActivityDate}</strong>
-                        </div>
-                        <div class="col-md-2 mb-2">
-                            <small class="text-muted d-block">Day</small>
-                            <strong>${details.Day}</strong>
-                        </div>
-                        <div class="col-md-3 mb-2">
-                            <small class="text-muted d-block">Claim Type</small>
-
-                            <span class="badge badge-info">
-                                ${details.ClaimType}
-                            </span>
-                        </div>
-                        <div class="col-md-2 mb-2">
-                            <small class="text-muted d-block">Status</small>
-
-                            <span class="badge badge-${details.StatusClass}">
-                                ${details.ClaimStatus}
-                            </span>
-                        </div>
-                        <div class="col-md-2 mb-2">
-                            <small class="text-muted d-block">Policy</small>
-                            <strong>${details.PolicyMode || '-'}</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-          `;
+        function policyLimitRows(details, amountFn) {
+            if (!details) return '';
+            var rows = [
+                ['Rate / KM', details.ResolvedRatePerKm],
+                ['DA limit', details.ResolvedDA],
+                ['Outstation DA limit', details.ResolvedOutstationDA],
+                ['Own arrangement limit', details.ResolvedOwnAllowance]
+            ];
+            var html = '';
+            for (var i = 0; i < rows.length; i++) {
+                var shown = policyAmount(rows[i][1]);
+                if (!shown) continue;
+                html += '<div class="d-flex justify-content-between mb-2">' +
+                    '<span class="text-muted small font-weight-bold">' + rows[i][0] + '</span>' +
+                    '<strong>₹ ' + (amountFn ? amountFn(shown) : shown) + '</strong></div>';
+            }
+            var km = policyAmount(details.ResolvedMaxKM);
+            if (km) {
+                html += '<div class="d-flex justify-content-between mb-2">' +
+                    '<span class="text-muted small font-weight-bold">Max KM</span>' +
+                    '<strong>' + km + ' KM</strong></div>';
+            }
+            return html;
         }
 
         // =========================================================
@@ -1367,7 +1359,7 @@
                                 </span>
                             </div>
 
-                            <div class="d-flex justify-content-between">
+                            <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted small font-weight-bold">
                                     Status
                                 </span>
@@ -1378,6 +1370,11 @@
 
                                 </span>
                             </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small font-weight-bold">Policy</span>
+                                <strong>${details.PolicyMode || '-'}</strong>
+                            </div>
+                            ${policyLimitRows(details, amount)}
                             ${(details.RejectedCount > 0) ? `
                             <div class="d-flex justify-content-between mt-2">
                                 <span class="text-muted small font-weight-bold">Deductions</span>

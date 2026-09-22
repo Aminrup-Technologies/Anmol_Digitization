@@ -10,6 +10,8 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Web.Services;
 using System.Web.Script.Services;
+using System.Globalization;
+using Newtonsoft.Json.Linq;
 
 namespace AnmolDristi
 {
@@ -192,6 +194,171 @@ namespace AnmolDristi
                 }
             }
             catch { /* display-only helper */ }
+        }
+
+        private sealed class ApprovalPolicyDto
+        {
+            public decimal? Resolved_MaxKM { get; set; }
+            public decimal? Resolved_RatePerKm { get; set; }
+            public decimal? Resolved_DA { get; set; }
+            public decimal? Resolved_OutstationDA { get; set; }
+            public decimal? Resolved_OwnAllowance { get; set; }
+            public string PolicyJson { get; set; }
+            public string PolicyMode { get; set; }
+        }
+
+        private static void ApplyResolvedPolicyAttributes(LinkButton lnkReview, string expensesJson)
+        {
+            if (lnkReview == null) return;
+
+            ApprovalPolicyDto dto = ResolveApprovalPolicy(expensesJson);
+            SetPolicyAttribute(lnkReview, "data-policymode", dto.PolicyMode);
+            SetPolicyAttribute(lnkReview, "data-resolved-maxkm", FormatPolicyDecimal(dto.Resolved_MaxKM));
+            SetPolicyAttribute(lnkReview, "data-resolved-rateperkm", FormatPolicyDecimal(dto.Resolved_RatePerKm));
+            SetPolicyAttribute(lnkReview, "data-resolved-da", FormatPolicyDecimal(dto.Resolved_DA));
+            SetPolicyAttribute(lnkReview, "data-resolved-outstationda", FormatPolicyDecimal(dto.Resolved_OutstationDA));
+            SetPolicyAttribute(lnkReview, "data-resolved-ownallowance", FormatPolicyDecimal(dto.Resolved_OwnAllowance));
+        }
+
+        private static void SetPolicyAttribute(LinkButton lnkReview, string name, string value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            lnkReview.Attributes[name] = value;
+        }
+
+        private static string FormatPolicyDecimal(decimal? value)
+        {
+            return value.HasValue
+                ? value.Value.ToString("0.00", CultureInfo.InvariantCulture)
+                : null;
+        }
+
+        private static ApprovalPolicyDto ResolveApprovalPolicy(string expensesJson)
+        {
+            var dto = new ApprovalPolicyDto();
+            if (string.IsNullOrWhiteSpace(expensesJson) || expensesJson.Trim() == "[]")
+                return dto;
+
+            JObject firstSnapshotJson = null;
+
+            try
+            {
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                var list = serializer.Deserialize<List<Dictionary<string, object>>>(expensesJson);
+                if (list == null) return dto;
+
+                foreach (var item in list)
+                {
+                    if (item == null) continue;
+
+                    string mode = ReadDictionaryString(item, "PolicyMode");
+                    string snapshot = ReadDictionaryString(item, "PolicySnapshot");
+                    if (string.IsNullOrEmpty(snapshot))
+                    {
+                        if (string.IsNullOrEmpty(dto.PolicyMode))
+                            dto.PolicyMode = mode;
+                        continue;
+                    }
+
+                    // First non-empty PolicySnapshot owns display resolution for the day.
+                    if (!string.IsNullOrEmpty(dto.PolicyJson))
+                        continue;
+
+                    dto.PolicyJson = snapshot;
+                    if (!string.IsNullOrEmpty(mode))
+                        dto.PolicyMode = mode;
+
+                    try
+                    {
+                        firstSnapshotJson = JObject.Parse(snapshot);
+                    }
+                    catch
+                    {
+                        firstSnapshotJson = null;
+                    }
+
+                    if (firstSnapshotJson != null)
+                        ApplyResolvedColumns(dto, firstSnapshotJson);
+                }
+            }
+            catch
+            {
+                return dto;
+            }
+
+            if ((dto.Resolved_MaxKM == null &&
+                 dto.Resolved_RatePerKm == null &&
+                 dto.Resolved_DA == null &&
+                 dto.Resolved_OutstationDA == null &&
+                 dto.Resolved_OwnAllowance == null)
+                && !string.IsNullOrEmpty(dto.PolicyJson))
+            {
+                TryParseJsonFallback(dto, firstSnapshotJson);
+            }
+
+            return dto;
+        }
+
+        private static void ApplyResolvedColumns(ApprovalPolicyDto dto, JObject json)
+        {
+            dto.Resolved_MaxKM = ReadJsonDecimal(json, "Resolved_MaxKM");
+            dto.Resolved_RatePerKm = ReadJsonDecimal(json, "Resolved_RatePerKm");
+            dto.Resolved_DA = ReadJsonDecimal(json, "Resolved_DA");
+            dto.Resolved_OutstationDA = ReadJsonDecimal(json, "Resolved_OutstationDA");
+            dto.Resolved_OwnAllowance = ReadJsonDecimal(json, "Resolved_OwnAllowance");
+        }
+
+        private static void TryParseJsonFallback(ApprovalPolicyDto dto, JObject json)
+        {
+            if (dto == null || string.IsNullOrEmpty(dto.PolicyJson)) return;
+
+            if (json == null)
+            {
+                try
+                {
+                    json = JObject.Parse(dto.PolicyJson);
+                }
+                catch
+                {
+                    return;
+                }
+            }
+
+            if (string.IsNullOrEmpty(dto.PolicyMode))
+                dto.PolicyMode = ReadJsonString(json, "PolicyMode");
+
+            dto.Resolved_MaxKM = ReadJsonDecimal(json, "MaxKM", "Resolved_MaxKM");
+            dto.Resolved_RatePerKm = ReadJsonDecimal(json, "RatePerKm", "Resolved_RatePerKm");
+            dto.Resolved_DA = ReadJsonDecimal(json, "ResolvedDA", "DA", "Resolved_DA");
+            dto.Resolved_OutstationDA = ReadJsonDecimal(json, "OutstationDA", "Outstation_DA", "Resolved_OutstationDA");
+            dto.Resolved_OwnAllowance = ReadJsonDecimal(json, "OwnArrangementDA", "OwnArrangementAllowance", "OwnArrangement_DA", "Resolved_OwnAllowance");
+        }
+
+        private static string ReadDictionaryString(Dictionary<string, object> item, string key)
+        {
+            if (item == null || !item.ContainsKey(key) || item[key] == null) return null;
+            string value = Convert.ToString(item[key]);
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private static string ReadJsonString(JObject json, string key)
+        {
+            if (json == null || json[key] == null || json[key].Type == JTokenType.Null) return null;
+            string value = Convert.ToString(json[key]);
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private static decimal? ReadJsonDecimal(JObject json, params string[] keys)
+        {
+            if (json == null || keys == null) return null;
+            foreach (string key in keys)
+            {
+                if (json[key] == null || json[key].Type == JTokenType.Null) continue;
+                decimal value;
+                if (decimal.TryParse(Convert.ToString(json[key]), NumberStyles.Any, CultureInfo.InvariantCulture, out value))
+                    return value;
+            }
+            return null;
         }
 
         protected void btnSearch_Click(object sender, EventArgs e) { BindRequestsGrid(); }
@@ -931,6 +1098,7 @@ namespace AnmolDristi
                 if (txtRemark != null) txtRemark.ReadOnly = true;
 
                 string expensesJson = drv["ExpensesJson"] != DBNull.Value ? drv["ExpensesJson"].ToString() : "";
+                ApplyResolvedPolicyAttributes(lnkReview, expensesJson);
                 //bool hasPendingReceipts = expensesJson.Contains("\"ClaimStatus\":\"Submitted\"") ||
                 //                          expensesJson.Contains("\"ClaimStatus\":\"Draft\"") ||
                 //                          expensesJson.Contains("\"ClaimStatus\":\"Pending\"");
