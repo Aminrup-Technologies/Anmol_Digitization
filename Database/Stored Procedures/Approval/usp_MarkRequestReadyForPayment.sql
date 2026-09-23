@@ -1,4 +1,11 @@
 /* ============================================================================
+   NAME:        rc023_markready_payment_lock_note
+   WHEN:        2026-09-23
+   WHY:         Align MarkReady contract with RC-023 payment lock (Completed precondition unchanged)
+   WHAT:        Document that ReadyForPayment is terminal; only Auditor + Completed may call this procedure
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        mark_ready_named_history_insert
    WHEN:        2026-09-15
    WHY:         Positional history INSERT failed after schema drift so ReadyForPayment never persisted

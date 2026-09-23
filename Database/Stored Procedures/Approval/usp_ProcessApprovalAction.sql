@@ -1,4 +1,11 @@
 /* ============================================================================
+   NAME:        rc023_latest_version_ownership
+   WHEN:        2026-09-23
+   WHY:         Day-action latest predicate used MAX(Id) only while Forward/Expense/Recalc use DetailVersion then Id
+   WHAT:        usp_ProcessApprovalAction latest-detail resolution uses MAX(DetailVersion) then MAX(ApprovalRequestDetailId)
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        auditor_unresolved_uses_approval_level
    WHEN:        2026-09-15
    WHY:         After L1 Forward, latest rows are Approved at level 1 so Pending/Submitted count was 0 and first Auditor approve wrote Completed
@@ -127,13 +134,24 @@ BEGIN
         RETURN;
     END;
 
-    -- Only the latest immutable snapshot per activity can be actioned.
+    -- Only the latest immutable snapshot per activity can be actioned
+    -- (DetailVersion then ApprovalRequestDetailId — RC-012 / RC-023).
     IF @ApprovalRequestDetailId <>
     (
-        SELECT MAX(d2.ApprovalRequestDetailId)
+        SELECT TOP (1) d2.ApprovalRequestDetailId
         FROM dbo.SalesApprovalRequestDetail d2
+        INNER JOIN (
+            SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+            FROM dbo.SalesApprovalRequestDetail
+            WHERE ApprovalRequestId = @ApprovalRequestId
+              AND ActivityId = @ActivityId
+            GROUP BY ActivityId
+        ) lv
+            ON lv.ActivityId = d2.ActivityId
+           AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
         WHERE d2.ApprovalRequestId = @ApprovalRequestId
           AND d2.ActivityId = @ActivityId
+        ORDER BY d2.ApprovalRequestDetailId DESC
     )
     BEGIN
         RAISERROR('Only the latest detail version for this activity can be processed.', 16, 1);
@@ -155,12 +173,11 @@ BEGIN
     ORDER BY a.ApproverLevel;
 
     --------------------------------------------------------------------
-    -- Payment Lock: a Completed request is immutable. No approval action
-    -- of any kind may be processed against it, regardless of actor.
+    -- Payment Lock: Completed / ReadyForPayment are immutable.
     --------------------------------------------------------------------
-    IF ISNULL(@OldRequestStatus, '') = 'Completed'
+    IF ISNULL(@OldRequestStatus, '') IN ('Completed', 'ReadyForPayment')
     BEGIN
-        RAISERROR('This approval request has been completed and is read-only. No further action can be processed.', 16, 1);
+        RAISERROR('This approval request is locked for payment and cannot be modified.', 16, 1);
         RETURN;
     END;
 
@@ -294,10 +311,20 @@ BEGIN
         FROM dbo.SalesApprovalRequestDetail ld
         INNER JOIN
         (
-            SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
-            FROM dbo.SalesApprovalRequestDetail
-            WHERE ApprovalRequestId = @ApprovalRequestId
-            GROUP BY ActivityId
+            SELECT
+                  d2.ActivityId
+                , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+            FROM dbo.SalesApprovalRequestDetail d2
+            INNER JOIN (
+                SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                FROM dbo.SalesApprovalRequestDetail
+                WHERE ApprovalRequestId = @ApprovalRequestId
+                GROUP BY ActivityId
+            ) lv
+                ON lv.ActivityId = d2.ActivityId
+               AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+            WHERE d2.ApprovalRequestId = @ApprovalRequestId
+            GROUP BY d2.ActivityId
         ) latest
             ON ld.ApprovalRequestDetailId = latest.LatestDetailId
         WHERE ld.ApprovalRequestId = @ApprovalRequestId;
@@ -520,10 +547,20 @@ BEGIN
                   FROM dbo.SalesApprovalRequestDetail d
                   INNER JOIN
                   (
-                      SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
-                      FROM dbo.SalesApprovalRequestDetail
-                      WHERE ApprovalRequestId = @ApprovalRequestId
-                      GROUP BY ActivityId
+                      SELECT
+                            d2.ActivityId
+                          , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                      FROM dbo.SalesApprovalRequestDetail d2
+                      INNER JOIN (
+                          SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                          FROM dbo.SalesApprovalRequestDetail
+                          WHERE ApprovalRequestId = @ApprovalRequestId
+                          GROUP BY ActivityId
+                      ) lv
+                          ON lv.ActivityId = d2.ActivityId
+                         AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                      WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                      GROUP BY d2.ActivityId
                   ) latest
                       ON d.ApprovalRequestDetailId = latest.LatestDetailId
                   WHERE d.ApprovalRequestId = @ApprovalRequestId
@@ -535,10 +572,20 @@ BEGIN
                   FROM dbo.SalesApprovalRequestDetail d
                   INNER JOIN
                   (
-                      SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
-                      FROM dbo.SalesApprovalRequestDetail
-                      WHERE ApprovalRequestId = @ApprovalRequestId
-                      GROUP BY ActivityId
+                      SELECT
+                            d2.ActivityId
+                          , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                      FROM dbo.SalesApprovalRequestDetail d2
+                      INNER JOIN (
+                          SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                          FROM dbo.SalesApprovalRequestDetail
+                          WHERE ApprovalRequestId = @ApprovalRequestId
+                          GROUP BY ActivityId
+                      ) lv
+                          ON lv.ActivityId = d2.ActivityId
+                         AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                      WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                      GROUP BY d2.ActivityId
                   ) latest
                       ON d.ApprovalRequestDetailId = latest.LatestDetailId
                   WHERE d.ApprovalRequestId = @ApprovalRequestId
@@ -550,10 +597,20 @@ BEGIN
                   FROM dbo.SalesApprovalRequestDetail d
                   INNER JOIN
                   (
-                      SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
-                      FROM dbo.SalesApprovalRequestDetail
-                      WHERE ApprovalRequestId = @ApprovalRequestId
-                      GROUP BY ActivityId
+                      SELECT
+                            d2.ActivityId
+                          , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                      FROM dbo.SalesApprovalRequestDetail d2
+                      INNER JOIN (
+                          SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                          FROM dbo.SalesApprovalRequestDetail
+                          WHERE ApprovalRequestId = @ApprovalRequestId
+                          GROUP BY ActivityId
+                      ) lv
+                          ON lv.ActivityId = d2.ActivityId
+                         AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                      WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                      GROUP BY d2.ActivityId
                   ) latest
                       ON d.ApprovalRequestDetailId = latest.LatestDetailId
                   WHERE d.ApprovalRequestId = @ApprovalRequestId
@@ -565,10 +622,20 @@ BEGIN
                   FROM dbo.SalesApprovalRequestDetail d
                   INNER JOIN
                   (
-                      SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
-                      FROM dbo.SalesApprovalRequestDetail
-                      WHERE ApprovalRequestId = @ApprovalRequestId
-                      GROUP BY ActivityId
+                      SELECT
+                            d2.ActivityId
+                          , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                      FROM dbo.SalesApprovalRequestDetail d2
+                      INNER JOIN (
+                          SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                          FROM dbo.SalesApprovalRequestDetail
+                          WHERE ApprovalRequestId = @ApprovalRequestId
+                          GROUP BY ActivityId
+                      ) lv
+                          ON lv.ActivityId = d2.ActivityId
+                         AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                      WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                      GROUP BY d2.ActivityId
                   ) latest
                       ON d.ApprovalRequestDetailId = latest.LatestDetailId
                   WHERE d.ApprovalRequestId = @ApprovalRequestId
@@ -580,10 +647,20 @@ BEGIN
                   FROM dbo.SalesApprovalRequestDetail d
                   INNER JOIN
                   (
-                      SELECT ActivityId, MAX(ApprovalRequestDetailId) AS LatestDetailId
-                      FROM dbo.SalesApprovalRequestDetail
-                      WHERE ApprovalRequestId = @ApprovalRequestId
-                      GROUP BY ActivityId
+                      SELECT
+                            d2.ActivityId
+                          , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                      FROM dbo.SalesApprovalRequestDetail d2
+                      INNER JOIN (
+                          SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                          FROM dbo.SalesApprovalRequestDetail
+                          WHERE ApprovalRequestId = @ApprovalRequestId
+                          GROUP BY ActivityId
+                      ) lv
+                          ON lv.ActivityId = d2.ActivityId
+                         AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                      WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                      GROUP BY d2.ActivityId
                   ) latest
                       ON d.ApprovalRequestDetailId = latest.LatestDetailId
                   WHERE d.ApprovalRequestId = @ApprovalRequestId

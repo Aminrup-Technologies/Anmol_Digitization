@@ -715,13 +715,52 @@ namespace AnmolDristi
             if (GetReturnedItemCount(reqId) > 0)
                 throw new Exception("Cannot finalize while returned days or expenses are awaiting employee correction.");
 
+            int currentLevel;
+            string headerStatus;
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"
+                SELECT Status, ISNULL(CurrentApproverLevel, 0)
+                FROM dbo.SalesApprovalRequest
+                WHERE ApprovalRequestId = @Id", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", reqId);
+                con.Open();
+                using (var rdr = cmd.ExecuteReader())
+                {
+                    if (!rdr.Read())
+                        throw new Exception("Approval request was not found.");
+                    headerStatus = rdr.IsDBNull(0) ? string.Empty : rdr.GetString(0);
+                    currentLevel = rdr.GetInt32(1);
+                }
+            }
+
+            // Payment lock: ReadyForPayment is terminal for workflow mutations.
+            if (ClaimStatuses.Equals(headerStatus, ClaimStatuses.ReadyForPayment))
+                throw new Exception("This approval request is locked for payment and cannot be modified.");
+
+            // Forward requires Pending; MarkReady accepts Pending or Completed (Auditor terminal write).
+            if (!ClaimStatuses.Equals(headerStatus, ClaimStatuses.Pending)
+                && !ClaimStatuses.Equals(headerStatus, ClaimStatuses.Completed))
+                throw new Exception("This approval request is not currently awaiting approval and cannot be processed.");
+
+            // RC-023: unresolved days use the same level-aware rule as IsDetailActionableAtCurrentLevel
+            // (Approved at a lower level remains actionable for the current approver).
             string sql = @"
                 SELECT
                     (SELECT COUNT(1)
                      FROM dbo.SalesApprovalRequestDetail d
                      WHERE d.ApprovalRequestId = @Id
-                       AND ISNULL(d.DetailStatus, '" + ClaimStatuses.Pending + @"') NOT IN ('" + ClaimStatuses.Approved + @"', '" + ClaimStatuses.Rejected + @"')
-                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @")
+                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
+                       AND (
+                            ISNULL(d.DetailStatus, '" + ClaimStatuses.Pending + @"') NOT IN (
+                                '" + ClaimStatuses.Approved + @"',
+                                '" + ClaimStatuses.Rejected + @"',
+                                '" + ClaimStatuses.Returned + @"')
+                         OR (
+                                ISNULL(d.DetailStatus, '') = '" + ClaimStatuses.Approved + @"'
+                            AND ISNULL(d.DetailApprovedLevel, 0) < @CurrentLevel
+                            )
+                       ))
                   + (SELECT COUNT(1)
                      FROM dbo.SalesDailyExpense e
                      INNER JOIN dbo.SalesApprovalRequestDetail d ON e.ActivityId = d.ActivityId
@@ -734,10 +773,11 @@ namespace AnmolDristi
             using (var cmd = new SqlCommand(sql, con))
             {
                 cmd.Parameters.AddWithValue("@Id", reqId);
+                cmd.Parameters.AddWithValue("@CurrentLevel", currentLevel);
                 con.Open();
                 int unresolved = Convert.ToInt32(cmd.ExecuteScalar());
                 if (unresolved > 0)
-                    throw new Exception("All day rows and expense lines must be Approved or Rejected before finalization.");
+                    throw new Exception("All day rows and expense lines must be resolved at the current approval level before finalization.");
             }
         }
 
