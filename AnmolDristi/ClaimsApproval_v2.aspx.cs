@@ -28,6 +28,9 @@ namespace AnmolDristi
         private decimal _totalTravel = 0m;
         private decimal _totalStationary = 0m; // <-- ADD THIS
 
+        // Workflow-pending day count (RC-022): uses IsDetailActionableAtCurrentLevel, not button.Enabled.
+        private int _actionableWorkflowDayCount = 0;
+
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
@@ -420,6 +423,7 @@ namespace AnmolDristi
         {
             _totalSnapshot = 0m; _totalTAClaim = 0m; _totalDistance = 0m;
             _totalDA = 0m; _totalHotel = 0m; _totalTravel = 0m; _totalStationary = 0m;
+            _actionableWorkflowDayCount = 0;
 
             SetCurrentUserApproverDetails(reqId); // Ensure state is fresh
 
@@ -568,25 +572,12 @@ namespace AnmolDristi
             lblSummaryOriginalKM.Text = (headerApprovedKM + totalDeductedKM).ToString("N2");
 
             // =========================================================
-            // SMART BUTTON VISIBILITY & COUNTING (Check Parent Rows)
+            // WORKFLOW PENDING COUNT (RC-022)
+            // Gate finalization / bulk visibility on IsDetailActionableAtCurrentLevel
+            // (accumulated in gvDetails_RowDataBound) — not on button.Enabled.
+            // Rejected/Returned and Approved-at-current-level are not pending work.
             // =========================================================
-            int pendingDayRowsCount = 0;
-            foreach (GridViewRow row in gvDetails.Rows)
-            {
-                if (row.RowType == DataControlRowType.DataRow)
-                {
-                    var btnApprove = row.FindControl("btnApproveRow") as Button;
-                    var btnReturn = row.FindControl("btnReturnRow") as Button;
-                    var btnRejectDay = row.FindControl("btnRejectDayRow") as Button;
-                    if ((btnApprove != null && btnApprove.Enabled) ||
-                        (btnReturn != null && btnReturn.Enabled) ||
-                        (btnRejectDay != null && btnRejectDay.Enabled))
-                    {
-                        pendingDayRowsCount++;
-                    }
-                }
-            }
-
+            int pendingDayRowsCount = _actionableWorkflowDayCount;
             bool pendingActionExists = (pendingDayRowsCount > 0);
 
             // =========================================================
@@ -1110,6 +1101,16 @@ namespace AnmolDristi
                     : string.Empty;
 
                 ApplyDayRowState(detailStatus, e.Row, approvedLevel, currentLevel, hasPendingReceipts, remarks);
+
+                // RC-022: workflow progression eligibility (separate from DayActionMatrix permissions).
+                var workflowCtx = new BulkDetailDbContext
+                {
+                    DetailStatus = detailStatus,
+                    DetailApprovedLevel = approvedLevel,
+                    IsLatestDetailVersion = true
+                };
+                if (IsDetailActionableAtCurrentLevel(workflowCtx, currentLevel))
+                    _actionableWorkflowDayCount++;
 
                 if (btnReturn != null)
                     btnReturn.Visible = !IsCurrentUserAuditor();
