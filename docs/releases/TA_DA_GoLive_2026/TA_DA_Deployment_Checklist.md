@@ -202,3 +202,59 @@ Exit criteria after rollback: L1 inbox loads; employee month grid loads; inciden
 Deployer: ________________  
 Approver (CAB): ________________  
 Date: ________________
+
+---
+
+## RC-023 — Production Hardening (additive package)
+
+Use this section when promoting commit `4644baf` after the v1.1 / RC-017–022 baselines. Does not replace the v1.1 steps above.
+
+| Field | Value |
+| --- | --- |
+| Commit (short) | `4644baf` |
+| Commit (full) | `4644baf4caa051b0f5d32cc76f1479a0d344a4d4` |
+| Commit timestamp | 2026-09-23 13:04:41 +0530 |
+| RC-023 UAT Tag | `rc-023-uat-certified` @ `4644baf` (pushed) |
+| DLL SHA256 | `04D0250EE80DABB519992CCC70FAB1CB8FCF35D562ACBE33D5A9E9E055AB09BF` |
+| Build timestamp | 2026-09-23 12:54:28 +0530 |
+| Diff | 5 files, +328 / −73 |
+
+### Scope (5 files)
+
+| Path | Notes |
+| --- | --- |
+| `AnmolDristi/ClaimsApproval_v2.aspx.cs` | RC-022-aligned finalize + ReadyForPayment lock |
+| `AnmolDristi/SalesApprovalDetailVersionHelper.cs` | `DetailVersion` → `MAX(ApprovalRequestDetailId)` |
+| `Database/Stored Procedures/Approval/usp_UpdateSalesDailyExpenseStatus.sql` | Auth + payment lock + **RC-015B Stationary** |
+| `Database/Stored Procedures/Approval/usp_ProcessApprovalAction.sql` | Version→Id + Completed/ReadyForPayment lock |
+| `Database/Stored Procedures/Approval/usp_MarkRequestReadyForPayment.sql` | Optional unless target body differs from RC-014D. |
+
+### SQL delta (apply after rollback script-out)
+
+| Order | Procedure | CAB note |
+| --- | --- | --- |
+| 1 | `usp_UpdateSalesDailyExpenseStatus` | **Mandatory** — closes RC-015B Stationary + RC-023 auth/locks |
+| 2 | `usp_ProcessApprovalAction` | **Mandatory** — latest-version + payment lock |
+| 3 | `usp_MarkRequestReadyForPayment` | Optional unless target body differs from RC-014D. |
+
+### UAT evidence placeholders
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| UAT expense SP `modify_date` after ALTER | **PASS** | `2026-09-15 12:03:55.347` → `2026-09-23 13:51:38.003` (QI ON redeploy); pack `pvt-evidence/2026-09-23-rc023-uat/` |
+| UAT ProcessApprovalAction `modify_date` after ALTER | **PASS** | `2026-09-15 18:04:06.090` → `2026-09-23 13:51:38.750` (CREATE OR ALTER + QI ON) |
+| DLL published / AppDomain recycle | **PASS** | SHA `04D0250E…AB09BF`; recycle `2026-09-23 13:44:38.581 +05:30`; build stamp `2026-09-23 12:54:28`; Web.config not retargeted |
+| Non-current approver expense refused | **PASS** | R106 ExpenseId `2410`; ActionBy `AHS1605` → *You are not the current approver…*; current `AHS1870` mutate PASS (txn rolled back) |
+| Mutation blocked on Completed / ReadyForPayment | **PASS** | R98/R107 expense + day locks → *locked for payment…* (`06-auth-finalize-gates.txt`) |
+| Stationary ≠ 0 Final / snapshot / Excel | **PASS** | R106 Stationary `800` Snap=Live=Header; Final `6971.06` PASS. R107 Excel 31 rows / Stationary `242` / FinalSum=`9384.29` = header |
+| Level-aware finalize (L1-Approved blocks Auditor Ready) | **PASS** | R94: UnresolvedCount=`21` L1-Approved; `usp_MarkRequestReadyForPayment` → *Request not completed.* |
+
+### CAB deployment inventory checklist
+
+- [x] Rollback scripts captured for the three SQL objects above.
+- [x] Package built from `4644baf` (DLL SHA matches table).
+- [x] UAT ALTER order 1 → 2 (→ 3 optional) completed. MarkReady **SKIPPED** (UAT body = RC-014D runtime).
+- [x] UAT evidence placeholders filled (**no Production cutover with blanks**).
+- [ ] Production ALTER same order + IIS publish/recycle.
+- [ ] Production `DbConn` / catalog retarget confirmed by ops (outside this commit).
+- [ ] RC-023 sign-off: Deployer Cursor Agent / CAB ________ / Date 2026-09-23

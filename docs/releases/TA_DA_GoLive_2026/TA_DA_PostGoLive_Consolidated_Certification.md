@@ -278,3 +278,75 @@ See §2 (G-01–G-10). Critical packaging gaps: tag missing 014/015; **015B not 
 | Production after `tada-v1.1-postgolive-fsot-2026` + 015B deploy + DLL | **Conditional GO** (CAB + push required) |
 
 Freeze packaging complete locally. Do not push until CAB approval.
+
+---
+
+## 8. RC-023 — Production Hardening (additive; does not supersede §1–§7)
+
+**Captured:** 2026-09-23  
+**Commit:** `4644baf` (`4644baf4caa051b0f5d32cc76f1479a0d344a4d4`)  
+**Title:** Harden approval authorization, latest-version ownership, and payment locking  
+**Branch:** `Aug26_AILWorks_AmimnrupSupport`  
+**RC-023 UAT Tag:** `rc-023-uat-certified` @ `4644baf` (UAT certified 2026-09-23)
+**Prior certified baseline:** `tada-v1.1-postgolive-fsot-2026` / `rc-017-022-uat-certified` remain historical; this section documents the RC-023 delta only.
+
+### 8.1 Scope (5 files)
+
+| Path | Role |
+| --- | --- |
+| `AnmolDristi/ClaimsApproval_v2.aspx.cs` | Level-aware `EnsureCanFinalizeRequest`; ReadyForPayment payment lock |
+| `AnmolDristi/SalesApprovalDetailVersionHelper.cs` | Latest-detail = `MAX(DetailVersion)` then `MAX(ApprovalRequestDetailId)` |
+| `Database/Stored Procedures/Approval/usp_UpdateSalesDailyExpenseStatus.sql` | Expense auth, current approver, Pending-only, payment lock, Stationary (RC-015B) |
+| `Database/Stored Procedures/Approval/usp_ProcessApprovalAction.sql` | Version→Id latest ownership; Completed/ReadyForPayment lock |
+| `Database/Stored Procedures/Approval/usp_MarkRequestReadyForPayment.sql` | Contract note only (runtime: Auditor + Completed + named history INSERT) |
+
+Diff: **+328 / −73** (5 files).
+
+### 8.2 DLL / build
+
+| Item | Value |
+| --- | --- |
+| DLL SHA256 | `04D0250EE80DABB519992CCC70FAB1CB8FCF35D562ACBE33D5A9E9E055AB09BF` |
+| Build / publish timestamp | 2026-09-23 12:54:28 +0530 |
+| Artifact | `D:\DeployPackages\bin\AnmolDristi.dll` (= `AnmolDristi\bin\AnmolDristi.dll`) |
+
+### 8.3 SQL delta (repository vs certified UAT stamps in §3.4)
+
+| Procedure | RC-023 repo change | Certified UAT `modify_date` (pre-RC-023 deploy) |
+| --- | --- | --- |
+| `usp_UpdateSalesDailyExpenseStatus` | Auth + payment/header locks + four-part Stationary | 2026-09-15 12:03:55 (three-part; **015B/023 not applied**) |
+| `usp_ProcessApprovalAction` | Version→Id latest; Completed/ReadyForPayment lock | 2026-09-15 18:04:06 (Id-only latest; Completed-only lock era) |
+| `usp_MarkRequestReadyForPayment` | Documentation comment only | 2026-09-15 21:50:31 (unchanged runtime contract) |
+
+FSOT ownership unchanged: `usp_RecalculateApprovalRequest` remains the sole `FinalApprovedAmount` writer; MarkReady remains the sole `ReadyForPayment` writer.
+
+### 8.4 UAT evidence (executed 2026-09-23)
+
+Pack: `pvt-evidence/2026-09-23-rc023-uat/`. Rollback bodies under `rollback/AnmolDristiDev/`.
+
+| Gate | Result | Evidence / notes |
+| --- | --- | --- |
+| ALTER `usp_UpdateSalesDailyExpenseStatus` (RC-023 + RC-015B) | **PASS** | `modify_date`: `2026-09-15 12:03:55.347` → `2026-09-23 13:51:38.003` (QI ON) |
+| ALTER `usp_ProcessApprovalAction` (RC-023) | **PASS** | `modify_date`: `2026-09-15 18:04:06.090` → `2026-09-23 13:51:38.750` (QI ON) |
+| Publish / recycle DLL (`4644baf` / SHA above) | **PASS** | IIS recycle time: `2026-09-23 13:44:38.581 +05:30`; SHA match; Web.config not retargeted |
+| Expense auth — non-current approver refused | **PASS** | Request **106** / actor `AHS1605` refused; current `AHS1870` mutate PASS (rolled back) |
+| Expense / day mutation blocked on ReadyForPayment | **PASS** | Request **107** ExpenseId `2285` + DetailId `3076` |
+| Expense / day mutation blocked on Completed | **PASS** | Request **98** ExpenseId `2154` + DetailId `2789` |
+| Latest-version parity (Version→Id) after RESUBMIT | **PASS** | Request **107** / 31 latest of 34 rows; multi-ver ActivityIds `47445`,`47447`,`47448`; one actionable/ActivityId |
+| Level-aware finalize (RC-022 alignment) — L1-Approved days block Auditor Ready | **PASS** | Request **94**: UnresolvedCount=`21`; MarkReady → *Request not completed.* |
+| Stationary ≠ 0 — snapshot + Final reconcile (RC-015B) | **PASS** | Request **106** / Final `6971.06` / Stationary sum `800` (Snap=Live=Header) |
+| Excel / UI / Final reconcile | **PASS** | R107 Excel 31 rows FinalSum=`9384.29`=header Stationary=`242`; IIS Express `:53713` live post-recycle; R106 Excel excluded while Pending (export Status filter) — FSOT SQL PASS |
+
+### 8.5 CAB deployment inventory (RC-023 package)
+
+| Order | Object | Action |
+| --- | --- | --- |
+| 1 | Script-out LIVE/UAT current bodies (rollback) | `usp_UpdateSalesDailyExpenseStatus`, `usp_ProcessApprovalAction`, `usp_MarkRequestReadyForPayment` |
+| 2 | `usp_UpdateSalesDailyExpenseStatus.sql` @ `4644baf` | ALTER (auth + Stationary + Version→Id) |
+| 3 | `usp_ProcessApprovalAction.sql` @ `4644baf` | ALTER (Version→Id + payment lock) |
+| 4 | `usp_MarkRequestReadyForPayment.sql` @ `4644baf` | Optional unless target body differs from RC-014D. |
+| 5 | Publish app from `4644baf` | `ClaimsApproval_v2` + helper → recycle IIS |
+| 6 | Fill §8.4 UAT evidence | Required before Production money cutover |
+| 7 | Production | Same SQL order + DLL; retarget `DbConn` per shop standard (not part of this commit) |
+
+**RC-023 UAT:** **PASS** (2026-09-23). **RC-023 Production Go / No-Go:** **HOLD** pending LIVE SQL ALTER (QI ON) + IIS publish + Production smoke. Does not reopen or rewrite RC-001–RC-022 certified sections above.

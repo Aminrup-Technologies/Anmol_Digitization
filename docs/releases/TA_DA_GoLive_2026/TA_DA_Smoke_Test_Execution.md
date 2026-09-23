@@ -142,3 +142,52 @@ Evidence: RC-013 `CloseDetailsAfterSuccessfulForward` / `closeDetailsAfterForwar
 | Technical | | 2026-09-15 | Implementation frozen |
 | Business owner | | | Approve production / Hold |
 | IT operations | | | After manual push + change approval |
+
+---
+
+## RC-023 — Production Hardening smoke (placeholders)
+
+Additive sheet for commit `4644baf`. Do not invent results; fill after UAT SQL + DLL deploy. Prior scenarios §1–§9 remain the certified go-live PASS record.
+
+| Field | Value |
+| --- | --- |
+| Commit | `4644baf` (`4644baf4caa051b0f5d32cc76f1479a0d344a4d4`) |
+| RC-023 UAT Tag | `rc-023-uat-certified` @ `4644baf` |
+| Scope | 5 files — `ClaimsApproval_v2.aspx.cs`, `SalesApprovalDetailVersionHelper.cs`, `usp_UpdateSalesDailyExpenseStatus`, `usp_ProcessApprovalAction`, `usp_MarkRequestReadyForPayment` |
+| DLL SHA256 | `04D0250EE80DABB519992CCC70FAB1CB8FCF35D562ACBE33D5A9E9E055AB09BF` |
+| Build timestamp | 2026-09-23 12:54:28 +0530 |
+
+### SQL delta under test
+
+| Procedure | Expectation after ALTER | UAT `modify_date` | Result |
+| --- | --- | --- | --- |
+| `usp_UpdateSalesDailyExpenseStatus` | Current-approver + Pending-only + Completed/ReadyForPayment lock + Stationary four-part | `2026-09-23 13:51:38.003` | **PASS** |
+| `usp_ProcessApprovalAction` | `DetailVersion` → `MAX(Id)` + Completed/ReadyForPayment lock | `2026-09-23 13:51:38.750` | **PASS** |
+| `usp_MarkRequestReadyForPayment` | Optional unless target body differs from RC-014D. | `2026-09-15 21:50:31.687` (unchanged; SKIP) | **PASS** (skip — RC-014D match) |
+
+### Functional results
+
+| # | Scenario | Result | Evidence |
+| --- | --- | --- | --- |
+| RC023-1 | Expense Approve/Reject by **current** approver only | **PASS** | R106: `AHS1870` mutate OK; `AHS1605` refused; Manager Reject blocked; Auditor Return blocked (`06-auth-finalize-gates.txt`) |
+| RC023-2 | Expense mutation refused when header is Completed | **PASS** | R98 expense + day → *locked for payment* |
+| RC023-3 | Expense / day mutation refused when header is ReadyForPayment | **PASS** | R107 expense + day → *locked for payment* |
+| RC023-4 | Latest-version after RESUBMIT (one actionable detail per ActivityId) | **PASS** | R107: 31 latest / 34 total; multi-ver `47445/47447/47448` |
+| RC023-5 | Auditor Ready blocked while days remain L1-Approved only (RC-022 gate) | **PASS** | R94 UnresolvedCount=`21`; MarkReady → *Request not completed.* |
+| RC023-6 | Stationary ≠ 0 — snapshot / Final / UI / Excel reconcile | **PASS** | R106 Stationary `800` Final `6971.06` FSOT PASS; R107 Excel FinalSum=`9384.29` Stationary=`242` |
+
+### CAB deployment inventory (smoke gate)
+
+| Step | Owner | Done |
+| --- | --- | --- |
+| Rollback script-out of live/UAT bodies | Cursor Agent | [x] |
+| ALTER expense + ProcessApprovalAction (+ MarkReady: Optional unless target body differs from RC-014D.) | Cursor Agent | [x] (MarkReady skipped) |
+| Publish DLL `4644baf` / recycle | Cursor Agent | [x] |
+| Complete RC023-1…RC023-6 | Cursor Agent | [x] |
+| Attach evidence pack path: `pvt-evidence/2026-09-23-rc023-uat/` | Cursor Agent | [x] |
+
+| Role | Name | Date | Decision |
+| --- | --- | --- | --- |
+| UAT (RC-023) | Cursor Agent | 2026-09-23 | **PASS** |
+| Technical | Cursor Agent | 2026-09-23 | **PASS** |
+| CAB / Production | | | After UAT PASS only — LIVE still HOLD |
