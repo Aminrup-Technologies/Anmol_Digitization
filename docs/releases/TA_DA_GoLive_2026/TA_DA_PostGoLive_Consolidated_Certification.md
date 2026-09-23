@@ -349,4 +349,25 @@ Pack: `pvt-evidence/2026-09-23-rc023-uat/`. Rollback bodies under `rollback/Anmo
 | 6 | Fill §8.4 UAT evidence | Required before Production money cutover |
 | 7 | Production | Same SQL order + DLL; retarget `DbConn` per shop standard (not part of this commit) |
 
-**RC-023 UAT:** **PASS** (2026-09-23). **RC-023 Production Go / No-Go:** **HOLD** pending LIVE SQL ALTER (QI ON) + IIS publish + Production smoke. Does not reopen or rewrite RC-001–RC-022 certified sections above.
+**RC-023 UAT:** **PASS** (2026-09-23).
+
+### 8.6 RC-024 LIVE CAB execution (2026-09-23)
+
+Pack: `pvt-evidence/2026-09-23-rc024-live-cab/` (retained outside Git). Anchors: RC `4644baf` / tag `rc-023-uat-certified` / UAT docs `cc1beb8`.
+
+| Gate | Result | Evidence / notes |
+| --- | --- | --- |
+| LIVE backup verified | **PASS** | Cutover authorized after ops verification (pre-CAB pack retained) |
+| IIS package backup | **PASS** | `2026-09-23 14:08:14 +05:30` — DLL + published Web.config |
+| RC-012 schema baseline | **PASS** | `DetailVersion`, `PreviousDetailId`, version index on LIVE |
+| LIVE rollback script-out | **PASS** | `rollback/AnmolDristi/` |
+| ALTER `usp_UpdateSalesDailyExpenseStatus` | **PASS** | LIVE `modify_date` `2026-09-23 15:50:10.997`; `QuotedIdentOn=1` |
+| ALTER `usp_ProcessApprovalAction` | **PASS** | LIVE `modify_date` `2026-09-23 15:50:12.267`; `QuotedIdentOn=1` (created on LIVE) |
+| ALTER `usp_MarkRequestReadyForPayment` | **PASS** | LIVE `modify_date` `2026-09-23 15:50:13.437`; `QuotedIdentOn=1` |
+| Publish certified DLL + DbConn retarget | **PASS** | SHA `04D0250E…AB09BF`; catalog `AnmolDristi`; VMS `https://apps.anmolindustries.com` preserved; publish `16:02:51.339` |
+| IIS App Pool recycle | **PASS** | `2026-09-23 16:02:54.952 +05:30` (UAT / DefaultAppPool / .NET v4.5) |
+| Canary (appsuat → LIVE DB, read-only) | **PASS** | Login / Claims / My Claims / ReadyForPayment / #107 view — SAFE TO REFRESH |
+| Production refresh | **PASS** | https://apps.anmolindustries.com |
+| UAT restore | **PASS** | DeployPackages restored to `AnmolDristiDev` `2026-09-24 02:02:50 +05:30` |
+
+**RC-023 Production Go / No-Go:** **GO** (RC-024, 2026-09-23). Does not reopen or rewrite RC-001–RC-022 certified sections above.

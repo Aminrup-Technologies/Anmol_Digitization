@@ -18,3 +18,6 @@ AnmolDristi/bin/AnmolDristi.dll
 AnmolDristi/bin/AnmolDristi.pdb
 AnmolDristi/obj/Release/AnmolDristi.dll
 AnmolDristi/obj/Release/AnmolDristi.pdb
+
+# RC / CAB private evidence — retain outside Git (see D:\CAB-Evidence\)
+pvt-evidence/

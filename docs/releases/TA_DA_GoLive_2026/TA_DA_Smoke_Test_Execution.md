@@ -190,4 +190,4 @@ Additive sheet for commit `4644baf`. Do not invent results; fill after UAT SQL +
 | --- | --- | --- | --- |
 | UAT (RC-023) | Cursor Agent | 2026-09-23 | **PASS** |
 | Technical | Cursor Agent | 2026-09-23 | **PASS** |
-| CAB / Production | | | After UAT PASS only — LIVE still HOLD |
+| CAB / Production (RC-024) | Cursor Agent | 2026-09-23 | **GO** — LIVE SQL + IIS + canary PASS; Production refreshed. Pack `pvt-evidence/2026-09-23-rc024-live-cab/` (outside Git). Canary: `RC024_Canary_Smoke_UAT_to_LIVE.md` |

@@ -255,6 +255,25 @@ Use this section when promoting commit `4644baf` after the v1.1 / RC-017–022 b
 - [x] Package built from `4644baf` (DLL SHA matches table).
 - [x] UAT ALTER order 1 → 2 (→ 3 optional) completed. MarkReady **SKIPPED** (UAT body = RC-014D runtime).
 - [x] UAT evidence placeholders filled (**no Production cutover with blanks**).
-- [ ] Production ALTER same order + IIS publish/recycle.
-- [ ] Production `DbConn` / catalog retarget confirmed by ops (outside this commit).
-- [ ] RC-023 sign-off: Deployer Cursor Agent / CAB ________ / Date 2026-09-23
+- [x] Production ALTER same order + IIS publish/recycle.
+- [x] Production `DbConn` / catalog retarget confirmed (`AnmolDristi` @ `115.112.186.71`).
+- [x] RC-023 sign-off: Deployer Cursor Agent / CAB GO / Date 2026-09-23
+
+### RC-024 LIVE CAB execution (2026-09-23)
+
+Pack: `pvt-evidence/2026-09-23-rc024-live-cab/` (retained outside Git).
+
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| LIVE SQL COPY_ONLY backup | **PASS** (verified for cutover) | Pre-CAB pack `backups/`; LIVE proceed authorized after ops backup verification |
+| IIS package backup | **PASS** | `backups/iis-package-20260923-140814/` @ `2026-09-23 14:08:14 +05:30` |
+| DLL SHA match RC-023 | **PASS** | `04D0250EE80DABB519992CCC70FAB1CB8FCF35D562ACBE33D5A9E9E055AB09BF` |
+| Schema baseline (RC-012) | **PASS** | `DetailVersion`, `PreviousDetailId`, version index promoted on LIVE |
+| LIVE SP rollback script-out | **PASS** | `rollback/AnmolDristi/` |
+| Phase B LIVE ALTER (QI ON) | **PASS** | Expense `15:50:10.997`; ProcessApprovalAction `15:50:12.267`; MarkReady `15:50:13.437` — all `QuotedIdentOn=1` |
+| Phase C IIS publish / DbConn / recycle | **PASS** | Publish `16:02:51.339`; recycle `16:02:54.952`; catalog `AnmolDristi`; VMS preserved |
+| Canary (appsuat → LIVE DB) | **PASS** | `RC024_Canary_Smoke_UAT_to_LIVE.md` — read-only SAFE TO REFRESH |
+| Production refresh | **PASS** | https://apps.anmolindustries.com refreshed 23–24 Sep 2026 |
+| UAT restore post-cutover | **PASS** | DeployPackages `DbConn` restored to `AnmolDristiDev` @ `2026-09-24 02:02:50 +05:30` |
+
+**Production Go / No-Go:** **GO** — RC-023 package live on Production (`4644baf` / `rc-023-uat-certified`).
