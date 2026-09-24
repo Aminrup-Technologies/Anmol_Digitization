@@ -113,9 +113,10 @@ namespace AnmolDristi
 
         private void SetDefaultClaimMonth()
         {
-            DateTime claimMonth = DateTime.Now.AddMonths(-1);
-            ViewState["FilterYear"] = claimMonth.Year;
-            ViewState["FilterMonth"] = claimMonth.Month;
+            // Operational claim month = previous calendar month (Sep → Aug; Jan → Dec prior year)
+            DateTime activeClaimMonth = DateTime.Now.AddMonths(-1);
+            ViewState["FilterYear"] = activeClaimMonth.Year;
+            ViewState["FilterMonth"] = activeClaimMonth.Month;
             ddlSearchStatus.SelectedValue = "";
             SyncUIWithViewState();
         }
@@ -128,8 +129,10 @@ namespace AnmolDristi
             DateTime dt = new DateTime(y, m, 1);
             lblCurrentHeader.Text = dt.ToString("MMMM, yyyy");
 
-            if (ddlSearchYear.Items.FindByValue(y.ToString()) != null)
-                ddlSearchYear.SelectedValue = y.ToString();
+            string yearValue = y.ToString();
+            if (ddlSearchYear.Items.FindByValue(yearValue) == null)
+                ddlSearchYear.Items.Add(new ListItem(yearValue, yearValue));
+            ddlSearchYear.SelectedValue = yearValue;
 
             if (ddlSearchMonth.Items.FindByValue(m.ToString()) != null)
                 ddlSearchMonth.SelectedValue = m.ToString();
@@ -157,7 +160,12 @@ namespace AnmolDristi
 
         protected void btnCurrentMonth_Click(object sender, EventArgs e)
         {
-            SetDefaultClaimMonth();
+            // "Current Month" = active operational claim month (previous calendar month)
+            DateTime activeClaimMonth = DateTime.Now.AddMonths(-1);
+            ViewState["FilterYear"] = activeClaimMonth.Year;
+            ViewState["FilterMonth"] = activeClaimMonth.Month;
+            ddlSearchStatus.SelectedValue = "";
+            SyncUIWithViewState();
             BindRequestsGrid(true);
         }
 
@@ -200,13 +208,16 @@ namespace AnmolDristi
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@UserLoginId", employeeCode);
 
-                    if (ViewState["FilterYear"] != null && ddlSearchYear.SelectedValue != "0")
-                        cmd.Parameters.AddWithValue("@FilterYear", ViewState["FilterYear"]);
+                    // Pass dropdown selection directly — do not override with DateTime.Now / calendar month
+                    int filterYear;
+                    if (int.TryParse(ddlSearchYear.SelectedValue, out filterYear) && filterYear > 0)
+                        cmd.Parameters.AddWithValue("@FilterYear", filterYear);
                     else
                         cmd.Parameters.AddWithValue("@FilterYear", DBNull.Value);
 
-                    if (ViewState["FilterMonth"] != null && ddlSearchMonth.SelectedValue != "0")
-                        cmd.Parameters.AddWithValue("@FilterMonth", ViewState["FilterMonth"]);
+                    int filterMonth;
+                    if (int.TryParse(ddlSearchMonth.SelectedValue, out filterMonth) && filterMonth > 0)
+                        cmd.Parameters.AddWithValue("@FilterMonth", filterMonth);
                     else
                         cmd.Parameters.AddWithValue("@FilterMonth", DBNull.Value);
 
