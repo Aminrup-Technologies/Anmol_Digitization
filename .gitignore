@@ -21,3 +21,5 @@ AnmolDristi/obj/Release/AnmolDristi.pdb
 
 # RC / CAB private evidence — retain outside Git (see D:\CAB-Evidence\)
 pvt-evidence/
+AnmolDristi/TempUploads/
+AnmolDristi/UploadedFiles/ClaimsAttachment/
