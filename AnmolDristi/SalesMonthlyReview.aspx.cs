@@ -2392,6 +2392,104 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             cmd.Parameters.AddWithValue("@Reason", reason);
         }
 
+        /* RC-017C: Soft-delete face refresh — same aggregation as usp_UpdateSalesDailyExpenseStatus.
+           Claim-linked only. Writes Snapshot_* + TotalClaimAmount/TotalExpenseAmount.
+           Does NOT write Approved*, FinalApprovedAmount, or routing. */
+        private const string RefreshClaimFaceAfterSoftDeleteSql = @"
+            DECLARE @ApprovalRequestDetailId INT = NULL;
+            DECLARE @ApprovalRequestId INT = NULL;
+            DECLARE @HeaderTotalClaim DECIMAL(18,2);
+            DECLARE @HeaderTotalExpense DECIMAL(18,2);
+
+            SELECT TOP (1)
+                  @ApprovalRequestDetailId = d.ApprovalRequestDetailId
+                , @ApprovalRequestId       = d.ApprovalRequestId
+            FROM dbo.SalesApprovalRequestDetail d
+            INNER JOIN (
+                SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                FROM dbo.SalesApprovalRequestDetail
+                WHERE ActivityId = @ActivityId
+                GROUP BY ActivityId
+            ) lv
+                ON lv.ActivityId = d.ActivityId
+               AND ISNULL(d.DetailVersion, 1) = lv.LatestVersion
+            WHERE d.ActivityId = @ActivityId
+            ORDER BY d.ApprovalRequestDetailId DESC;
+
+            IF @ApprovalRequestDetailId IS NOT NULL AND @ApprovalRequestId IS NOT NULL
+            BEGIN
+                UPDATE dbo.SalesApprovalRequestDetail
+                SET
+                    Snapshot_DAAmount = ISNULL((
+                        SELECT SUM(Amount) FROM dbo.SalesDailyExpense
+                        WHERE ActivityId = @ActivityId AND ExpenseType = 'DA'
+                          AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                    Snapshot_HotelAmount = ISNULL((
+                        SELECT SUM(Amount) FROM dbo.SalesDailyExpense
+                        WHERE ActivityId = @ActivityId AND ExpenseType = 'Hotel'
+                          AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                    Snapshot_TravelAmount = ISNULL((
+                        SELECT SUM(Amount) FROM dbo.SalesDailyExpense
+                        WHERE ActivityId = @ActivityId AND ExpenseType = 'Travel'
+                          AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                    Snapshot_StationaryAmount = ISNULL((
+                        SELECT SUM(Amount) FROM dbo.SalesDailyExpense
+                        WHERE ActivityId = @ActivityId AND ExpenseType = 'Stationary'
+                          AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> '" + ClaimStatuses.Rejected + @"'), 0),
+                    ModifiedOn = SYSUTCDATETIME()
+                WHERE ApprovalRequestDetailId = @ApprovalRequestDetailId;
+
+                UPDATE dbo.SalesApprovalRequestDetail
+                SET Snapshot_ExpenseTotal =
+                      ISNULL(Snapshot_DAAmount, 0)
+                    + ISNULL(Snapshot_HotelAmount, 0)
+                    + ISNULL(Snapshot_TravelAmount, 0)
+                    + ISNULL(Snapshot_StationaryAmount, 0)
+                WHERE ApprovalRequestDetailId = @ApprovalRequestDetailId;
+
+                SELECT
+                    @HeaderTotalClaim = SUM(ISNULL(d.Snapshot_CalculatedClaimAmount, 0)),
+                    @HeaderTotalExpense = SUM(ISNULL(d.Snapshot_ExpenseTotal, 0))
+                FROM dbo.SalesApprovalRequestDetail d
+                INNER JOIN (
+                    SELECT
+                          d2.ActivityId
+                        , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                    FROM dbo.SalesApprovalRequestDetail d2
+                    INNER JOIN (
+                        SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                        FROM dbo.SalesApprovalRequestDetail
+                        WHERE ApprovalRequestId = @ApprovalRequestId
+                        GROUP BY ActivityId
+                    ) lv
+                        ON lv.ActivityId = d2.ActivityId
+                       AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                    WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                    GROUP BY d2.ActivityId
+                ) latest
+                    ON d.ApprovalRequestDetailId = latest.LatestDetailId
+                WHERE d.ApprovalRequestId = @ApprovalRequestId;
+
+                /* RC-017C: serialize concurrent face writers (submit / expense SP / soft-delete) */
+                UPDATE dbo.SalesApprovalRequest WITH (UPDLOCK, ROWLOCK)
+                SET
+                    TotalClaimAmount = @HeaderTotalClaim,
+                    TotalExpenseAmount = @HeaderTotalExpense,
+                    ModifiedOn = SYSUTCDATETIME()
+                WHERE ApprovalRequestId = @ApprovalRequestId;
+            END";
+
+        private static void RefreshClaimFaceAfterSoftDelete(SqlConnection con, SqlTransaction tx, int activityId)
+        {
+            if (activityId <= 0 || con == null || tx == null) return;
+
+            using (var cmd = new SqlCommand(RefreshClaimFaceAfterSoftDeleteSql, con, tx))
+            {
+                cmd.Parameters.AddWithValue("@ActivityId", activityId);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
         private void PopulateKmTolerance(System.Data.DataRowView drv, GridViewRow row)
         {
             decimal totalKm = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]) : 0m;
@@ -3928,6 +4026,9 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                     }
                                 }
 
+                                // RC-017C: refresh claim face after all soft-deletes in this tx
+                                RefreshClaimFaceAfterSoftDelete(con, tx, activityId);
+
                                 tx.Commit();
                                 DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
                                 Session.Remove(GetCurrentSessionKey());
@@ -4135,6 +4236,9 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                         delAuto.ExecuteNonQuery();
                                     }
                                 }
+
+                                // RC-017C: refresh claim face after all soft-deletes in this tx
+                                RefreshClaimFaceAfterSoftDelete(con, tx, activityId);
 
                                 tx.Commit();
                                 DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
