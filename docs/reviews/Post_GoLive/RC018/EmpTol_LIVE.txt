@@ -1,0 +1,18 @@
+column_id name typ is_nullable is_identity defname def
+--------- ---- --- ----------- ----------- ------- ---
+1 ToleranceId int 0 1 NULL NULL
+2 EmployeeCode nvarchar 0 0 NULL NULL
+3 MinAllowedKM decimal 1 0 NULL NULL
+4 MaxAllowedKM decimal 1 0 NULL NULL
+5 EffectiveFrom date 1 0 NULL NULL
+6 EffectiveTo date 1 0 NULL NULL
+7 CreatedBy nvarchar 1 0 NULL NULL
+8 CreatedDateTime datetime 0 0 DF__MST_Emplo__Creat__62EF9734 (dateadd(minute,(330),sysutcdatetime()))
+9 ModifiedBy nvarchar 1 0 NULL NULL
+10 ModifiedDateTime datetime 1 0 NULL NULL
+11 IsActive bit 0 0 DF_MST_EmployeeTolerance_IsActive ((1))
+LiveCnt
+-------
+0
+name definition
+---- ----------

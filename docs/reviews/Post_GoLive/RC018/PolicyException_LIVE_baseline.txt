@@ -1,0 +1,7 @@
+6 1 11 1 65 {"MaxKM":160,"RatePerKm":3.75,"DA":225,"OutstationDA":350,"OwnArrangementDA":750,"HotelCap":600,"Remarks":"Anmol Sales East Policy: HQ/Ex HQ DA = Rs.225, Outstation DA = Rs.350, Own Arrangement = Rs.750, Hotel Cap = Rs.600 per night, Bike Travel Allowance @ Rs.3.75/km up to 2000 kms per month"} 1 2026-06-01 2027-03-31 1 SYSTEM 2026-07-02 16:56:42.9579177 SYSTEM 2026-07-02 16:56:59.6145824
+6 1 11 1 65 {"MaxKM":160,"RatePerKm":3.75,"DA":225,"OutstationDA":350,"OwnArrangementDA":750,"HotelCap":600,"Remarks":"Anmol Sales East Policy: HQ/Ex HQ DA = Rs.225, Outstation DA = Rs.350, Own Arrangement = Rs.750, Hotel Cap = Rs.600 per night, Bike Travel Allowance @ Rs.3.75/km up to 2000 kms per month"} 1 2026-06-01 2027-03-31 1 SYSTEM 2026-07-02 16:56:42.9579177 SYSTEM 2026-07-02 16:56:59.6145824
+6 1 11 1 65 {"MaxKM":160,"RatePerKm":3.75,"DA":225,"OutstationDA":350,"OwnArrangementDA":750,"HotelCap":600,"Remarks":"Anmol Sales East Policy: HQ/Ex HQ DA = Rs.225, Outstation DA = Rs.350, Own Arrangement = Rs.750, Hotel Cap = Rs.600 per night, Bike Travel Allowance @ Rs.3.75/km up to 2000 kms per month"} 1 2026-06-01 2027-03-31 1 SYSTEM 2026-07-02 16:56:42.9579177 SYSTEM 2026-07-02 16:56:59.6145824
+AHS1530 Jyotirmaya Pradhan
+AHS1562 Krishna Saha
+AHS628 Anjan Kumar Subudhi
+0
