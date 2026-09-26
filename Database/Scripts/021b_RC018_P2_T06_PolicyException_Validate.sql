@@ -3,6 +3,10 @@
    WHEN:        2026-09-25
    TARGET:      LIVE dbo.PolicyException (AnmolDristi)
    WHAT:        Read-only PASS/FAIL gate. No DML.
+   GATE:        @EnableFinancialOverrides defaults to 0. Expect ExceptionId 4
+                only, active count 0, and print rows 1, 2, and 90002 as
+                Pending (financial gate). Set the switch to 1 only when 021
+                ran with the financial gate open (4 rows, 3 active).
 ============================================================================ */
 
 USE [AnmolDristi];
@@ -12,9 +16,11 @@ SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 
+DECLARE @EnableFinancialOverrides BIT = 0;
 DECLARE @Fail INT = 0;
 
 PRINT N'===== RC-018 P2-T06 PolicyException VALIDATION =====';
+PRINT N'EnableFinancialOverrides=' + CAST(@EnableFinancialOverrides AS NVARCHAR(1));
 
 IF OBJECT_ID(N'tempdb..#Expected') IS NOT NULL DROP TABLE #Expected;
 CREATE TABLE #Expected
@@ -37,25 +43,46 @@ INSERT INTO #Expected VALUES
  (90002, N'AHS1530', 1, 1, '2026-08-01', '2026-12-31',
   N'{"MaxKM":3.0,"RatePerKm":6.95,"DA":600.0,"HotelCap":2000.0,"Remarks":"Exception"}');
 
+IF @EnableFinancialOverrides = 0
+BEGIN
+    PRINT N'ExceptionId 1 (AHS1562) | Pending (financial gate)';
+    PRINT N'ExceptionId 2 (AHS628) | Pending (financial gate)';
+    PRINT N'ExceptionId 90002 (AHS1530) | Pending (financial gate)';
+END;
+
+DECLARE @ExpectedCnt INT = CASE WHEN @EnableFinancialOverrides = 1 THEN 4 ELSE 1 END;
+DECLARE @ExpectedActive INT = CASE WHEN @EnableFinancialOverrides = 1 THEN 3 ELSE 0 END;
+
 DECLARE @Cnt INT = (SELECT COUNT(*) FROM dbo.PolicyException);
-PRINT N'CHECK RowCount | Actual=' + CAST(@Cnt AS NVARCHAR(20)) + N' Expected=4 | '
-    + CASE WHEN @Cnt = 4 THEN N'PASS' ELSE N'FAIL' END;
-IF @Cnt <> 4 SET @Fail += 1;
+IF @EnableFinancialOverrides = 1
+    PRINT N'CHECK RowCount | Actual=' + CAST(@Cnt AS NVARCHAR(20)) + N' Expected=4 | '
+        + CASE WHEN @Cnt = 4 THEN N'PASS' ELSE N'FAIL' END;
+ELSE
+    PRINT N'CHECK RowCount | Actual=' + CAST(@Cnt AS NVARCHAR(20)) + N' Expected=1 | '
+        + CASE WHEN @Cnt = 1 THEN N'PASS' ELSE N'FAIL' END;
+IF @Cnt <> @ExpectedCnt SET @Fail += 1;
 
 DECLARE @Missing INT = (
     SELECT COUNT(*)
     FROM #Expected e
     LEFT JOIN dbo.PolicyException l ON l.ExceptionId = e.ExceptionId
-    WHERE l.ExceptionId IS NULL
-       OR ISNULL(l.EmployeeCode, N'') <> e.EmployeeCode
-       OR ISNULL(l.IsActive, 0) <> e.IsActive
-       OR ISNULL(l.Priority, -1) <> e.Priority
-       OR ISNULL(l.EffectiveFrom, '19000101') <> ISNULL(e.EffectiveFrom, '19000101')
-       OR ISNULL(l.EffectiveTo, '19000101') <> ISNULL(e.EffectiveTo, '19000101')
-       OR ISNULL(l.PolicyJson, N'') <> e.PolicyJson
+    WHERE (@EnableFinancialOverrides = 1 OR e.ExceptionId = 4)
+      AND (
+            l.ExceptionId IS NULL
+         OR ISNULL(l.EmployeeCode, N'') <> e.EmployeeCode
+         OR ISNULL(l.IsActive, 0) <> e.IsActive
+         OR ISNULL(l.Priority, -1) <> e.Priority
+         OR ISNULL(l.EffectiveFrom, '19000101') <> ISNULL(e.EffectiveFrom, '19000101')
+         OR ISNULL(l.EffectiveTo, '19000101') <> ISNULL(e.EffectiveTo, '19000101')
+         OR ISNULL(l.PolicyJson, N'') <> e.PolicyJson
+          )
 );
-PRINT N'CHECK Expected four records | DriftOrMissing=' + CAST(@Missing AS NVARCHAR(10)) + N' | '
-    + CASE WHEN @Missing = 0 THEN N'PASS' ELSE N'FAIL' END;
+IF @EnableFinancialOverrides = 1
+    PRINT N'CHECK Expected four records | DriftOrMissing=' + CAST(@Missing AS NVARCHAR(10)) + N' | '
+        + CASE WHEN @Missing = 0 THEN N'PASS' ELSE N'FAIL' END;
+ELSE
+    PRINT N'CHECK Expected ExceptionId 4 | DriftOrMissing=' + CAST(@Missing AS NVARCHAR(10)) + N' | '
+        + CASE WHEN @Missing = 0 THEN N'PASS' ELSE N'FAIL' END;
 IF @Missing <> 0 SET @Fail += 1;
 
 DECLARE @Dup INT = (
@@ -107,9 +134,13 @@ PRINT N'CHECK PK | Columns=' + ISNULL(@PkCols, N'<none>') + N' | '
 IF ISNULL(@PkCols, N'') <> N'ExceptionId' SET @Fail += 1;
 
 DECLARE @Active INT = (SELECT COUNT(*) FROM dbo.PolicyException WHERE IsActive = 1);
-PRINT N'CHECK Active records | ' + CAST(@Active AS NVARCHAR(10)) + N' Expected=3 | '
-    + CASE WHEN @Active = 3 THEN N'PASS' ELSE N'FAIL' END;
-IF @Active <> 3 SET @Fail += 1;
+IF @EnableFinancialOverrides = 1
+    PRINT N'CHECK Active records | ' + CAST(@Active AS NVARCHAR(10)) + N' Expected=3 | '
+        + CASE WHEN @Active = 3 THEN N'PASS' ELSE N'FAIL' END;
+ELSE
+    PRINT N'CHECK Active records | ' + CAST(@Active AS NVARCHAR(10)) + N' Expected=0 | '
+        + CASE WHEN @Active = 0 THEN N'PASS' ELSE N'FAIL' END;
+IF @Active <> @ExpectedActive SET @Fail += 1;
 
 PRINT N'--- DBCC CHECKCONSTRAINTS ---';
 BEGIN TRY
@@ -123,9 +154,21 @@ END CATCH;
 
 PRINT N'';
 PRINT N'----- PASS CHECKLIST -----';
-PRINT N'Row Count = 4              | ' + CASE WHEN @Cnt = 4 THEN N'PASS' ELSE N'FAIL' END;
-PRINT N'Expected four records      | ' + CASE WHEN @Missing = 0 THEN N'PASS' ELSE N'FAIL' END;
-PRINT N'Active records = 3         | ' + CASE WHEN @Active = 3 THEN N'PASS' ELSE N'FAIL' END;
+IF @EnableFinancialOverrides = 1
+BEGIN
+    PRINT N'Row Count = 4              | ' + CASE WHEN @Cnt = 4 THEN N'PASS' ELSE N'FAIL' END;
+    PRINT N'Expected four records      | ' + CASE WHEN @Missing = 0 THEN N'PASS' ELSE N'FAIL' END;
+    PRINT N'Active records = 3         | ' + CASE WHEN @Active = 3 THEN N'PASS' ELSE N'FAIL' END;
+END
+ELSE
+BEGIN
+    PRINT N'Row Count = 1              | ' + CASE WHEN @Cnt = 1 THEN N'PASS' ELSE N'FAIL' END;
+    PRINT N'Expected ExceptionId 4     | ' + CASE WHEN @Missing = 0 THEN N'PASS' ELSE N'FAIL' END;
+    PRINT N'Active records = 0         | ' + CASE WHEN @Active = 0 THEN N'PASS' ELSE N'FAIL' END;
+    PRINT N'ExceptionId 1 (AHS1562)    | Pending (financial gate)';
+    PRINT N'ExceptionId 2 (AHS628)     | Pending (financial gate)';
+    PRINT N'ExceptionId 90002 (AHS1530)| Pending (financial gate)';
+END;
 PRINT N'Index exists               | ' + CASE WHEN @HasIx = 1 THEN N'PASS' ELSE N'FAIL' END;
 PRINT N'Check constraints exist    | ' + CASE WHEN @HasPri = 1 AND @HasDates = 1 THEN N'PASS' ELSE N'FAIL' END;
 PRINT N'PK Match                   | ' + CASE WHEN ISNULL(@PkCols, N'') = N'ExceptionId' THEN N'PASS' ELSE N'FAIL' END;

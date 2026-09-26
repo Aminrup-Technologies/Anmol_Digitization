@@ -74,6 +74,8 @@ BEGIN
 END;
 
 SET @Norm = REPLACE(REPLACE(REPLACE(REPLACE(@Def, N' ', N''), CHAR(13), N''), CHAR(10), N''), CHAR(9), N'');
+/* Catalog text may persist nvarchar literals as N'...' or '...'. */
+SET @Norm = REPLACE(@Norm, N'=N''', N'=''');
 
 PRINT N'Captured current check definition:';
 PRINT @Def;
@@ -135,13 +137,7 @@ BEGIN TRY
 
     ALTER TABLE dbo.SalesDailyActivity WITH CHECK
         ADD CONSTRAINT CK_SalesDailyActivity_ClaimStatus
-        CHECK (
-               [ClaimStatus] = N'Rejected'
-            OR [ClaimStatus] = N'Approved'
-            OR [ClaimStatus] = N'Returned'
-            OR [ClaimStatus] = N'Submitted'
-            OR [ClaimStatus] = N'Draft'
-        );
+        CHECK ([ClaimStatus]='Rejected' OR [ClaimStatus]='Approved' OR [ClaimStatus]='Returned' OR [ClaimStatus]='Submitted' OR [ClaimStatus]='Draft');
 
     SELECT @AfterCnt = COUNT(*) FROM dbo.SalesDailyActivity;
     SELECT @IndexAfter = COUNT(*)

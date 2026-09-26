@@ -176,18 +176,18 @@ BEGIN
         PRINT N'CHECK FinancialWeek vs UAT drift | ' + CAST(@DriftFW AS NVARCHAR(20)) + N' | '
             + CASE WHEN @DriftFW = 0 THEN N'PASS' ELSE N'FAIL' END;
         IF @DriftFW <> 0 SET @Fail += 1;
+
+        SET @FwSql = N'
+            SELECT @WouldUpdate = COUNT(*)
+            FROM dbo.MST_Calendar l
+            INNER JOIN AnmolDristiDev.dbo.MST_Calendar u ON u.CalendarDate = l.CalendarDate
+            WHERE l.FinancialWeek IS NULL AND u.FinancialWeek IS NOT NULL;';
+        EXEC sys.sp_executesql @FwSql, N'@WouldUpdate INT OUTPUT', @WouldUpdate = @WouldUpdate OUTPUT;
+
+        PRINT N'CHECK Idempotent (NULL fills remaining) | ' + CAST(@WouldUpdate AS NVARCHAR(20)) + N' | '
+            + CASE WHEN @WouldUpdate = 0 THEN N'PASS' ELSE N'FAIL' END;
+        IF @WouldUpdate <> 0 SET @Fail += 1;
     END;
-
-    SET @FwSql = N'
-        SELECT @WouldUpdate = COUNT(*)
-        FROM dbo.MST_Calendar l
-        INNER JOIN AnmolDristiDev.dbo.MST_Calendar u ON u.CalendarDate = l.CalendarDate
-        WHERE l.FinancialWeek IS NULL AND u.FinancialWeek IS NOT NULL;';
-    EXEC sys.sp_executesql @FwSql, N'@WouldUpdate INT OUTPUT', @WouldUpdate = @WouldUpdate OUTPUT;
-
-    PRINT N'CHECK Idempotent (NULL fills remaining) | ' + CAST(@WouldUpdate AS NVARCHAR(20)) + N' | '
-        + CASE WHEN @WouldUpdate = 0 THEN N'PASS' ELSE N'FAIL' END;
-    IF @WouldUpdate <> 0 SET @Fail += 1;
 END
 ELSE
 BEGIN

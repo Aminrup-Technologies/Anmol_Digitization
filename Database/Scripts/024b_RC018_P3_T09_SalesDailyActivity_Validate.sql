@@ -73,6 +73,8 @@ WHERE name = N'CK_SalesDailyActivity_ClaimStatus'
   AND parent_object_id = OBJECT_ID(N'dbo.SalesDailyActivity');
 
 SET @Norm = REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(@Def, N''), N' ', N''), CHAR(13), N''), CHAR(10), N''), CHAR(9), N'');
+/* Catalog text may persist nvarchar literals as N'...' or '...'. */
+SET @Norm = REPLACE(@Norm, N'=N''', N'=''');
 
 DECLARE @HasReturned BIT = CASE WHEN @Norm LIKE N'%''Returned''%' THEN 1 ELSE 0 END;
 DECLARE @HasDraft BIT = CASE WHEN @Norm LIKE N'%''Draft''%' THEN 1 ELSE 0 END;

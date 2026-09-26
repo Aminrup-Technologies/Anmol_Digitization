@@ -51,12 +51,7 @@ BEGIN TRY
 
     ALTER TABLE dbo.SalesDailyActivity WITH CHECK
         ADD CONSTRAINT CK_SalesDailyActivity_ClaimStatus
-        CHECK (
-               [ClaimStatus] = N'Rejected'
-            OR [ClaimStatus] = N'Approved'
-            OR [ClaimStatus] = N'Submitted'
-            OR [ClaimStatus] = N'Draft'
-        );
+        CHECK ([ClaimStatus]='Rejected' OR [ClaimStatus]='Approved' OR [ClaimStatus]='Submitted' OR [ClaimStatus]='Draft');
 
     DECLARE @After INT = (SELECT COUNT(*) FROM dbo.SalesDailyActivity);
     IF @After <> @Before

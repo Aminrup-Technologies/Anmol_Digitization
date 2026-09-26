@@ -90,7 +90,7 @@ DECLARE @DfVer BIT = CASE WHEN EXISTS (
     INNER JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
     WHERE dc.parent_object_id = OBJECT_ID(N'dbo.SalesApprovalRequestDetail')
       AND c.name = N'DetailVersion'
-      AND REPLACE(REPLACE(dc.definition, N' ', N''), N'(', N'') LIKE N'%1%'
+      AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(dc.definition, N''), N' ', N''), CHAR(9), N''), CHAR(13), N''), CHAR(10), N''), N'(', N''), N')', N'') = N'1'
 ) THEN 1 ELSE 0 END;
 PRINT N'CHECK Defaults CreatedOn / DetailVersion | '
     + CASE WHEN @DfOn = 1 AND @DfVer = 1 THEN N'PASS' ELSE N'FAIL' END;

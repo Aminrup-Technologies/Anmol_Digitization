@@ -53,7 +53,7 @@ ELSE IF NOT EXISTS (
         ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
     WHERE dc.parent_object_id = OBJECT_ID(N'dbo.TRN_qc_packet_weight_hdr')
       AND c.name = N'FormID'
-      AND REPLACE(REPLACE(dc.definition, N' ', N''), N'(', N'') LIKE N'%21%'
+      AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(dc.definition, N''), N' ', N''), CHAR(9), N''), CHAR(13), N''), CHAR(10), N''), N'(', N''), N')', N'') = N'21'
 )
 BEGIN
     PRINT N'GAP: FormID exists but its default is no longer ((21)). FormID will not be altered.';
