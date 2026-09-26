@@ -1,0 +1,4 @@
+*.sql text eol=crlf
+*.config text eol=crlf
+*.xml text eol=crlf
+*.md text eol=lf

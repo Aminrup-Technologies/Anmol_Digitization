@@ -1,0 +1,438 @@
+===== RC-018 Phase 0 Discovery | Database=AnmolDristiDev | 2026-09-24T12:50:09.3080428 =====
+ 
+--- 0) TABLE EXISTENCE + ROW COUNTS ---
+Ord	TableName	ObjectStatus	ApproxRowCount
+---	---------	------------	--------------
+1	FrequencyTypes	EXISTS	6
+2	MST_Calendar	EXISTS	7671
+3	MST_EmployeeTolerance	EXISTS	3
+4	MST_Plant_Lines	EXISTS	37
+5	TRN_RM_CLASS_1	EXISTS	330
+6	PolicyException	EXISTS	4
+7	ApprovalRequestStatusHistory	EXISTS	707
+8	SalesApprovalRequestDetail	EXISTS	3023
+9	SalesDailyActivity	EXISTS	81171
+10	SalesDailyExpense	EXISTS	2377
+11	VMS_VisitAttendanceHistory	EXISTS	6
+12	CMS_RawConsumptionLogs	EXISTS	0
+13	TRN_qc_packet_weight_hdr	EXISTS	3797
+14	TRN_qcinspector	EXISTS	62926
+ 
+--- 0b) EXACT ROW COUNTS ---
+Ord	TableName	ExactRowCount
+---	---------	-------------
+1	FrequencyTypes	6
+Ord	TableName	ExactRowCount
+---	---------	-------------
+2	MST_Calendar	7671
+Ord	TableName	ExactRowCount
+---	---------	-------------
+3	MST_EmployeeTolerance	3
+Ord	TableName	ExactRowCount
+---	---------	-------------
+4	MST_Plant_Lines	37
+Ord	TableName	ExactRowCount
+---	---------	-------------
+5	TRN_RM_CLASS_1	330
+Ord	TableName	ExactRowCount
+---	---------	-------------
+6	PolicyException	4
+Ord	TableName	ExactRowCount
+---	---------	-------------
+7	ApprovalRequestStatusHistory	707
+Ord	TableName	ExactRowCount
+---	---------	-------------
+8	SalesApprovalRequestDetail	3023
+Ord	TableName	ExactRowCount
+---	---------	-------------
+9	SalesDailyActivity	81171
+Ord	TableName	ExactRowCount
+---	---------	-------------
+10	SalesDailyExpense	2377
+Ord	TableName	ExactRowCount
+---	---------	-------------
+11	VMS_VisitAttendanceHistory	6
+Ord	TableName	ExactRowCount
+---	---------	-------------
+12	CMS_RawConsumptionLogs	0
+Ord	TableName	ExactRowCount
+---	---------	-------------
+13	TRN_qc_packet_weight_hdr	3797
+Ord	TableName	ExactRowCount
+---	---------	-------------
+14	TRN_qcinspector	62926
+ 
+--- 1) COLUMNS ---
+Ord	TableName	column_id	ColumnName	TypeName	max_length	precision	scale	is_nullable	is_identity	IdentSeed	IdentIncr	is_computed	ComputedDefinition	DefaultConstraintName	DefaultDefinition	collation_name
+---	---------	---------	----------	--------	----------	---------	-----	-----------	-----------	---------	---------	-----------	------------------	---------------------	-----------------	--------------
+1	FrequencyTypes	1	FrequencyID	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+1	FrequencyTypes	2	FrequencyDescription	varchar	255	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+2	MST_Calendar	1	CalendarDate	date	3	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	2	CalendarYear	smallint	2	5	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	3	MonthNo	tinyint	1	3	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	4	MonthName	varchar	20	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+2	MST_Calendar	5	MonthShortName	varchar	3	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+2	MST_Calendar	6	QuarterNo	tinyint	1	3	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	7	QuarterName	varchar	5	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+2	MST_Calendar	8	WeekNo	tinyint	1	3	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	9	DayNo	tinyint	1	3	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	10	DayName	varchar	20	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+2	MST_Calendar	11	FinancialYear	varchar	10	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+2	MST_Calendar	12	FinancialMonth	tinyint	1	3	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	13	FinancialQuarter	varchar	5	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+2	MST_Calendar	14	WeekStartDate	date	3	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	15	WeekEndDate	date	3	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	16	IsWeekend	bit	1	1	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	17	IsMonthStart	bit	1	1	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	18	IsMonthEnd	bit	1	1	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	19	IsQuarterStart	bit	1	1	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	20	IsQuarterEnd	bit	1	1	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	21	IsFinancialYearStart	bit	1	1	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	22	IsFinancialYearEnd	bit	1	1	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+2	MST_Calendar	23	FinancialWeek	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+3	MST_EmployeeTolerance	1	ToleranceId	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+3	MST_EmployeeTolerance	2	EmployeeCode	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+3	MST_EmployeeTolerance	3	MinAllowedKM	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+3	MST_EmployeeTolerance	4	MaxAllowedKM	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+3	MST_EmployeeTolerance	5	EffectiveFrom	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+3	MST_EmployeeTolerance	6	EffectiveTo	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+3	MST_EmployeeTolerance	7	CreatedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+3	MST_EmployeeTolerance	8	CreatedDateTime	datetime	8	23	3	0	0	NULL	NULL	0	NULL	DF__MST_Emplo__Creat__62EF9734	(dateadd(minute,(330),sysutcdatetime()))	NULL
+3	MST_EmployeeTolerance	9	ModifiedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+3	MST_EmployeeTolerance	10	ModifiedDateTime	datetime	8	23	3	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+3	MST_EmployeeTolerance	11	IsActive	bit	1	1	0	0	0	NULL	NULL	0	NULL	DF_MST_EmployeeTolerance_IsActive	((1))	NULL
+3	MST_EmployeeTolerance	12	MaxKmModificationCount	int	4	10	0	0	0	NULL	NULL	0	NULL	DF_MST_EmployeeTolerance_MaxKmModificationCount	((1))	NULL
+4	MST_Plant_Lines	1	id	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+4	MST_Plant_Lines	2	plant_id	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+4	MST_Plant_Lines	3	line_id	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+4	MST_Plant_Lines	4	line_name	nvarchar	510	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+4	MST_Plant_Lines	5	local_name	nvarchar	510	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+4	MST_Plant_Lines	6	line_sap_code	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+4	MST_Plant_Lines	7	added_on	datetime	8	23	3	1	0	NULL	NULL	0	NULL	DF__MST_Plant__added__09A971A2	(getdate())	NULL
+4	MST_Plant_Lines	8	view_status	int	4	10	0	1	0	NULL	NULL	0	NULL	DF__MST_Plant__view___0A9D95DB	((1))	NULL
+4	MST_Plant_Lines	9	delete_status	int	4	10	0	1	0	NULL	NULL	0	NULL	DF__MST_Plant__delet__0B91BA14	((0))	NULL
+5	TRN_RM_CLASS_1	1	Id	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	2	FormID	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	3	RMFID	varchar	50	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	4	SubmittedDate	date	3	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	5	SubmittedTime	time	5	16	7	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	6	SubmittedById	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	7	SubmittedByEmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	8	MaterialName	varchar	50	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	9	PlantName	varchar	50	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	10	Brand	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	11	Supplier_Name	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	12	Challan_No	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	13	Challan_Date	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	14	Quantity	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	15	CommentsForQuantity	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	16	Lot_No	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	17	Vehicle_No	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	18	Color	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	19	CommentsForColor	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	20	Smell	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	21	CommentsForSmell	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	22	Appearance	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	23	CommentsForAppearance	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	24	Taste	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	25	CommentsForTaste	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	26	Foreign_Matter_Impurities	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	27	PH	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	28	CommentsForPH	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	29	Moisture	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	30	CommentsForMoisture	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	31	Total_Ash	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	32	CommentsForTotalAsh	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	33	Acid_Insoluble_Ash	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	34	CommentsForInsolubleAsh	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	35	Density	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	36	CommentsForDensity	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	37	Fat_Content	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	38	CommentsForFatContent	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	39	Total_Solids	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	40	CommentsForSolid	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	41	Reducing_Sugar	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	42	CommentsForSugar	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	43	Drainable_Syrup	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	44	CommentsForSyrup	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	45	Matured_Immatured_seeds	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	46	CommentsForSeed	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	47	Brix	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	48	CommentsForBrix	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	49	ShapeOrSize	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	50	CommentsForShapeOrSize	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	51	TS	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	52	CommentsForTS	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	53	ApprovalStatus	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	54	Remarks	varchar	250	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	55	Material_Image	varchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	56	Approver1EmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	57	Approver1_Status	int	4	10	0	0	0	NULL	NULL	0	NULL	DF_TRN_RM_CLASS_1_Approver1_Status	((0))	NULL
+5	TRN_RM_CLASS_1	58	Approver1_TimeStamp	time	5	16	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	59	Approver2EmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	60	Approver2_Status	int	4	10	0	0	0	NULL	NULL	0	NULL	DF_TRN_RM_CLASS_1_Approver2_Status	((0))	NULL
+5	TRN_RM_CLASS_1	61	Approver2_TimeStamp	time	5	16	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	62	DottedLineApproverEmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+5	TRN_RM_CLASS_1	63	DottedApprover_Status	int	4	10	0	0	0	NULL	NULL	0	NULL	DF_TRN_RM_CLASS_1_DottedApprover_Status	((0))	NULL
+5	TRN_RM_CLASS_1	64	DottedApprover_TimeStamp	time	5	16	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	65	ViewMode	int	4	10	0	0	0	NULL	NULL	0	NULL	DF_TRN_RM_CLASS_1_ViewMode	((1))	NULL
+5	TRN_RM_CLASS_1	66	DeleteMode	int	4	10	0	0	0	NULL	NULL	0	NULL	DF_TRN_RM_CLASS_1_DeleteMode	((0))	NULL
+5	TRN_RM_CLASS_1	67	Submission_Status	int	4	10	0	1	0	NULL	NULL	0	NULL	DF_TRN_RM_CLASS_1_Submission_Status	((0))	NULL
+5	TRN_RM_CLASS_1	68	Size	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	69	Protein	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+5	TRN_RM_CLASS_1	70	CommentsForProtein	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+6	PolicyException	1	ExceptionId	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+6	PolicyException	2	EmployeeCode	nvarchar	100	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+6	PolicyException	3	RegionId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+6	PolicyException	4	BranchId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+6	PolicyException	5	GradeId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+6	PolicyException	6	DesignationId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+6	PolicyException	7	PolicyJson	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+6	PolicyException	8	Priority	int	4	10	0	0	0	NULL	NULL	0	NULL	DF__PolicyExc__Prior__409A7F30	((100))	NULL
+6	PolicyException	9	EffectiveFrom	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+6	PolicyException	10	EffectiveTo	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+6	PolicyException	11	IsActive	bit	1	1	0	0	0	NULL	NULL	0	NULL	DF__PolicyExc__IsAct__418EA369	((1))	NULL
+6	PolicyException	12	CreatedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+6	PolicyException	13	CreatedOn	datetime2	8	27	7	0	0	NULL	NULL	0	NULL	DF__PolicyExc__Creat__4282C7A2	(CONVERT([datetime2],((sysutcdatetime() AT TIME ZONE 'UTC') AT TIME ZONE 'India Standard Time')))	NULL
+6	PolicyException	14	ModifiedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+6	PolicyException	15	ModifiedOn	datetime2	8	27	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+7	ApprovalRequestStatusHistory	1	HistoryId	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+7	ApprovalRequestStatusHistory	2	ApprovalRequestId	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+7	ApprovalRequestStatusHistory	3	OldStatus	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+7	ApprovalRequestStatusHistory	4	NewStatus	nvarchar	100	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+7	ApprovalRequestStatusHistory	5	ChangedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+7	ApprovalRequestStatusHistory	6	ChangedOn	datetime2	8	27	7	0	0	NULL	NULL	0	NULL	DF__ApprovalR__Chang__524F1B17	(sysutcdatetime())	NULL
+7	ApprovalRequestStatusHistory	7	Remarks	nvarchar	2000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+7	ApprovalRequestStatusHistory	8	ApprovalRequestDetailId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+7	ApprovalRequestStatusHistory	9	ActivityId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+7	ApprovalRequestStatusHistory	10	ApproverLevel	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+7	ApprovalRequestStatusHistory	11	ActionType	nvarchar	60	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+7	ApprovalRequestStatusHistory	12	DetailVersion	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	1	ApprovalRequestDetailId	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	2	ApprovalRequestId	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	3	ActivityId	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	4	Snapshot_TotalDistanceKM	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	5	Snapshot_CalculatedClaimAmount	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	6	Snapshot_DAAmount	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	7	Snapshot_HotelAmount	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	8	Snapshot_TravelAmount	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	9	Snapshot_ExpenseTotal	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	10	CreatedOn	datetime2	8	27	7	0	0	NULL	NULL	0	NULL	DF__SalesAppr__Creat__4400FBC0	(sysutcdatetime())	NULL
+8	SalesApprovalRequestDetail	11	CreatedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+8	SalesApprovalRequestDetail	12	DetailStatus	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+8	SalesApprovalRequestDetail	13	DetailRemarks	nvarchar	2000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+8	SalesApprovalRequestDetail	14	DetailApprovedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+8	SalesApprovalRequestDetail	15	DetailApprovedOn	datetime2	8	27	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	16	ModifiedOn	datetime2	8	27	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	17	ModifiedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+8	SalesApprovalRequestDetail	18	DetailApprovedLevel	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	19	Snapshot_StationaryAmount	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+8	SalesApprovalRequestDetail	20	DetailVersion	int	4	10	0	0	0	NULL	NULL	0	NULL	DF__SalesAppr__Detai__5B6E70FD	((1))	NULL
+8	SalesApprovalRequestDetail	21	PreviousDetailId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	1	ActivityId	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	2	ImportedFromStagingId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	3	ImportBatchId	uniqueidentifier	16	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	4	User_Id	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	5	User_Name	nvarchar	510	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	6	Login_Id	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	7	Zone	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	8	Reporting_Manager1	nvarchar	510	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	9	Reporting_Manager1_Code	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	10	Reporting_Manager2	nvarchar	510	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	11	Reporting_Manager2_Code	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	12	Reporting_Manager3	nvarchar	510	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	13	Reporting_Manager3_Code	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	14	ActivityDate	date	3	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	15	Day	nvarchar	40	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	16	Month	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	17	Attendance_Status	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	18	TotalDistanceKM	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	19	PrimaryOrderValue	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	20	SecondaryOrderValue	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	21	CalculatedClaimAmount	decimal	9	18	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	22	ClaimStatus	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	23	ClaimProcessedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	24	ClaimProcessedDate	datetime	8	23	3	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	25	IsFlagged	bit	1	1	0	0	0	NULL	NULL	0	NULL	DF__SalesDail__IsFla__202DAF9E	((0))	NULL
+9	SalesDailyActivity	26	Flags	nvarchar	2000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	27	CreatedByUserId	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	28	CreatedDateTime	datetime	8	23	3	0	0	NULL	NULL	0	NULL	DF__SalesDail__Creat__2121D3D7	(dateadd(minute,(330),sysutcdatetime()))	NULL
+9	SalesDailyActivity	29	ModifiedByUserId	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	30	ModifiedDateTime	datetime	8	23	3	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	31	IsDeleted	bit	1	1	0	0	0	NULL	NULL	0	NULL	DF__SalesDail__IsDel__2215F810	((0))	NULL
+9	SalesDailyActivity	32	Remarks	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	33	SubmittedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	34	SubmittedOn	datetime2	8	27	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	35	ApprovalRequestId	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	36	RowVersion	timestamp	8	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+9	SalesDailyActivity	37	Planned_Beat	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	38	Planned_Beat_Id	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	39	Order_Distributor_ERPID	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	40	Order_Distributor_Name	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	41	ClaimedDA	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Claim__18E19391	((0))	NULL
+9	SalesDailyActivity	42	ApprovedDA	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Appro__19D5B7CA	((0))	NULL
+9	SalesDailyActivity	43	RejectedDA	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Rejec__1AC9DC03	((0))	NULL
+9	SalesDailyActivity	44	ClaimedHotel	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Claim__1BBE003C	((0))	NULL
+9	SalesDailyActivity	45	ApprovedHotel	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Appro__1CB22475	((0))	NULL
+9	SalesDailyActivity	46	RejectedHotel	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Rejec__1DA648AE	((0))	NULL
+9	SalesDailyActivity	47	ClaimedTravel	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Claim__1E9A6CE7	((0))	NULL
+9	SalesDailyActivity	48	ApprovedTravel	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Appro__1F8E9120	((0))	NULL
+9	SalesDailyActivity	49	RejectedTravel	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Rejec__2082B559	((0))	NULL
+9	SalesDailyActivity	50	RouteOriginName	nvarchar	510	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	51	RouteDestinationName	nvarchar	510	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	52	RouteWaypointsJSON	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	53	TravelMode	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+9	SalesDailyActivity	54	ApprovedDistanceKM	decimal	9	10	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Appro__6C98FCFF	((0))	NULL
+9	SalesDailyActivity	55	ApprovedCalculatedClaimAmount	decimal	9	18	2	1	0	NULL	NULL	0	NULL	DF__SalesDail__Appro__6D8D2138	((0))	NULL
+10	SalesDailyExpense	1	ExpenseId	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	2	ActivityId	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	3	ExpenseType	nvarchar	100	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	4	ExpenseDate	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	5	FromDate	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	6	ToDate	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	7	BillNo	nvarchar	400	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	8	Amount	decimal	9	18	2	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	9	Currency	nvarchar	20	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	10	Purpose	nvarchar	2000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	11	AttachmentFileName	nvarchar	1000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	12	AttachmentContent	varbinary	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	13	CreatedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	14	CreatedDateTime	datetime	8	23	3	0	0	NULL	NULL	0	NULL	DF__SalesDail__Creat__4D005615	(dateadd(minute,(330),sysutcdatetime()))	NULL
+10	SalesDailyExpense	15	AttachmentPath	nvarchar	2000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	16	TravelType	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	17	FromPlace	nvarchar	400	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	18	ToPlace	nvarchar	400	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	19	TravelDate	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	20	PolicyMode	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	21	PolicySnapshot	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	22	IsAutoDA	bit	1	1	0	0	0	NULL	NULL	0	NULL	DF_SalesDailyExpense_IsAutoDA	((0))	NULL
+10	SalesDailyExpense	23	CreatedByIP	nvarchar	90	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	24	Source	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	25	ClaimStatus	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	DF_SalesDailyExpense_ClaimStatus	('Draft')	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	26	ClaimProcessedBy	nvarchar	400	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	27	ClaimProcessedDate	datetime	8	23	3	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	28	ExpenseSeq	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	29	ModifiedOn	datetime2	8	27	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	30	ModifiedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	31	IsDeleted	bit	1	1	0	0	0	NULL	NULL	0	NULL	DF_SalesDailyExpense_IsDeleted	((0))	NULL
+10	SalesDailyExpense	32	DeletedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	33	DeletedOn	datetime2	8	27	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+10	SalesDailyExpense	34	DeleteReason	nvarchar	1000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	35	Remarks	nvarchar	2000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	36	ApprovalStatus	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	37	ApprovalRemarks	nvarchar	2000	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	38	ApprovedBy	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+10	SalesDailyExpense	39	ApprovedOn	datetime2	8	27	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+11	VMS_VisitAttendanceHistory	1	HistoryID	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+11	VMS_VisitAttendanceHistory	2	LogID	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+11	VMS_VisitAttendanceHistory	3	DayLogID	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+11	VMS_VisitAttendanceHistory	4	CheckInTime	datetime	8	23	3	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+11	VMS_VisitAttendanceHistory	5	CheckOutTime	datetime	8	23	3	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+11	VMS_VisitAttendanceHistory	6	Source	varchar	20	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+11	VMS_VisitAttendanceHistory	7	Actor	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+11	VMS_VisitAttendanceHistory	8	CreatedOn	datetime	8	23	3	0	0	NULL	NULL	0	NULL	DF_VMS_VisitAttendanceHistory_CreatedOn	(getdate())	NULL
+12	CMS_RawConsumptionLogs	1	LogId	bigint	8	19	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+12	CMS_RawConsumptionLogs	2	EmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+12	CMS_RawConsumptionLogs	3	EnrollNumber	varchar	50	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+12	CMS_RawConsumptionLogs	4	VerifyMode	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+12	CMS_RawConsumptionLogs	5	InOutMode	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+12	CMS_RawConsumptionLogs	6	PunchTime	datetime	8	23	3	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+12	CMS_RawConsumptionLogs	7	CreatedOn	datetime	8	23	3	0	0	NULL	NULL	0	NULL	DF__CMS_RawCo__Creat__6DC22B62	(getdate())	NULL
+12	CMS_RawConsumptionLogs	8	BranchID	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+12	CMS_RawConsumptionLogs	9	MachineIP	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+12	CMS_RawConsumptionLogs	10	EmployeeName	varchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	1	PacketHdrID	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	2	QCInspectorID	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	3	PlantName	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	4	Line	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	5	SKUId	varchar	50	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	6	Variety	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	7	StandardWeight	decimal	9	10	2	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	8	Shift	varchar	10	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	9	EntryDate	date	3	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	10	WindowStartTime	time	5	16	7	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	11	WindowEndTime	time	5	16	7	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	12	MinWeight	decimal	9	10	2	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	13	MaxWeight	decimal	9	10	2	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	14	AvgWeight	decimal	9	10	2	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	15	GiveAwayPercent	decimal	5	6	2	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	16	Status	varchar	20	0	0	0	0	NULL	NULL	0	NULL	DF__TRN_qc_pa__Statu__08AB2BC8	('COMPLETE')	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	17	SubmittedById	int	4	10	0	0	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	18	SubmittedOn	datetime	8	23	3	0	0	NULL	NULL	0	NULL	DF__TRN_qc_pa__Submi__099F5001	(getdate())	NULL
+13	TRN_qc_packet_weight_hdr	19	ProductCategory	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	20	ProductBrand	nvarchar	200	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+13	TRN_qc_packet_weight_hdr	21	TareWeight	decimal	9	10	2	1	0	NULL	NULL	0	NULL	DF__TRN_qc_pa__TareW__2ED0D4B0	((0))	NULL
+13	TRN_qc_packet_weight_hdr	22	NetMinWeight	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	23	NetMaxWeight	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	24	NetAvgWeight	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+13	TRN_qc_packet_weight_hdr	25	IsUnderweight	bit	1	1	0	0	0	NULL	NULL	0	NULL	DF__TRN_qc_pa__IsUnd__3A42875C	((0))	NULL
+13	TRN_qc_packet_weight_hdr	26	UnderweightDeficit	decimal	9	10	2	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	1	ID	int	4	10	0	0	1	1	1	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	2	PlantName	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	3	Line	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	4	ProductCategory	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	5	ProductBrand	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	6	SKUId	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	7	NumberOfPieces	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	8	GaugeValue	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	9	Length_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	10	DryWeight	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	11	Breadth_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	12	DippedWeight	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	13	Height_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	14	VarietyOrLotNo	nvarchar	200	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	15	BakingTime	nvarchar	40	0	0	0	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	16	BakingTime_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	17	ColorAppearance	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	18	CommentsForColorAppearance	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	19	FlavourAndTaste	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	20	CommentsForFlavourAndTaste	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	21	DesignImplementation	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	22	CommentsForDesignImplementation	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	23	TextureBite	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	24	CommentsForTextureBite	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	25	ShapeOrSize	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	26	CommentsForShapeOrSize	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	27	Moisture	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	28	Moisture_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	29	GaugeLength	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	30	CommentsGaugeLength	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	31	WeightWithoutOil	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	32	WeightWithOil	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	33	OilPercentage	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	34	PacketWeight	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	35	DesignAndImplementation	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	36	ColourAndAppearance	nvarchar	-1	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	37	SubmittedById	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	38	SubmittedDate	date	3	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	39	SubmittedTime	time	5	16	7	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	40	Shift	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	41	SubmittedByPNo	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	42	ViewMode	int	4	10	0	1	0	NULL	NULL	0	NULL	DF_TRN_qcinspector_ViewMode	((1))	NULL
+14	TRN_qcinspector	43	DeleteMode	int	4	10	0	1	0	NULL	NULL	0	NULL	DF_TRN_qcinspector_DeleteMode	((0))	NULL
+14	TRN_qcinspector	44	BakingTime2	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	45	BakingTime2_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	46	aW_max	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	47	aW_max_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	48	pH_value	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	49	pH_value_comments	nvarchar	100	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	50	FormID	int	4	10	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	51	SubmittedByEmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	52	Approver1EmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	53	Approver1_Status	int	4	10	0	1	0	NULL	NULL	0	NULL	DF_TRN_qcinspector_Approver1_Status	((0))	NULL
+14	TRN_qcinspector	54	Approver1_TimeStamp	smalldatetime	4	16	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	55	Approver2EmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	56	Approver2_Status	int	4	10	0	1	0	NULL	NULL	0	NULL	DF_TRN_qcinspector_Approver2_Status	((0))	NULL
+14	TRN_qcinspector	57	Approver2_TimeStamp	smalldatetime	4	16	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	58	DottedLineApproverEmployeeCode	varchar	50	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	59	DottedApprover_Status	int	4	10	0	1	0	NULL	NULL	0	NULL	DF_TRN_qcinspector_DottedApprover_Status	((0))	NULL
+14	TRN_qcinspector	60	DottedApprover_TimeStamp	smalldatetime	4	16	0	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	61	Remarks	nvarchar	400	0	0	1	0	NULL	NULL	0	NULL	NULL	NULL	SQL_Latin1_General_CP1_CI_AS
+14	TRN_qcinspector	62	Shell10Weight	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	63	Shell5CreamWeight	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	64	CreamPercentage	decimal	9	10	4	1	0	NULL	NULL	0	NULL	NULL	NULL	NULL
+14	TRN_qcinspector	65	QC_Status	varchar	30	0	0	0	0	NULL	NULL	0	NULL	DF__TRN_qcins__QC_St__114071C9	('STEP2_PENDING')	SQL_Latin1_General_CP1_CI_AS
+ 
+--- 2) PRIMARY KEYS ---
+Msg 1934, Level 16, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 106
+SELECT failed because the following SET options have incorrect settings: 'QUOTED_IDENTIFIER'. Verify that SET options are correct for use with indexed views and/or indexes on computed columns and/or filtered indexes and/or query notifications and/or XML data type methods and/or spatial index operations.
