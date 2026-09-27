@@ -3,13 +3,22 @@
 **Manifest:** `RC018_Execution_Manifest_v1.md`  
 **Hashes:** `RC018_SHA256_Manifest.md`  
 **Database:** `AnmolDristi` only  
-**Status:** Not started  
+**Status:** Execution completed on `AnmolDristi` (2026-09-25 through 2026-09-27). 14/14 PASS. No further SQL execution is required for RC-018.  
 
-This runbook is the operator sequence. It does not replace the script headers. Do not edit scripts 016–029 to make a step pass.
+This runbook is the operator sequence that was followed. It does not replace the script headers. The steps below are retained as the historical instruction. Do not edit scripts 016–029.
 
 ---
 
+## Execution Outcome
+
+- Production execution on `AnmolDristi` completed for packages 016 through 029.
+- Validation completed. 016b through 029b are PASS. The final validator, 029b, is OVERALL PASS.
+- Rollback references are recorded in `RC018_Execution_Manifest_v1.md` (section 8) and `RC018_Execution_Closeout_20260927.md`. No rollback was required.
+- No further SQL execution is required for RC-018.
+
 ## Before the window
+
+The checklist below was the gate for the completed window. It is retained as the historical instruction.
 
 1. Take a full backup of `AnmolDristi` outside these scripts. Record the backup name and time in the execution matrix header notes.
 2. On the deployment workstation, recompute SHA-256 for `Database/Scripts/016*` through `029*` and match `RC018_SHA256_Manifest.md`.
@@ -18,6 +27,8 @@ This runbook is the operator sequence. It does not replace the script headers. D
 5. Confirm the session catalog with `SELECT DB_NAME();`. Stop if the result is not `AnmolDristi`.
 
 ## For every script number from 016 to 029
+
+This sequence is closed. It is the historical instruction for the window, not an open work order.
 
 1. Run the apply or verify script with `@DryRun` left at 1.
 2. Read the printed mode, gaps, skips, and row counts.
@@ -74,4 +85,4 @@ If a script rollback cannot restore safely, restore the full `AnmolDristi` backu
 
 ## Close
 
-The release is not certified until 016b through 029b have been run on `AnmolDristi` and the execution matrix is filled. PolicyException financial overrides, if still at 0, stay a follow-up CAB item and are not a failed deployment.
+016b through 029b have been run on `AnmolDristi`. The execution matrix is filled. 029b reported OVERALL PASS. PolicyException financial overrides remain at 0. That stays a follow-up CAB item and is not a failed deployment.

@@ -3,9 +3,9 @@
 **Release:** RC-018 UAT → LIVE database synchronization  
 **Target:** `AnmolDristi` on `115.112.186.71`  
 **Authority:** `AnmolDristiDev` and `docs/reviews/Post_GoLive/RC018/`  
-**Status:** Packages generated. **Not executed on LIVE.**  
-**Date:** 2026-09-25  
-**Rule:** Do not edit scripts 016–029 during execution. Re-hash if any file changes (`RC018_SHA256_Manifest.md`).
+**Status:** LIVE execution complete on `AnmolDristi`. **14/14 PASS.** Closeout 2026-09-27.  
+**Date:** 2026-09-25 (package). Execution window 2026-09-25 through 2026-09-27.  
+**Rule:** Do not edit scripts 016–029. Certified package bytes and `RC018_SHA256_Manifest.md` stay unchanged. Re-hash only if a script file changes.
 
 Every apply script defaults to `@DryRun = 1`. Set `@DryRun = 0` only after the CAB gates in section 3 and a successful dry run.
 
@@ -114,38 +114,40 @@ Counts may be higher if the application wrote rows after Phase 0. A count below 
 
 ## 5. Execution matrix
 
-Leave times blank until the run.
+Filled after LIVE execution on `AnmolDristi`. Where a backup name is known, Start is that RunTag clock (`YYYYMMDD_HHMMSS` from `GETDATE()` at batch start). A separate end clock was not captured.
+
+016 and 017 are apply packages. Their backup object names were not in the execution inventory used for this closeout, so no RunTag is assigned to them here. 019, 023, 027, 028, and 029 intentionally created no backup.
 
 | Script | Start | End | Result | Evidence | Rollback needed |
 | --- | --- | --- | --- | --- | --- |
-| 016 | | | | | |
-| 016b | | | | | |
-| 017 | | | | | |
-| 017b | | | | | |
-| 018 | | | | | |
-| 018b | | | | | |
-| 019 | | | | | |
-| 019b | | | | | |
-| 020 | | | | | |
-| 020b | | | | | |
-| 021 | | | | | |
-| 021b | | | | | |
-| 022 | | | | | |
-| 022b | | | | | |
-| 023 | | | | | |
-| 023b | | | | | |
-| 024 | | | | | |
-| 024b | | | | | |
-| 025 | | | | | |
-| 025b | | | | | |
-| 026 | | | | | |
-| 026b | | | | | |
-| 027 | | | | | |
-| 027b | | | | | |
-| 028 | | | | | |
-| 028b | | | | | |
-| 029 | | | | | |
-| 029b | | | | | |
+| 016 | 2026-09-26 | not recorded | PASS | AnmolDristi. 016b OVERALL PASS. Sequence: before the 018 dry-run at 09:32:32. Backup RunTag not in the execution inventory. | No |
+| 016b | 2026-09-26 | not recorded | PASS | OVERALL PASS | No |
+| 017 | 2026-09-26 | not recorded | PASS | AnmolDristi. 017b OVERALL PASS. Sequence: before the 018 dry-run at 09:32:32. Backup RunTag not in the execution inventory. | No |
+| 017b | 2026-09-26 | not recorded | PASS | OVERALL PASS | No |
+| 018 | 2026-09-26 09:44:42 | not recorded | PASS | RunTag 20260926_094442. Backup `dbo.RC018_Backup_MST_EmployeeTolerance_20260926_094442`. 018b OVERALL PASS. Prior dry-run STOP 2026-09-26 09:32:32–09:33:06, RunTag 20260926_093232, LiveCnt 28, INSERT preview 0, LIVE-only ids 4–28, ids 1–3 AHS1058 / AHS1092 / AHS1156, AHS1530 id 12, apply not run, no backup. That stop was superseded by this apply. | No |
+| 018b | 2026-09-26 | not recorded | PASS | OVERALL PASS after apply RunTag 20260926_094442 | No |
+| 019 | 2026-09-26 | not recorded | PASS | Verify only. No backup (intentional). 019b OVERALL PASS. Sequence: after 018 apply 09:44:42 and before 020 09:56:44. | No |
+| 019b | 2026-09-26 | not recorded | PASS | OVERALL PASS | No |
+| 020 | 2026-09-26 09:56:44 | not recorded | PASS | RunTag 20260926_095644. Backup `dbo.RC018_Backup_TRN_RM_CLASS_1_20260926_095644`. RMF330 exclusion preserved. 020b OVERALL PASS. | No |
+| 020b | 2026-09-26 | not recorded | PASS | OVERALL PASS | No |
+| 021 | 2026-09-26 10:09:46 | not recorded | PASS | RunTag 20260926_100946. Backup `dbo.RC018_Backup_PolicyException_20260926_100946`. `@EnableFinancialOverrides` remained 0. 021b OVERALL PASS. | No |
+| 021b | 2026-09-26 | not recorded | PASS | OVERALL PASS under the default financial gate (ExceptionId 4 only) | No |
+| 022 | 2026-09-27 18:26:05 | not recorded | PASS | RunTag 20260927_182605. Backup `dbo.RC018_Backup_ApprovalRequestStatusHistory_20260927_182605`. 022b OVERALL PASS. | No |
+| 022b | 2026-09-27 | not recorded | PASS | OVERALL PASS | No |
+| 023 | 2026-09-27 | not recorded | PASS | Verify only. No backup (intentional). 023b OVERALL PASS. Sequence: after 022 18:26:05 and before 024 18:36:08. | No |
+| 023b | 2026-09-27 | not recorded | PASS | OVERALL PASS | No |
+| 024 | 2026-09-27 18:36:08 | not recorded | PASS | RunTag 20260927_183608. Backup `dbo.RC018_Backup_SalesDailyActivity_20260927_183608`. 024b OVERALL PASS. | No |
+| 024b | 2026-09-27 | not recorded | PASS | OVERALL PASS. Apply backup `dbo.RC018_Backup_SalesDailyActivity_20260927_183608`. | No |
+| 025 | 2026-09-27 18:38:05 | not recorded | PASS | RunTag 20260927_183805. Backup `dbo.RC018_Backup_SalesDailyExpense_20260927_183805`. 025b OVERALL PASS. | No |
+| 025b | 2026-09-27 | not recorded | PASS | OVERALL PASS. Apply backup `dbo.RC018_Backup_SalesDailyExpense_20260927_183805`. | No |
+| 026 | 2026-09-27 18:45:11 | not recorded | PASS | RunTag 20260927_184511. Backup `dbo.RC018_Backup_VMS_VisitAttendanceHistory_20260927_184511`. 026b OVERALL PASS. | No |
+| 026b | 2026-09-27 | not recorded | PASS | OVERALL PASS. Apply backup `dbo.RC018_Backup_VMS_VisitAttendanceHistory_20260927_184511`. | No |
+| 027 | 2026-09-27 | not recorded | PASS | Verify only. No backup (intentional). Gaps = 0. 027b OVERALL PASS. Sequence: after 026 18:45:11. | No |
+| 027b | 2026-09-27 | not recorded | PASS | OVERALL PASS | No |
+| 028 | 2026-09-27 | not recorded | PASS | Verify only. No backup (intentional). Gaps = 0. 028b OVERALL PASS. | No |
+| 028b | 2026-09-27 | not recorded | PASS | OVERALL PASS | No |
+| 029 | 2026-09-27 | not recorded | PASS | Verify only. No backup (intentional). Gaps = 0. 029b OVERALL PASS. | No |
+| 029b | 2026-09-27 | not recorded | PASS | OVERALL PASS. Final validator for RC-018. | No |
 
 ---
 
@@ -220,4 +222,19 @@ Run only the rollback for the script that failed, and only after reading its hea
 
 ## 9. SHA-256
 
-Checksums for all 42 files are in `RC018_SHA256_Manifest.md`. Compare them on the deployment workstation before the first script.
+Checksums for all 42 files are in `RC018_SHA256_Manifest.md`. Those hashes were not regenerated at closeout. Certified script bytes were not edited for this record.
+
+---
+
+# RC-018 Execution Complete
+
+- Environment: `AnmolDristi`
+- Execution window: 2026-09-25 → 2026-09-27
+- Packages completed: 14/14
+- Final validator: 029b OVERALL PASS
+- No remaining execution blockers
+- RMF330 accepted divergence preserved
+- PolicyException financial gate preserved (`@EnableFinancialOverrides = 0`)
+- AHS1530 governance preserved (ExceptionId 90002 held while the financial switch is 0)
+
+No rollback was required. Rollback references remain the matching `c` scripts in section 8. Closeout narrative: `RC018_Execution_Closeout_20260927.md`.
