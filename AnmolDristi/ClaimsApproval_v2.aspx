@@ -1013,7 +1013,7 @@
         var _currentUserLevel = <%= ViewState["CurrentUserLevel"] ?? 0 %>;
 
         function selectAllRows(chk) {
-            var table = document.getElementById('gvDetails');
+            var table = document.getElementById('<%= gvDetails.ClientID %>');
             if (!table) return;
             var boxes = table.querySelectorAll('tbody input[type="checkbox"]');
             for (var i = 0; i < boxes.length; i++) {
