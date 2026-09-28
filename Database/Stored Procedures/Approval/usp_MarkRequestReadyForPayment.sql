@@ -1,4 +1,13 @@
 /* ============================================================================
+   NAME:        hf231b_consume_auditor_assignment
+   WHEN:        2026-09-28
+   WHY:         Final Auditor approval leaves the approver row Pending so the claim
+                stays in View Pending until Mark Ready for Payment
+   WHAT:        usp_MarkRequestReadyForPayment approves that Auditor row, then writes
+                Completed → ReadyForPayment
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        rc023_markready_payment_lock_note
    WHEN:        2026-09-23
    WHY:         Align MarkReady contract with RC-023 payment lock (Completed precondition unchanged)
@@ -24,11 +33,14 @@
 CREATE   PROCEDURE dbo.usp_MarkRequestReadyForPayment
 (
     @ApprovalRequestId INT,
-    @ActionBy NVARCHAR(100)
+    @ActionBy NVARCHAR(100),
+    @Remarks NVARCHAR(MAX) = NULL
 )
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    DECLARE @NowUtc DATETIME2(0) = SYSUTCDATETIME();
 
     /* 1️⃣ Auditor validation */
     IF NOT EXISTS (
@@ -43,7 +55,8 @@ BEGIN
         RETURN;
     END
 
-    /* 2️⃣ Must be Completed */
+    /* 2️⃣ Must be Completed.
+          EnsureHeaderCompletedForPayment writes Pending → Completed before this call. */
     IF NOT EXISTS (
         SELECT 1
         FROM SalesApprovalRequest
@@ -55,7 +68,19 @@ BEGIN
         RETURN;
     END
 
-    /* 3️⃣ Update header */
+    /* 3️⃣ Consume the Auditor assignment that HF231 left Pending. */
+    UPDATE dbo.SalesApprovalRequestApprover
+    SET
+          Status     = 'Approved'
+        , ActionBy   = @ActionBy
+        , ActionDate = @NowUtc
+        , Remarks    = ISNULL(@Remarks, Remarks)
+    WHERE ApprovalRequestId = @ApprovalRequestId
+      AND ApproverLoginId = @ActionBy
+      AND ApproverRole = 'Auditor'
+      AND Status = 'Pending';
+
+    /* 4️⃣ Update header */
     UPDATE SalesApprovalRequest
     SET
         Status = 'ReadyForPayment',

@@ -1,4 +1,13 @@
 /* ============================================================================
+   NAME:        hf231_auditor_ready_for_payment_checkpoint
+   WHEN:        2026-09-28
+   WHY:         Last Auditor approve wrote Completed and cleared the current approver,
+                so View Pending dropped the claim before Mark Ready for Payment
+   WHAT:        Auditor terminal path leaves the header Pending, the current approver
+                unchanged, and the Auditor approver row Pending. No Pending → Completed history.
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        rc023_latest_version_ownership
    WHEN:        2026-09-23
    WHY:         Day-action latest predicate used MAX(Id) only while Forward/Expense/Recalc use DetailVersion then Id
@@ -380,7 +389,21 @@ BEGIN
                     , Remarks    = ISNULL(@Remarks, Remarks)
                 WHERE ApprovalRequestId = @ApprovalRequestId
                   AND ApproverLevel = @CurrentApproverLevel
-                  AND Status = 'Pending';
+                  AND Status = 'Pending'
+                  -- Auditor with no higher required level keeps this row Pending
+                  -- until Mark Ready for Payment. Routing and non-Auditor completion
+                  -- still approve the current level here.
+                  AND NOT (
+                        ISNULL(@CurrentApproverRole, '') = 'Auditor'
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM dbo.SalesApprovalRequestApprover nxt
+                            WHERE nxt.ApprovalRequestId = @ApprovalRequestId
+                              AND nxt.ApproverLevel > @CurrentApproverLevel
+                              AND nxt.Status = 'Pending'
+                              AND ISNULL(nxt.IsRequired, 1) = 1
+                        )
+                  );
 
                 -- TODO (Sprint 2 - Task 02):
                 -- Routing responsibility will be migrated to usp_ForwardApprovalRequest.
@@ -475,38 +498,11 @@ BEGIN
                 END
                 ELSE
                 BEGIN
-                    -- Auditor pass complete: header Completed so usp_MarkRequestReadyForPayment is reachable.
-                    UPDATE dbo.SalesApprovalRequest
-                    SET
-                          Status                 = 'Completed'
-                        , CurrentApproverLevel   = NULL
-                        , CurrentApproverLoginId = NULL
-                        , ModifiedBy             = @ActionBy
-                        , ModifiedOn             = @NowUtc
-                    WHERE ApprovalRequestId = @ApprovalRequestId
-                      AND Status = 'Pending';
-
-                    IF @@ROWCOUNT > 0
-                    BEGIN
-                        INSERT INTO dbo.ApprovalRequestStatusHistory
-                        (
-                              ApprovalRequestId
-                            , OldStatus
-                            , NewStatus
-                            , ChangedBy
-                            , Remarks
-                        )
-                        VALUES
-                        (
-                              @ApprovalRequestId
-                            , 'Pending'
-                            , 'Completed'
-                            , @ActionBy
-                            , 'Final Auditor Approval'
-                        );
-                    END
-
-                    SET @NewRequestStatus = 'Completed';
+                    -- Auditor pass complete: keep the request Pending and still
+                    -- assigned to this Auditor until Mark Ready for Payment.
+                    -- EnsureHeaderCompletedForPayment writes Pending → Completed.
+                    -- usp_MarkRequestReadyForPayment writes Completed → ReadyForPayment.
+                    SET @NewRequestStatus = 'Pending';
                 END
             END
             ELSE
