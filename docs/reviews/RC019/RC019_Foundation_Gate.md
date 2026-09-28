@@ -13,13 +13,12 @@ RC-018 is closed. Production execution on `AnmolDristi` is 14/14 PASS. RC-019 st
 
 | Item | Value |
 | --- | --- |
-| RC-019 base commit | `9ab2e58` |
-| Full hash | `9ab2e588590223a46c6ba362c669db50b446230c` |
-| Commit subject | RC-018: Production execution closeout and governance completion |
-| RC-018 execution tag | `rc018-executed-production-20260927` |
-| Tag target | `9ab2e588590223a46c6ba362c669db50b446230c` (same commit) |
-| Required branch | `release/rc019-foundation` |
-| First new SQL number | Script **030** |
+| Git integration base | `7cd69853e937de9e6e2be710faf488cc01a47718` |
+| Git integration branch | `Aug26_AILWorks_AmimnrupSupport` |
+| Certified operational baseline | `9ab2e588590223a46c6ba362c669db50b446230c` |
+| Certified baseline tag | `rc018-executed-production-20260927` |
+
+RC-019 integrates through the repository default branch. RC-018 certification remains anchored to `9ab2e58`. This separation is intentional and avoids historical branch contamination while preserving the certified execution baseline.
 
 ### Branch verification (2026-09-27)
 
@@ -30,17 +29,17 @@ RC-018 is closed. Production execution on `AnmolDristi` is 14/14 PASS. RC-019 st
 | Current branch | `feature/rc017c-softdelete-face-refresh` |
 | `release/rc019-foundation` | Not present. Not checked out. |
 
-RC-019 source work waits until `release/rc019-foundation` is created from `9ab2e58`. Creating that branch was not part of this gate.
+RC-019 source work integrates from the Git integration base on `Aug26_AILWorks_AmimnrupSupport`. It is not branched from the certified operational baseline `9ab2e58`. Creating that branch was not part of this gate.
 
 ```powershell
-git switch -c release/rc019-foundation 9ab2e588590223a46c6ba362c669db50b446230c
+git switch -c release/rc019-foundation-default Aug26_AILWorks_AmimnrupSupport
 ```
 
 ---
 
 ## Frozen RC-018 artifacts
 
-These files stay byte-for-byte as they are at `9ab2e58`. `RC018_SHA256_Manifest.md` stays as published. Do not regenerate it.
+These files stay byte-for-byte as they are at the certified operational baseline `9ab2e58`. `RC018_SHA256_Manifest.md` stays as published. Do not regenerate it.
 
 ### Certified scripts (42)
 
@@ -69,7 +68,7 @@ All 42 paths are under `Database/Scripts/`.
 
 ### Closed governance record
 
-The `docs/reviews/Post_GoLive/RC018/` tree at `9ab2e58`, including:
+The `docs/reviews/Post_GoLive/RC018/` tree at the certified operational baseline `9ab2e58`, including:
 
 - `RC018_Execution_Closeout_20260927.md`
 - `RC018_Execution_Manifest_v1.md`
@@ -83,7 +82,7 @@ The `docs/reviews/Post_GoLive/RC018/` tree at `9ab2e58`, including:
 1. New SQL begins at `Database/Scripts/030`.
 2. Scripts `016`–`029` (apply, `b`, and `c`) stay aligned with `RC018_SHA256_Manifest.md`.
 3. `RC018_SHA256_Manifest.md` stays unchanged.
-4. Commit `9ab2e58` remains the RC-018 closeout baseline. Tag `rc018-executed-production-20260927` stays on that commit.
+4. Commit `9ab2e58` remains the certified operational baseline for the RC-018 closeout. It is not the Git integration base. Tag `rc018-executed-production-20260927` stays on that commit.
 5. These CAB decisions stay in force until an owner signs a later change: the RMF330 exclusion, `@EnableFinancialOverrides = 0`, and the AHS1530 hold on ExceptionId 90002.
 6. These paths stay local and unstaged. They are outside RC-019 source:
    - `AnmolDristi/Web.config`
