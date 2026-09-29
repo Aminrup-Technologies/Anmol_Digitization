@@ -185,11 +185,21 @@ IF EXISTS (SELECT 1 FROM dbo.TRN_RM_CLASS_1 WHERE RMFID = 'RMF330')
    AND @Accepted = 1
     PRINT N'RMF330 | LIVE present | shared attributes differ from UAT | ACCEPTED (excluded from MERGE)';
 ELSE IF EXISTS (SELECT 1 FROM dbo.TRN_RM_CLASS_1 WHERE RMFID = 'RMF330')
-    PRINT N'RMF330 | LIVE present | shared attributes match UAT | ACCEPTED (still excluded from MERGE)';
+    PRINT N'RMF330 | LIVE present | shared attributes match UAT | NOT ACCEPTED (divergence lost; still excluded from MERGE)';
 ELSE
-    PRINT N'RMF330 | MISSING ON LIVE | ACCEPTED exclusion remains, but production row is absent';
+    PRINT N'RMF330 | MISSING ON LIVE | NOT ACCEPTED';
 
 PRINT N'LIVE-only rows are ignored (not deleted). Material_Name is not in the UPDATE list. RMF330 is not in the MERGE source.';
+
+IF @DryRun = 0
+   AND NOT (
+        EXISTS (SELECT 1 FROM dbo.TRN_RM_CLASS_1 WHERE RMFID = 'RMF330')
+        AND @Accepted = 1
+   )
+BEGIN
+    RAISERROR(N'BLOCKER: RMF330 accepted production divergence is not intact. Abort.', 16, 1);
+    RETURN;
+END;
 
 IF @DryRun = 1
 BEGIN
