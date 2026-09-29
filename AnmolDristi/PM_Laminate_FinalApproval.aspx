@@ -119,6 +119,15 @@
                                                         </div>
                                                     </div>
 
+                                                    <div class="col-md-3" runat="server">
+                                                        <div class="mb-3">
+                                                            <asp:Label ID="Label6" runat="server" AssociatedControlID="DDL_BrandSKU" Text="Brand SKU Type" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                            <div class="input-group-sm">
+                                                                <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded white-background-readonly"></asp:DropDownList>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
                                                     <div class="col-md-3">
                                                         <div class="mb-3">
                                                             <asp:Label ID="Lbl_TB_Supplier" runat="server" AssociatedControlID="TB_Supplier" Text="Supplier :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>

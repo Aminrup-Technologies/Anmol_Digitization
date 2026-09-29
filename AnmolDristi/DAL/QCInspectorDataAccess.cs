@@ -20,9 +20,9 @@ namespace AnmolDristi.DAL
         }
 
 
-        public void InsertQCInspectorDataOld(string plantName, string line, string productCategory, string productBrand, string SKUId, int numberOfPieces, decimal gaugeValue, decimal dryWeight, decimal dippedWeight, string varietyOrLotNo, string bakingTime, string bakingTime2, int ColorAppearance, string CommentsForColorAppearance,  int flavourAndTaste, string commentsForFlavourAndTaste, int DesignImplementation, string CommentsForDesignImplementation,int TextureBite,string CommentsForTextureBite, string shapeOrSize, string commentsForShapeOrSize, decimal moisture, decimal aWmax, decimal pHvalue, decimal gaugeLength, string CommentsGaugeLength, decimal weightWithoutOil, decimal weightWithOil, decimal oilPercentage, decimal packetWeight, string designAndImplementation, string colourAndAppearance, int submittedById, DateTime submittedDate, TimeSpan submittedTime, string Shift, string SubmittedByPNo)
+        public void InsertQCInspectorDataOld(string plantName, string line, string productCategory, string productBrand, string SKUId, int numberOfPieces, decimal gaugeValue, decimal dryWeight, decimal dippedWeight, string varietyOrLotNo, string bakingTime, string bakingTime2, int ColorAppearance, string CommentsForColorAppearance, int flavourAndTaste, string commentsForFlavourAndTaste, int DesignImplementation, string CommentsForDesignImplementation, int TextureBite, string CommentsForTextureBite, string shapeOrSize, string commentsForShapeOrSize, decimal moisture, decimal aWmax, decimal pHvalue, decimal gaugeLength, string CommentsGaugeLength, decimal weightWithoutOil, decimal weightWithOil, decimal oilPercentage, decimal packetWeight, string designAndImplementation, string colourAndAppearance, int submittedById, DateTime submittedDate, TimeSpan submittedTime, string Shift, string SubmittedByPNo)
         {
-            
+
 
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -93,7 +93,7 @@ namespace AnmolDristi.DAL
 
 
 
-        public void InsertQCInspectorData(
+        public int InsertQCInspectorData(
             string plantName, string line, string productCategory, string productBrand, string SKUId,
             int numberOfPieces, decimal gaugeValue, decimal dryWeight, decimal dippedWeight,
             string varietyOrLotNo, string bakingTime, string bakingTime2,
@@ -106,7 +106,7 @@ namespace AnmolDristi.DAL
             string CommentsGaugeLength, decimal weightWithoutOil, decimal weightWithOil,
             decimal oilPercentage, decimal packetWeight, string designAndImplementation,
             string colourAndAppearance, string Remarks, int submittedById, DateTime submittedDate,
-            TimeSpan submittedTime, string Shift, string SubmittedByPNo, int FormID, string Approver1EmployeeCode, string Approver2EmployeeCode, string DottedLineApproverEmployeeCode)
+            TimeSpan submittedTime, string Shift, string SubmittedByPNo, int FormID, string Approver1EmployeeCode, string Approver2EmployeeCode, string DottedLineApproverEmployeeCode, decimal Shell10Weight, decimal Shell5CreamWeight, decimal CreamPercentage)
         {
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -152,7 +152,6 @@ namespace AnmolDristi.DAL
                     //Newly added on 28-Nov-2024------------------------
                     command.Parameters.AddWithValue("@Remarks", Remarks);
 
-
                     command.Parameters.AddWithValue("@SubmittedById", submittedById);
                     command.Parameters.AddWithValue("@SubmittedDate", submittedDate);
                     command.Parameters.AddWithValue("@SubmittedTime", submittedTime);
@@ -164,17 +163,21 @@ namespace AnmolDristi.DAL
                     command.Parameters.AddWithValue("@Approver1EmployeeCode", Approver1EmployeeCode);
                     command.Parameters.AddWithValue("@Approver2EmployeeCode", Approver2EmployeeCode);
                     command.Parameters.AddWithValue("@DottedLineApproverEmployeeCode", DottedLineApproverEmployeeCode);
+
+                    command.Parameters.AddWithValue("@Shell10Weight", Shell10Weight);
+                    command.Parameters.AddWithValue("@Shell5CreamWeight", Shell5CreamWeight);
+                    command.Parameters.AddWithValue("@CreamPercentage", CreamPercentage);
+
+
                     // Open the connection and execute the command
                     connection.Open();
-                    command.ExecuteNonQuery();
+                    //command.ExecuteNonQuery();
+
+                    int qcInspectorId = Convert.ToInt32(command.ExecuteScalar());
+                    return qcInspectorId;
                 }
             }
         }
-
-
-
-
-
 
         //private void LogToTextFile(params object[] data)
         //{

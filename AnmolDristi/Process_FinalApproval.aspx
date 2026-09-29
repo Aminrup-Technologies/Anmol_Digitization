@@ -863,7 +863,7 @@
 
                                                             <div class="col-md-3" id="FU_BBImage_Img" runat="server" visible="true">
                                                                 <div class="mb-3">
-                                                                    <asp:Label ID="Label38" runat="server" AssociatedControlID="imgBB" Text="Maida Image" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                                                    <asp:Label ID="Label38" runat="server" AssociatedControlID="imgBB" Text="Broken Biscuits Image" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                                     <div class="input-group input-group-sm">
                                                                         <asp:Image ID="imgBB" runat="server" CssClass="img-fluid" Width="100%" ImageUrl='<%# Eval("BBImageUrl") != null ? ResolveUrl(Eval("BBImageUrl").ToString()) : "~/Images/placeholder.jpg" %>' AlternateText="BB Image" />
                                                                     </div>

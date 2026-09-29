@@ -69,6 +69,24 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.DropDownList DDL_ProductBrand;
 
         /// <summary>
+        /// Label6 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Label6;
+
+        /// <summary>
+        /// DDL_BrandSKU control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.DropDownList DDL_BrandSKU;
+
+        /// <summary>
         /// Lbl_TB_Supplier control.
         /// </summary>
         /// <remarks>

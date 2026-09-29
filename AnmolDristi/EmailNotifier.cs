@@ -38,9 +38,9 @@ namespace AnmolDristi
                     Host = "smtp.office365.com",
                     Port = 587,
                     EnableSsl = true,
-                    Username = "symphonymis@anmolindustries.com",
-                    Password = "Welc0meB@ckSymp2024",
-                    FromEmail = "symphonymis@anmolindustries.com"
+                    Username = "sapsystem@anmolindustries.com",
+                    Password = "Basis@2024",
+                    FromEmail = "sapsystem@anmolindustries.com"
 
                 };
 

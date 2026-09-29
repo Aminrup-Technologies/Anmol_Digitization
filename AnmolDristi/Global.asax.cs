@@ -12,6 +12,151 @@ namespace AnmolDristi
 
         protected void Application_Start(object sender, EventArgs e)
         {
+            // Create a timer that calls CleanupStaleSessions every 5 minutes
+            var timer = new System.Threading.Timer(_ =>
+            {
+                try
+                {
+                    SessionHelper.CleanupStaleSessions(30); // expire sessions idle > 20 minutes
+                }
+                catch (Exception ex)
+                {
+                    // optional: log error somewhere (file/db/eventlog)
+                }
+            }, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+
+            // Store reference so GC doesn’t collect the timer
+            Application["CleanupTimer"] = timer;
+        }
+
+        protected void Application_AcquireRequestState(object sender, EventArgs e)
+        {
+            HttpContext ctx = HttpContext.Current;
+            if (ctx == null || ctx.Session == null)
+                return;
+
+            string path = ctx.Request.Url.AbsolutePath.ToLowerInvariant();
+
+            // -------------------------------
+            // 1. Pages that must be skipped
+            // -------------------------------
+            if (
+                path.EndsWith("/login.aspx") ||
+                path.EndsWith("/logout.aspx") ||
+                path.Contains("/heartbeat.aspx") ||
+                path.Contains("/webresource.axd") ||
+                path.Contains("/scriptresource.axd") ||
+                path.EndsWith(".css") ||
+                path.EndsWith(".js") ||
+                path.EndsWith(".png") ||
+                path.EndsWith(".jpg") ||
+                path.EndsWith(".gif") ||
+                path.EndsWith(".ico")
+               )
+            {
+                return;
+            }
+
+            // ---------------------------------
+            // 2. Detect broken / partial session
+            // ---------------------------------
+            //bool hasUser =
+            //    ctx.Session["USERID"] != null ||
+            //    ctx.Session["WORKMAN"] != null ||
+            //    ctx.Session["USERNAME"] != null;
+
+            //bool hasToken = ctx.Session["LoginToken"] != null;
+
+            // ---------------------------------
+            // 3. If user exists but token missing
+            //    -> session is corrupt
+            // ---------------------------------
+
+
+            //if (hasUser && !hasToken)
+            //{
+            //    try
+            //    {
+            //        ctx.Session.Clear();
+            //        ctx.Session.Abandon();
+            //    }
+            //    catch { }
+
+            //    // Expire ASP.NET session cookie
+            //    HttpCookie sessionCookie = new HttpCookie("ASP.NET_SessionId", "");
+            //    sessionCookie.Expires = DateTime.Now.AddDays(-1);
+            //    sessionCookie.Path = "/";
+            //    ctx.Response.Cookies.Add(sessionCookie);
+
+            //    // Redirect safely
+            //    ctx.Response.Redirect("~/login.aspx?reason=sessionexpired", true);
+            //}
+
+            //if (hasUser && !hasToken)
+            //{
+            //    DateTime created;
+            //    if (ctx.Session["SessionCreatedUtc"] == null)
+            //    {
+            //        ctx.Session["SessionCreatedUtc"] = DateTime.UtcNow;
+            //        return; // grace period
+            //    }
+
+            //    created = (DateTime)ctx.Session["SessionCreatedUtc"];
+            //    if ((DateTime.UtcNow - created).TotalMinutes > 2)
+            //    {
+            //        ctx.Session.Clear();
+            //        ctx.Session.Abandon();
+
+            //        HttpCookie cookie = new HttpCookie("ASP.NET_SessionId", "");
+            //        cookie.Expires = DateTime.Now.AddDays(-1);
+            //        cookie.Path = "/";
+            //        ctx.Response.Cookies.Add(cookie);
+
+            //        ctx.Response.Redirect("~/login.aspx?reason=sessionexpired", true);
+            //    }
+            //}
+
+            //if (hasUser)
+            //{
+            //    Guid token;
+            //    bool tokenOk =
+            //        Guid.TryParse(Convert.ToString(Session["LoginToken"]), out token)
+            //        && SessionHelper.IsSessionActive(token);
+
+            //    if (!tokenOk)
+            //    {
+            //        // Allow silent recovery – do NOT force logout here
+            //        return;
+            //    }
+            //}
+
+
+            //bool hasUser =
+            //Session["USERID"] != null ||
+            //Session["WORKMAN"] != null ||
+            //Session["USERNAME"] != null;
+
+            //if (hasUser)
+            //{
+            //    Guid token;
+            //    var tokenStr = Convert.ToString(Session["LoginToken"]);
+
+            //    if (!Guid.TryParse(tokenStr, out token))
+            //    {
+            //        // Allow session to recover – DO NOT LOGOUT
+            //        return;
+            //    }
+
+            //    // Optional: only check DB every few minutes if needed
+            //    if (!SessionHelper.IsSessionActive(token))
+            //    {
+            //        // real logout condition
+            //        Session.Clear();
+            //        Session.Abandon();
+            //        Response.Redirect("~/login.aspx?reason=sessionexpired", true);
+            //    }
+            //}
+
 
         }
 
@@ -150,7 +295,16 @@ namespace AnmolDristi
 
         protected void Application_End(object sender, EventArgs e)
         {
-
+            // Cleanly dispose timer when app shuts down
+            var timer = Application["CleanupTimer"] as System.Threading.Timer;
+            if (timer != null)
+            {
+                try
+                {
+                    timer.Dispose();
+                }
+                catch { /* ignore errors */ }
+            }
         }
     }
 }

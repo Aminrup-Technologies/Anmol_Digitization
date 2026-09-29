@@ -787,6 +787,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox TXB_Remarks;
         
         /// <summary>
+        /// btnTranspose control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnTranspose;
+        
+        /// <summary>
+        /// gvData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.GridView gvData;
+        
+        /// <summary>
         /// Lbl_btnSubmit control.
         /// </summary>
         /// <remarks>

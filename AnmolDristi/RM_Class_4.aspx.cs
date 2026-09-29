@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Web;
@@ -847,10 +848,38 @@ namespace AnmolDristi
 
             string supplier = string.IsNullOrEmpty(TB_Supplier.Text) ? null : TB_Supplier.Text;
             string challanNo = string.IsNullOrEmpty(TB_ChallanNo.Text) ? null : TB_ChallanNo.Text;
-            DateTime? challanDate = string.IsNullOrEmpty(TB_ChallanDate.Text) ? (DateTime?)null : DateTime.Parse(TB_ChallanDate.Text).Date;
             string lotNo = string.IsNullOrEmpty(TB_LotNo.Text) ? null : TB_LotNo.Text;
-            DateTime? pkdMfgDate = string.IsNullOrEmpty(TB_PkdMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_PkdMfg.Text).Date;
             string vehicleNo = string.IsNullOrEmpty(TB_VehicleNo.Text) ? null : TB_VehicleNo.Text;
+
+            //DateTime? challanDate = string.IsNullOrEmpty(TB_ChallanDate.Text) ? (DateTime?)null : DateTime.Parse(TB_ChallanDate.Text).Date;
+
+            List<DateTime?> challanDates = TB_ChallanDate.Text
+           .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+           .Select(dateStr =>
+           {
+               DateTime parsedDate;
+               return DateTime.TryParseExact(dateStr.Trim(), "dd-MM-yyyy",
+                   CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate)
+                   ? (DateTime?)parsedDate
+                   : null;
+           })
+           .ToList();
+
+            //DateTime? pkdMfgDate = string.IsNullOrEmpty(TB_PkdMfg.Text) ? (DateTime?)null : DateTime.Parse(TB_PkdMfg.Text).Date;
+
+            List<DateTime?> mfgDates = string.IsNullOrEmpty(TB_PkdMfg.Text)
+            ? new List<DateTime?>() // Return an empty list if the textbox is empty
+            : TB_PkdMfg.Text
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) // Split by commas
+                .Select(dateStr =>
+                {
+                    DateTime parsedDate;
+                    return DateTime.TryParseExact(dateStr.Trim(), "dd-MM-yyyy",
+                        CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate)
+                        ? (DateTime?)parsedDate
+                        : null;
+                })
+                .ToList();
 
             decimal? quantity = !string.IsNullOrWhiteSpace(TB_Quantity.Text) ? Convert.ToDecimal(TB_Quantity.Text) : (decimal?)null;
             string quantityRemarks = string.IsNullOrEmpty(TXB_Quantity_Remarks.Text) ? null : TXB_Quantity_Remarks.Text;
@@ -911,6 +940,8 @@ namespace AnmolDristi
 
             decimal? sulphatedAsh = !string.IsNullOrWhiteSpace(TB_SulphatedAsh.Text) ? Convert.ToDecimal(TB_SulphatedAsh.Text) : (decimal?)null;
             string sulphatedAshRemarks = string.IsNullOrEmpty(TXB_SulphatedAsh_Remarks.Text) ? null : TXB_SulphatedAsh_Remarks.Text;
+            
+            string remarks = string.IsNullOrEmpty(TXB_Remarks.Text) ? null : TXB_Remarks.Text;
 
             DateTime submittedDate = DateTime.Now.Date;
             TimeSpan submittedTime = DateTime.Now.TimeOfDay;
@@ -941,10 +972,14 @@ namespace AnmolDristi
 
                         command.Parameters.AddWithValue("@Supplier_Name", (object)supplier ?? DBNull.Value);
                         command.Parameters.AddWithValue("@Challan_No", (object)challanNo ?? DBNull.Value);
-                        command.Parameters.AddWithValue("@Challan_Date", (object)challanDate ?? DBNull.Value);
                         command.Parameters.AddWithValue("@Lot_No", (object)lotNo ?? DBNull.Value);
-                        command.Parameters.AddWithValue("@Pkd_Date", (object)pkdMfgDate ?? DBNull.Value);
                         command.Parameters.AddWithValue("@Vehicle_No", (object)vehicleNo ?? DBNull.Value);
+
+                        //command.Parameters.AddWithValue("@Challan_Date", (object)challanDate ?? DBNull.Value);
+                        //command.Parameters.AddWithValue("@Pkd_Date", (object)pkdMfgDate ?? DBNull.Value);
+
+                        command.Parameters.AddWithValue("@Challan_Dates", challanDates.Any() ? string.Join(",", challanDates.Where(d => d.HasValue).Select(d => d.Value.ToString("yyyy-MM-dd"))) : (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Mfg_Dates", mfgDates.Any() ? string.Join(",", mfgDates.Where(d => d.HasValue).Select(d => d.Value.ToString("yyyy-MM-dd"))) : (object)DBNull.Value);
 
                         command.Parameters.AddWithValue("@Quantity", (object)quantity ?? DBNull.Value);
                         command.Parameters.AddWithValue("@CommentsForQuantity", (object)quantityRemarks ?? DBNull.Value);
@@ -1007,7 +1042,9 @@ namespace AnmolDristi
                         command.Parameters.AddWithValue("@CommentsForSulphatedAsh", (object)sulphatedAshRemarks ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@Material_Image", (object)ImgLink1 ?? DBNull.Value);
-
+                        
+                        command.Parameters.AddWithValue("@Remarks", (object)remarks ?? DBNull.Value);
+                        
                         command.Parameters.AddWithValue("@SubmittedDate", submittedDate);
                         command.Parameters.AddWithValue("@SubmittedTime", submittedTime);
                         command.Parameters.AddWithValue("@SubmittedById", submittedById);
@@ -1112,6 +1149,8 @@ namespace AnmolDristi
 
             TB_SulphatedAsh.ReadOnly = true;
             TXB_SulphatedAsh_Remarks.ReadOnly = true;
+
+            TXB_Remarks.ReadOnly = true;
 
             BtnSubmit.Enabled = false;
             BtnSubmit.Text = "SAVED";

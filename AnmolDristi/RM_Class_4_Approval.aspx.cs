@@ -8,6 +8,8 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Text;
+using ClosedXML.Excel;
+using System.IO;
 
 namespace AnmolDristi
 {
@@ -66,7 +68,7 @@ namespace AnmolDristi
             {
                 string selectedMaterialValue = DDL_Material.SelectedValue.ToString();
                 PlantBinder();
-
+                DataLoader();
                 // Call method to show relevant controls based on selected material
                 //DivBinders(selectedMaterialValue);
             }
@@ -122,7 +124,7 @@ namespace AnmolDristi
             if (DDL_Plant.SelectedIndex != 0)
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
-
+                DataLoader();
             }
             else
             {
@@ -142,7 +144,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qcapprovals.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -166,13 +168,69 @@ namespace AnmolDristi
                     SELECT TOP(30)
                     c.ID AS DBID,
                     c.FormID as FormID,
-                    'NA' as RecordID,
-	                m.Material_Name AS MaterialName,
+                    RMFID as RecordID,
+                    m.Material_Name AS MaterialName,
                     p.plant_name AS PlantName,
                     c.SubmittedByEmployeeCode as EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate as SDate,
                     c.SubmittedTime as STime,
+                    c.Supplier_Name,
+                    c.Challan_No,
+                    c.Challan_Date,
+                    c.Pkd_Date,
+                    c.Quantity,
+                    c.CommentsForQuantity,
+                    c.Lot_No,
+                    c.Vehicle_No,
+                    c.Color,
+                    c.CommentsForColor,
+                    CASE 
+		                WHEN c.Smell = 1 THEN 'Ok'
+		                WHEN c.Smell = 0 THEN 'Not Ok'
+	                END AS Smell,
+	                c.CommentsForSmell,
+	                CASE 
+		                WHEN c.Appearance = 1 THEN 'Ok'
+		                WHEN c.Appearance = 0 THEN 'Not Ok'
+	                END AS Appearance,
+	                c.CommentsForAppearance,
+	                CASE 
+		                WHEN c.Taste = 1 THEN 'Ok'
+		                WHEN c.Taste = 0 THEN 'Not Ok'
+	                END AS Taste,
+	                c.CommentsForTaste,
+                    c.Fungus,
+                    c.CommentsForFungus,
+                    c.PH,
+                    c.CommentsForPH,
+                    c.Moisture,
+                    c.CommentsForMoisture,
+                    c.Total_Ash,
+                    c.CommentsForTotalAsh,
+                    c.Fat_Content,
+                    c.CommentsForFatContent,
+                    c.Milk,
+                    c.CommentsForMilk,
+                    c.Total_Solids,
+                    c.CommentsForSolid,
+                    c.Lactose,
+                    c.CommentsForLactose,
+                    c.Protein,
+                    c.CommentsForProtein,
+                    c.MilkFat,
+                    c.CommentsForMilkFat,
+                    c.Titrable_Acidity,
+                    c.CommentsForTitrableAcidity,
+                    c.SO2,
+                    c.CommentsForSO2,
+                    c.Glucose_Content,
+                    c.CommentsForGlucoseContent,
+                    c.Loss_On_Drying,
+                    c.CommentsForLossOnDrying,
+                    c.SulphatedAsh,
+                    c.CommentsForSulphatedAsh,
+                    c.Material_Image,
                     c.Approver1EmployeeCode as L1,
                     c.Approver1_Status,
                     c.Approver1_TimeStamp,
@@ -205,6 +263,7 @@ namespace AnmolDristi
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -225,13 +284,69 @@ namespace AnmolDristi
                 SELECT 
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    RMFID as RecordID,
 	                m.Material_Name AS MaterialName,
                     p.plant_name AS PlantName,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
-                    'No Comment' AS Remarks,
+                    c.Supplier_Name,
+                    c.Challan_No,
+                    c.Challan_Date,
+                    c.Pkd_Date,
+                    c.Quantity,
+                    c.CommentsForQuantity,
+                    c.Lot_No,
+                    c.Vehicle_No,
+                    c.Color,
+                    c.CommentsForColor,
+                    CASE 
+		                WHEN c.Smell = 1 THEN 'Ok'
+		                WHEN c.Smell = 0 THEN 'Not Ok'
+	                END AS Smell,
+	                c.CommentsForSmell,
+	                CASE 
+		                WHEN c.Appearance = 1 THEN 'Ok'
+		                WHEN c.Appearance = 0 THEN 'Not Ok'
+	                END AS Appearance,
+	                c.CommentsForAppearance,
+	                CASE 
+		                WHEN c.Taste = 1 THEN 'Ok'
+		                WHEN c.Taste = 0 THEN 'Not Ok'
+	                END AS Taste,
+	                c.CommentsForTaste,
+                    c.Fungus,
+                    c.CommentsForFungus,
+                    c.PH,
+                    c.CommentsForPH,
+                    c.Moisture,
+                    c.CommentsForMoisture,
+                    c.Total_Ash,
+                    c.CommentsForTotalAsh,
+                    c.Fat_Content,
+                    c.CommentsForFatContent,
+                    c.Milk,
+                    c.CommentsForMilk,
+                    c.Total_Solids,
+                    c.CommentsForSolid,
+                    c.Lactose,
+                    c.CommentsForLactose,
+                    c.Protein,
+                    c.CommentsForProtein,
+                    c.MilkFat,
+                    c.CommentsForMilkFat,
+                    c.Titrable_Acidity,
+                    c.CommentsForTitrableAcidity,
+                    c.SO2,
+                    c.CommentsForSO2,
+                    c.Glucose_Content,
+                    c.CommentsForGlucoseContent,
+                    c.Loss_On_Drying,
+                    c.CommentsForLossOnDrying,
+                    c.SulphatedAsh,
+                    c.CommentsForSulphatedAsh,
+                    c.Material_Image,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
                     c.Approver1_TimeStamp,
@@ -298,6 +413,7 @@ namespace AnmolDristi
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
             }
             catch (Exception ex)
@@ -350,6 +466,45 @@ namespace AnmolDristi
             }
         }
 
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCRMClass4Report");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCRMClass4Records.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
 
     }
 

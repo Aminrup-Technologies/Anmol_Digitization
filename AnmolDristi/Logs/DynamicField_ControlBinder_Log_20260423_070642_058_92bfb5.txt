@@ -1,0 +1,471 @@
+===================================================
+Log Created At: 2026-04-23 07:06:42.058
+===================================================
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: WaterTest (Water Test :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: WaterTest (Water Test :) ---
+✔ Container found: WaterTest, Visible: True
+✔ Container found: WaterTest, Visible: True
+✔ Input control found: TXB_WaterTest, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✖ RangeValidator not found
+✖ RadioButtonList not found for WaterTest
+✖ DropDownList not found for WaterTest
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: ProcessWaterTemp (Process Water Temp :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: ProcessWaterTemp (Process Water Temp :) ---
+✔ Container found: ProcessWaterTemp, Visible: True
+✔ Container found: ProcessWaterTemp, Visible: True
+✔ Input control found: TXB_ProcessWaterTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100, Max=100
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for ProcessWaterTemp - Min: -100, Max: 100, Enabled: True
+✖ RadioButtonList not found for ProcessWaterTemp
+✖ DropDownList not found for ProcessWaterTemp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: WaterPH (Water PH Value :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: WaterPH (Water PH Value :) ---
+✔ Container found: WaterPH, Visible: True
+✔ Container found: WaterPH, Visible: True
+✔ Input control found: TXB_WaterPH, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=10.00
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for WaterPH - Min: 0.00, Max: 10.00, Enabled: True
+✖ RadioButtonList not found for WaterPH
+✖ DropDownList not found for WaterPH
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: WaterHardness (Water Hardness :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: WaterHardness (Water Hardness :) ---
+✔ Container found: WaterHardness, Visible: True
+✔ Container found: WaterHardness, Visible: True
+✔ Input control found: TXB_WaterHardness, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for WaterHardness - Min: 0.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for WaterHardness
+✖ DropDownList not found for WaterHardness
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: TDS (TDS Value:) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: TDS (TDS Value:) ---
+✔ Container found: TDS, Visible: True
+✔ Container found: TDS, Visible: True
+✔ Input control found: TXB_TDS, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=300.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for TDS - Min: 0.00, Max: 300.00, Enabled: True
+✖ RadioButtonList not found for TDS
+✖ DropDownList not found for TDS
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: MaidaBrand (Maida Brand :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MaidaBrand (Maida Brand :) ---
+✔ Container found: MaidaBrand, Visible: True
+✔ Container found: MaidaBrand, Visible: True
+✔ Input control found: TXB_MaidaBrand, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✖ RangeValidator not found
+✖ RadioButtonList not found for MaidaBrand
+✖ DropDownList not found for MaidaBrand
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: MaidaBatchNo (Maida Batch No :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MaidaBatchNo (Maida Batch No :) ---
+✔ Container found: MaidaBatchNo, Visible: True
+✔ Container found: MaidaBatchNo, Visible: True
+✔ Input control found: TXB_MaidaBatchNo, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✖ RangeValidator not found
+✖ RadioButtonList not found for MaidaBatchNo
+✖ DropDownList not found for MaidaBatchNo
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: MaidaMfg (Maida Mfg Date :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MaidaMfg (Maida Mfg Date :) ---
+✔ Container found: MaidaMfg, Visible: True
+✔ Container found: MaidaMfg, Visible: True
+✔ Input control found: TXB_MaidaMfg, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✖ RangeValidator not found
+✖ RadioButtonList not found for MaidaMfg
+✖ DropDownList not found for MaidaMfg
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: MaidaColorApp (Maida Color Appearance :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MaidaColorApp (Maida Color Appearance :) ---
+✔ Container found: MaidaColorApp, Visible: True
+✔ Container found: MaidaColorApp, Visible: True
+✔ Input control found: RBL_MaidaColorApp, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for MaidaColorApp, Visible: True
+✖ DropDownList not found for MaidaColorApp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: MaidaFlavorTaste (Maida Flavor Taste :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MaidaFlavorTaste (Maida Flavor Taste :) ---
+✔ Container found: MaidaFlavorTaste, Visible: True
+✔ Container found: MaidaFlavorTaste, Visible: True
+✔ Input control found: RBL_MaidaFlavorTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for MaidaFlavorTaste, Visible: True
+✖ DropDownList not found for MaidaFlavorTaste
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: MaidaGrittiness (Maida Grittiness :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MaidaGrittiness (Maida Grittiness :) ---
+✔ Container found: MaidaGrittiness, Visible: True
+✔ Container found: MaidaGrittiness, Visible: True
+✔ Input control found: RBL_MaidaGrittiness, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for MaidaGrittiness, Visible: True
+✖ DropDownList not found for MaidaGrittiness
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: BBColorApp (Broken Biscuis Color App :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: BBColorApp (Broken Biscuis Color App :) ---
+✔ Container found: BBColorApp, Visible: True
+✔ Container found: BBColorApp, Visible: True
+✔ Input control found: RBL_BBColorApp, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for BBColorApp, Visible: True
+✖ DropDownList not found for BBColorApp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: BBFlavorTaste (Broken Biscuis Flavor Taste :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: BBFlavorTaste (Broken Biscuis Flavor Taste :) ---
+✔ Container found: BBFlavorTaste, Visible: True
+✔ Container found: BBFlavorTaste, Visible: True
+✔ Input control found: RBL_BBFlavorTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for BBFlavorTaste, Visible: True
+✖ DropDownList not found for BBFlavorTaste
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: BBMouthFeel (Broken Biscuis Mouth Feel :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: BBMouthFeel (Broken Biscuis Mouth Feel :) ---
+✔ Container found: BBMouthFeel, Visible: True
+✔ Container found: BBMouthFeel, Visible: True
+✔ Input control found: RBL_BBMouthFeel, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for BBMouthFeel, Visible: True
+✖ DropDownList not found for BBMouthFeel
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: HvoSmell (HVO Smell :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: HvoSmell (HVO Smell :) ---
+✔ Container found: HvoSmell, Visible: True
+✔ Container found: HvoSmell, Visible: True
+✔ Input control found: RBL_HvoSmell, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for HvoSmell, Visible: True
+✖ DropDownList not found for HvoSmell
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: HvoTaste (HVO Taste) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: HvoTaste (HVO Taste) ---
+✔ Container found: HvoTaste, Visible: True
+✔ Container found: HvoTaste, Visible: True
+✔ Input control found: RBL_HvoTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for HvoTaste, Visible: True
+✖ DropDownList not found for HvoTaste
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: HvoTemp (HVO Temp. :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: HvoTemp (HVO Temp. :) ---
+✔ Container found: HvoTemp, Visible: True
+✔ Container found: HvoTemp, Visible: True
+✔ Input control found: TXB_HvoTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for HvoTemp - Min: -100.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for HvoTemp
+✖ DropDownList not found for HvoTemp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SMPSmell (SMP Smell :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SMPSmell (SMP Smell :) ---
+✔ Container found: SMPSmell, Visible: True
+✔ Container found: SMPSmell, Visible: True
+✔ Input control found: RBL_SMPSmell, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for SMPSmell, Visible: True
+✖ DropDownList not found for SMPSmell
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SMPTaste (SMP Taste :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SMPTaste (SMP Taste :) ---
+✔ Container found: SMPTaste, Visible: True
+✔ Container found: SMPTaste, Visible: True
+✔ Input control found: RBL_SMPTaste, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for SMPTaste, Visible: True
+✖ DropDownList not found for SMPTaste
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SMPColor (SMP Color :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SMPColor (SMP Color :) ---
+✔ Container found: SMPColor, Visible: True
+✔ Container found: SMPColor, Visible: True
+✔ Input control found: RBL_SMPColor, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for SMPColor, Visible: True
+✖ DropDownList not found for SMPColor
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SyrupTemp (Syrup Temp :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SyrupTemp (Syrup Temp :) ---
+✔ Container found: SyrupTemp, Visible: True
+✔ Container found: SyrupTemp, Visible: True
+✔ Input control found: TXB_SyrupTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for SyrupTemp - Min: -100.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for SyrupTemp
+✖ DropDownList not found for SyrupTemp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SyrupColor (Syrup Color :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SyrupColor (Syrup Color :) ---
+✔ Container found: SyrupColor, Visible: True
+✔ Container found: SyrupColor, Visible: True
+✔ Input control found: RBL_SyrupColor, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for SyrupColor, Visible: True
+✖ DropDownList not found for SyrupColor
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SyrupPH (Syrup PH :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SyrupPH (Syrup PH :) ---
+✔ Container found: SyrupPH, Visible: True
+✔ Container found: SyrupPH, Visible: True
+✔ Input control found: TXB_SyrupPH, Visible: True
+✔ Set data-min and data-max on TextBox: Min=0.00, Max=10.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for SyrupPH - Min: 0.00, Max: 10.00, Enabled: True
+✖ RadioButtonList not found for SyrupPH
+✖ DropDownList not found for SyrupPH
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: InvertSyrupBucket (Invert Syrup Bucket :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: InvertSyrupBucket (Invert Syrup Bucket :) ---
+✔ Container found: InvertSyrupBucket, Visible: True
+✔ Container found: InvertSyrupBucket, Visible: True
+✔ Input control found: RBL_InvertSyrupBucket, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for InvertSyrupBucket, Visible: True
+✖ DropDownList not found for InvertSyrupBucket
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SugarSolBucket (Sugar Solution Bucket :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SugarSolBucket (Sugar Solution Bucket :) ---
+✔ Container found: SugarSolBucket, Visible: True
+✔ Container found: SugarSolBucket, Visible: True
+✔ Input control found: RBL_SugarSolBucket, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for SugarSolBucket, Visible: True
+✖ DropDownList not found for SugarSolBucket
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: CreamerBucketFilter (Creamer Bucket Filter :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: CreamerBucketFilter (Creamer Bucket Filter :) ---
+✔ Container found: CreamerBucketFilter, Visible: True
+✔ Container found: CreamerBucketFilter, Visible: True
+✔ Input control found: RBL_CreamerBucketFilter, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for CreamerBucketFilter, Visible: True
+✖ DropDownList not found for CreamerBucketFilter
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: SugarGrinder (Sugar Grinder :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SugarGrinder (Sugar Grinder :) ---
+✔ Container found: SugarGrinder, Visible: True
+✔ Container found: SugarGrinder, Visible: True
+✔ Input control found: RBL_SugarGrinder, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for SugarGrinder, Visible: True
+✖ DropDownList not found for SugarGrinder
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: OilSystem (Oil System :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: OilSystem (Oil System :) ---
+✔ Container found: OilSystem, Visible: True
+✔ Container found: OilSystem, Visible: True
+✔ Input control found: RBL_OilSystem, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for OilSystem, Visible: True
+✖ DropDownList not found for OilSystem
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:41 | Field: OilSpray (Oil Spray) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: OilSpray (Oil Spray) ---
+✔ Container found: OilSpray, Visible: True
+✔ Container found: OilSpray, Visible: True
+✔ Input control found: RBL_OilSpray, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for OilSpray, Visible: True
+✖ DropDownList not found for OilSpray
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:42 | Field: MilkSpray (Milk Spray :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MilkSpray (Milk Spray :) ---
+✔ Container found: MilkSpray, Visible: True
+✔ Container found: MilkSpray, Visible: True
+✔ Input control found: RBL_MilkSpray, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for MilkSpray, Visible: True
+✖ DropDownList not found for MilkSpray
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:42 | Field: ColdRoomTemp (Cold Room Temp :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: ColdRoomTemp (Cold Room Temp :) ---
+✔ Container found: ColdRoomTemp, Visible: True
+✔ Container found: ColdRoomTemp, Visible: True
+✔ Input control found: TXB_ColdRoomTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100.00, Max=100.00
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for ColdRoomTemp - Min: -100.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for ColdRoomTemp
+✖ DropDownList not found for ColdRoomTemp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:42 | Field: DeepFreezeTemp (Deep Freeze Temp :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DeepFreezeTemp (Deep Freeze Temp :) ---
+✔ Container found: DeepFreezeTemp, Visible: True
+✔ Container found: DeepFreezeTemp, Visible: True
+✔ Input control found: TXB_DeepFreezeTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100.00, Max=100.00
+✔ Label updated
+✔ RequiredFieldValidator configured
+✔ RegularExpressionValidator configured
+✔ RangeValidator configured
+Applied RangeValidator for DeepFreezeTemp - Min: -100.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for DeepFreezeTemp
+✖ DropDownList not found for DeepFreezeTemp
+---------------------------------------------------------------------------------------------
+
+

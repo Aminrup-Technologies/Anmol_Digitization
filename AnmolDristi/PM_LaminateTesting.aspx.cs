@@ -4,8 +4,10 @@ using System.Configuration;
 using System.Data;
 using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Services;
 using System.Web.UI;
@@ -211,7 +213,7 @@ namespace AnmolDristi
             {
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 lbl_DDL_ProductBrand_Value.Text = selectedProductBrandValue;
-                BrandSKUBinder(selectedProductBrandValue);
+                //BrandSKUBinder(selectedProductBrandValue);
 
                 StandardValueBinder(selectedProductBrandValue);
 
@@ -273,30 +275,30 @@ namespace AnmolDristi
             }
         }
 
-        private void BrandSKUBinder(string selectedProductBrandValue)
-        {
-            string query = "SELECT SKUId, SKU_name FROM MST_Brand_SKU WHERE brand_id = @SelectedPlantValue and ViewMode=1 order by SKUId";
-            string textField = "SKU_name";
-            string valueField = "SKUId";
+        //private void BrandSKUBinder(string selectedProductBrandValue)
+        //{
+        //    string query = "SELECT SKUId, SKU_name FROM MST_Brand_SKU WHERE brand_id = @SelectedPlantValue and ViewMode=1 order by SKUId";
+        //    string textField = "SKU_name";
+        //    string valueField = "SKUId";
 
-            bool recordsBound;
-            DatabaseHelper.BindDropDownList(query, DDL_BrandSKU, textField, valueField, new SqlParameter("@SelectedPlantValue", selectedProductBrandValue), out recordsBound);
+        //    bool recordsBound;
+        //    DatabaseHelper.BindDropDownList(query, DDL_BrandSKU, textField, valueField, new SqlParameter("@SelectedPlantValue", selectedProductBrandValue), out recordsBound);
 
-            if (!recordsBound)
-            {
-                DatabaseHelper.BindWithDefaultNoRecords(DDL_BrandSKU);
+        //    if (!recordsBound)
+        //    {
+        //        DatabaseHelper.BindWithDefaultNoRecords(DDL_BrandSKU);
 
-                string BrandSKUBinder_Error_script = @"<script type='text/javascript'>
-                            new PNotify({
-                                title: 'Error',
-                                text: 'No Records Found!',
-                                type: 'warning',
-                                styling: 'bootstrap3'
-                            });
-                        </script>";
-                ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification", BrandSKUBinder_Error_script, false);
-            }
-        }
+        //        string BrandSKUBinder_Error_script = @"<script type='text/javascript'>
+        //                    new PNotify({
+        //                        title: 'Error',
+        //                        text: 'No Records Found!',
+        //                        type: 'warning',
+        //                        styling: 'bootstrap3'
+        //                    });
+        //                </script>";
+        //        ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification", BrandSKUBinder_Error_script, false);
+        //    }
+        //}
 
         private void StandardValueBinder(string selectedProductBrandValue)
         {
@@ -420,6 +422,10 @@ namespace AnmolDristi
             string plantName = DDL_Plant.SelectedValue;
             string productBrand = DDL_ProductBrand.SelectedValue;
 
+            // added on  14/04/2025
+            //string sku = string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) ? null : DDL_BrandSKU.Text;
+            string sku = TB_BrandSKU.Text.ToString();
+
             string supplier = string.IsNullOrEmpty(TB_Supplier.Text) ? null : TB_Supplier.Text;
             decimal? sampleSize = !string.IsNullOrEmpty(TB_Size.Text) ? Convert.ToDecimal(TB_Size.Text) : (decimal?)null;
 
@@ -447,8 +453,27 @@ namespace AnmolDristi
             decimal? obsHeight = !string.IsNullOrEmpty(TB_Height.Text) ? Convert.ToDecimal(TB_Height.Text) : (decimal?)null;
             string heightRemarks =string.IsNullOrEmpty(TXB_Height_Remarks.Text) ? null : TXB_Height_Remarks.Text;
 
-            decimal? stdGsm = !string.IsNullOrEmpty(TB_Std_GSM.Text) ? Convert.ToDecimal(TB_Std_GSM.Text) : (decimal?)null;
-            decimal? obsGsm = !string.IsNullOrEmpty(TB_GSM.Text) ? Convert.ToDecimal(TB_GSM.Text) : (decimal?)null;
+            //decimal? stdGsm = !string.IsNullOrEmpty(TB_Std_GSM.Text) ? Convert.ToDecimal(TB_Std_GSM.Text) : (decimal?)null;
+            //decimal? obsGsm = !string.IsNullOrEmpty(TB_GSM.Text) ? Convert.ToDecimal(TB_GSM.Text) : (decimal?)null;
+
+            // Extract Standard gsm (Only the numeric part)
+            decimal gsmStd = 0;
+            string gsmStdInput = TB_Std_GSM.Text.Trim();
+            if (!string.IsNullOrEmpty(gsmStdInput))
+            {
+                Regex regex = new Regex(@"^([\d.]+)"); // Match only the first numeric part
+                Match match = regex.Match(gsmStdInput);
+                if (match.Success)
+                    gsmStd = Convert.ToDecimal(match.Groups[1].Value, CultureInfo.InvariantCulture);
+            }
+
+            // Extract Observed gsm
+            decimal gsmObs = 0;
+            if (!decimal.TryParse(TB_GSM.Text.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out gsmObs))
+            {
+                gsmObs = 0; // Handle invalid input
+            }
+
             string gsmRemarks = string.IsNullOrEmpty(TXB_GSM_Remarks.Text) ? null : TXB_GSM_Remarks.Text;
 
             string remarks = string.IsNullOrEmpty(TXB_Remarks.Text) ? null : TXB_Remarks.Text;
@@ -477,6 +502,7 @@ namespace AnmolDristi
 
                         command.Parameters.AddWithValue("@PlantName", plantName);
                         command.Parameters.AddWithValue("@ProductBrand", productBrand);
+                        command.Parameters.AddWithValue("@SKUId", sku);
                         command.Parameters.AddWithValue("@Supplier_Name", supplier);
                         command.Parameters.AddWithValue("@SampleSize", sampleSize);
                         command.Parameters.AddWithValue("@Smell", smell);
@@ -500,8 +526,8 @@ namespace AnmolDristi
                         command.Parameters.AddWithValue("@Obs_Height", obsHeight);
                         command.Parameters.AddWithValue("@Height_Remarks", heightRemarks);
 
-                        command.Parameters.AddWithValue("@GMS_Std", stdGsm);
-                        command.Parameters.AddWithValue("@GSM_Obs", obsGsm);
+                        command.Parameters.AddWithValue("@GMS_Std", gsmStd);
+                        command.Parameters.AddWithValue("@GSM_Obs", gsmObs);
                         command.Parameters.AddWithValue("@GSM_Remarks", gsmRemarks);
 
                         command.Parameters.AddWithValue("@Remarks", remarks);
@@ -542,7 +568,8 @@ namespace AnmolDristi
         {
             DDL_Plant.Enabled = false;
             DDL_ProductBrand.Enabled = false;
-            DDL_BrandSKU.Enabled = false;
+            //DDL_BrandSKU.Enabled = false;
+            TB_BrandSKU.ReadOnly = true;
 
             TB_Supplier.ReadOnly = true;
             TB_Size.ReadOnly = true;

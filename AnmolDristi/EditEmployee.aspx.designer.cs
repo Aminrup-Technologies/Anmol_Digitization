@@ -40,15 +40,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_TB_EmpCode;
         
         /// <summary>
-        /// REV_TB_EmpCode control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_TB_EmpCode;
-        
-        /// <summary>
         /// TB_EmpCode control.
         /// </summary>
         /// <remarks>
@@ -427,15 +418,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label Lbl_RBL_Gender;
         
         /// <summary>
-        /// RFV_RBL_Gender control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_RBL_Gender;
-        
-        /// <summary>
         /// RBL_Gender control.
         /// </summary>
         /// <remarks>
@@ -463,15 +445,6 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_TB_Password;
         
         /// <summary>
-        /// REV_TB_Password control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_TB_Password;
-        
-        /// <summary>
         /// TB_Password control.
         /// </summary>
         /// <remarks>
@@ -481,22 +454,13 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.TextBox TB_Password;
         
         /// <summary>
-        /// Lbl_BtnSubmit control.
+        /// Btn_home control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label Lbl_BtnSubmit;
-        
-        /// <summary>
-        /// BtnSubmit control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Button BtnSubmit;
+        protected global::System.Web.UI.WebControls.Button Btn_home;
         
         /// <summary>
         /// BtnReset control.
@@ -508,12 +472,21 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Button BtnReset;
         
         /// <summary>
-        /// Btn_home control.
+        /// BtnSubmit control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button Btn_home;
+        protected global::System.Web.UI.WebControls.Button BtnSubmit;
+        
+        /// <summary>
+        /// lit_AuditLogs control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Literal lit_AuditLogs;
     }
 }

@@ -46,10 +46,25 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <FilesToIncludeForPublish>OnlyFilesToRunTheApp</FilesToIncludeForPublish>
+    <PublishDatabaseSettings>
+      <Objects>
+      </Objects>
+    </PublishDatabaseSettings>
+    <PublishDatabases>false</PublishDatabases>
+    <ExcludeGeneratedDebugSymbol>true</ExcludeGeneratedDebugSymbol>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BouncyCastle.Cryptography, Version=2.0.0.0, Culture=neutral, PublicKeyToken=072edcf4a5328938, processorArchitecture=MSIL">
+      <HintPath>..\packages\BouncyCastle.Cryptography.2.6.2\lib\net461\BouncyCastle.Cryptography.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="ClosedXML, Version=0.94.2.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\ClosedXML.0.94.2\lib\net46\ClosedXML.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="CsvHelper, Version=33.0.0.0, Culture=neutral, PublicKeyToken=8c4959082be5c823, processorArchitecture=MSIL">
+      <HintPath>..\packages\CsvHelper.33.1.0\lib\net48\CsvHelper.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="DocumentFormat.OpenXml, Version=2.7.2.0, Culture=neutral, PublicKeyToken=8fb06cb64d019a17, processorArchitecture=MSIL">
@@ -74,6 +89,10 @@
     </Reference>
     <Reference Include="FastMember, Version=1.3.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\FastMember.1.3.0\lib\net45\FastMember.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="itextsharp, Version=5.5.13.5, Culture=neutral, PublicKeyToken=8354ae6d2174ddca, processorArchitecture=MSIL">
+      <HintPath>..\packages\iTextSharp.5.5.13.5\lib\net461\itextsharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.AI.Agent.Intercept, Version=2.4.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -108,11 +127,20 @@
       <HintPath>..\packages\Microsoft.ApplicationInsights.NLogTarget.2.22.0\lib\net452\Microsoft.ApplicationInsights.NLogTarget.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.8.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.HashCode, Version=1.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.HashCode.1.1.1\lib\net461\Microsoft.Bcl.HashCode.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.CodeDom.Providers.DotNetCompilerPlatform, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.1.0.0\lib\net45\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
@@ -122,6 +150,11 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="QRCoder, Version=1.8.0.0, Culture=neutral, PublicKeyToken=c4ed5b9ae8358a28, processorArchitecture=MSIL">
+      <HintPath>..\packages\QRCoder.1.8.0\lib\net40\QRCoder.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
       <Private>True</Private>
@@ -158,6 +191,10 @@
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Transactions" />
     <Reference Include="System.Web.DynamicData" />
     <Reference Include="System.Web.Entity" />
@@ -182,6 +219,8 @@
     <Content Include="Aata_Maida_Form.aspx" />
     <Content Include="aata_maida_frmctrl.aspx" />
     <Content Include="Aata_Maida_Submitter.aspx" />
+    <Content Include="AccessDenied.aspx" />
+    <Content Include="AddMachine.aspx" />
     <Content Include="add_branch.aspx" />
     <Content Include="add_brandtypes.aspx" />
     <Content Include="add_company.aspx" />
@@ -191,6 +230,8 @@
     <Content Include="add_prod_plants.aspx" />
     <Content Include="add_region.aspx" />
     <Content Include="add_users.aspx" />
+    <Content Include="AdminBatches.aspx" />
+    <Content Include="ApprovedClaimsView.aspx" />
     <Content Include="apps.aspx" />
     <Content Include="app_qc_inspectorreport.aspx" />
     <Content Include="bopp_tape.aspx" />
@@ -199,6 +240,9 @@
     <Content Include="bopp_tape_View.aspx" />
     <Content Include="ccp_checklist.aspx" />
     <Content Include="CCP_Checklist_detailed.aspx" />
+    <Content Include="ClaimsApproval_v2.aspx" />
+    <Content Include="ClaimsSubmitted.aspx" />
+    <Content Include="Claims_Config.aspx" />
     <Content Include="CorrugatedBoardBoxReport.aspx" />
     <Content Include="CorrugatedBoardBox_Approval.aspx" />
     <Content Include="CorrugatedBoardBox_Detailed.aspx" />
@@ -206,24 +250,43 @@
     <Content Include="Critical_Incident_Detailed.aspx" />
     <Content Include="Critical_Incident_ViewPage.aspx" />
     <Content Include="critical_quality_report.aspx" />
+    <Content Include="ITSM\UI\CreateTicket.aspx" />
+    <Content Include="ITSM\UI\TicketList.aspx" />
+    <Content Include="ITSM\UI\TicketDetail.aspx" />
+    <Content Include="ITSM\UI\ApprovalConfig.aspx" />
+    <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
+    <Content Include="DebugPermissions.aspx" />
+    <Content Include="DeviceTransfer.aspx" />
     <Content Include="EditEmployee.aspx" />
     <Content Include="FinalCbbWtVM.aspx" />
     <Content Include="Final_CBB_Detailed.aspx" />
     <Content Include="Form_Approval_Matrix.aspx" />
     <Content Include="Form_Master.aspx" />
     <Content Include="Global.asax" />
+    <Content Include="global_formctrl.aspx" />
+    <Content Include="heartbeat.aspx" />
     <Content Include="home.aspx" />
+    <Content Include="HrmsBatchManager.aspx" />
+    <Content Include="HrmsDataImport.aspx" />
+    <Content Include="ImportCsv.aspx" />
     <Content Include="LeakAndSlant_Detailed.aspx" />
     <Content Include="leak_test.aspx" />
+    <Content Include="ManageEmployeeTolerance.aspx" />
+    <Content Include="ManagePolicyException.aspx" />
+    <Content Include="ManageExpenseSettings.aspx" />
+    <Content Include="MyClaimsView.aspx" />
+    <Content Include="MyClaimsView_v2.aspx" />
     <Content Include="New_User.aspx" />
     <Content Include="Oven_Report_Detailed.aspx" />
     <Content Include="overwrap_approval.aspx" />
     <Content Include="overwrap_Detailed.aspx" />
+    <Content Include="PermissionList.aspx" />
     <Content Include="PM_LaminateTesting.aspx" />
     <Content Include="PM_Laminate_Approval.aspx" />
     <Content Include="PM_Laminate_FinalApproval.aspx" />
     <Content Include="PM_Laminate_Report.aspx" />
+    <Content Include="PolicyMatrixAdmin.aspx" />
     <Content Include="preDispatchVM.aspx" />
     <Content Include="Pre_Dispatch_Detailed.aspx" />
     <Content Include="Process_Approval.aspx" />
@@ -232,7 +295,9 @@
     <Content Include="prod_misc.aspx" />
     <Content Include="prod_misc_rpts.aspx" />
     <Content Include="PVC_Tray.aspx" />
+    <Content Include="PVC_Tray_Detailed.aspx" />
     <Content Include="PVC_Tray_ViewPage.aspx" />
+    <Content Include="pwdchange.aspx" />
     <Content Include="qaqc_add_users.aspx" />
     <Content Include="qaqc_leaktest_rev1.aspx" />
     <Content Include="qaqc_mst_sku.aspx" />
@@ -243,20 +308,29 @@
     <Content Include="qaqc_oven_report.aspx" />
     <Content Include="qaqc_oven_viewpage.aspx" />
     <Content Include="qaqc_overwrap.aspx" />
+    <Content Include="qaqc_packet_weight.aspx" />
+    <Content Include="qaqc_packet_weight_view.aspx" />
+    <Content Include="qaqc_pcr_analytics.aspx" />
     <Content Include="qaqc_pre_dispatch_QI_Report.aspx" />
     <Content Include="qaqc_process_rpt.aspx" />
     <Content Include="qaqc_qaapprovals.aspx" />
     <Content Include="qaqc_qahome_rpt.aspx" />
     <Content Include="qaqc_qcapprovals.aspx" />
     <Content Include="qaqc_qcinspector_frmctrl.aspx" />
+    <Content Include="qaqc_qci_analtics.aspx" />
     <Content Include="qaqc_rotaryline_approval.aspx" />
     <Content Include="qaqc_rotaryline_detailview.aspx" />
     <Content Include="qaqc_rotaryline_view.aspx" />
     <Content Include="qaqc_rotary_line.aspx" />
     <Content Include="qa_qc_FinalCbbWtReport.aspx" />
+    <Content Include="qualitydatamastering_home.aspx" />
     <Content Include="redirect.aspx" />
+    <Content Include="ReloadSessionPerms.aspx" />
     <Content Include="RM_Class2.aspx" />
+    <Content Include="RM_Class2_Approval.aspx" />
+    <Content Include="RM_Class2_Detailed.aspx" />
     <Content Include="RM_Class2_FrmCtrl.aspx" />
+    <Content Include="RM_Class2_Submitter.aspx" />
     <Content Include="RM_Class5.aspx" />
     <Content Include="RM_Class_1.aspx" />
     <Content Include="RM_Class_1_Approval.aspx" />
@@ -278,16 +352,48 @@
     <Content Include="RM_Class_5_Detailed.aspx" />
     <Content Include="rm_class_5_frmctrl.aspx" />
     <Content Include="RM_Class_5_Submitter.aspx" />
+    <Content Include="RoleList.aspx" />
+    <Content Include="RolePermissionAudit.aspx" />
+    <Content Include="RolePermissionManager.aspx" />
+    <Content Include="RouteDistanceCalculation.aspx" />
+    <Content Include="SalesMonthlyReview.aspx" />
+    <Content Include="Scripts\claims-ux-stabilization.js" />
+    <Content Include="Scripts\HrmsBatchManager.js" />
+    <Content Include="css\HrmsBatchManager.css" />
+    <Content Include="Controls\HrmsSyncInfoPanel.ascx" />
+    <Content Include="SubmitClaim.aspx" />
+    <Content Include="UiControlMapper.aspx" />
+    <Content Include="UserRoleAudit.aspx" />
+    <Content Include="UserRoleManager.aspx" />
+    <Content Include="ViewUiControlMappings.aspx" />
     <Content Include="viewusers.aspx" />
+    <Content Include="VMS_AdminPending.aspx" />
+    <Content Include="VMS_DigitalPass.aspx" />
+    <Content Include="VMS_GateScanner.aspx" />
+    <Content Include="VMS_HostQuickLogin.aspx" />
+    <Content Include="VMS_MyVisitors.aspx" />
+    <Content Include="VMS_MyVisits.aspx" />
+    <Content Include="VMS_OrganizationDetails.aspx" />
+    <Content Include="VMS_ReceptionistLogs.aspx" />
+    <Content Include="VMS_Registration.aspx" />
+    <Content Include="VMS_SelfLogin.aspx" />
     <Content Include="vm_ccp_checklist.aspx" />
     <Content Include="vm_leak_test.aspx" />
     <Content Include="vm_overwrap.aspx" />
     <Content Include="vw_app_qcireport.aspx" />
+    <Content Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ApplicationInsights.config" />
+    <Content Include=".bowerrc" />
     <Content Include="WebData\anmolaing.png" />
     <Content Include="WebData\anmolgurukul.png" />
     <Content Include="WebData\Anmol_Logo.png" />
+    <Content Include="WebData\anmol_logo_GPTW.jpg" />
     <Content Include="WebData\approval.jpg" />
     <Content Include="WebData\confbook.png" />
+    <Content Include="WebData\crm.jpg" />
+    <Content Include="WebData\crm.png" />
     <Content Include="WebData\crossgif.gif" />
     <Content Include="WebData\Internal\bank.jpg" />
     <Content Include="WebData\Internal\crossgif.gif" />
@@ -318,22 +424,30 @@
     <Content Include="WebData\SecondarySales.png" />
     <Content Include="WebData\SingleTick.gif" />
     <Content Include="WebData\success_gif.gif" />
+    <Content Include="WebData\tada.jpg" />
     <Content Include="WebData\TertiarySales.png" />
-    <Content Include="NLog.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="ApplicationInsights.config" />
-    <Content Include=".bowerrc" />
+    <Content Include="WebData\vault.jpg" />
     <Content Include="WebData\webdatacapture.jpg" />
     <Content Include="WebData\webtos.png" />
     <Content Include="webdetails.aspx" />
     <Content Include="WebsiteCredentialsView.aspx" />
+    <Content Include="LogoutHandler.ashx" />
+    <Content Include="DownloadExpense.ashx" />
     <None Include="NLog.xsd">
       <SubType>Designer</SubType>
     </None>
-    <None Include="Properties\PublishProfiles\AnmolDristi.pubxml" />
     <Content Include="UploadImageHandler.ashx" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="PermDump.ashx" />
+    <None Include="Properties\PublishProfiles\ailqaqc.aminruptechnologies.co.in - Web Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\LIVE_Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\LocalDeploy.pubxml" />
     <None Include="Web.Debug.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+    <None Include="Web.UAT.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
     <None Include="Web.Release.config">
@@ -343,13 +457,11 @@
   <ItemGroup>
     <Content Include="blank.aspx" />
     <Content Include="login.aspx" />
+    <Content Include="SwitchUser.aspx" />
     <Content Include="qaqc_qahome.aspx" />
     <Content Include="qaqc_qchome.aspx" />
     <Content Include="qaqc_qchome_rpt.aspx" />
     <Content Include="qaqc_qcinspector_rpt_.aspx" />
-    <Content Include="Web.config">
-      <SubType>Designer</SubType>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="404.aspx.cs">
@@ -393,6 +505,20 @@
     </Compile>
     <Compile Include="Aata_Maida_Submitter.aspx.designer.cs">
       <DependentUpon>Aata_Maida_Submitter.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AccessDenied.aspx.cs">
+      <DependentUpon>AccessDenied.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="AccessDenied.aspx.designer.cs">
+      <DependentUpon>AccessDenied.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="AddMachine.aspx.cs">
+      <DependentUpon>AddMachine.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="AddMachine.aspx.designer.cs">
+      <DependentUpon>AddMachine.aspx</DependentUpon>
     </Compile>
     <Compile Include="add_branch.aspx.cs">
       <DependentUpon>add_branch.aspx</DependentUpon>
@@ -457,7 +583,21 @@
     <Compile Include="add_users.aspx.designer.cs">
       <DependentUpon>add_users.aspx</DependentUpon>
     </Compile>
+    <Compile Include="AdminBatches.aspx.cs">
+      <DependentUpon>AdminBatches.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="AdminBatches.aspx.designer.cs">
+      <DependentUpon>AdminBatches.aspx</DependentUpon>
+    </Compile>
     <Compile Include="AesEncryptionHelper.cs" />
+    <Compile Include="ApprovedClaimsView.aspx.cs">
+      <DependentUpon>ApprovedClaimsView.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ApprovedClaimsView.aspx.designer.cs">
+      <DependentUpon>ApprovedClaimsView.aspx</DependentUpon>
+    </Compile>
     <Compile Include="apps.aspx.cs">
       <DependentUpon>apps.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -471,6 +611,9 @@
     </Compile>
     <Compile Include="app_qc_inspectorreport.aspx.designer.cs">
       <DependentUpon>app_qc_inspectorreport.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="BasePage.cs">
+      <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="blank.aspx.cs">
       <DependentUpon>blank.aspx</DependentUpon>
@@ -520,6 +663,27 @@
     </Compile>
     <Compile Include="CCP_Checklist_detailed.aspx.designer.cs">
       <DependentUpon>CCP_Checklist_detailed.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ClaimsApproval_v2.aspx.cs">
+      <DependentUpon>ClaimsApproval_v2.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ClaimsApproval_v2.aspx.designer.cs">
+      <DependentUpon>ClaimsApproval_v2.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ClaimsSubmitted.aspx.cs">
+      <DependentUpon>ClaimsSubmitted.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ClaimsSubmitted.aspx.designer.cs">
+      <DependentUpon>ClaimsSubmitted.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Claims_Config.aspx.cs">
+      <DependentUpon>Claims_Config.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Claims_Config.aspx.designer.cs">
+      <DependentUpon>Claims_Config.aspx</DependentUpon>
     </Compile>
     <Compile Include="CorrugatedBoardBoxReport.aspx.cs">
       <DependentUpon>CorrugatedBoardBoxReport.aspx</DependentUpon>
@@ -582,6 +746,23 @@
       <DependentUpon>datamastering_home.aspx</DependentUpon>
     </Compile>
     <Compile Include="DB_Utility_OH4Y.cs" />
+    <Compile Include="DebugPermissions.aspx.cs">
+      <DependentUpon>DebugPermissions.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DebugPermissions.aspx.designer.cs">
+      <DependentUpon>DebugPermissions.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DeviceTransfer.aspx.cs">
+      <DependentUpon>DeviceTransfer.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="DeviceTransfer.aspx.designer.cs">
+      <DependentUpon>DeviceTransfer.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="DownloadExpense.ashx.cs">
+      <DependentUpon>DownloadExpense.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Dristi.Master.cs">
       <DependentUpon>Dristi.Master</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -596,6 +777,7 @@
     <Compile Include="EditEmployee.aspx.designer.cs">
       <DependentUpon>EditEmployee.aspx</DependentUpon>
     </Compile>
+    <Compile Include="OrganizationalValueResolver.cs" />
     <Compile Include="EmailNotifier.cs" />
     <Compile Include="EmailRecipientManager.cs" />
     <Compile Include="EmailRecipientMgr.cs" />
@@ -630,6 +812,20 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="global_formctrl.aspx.cs">
+      <DependentUpon>global_formctrl.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="global_formctrl.aspx.designer.cs">
+      <DependentUpon>global_formctrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="heartbeat.aspx.cs">
+      <DependentUpon>heartbeat.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="heartbeat.aspx.designer.cs">
+      <DependentUpon>heartbeat.aspx</DependentUpon>
+    </Compile>
     <Compile Include="home.aspx.cs">
       <DependentUpon>home.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -637,6 +833,55 @@
     <Compile Include="home.aspx.designer.cs">
       <DependentUpon>home.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Controls\HrmsSyncInfoPanel.ascx.cs">
+      <DependentUpon>HrmsSyncInfoPanel.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Controls\HrmsSyncInfoPanel.ascx.designer.cs">
+      <DependentUpon>HrmsSyncInfoPanel.ascx</DependentUpon>
+    </Compile>
+    <Compile Include="HrmsBatchManager.aspx.cs">
+      <DependentUpon>HrmsBatchManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="HrmsBatchManager.aspx.designer.cs">
+      <DependentUpon>HrmsBatchManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="HrmsDataImport.aspx.cs">
+      <DependentUpon>HrmsDataImport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="HrmsDataImport.aspx.designer.cs">
+      <DependentUpon>HrmsDataImport.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ImportCsv.aspx.cs">
+      <DependentUpon>ImportCsv.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ImportCsv.aspx.designer.cs">
+      <DependentUpon>ImportCsv.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.designer.cs">
+      <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608201200000_AddTicketAuditLog.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608201200000_AddTicketAuditLog.Designer.cs">
+      <DependentUpon>202608201200000_AddTicketAuditLog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.Designer.cs">
+      <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608220132564_AddBranchLegacyId.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608220132564_AddBranchLegacyId.designer.cs">
+      <DependentUpon>202608220132564_AddBranchLegacyId.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.Designer.cs">
+      <DependentUpon>202608240451107_AddApprovalConfiguration.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\DAL\Migrations\Configuration.cs" />
     <Compile Include="LeakAndSlant_Detailed.aspx.cs">
       <DependentUpon>LeakAndSlant_Detailed.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -658,7 +903,52 @@
     <Compile Include="login.aspx.designer.cs">
       <DependentUpon>login.aspx</DependentUpon>
     </Compile>
+    <Compile Include="SwitchUser.aspx.cs">
+      <DependentUpon>SwitchUser.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SwitchUser.aspx.designer.cs">
+      <DependentUpon>SwitchUser.aspx</DependentUpon>
+    </Compile>
     <Compile Include="LoginNotifier.cs" />
+    <Compile Include="LogoutHandler.ashx.cs">
+      <DependentUpon>LogoutHandler.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="ManageEmployeeTolerance.aspx.cs">
+      <DependentUpon>ManageEmployeeTolerance.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ManageEmployeeTolerance.aspx.designer.cs">
+      <DependentUpon>ManageEmployeeTolerance.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ManagePolicyException.aspx.cs">
+      <DependentUpon>ManagePolicyException.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ManagePolicyException.aspx.designer.cs">
+      <DependentUpon>ManagePolicyException.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ManageExpenseSettings.aspx.cs">
+      <DependentUpon>ManageExpenseSettings.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ManageExpenseSettings.aspx.designer.cs">
+      <DependentUpon>ManageExpenseSettings.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="MyClaimsView.aspx.cs">
+      <DependentUpon>MyClaimsView.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="MyClaimsView.aspx.designer.cs">
+      <DependentUpon>MyClaimsView.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="MyClaimsView_v2.aspx.cs">
+      <DependentUpon>MyClaimsView_v2.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="MyClaimsView_v2.aspx.designer.cs">
+      <DependentUpon>MyClaimsView_v2.aspx</DependentUpon>
+    </Compile>
     <Compile Include="New_User.aspx.cs">
       <DependentUpon>New_User.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -687,6 +977,20 @@
     <Compile Include="overwrap_Detailed.aspx.designer.cs">
       <DependentUpon>overwrap_Detailed.aspx</DependentUpon>
     </Compile>
+    <Compile Include="PasswordHasher.cs" />
+    <Compile Include="PermDump.ashx.cs">
+      <DependentUpon>PermDump.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="PermissionCache.cs" />
+    <Compile Include="PermissionHelper.cs" />
+    <Compile Include="PermissionList.aspx.cs">
+      <DependentUpon>PermissionList.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PermissionList.aspx.designer.cs">
+      <DependentUpon>PermissionList.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PermissionService.cs" />
     <Compile Include="PM_LaminateTesting.aspx.cs">
       <DependentUpon>PM_LaminateTesting.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -714,6 +1018,13 @@
     </Compile>
     <Compile Include="PM_Laminate_Report.aspx.designer.cs">
       <DependentUpon>PM_Laminate_Report.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="PolicyMatrixAdmin.aspx.cs">
+      <DependentUpon>PolicyMatrixAdmin.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PolicyMatrixAdmin.aspx.designer.cs">
+      <DependentUpon>PolicyMatrixAdmin.aspx</DependentUpon>
     </Compile>
     <Compile Include="preDispatchVM.aspx.cs">
       <DependentUpon>preDispatchVM.aspx</DependentUpon>
@@ -771,12 +1082,26 @@
     <Compile Include="PVC_Tray.aspx.designer.cs">
       <DependentUpon>PVC_Tray.aspx</DependentUpon>
     </Compile>
+    <Compile Include="PVC_Tray_Detailed.aspx.cs">
+      <DependentUpon>PVC_Tray_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="PVC_Tray_Detailed.aspx.designer.cs">
+      <DependentUpon>PVC_Tray_Detailed.aspx</DependentUpon>
+    </Compile>
     <Compile Include="PVC_Tray_ViewPage.aspx.cs">
       <DependentUpon>PVC_Tray_ViewPage.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="PVC_Tray_ViewPage.aspx.designer.cs">
       <DependentUpon>PVC_Tray_ViewPage.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="pwdchange.aspx.cs">
+      <DependentUpon>pwdchange.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="pwdchange.aspx.designer.cs">
+      <DependentUpon>pwdchange.aspx</DependentUpon>
     </Compile>
     <Compile Include="QAProcessCheckingDataAcess.cs" />
     <Compile Include="qaqc_add_users.aspx.cs">
@@ -835,6 +1160,27 @@
     </Compile>
     <Compile Include="qaqc_overwrap.aspx.designer.cs">
       <DependentUpon>qaqc_overwrap.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_packet_weight.aspx.cs">
+      <DependentUpon>qaqc_packet_weight.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_packet_weight.aspx.designer.cs">
+      <DependentUpon>qaqc_packet_weight.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_packet_weight_view.aspx.cs">
+      <DependentUpon>qaqc_packet_weight_view.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_packet_weight_view.aspx.designer.cs">
+      <DependentUpon>qaqc_packet_weight_view.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="qaqc_pcr_analytics.aspx.cs">
+      <DependentUpon>qaqc_pcr_analytics.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_pcr_analytics.aspx.designer.cs">
+      <DependentUpon>qaqc_pcr_analytics.aspx</DependentUpon>
     </Compile>
     <Compile Include="qaqc_pre_dispatch_QI_Report.aspx.cs">
       <DependentUpon>qaqc_pre_dispatch_QI_Report.aspx</DependentUpon>
@@ -906,6 +1252,13 @@
     <Compile Include="qaqc_qcinspector_rpt_.aspx.designer.cs">
       <DependentUpon>qaqc_qcinspector_rpt_.aspx</DependentUpon>
     </Compile>
+    <Compile Include="qaqc_qci_analtics.aspx.cs">
+      <DependentUpon>qaqc_qci_analtics.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qaqc_qci_analtics.aspx.designer.cs">
+      <DependentUpon>qaqc_qci_analtics.aspx</DependentUpon>
+    </Compile>
     <Compile Include="qaqc_rotaryline_approval.aspx.cs">
       <DependentUpon>qaqc_rotaryline_approval.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -941,12 +1294,26 @@
     <Compile Include="qa_qc_FinalCbbWtReport.aspx.designer.cs">
       <DependentUpon>qa_qc_FinalCbbWtReport.aspx</DependentUpon>
     </Compile>
+    <Compile Include="qualitydatamastering_home.aspx.cs">
+      <DependentUpon>qualitydatamastering_home.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="qualitydatamastering_home.aspx.designer.cs">
+      <DependentUpon>qualitydatamastering_home.aspx</DependentUpon>
+    </Compile>
     <Compile Include="redirect.aspx.cs">
       <DependentUpon>redirect.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="redirect.aspx.designer.cs">
       <DependentUpon>redirect.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ReloadSessionPerms.aspx.cs">
+      <DependentUpon>ReloadSessionPerms.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ReloadSessionPerms.aspx.designer.cs">
+      <DependentUpon>ReloadSessionPerms.aspx</DependentUpon>
     </Compile>
     <Compile Include="RM_Class2.aspx.cs">
       <DependentUpon>RM_Class2.aspx</DependentUpon>
@@ -955,12 +1322,33 @@
     <Compile Include="RM_Class2.aspx.designer.cs">
       <DependentUpon>RM_Class2.aspx</DependentUpon>
     </Compile>
+    <Compile Include="RM_Class2_Approval.aspx.cs">
+      <DependentUpon>RM_Class2_Approval.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2_Approval.aspx.designer.cs">
+      <DependentUpon>RM_Class2_Approval.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class2_Detailed.aspx.cs">
+      <DependentUpon>RM_Class2_Detailed.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2_Detailed.aspx.designer.cs">
+      <DependentUpon>RM_Class2_Detailed.aspx</DependentUpon>
+    </Compile>
     <Compile Include="RM_Class2_FrmCtrl.aspx.cs">
       <DependentUpon>RM_Class2_FrmCtrl.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="RM_Class2_FrmCtrl.aspx.designer.cs">
       <DependentUpon>RM_Class2_FrmCtrl.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RM_Class2_Submitter.aspx.cs">
+      <DependentUpon>RM_Class2_Submitter.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RM_Class2_Submitter.aspx.designer.cs">
+      <DependentUpon>RM_Class2_Submitter.aspx</DependentUpon>
     </Compile>
     <Compile Include="RM_Class5.aspx.cs">
       <DependentUpon>RM_Class5.aspx</DependentUpon>
@@ -1109,8 +1497,165 @@
     <Compile Include="RM_Class_5_Submitter.aspx.designer.cs">
       <DependentUpon>RM_Class_5_Submitter.aspx</DependentUpon>
     </Compile>
+    <Compile Include="RoleList.aspx.cs">
+      <DependentUpon>RoleList.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RoleList.aspx.designer.cs">
+      <DependentUpon>RoleList.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RolePermissionAudit.aspx.cs">
+      <DependentUpon>RolePermissionAudit.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RolePermissionAudit.aspx.designer.cs">
+      <DependentUpon>RolePermissionAudit.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RolePermissionManager.aspx.cs">
+      <DependentUpon>RolePermissionManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RolePermissionManager.aspx.designer.cs">
+      <DependentUpon>RolePermissionManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RouteDistanceCalculation.aspx.cs">
+      <DependentUpon>RouteDistanceCalculation.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RouteDistanceCalculation.aspx.designer.cs">
+      <DependentUpon>RouteDistanceCalculation.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="SalesMonthlyReview.aspx.cs">
+      <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SalesMonthlyReview.aspx.designer.cs">
+      <DependentUpon>SalesMonthlyReview.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="KmToleranceHelper.cs" />
+    <Compile Include="ResolvedPolicyDto.cs" />
+    <Compile Include="PolicyOverrideMergeHelper.cs" />
+    <Compile Include="TravelAllowanceHelper.cs" />
+    <Compile Include="PolicyExceptionDto.cs" />
+    <Compile Include="PolicyExceptionSerializer.cs" />
+    <Compile Include="BLL\PolicyExceptionService.cs" />
+    <Compile Include="BLL\PolicyResolutionService.cs" />
+    <Compile Include="DAL\PolicyExceptionDataAccess.cs" />
+    <Compile Include="DAL\PolicyResolutionDataAccess.cs" />
+    <Compile Include="DAL\VmsOtpRepository.cs" />
+    <Compile Include="DAL\VmsVisitorRepository.cs" />
+    <Compile Include="DAL\VmsVisitorManagementRepository.cs" />
+    <Compile Include="DAL\VmsGateScannerRepository.cs" />
+    <Compile Include="ITSM\DAL\Entities\RequestType.cs" />
+    <Compile Include="ITSM\DAL\Entities\Category.cs" />
+    <Compile Include="ITSM\DAL\Entities\SubCategory.cs" />
+    <Compile Include="ITSM\DAL\Entities\Item.cs" />
+    <Compile Include="ITSM\DAL\Entities\Impact.cs" />
+    <Compile Include="ITSM\DAL\Entities\Urgency.cs" />
+    <Compile Include="ITSM\DAL\Entities\Priority.cs" />
+    <Compile Include="ITSM\DAL\Entities\PriorityMatrix.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketStatus.cs" />
+    <Compile Include="ITSM\DAL\Entities\SupportMapping.cs" />
+    <Compile Include="ITSM\DAL\Entities\Ticket.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketComment.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketAttachment.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketApproval.cs" />
+    <Compile Include="ITSM\DAL\Entities\TicketAuditLog.cs" />
+    <Compile Include="ITSM\DAL\Entities\ApprovalConfiguration.cs" />
+    <Compile Include="ITSM\DAL\Entities\UserMaster.cs" />
+    <Compile Include="ITSM\DAL\Entities\Plant.cs" />
+    <Compile Include="ITSM\DAL\Entities\Branch.cs" />
+    <Compile Include="ITSM\DAL\Entities\Department.cs" />
+    <Compile Include="ITSM\DAL\Entities\Calendar.cs" />
+    <Compile Include="ITSM\DAL\Entities\PlantTimings.cs" />
+    <Compile Include="ITSM\DAL\Entities\Company.cs" />
+    <Compile Include="ITSM\DAL\ItsmDbContext.cs" />
+    <Compile Include="ITSM\BLL\PriorityCalculationService.cs" />
+    <Compile Include="ITSM\BLL\DispatchService.cs" />
+    <Compile Include="ITSM\BLL\SlaService.cs" />
+    <Compile Include="ITSM\BLL\TicketService.cs" />
+    <Compile Include="ITSM\BLL\ItsmTenantContext.cs" />
+    <Compile Include="ITSM\BLL\ItsmTicketAccess.cs" />
+    <Compile Include="ITSM\BLL\TicketWorkflow.cs" />
+    <Compile Include="ITSM\BLL\ApprovalConfigurationService.cs" />
+    <Compile Include="ITSM\BLL\TicketListService.cs" />
+    <Compile Include="ITSM\BLL\TicketDetailService.cs" />
+    <Compile Include="ITSM\BLL\TicketUpdateService.cs" />
+    <Compile Include="ITSM\BLL\TicketMasterDataService.cs" />
+    <Compile Include="ITSM\BLL\CreateTicketDiagnostics.cs" />
+    <Compile Include="ITSM\UI\CreateTicket.aspx.cs">
+      <DependentUpon>CreateTicket.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\CreateTicket.aspx.designer.cs">
+      <DependentUpon>CreateTicket.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketList.aspx.cs">
+      <DependentUpon>TicketList.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketList.aspx.designer.cs">
+      <DependentUpon>TicketList.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketDetail.aspx.cs">
+      <DependentUpon>TicketDetail.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\TicketDetail.aspx.designer.cs">
+      <DependentUpon>TicketDetail.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\ApprovalConfig.aspx.cs">
+      <DependentUpon>ApprovalConfig.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\ApprovalConfig.aspx.designer.cs">
+      <DependentUpon>ApprovalConfig.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ClaimStatuses.cs" />
+    <Compile Include="ClaimEditabilityHelper.cs" />
+    <Compile Include="SalesApprovalDetailVersionHelper.cs" />
+    <Compile Include="SessionHelper.cs" />
+    <Compile Include="SwitchUserHelper.cs" />
+    <Compile Include="SubmitClaim.aspx.cs">
+      <DependentUpon>SubmitClaim.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="SubmitClaim.aspx.designer.cs">
+      <DependentUpon>SubmitClaim.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="TimeParser.cs" />
+    <Compile Include="UiControlMapper.aspx.cs">
+      <DependentUpon>UiControlMapper.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UiControlMapper.aspx.designer.cs">
+      <DependentUpon>UiControlMapper.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="UiPermissionController.cs" />
     <Compile Include="UploadImageHandler.ashx.cs">
       <DependentUpon>UploadImageHandler.ashx</DependentUpon>
+    </Compile>
+    <Compile Include="UserAuthService.cs" />
+    <Compile Include="UserRoleAudit.aspx.cs">
+      <DependentUpon>UserRoleAudit.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UserRoleAudit.aspx.designer.cs">
+      <DependentUpon>UserRoleAudit.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="UserRoleManager.aspx.cs">
+      <DependentUpon>UserRoleManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UserRoleManager.aspx.designer.cs">
+      <DependentUpon>UserRoleManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ViewUiControlMappings.aspx.cs">
+      <DependentUpon>ViewUiControlMappings.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ViewUiControlMappings.aspx.designer.cs">
+      <DependentUpon>ViewUiControlMappings.aspx</DependentUpon>
     </Compile>
     <Compile Include="viewusers.aspx.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>
@@ -1118,6 +1663,81 @@
     </Compile>
     <Compile Include="viewusers.aspx.designer.cs">
       <DependentUpon>viewusers.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VmsVisitScheduleHelper.cs" />
+    <Compile Include="VmsHelper.cs" />
+    <Compile Include="VmsHostQuickLoginToken.cs" />
+    <Compile Include="VmsEffectiveValidity.cs" />
+    <Compile Include="DigitalPassStateResolver.cs" />
+    <Compile Include="VMS_AdminPending.aspx.cs">
+      <DependentUpon>VMS_AdminPending.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_AdminPending.aspx.designer.cs">
+      <DependentUpon>VMS_AdminPending.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_DigitalPass.aspx.cs">
+      <DependentUpon>VMS_DigitalPass.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_DigitalPass.aspx.designer.cs">
+      <DependentUpon>VMS_DigitalPass.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_GateScanner.aspx.cs">
+      <DependentUpon>VMS_GateScanner.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_GateScanner.aspx.designer.cs">
+      <DependentUpon>VMS_GateScanner.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_HostQuickLogin.aspx.cs">
+      <DependentUpon>VMS_HostQuickLogin.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_HostQuickLogin.aspx.designer.cs">
+      <DependentUpon>VMS_HostQuickLogin.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_MyVisitors.aspx.cs">
+      <DependentUpon>VMS_MyVisitors.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_MyVisitors.aspx.designer.cs">
+      <DependentUpon>VMS_MyVisitors.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_MyVisits.aspx.cs">
+      <DependentUpon>VMS_MyVisits.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_MyVisits.aspx.designer.cs">
+      <DependentUpon>VMS_MyVisits.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_OrganizationDetails.aspx.cs">
+      <DependentUpon>VMS_OrganizationDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_OrganizationDetails.aspx.designer.cs">
+      <DependentUpon>VMS_OrganizationDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_ReceptionistLogs.aspx.cs">
+      <DependentUpon>VMS_ReceptionistLogs.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_ReceptionistLogs.aspx.designer.cs">
+      <DependentUpon>VMS_ReceptionistLogs.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_Registration.aspx.cs">
+      <DependentUpon>VMS_Registration.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_Registration.aspx.designer.cs">
+      <DependentUpon>VMS_Registration.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VMS_SelfLogin.aspx.cs">
+      <DependentUpon>VMS_SelfLogin.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VMS_SelfLogin.aspx.designer.cs">
+      <DependentUpon>VMS_SelfLogin.aspx</DependentUpon>
     </Compile>
     <Compile Include="vm_ccp_checklist.aspx.cs">
       <DependentUpon>vm_ccp_checklist.aspx</DependentUpon>
@@ -1161,6 +1781,7 @@
     <Compile Include="WebsiteCredentialsView.aspx.designer.cs">
       <DependentUpon>WebsiteCredentialsView.aspx</DependentUpon>
     </Compile>
+    <Compile Include="ZKTecoManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
@@ -1169,9 +1790,55 @@
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="zkemkeeper">
+      <Guid>{FE9DED34-E159-408E-8490-B720A5E632C7}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608120550515_InitialItsmSchema.resx">
+      <DependentUpon>202608120550515_InitialItsmSchema.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608201200000_AddTicketAuditLog.resx">
+      <DependentUpon>202608201200000_AddTicketAuditLog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608210700000_AddTicketCompanyId.resx">
+      <DependentUpon>202608210700000_AddTicketCompanyId.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608220132564_AddBranchLegacyId.resx">
+      <DependentUpon>202608220132564_AddBranchLegacyId.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.resx">
+      <DependentUpon>202608240451107_AddApprovalConfiguration.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets')" />
@@ -1222,4 +1889,7 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <Target Name="CleanLockedAspNetMergeDir" BeforeTargets="Build">
+    <RemoveDir Directories="$(BaseIntermediateOutputPath)\AspnetCompileMerge\TempBuildDir" />
+  </Target>
 </Project>

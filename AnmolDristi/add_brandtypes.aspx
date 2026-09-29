@@ -154,110 +154,112 @@
                         </div>
                         <div class="x_content">
                             <div class="row">
-                                <asp:GridView ID="GridViewLineCatBrands" runat="server" Width="100%" class="table table-striped table-hover table-bordered table-responsive table-sm table-condensed" Font-Size="8" AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" DataKeyNames="Id" OnRowEditing="GridViewLineCatBrands_RowEditing" OnRowCancelingEdit="GridViewLineCatBrands_RowCancelingEdit" OnRowUpdating="GridViewLineCatBrands_RowUpdating" OnRowDeleting="GridViewLineCatBrands_RowDeleting">
-                                    <Columns>
-                                        <asp:TemplateField HeaderText="ID">
-                                            <ItemTemplate>
-                                                <%# Eval("Id") %>
-                                            </ItemTemplate>
-                                        </asp:TemplateField>
+                                <div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 450px; overflow: scroll;">
+                                    <asp:GridView ID="GridViewLineCatBrands" runat="server" Width="100%" class="table table-striped table-hover table-bordered table-responsive table-sm table-condensed" Font-Size="8" AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" DataKeyNames="Id" OnRowEditing="GridViewLineCatBrands_RowEditing" OnRowCancelingEdit="GridViewLineCatBrands_RowCancelingEdit" OnRowUpdating="GridViewLineCatBrands_RowUpdating" OnRowDeleting="GridViewLineCatBrands_RowDeleting">
+                                        <Columns>
+                                            <asp:TemplateField HeaderText="ID">
+                                                <ItemTemplate>
+                                                    <%# Eval("Id") %>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Plant ID">
-                                            <ItemTemplate>
-                                                <%# Eval("plant_id") %>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtPlantId" runat="server" Text='<%# Bind("plant_id") %>' CssClass="form-control form-control-sm rounded"/>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Plant ID">
+                                                <ItemTemplate>
+                                                    <%# Eval("plant_id") %>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtPlantId" runat="server" Text='<%# Bind("plant_id") %>' CssClass="form-control form-control-sm rounded" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Line ID">
-                                            <ItemTemplate>
-                                                <%# Eval("line_id") %>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtLineId" runat="server" Text='<%# Bind("line_id") %>' CssClass="form-control form-control-sm rounded"/>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Line ID">
+                                                <ItemTemplate>
+                                                    <%# Eval("line_id") %>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtLineId" runat="server" Text='<%# Bind("line_id") %>' CssClass="form-control form-control-sm rounded" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Category ID">
-                                            <ItemTemplate>
-                                                <%# Eval("category_id") %>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtCategoryId" runat="server" Text='<%# Bind("category_id") %>' CssClass="form-control form-control-sm rounded"/>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Category ID">
+                                                <ItemTemplate>
+                                                    <%# Eval("category_id") %>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtCategoryId" runat="server" Text='<%# Bind("category_id") %>' CssClass="form-control form-control-sm rounded" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Brand ID">
-                                            <ItemTemplate>
-                                                <%# Eval("brand_id") %>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtBrandId" runat="server" Text='<%# Bind("brand_id") %>' CssClass="form-control form-control-sm rounded"/>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Brand ID">
+                                                <ItemTemplate>
+                                                    <%# Eval("brand_id") %>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtBrandId" runat="server" Text='<%# Bind("brand_id") %>' CssClass="form-control form-control-sm rounded" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Brand Name">
-                                            <ItemTemplate>
-                                                <%# Eval("brand_name") %>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtBrandName" runat="server" Text='<%# Bind("brand_name") %>' CssClass="form-control form-control-sm rounded"/>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Brand Name">
+                                                <ItemTemplate>
+                                                    <%# Eval("brand_name") %>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtBrandName" runat="server" Text='<%# Bind("brand_name") %>' CssClass="form-control form-control-sm rounded" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Brand Local Name">
-                                            <ItemTemplate>
-                                                <%# Eval("brand_localname") %>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtBrandLocalName" runat="server" Text='<%# Bind("brand_localname") %>' CssClass="form-control form-control-sm rounded"/>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Brand Local Name">
+                                                <ItemTemplate>
+                                                    <%# Eval("brand_localname") %>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtBrandLocalName" runat="server" Text='<%# Bind("brand_localname") %>' CssClass="form-control form-control-sm rounded" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Brand SAP Code">
-                                            <ItemTemplate>
-                                                <%# Eval("brand_sapcode") %>
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:TextBox ID="txtBrandSapCode" runat="server" Text='<%# Bind("brand_sapcode") %>' CssClass="form-control form-control-sm rounded"/>
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Brand SAP Code">
+                                                <ItemTemplate>
+                                                    <%# Eval("brand_sapcode") %>
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:TextBox ID="txtBrandSapCode" runat="server" Text='<%# Bind("brand_sapcode") %>' CssClass="form-control form-control-sm rounded" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
 
-                                        <asp:TemplateField HeaderText="Added On">
-                                            <ItemTemplate>
-                                                <%# Eval("added_on", "{0:dd/MM/yyyy}") %>
-                                            </ItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="View Status">
-                                            <ItemTemplate>
-                                                <asp:CheckBox ID="view_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' Enabled="false" />
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:CheckBox ID="CheckBox1" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' />
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Delete Status">
-                                            <ItemTemplate>
-                                                <asp:CheckBox ID="delete_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' Enabled="false" />
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:CheckBox ID="CheckBox2" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' />
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                        <asp:TemplateField HeaderText="Actions">
-                                            <ItemTemplate>
-                                                <asp:LinkButton ID="btnEdit" runat="server" CommandName="Edit" Text="Edit" CssClass="btn btn-sm btn-info" CausesValidation="false" />
-                                                <asp:LinkButton ID="btnDelete" runat="server" CommandName="Delete" Text="Delete" CssClass="btn btn-sm btn-danger" CausesValidation="false" />
-                                            </ItemTemplate>
-                                            <EditItemTemplate>
-                                                <asp:LinkButton ID="btnUpdate" runat="server" CommandName="Update" Text="Update" CssClass="btn btn-sm btn-success" CausesValidation="false" />
-                                                <asp:LinkButton ID="btnCancel" runat="server" CommandName="Cancel" Text="Cancel" CssClass="btn btn-sm btn-secondary" CausesValidation="false" />
-                                            </EditItemTemplate>
-                                        </asp:TemplateField>
-                                    </Columns>
-                                </asp:GridView>
+                                            <asp:TemplateField HeaderText="Added On">
+                                                <ItemTemplate>
+                                                    <%# Eval("added_on", "{0:dd/MM/yyyy}") %>
+                                                </ItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="View Status">
+                                                <ItemTemplate>
+                                                    <asp:CheckBox ID="view_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' Enabled="false" />
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:CheckBox ID="CheckBox1" runat="server" Checked='<%# Convert.ToBoolean(Eval("view_status")) %>' />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Delete Status">
+                                                <ItemTemplate>
+                                                    <asp:CheckBox ID="delete_status" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' Enabled="false" />
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:CheckBox ID="CheckBox2" runat="server" Checked='<%# Convert.ToBoolean(Eval("delete_status")) %>' />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                            <asp:TemplateField HeaderText="Actions">
+                                                <ItemTemplate>
+                                                    <asp:LinkButton ID="btnEdit" runat="server" CommandName="Edit" Text="Edit" CssClass="btn btn-sm btn-info" CausesValidation="false" />
+                                                    <asp:LinkButton ID="btnDelete" runat="server" CommandName="Delete" Text="Delete" CssClass="btn btn-sm btn-danger" CausesValidation="false" />
+                                                </ItemTemplate>
+                                                <EditItemTemplate>
+                                                    <asp:LinkButton ID="btnUpdate" runat="server" CommandName="Update" Text="Update" CssClass="btn btn-sm btn-success" CausesValidation="false" />
+                                                    <asp:LinkButton ID="btnCancel" runat="server" CommandName="Cancel" Text="Cancel" CssClass="btn btn-sm btn-secondary" CausesValidation="false" />
+                                                </EditItemTemplate>
+                                            </asp:TemplateField>
+                                        </Columns>
+                                    </asp:GridView>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -1,4 +1,8 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.Office2010.Excel;
+using DocumentFormat.OpenXml.Vml.Spreadsheet;
+using DocumentFormat.OpenXml.Wordprocessing;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
@@ -291,6 +295,36 @@ namespace AnmolDristi
 
             string remarkForGsmStd = string.IsNullOrEmpty(TB_GSMRemarks.Text) ? null : TB_GSMRemarks.Text;
 
+
+            //26 MAY 2025
+            // Extract Standard GUM GSM and its tolerance
+            decimal gsmGumStd = 0, gsmGumTolerancePercent = 0.05m; // Default tolerance 5%
+            string gsmGumStdInput = TB_StandardGSM_GUM.Text.Trim();
+
+            Regex gsmGumRegex = new Regex(@"^([\d.]+)\s*±\s*([\d.]+)%?$"); // Match "30.5 ± 5%"
+            Match gsmGumMatch = gsmRegex.Match(gsmGumStdInput);
+
+            if (gsmGumMatch.Success)
+            {
+                gsmGumStd = Convert.ToDecimal(gsmGumMatch.Groups[1].Value, CultureInfo.InvariantCulture);
+                gsmGumTolerancePercent = Convert.ToDecimal(gsmGumMatch.Groups[2].Value, CultureInfo.InvariantCulture) / 100; // Convert 5% to 0.05
+            }
+            else
+            {
+                decimal.TryParse(gsmGumStdInput, NumberStyles.Any, CultureInfo.InvariantCulture, out gsmGumStd);
+                gsmGumTolerancePercent = 0.05m; // Default 5% tolerance
+            }
+
+            // Extract Observed GSM
+            decimal gsmGumObs = 0;
+            if (!decimal.TryParse(TB_GSMObservation_GUM.Text.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out gsmGumObs))
+            {
+                gsmGumObs = 0; // Handle invalid input
+            }
+
+            string remarkForGsmGumStd = string.IsNullOrEmpty(TB_GUM_GSMRemarks.Text) ? null : TB_GUM_GSMRemarks.Text;
+
+
             string remarks = TB_Remarks.Text;
 
             DateTime submittedDate = DateTime.Now.Date;
@@ -338,6 +372,10 @@ namespace AnmolDristi
                         command.Parameters.AddWithValue("@GMS_Std", gsmStd);
                         command.Parameters.AddWithValue("@GSM_Obs", gsmObs);
                         command.Parameters.AddWithValue("@RemarkForGSM_Std", remarkForGsmStd);
+
+                        command.Parameters.AddWithValue("@GUM_GMS_Std", gsmGumStd);
+                        command.Parameters.AddWithValue("@GUM_GSM_Obs", gsmGumObs);
+                        command.Parameters.AddWithValue("@GUM_RemarkForGSM_Std", remarkForGsmGumStd);
 
                         command.Parameters.AddWithValue("@Remarks", remarks);
 
@@ -400,6 +438,11 @@ namespace AnmolDristi
             TB_GSMObservation.ReadOnly = true;
             TB_Remarks.ReadOnly = true;
 
+            //26 MAY 2025
+            TB_StandardGSM_GUM.ReadOnly = true;
+            TB_GSMObservation_GUM.ReadOnly = true;
+            TB_GUM_GSMRemarks.ReadOnly = true;
+
             BtnSubmit.Enabled = false;
             BtnSubmit.Text = "SAVED";
             BtnSubmit.CssClass = "btn btn-sm btn-success";
@@ -443,3 +486,4 @@ namespace AnmolDristi
         }
     }
 }
+

@@ -8,6 +8,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using System.Linq;
+using ClosedXML.Excel;
 
 namespace AnmolDristi
 {
@@ -308,6 +309,7 @@ namespace AnmolDristi
         //    }
         //}
 
+        [Serializable]
         public class ReportInfo
         {
             public int DBID { get; set; }
@@ -332,6 +334,7 @@ namespace AnmolDristi
             public string L3 { get; set; }
             public int? DottedApprover_Status { get; set; }
             public DateTime? DottedApprover_TimeStamp { get; set; }
+            public string BatchID { get; set; }
         }
 
 
@@ -717,11 +720,19 @@ namespace AnmolDristi
                             l.line_name AS LineName,
                             pc.category_name AS ProductCategory,
                             pb.brand_name AS ProductBrand,
+		                    s.SKUId AS SKUId,
                             c.SubmittedByEmployeeCode AS EmpCode,
                             u.EmployeeName AS EmpName,
                             c.SubmittedDate AS SDate,
                             c.SubmittedTime AS STime,
                             c.Shift AS SShift,
+		                    c.Packing_MC_No,
+		                    CASE 
+			                    WHEN c.LeakTestStatus = 1 THEN 'Ok'
+			                    WHEN c.LeakTestStatus = 0 THEN 'Not Ok'
+		                    END AS LeakTestStatus,
+		                    c.RemarksForFail,
+		                    c.Slanted_Percent,
                             'No Comment' AS Remarks,
                             c.Approver1EmployeeCode AS L1,
                             c.Approver1_Status,
@@ -746,12 +757,15 @@ namespace AnmolDristi
                             MST_LineCategory pc ON c.ProductCategory = pc.category_id
                         LEFT JOIN 
                             MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+	                    LEFT JOIN 
+                            MST_Brand_SKU s ON c.SKUId = s.SKUId
                         LEFT JOIN
                             MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                     )
                     SELECT TOP(30)
-                        DBID, FormID, BatchID, RecordID, PlantName, LineName, ProductCategory, 
-                        ProductBrand, EmpCode, EmpName, SDate, STime, SShift, Remarks, 
+                        DBID, FormID, BatchID, RecordID, PlantName, LineName, ProductCategory, ProductBrand, SKUId, 
+                        EmpCode, EmpName, SDate, STime, SShift, 
+                        Packing_MC_No, LeakTestStatus, RemarksForFail, Slanted_Percent, Remarks, 
                         L1, Approver1_Status, Approver1_TimeStamp, 
                         L2, Approver2_Status, Approver2_TimeStamp, 
                         L3, DottedApprover_Status, DottedApprover_TimeStamp
@@ -784,6 +798,7 @@ namespace AnmolDristi
 
                         // Bind the DataTable to the GridView
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -796,7 +811,7 @@ namespace AnmolDristi
             }
         }
 
-        protected void ExportBtn_Click(object sender, EventArgs e)
+        protected void ExportBtn_Click_Old(object sender, EventArgs e)
         {
             try
             {
@@ -1089,8 +1104,9 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
-                // Handle exceptions (log it, show an error message, etc.)
-                // ShowNotification("Error", "An error occurred while processing your request.", "error");
+                string errorMessage = ex.Message;
+                string FilterDataerrorScript = $"new PNotify({{ title: 'Error', text: '{errorMessage}', type: 'error', styling: 'bootstrap3' }});";
+                ClientScript.RegisterStartupScript(this.GetType(), "FilteredDataerror", FilterDataerrorScript, true);
             }
         }
 
@@ -1116,11 +1132,19 @@ namespace AnmolDristi
                         l.line_name AS LineName,
                         pc.category_name AS ProductCategory,
                         pb.brand_name AS ProductBrand,
+                        s.SKUId AS SKUId,
                         c.SubmittedByEmployeeCode AS EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate AS SDate,
                         c.SubmittedTime AS STime,
                         c.Shift AS SShift,
+                        c.Packing_MC_No,
+		                    CASE 
+			                    WHEN c.LeakTestStatus = 1 THEN 'Ok'
+			                    WHEN c.LeakTestStatus = 0 THEN 'Not Ok'
+		                    END AS LeakTestStatus,
+		                c.RemarksForFail,
+		                c.Slanted_Percent,
                         'No Comment' AS Remarks,
                         c.Approver1EmployeeCode AS L1,
                         c.Approver1_Status,
@@ -1140,6 +1164,7 @@ namespace AnmolDristi
                     LEFT JOIN MST_Plant_Lines l ON c.Line = l.line_id
                     LEFT JOIN MST_LineCategory pc ON c.ProductCategory = pc.category_id
                     LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                    LEFT JOIN MST_Brand_SKU s ON c.SKUId = s.SKUId
                     LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                     WHERE 1 = 1");
 
@@ -1186,7 +1211,8 @@ namespace AnmolDristi
             queryBuilder.Append(@")
                 SELECT TOP(30)
                     DBID, FormID, BatchID, RecordID, PlantName, LineName, ProductCategory, 
-                    ProductBrand, EmpCode, EmpName, SDate, STime, SShift, Remarks, 
+                    ProductBrand, SKUId, EmpCode, EmpName, SDate, STime, SShift, 
+                    Packing_MC_No, LeakTestStatus, RemarksForFail, Slanted_Percent, Remarks, 
                     L1, Approver1_Status, Approver1_TimeStamp, 
                     L2, Approver2_Status, Approver2_TimeStamp, 
                     L3, DottedApprover_Status, DottedApprover_TimeStamp
@@ -1200,46 +1226,50 @@ namespace AnmolDristi
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
 
                 // Convert DataTable to List<ReportInfo>
-                List<ReportInfo> dataSave = filteredData.AsEnumerable().Select(row => new ReportInfo
-                {
-                    DBID = row.Field<int>("DBID"),
-                    FormID = row.Field<int>("FormID"),
-                    RecordID = row.Field<string>("RecordID"),
-                    PlantName = row.Field<string>("PlantName"),
-                    LineName = row.Field<string>("LineName"),
-                    ProductCategory = row.Field<string>("ProductCategory"),
-                    ProductBrand = row.Field<string>("ProductBrand"),
-                    EmpCode = row.Field<string>("EmpCode"),
-                    EmpName = row.Field<string>("EmpName"),
-                    SDate = row.Field<DateTime>("SDate"),
-                    STime = row.Field<TimeSpan>("STime"),
-                    SShift = row.Field<string>("SShift"),
-                    Remarks = row.Field<string>("Remarks"),
-                    L1 = row.Field<string>("L1"),
-                    Approver1_Status = row.Field<int?>("Approver1_Status"),
-                    Approver1_TimeStamp = row.Field<DateTime?>("Approver1_TimeStamp"),
-                    L2 = row.Field<string>("L2"),
-                    Approver2_Status = row.Field<int?>("Approver2_Status"),
-                    Approver2_TimeStamp = row.Field<DateTime?>("Approver2_TimeStamp"),
-                    L3 = row.Field<string>("L3"),
-                    DottedApprover_Status = row.Field<int?>("DottedApprover_Status"),
-                    DottedApprover_TimeStamp = row.Field<DateTime?>("DottedApprover_TimeStamp")
-                }).ToList();
+                //List<ReportInfo> dataSave = filteredData.AsEnumerable().Select(row => new ReportInfo
+                //{
+                //    DBID = row.Field<int>("DBID"),
+                //    FormID = row.Field<int>("FormID"),
+                //    RecordID = row.Field<string>("RecordID"),
+                //    BatchID = row.Field<string>("BatchID"),
+                //    PlantName = row.Field<string>("PlantName"),
+                //    LineName = row.Field<string>("LineName"),
+                //    ProductCategory = row.Field<string>("ProductCategory"),
+                //    ProductBrand = row.Field<string>("ProductBrand"),
+                //    SKUId = row.Field<string>("SKUId"),
+                //    EmpCode = row.Field<string>("EmpCode"),
+                //    EmpName = row.Field<string>("EmpName"),
+                //    SDate = row.Field<DateTime>("SDate"),
+                //    STime = row.Field<TimeSpan>("STime"),
+                //    SShift = row.Field<string>("SShift"),
+                //    Remarks = row.Field<string>("Remarks"),
+                //    L1 = row.Field<string>("L1"),
+                //    Approver1_Status = row.Field<int?>("Approver1_Status"),
+                //    Approver1_TimeStamp = row.Field<DateTime?>("Approver1_TimeStamp"),
+                //    L2 = row.Field<string>("L2"),
+                //    Approver2_Status = row.Field<int?>("Approver2_Status"),
+                //    Approver2_TimeStamp = row.Field<DateTime?>("Approver2_TimeStamp"),
+                //    L3 = row.Field<string>("L3"),
+                //    DottedApprover_Status = row.Field<int?>("DottedApprover_Status"),
+                //    DottedApprover_TimeStamp = row.Field<DateTime?>("DottedApprover_TimeStamp")
+                //}).ToList();
 
                 // Bind to GridView
-                GridView1.DataSource = dataSave;
+                GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
 
                 // Show a notification if no records are found
-                if (dataSave.Count == 0)
-                {
-                    // ShowNotification("No Data", "No records found for the selected date range.", "info");
-                }
+                //if (dataSave.Count == 0)
+                //{
+                //    // ShowNotification("No Data", "No records found for the selected date range.", "info");
+                //}
             }
             catch (Exception ex)
             {
-                // Handle exceptions (log it, show an error message, etc.)
-                // ShowNotification("Error", "An error occurred while processing your request.", "error");
+                string errorMessage = ex.Message;
+                string FilterDataerrorScript = $"new PNotify({{ title: 'Error', text: '{errorMessage}', type: 'error', styling: 'bootstrap3' }});";
+                ClientScript.RegisterStartupScript(this.GetType(), "FilteredDataerror", FilterDataerrorScript, true);
             }
         }
 
@@ -1288,5 +1318,50 @@ namespace AnmolDristi
                 //Response.Redirect("#", false);
             }
         }
+
+
+        //8 may 2025
+
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCLeakTestReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCLeakTestRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
+
     }
 }

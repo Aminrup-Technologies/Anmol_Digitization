@@ -1,0 +1,139 @@
+===================================================
+Log Created At: 2026-04-23 07:06:44.967
+===================================================
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: DoughTemp (Dough Temp :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DoughTemp (Dough Temp :) ---
+✔ Container found: DoughTemp, Visible: True
+✔ Container found: DoughTemp, Visible: True
+✔ Input control found: TXB_DoughTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for DoughTemp - Min: -100.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for DoughTemp
+✖ DropDownList not found for DoughTemp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: DoughRestTime (Dough Rest Time :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DoughRestTime (Dough Rest Time :) ---
+✔ Container found: DoughRestTime, Visible: True
+✔ Container found: DoughRestTime, Visible: True
+✔ Input control found: TXB_DoughRestTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:00:00, Max=90:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughRestTime
+✖ DropDownList not found for DoughRestTime
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: MetalDectector (Metal Dectector :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: MetalDectector (Metal Dectector :) ---
+✔ Container found: MetalDectector, Visible: True
+✔ Container found: MetalDectector, Visible: True
+✔ Input control found: RBL_MetalDectector, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for MetalDectector, Visible: True
+✖ DropDownList not found for MetalDectector
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: ProcessSequence (Process Sequence :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: ProcessSequence (Process Sequence :) ---
+✔ Container found: ProcessSequence, Visible: True
+✔ Container found: ProcessSequence, Visible: True
+✔ Input control found: RBL_ProcessSequence, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for ProcessSequence, Visible: True
+✖ DropDownList not found for ProcessSequence
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: DoughCreamingTime (Dough Creaming Time :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DoughCreamingTime (Dough Creaming Time :) ---
+✔ Container found: DoughCreamingTime, Visible: True
+✔ Container found: DoughCreamingTime, Visible: True
+✔ Input control found: TXB_DoughCreamingTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:00:00, Max=90:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughCreamingTime
+✖ DropDownList not found for DoughCreamingTime
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: DoughMixingTime (Dough Mixing Time :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DoughMixingTime (Dough Mixing Time :) ---
+✔ Container found: DoughMixingTime, Visible: True
+✔ Container found: DoughMixingTime, Visible: True
+✔ Input control found: TXB_DoughMixingTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:00:00, Max=90:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughMixingTime
+✖ DropDownList not found for DoughMixingTime
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: DoughBakingTime (Dough Baking Time :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DoughBakingTime (Dough Baking Time :) ---
+✔ Container found: DoughBakingTime, Visible: True
+✔ Container found: DoughBakingTime, Visible: True
+✔ Input control found: TXB_DoughBakingTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:00:00, Max=90:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for DoughBakingTime
+✖ DropDownList not found for DoughBakingTime
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: DiceRpm (Dice Rpm :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DiceRpm (Dice Rpm :) ---
+✔ Container found: DiceRpm, Visible: True
+✔ Container found: DiceRpm, Visible: True
+✔ Input control found: TXB_DiceRpm, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00.00, Max=200.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for DiceRpm - Min: 00.00, Max: 200.00, Enabled: True
+✖ RadioButtonList not found for DiceRpm
+✖ DropDownList not found for DiceRpm
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:44 | Field: DoughCondition (Dough Condition :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DoughCondition (Dough Condition :) ---
+✔ Container found: DoughCondition, Visible: True
+✔ Container found: DoughCondition, Visible: True
+✔ Input control found: RBL_DoughCondition, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for DoughCondition, Visible: True
+✖ DropDownList not found for DoughCondition
+---------------------------------------------------------------------------------------------
+
+

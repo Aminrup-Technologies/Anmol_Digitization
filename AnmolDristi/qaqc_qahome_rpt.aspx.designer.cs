@@ -13,13 +13,22 @@ namespace AnmolDristi {
     public partial class qaqc_qahome_rpt {
         
         /// <summary>
-        /// Div1 control.
+        /// hfDayLabels control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Div1;
+        protected global::System.Web.UI.WebControls.HiddenField hfDayLabels;
+        
+        /// <summary>
+        /// hfFullDates control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfFullDates;
         
         /// <summary>
         /// lblProcessChecking control.
@@ -31,6 +40,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblProcessChecking;
         
         /// <summary>
+        /// lblProcessTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblProcessTrend;
+        
+        /// <summary>
+        /// hfProcessData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfProcessData;
+        
+        /// <summary>
         /// lblQCInspector control.
         /// </summary>
         /// <remarks>
@@ -38,6 +65,51 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblQCInspector;
+        
+        /// <summary>
+        /// lblQCInspectorTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblQCInspectorTrend;
+        
+        /// <summary>
+        /// hfQCData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfQCData;
+        
+        /// <summary>
+        /// lblPacketWeights control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPacketWeights;
+        
+        /// <summary>
+        /// lblPacketTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblPacketTrend;
+        
+        /// <summary>
+        /// hfPacketData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfPacketData;
         
         /// <summary>
         /// lblRotaryLine control.
@@ -49,6 +121,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblRotaryLine;
         
         /// <summary>
+        /// lblRotaryTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblRotaryTrend;
+        
+        /// <summary>
+        /// hfRotaryData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfRotaryData;
+        
+        /// <summary>
         /// lblCCPChecklist control.
         /// </summary>
         /// <remarks>
@@ -56,6 +146,24 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblCCPChecklist;
+        
+        /// <summary>
+        /// lblCCPTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblCCPTrend;
+        
+        /// <summary>
+        /// hfCCPData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfCCPData;
         
         /// <summary>
         /// lblLeakSeal control.
@@ -67,6 +175,24 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblLeakSeal;
         
         /// <summary>
+        /// lblLeakTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblLeakTrend;
+        
+        /// <summary>
+        /// hfLeakData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfLeakData;
+        
+        /// <summary>
         /// lblPreDispatch control.
         /// </summary>
         /// <remarks>
@@ -76,6 +202,33 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblPreDispatch;
         
         /// <summary>
+        /// lblDispatchTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblDispatchTrend;
+        
+        /// <summary>
+        /// hfDispatchData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfDispatchData;
+        
+        /// <summary>
+        /// tileCriticalIncident control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl tileCriticalIncident;
+        
+        /// <summary>
         /// lblCriticalIncident control.
         /// </summary>
         /// <remarks>
@@ -83,5 +236,50 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblCriticalIncident;
+        
+        /// <summary>
+        /// lblCriticalTrend control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblCriticalTrend;
+        
+        /// <summary>
+        /// hfCriticalData control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfCriticalData;
+        
+        /// <summary>
+        /// Div2 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl Div2;
+        
+        /// <summary>
+        /// Label2 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Label2;
+        
+        /// <summary>
+        /// Label1 control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label Label1;
     }
 }

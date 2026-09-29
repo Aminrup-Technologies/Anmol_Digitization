@@ -172,64 +172,64 @@ namespace AnmolDristi
             }
         }
 
-        private void PlantLinesBinder(string selectedPlantValue)
-        {
-            string query = "SELECT line_id, line_name FROM MST_Plant_Lines WHERE plant_id = @SelectedPlantValue";
-            string textField = "line_name";
-            string valueField = "line_id";
+        //private void PlantLinesBinder(string selectedPlantValue)
+        //{
+        //    string query = "SELECT line_id, line_name FROM MST_Plant_Lines WHERE plant_id = @SelectedPlantValue";
+        //    string textField = "line_name";
+        //    string valueField = "line_id";
 
-            bool recordsBound;
-            DatabaseHelper.BindDropDownList(query, DDL_PlantLine, textField, valueField, new SqlParameter("@SelectedPlantValue", selectedPlantValue), out recordsBound);
+        //    bool recordsBound;
+        //    DatabaseHelper.BindDropDownList(query, DDL_PlantLine, textField, valueField, new SqlParameter("@SelectedPlantValue", selectedPlantValue), out recordsBound);
 
-            if (!recordsBound)
-            {
-                DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
+        //    if (!recordsBound)
+        //    {
+        //        DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
 
-                string PlantLinesBinder_Error_script = @"<script type='text/javascript'>
-                            new PNotify({
-                                title: 'Error',
-                                text: 'An error occurred!',
-                                type: 'error',
-                                styling: 'bootstrap3'
-                            });
-                        </script>";
-                ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantLinesBinderErrorNotification", PlantLinesBinder_Error_script, false);
-            }
-        }
+        //        string PlantLinesBinder_Error_script = @"<script type='text/javascript'>
+        //                    new PNotify({
+        //                        title: 'Error',
+        //                        text: 'An error occurred!',
+        //                        type: 'error',
+        //                        styling: 'bootstrap3'
+        //                    });
+        //                </script>";
+        //        ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantLinesBinderErrorNotification", PlantLinesBinder_Error_script, false);
+        //    }
+        //}
 
-        private void LineBrandsBinder(string selectedPlantValue, string selectedPlantLineValue)
-        {
-            // Construct the SQL query with parameters
-            string query = "SELECT brand_id, brand_name FROM MST_LineCatBrands WHERE plant_id = @PlantId ";
-            string textField = "brand_name"; // Assuming this is the correct field for displaying in the DropDownList
-            string valueField = "brand_id"; // Assuming this is the correct field for storing in the DropDownList
+        //private void LineBrandsBinder(string selectedPlantValue, string selectedPlantLineValue)
+        //{
+        //    // Construct the SQL query with parameters
+        //    string query = "SELECT brand_id, brand_name FROM MST_LineCatBrands WHERE plant_id = @PlantId ";
+        //    string textField = "brand_name"; // Assuming this is the correct field for displaying in the DropDownList
+        //    string valueField = "brand_id"; // Assuming this is the correct field for storing in the DropDownList
 
-            // Create SQL parameters for plant_id and line_id
-            SqlParameter[] parameters = new SqlParameter[]
-            {
-                new SqlParameter("@PlantId", selectedPlantValue),
-            };
+        //    // Create SQL parameters for plant_id and line_id
+        //    SqlParameter[] parameters = new SqlParameter[]
+        //    {
+        //        new SqlParameter("@PlantId", selectedPlantValue),
+        //    };
 
-            // Call the BindDropDownList method with parameters
-            bool recordsBound;
-            DatabaseHelper.BindDropDownList(query, DDL_ProductBrand, textField, valueField, parameters, out recordsBound);
+        //    // Call the BindDropDownList method with parameters
+        //    bool recordsBound;
+        //    DatabaseHelper.BindDropDownList(query, DDL_ProductBrand, textField, valueField, parameters, out recordsBound);
 
-            // Check if any records were bound
-            if (!recordsBound)
-            {
-                string ProductBrands_Error_script = @"<script type='text/javascript'>
-                    new PNotify({
-                        title: 'Error',
-                        text: 'No Brands found for the selected plant and line!',
-                        type: 'error',
-                        styling: 'bootstrap3'
-                    });
-                </script>";
+        //    // Check if any records were bound
+        //    if (!recordsBound)
+        //    {
+        //        string ProductBrands_Error_script = @"<script type='text/javascript'>
+        //            new PNotify({
+        //                title: 'Error',
+        //                text: 'No Brands found for the selected plant and line!',
+        //                type: 'error',
+        //                styling: 'bootstrap3'
+        //            });
+        //        </script>";
 
-                // RegisterStartupScript adds the JavaScript code to the page
-                ClientScript.RegisterStartupScript(this.GetType(), "ShowProductBrandsBinderErrorNotification", ProductBrands_Error_script, false);
-            }
-        }
+        //        // RegisterStartupScript adds the JavaScript code to the page
+        //        ClientScript.RegisterStartupScript(this.GetType(), "ShowProductBrandsBinderErrorNotification", ProductBrands_Error_script, false);
+        //    }
+        //}
 
         private void PopulateColorDropdown()
         {
@@ -263,34 +263,33 @@ namespace AnmolDristi
                 DDL_Plant.SelectedValue = PlantId;
                 DDL_Plant.Enabled = false;
 
-                PlantLinesBinder(PlantId);
-                PlantLine = dt.Rows[0]["line"].ToString();
-                DDL_PlantLine.SelectedValue = PlantLine;
-                DDL_PlantLine.Enabled = false;
+                //PlantLinesBinder(PlantId);
+                //PlantLine = dt.Rows[0]["line"].ToString();
+                //DDL_PlantLine.SelectedValue = PlantLine;
+                //DDL_PlantLine.Enabled = false;
 
-                //TB_Brand.Text = dt.Rows[0]["ProductBrand"].ToString();
+                ////TB_Brand.Text = dt.Rows[0]["ProductBrand"].ToString();
 
 
-                string CategoryBrand = dt.Rows[0]["ProductBrand"].ToString();
-                if (!string.IsNullOrEmpty(CategoryBrand) && CategoryBrand != "0")
-                {
-                    LineBrandsBinder(PlantId, PlantLine);
+                //string CategoryBrand = dt.Rows[0]["ProductBrand"].ToString();
+                //if (!string.IsNullOrEmpty(CategoryBrand) && CategoryBrand != "0")
+                //{
+                //    LineBrandsBinder(PlantId, PlantLine);
 
-                    if (DDL_ProductBrand.Items.FindByValue(CategoryBrand) != null)
-                    {
-                        DDL_ProductBrand.SelectedValue = CategoryBrand;
-                        DDL_ProductBrand.Enabled = false;
-                    }
-                }
-
+                //    if (DDL_ProductBrand.Items.FindByValue(CategoryBrand) != null)
+                //    {
+                //        DDL_ProductBrand.SelectedValue = CategoryBrand;
+                //        DDL_ProductBrand.Enabled = false;
+                //    }
+                //}
 
                 TB_Supplier.Text = dt.Rows[0]["Supplier_Name"].ToString();
 
                 TB_ChallanNo.Text = dt.Rows[0]["Challan_No"].ToString();
-                TB_ChallanDate.Text = dt.Rows[0]["Challan_Date"].ToString();
+                TB_ChallanDate.Text = dt.Rows[0]["Challan_Dates"].ToString();
                 TB_LotNo.Text = dt.Rows[0]["Lot_No"].ToString();
                 TB_VehicleNo.Text = dt.Rows[0]["Vehicle_No"].ToString();
-                TB_PkdMfg.Text = dt.Rows[0]["Pkd_Date"].ToString();
+                TB_PkdMfg.Text = dt.Rows[0]["Mfg_Dates"].ToString();
 
 
                 TB_Quantity.Text = dt.Rows[0]["Quantity"].ToString();
@@ -358,7 +357,6 @@ namespace AnmolDristi
 
 
                 imgMaterial.ImageUrl = dt.Rows[0]["Material_Image"].ToString();
-
 
                 StandardValue_Binder(MaterialId, PlantId); // Texbox bind with std values
                 string FormID = row["FormID"].ToString();
@@ -526,8 +524,8 @@ namespace AnmolDristi
 
         private void StandardValue_Binder(string MaterialId, string PlantId)
         {
-            //DataTable dataTable = DatabaseHelper.GetRMFieldsControlByPlantId(Convert.ToInt32(MaterialId), Convert.ToInt32(PlantId));
-            DataTable dataTable = new DataTable();
+            DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByMaterialIdAndPlantId(Convert.ToInt32(MaterialId), Convert.ToInt32(PlantId));
+            //DataTable dataTable = new DataTable();
 
             // Example: Querying the DataTable for a specific field name
             //string fieldName = "no_of_pcs"; // Specify the field name you want to query
@@ -595,15 +593,15 @@ namespace AnmolDristi
 
                     break;
 
-                case "ProductBrand":
+                //case "ProductBrand":
 
-                    BrandDIV.Visible = criteria.IsVisible;
-                    Label_DDL_ProductBrand.Text = criteria.DisplayName;
+                //    BrandDIV.Visible = criteria.IsVisible;
+                //    Label_DDL_ProductBrand.Text = criteria.DisplayName;
 
-                    RFV_DDL_ProductBrand.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_DDL_ProductBrand.Enabled = criteria.IsRequired;
+                //    RFV_DDL_ProductBrand.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                //    RFV_DDL_ProductBrand.Enabled = criteria.IsRequired;
 
-                    break;
+                //    break;
 
                 case "ChallanDate":
 

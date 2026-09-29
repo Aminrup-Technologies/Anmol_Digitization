@@ -1,0 +1,80 @@
+===================================================
+Log Created At: 2026-04-23 07:06:43.797
+===================================================
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:43 | Field: SP_RoomTemp (SP Room Temp :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SP_RoomTemp (SP Room Temp :) ---
+✔ Container found: SP_RoomTemp, Visible: True
+✔ Container found: SP_RoomTemp, Visible: True
+✔ Input control found: TXB_SP_RoomTemp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for SP_RoomTemp - Min: -100.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for SP_RoomTemp
+✖ DropDownList not found for SP_RoomTemp
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:43 | Field: DrumCovered (Drum Covered :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: DrumCovered (Drum Covered :) ---
+✔ Container found: DrumCovered, Visible: True
+✔ Container found: DrumCovered, Visible: True
+✔ Input control found: RBL_DrumCovered, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for DrumCovered, Visible: True
+✖ DropDownList not found for DrumCovered
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:43 | Field: SP_Quality (SP Quality :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SP_Quality (SP Quality :) ---
+✔ Container found: SP_Quality, Visible: True
+✔ Container found: SP_Quality, Visible: True
+✔ Input control found: RBL_SP_Quality, Visible: True
+✔ Label updated
+✔ RequiredFieldValidator configured
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✔ RadioButtonList configured for SP_Quality, Visible: True
+✖ DropDownList not found for SP_Quality
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:43 | Field: SP_StandingTime (SP Standing Time:) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SP_StandingTime (SP Standing Time:) ---
+✔ Container found: SP_StandingTime, Visible: True
+✔ Container found: SP_StandingTime, Visible: True
+✔ Input control found: TXB_SP_StandingTime, Visible: True
+✔ Set data-min and data-max on TextBox: Min=00:00:00, Max=90:00:00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✖ RangeValidator not found
+✖ RadioButtonList not found for SP_StandingTime
+✖ DropDownList not found for SP_StandingTime
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+--- 2026-04-23 07:06:43 | Field: SP_Temp (SP Temp :) ---
+--- User Details: Gourisankar Ghosh | (S509) ---
+--- Configuring Field: SP_Temp (SP Temp :) ---
+✔ Container found: SP_Temp, Visible: True
+✔ Container found: SP_Temp, Visible: True
+✔ Input control found: TXB_SP_Temp, Visible: True
+✔ Set data-min and data-max on TextBox: Min=-100.00, Max=100.00
+✔ Label updated
+✖ RequiredFieldValidator not found
+✖ RegularExpressionValidator not found
+✔ RangeValidator configured
+Applied RangeValidator for SP_Temp - Min: -100.00, Max: 100.00, Enabled: True
+✖ RadioButtonList not found for SP_Temp
+✖ DropDownList not found for SP_Temp
+---------------------------------------------------------------------------------------------
+
+

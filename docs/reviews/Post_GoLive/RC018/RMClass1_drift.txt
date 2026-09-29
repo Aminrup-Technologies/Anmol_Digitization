@@ -1,6 +1,0 @@
-SharedRows AttrDrift IdMismatch
----------- --------- ----------
-330 1 0
-SharedColCount
---------------
-70

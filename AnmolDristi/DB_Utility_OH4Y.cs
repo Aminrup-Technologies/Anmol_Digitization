@@ -25,7 +25,11 @@ namespace AnmolDristi
         public DataTable dt;
         public DataSet ds;
         public static string cnnString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ToString();
-
+        private string GetConnectionString()
+        {
+            // Example: read from web.config
+            return System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        }
         private int flag = 0;
 
         //public int Sqlconnection()
@@ -2109,6 +2113,48 @@ namespace AnmolDristi
             return isInserted;
         }
 
+        // ExecuteNonQuery wrapper
+        public int ExecuteNonQuery(string sql, SqlParameter[] parameters = null, CommandType commandType = CommandType.Text, int commandTimeout = 30)
+        {
+            using (var conn = new SqlConnection(GetConnectionString()))
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                cmd.CommandType = commandType;
+                cmd.CommandTimeout = commandTimeout;
 
+                if (parameters != null)
+                    cmd.Parameters.AddRange(parameters);
+
+                conn.Open();
+                return cmd.ExecuteNonQuery();
+            }
+        }
+
+        // ExecuteScalar wrapper
+        public object ExecuteScalar(string sql, SqlParameter[] parameters = null, CommandType commandType = CommandType.Text, int commandTimeout = 30)
+        {
+            using (var conn = new SqlConnection(GetConnectionString()))
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = sql;
+                cmd.CommandType = commandType;
+                cmd.CommandTimeout = commandTimeout;
+
+                if (parameters != null)
+                    cmd.Parameters.AddRange(parameters);
+
+                conn.Open();
+                return cmd.ExecuteScalar();
+            }
+        }
+
+        // Optional: convenience ExecuteScalarInt
+        public int ExecuteScalarInt(string sql, SqlParameter[] parameters = null)
+        {
+            var obj = ExecuteScalar(sql, parameters);
+            if (obj == null || obj == DBNull.Value) return 0;
+            return Convert.ToInt32(obj);
+        }
     }
 }

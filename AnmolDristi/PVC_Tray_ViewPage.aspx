@@ -14,8 +14,8 @@
             <div class="row">
                 <div class="col-md-12 col-sm-12  ">
                     <div class="x_panel">
-                        <div class="x_title">
-                            <h2>Search Filters for PVC Tray / Mono CB Report</h2>
+                        <div class="x_title"> 
+                            <h2>Search Filters for PVC Tray / Pet Tray / Mono CB Report</h2>
                             <ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
                             </ul>
@@ -29,7 +29,7 @@
                                     [<asp:Label ID="lbl_DDL_Plant_Value" runat="server" AssociatedControlID="DDL_Plant" Text="N/A" ForeColor="LightBlue" Font-Bold="true" Font-Size="Smaller"></asp:Label>]
                                     <asp:RequiredFieldValidator ID="RFV_DDL_Plant" runat="server" ErrorMessage="*" ForeColor="Red" ControlToValidate="DDL_Plant" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
-                                        <asp:DropDownList ID="DDL_Plant" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_Plant_SelectedIndexChanged"></asp:DropDownList>
+                                        <asp:DropDownList ID="DDL_Plant" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="false" OnSelectedIndexChanged="DDL_Plant_SelectedIndexChanged"></asp:DropDownList>
                                     </div>
                                 </div>
                             </div>
@@ -72,24 +72,24 @@
                                 <asp:Label ID="lbl_msg" runat="server" Text="Click SUBMIT to view Data!!"></asp:Label>
                             </div>
                             <div class="col-md-6 col-sm-12">
-                                <asp:Button ID="ReportbtnCancel" runat="server" Text="Cancle" CssClass="btn btn-danger btn-sm" CausesValidation="false" OnClick="ReportbtnCancel_Click" />
+                                <asp:Button ID="ReportbtnCancel" runat="server" Text="Cancel" CssClass="btn btn-danger btn-sm" CausesValidation="false" OnClick="ReportbtnCancel_Click" />
                                 <asp:Button ID="ReportbtnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="ReportbtnReset_Click" />
                                 <asp:Button ID="btn_submit" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" CausesValidation="true" ValidationGroup="Submit" OnClick="btn_submit_Click" />
                             </div>
                         </div>
                     </div>
                     <%--button end--%>
-
                 </div>
 
                 <div class="col-md-12 col-sm-12">
                     <div class="x_panel">
                         <div class="x_title">
                             <h2>View and Select for Detailed View ||
-                                <asp:Button ID="Button1" runat="server" Text="Export" CssClass="btn btn-primary btn-sm" /></h2>
-                            <ul class="nav navbar-right panel_toolbox">
+                                <asp:Button ID="Button1" runat="server" CausesValidation="false" Text="Export" CssClass="btn btn-primary btn-sm" OnClick="ExportBtn_Click" />
+                            </h2>
+                            <%--<ul class="nav navbar-right panel_toolbox">
                                 <li><a class="collapse-link"><i class="fa fa-chevron-up"></i></a></li>
-                            </ul>
+                            </ul>--%>
                             <div class="clearfix"></div>
                         </div>
                         <div class="x_content">

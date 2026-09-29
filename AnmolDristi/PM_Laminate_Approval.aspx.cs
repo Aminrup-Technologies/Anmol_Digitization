@@ -12,6 +12,7 @@ using System.IO;
 using System.Web.Services;
 using System.Security.Cryptography;
 using System.Text;
+using ClosedXML.Excel;
 
 //using Microsoft.Office.Interop.Excel;
 //using System.Runtime.InteropServices; // Optional, for Excel interop cleanup
@@ -38,6 +39,7 @@ namespace AnmolDristi
 
                     PlantBinder();
                     loadAlldata();
+                    //LoadData("TRN_PM_LaminateTestingReport");
                 }
 
             }
@@ -80,6 +82,7 @@ namespace AnmolDristi
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
                 ProductBrandsBinder(selectedPlantValue);
                 //FilterData();
+                DataLoader();
             }
             else
             {
@@ -138,7 +141,7 @@ namespace AnmolDristi
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 //StandardValueBinder(selectedProductBrandValue);
                 //FilterData();
-
+                DataLoader();
 
             }
             else
@@ -160,7 +163,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qcapprovals.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -191,6 +194,28 @@ namespace AnmolDristi
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
+                        c.Supplier_Name,
+	                    c.SampleSize,
+                        CASE 
+		                    WHEN c.Smell= 1 THEN 'Ok'
+		                    WHEN c.Smell = 0 THEN 'Not Ok'
+	                    END AS Smell, 
+	                    c.Smell_Remarks,
+	                    c.Challan_No,
+	                    c.Challan_Date,
+	                    c.Lot_No,
+	                    c.Vehicle_No,
+	                    c.Bond_Strength,
+	                    c.Seal_Strength,
+	                    c.Std_Length,
+	                    c.Obs_Length,
+	                    c.Length_Remarks,
+	                    c.Std_Width,
+	                    c.Obs_Width,
+	                    c.Width_Remarks,
+	                    c.GMS_Std,
+	                    c.GSM_Obs,
+	                    c.GSM_Remarks,
                         c.Remarks as Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
@@ -223,6 +248,7 @@ namespace AnmolDristi
                         SqlDataAdapter sda = new SqlDataAdapter(cmd);
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
                     }
@@ -235,6 +261,83 @@ namespace AnmolDristi
             }
         }
 
+        private DataTable GetDataFromTable(string query, SqlParameter[] parameters)
+        {
+            DataTable dt = new DataTable();
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+            using (SqlConnection con = new SqlConnection(connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddRange(parameters);
+                    cmd.CommandType = CommandType.Text;
+
+                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                    {
+                        sda.Fill(dt);
+                    }
+                }
+            }
+            return dt;
+        }
+
+
+        protected void GridView1_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName == "View")
+            {
+                // Get the DBID from the CommandArgument.
+                int id = Convert.ToInt32(e.CommandArgument);
+
+                if (id > 0)
+                {
+                    // Redirect with the correct DBID.
+                    Response.Redirect("PM_Laminate_FinalApproval.aspx?Id=" + id);
+                }
+                else
+                {
+                    // Handle cases where DBID is not valid.
+                    // Show an error message or log the issue.
+                    System.Diagnostics.Debug.WriteLine("Invalid DBID passed: " + e.CommandArgument);
+                }
+            }
+        }
+
+
+        //04 may 2025
+
+        private void LoadData(string tableName)
+        {
+            try
+            {
+                string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
+                using (SqlConnection con = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("USP_LoadViewListDataPM", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@TableName", tableName);
+                        cmd.Parameters.AddWithValue("@TopRecords", 30);
+
+                        SqlDataAdapter sda = new SqlDataAdapter(cmd);
+                        DataTable dt = new DataTable();
+                        sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
+                        GridView1.DataSource = dt;
+                        GridView1.DataBind();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var recipients = EmailRecipientManager.GetRecipients("ErrorNotifications");
+                EmailNotifier.Notify("Application Error", $"<p>Error: {ex.Message}</p><p>Stack Trace: {ex.StackTrace}</p>", recipients);
+            }
+        }
+
+
         private void DataLoader()
         {
             DateTime? dateFrom = string.IsNullOrEmpty(TB_Date_From.Text) ? (DateTime?)null : DateTime.ParseExact(TB_Date_From.Text, "yyyy-MM-dd", null);
@@ -242,29 +345,51 @@ namespace AnmolDristi
 
             StringBuilder queryBuilder = new StringBuilder(@"
                 SELECT 
-                    c.ID AS DBID,
-                    c.FormID AS FormID,
-                    p.plant_name AS PlantName,
-                    pb.brand_name AS ProductBrand,
-                    c.SubmittedByEmployeeCode AS EmpCode,
-                    u.EmployeeName AS EmpName,
-                    c.SubmittedDate AS SDate,
-                    c.SubmittedTime AS STime,
-                    'No Comment' AS Remarks,
-                    c.Approver1EmployeeCode AS L1,
-                    c.Approver1_Status,
-                    c.Approver1_TimeStamp,
-                    c.Approver2EmployeeCode AS L2,
-                    c.Approver2_Status,
-                    c.Approver2_TimeStamp,
-                    c.DottedLineApproverEmployeeCode AS L3,
-                    c.DottedApprover_Status,
-                    c.DottedApprover_TimeStamp
-                FROM TRN_PM_LaminateTestingReport c
-                LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
-                LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
-                LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                WHERE 1 = 1");
+                c.ID AS DBID,
+                c.FormID AS FormID,
+                p.plant_name AS PlantName,
+                pb.brand_name AS ProductBrand,
+                c.SubmittedByEmployeeCode AS EmpCode,
+                u.EmployeeName AS EmpName,
+                c.SubmittedDate AS SDate,
+                c.SubmittedTime AS STime,
+	            c.Supplier_Name,
+	            c.SampleSize,
+	            CASE 
+		            WHEN c.Smell= 1 THEN 'Ok'
+		            WHEN c.Smell = 0 THEN 'Not Ok'
+	            END AS Smell,
+	            c.Smell_Remarks,
+	            c.Challan_No,
+	            c.Challan_Date,
+	            c.Lot_No,
+	            c.Vehicle_No,
+	            c.Bond_Strength,
+	            c.Seal_Strength,
+	            c.Std_Length,
+	            c.Obs_Length,
+	            c.Length_Remarks,
+	            c.Std_Width,
+	            c.Obs_Width,
+	            c.Width_Remarks,
+	            c.GMS_Std,
+	            c.GSM_Obs,
+	            c.GSM_Remarks,
+                ISNULL(c.Remarks, 'No Comment') AS Remarks,
+                c.Approver1EmployeeCode AS L1,
+                c.Approver1_Status,
+                c.Approver1_TimeStamp,
+                c.Approver2EmployeeCode AS L2,
+                c.Approver2_Status,
+                c.Approver2_TimeStamp,
+                c.DottedLineApproverEmployeeCode AS L3,
+                c.DottedApprover_Status,
+                c.DottedApprover_TimeStamp
+            FROM TRN_PM_LaminateTestingReport c
+            LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
+            LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+            LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+            WHERE 1 = 1");
 
             var parameters = new List<SqlParameter>();
 
@@ -310,6 +435,7 @@ namespace AnmolDristi
             try
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataSource = filteredData;
                 GridView1.DataBind();
             }
@@ -321,46 +447,44 @@ namespace AnmolDristi
             }
         }
 
-        private DataTable GetDataFromTable(string query, SqlParameter[] parameters)
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
         {
-            DataTable dt = new DataTable();
-            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
-
-            using (SqlConnection con = new SqlConnection(connectionString))
+            if (ViewState["ExportData"] != null)
             {
-                using (SqlCommand cmd = new SqlCommand(query, con))
-                {
-                    cmd.Parameters.AddRange(parameters);
-                    cmd.CommandType = CommandType.Text;
+                DataTable dt = ViewState["ExportData"] as DataTable;
 
-                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
                     {
-                        sda.Fill(dt);
+                        wb.Worksheets.Add(dt, "QCDailyLaminateReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCDailyLaminateRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
                     }
-                }
-            }
-            return dt;
-        }
-
-        
-        protected void GridView1_RowCommand(object sender, GridViewCommandEventArgs e)
-        {
-            if (e.CommandName == "View")
-            {
-                // Get the DBID from the CommandArgument.
-                int id = Convert.ToInt32(e.CommandArgument);
-
-                if (id > 0)
-                {
-                    // Redirect with the correct DBID.
-                    Response.Redirect("PM_Laminate_FinalApproval.aspx?Id=" + id);
                 }
                 else
                 {
-                    // Handle cases where DBID is not valid.
-                    // Show an error message or log the issue.
-                    System.Diagnostics.Debug.WriteLine("Invalid DBID passed: " + e.CommandArgument);
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
                 }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
             }
         }
 

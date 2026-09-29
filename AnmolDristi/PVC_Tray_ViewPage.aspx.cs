@@ -9,6 +9,7 @@ using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Text;
+using ClosedXML.Excel;
 
 
 namespace AnmolDristi
@@ -127,31 +128,33 @@ namespace AnmolDristi
 		}
 		protected void ReportbtnReset_Click(object sender, EventArgs e)
 		{
-			Response.Redirect("critical_quality_report.aspx");
+			Response.Redirect("PVC_Tray_ViewPage.aspx");
 		}
 		protected void btn_submit_Click(object sender, EventArgs e)
 		{
-			DateTime fromDate = Convert.ToDateTime(TB_Date_From.Text);
-			DateTime toDate = Convert.ToDateTime(TB_Date_To.Text);
+			//DateTime fromDate = Convert.ToDateTime(TB_Date_From.Text);
+			//DateTime toDate = Convert.ToDateTime(TB_Date_To.Text);
 
-			string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+			//string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
 
-			if (DDL_Plant.SelectedIndex != 0)
-			{
-				if (toDate > DateTime.Now)
-				{
-					Response.Write("<script>alert('ToDate cannot be greater than current date!');</script>");
-				}
-				else if (fromDate > toDate)
-				{
-					Response.Write("<script>alert('FromDate cannot be greater than ToDate!');</script>");
-				}
-				else
-				{
-					DataLoader();
-				}
-			}
-		}
+            //if (DDL_Plant.SelectedIndex != 0)
+            //{
+            //	if (toDate > DateTime.Now)
+            //	{
+            //		Response.Write("<script>alert('ToDate cannot be greater than current date!');</script>");
+            //	}
+            //	else if (fromDate > toDate)
+            //	{
+            //		Response.Write("<script>alert('FromDate cannot be greater than ToDate!');</script>");
+            //	}
+            //	else
+            //	{
+            //		DataLoader();
+            //	}
+            //}
+
+            DataLoader();
+        }
 		public class ReportInfo
 		{
 			public string PlantName { get; set; }
@@ -232,35 +235,53 @@ namespace AnmolDristi
 				string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
 
 				string query = @"
-					SELECT TOP(30)
-						c.ID AS DBID,
-						c.FormID as FormID,
-						c.PVCID as RecordID,
-						p.plant_name AS PlantName,
-						c.ProductBrand AS Material,
-						c.SubmittedByEmployeeCode as EmpCode,
-						u.EmployeeName AS EmpName,
-						c.SubmittedDate as SDate,
-						c.SubmittedTime as STime,
-						c.Approver1EmployeeCode as L1,
-						c.Approver1_Status,
-						c.Approver2EmployeeCode as L2,
-						c.Approver2_Status,
-						c.DottedLineApproverEmployeeCode as L3,
-						c.DottedApprover_Status
-					FROM
-						TRN_PVC_Tray c
-					LEFT JOIN
-						MST_PlantDetails p ON c.PlantName = p.plant_id
-					
-					LEFT JOIN
-						MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-					WHERE
-						1 = 1
-					ORDER BY
-						c.[SubmittedDate] DESC,
-						c.[SubmittedTime] DESC;
-				";
+						SELECT TOP(30)
+							c.ID AS DBID,
+							c.FormID as FormID,
+							c.PVCID as RecordID,
+							p.plant_name AS PlantName,
+							c.ProductBrand AS Material,
+							c.MaterialType ,
+							c.BrandSku,
+							c.SubmittedByEmployeeCode as EmpCode,
+							u.EmployeeName AS EmpName,
+							c.SubmittedDate as SDate,
+							c.SubmittedTime as STime,
+							c.Supplier_Name,
+							c.SampleSize,
+							c.Challan_No,
+							c.Challan_Date,
+							c.Lot_No,
+							c.Vehicle_No,
+							c.Dimension_Std_L,
+							c.Dimension_Std_W,
+							c.Dimension_Std_H,
+							c.Dimension_Obs_L,
+							c.Dimension_Obs_W,
+							c.Dimension_Obs_H,
+							c.GSM_Std,
+							c.GSM_Obs,
+							ISNULL(c.Remarks, 'No Comment') AS Remarks,
+							c.Approver1EmployeeCode as L1,
+							c.Approver1_Status,
+							c.Approver2EmployeeCode as L2,
+							c.Approver2_Status,
+							c.DottedLineApproverEmployeeCode as L3,
+							c.DottedApprover_Status
+						FROM
+							TRN_PVC_Tray c
+						LEFT JOIN
+							MST_PlantDetails p ON c.PlantName = p.plant_id
+						LEFT JOIN
+							MST_Brand_SKU s ON c.BrandSku = s.SKUId
+						LEFT JOIN
+							MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+						WHERE
+							1 = 1
+						ORDER BY
+							c.[SubmittedDate] DESC,
+							c.[SubmittedTime] DESC;
+					";
 
 				using (SqlConnection con = new SqlConnection(connectionString))
 				{
@@ -270,7 +291,8 @@ namespace AnmolDristi
 						DataTable dt = new DataTable();
 						sda.Fill(dt);
 						GridView1.DataSource = dt;
-						GridView1.DataBind();
+                        ViewState["ExportData"] = dt;
+                        GridView1.DataBind();
 					}
 				}
 			}
@@ -292,10 +314,27 @@ namespace AnmolDristi
 					c.PVCID as RecordID,
 					p.plant_name AS PlantName,
 					c.ProductBrand AS Material,
+					c.MaterialType ,
+					c.BrandSku,
 					c.SubmittedByEmployeeCode AS EmpCode,
 					u.EmployeeName AS EmpName,
 					c.SubmittedDate AS SDate,
 					c.SubmittedTime AS STime,
+					c.Supplier_Name,
+					c.SampleSize,
+					c.Challan_No,
+					c.Challan_Date,
+					c.Lot_No,
+					c.Vehicle_No,
+					c.Dimension_Std_L,
+					c.Dimension_Std_W,
+					c.Dimension_Std_H,
+					c.Dimension_Obs_L,
+					c.Dimension_Obs_W,
+					c.Dimension_Obs_H,
+					c.GSM_Std,
+					c.GSM_Obs,
+					ISNULL(c.Remarks, 'No Comment') AS Remarks,
 					c.Approver1EmployeeCode AS L1,
 					c.Approver1_Status,
 					c.Approver2EmployeeCode AS L2,
@@ -304,7 +343,7 @@ namespace AnmolDristi
 					c.DottedApprover_Status
 				FROM TRN_PVC_Tray c
 				LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
-				
+				LEFT JOIN MST_Brand_SKU s ON c.BrandSku = s.SKUId
 				LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
 				WHERE 1 = 1");
 
@@ -341,7 +380,8 @@ namespace AnmolDristi
 			{
 				DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
 				GridView1.DataSource = filteredData;
-				GridView1.DataBind();
+                ViewState["ExportData"] = filteredData;
+                GridView1.DataBind();
 			}
 			catch (Exception ex)
 			{
@@ -378,9 +418,50 @@ namespace AnmolDristi
 			string dbid = (row.FindControl("lbl_rowid") as Label).Text;
 			if (e.CommandName == "View")
 			{
-				//Response.Redirect("vw_app_qcireport.aspx?ID=" + dbid + "&VM=1", false);
+				Response.Redirect("PVC_Tray_Detailed.aspx?ID=" + dbid + "&VM=1", false);
 			}
 		}
 
-	}
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCPvcTrayReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCPvcTrayRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
+
+    }
 }

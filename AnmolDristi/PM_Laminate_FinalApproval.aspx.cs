@@ -17,6 +17,7 @@ namespace AnmolDristi
         public static string PlantId = string.Empty;
         public static string PlantName = string.Empty;
         public static string CategoryBrand = string.Empty;
+        public static string BrandSKU = string.Empty;
 
         public static string App1_Status = string.Empty;
         public static string App2_Status = string.Empty;
@@ -166,6 +167,32 @@ namespace AnmolDristi
             }
         }
 
+        private void BrandSKUBinder(string selectedProductBrandValue)
+        {
+            string query = "SELECT SKUId, SKU_name FROM MST_Brand_SKU WHERE brand_id = @SelectedPlantValue and ViewMode=1 order by SKUId";
+            string textField = "SKU_name";
+            string valueField = "SKUId";
+
+            bool recordsBound;
+            DatabaseHelper.BindDropDownList(query, DDL_BrandSKU, textField, valueField, new SqlParameter("@SelectedPlantValue", selectedProductBrandValue), out recordsBound);
+
+            if (!recordsBound)
+            {
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_BrandSKU);
+
+                string BrandSKUBinder_Error_script = @"<script type='text/javascript'>
+                            new PNotify({
+                                title: 'Error',
+                                text: 'No Records Found!',
+                                type: 'warning',
+                                styling: 'bootstrap3'
+                            });
+                        </script>";
+                ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification", BrandSKUBinder_Error_script, false);
+            }
+        }
+
+
         void getDetails(DataTable dt)
         {
             if (dt.Rows.Count > 0)
@@ -175,11 +202,17 @@ namespace AnmolDristi
                 PlantId = dt.Rows[0]["PlantId"].ToString();
                 PlantName = dt.Rows[0]["plant_name"].ToString();
                 DDL_Plant.SelectedItem.Text = PlantName; //This is for binding the DDL using TEXT
-
+                DDL_Plant.Enabled = false;
 
                 ProductBrandsBinder(PlantId);
                 CategoryBrand = dt.Rows[0]["ProductBrand"].ToString();
                 DDL_ProductBrand.SelectedValue = CategoryBrand; //This is for binding the DDL using Value / ID
+                DDL_ProductBrand.Enabled = false;
+
+                BrandSKUBinder(CategoryBrand);
+                BrandSKU = dt.Rows[0]["SKUId"].ToString();
+                DDL_BrandSKU.SelectedValue = BrandSKU;
+                DDL_BrandSKU.Enabled = false;   
 
                 TB_Size.Text = dt.Rows[0]["SampleSize"].ToString();
                 TB_Supplier.Text = dt.Rows[0]["Supplier_Name"].ToString();

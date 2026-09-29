@@ -248,8 +248,59 @@
             });
         }
 
-    </script>
+        //25 APRIL 2025
 
+        function checkDropdownsAndToggleFields() {
+            // Get all dropdowns that need to be checked
+            var ddlPlant = document.getElementById('<%= DDL_Plant.ClientID %>');
+            var ddlLine = document.getElementById('<%= DDL_PlantLine.ClientID %>');
+            var ddlProductCategory = document.getElementById('<%= DDL_ProductCategory.ClientID %>');
+            var ddlProductBrand = document.getElementById('<%= DDL_ProductBrand.ClientID %>');
+            var ddlBrandSKU = document.getElementById('<%= DDL_BrandSKU.ClientID %>'); // Get DDL_BrandSKU
+            var btnAddList = document.getElementById('<%= btn_AddList.ClientID %>'); // Get btn_AddList
+            var btn_resetgrid = document.getElementById('<%= btn_resetgrid.ClientID %>'); // Get btn_AddList
+
+            // Check if any dropdown has the default value (assuming value="0" for unselected)
+            if (ddlPlant.value == "0" || ddlLine.value == "0" || ddlProductCategory.value == "0" || ddlProductBrand.value == "0") {
+                // Show a message if any dropdown is not selected
+                alert("Please select all required fields before locking/unlocking.");
+                return false; // Prevent the action
+            }
+
+            // If all dropdowns are selected, toggle the fields
+            toggleFields();  // Call your toggleFields function
+
+            // Enable the DDL_BrandSKU and btn_AddList
+            ddlBrandSKU.disabled = false; // Enable DDL_BrandSKU
+            btnAddList.disabled = false; // Enable btn_AddList
+            btn_resetgrid.disabled = false;
+
+            return false; // Prevent postback
+        }
+
+        function toggleFields() {
+            // Get the elements by their client-side IDs
+            var ddlPlant = document.getElementById('<%= DDL_Plant.ClientID %>');
+            var ddlPlantLine = document.getElementById('<%= DDL_PlantLine.ClientID %>');
+            var ddlProductCategory = document.getElementById('<%= DDL_ProductCategory.ClientID %>');
+            var ddlProductBrand = document.getElementById('<%= DDL_ProductBrand.ClientID %>');
+
+            var fields = [ddlPlant, ddlPlantLine, ddlProductCategory, ddlProductBrand];
+            var areFieldsDisabled = ddlPlant.disabled;
+
+            // Toggle the disabled state of the fields
+            for (var i = 0; i < fields.length; i++) {
+                fields[i].disabled = !areFieldsDisabled;
+            }
+            // Store the lock state in the hidden field
+            var lockState = !areFieldsDisabled;
+            document.getElementById('<%= hfLockState.ClientID %>').value = lockState;
+        }
+
+
+
+    </script>
+    <asp:HiddenField ID="hfLockState" runat="server" />
     <asp:HiddenField ID="hdn_shiftvalue" runat="server" />
     <asp:HiddenField ID="hdn_formid" runat="server" />
 
@@ -273,20 +324,20 @@
 
                         <div class="x_content">
 
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <asp:Label ID="Label1" runat="server" AssociatedControlID="DDL_Plant" Text="Plant Name" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                    <asp:RequiredFieldValidator ID="RFV_DDL_Plant" runat="server" ErrorMessage="Required" ForeColor="Red" ValidationGroup="Submit" ControlToValidate="DDL_Plant" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
+                            <div class="col-md-2">
+                                <div class="mb-2">
+                                    <asp:Label ID="lbl_DDL_Plant_Value" runat="server" AssociatedControlID="DDL_Plant" Text="Plant Name" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:RequiredFieldValidator ID="RFV_DDL_Plant" runat="server" ErrorMessage="Required" ForeColor="Red" ValidationGroup="NewRow" ControlToValidate="DDL_Plant" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:DropDownList ID="DDL_Plant" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" ValidationGroup="Submit" OnSelectedIndexChanged="DDL_Plant_SelectedIndexChanged"></asp:DropDownList>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-3">
-                                <div class="mb-3">
+                            <div class="col-md-2">
+                                <div class="mb-2">
                                     <asp:Label ID="Label2" runat="server" AssociatedControlID="DDL_PlantLine" Text="Select Line" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                    <asp:RequiredFieldValidator ID="RFV_DDL_PlantLine" runat="server" ErrorMessage="Required" ForeColor="Red" ValidationGroup="Submit" ControlToValidate="DDL_PlantLine" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
+                                    <asp:RequiredFieldValidator ID="RFV_DDL_PlantLine" runat="server" ErrorMessage="Required" ForeColor="Red" ValidationGroup="NewRow" ControlToValidate="DDL_PlantLine" Display="Dynamic" InitialValue="0"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:DropDownList ID="DDL_PlantLine" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_PlantLine_SelectedIndexChanged"></asp:DropDownList>
 
@@ -294,10 +345,10 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3">
-                                <div class="mb-3">
+                            <div class="col-md-2">
+                                <div class="mb-2">
                                     <asp:Label ID="Label3" runat="server" AssociatedControlID="DDL_ProductCategory" Text="Product Category" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                    <asp:RequiredFieldValidator ID="RFV_DDL_ProductCategory" runat="server" ErrorMessage="Required" ForeColor="Red" ValidationGroup="Submit" InitialValue="0" ControlToValidate="DDL_ProductCategory" Display="Dynamic"></asp:RequiredFieldValidator>
+                                    <asp:RequiredFieldValidator ID="RFV_DDL_ProductCategory" runat="server" ErrorMessage="Required" ForeColor="Red" ValidationGroup="NewRow" InitialValue="0" ControlToValidate="DDL_ProductCategory" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:DropDownList ID="DDL_ProductCategory" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_ProductCategory_SelectedIndexChanged"></asp:DropDownList>
 
@@ -305,8 +356,8 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-3">
-                                <div class="mb-3">
+                            <div class="col-md-2">
+                                <div class="mb-2">
                                     <asp:Label ID="Label4" runat="server" AssociatedControlID="DDL_ProductBrand" Text="Product Brand" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_DDL_ProductBrand" runat="server" ErrorMessage="Required" ForeColor="Red" ValidationGroup="Submit" ControlToValidate="DDL_ProductBrand" InitialValue="0" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
@@ -314,6 +365,26 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <%--Lock/Unlock button--%>
+                            <div class="col-md-2">
+                                <div class="mb-2">
+                                    <asp:Label ID="Label6" runat="server" AssociatedControlID="btn_lock" Text="Lock Selection" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <div class="input-group-sm">
+                                        <asp:Button ID="btn_lock" runat="server" Text="Lock/Unlock" CssClass="btn btn-sm btn-primary" CausesValidation="true" ValidationGroup="NewRow" OnClientClick="return checkDropdownsAndToggleFields();" />
+                                    </div>
+                                </div>
+                            </div>
+                            <%--Lock/Unlock button end here--%>
+                        </div>
+                    </div>
+
+                    <div class="x_panel">
+                        <div class="x_title">
+                            <h2>Dynamic Section</h2>
+                            <div class="clearfix"></div>
+                        </div>
+                        <div class="x_content">
 
                             <div class="col-md-3">
                                 <div class="mb-3">
@@ -344,7 +415,7 @@
                                     <asp:RequiredFieldValidator ID="RFV_MaterialCode" runat="server" ErrorMessage="Required" ValidationGroup="NotSubmit" InitialValue="" ControlToValidate="TXT_MaterialCode" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                     <asp:RegularExpressionValidator ID="REV_MaterialCode" runat="server" ValidationGroup="Submit" ControlToValidate="TXT_MaterialCode" ForeColor="Red" ErrorMessage="Alphanumeric Only" ValidationExpression="^[a-zA-Z0-9, /]*$" Display="Dynamic"></asp:RegularExpressionValidator>
                                     <div class="input-group-sm">
-                                        <asp:TextBox ID="TXT_MaterialCode" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Inspection Lot"></asp:TextBox>
+                                        <asp:TextBox ID="TXT_MaterialCode" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Material Code"></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
@@ -424,7 +495,7 @@
 
                             <div class="col-md-3" id="TappingRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelTappingRemarks" runat="server" AssociatedControlID="TXB_Tapping_Remarks" Text="Tapping of CBB (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelTappingRemarks" runat="server" AssociatedControlID="TXB_Tapping_Remarks" Text="Tapping of CBB (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_TappingRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_Tapping_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_Tapping_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -505,7 +576,7 @@
 
                             <div class="col-md-3" id="LongSealRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelLongSealRemarks" runat="server" AssociatedControlID="TXB_LongSeal_Remarks" Text="Long Seal Condition (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelLongSealRemarks" runat="server" AssociatedControlID="TXB_LongSeal_Remarks" Text="Long Seal Condition (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_LongSealRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_LongSeal_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_LongSeal_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -528,7 +599,7 @@
 
                             <div class="col-md-3" id="EndSealRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelEndSealRemarks" runat="server" AssociatedControlID="TXB_EndSeal_Remarks" Text="End Seal Condition (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelEndSealRemarks" runat="server" AssociatedControlID="TXB_EndSeal_Remarks" Text="End Seal Condition (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_EndSealRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_EndSeal_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_EndSeal_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -551,7 +622,7 @@
 
                             <div class="col-md-3" id="MainPanelRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelMainPanelRemarks" runat="server" AssociatedControlID="TXB_MainPanel_Remarks" Text="Main Panel Central (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelMainPanelRemarks" runat="server" AssociatedControlID="TXB_MainPanel_Remarks" Text="Main Panel Central (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_MainPanelRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_MainPanel_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_MainPanel_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -574,7 +645,7 @@
 
                             <div class="col-md-3" id="CutsPacketsRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelCutsPacketsRemarks" runat="server" AssociatedControlID="TXB_CutsPackets_Remarks" Text="Cuts in Packets (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelCutsPacketsRemarks" runat="server" AssociatedControlID="TXB_CutsPackets_Remarks" Text="Cuts in Packets (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_CutsPacketsRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_CutsPackets_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_CutsPackets_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -597,7 +668,7 @@
 
                             <div class="col-md-3" id="BackingStatusRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelBackingStatusRemarks" runat="server" AssociatedControlID="TXB_BackingStatus_Remarks" Text="Baking of Biscuits (Under/Over Baked)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelBackingStatusRemarks" runat="server" AssociatedControlID="TXB_BackingStatus_Remarks" Text="Baking of Biscuits (Under/Over Baked)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_BackingStatusRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_BackingStatus_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_BackingStatus_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -620,7 +691,7 @@
 
                             <div class="col-md-3" id="ElongOvalRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelElongOvalRemarks" runat="server" AssociatedControlID="TXB_ElongOval_Remarks" Text="Shape Condition (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelElongOvalRemarks" runat="server" AssociatedControlID="TXB_ElongOval_Remarks" Text="Shape Condition (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_ElongOvalRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_ElongOval_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_ElongOval_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -643,7 +714,7 @@
 
                             <div class="col-md-3" id="CuppingRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelCuppingRemarks" runat="server" AssociatedControlID="TXB_Cupping_Remarks" Text="Cupping Condition (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelCuppingRemarks" runat="server" AssociatedControlID="TXB_Cupping_Remarks" Text="Cupping Condition (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_CuppingRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_Cupping_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_Cupping_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -666,7 +737,7 @@
 
                             <div class="col-md-3" id="ImpressionRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelImpressionRemarks" runat="server" AssociatedControlID="TXB_Impression_Remarks" Text="Impression on Biscuits (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelImpressionRemarks" runat="server" AssociatedControlID="TXB_Impression_Remarks" Text="Impression on Biscuits (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_ImpressionRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_Impression_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_Impression_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -689,7 +760,7 @@
 
                             <div class="col-md-3" id="SoggyStatusRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelSoggyStatusRemarks" runat="server" AssociatedControlID="TXB_SoggyStatus_Remarks" Text="Biscuit Soggy (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelSoggyStatusRemarks" runat="server" AssociatedControlID="TXB_SoggyStatus_Remarks" Text="Biscuit Soggy (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_SoggyStatusRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_SoggyStatus_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_SoggyStatus_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -712,7 +783,7 @@
 
                             <div class="col-md-3" id="ForeignBodyRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelForeignBodyRemarks" runat="server" AssociatedControlID="TXB_ForeignBody_Remarks" Text="Foreign Body in Biscuit (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelForeignBodyRemarks" runat="server" AssociatedControlID="TXB_ForeignBody_Remarks" Text="Foreign Body in Biscuit (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_ForeignBodyRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_ForeignBody_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_ForeignBody_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -735,7 +806,7 @@
 
                             <div class="col-md-3" id="OffOdourRemarksDiv" style="display: none;">
                                 <div class="mb-3">
-                                    <asp:Label ID="LabelOffOdourRemarks" runat="server" AssociatedControlID="TXB_OffOdour_Remarks" Text="Off Odour (Not Ok)" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <asp:Label ID="LabelOffOdourRemarks" runat="server" AssociatedControlID="TXB_OffOdour_Remarks" Text="Off Odour (Not Ok)" ForeColor="IndianRed" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <asp:RequiredFieldValidator ID="RFV_OffOdourRemarks" runat="server" ErrorMessage="Required" ForeColor="Red" ControlToValidate="TXB_OffOdour_Remarks" Display="Dynamic"></asp:RequiredFieldValidator>
                                     <div class="input-group-sm">
                                         <asp:TextBox ID="TXB_OffOdour_Remarks" runat="server" CssClass="form-control form-control-sm rounded"></asp:TextBox>
@@ -747,15 +818,21 @@
                                 <div class="mb-3">
                                     <asp:Label ID="LabelRemarks" runat="server" AssociatedControlID="TXB_Remarks" Text="Additional Remarks :" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <div class="input-group-sm">
-                                        <asp:TextBox ID="TXB_Remarks" runat="server" CssClass="form-control form-control-sm rounded" TextMode="MultiLine" Text="No Remarks" Rows="1" Width="100%"></asp:TextBox>
+                                        <asp:TextBox ID="TXB_Remarks" runat="server" CssClass="form-control form-control-sm rounded" TextMode="MultiLine" Placeholder="No Remarks" Rows="1" Width="100%"></asp:TextBox>
                                     </div>
                                 </div>
                             </div>
 
+                            <%--Add more--%>
+                            <div class="col-md-12 text-center" id="AddMoreDiv" runat="server">
+                                <asp:Button ID="btn_AddList" runat="server" Text="Submit" CausesValidation="true" ValidationGroup="Submit" CssClass="btn btn-sm btn-primary" OnClick="btn_AddList_Click" />
+                                <asp:Button ID="btn_resetgrid" runat="server" Text="Reset Inputs" CssClass="btn btn-sm btn-warning" CausesValidation="false" OnClick="btn_resetgrid_Click" />
+                                <asp:Label ID="lbl_message" runat="server" ForeColor="Red" Font-Bold="true"></asp:Label>
+                            </div>
+                            <%--Add more end--%>
 
-
-
-                            <div class="col-md-3">
+                            <%--Old button code--%>
+                            <%--<div class="col-md-3">
                                 <div class="mb-3">
                                     <asp:Label ID="Lbl_btnSubmit" runat="server" AssociatedControlID="btnSubmit" Text="Click to SUBMIT" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                     <div class="input-group input-group-sm">
@@ -763,11 +840,97 @@
                                         <asp:Button ID="btnReset" runat="server" Text="Reset" CssClass="btn btn-warning btn-sm" CausesValidation="false" OnClick="btnReset_Click" />
                                     </div>
                                 </div>
+                            </div>--%>
+                            <%--Old button code end here--%>
+
+                            <div class="col-md-12 text-center">
+                                <%--<div class="card-box col-md-12 col-sm-12" style="width: 100%; height: 350px; overflow: scroll;">--%>
+                                <asp:GridView ID="gvData" runat="server" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" AutoGenerateColumns="false" ShowFooter="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowDeleting="gvData_RowDeleting">
+                                    <Columns>
+                                        <asp:TemplateField HeaderText="Sl No.">
+                                            <ItemTemplate>
+                                                <%# Container.DataItemIndex + 1 %>
+                                            </ItemTemplate>
+                                        </asp:TemplateField>
+                                        <asp:BoundField DataField="Plant" HeaderText="Plant" SortExpression="Plant" Visible="false" />
+                                        <asp:BoundField DataField="PlantId" HeaderText="Plant Id" SortExpression="PlantId" Visible="false" />
+                                        <asp:BoundField DataField="PlantLine" HeaderText="Plant Line" SortExpression="PlantLine" Visible="false" />
+                                        <asp:BoundField DataField="PlantLineId" HeaderText="Plant Line Id" SortExpression="PlantLineId" Visible="false" />
+                                        <asp:BoundField DataField="ProductCategory" HeaderText="Product Category" SortExpression="ProductCategory" Visible="false" />
+                                        <asp:BoundField DataField="ProductCategoryId" HeaderText="Product Category Id" SortExpression="ProductCategoryId" Visible="false" />
+                                        <asp:BoundField DataField="ProductBrand" HeaderText="Product Brand" SortExpression="ProductBrand" />
+                                        <asp:BoundField DataField="ProductBrandId" HeaderText="Product Brand Id" SortExpression="ProductBrandId" Visible="false" />
+                                        <asp:BoundField DataField="BrandSKU" HeaderText="Brand SKU" SortExpression="BrandSKU" />
+                                        <asp:BoundField DataField="BrandSKUId" HeaderText="Brand SKU Id" SortExpression="BrandSKUId" Visible="false" />
+
+                                        <asp:BoundField DataField="InspectionLot" HeaderText="Inspection Lot" SortExpression="InspectionLot" />
+                                        <asp:BoundField DataField="MaterialCode" HeaderText="Material Code" SortExpression="MaterialCode" />
+                                        <asp:BoundField DataField="NoOfCBBProduced" HeaderText="No of CBB Produced" SortExpression="NoOfCBBProduced" />
+                                        <asp:BoundField DataField="NoOfCBBChecked" HeaderText="No of CBB Checked" SortExpression="NoOfCBBChecked" />
+                                        <asp:BoundField DataField="BoxCondition" HeaderText="Box Condition" SortExpression="BoxCondition" />
+                                        <asp:BoundField DataField="BoxConditionNotOkRemarks" HeaderText="Box Condition Not Ok Remarks" SortExpression="BoxConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="NoOfPacketsInCBB" HeaderText="No of Packets in CBB" SortExpression="NoOfPacketsInCBB" />
+                                        <asp:BoundField DataField="TappingOfCBB" HeaderText="Tapping Of CBB" SortExpression="TappingOfCBB" />
+                                        <asp:BoundField DataField="TappingOfCBBNotOkRemarks" HeaderText="Tapping Of CBB Not Ok Remarks" SortExpression="TappingOfCBBNotOkRemarks" />
+                                        <asp:BoundField DataField="PktsCheckedCBBBox" HeaderText="Pkts Checked CBB Box" SortExpression="PktsCheckedCBBBox" />
+                                        <asp:BoundField DataField="WtOfPkts" HeaderText="Wt. Of Pkts" SortExpression="WtOfPkts" />
+                                        <asp:BoundField DataField="PkgDate" HeaderText="Pkg Date" SortExpression="PkgDate" />
+                                        <asp:BoundField DataField="BatchLotNo" HeaderText="Batch / Lot No." SortExpression="BatchLotNo" />
+                                        <asp:BoundField DataField="MRPOfPkts" HeaderText="MRP of Pkts (in ₹)" SortExpression="MRPOfPkts" />
+                                        <asp:BoundField DataField="LongSealCondition" HeaderText="Long Seal Condition" SortExpression="LongSealCondition" />
+                                        <asp:BoundField DataField="LongSealConditionNotOkRemarks" HeaderText="Long Seal Condition Not Ok Remarks" SortExpression="LongSealConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="EndSealCondition" HeaderText="End Seal Condition" SortExpression="EndSealCondition" />
+                                        <asp:BoundField DataField="EndSealConditionNotOkRemarks" HeaderText="End Seal Condition Not Ok Remarks" SortExpression="EndSealConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="MainPanelCentralNot" HeaderText="Main Panel Central/ Not" SortExpression="MainPanelCentralNot" />
+                                        <asp:BoundField DataField="MainPanelCentralNotOkRemarks" HeaderText="Main Panel Central Not Ok Remarks" SortExpression="MainPanelCentralNotOkRemarks" />
+                                        <asp:BoundField DataField="CutsInPackets" HeaderText="Cuts in Packets" SortExpression="MainPanelCentralNot" />
+                                        <asp:BoundField DataField="CutsInPacketsNotOkRemarks" HeaderText="Cuts in Packets Not Ok Remarks" SortExpression="CutsInPacketsNotOkRemarks" />
+                                        <asp:BoundField DataField="BakingUnderOverBaked" HeaderText="Baking (Under/Over Baked)" SortExpression="BakingUnderOverBaked" />
+                                        <asp:BoundField DataField="BakingUnderOverBakedNotOkRemarks" HeaderText="Baking (Under/Over Baked) Remarks" SortExpression="BakingUnderOverBakedNotOkRemarks" />
+                                        <asp:BoundField DataField="ShapeConditionElongatedOrOval" HeaderText="Shape Condition (Elongated or Oval)" SortExpression="ShapeConditionElongatedOrOval" />
+                                        <asp:BoundField DataField="ShapeConditionElongatedOrOvalNotOkRemarks" HeaderText="Shape Condition (Elongated or Oval) Not Ok Remarks" SortExpression="ShapeConditionElongatedOrOvalNotOkRemarks" />
+                                        <asp:BoundField DataField="CuppingCondition" HeaderText="Cupping Condition" SortExpression="CuppingCondition" />
+                                        <asp:BoundField DataField="CuppingConditionNotOkRemarks" HeaderText="Cupping Condition Not Ok Remarks" SortExpression="CuppingConditionNotOkRemarks" />
+                                        <asp:BoundField DataField="ImpressionOnBiscuits" HeaderText="Impression on Biscuits" SortExpression="ImpressionOnBiscuits" />
+                                        <asp:BoundField DataField="ImpressionOnBiscuitsNotOkRemarks" HeaderText="Impression on Biscuits Not Ok Remarks" SortExpression="ImpressionOnBiscuitsNotOkRemarks" />
+                                        <asp:BoundField DataField="BiscuitSoggy" HeaderText="Biscuit Soggy" SortExpression="BiscuitSoggy" />
+                                        <asp:BoundField DataField="BiscuitSoggyNotOkRemarks" HeaderText="Biscuit Soggy Not Ok Remarks" SortExpression="BiscuitSoggyNotOkRemarks" />
+                                        <asp:BoundField DataField="ForeignBodyInBiscuit" HeaderText="Foreign Body in Biscuit" SortExpression="ForeignBodyInBiscuit" />
+                                        <asp:BoundField DataField="ForeignBodyInBiscuitNotOkRemarks" HeaderText="Foreign Body in Biscuit Not Ok Remarks" SortExpression="ForeignBodyInBiscuitNotOkRemarks" />
+                                        <asp:BoundField DataField="OffOdour" HeaderText="Off Odour (Yes/No)" SortExpression="OffOdour" />
+                                        <asp:BoundField DataField="OffOdourNotOkRemarks" HeaderText="Off Odour Not Ok Remarks" SortExpression="OffOdourNotOkRemarks" />
+                                        <asp:BoundField DataField="Remarks" HeaderText="Remarks" SortExpression="Remarks" />
+
+                                        <asp:TemplateField HeaderText="Action" HeaderStyle-Width="5%">
+                                            <ItemTemplate>
+                                                <asp:ImageButton ID="btndelete" runat="server" CommandName="Delete" Height="15px" ImageUrl="~/WebData/Internal/delete_icon.png" Width="15px" ToolTip="Delete" OnClientClick="return confirm('Do you want to DELETE...?')" ImageAlign="Middle" />
+                                            </ItemTemplate>
+                                            <ItemStyle CssClass="text text-center" />
+                                        </asp:TemplateField>
+                                    </Columns>
+                                    <EmptyDataTemplate>
+                                        <div class="grid">No Data Found</div>
+                                    </EmptyDataTemplate>
+                                </asp:GridView>
+                                <%--</div>--%>
                             </div>
 
                         </div>
                     </div>
+
+                    <%--button start--%>
+                    <div class="col-md-6 center-margin" id="final_save_btns" runat="server" visible="false">
+                        <div class="ln_solid"></div>
+                        <div class="col-md-12 col-sm-12 center" style="text-align: center;">
+                            <asp:Button ID="btn_svall" runat="server" Text="Submit" CssClass="btn btn-success btn-sm" Visible="true" CausesValidation="false" OnClick="btn_svall_Click" />
+                            <asp:Button ID="btn_resetpage" runat="server" Text="Reset Inputs" CssClass="btn btn-sm btn-warning" CausesValidation="false" PostBackUrl="~/qaqc_pre_dispatch_QI_Report.aspx" />
+                            <asp:Button ID="btn_home2" runat="server" Text="HOME" CssClass="btn btn-sm btn-danger" PostBackUrl="~/home.aspx" CausesValidation="false" />
+                            <asp:Label ID="lbl_svall_msg" runat="server" Font-Bold="true"></asp:Label>
+                        </div>
+                    </div>
+                    <%--button end--%>
                 </div>
+
             </div>
 
             <div class="row">

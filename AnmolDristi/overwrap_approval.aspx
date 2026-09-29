@@ -30,7 +30,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-3" runat="server" visible="false">
                                             <div class="mb-3">
                                                 <asp:Label ID="Label4" runat="server" AssociatedControlID="DDL_ProductBrand" Text="Product Brand" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                 <asp:RequiredFieldValidator ID="RFV_DDL_ProductBrand" runat="server" ErrorMessage="" ForeColor="Red" ControlToValidate="DDL_ProductBrand" InitialValue="" Display="Dynamic"></asp:RequiredFieldValidator>
@@ -89,7 +89,7 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="lbl_viewname" runat="server" Text="Label"></asp:Label>
-                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" />
+                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" OnClick="ExportBtn_Click" />
                             </h2>
                             <div class="clearfix"></div>
                         </div>
@@ -109,7 +109,7 @@
                                 <asp:TemplateField HeaderText="Plant Details" HeaderStyle-Width="20%">
                                     <ItemTemplate>
                                         Plant:<asp:Label ID="lbl_PlantName" runat="server" Text='<%# Eval("PlantName") %>' Font-Bold="true" /><br />
-                                        Brand:<asp:Label ID="lbl_ProductBrand" runat="server" Text='<%# Eval("ProductBrand") %>' Font-Bold="true" /><br />
+                                        Brand:<asp:Label ID="lbl_ProductBrand" runat="server" Text='<%# Eval("Material") %>' Font-Bold="true" /><br />
                                     </ItemTemplate>
                                 </asp:TemplateField>
 

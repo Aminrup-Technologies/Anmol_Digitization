@@ -235,8 +235,8 @@ namespace AnmolDristi
 
                 TB_Foreign_Impurities.Text = dt.Rows[0]["Foreign_Matter_Impurities"].ToString();
 
-                TB_PH.Text = dt.Rows[0]["Purity"].ToString();
-                TXB_PH_Remarks.Text = dt.Rows[0]["CommentsForPurity"].ToString();
+                TB_Purity.Text = dt.Rows[0]["Purity"].ToString();
+                TXB_Purity_Remarks.Text = dt.Rows[0]["CommentsForPurity"].ToString();
 
                 TB_PH.Text = dt.Rows[0]["PH"].ToString();
                 TXB_PH_Remarks.Text = dt.Rows[0]["CommentsForPH"].ToString();

@@ -68,8 +68,8 @@ namespace AnmolDristi
             if (DDL_Plant.SelectedIndex != 0)
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
-                ProductBrandsBinder(selectedPlantValue);
-
+                //ProductBrandsBinder(selectedPlantValue);
+                DataLoader();
             }
             else
             {
@@ -149,7 +149,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qchome_rpt.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -173,12 +173,25 @@ namespace AnmolDristi
                     SELECT TOP(30)
                         c.ID AS DBID,
                         c.FormID as FormID,
-                        'NA' as RecordID,
+                        c.OVRID as RecordID,
                         p.plant_name AS PlantName,
                         c.SubmittedByEmployeeCode as EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
                         c.SubmittedTime as STime,
+	                    c.ProductBrand as Material,
+                        c.SupplierName,
+                        c.ChallanNo,
+                        c.ChallanDate,
+                        c.LotGateNo,
+                        c.VehicleNo,
+                        c.SealingValue,
+                        c.DimensionStd,
+                        c.RemarkForDimensionStd,
+                        c.DimensionObs,
+                        c.GMS_Std,
+                        c.RemarkForGSM_Std,
+                        c.GSM_Obs,
                         c.Remarks as Remarks,
                         c.Approver1EmployeeCode as L1,
                         c.Approver1_Status,
@@ -230,12 +243,25 @@ namespace AnmolDristi
                 SELECT 
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    c.OVRID as RecordID,
                     p.plant_name AS PlantName,
-                    pb.brand_name AS ProductBrand,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
+                    c.ProductBrand as Material,
+                    c.SupplierName,
+                    c.ChallanNo,
+                    c.ChallanDate,
+                    c.LotGateNo,
+                    c.VehicleNo,
+                    c.SealingValue,
+                    c.DimensionStd,
+                    c.RemarkForDimensionStd,
+                    c.DimensionObs,
+                    c.GMS_Std,
+                    c.RemarkForGSM_Std,
+                    c.GSM_Obs,
                     'No Comment' AS Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
@@ -248,7 +274,6 @@ namespace AnmolDristi
                     c.DottedApprover_TimeStamp
                 FROM TRN_OVERWRAP c
                 LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
-                LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
                 LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                 WHERE 1 = 1");
 
@@ -285,11 +310,11 @@ namespace AnmolDristi
             //    parameters.Add(new SqlParameter("@ProductCategory", SqlDbType.Int) { Value = DDL_ProductCategory.SelectedValue });
             //}
 
-            if (!string.IsNullOrEmpty(DDL_ProductBrand.SelectedValue) && DDL_ProductBrand.SelectedValue != "0")
-            {
-                queryBuilder.Append(" AND c.ProductBrand = @ProductBrand");
-                parameters.Add(new SqlParameter("@ProductBrand", SqlDbType.Int) { Value = DDL_ProductBrand.SelectedValue });
-            }
+            //if (!string.IsNullOrEmpty(DDL_ProductBrand.SelectedValue) && DDL_ProductBrand.SelectedValue != "0")
+            //{
+            //    queryBuilder.Append(" AND c.ProductBrand = @ProductBrand");
+            //    parameters.Add(new SqlParameter("@ProductBrand", SqlDbType.Int) { Value = DDL_ProductBrand.SelectedValue });
+            //}
 
             queryBuilder.Append(" ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC");
 

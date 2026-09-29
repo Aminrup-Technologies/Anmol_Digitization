@@ -27,7 +27,7 @@ namespace AnmolDristi
                 }
                 else
                 {
-                    lbl_docname.Text = "PVC Tray / Mono CB Report";
+                    lbl_docname.Text = "PVC Tray / Pet Tray / Mono CB Report";
                     lbl_docnumber.Text = "ANMOL/DOC/CORP/QC/PKNG/05";
 
                     PlantBinder();
@@ -363,10 +363,11 @@ namespace AnmolDristi
         private void MakeInputsReadOnly()
         {
             DDL_Plant.Enabled = false;
+            DDL_Material.Enabled = false;
             //DDL_BrandSKU.Enabled = false;
             TB_BrandSKU.ReadOnly = true;
             TB_ChalanNo.ReadOnly = true;
-            TB_ChalanNo.ReadOnly = true;
+            //TB_ChalanNo.ReadOnly = true;
             TB_MatVarietyName.ReadOnly = true;
             TB_Supplier.ReadOnly = true;
             TB_Size.ReadOnly = true;
@@ -472,6 +473,21 @@ namespace AnmolDristi
             string approver2EmployeeCode = Approver2CodeLabel.Text;
             string dottedLineApproverEmployeeCode = DottedLineApproverCodeLabel.Text;
 
+            //25 may 2025
+            string materialType = DDL_Material.SelectedValue;
+            if (materialType == "0")
+            {
+                string DDL_Material_Error_script = @"<script type='text/javascript'>
+                            new PNotify({
+                                title: 'Error',
+                                text: 'Please select a valid material type.',
+                                type: 'error',
+                                styling: 'bootstrap3'
+                            });
+                        </script>";
+                ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantInvalidErrorNotification", DDL_Material_Error_script, false);
+            }
+            
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
@@ -479,9 +495,9 @@ namespace AnmolDristi
                     conn.Open();
 
                     // SQL Insert Query
-                    string query = @"INSERT INTO TRN_PVC_Tray (PVCID, FormID, PlantName, ProductBrand, BrandSku, Supplier_Name, SampleSize, Challan_No, Challan_Date, Lot_No, Vehicle_No, Dimension_Std_L, Dimension_Std_W, Dimension_Std_H, GSM_Std, Dimension_Obs_L, Dimension_Obs_W, Dimension_Obs_H, GSM_Obs, Remarks, SubmittedById, SubmittedByEmployeeCode, SubmittedDate, SubmittedTime, Approver1EmployeeCode, Approver2EmployeeCode, DottedLineApproverEmployeeCode, Approver1_Status, Approver2_Status, DottedApprover_Status, SubmissionStatus)
+                    string query = @"INSERT INTO TRN_PVC_Tray (PVCID, FormID, PlantName, MaterialType, ProductBrand, BrandSku, Supplier_Name, SampleSize, Challan_No, Challan_Date, Lot_No, Vehicle_No, Dimension_Std_L, Dimension_Std_W, Dimension_Std_H, GSM_Std, Dimension_Obs_L, Dimension_Obs_W, Dimension_Obs_H, GSM_Obs, Remarks, SubmittedById, SubmittedByEmployeeCode, SubmittedDate, SubmittedTime, Approver1EmployeeCode, Approver2EmployeeCode, DottedLineApproverEmployeeCode, Approver1_Status, Approver2_Status, DottedApprover_Status, SubmissionStatus)
                     VALUES
-                    (@PVCID, @FormID, @PlantName, @ProductBrand, @BrandSku, @Supplier_Name, @SampleSize, @Challan_No, @Challan_Date, @Lot_No, @Vehicle_No, @Dimension_Std_L, @Dimension_Std_W, @Dimension_Std_H, @GSM_Std, @Dimension_Obs_L, @Dimension_Obs_W, @Dimension_Obs_H, @GSM_Obs, @Remarks, @SubmittedById, @SubmittedByEmployeeCode, @SubmittedDate, @SubmittedTime, @Approver1EmployeeCode, @Approver2EmployeeCode, @DottedLineApproverEmployeeCode, @Approver1_Status, @Approver2_Status, @DottedApprover_Status, @SubmissionStatus)";
+                    (@PVCID, @FormID, @PlantName, @MaterialType, @ProductBrand, @BrandSku, @Supplier_Name, @SampleSize, @Challan_No, @Challan_Date, @Lot_No, @Vehicle_No, @Dimension_Std_L, @Dimension_Std_W, @Dimension_Std_H, @GSM_Std, @Dimension_Obs_L, @Dimension_Obs_W, @Dimension_Obs_H, @GSM_Obs, @Remarks, @SubmittedById, @SubmittedByEmployeeCode, @SubmittedDate, @SubmittedTime, @Approver1EmployeeCode, @Approver2EmployeeCode, @DottedLineApproverEmployeeCode, @Approver1_Status, @Approver2_Status, @DottedApprover_Status, @SubmissionStatus)";
 
 
                     using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -490,6 +506,7 @@ namespace AnmolDristi
                         cmd.Parameters.AddWithValue("@PVCID", GenerateUniquePVC_PK());
                         cmd.Parameters.AddWithValue("@FormID", 14);
                         cmd.Parameters.AddWithValue("@PlantName", plantName);
+                        cmd.Parameters.AddWithValue("@MaterialType", materialType);
                         cmd.Parameters.AddWithValue("@ProductBrand", productBrand);
                         cmd.Parameters.AddWithValue("@BrandSku", brandSku);
                         cmd.Parameters.AddWithValue("@Supplier_Name", Supplier_Name);

@@ -1,0 +1,5 @@
+2026-05-13 12:51:57 | PROFILE_UPDATE | CHANGES DETECTED:
+PlantId: '0' -> '1089'
+Email: '' -> 'qa.mis@anmolindustries.com'
+Gender: '' -> 'Female' | By: Kaushik Kumar Majhi
+2026-05-13 12:53:12 | PASSWORD_RESET | Admin triggered manual password reset. Set to auto-generated temporary password. | By: Kaushik Kumar Majhi

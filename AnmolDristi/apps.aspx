@@ -94,12 +94,12 @@
                             <div class="col-md-12">
                                 <div class="x_panel">
                                     <div class="x_title">
-                                        <h2>Application <small>Store </small></h2>
+                                        <h2>One Technology <small>Platform </small></h2>
                                         <div class="clearfix"></div>
                                     </div>
                                     <div class="x_content">
 
-                                        <div class="row" >
+                                        <div class="row">
                                             <div class="col-md-55" id="powerbi_com" runat="server" visible="false">
                                                 <div class="thumbnail">
                                                     <div class="image view view-first">
@@ -110,6 +110,20 @@
                                                     <div class="caption">
                                                         <p>Sales Dashboard</p>
                                                         <p>(anmolindustries.com Users)</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="https://crm.anmolindustries.com/authentication/sign-in" target="_blank">
+                                                            <img style="width: 80%; display: block;" src="WebData/crm.png" alt="image" height="100%" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>CRM/ MDM Portal</p>
+                                                        <p>[Vendor & Material]</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -139,7 +153,7 @@
                                                 <div class="thumbnail">
                                                     <div class="image view view-first">
                                                         <a href="login.aspx">
-                                                            <img style="width: 70%; display: block;" src="WebData/qaqc.png" alt="image" height="100px" />
+                                                            <img style="width: 60%; display: block;" src="WebData/Anmol_QaQc.png" alt="image" height="100px" />
                                                         </a>
                                                         <%--<div class="mask">
                                                             <p>Quality Reporting Portal</p>
@@ -149,23 +163,13 @@
                                                         </div>--%>
                                                     </div>
                                                     <div class="caption">
-                                                        <p>Quality Reporting</p>
+                                                        <p>Anmol Dristi</p>
+                                                        <p>[Quality Reporting Portal]</p>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div class="col-md-55">
-                                                <div class="thumbnail">
-                                                    <div class="image view view-first">
-                                                        <a href="https://portal.zinghr.com/2015/pages/authentication/zing.aspx?ccode=anmol" target="_blank">
-                                                            <img style="width: 70%; display: block;" src="WebData/anmolaing.png" alt="image" height="100px" />
-                                                        </a>
-                                                    </div>
-                                                    <div class="caption">
-                                                        <p>ZingHR - Anmol Dost</p>
-                                                    </div>
-                                                </div>
-                                            </div>
+
 
                                             <div class="col-md-55">
                                                 <div class="thumbnail">
@@ -176,20 +180,7 @@
                                                     </div>
                                                     <div class="caption">
                                                         <p>e-Approval</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-
-                                            <div class="col-md-55">
-                                                <div class="thumbnail">
-                                                    <div class="image view view-first">
-                                                        <a href="https://anmolfiori.anmolindustries.com:44316/sap/bc/ui2/flp?sap-client=700" target="_blank">
-                                                            <img style="width: 70%; display: block;" src="WebData/sapfiori.png" alt="image" height="100px" />
-                                                        </a>
-                                                    </div>
-                                                    <div class="caption">
-                                                        <p>SAP Fiori</p>
+                                                        <p>[Internal Approvals]</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -203,6 +194,20 @@
                                                     </div>
                                                     <div class="caption">
                                                         <p>Gurukul</p>
+                                                        <p>[Employee LMS]</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="https://anmolfiori.anmolindustries.com:44316/sap/bc/ui2/flp?sap-client=700" target="_blank">
+                                                            <img style="width: 70%; display: block;" src="WebData/sapfiori.png" alt="image" height="100px" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>SAP Fiori</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -255,6 +260,57 @@
                                                     </div>
                                                     <div class="caption">
                                                         <p>CMS Reports</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="https://portal.zinghr.com/2015/pages/authentication/zing.aspx?ccode=anmol" target="_blank">
+                                                            <img style="width: 70%; display: block;" src="WebData/anmolaing.png" alt="image" height="100px" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>ZingHR - Anmol Dost</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="login.aspx" target="_blank">
+                                                            <img style="width: 60%; display: block;" src="WebData/vault.jpg" alt="image" height="70%" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>Digital Vault</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="login.aspx">
+                                                            <img style="width: 60%; display: block;" src="WebData/tada.jpg" alt="image" height="70%" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>SO-TA/DA</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-55">
+                                                <div class="thumbnail">
+                                                    <div class="image view view-first">
+                                                        <a href="login.aspx">
+                                                            <img style="width: 70%; display: block;" src="WebData/anmol_vms.png" alt="image" height="90%" />
+                                                        </a>
+                                                    </div>
+                                                    <div class="caption">
+                                                        <p>VMS</p>
                                                     </div>
                                                 </div>
                                             </div>

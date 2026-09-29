@@ -1,0 +1,639 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Configuration;
+using System.Globalization;
+using System.Web.UI.WebControls;
+using AnmolDristi.DAL;
+
+namespace AnmolDristi
+{
+    public partial class VMS_HostQuickLogin : System.Web.UI.Page
+    {
+        string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
+
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                ValidateAndLoadVisitor();
+            }
+        }
+
+        private void ValidateAndLoadVisitor()
+        {
+            int visitId;
+            string hostEmployeeCode;
+            if (!TryAuthorizeCapabilityLink(out visitId, out hostEmployeeCode))
+                return;
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                // Token host + LogID already verified; 07A row bind + live Active host required
+                // before any visitor PII columns are returned.
+                string query = @"
+                    SELECT v.VisitorName, v.VisitorCompany, v.PurposeOfVisit, v.ApprovalStatus, 
+                           ISNULL(NULLIF(v.VisitorMobile, ''), v.VisitorEmail) AS ContactInfo,
+                           ISNULL(v.ScheduleType, 'SingleDay') AS ScheduleType,
+                           v.RequestedValidFrom, v.RequestedValidUpto,
+                           v.ValidFrom, v.ValidUpto,
+                           ISNULL(v.TargetBranchID, 0) AS TargetBranchID
+                    FROM VMS_VisitLog v
+                    INNER JOIN MST_UserMaster u
+                        ON u.EmployeeCode = v.HostEmployeeCode
+                       AND u.EmployeeStatus = 'Active'
+                    WHERE v.LogID = @VisitId AND v.HostEmployeeCode = @EmpCode";
+
+                string scheduleType = "SingleDay";
+                string approvalStatus = string.Empty;
+                DateTime? requestedFrom = null;
+                DateTime? requestedTo = null;
+                DateTime? validFrom = null;
+                DateTime? validTo = null;
+                bool isPending = false;
+                bool found = false;
+                int loadedBranchId = 0;
+
+                using (SqlCommand cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@VisitId", visitId);
+                    cmd.Parameters.AddWithValue("@EmpCode", hostEmployeeCode);
+
+                    con.Open();
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        if (sdr.Read())
+                        {
+                            found = true;
+                            approvalStatus = sdr["ApprovalStatus"].ToString();
+                            scheduleType = sdr["ScheduleType"].ToString();
+                            if (sdr["RequestedValidFrom"] != DBNull.Value)
+                                requestedFrom = Convert.ToDateTime(sdr["RequestedValidFrom"]);
+                            if (sdr["RequestedValidUpto"] != DBNull.Value)
+                                requestedTo = Convert.ToDateTime(sdr["RequestedValidUpto"]);
+                            if (sdr["ValidFrom"] != DBNull.Value)
+                                validFrom = Convert.ToDateTime(sdr["ValidFrom"]);
+                            if (sdr["ValidUpto"] != DBNull.Value)
+                                validTo = Convert.ToDateTime(sdr["ValidUpto"]);
+                            loadedBranchId = Convert.ToInt32(sdr["TargetBranchID"]);
+
+                            if (approvalStatus == "Pending")
+                            {
+                                lblVisName.Text = sdr["VisitorName"].ToString();
+                                lblCompany.Text = sdr["VisitorCompany"].ToString();
+                                lblPurpose.Text = sdr["PurposeOfVisit"].ToString();
+                                lblContact.Text = sdr["ContactInfo"].ToString();
+                                lblSchedule.Text = VmsVisitScheduleHelper.FormatVisitScheduleSummary(
+                                    scheduleType, requestedFrom, requestedTo);
+                                if (requestedFrom.HasValue)
+                                    hfVisitFromDate.Value = requestedFrom.Value.ToString("yyyy-MM-dd");
+                                if (requestedTo.HasValue)
+                                    hfVisitToDate.Value = requestedTo.Value.ToString("yyyy-MM-dd");
+
+                                pnlAction.Visible = true;
+                                lblMessage.Visible = false;
+                                isPending = true;
+                            }
+                            else
+                            {
+                                lblMessage.CssClass = "success";
+                                lblMessage.Text = $"This request has already been processed.<br/>Current Status: {approvalStatus}";
+                            }
+                        }
+                        else
+                        {
+                            lblMessage.Text = "Visitor not found or you are not authorized to view this request.";
+                        }
+                    }
+                }
+
+                if (isPending)
+                {
+                    hfPlantTimingsJson.Value = loadedBranchId > 0
+                        ? VmsVisitScheduleHelper.GetPlantTimingsJson(loadedBranchId)
+                        : "{}";
+                    BindPendingVisitDays(con, visitId, scheduleType);
+                }
+
+                if (isPending && scheduleType == "MultiDay")
+                {
+                    BindRequestedDays(con, visitId);
+                }
+
+                if (isPending)
+                {
+                    PrefillApprovedValidityTimes(con, visitId.ToString(CultureInfo.InvariantCulture));
+                }
+
+                if (found && !isPending)
+                {
+                    BindVisitDaysRecap(
+                        con,
+                        visitId,
+                        scheduleType,
+                        approvalStatus,
+                        requestedFrom,
+                        requestedTo,
+                        validFrom,
+                        validTo);
+                }
+            }
+        }
+
+        private void BindPendingVisitDays(SqlConnection con, int visitId, string scheduleType)
+        {
+            List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
+            bool isMultiDay = string.Equals(scheduleType, "MultiDay", StringComparison.OrdinalIgnoreCase)
+                || days.Count > 1;
+            if (!isMultiDay || days.Count == 0)
+            {
+                litPendingVisitDays.Text = string.Empty;
+                return;
+            }
+
+            List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, "Pending");
+            litPendingVisitDays.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
+        }
+
+        private void BindVisitDaysRecap(
+            SqlConnection con,
+            int visitId,
+            string scheduleType,
+            string approvalStatus,
+            DateTime? requestedFrom,
+            DateTime? requestedTo,
+            DateTime? validFrom,
+            DateTime? validTo)
+        {
+            List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
+            litVisitDaysRecap.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+                scheduleType,
+                approvalStatus,
+                requestedFrom,
+                requestedTo,
+                validFrom,
+                validTo,
+                days);
+            pnlVisitDaysRecap.Visible = !string.IsNullOrEmpty(litVisitDaysRecap.Text);
+        }
+
+        private void BindVisitDaysRecap(int visitId, string approvalStatus)
+        {
+            using (SqlConnection con = new SqlConnection(connStr))
+            {
+                con.Open();
+                string scheduleType = "SingleDay";
+                DateTime? requestedFrom = null;
+                DateTime? requestedTo = null;
+                DateTime? validFrom = null;
+                DateTime? validTo = null;
+                using (SqlCommand cmd = new SqlCommand(@"
+                    SELECT ISNULL(ScheduleType, 'SingleDay') AS ScheduleType,
+                           RequestedValidFrom, RequestedValidUpto, ValidFrom, ValidUpto
+                    FROM VMS_VisitLog
+                    WHERE LogID = @LogID", con))
+                {
+                    cmd.Parameters.AddWithValue("@LogID", visitId);
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            scheduleType = reader["ScheduleType"].ToString();
+                            if (reader["RequestedValidFrom"] != DBNull.Value)
+                                requestedFrom = Convert.ToDateTime(reader["RequestedValidFrom"]);
+                            if (reader["RequestedValidUpto"] != DBNull.Value)
+                                requestedTo = Convert.ToDateTime(reader["RequestedValidUpto"]);
+                            if (reader["ValidFrom"] != DBNull.Value)
+                                validFrom = Convert.ToDateTime(reader["ValidFrom"]);
+                            if (reader["ValidUpto"] != DBNull.Value)
+                                validTo = Convert.ToDateTime(reader["ValidUpto"]);
+                        }
+                    }
+                }
+
+                BindVisitDaysRecap(
+                    con,
+                    visitId,
+                    scheduleType,
+                    approvalStatus,
+                    requestedFrom,
+                    requestedTo,
+                    validFrom,
+                    validTo);
+            }
+        }
+
+        private void PrefillApprovedValidityTimes(SqlConnection con, string visitId)
+        {
+            TimeSpan plantOpen = new TimeSpan(9, 0, 0);
+            TimeSpan plantClose = new TimeSpan(18, 0, 0);
+
+            int branchId = 0;
+            DateTime? requestedValidFrom = null;
+            using (SqlCommand branchCmd = new SqlCommand(
+                "SELECT ISNULL(TargetBranchID, 0) AS TargetBranchID, RequestedValidFrom FROM VMS_VisitLog WHERE LogID = @LogID", con))
+            {
+                branchCmd.Parameters.AddWithValue("@LogID", visitId);
+                using (SqlDataReader visitReader = branchCmd.ExecuteReader())
+                {
+                    if (visitReader.Read())
+                    {
+                        branchId = Convert.ToInt32(visitReader["TargetBranchID"]);
+                        if (visitReader["RequestedValidFrom"] != DBNull.Value)
+                            requestedValidFrom = Convert.ToDateTime(visitReader["RequestedValidFrom"]);
+                    }
+                }
+            }
+
+            if (branchId > 0 && requestedValidFrom.HasValue)
+            {
+                using (SqlCommand timeCmd = new SqlCommand(@"
+                    SELECT OpenTime, CloseTime
+                    FROM VMS_PlantTimings
+                    WHERE Branch_ID = @BranchID AND DayOfWeek = @DayOfWeek", con))
+                {
+                    timeCmd.Parameters.AddWithValue("@BranchID", branchId);
+                    timeCmd.Parameters.AddWithValue("@DayOfWeek", requestedValidFrom.Value.Date.ToString("dddd"));
+                    using (SqlDataReader reader = timeCmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            if (reader["OpenTime"] != DBNull.Value)
+                                plantOpen = (TimeSpan)reader["OpenTime"];
+                            if (reader["CloseTime"] != DBNull.Value)
+                                plantClose = (TimeSpan)reader["CloseTime"];
+                        }
+                    }
+                }
+            }
+
+            DateTime now = DateTime.Now;
+            DateTime plantOpenToday = now.Date.Add(plantOpen);
+            DateTime plantCloseToday = now.Date.Add(plantClose);
+
+            if (now < plantOpenToday)
+            {
+                // Before hours: start validity from now, still end at plant close
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
+            }
+            else if (now > plantCloseToday)
+            {
+                // After hours: start now and allow a short 2-hour window (same calendar day)
+                txtApprovedTimeFrom.Text = now.ToString("HH:mm");
+                DateTime afterHoursEnd = now.AddHours(2);
+                if (afterHoursEnd.Date > now.Date)
+                    afterHoursEnd = now.Date.AddHours(23).AddMinutes(59);
+                txtApprovedTimeTo.Text = afterHoursEnd.ToString("HH:mm");
+            }
+            else
+            {
+                // Within plant hours: default to standard open/close
+                txtApprovedTimeFrom.Text = plantOpen.ToString(@"hh\:mm");
+                txtApprovedTimeTo.Text = plantClose.ToString(@"hh\:mm");
+            }
+        }
+
+        private void BindRequestedDays(SqlConnection con, int visitId)
+        {
+            cblRequestedDays.Items.Clear();
+            List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
+            foreach (VisitDayLogInfo day in days)
+            {
+                var item = new ListItem(
+                    VmsVisitScheduleHelper.FormatDayCheckboxLabel(day),
+                    day.VisitDate.ToString("yyyy-MM-dd"));
+                item.Selected = true;
+                cblRequestedDays.Items.Add(item);
+            }
+
+            cblRequestedDays.Visible = cblRequestedDays.Items.Count > 0;
+        }
+
+        protected void btnApprove_Click(object sender, EventArgs e)
+        {
+            if (cblRequestedDays.Visible)
+            {
+                bool anySelected = false;
+                foreach (ListItem item in cblRequestedDays.Items)
+                {
+                    if (item.Selected)
+                    {
+                        anySelected = true;
+                        break;
+                    }
+                }
+
+                if (!anySelected)
+                {
+                    lblMessage.CssClass = "error";
+                    lblMessage.Visible = true;
+                    lblMessage.Text = "Please select at least one day to approve.";
+                    return;
+                }
+            }
+
+            TimeSpan approvedFromTime;
+            TimeSpan approvedToTime;
+            if (!TimeSpan.TryParse(txtApprovedTimeFrom.Text, out approvedFromTime) ||
+                !TimeSpan.TryParse(txtApprovedTimeTo.Text, out approvedToTime))
+            {
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                lblMessage.Text = "Please enter valid From and Until times.";
+                return;
+            }
+
+            if (approvedToTime <= approvedFromTime)
+            {
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                lblMessage.Text = "Valid Until must be after Valid From.";
+                return;
+            }
+
+            ProcessApproval("Approved", "Scheduled", approvedFromTime, approvedToTime);
+        }
+
+        protected void btnReject_Click(object sender, EventArgs e)
+        {
+            ProcessApproval("Rejected", "Rejected");
+        }
+
+        private void ProcessApproval(
+            string approvalStatus,
+            string visitStatus,
+            TimeSpan? approvedFromTime = null,
+            TimeSpan? approvedToTime = null)
+        {
+            int logId;
+            string hostEmployeeCode;
+            if (!TryAuthorizeCapabilityLink(out logId, out hostEmployeeCode))
+                return;
+
+            if (approvalStatus == "Approved")
+            {
+                IList<SelectedVisitDay> selectedDays = null;
+                if (cblRequestedDays.Visible)
+                {
+                    selectedDays = new List<SelectedVisitDay>();
+                    foreach (ListItem item in cblRequestedDays.Items)
+                    {
+                        DateTime visitDate = DateTime.ParseExact(item.Value, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        selectedDays.Add(new SelectedVisitDay
+                        {
+                            VisitDate = visitDate.Date,
+                            IsApproved = item.Selected
+                        });
+                    }
+                }
+
+                VisitorApprovalResult result = _repository.ApprovePendingVisit(new VisitorApprovalRequest
+                {
+                    LogId = logId,
+                    HostEmployeeCode = hostEmployeeCode,
+                    SelectedDays = selectedDays,
+                    ApprovedFromTime = approvedFromTime,
+                    ApprovedToTime = approvedToTime
+                });
+
+                if (!result.Succeeded)
+                {
+                    lblMessage.CssClass = "error";
+                    lblMessage.Visible = true;
+                    lblMessage.Text = FormatApprovalFailureMessage(result.FailureReason);
+                    return;
+                }
+
+                pnlAction.Visible = false;
+                lblMessage.Visible = true;
+                lblMessage.CssClass = "success";
+                lblMessage.Text = "Visitor Approved successfully! The digital gate pass has been sent to them.";
+                BindVisitDaysRecap(logId, "Approved");
+                return;
+            }
+
+            // AR-VMS-06B + AR-VMS-07A: Reject via canonical RejectVisitor with Host ownership.
+            // Capability token already bound host + LogID; 07A SQL remains the mutation guard.
+            if (!_repository.RejectVisitor(logId, hostEmployeeCode))
+            {
+                lblMessage.CssClass = "error";
+                lblMessage.Visible = true;
+                lblMessage.Text = "Unable to reject this visit. It may already have been processed.";
+                return;
+            }
+
+            pnlAction.Visible = false;
+            lblMessage.Visible = true;
+            lblMessage.CssClass = "success";
+            lblMessage.Text = "Visitor request has been rejected.";
+            BindVisitDaysRecap(logId, "Rejected");
+        }
+
+        /// <summary>
+        /// AR-VMS-13: verify capability token integrity, UTC expiry, and vid==token.LogID.
+        /// AR-VMS-14: require a live Active MST_UserMaster row for token.HostEmployeeCode
+        /// before GET PII or Approve/Reject. Does not accept legacy Base64(EmployeeCode).
+        /// </summary>
+        private bool TryAuthorizeCapabilityLink(out int logId, out string hostEmployeeCode)
+        {
+            logId = 0;
+            hostEmployeeCode = string.Empty;
+
+            string rawVid = Request.QueryString["vid"];
+            string rawToken = Request.QueryString["t"];
+            if (string.IsNullOrWhiteSpace(rawVid) || string.IsNullOrWhiteSpace(rawToken))
+            {
+                ShowCapabilityDenied(false);
+                return false;
+            }
+
+            int parsedVid;
+            if (!int.TryParse(rawVid, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsedVid) ||
+                parsedVid <= 0)
+            {
+                ShowCapabilityDenied(false);
+                return false;
+            }
+
+            VmsHostQuickLoginToken.Status status = VmsHostQuickLoginToken.TryValidate(
+                rawToken,
+                parsedVid,
+                out hostEmployeeCode);
+
+            if (status != VmsHostQuickLoginToken.Status.Valid)
+            {
+                ShowCapabilityDenied(status == VmsHostQuickLoginToken.Status.Expired);
+                return false;
+            }
+
+            if (!IsHostEmployeeActive(hostEmployeeCode))
+            {
+                ShowHostInactiveDenied();
+                return false;
+            }
+
+            logId = parsedVid;
+            return true;
+        }
+
+        /// <summary>
+        /// Live Active-at-use check. Missing UserMaster row or non-Active status both DENY.
+        /// Status is not taken from the token.
+        /// </summary>
+        private bool IsHostEmployeeActive(string hostEmployeeCode)
+        {
+            if (string.IsNullOrWhiteSpace(hostEmployeeCode))
+                return false;
+
+            using (SqlConnection con = new SqlConnection(connStr))
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT 1
+                FROM MST_UserMaster
+                WHERE EmployeeCode = @EmpCode
+                  AND EmployeeStatus = 'Active'", con))
+            {
+                cmd.Parameters.AddWithValue("@EmpCode", hostEmployeeCode.Trim());
+                con.Open();
+                object result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value;
+            }
+        }
+
+        private void ShowCapabilityDenied(bool expired)
+        {
+            pnlAction.Visible = false;
+            lblMessage.Visible = true;
+            lblMessage.CssClass = "error";
+            lblMessage.Text = expired
+                ? "This link has expired. Please request a new approval email."
+                : "Invalid or expired link.";
+        }
+
+        private void ShowHostInactiveDenied()
+        {
+            pnlAction.Visible = false;
+            lblMessage.Visible = true;
+            lblMessage.CssClass = "error";
+            lblMessage.Text = "This approval link is no longer valid.";
+        }
+
+        private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)
+        {
+            switch (reason)
+            {
+                case ApprovalFailureReason.NotFoundOrNotOwned:
+                    return "Visitor not found or you are not authorized to approve this request.";
+                case ApprovalFailureReason.NotPending:
+                    return "This request has already been processed.";
+                default:
+                    return "Unable to approve this visit. Please try again.";
+            }
+        }
+
+        private void DispatchVisitorNotification_OBSOLETE(SqlConnection con, string visitId, Guid token)
+        {
+            string visEmail = "", visName = "", visMobile = "";
+
+            // 1. Get both email and mobile details
+            using (SqlCommand cmd = new SqlCommand("SELECT VisitorEmail, VisitorMobile, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID", con))
+            {
+                cmd.Parameters.AddWithValue("@LogID", visitId);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    if (sdr.Read())
+                    {
+                        visEmail = sdr["VisitorEmail"].ToString();
+                        visMobile = sdr["VisitorMobile"].ToString();
+                        visName = sdr["VisitorName"].ToString();
+                    }
+                }
+            }
+
+            string passUrl = VmsHelper.BuildDigitalPassUrl(token);
+
+            // 2. Dispatch Email (If provided and valid)
+            if (!string.IsNullOrEmpty(visEmail) && visEmail != "N/A")
+            {
+                string emailBody = $@"
+                <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>
+                    <h2 style='color: #1ABB9C;'>Visit Approved</h2>
+                    <p>Hi {visName}, your host has approved your visit.</p>
+                    <p>Click the link below to open your Digital Gate Pass and show it to the security guard.</p>
+                    <br/>
+                    <a href='{passUrl}' style='background-color: #1ABB9C; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>View Digital Pass</a>
+                </div>";
+
+                string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, 'Your Anmol Gate Pass', @Body, 'Email', 'Pending', 'VMS_PASS_EMAIL')";
+                using (SqlCommand qCmd = new SqlCommand(qQuery, con))
+                {
+                    qCmd.Parameters.AddWithValue("@LogId", visitId);
+                    qCmd.Parameters.AddWithValue("@Email", visEmail);
+                    qCmd.Parameters.AddWithValue("@Name", visName);
+                    qCmd.Parameters.AddWithValue("@Body", emailBody);
+                    qCmd.ExecuteNonQuery();
+                }
+            }
+
+            // 3. Dispatch SMS (If mobile is available)
+            if (!string.IsNullOrEmpty(visMobile))
+            {
+                // NOTE: Ensure you have an approved DLT Template in SMSCountry for this exact string format
+                string smsBody = $"Your visit to Anmol Industries is approved. Click to view your Gate Pass: {passUrl}";
+
+                string smsQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Mobile, @Name, 'SMS', @Body, 'SMS', 'Pending', 'VMS_PASS_SMS')";
+                using (SqlCommand smsCmd = new SqlCommand(smsQuery, con))
+                {
+                    smsCmd.Parameters.AddWithValue("@LogId", visitId);
+                    smsCmd.Parameters.AddWithValue("@Mobile", visMobile); // Stored in the Email column of the queue for simplicity, or adjust schema
+                    smsCmd.Parameters.AddWithValue("@Name", visName);
+                    smsCmd.Parameters.AddWithValue("@Body", smsBody);
+                    smsCmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        private void DispatchVisitorEmail(SqlConnection con, string visitId, Guid token)
+        {
+            string visEmail = "", visName = "";
+
+            // Get visitor email details
+            using (SqlCommand cmd = new SqlCommand("SELECT VisitorEmail, VisitorName FROM VMS_VisitLog WHERE LogID = @LogID", con))
+            {
+                cmd.Parameters.AddWithValue("@LogID", visitId);
+                using (SqlDataReader sdr = cmd.ExecuteReader())
+                {
+                    if (sdr.Read())
+                    {
+                        visEmail = sdr["VisitorEmail"].ToString();
+                        visName = sdr["VisitorName"].ToString();
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(visEmail))
+            {
+                string passUrl = VmsHelper.BuildDigitalPassUrl(token);
+                string body = $@"
+                    <div style='font-family: Arial; padding: 20px; border: 1px solid #1ABB9C; border-radius: 10px; text-align: center; max-width: 400px;'>
+                        <h2 style='color: #1ABB9C;'>Visit Approved</h2>
+                        <p>Hi {visName}, your host has approved your visit.</p>
+                        <p>Click the link below to open your Digital Gate Pass and show it to the security guard.</p>
+                        <br/>
+                        <a href='{passUrl}' style='background-color: #1ABB9C; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;'>View Digital Pass</a>
+                    </div>";
+
+                string qQuery = "INSERT INTO NotificationQueue (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule) VALUES (@LogId, 0, @Email, @Name, 'Your Anmol Gate Pass', @Body, 'Email', 'Pending', 'VMS_PASS')";
+                using (SqlCommand qCmd = new SqlCommand(qQuery, con))
+                {
+                    qCmd.Parameters.AddWithValue("@LogId", visitId);
+                    qCmd.Parameters.AddWithValue("@Email", visEmail);
+                    qCmd.Parameters.AddWithValue("@Name", visName);
+                    qCmd.Parameters.AddWithValue("@Body", body);
+                    qCmd.ExecuteNonQuery();
+                }
+            }
+        }
+    }
+}

@@ -166,7 +166,8 @@
                         </div>
 
                         <%--form start--%>
-                        <div class="row">
+                        <%--made first div(row) visible false to hide all the content--%>
+                        <div class="row" runat="server" visible="false">
                             <div class="col-12">
                                 <div class="card">
                                     <div class="card-body">
@@ -594,18 +595,6 @@
                                                         </div>
                                                     </div>
 
-                                                    <%--Buttons--%>
-                                                    <div class="col-md-12">
-                                                        <div class="mb-12">
-                                                            <asp:Label ID="Lbl_btnSubmit" runat="server" AssociatedControlID="btnSubmit" Text="Click on your ACTION" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
-                                                            <div class="input-group input-group-sm">
-                                                                <asp:Button ID="btnSubmit" runat="server" Text="Re-Validate Inputs" CssClass="btn btn-warning btn-sm" ValidationGroup="Submit" CausesValidation="true" />
-                                                                <asp:Button ID="btnApprove" runat="server" Text="Approve" CssClass="btn btn-success btn-sm" CausesValidation="false" OnClick="btnApprove_Click" />
-                                                                <asp:Button ID="btnReject" runat="server" Text="Reject" CssClass="btn btn-danger btn-sm" CausesValidation="false" OnClick="btnReject_Click" />
-                                                                <asp:Button ID="btnBack" runat="server" Text="Back" CssClass="btn btn-primary btn-sm" CausesValidation="false" OnClick="btnBack_Click" />
-                                                            </div>
-                                                        </div>
-                                                    </div>
 
                                                 </div>
                                             </div>
@@ -615,6 +604,107 @@
                                 <%-- form end--%>
                             </div>
                         </div>
+
+                        <%--form end--%>
+
+                        <%-- grid view form start--%>
+                        <div class="x_content">
+                            <div style="margin-bottom: 10px; color: darkcyan; font-size: 14px;">
+                                Too many columns? <strong>Click "Transpose View"</strong> <i class="fa fa-arrows-v" aria-hidden="true"></i>below for a stacked layout that's easier to scroll on mobile.
+                            </div>
+                            <asp:Button ID="btnTranspose" Style="margin-bottom: 10px" runat="server" Text="Transpose View" CssClass="btn btn-primary btn-sm" OnClick="btnTranspose_Click" />
+                            <asp:GridView ID="gvData" runat="server" Visible="true" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap" AutoGenerateColumns="false" ShowFooter="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found">
+                                <Columns>
+                                    <asp:BoundField DataField="Plant" HeaderText="Plant" SortExpression="Plant" />
+                                    <asp:BoundField DataField="PlantLine" HeaderText="Plant Line" SortExpression="PlantLine" />
+                                    <asp:BoundField DataField="ProductCategory" HeaderText="Product Category" SortExpression="ProductCategory" />
+                                    <asp:BoundField DataField="ProductBrand" HeaderText="Product Brand" SortExpression="ProductBrand" />
+                                    <asp:BoundField DataField="BrandSKU" HeaderText="Brand SKU" SortExpression="BrandSKU" />
+                                    <asp:BoundField DataField="InspectionLot" HeaderText="Inspection Lot" SortExpression="InspectionLot" />
+                                    <asp:BoundField DataField="MaterialCode" HeaderText="Material Code" SortExpression="MaterialCode" />
+                                    <asp:BoundField DataField="NoOfCBBProduced" HeaderText="No of CBB Produced" SortExpression="NoOfCBBProduced" />
+                                    <asp:BoundField DataField="NoOfCBBChecked" HeaderText="No of CBB Checked" SortExpression="NoOfCBBChecked" />
+                                    <asp:TemplateField HeaderText="Box Condition">
+                                        <ItemTemplate><%# Eval("BoxCondition") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="BoxConditionRemarks" HeaderText="Box Condition Remarks" SortExpression="BoxConditionRemarks" />
+                                    <asp:BoundField DataField="NoOfPacketsInCBB" HeaderText="No of Packets in CBB" SortExpression="NoOfPacketsInCBB" />
+                                    <asp:TemplateField HeaderText="Tapping Of CBB">
+                                        <ItemTemplate><%# Eval("TappingOfCBB") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="TappingOfCBBRemarks" HeaderText="Tapping Of CBB Remarks" SortExpression="TappingOfCBBRemarks" />
+                                    <asp:BoundField DataField="PktsCheckedCBBBox" HeaderText="Pkts Checked CBB Box" SortExpression="PktsCheckedCBBBox" />
+                                    <asp:BoundField DataField="WtOfPkts" HeaderText="Wt. Of Pkts" SortExpression="WtOfPkts" />
+                                    <asp:BoundField DataField="PkgDate" HeaderText="Pkg Date" SortExpression="PkgDate" DataFormatString="{0:yyyy-MM-dd}" HtmlEncode="false" />
+                                    <asp:BoundField DataField="BatchLotNo" HeaderText="Batch / Lot No." SortExpression="BatchLotNo" />
+                                    <asp:BoundField DataField="MRPOfPkts" HeaderText="MRP of Pkts (in ₹)" SortExpression="MRPOfPkts" />
+                                    <asp:TemplateField HeaderText="Long Seal Condition">
+                                        <ItemTemplate><%# Eval("LongSealCondition") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="LongSealConditionRemarks" HeaderText="Long Seal Condition Remarks" SortExpression="LongSealConditionRemarks" />
+                                    <asp:TemplateField HeaderText="End Seal Condition">
+                                        <ItemTemplate><%# Eval("EndSealCondition") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="EndSealConditionRemarks" HeaderText="End Seal Condition Remarks" SortExpression="EndSealConditionRemarks" />
+                                    <asp:TemplateField HeaderText="Main Panel Central/ Not">
+                                        <ItemTemplate><%# Eval("MainPanelCentralNot") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="MainPanelCentralRemarks" HeaderText="Main Panel Central Remarks" SortExpression="MainPanelCentralRemarks" />
+                                    <asp:TemplateField HeaderText="Cuts in Packets">
+                                        <ItemTemplate><%# Eval("CutsInPackets") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="CutsInPacketsRemarks" HeaderText="Cuts in Packets Remarks" SortExpression="CutsInPacketsRemarks" />
+                                    <asp:TemplateField HeaderText="Baking (Under/Over Baked)">
+                                        <ItemTemplate><%# Eval("BakingUnderOverBaked") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="BakingUnderOverBakedRemarks" HeaderText="Baking (Under/Over Baked) Remarks" SortExpression="BakingUnderOverBakedRemarks" />
+                                    <asp:TemplateField HeaderText="Shape Condition (Elongated or Oval)">
+                                        <ItemTemplate><%# Eval("ShapeConditionElongatedOrOval") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="ShapeConditionElongatedOrOvalRemarks" HeaderText="Shape Condition (Elongated or Oval) Remarks" SortExpression="ShapeConditionElongatedOrOvalRemarks" />
+                                    <asp:TemplateField HeaderText="Cupping Condition">
+                                        <ItemTemplate><%# Eval("CuppingCondition") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="CuppingConditionRemarks" HeaderText="Cupping Condition Remarks" SortExpression="CuppingConditionRemarks" />
+                                    <asp:TemplateField HeaderText="Impression on Biscuits">
+                                        <ItemTemplate><%# Eval("ImpressionOnBiscuits") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="ImpressionOnBiscuitsRemarks" HeaderText="Impression on Biscuits Remarks" SortExpression="ImpressionOnBiscuitsRemarks" />
+                                    <asp:TemplateField HeaderText="Biscuit Soggy">
+                                        <ItemTemplate><%# Eval("BiscuitSoggy") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="BiscuitSoggyRemarks" HeaderText="Biscuit Soggy Remarks" SortExpression="BiscuitSoggyRemarks" />
+                                    <asp:TemplateField HeaderText="Foreign Body in Biscuit">
+                                        <ItemTemplate><%# Eval("ForeignBodyInBiscuit") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="ForeignBodyInBiscuitRemarks" HeaderText="Foreign Body in Biscuit Remarks" SortExpression="ForeignBodyInBiscuitRemarks" />
+                                    <asp:TemplateField HeaderText="Off Odour (Yes/No)">
+                                        <ItemTemplate><%# Eval("OffOdour") %></ItemTemplate>
+                                    </asp:TemplateField>
+                                    <asp:BoundField DataField="OffOdourRemarks" HeaderText="Off Odour Remarks" SortExpression="OffOdourRemarks" />
+                                    <asp:BoundField DataField="Remarks" HeaderText="Remarks" SortExpression="Remarks" />
+                                </Columns>
+                            </asp:GridView>
+
+
+
+                            <%--Buttons--%>
+                            <div class="col-md-12">
+                                <div class="mb-12">
+                                    <asp:Label ID="Lbl_btnSubmit" runat="server" AssociatedControlID="btnSubmit" Text="Click on your ACTION" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                    <div class="input-group input-group-sm">
+                                        <asp:Button ID="btnSubmit" runat="server" Text="Re-Validate Inputs" CssClass="btn btn-warning btn-sm" ValidationGroup="Submit" CausesValidation="true" />
+                                        <asp:Button ID="btnApprove" runat="server" Text="Approve" CssClass="btn btn-success btn-sm" CausesValidation="false" OnClick="btnApprove_Click" />
+                                        <asp:Button ID="btnReject" runat="server" Text="Reject" CssClass="btn btn-danger btn-sm" CausesValidation="false" OnClick="btnReject_Click" />
+                                        <asp:Button ID="btnBack" runat="server" Text="Back" CssClass="btn btn-primary btn-sm" CausesValidation="false" OnClick="btnBack_Click" />
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div>
+
+                        <%-- grid view form end--%>
                     </div>
 
                     <div class="row">

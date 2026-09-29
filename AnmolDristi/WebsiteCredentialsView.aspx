@@ -1,7 +1,6 @@
 ﻿<%@ Page Title="" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="WebsiteCredentialsView.aspx.cs" Inherits="AnmolDristi.WebsiteCredentialsView" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
-
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
     <div class="right_col" role="main">
@@ -26,13 +25,13 @@
                             </div>
 
                             <div class="col-md-2">
-                                <label class="small text-primary font-weight-bold">Website Type</label>
-                                <asp:DropDownList ID="ddlWebsiteType" runat="server" CssClass="form-control form-control-sm rounded">
-                                    <asp:ListItem Text="All" Value="" />
-                                    <asp:ListItem Text="Govt" Value="Govt" />
-                                    <asp:ListItem Text="Commercial" Value="Commercial" />
-                                    <asp:ListItem Text="Internal" Value="Internal" />
-                                </asp:DropDownList>
+                                <label class="small text-primary font-weight-bold">Office Location</label>
+                                <asp:DropDownList ID="DDL_Branch" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="small text-primary font-weight-bold">Department</label>
+                                <asp:DropDownList ID="DDL_Department" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
                             </div>
 
                             <div class="col-md-3">
@@ -44,17 +43,26 @@
                                 <asp:Button ID="btnSearch" runat="server" Text="Search" CssClass="btn btn-info btn-sm" OnClick="btnSearch_Click" />
                             </div>
 
+                            <div class="col-md-2 mt-4">
+                                <asp:Button ID="btnExport" runat="server" Text="Export" CssClass="btn btn-primary btn-sm" OnClick="btnExport_Click" />
+                            </div>
+
                             <%--<asp:Button ID="btnTestDecrypt" runat="server" Text="Test Decrypt" CssClass="btn btn-info mt-2" OnClick="btnTestDecrypt_Click" />--%>
                         </div>
 
                         <asp:GridView ID="GridViewFiltered" runat="server" AutoGenerateColumns="false" CssClass="table table-bordered table-sm"
-                            EmptyDataText="No credentials found." AllowPaging="true" PageSize="20" OnRowCommand="GridViewFiltered_RowCommand">
+                            EmptyDataText="No credentials found." OnRowCommand="GridViewFiltered_RowCommand" AllowPaging="true" PageSize="25" OnRowDataBound="GridViewFiltered_RowDataBound" OnPageIndexChanging="GridViewFiltered_PageIndexChanging">
                             <Columns>
+                                <asp:TemplateField HeaderText="SL No">
+                                    <ItemTemplate>
+                                        <asp:Label ID="lblSerial" runat="server" />
+                                    </ItemTemplate>
+                                </asp:TemplateField>
                                 <asp:BoundField DataField="SiteName" HeaderText="Site Name" />
                                 <asp:BoundField DataField="Purpose" HeaderText="Purpose" />
                                 <asp:BoundField DataField="UsageFrequency" HeaderText="Frequency" />
-                                <asp:BoundField DataField="AddedByCode" HeaderText="Added By Code" />
-                                <asp:BoundField DataField="AddedByName" HeaderText="Added By Name" />
+                                <asp:BoundField DataField="AddedByCode" HeaderText="Added By Emp. Code" />
+                                <asp:BoundField DataField="AddedByName" HeaderText="Added By Emp. Name" />
                                 <asp:TemplateField HeaderText="Details">
                                     <ItemTemplate>
                                         <asp:LinkButton ID="btnViewDetails" runat="server" Text="View" CssClass="btn btn-sm btn-info"

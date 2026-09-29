@@ -131,15 +131,16 @@
             }
         };--%>
 
-        
-        function validateObservedGSM() {
-            var stdGSMInput = document.getElementById('<%= TB_StandardGSM.ClientID %>').value.trim();
-            var obsGSMValue = parseFloat(document.getElementById('<%= TB_GSMObservation.ClientID %>').value);
-            var remarksDiv = document.getElementById("GSM_ObsremarkSection");
-            var rangeText = document.getElementById("GSM_ValidRange");
 
-            console.log("Raw STD GSM Input:", stdGSMInput);
-            console.log("Raw Observed GSM Input:", obsGSMValue);
+        // GUM GSM
+        function validateObservedGSM_GUM() {
+            var stdGSMInput = document.getElementById('<%= TB_StandardGSM_GUM.ClientID %>').value.trim();
+            var obsGSMValue = parseFloat(document.getElementById('<%= TB_GSMObservation_GUM.ClientID %>').value);
+            var remarksDiv = document.getElementById("GUM_GSM_ObsremarkSection");
+            var rangeText = document.getElementById("GUM_GSM_ValidRange");
+
+            console.log("Raw STD GUM GSM Input:", stdGSMInput);
+            console.log("Raw Observed GUM GSM Input:", obsGSMValue);
 
             var regex = /^([\d.]+)\s*±\s*([\d.]+)%?$/; // Regex to match "27.3 ± 5%" format
 
@@ -154,13 +155,13 @@
                 tolerancePercent = 0.05; // Default tolerance to 5%
             }
 
-            console.log("Parsed STD GSM Value:", stdGSMValue);
+            console.log("Parsed STD GUM GSM Value:", stdGSMValue);
             console.log("Parsed Tolerance Percentage:", tolerancePercent * 100, "%");
 
             if (isNaN(stdGSMValue)) {
-                rangeText.innerHTML = "Expected Range: (Enter a valid STD GSM first)";
+                rangeText.innerHTML = "Expected Range: (Enter a valid STD GUM GSM first)";
                 rangeText.style.color = "red";
-                console.warn("Invalid STD GSM Value. Cannot calculate range.");
+                console.warn("Invalid STD GUM GSM Value. Cannot calculate range.");
                 return;
             }
 
@@ -178,19 +179,78 @@
 
             // Validate Observed GSM
             if (!isNaN(obsGSMValue)) {
-                console.log("Observed GSM Value:", obsGSMValue);
+                console.log("Observed GUM GSM Value:", obsGSMValue);
                 if (obsGSMValue < lowerLimit || obsGSMValue > upperLimit) {
-                    console.warn("Observed GSM is OUT of range. Showing remark section.");
+                    console.warn("Observed GUM GSM is OUT of range. Showing remark section.");
                     remarksDiv.style.display = "block"; // Show remarks
                 } else {
-                    console.log("Observed GSM is WITHIN range. Hiding remark section.");
+                    console.log("Observed GUM GSM is WITHIN range. Hiding remark section.");
                     remarksDiv.style.display = "none"; // Hide remarks
                 }
             } else {
-                console.warn("Invalid Observed GSM Value.");
+                console.warn("Invalid Observed GUM GSM Value.");
             }
         }
 
+        //INK GSM
+        function validateObservedGSM() {
+            var stdGSMInput = document.getElementById('<%= TB_StandardGSM.ClientID %>').value.trim();
+           var obsGSMValue = parseFloat(document.getElementById('<%= TB_GSMObservation.ClientID %>').value);
+           var remarksDiv = document.getElementById("GSM_ObsremarkSection");
+           var rangeText = document.getElementById("GSM_ValidRange");
+
+           console.log("Raw STD GSM Input:", stdGSMInput);
+           console.log("Raw Observed GSM Input:", obsGSMValue);
+
+           var regex = /^([\d.]+)\s*±\s*([\d.]+)%?$/; // Regex to match "27.3 ± 5%" format
+
+           var stdGSMValue, tolerancePercent;
+
+           if (regex.test(stdGSMInput)) {
+               var matches = stdGSMInput.match(regex);
+               stdGSMValue = parseFloat(matches[1]); // Extract standard value (e.g., 27.3)
+               tolerancePercent = parseFloat(matches[2]) / 100; // Convert 5% to 0.05
+           } else {
+               stdGSMValue = parseFloat(stdGSMInput); // If no ± tolerance, assume no percentage
+               tolerancePercent = 0.05; // Default tolerance to 5%
+           }
+
+           console.log("Parsed STD GSM Value:", stdGSMValue);
+           console.log("Parsed Tolerance Percentage:", tolerancePercent * 100, "%");
+
+           if (isNaN(stdGSMValue)) {
+               rangeText.innerHTML = "Expected Range: (Enter a valid STD GSM first)";
+               rangeText.style.color = "red";
+               console.warn("Invalid STD GSM Value. Cannot calculate range.");
+               return;
+           }
+
+           // Calculate tolerance range dynamically
+           var tolerance = stdGSMValue * tolerancePercent;
+           var lowerLimit = (stdGSMValue - tolerance).toFixed(2);
+           var upperLimit = (stdGSMValue + tolerance).toFixed(2);
+
+           console.log("Calculated Tolerance Value:", tolerance);
+           console.log("Expected Range:", lowerLimit, "-", upperLimit);
+
+           // Show expected range
+           rangeText.innerHTML = `Expected Range: ${lowerLimit} - ${upperLimit}`;
+           rangeText.style.color = "green";
+
+           // Validate Observed GSM
+           if (!isNaN(obsGSMValue)) {
+               console.log("Observed GSM Value:", obsGSMValue);
+               if (obsGSMValue < lowerLimit || obsGSMValue > upperLimit) {
+                   console.warn("Observed GSM is OUT of range. Showing remark section.");
+                   remarksDiv.style.display = "block"; // Show remarks
+               } else {
+                   console.log("Observed GSM is WITHIN range. Hiding remark section.");
+                   remarksDiv.style.display = "none"; // Hide remarks
+               }
+           } else {
+               console.warn("Invalid Observed GSM Value.");
+           }
+       }
 
 
         function validateObservedDimension() {
@@ -466,7 +526,7 @@
                                         <asp:Label ID="LBL_TB_StandardDimension" runat="server" AssociatedControlID="TB_StandardDimension" Text="Dimension (STD):" ForeColor="Black" Font-Bold="true" Font-Size="Small"></asp:Label>
                                         <asp:Literal ID="span_Dimension" runat="server" Text='<%# string.IsNullOrEmpty(Eval("GMS_Std")?.ToString()) ? "0.00" : Eval("GMS_Std") %>'></asp:Literal>
                                         <asp:RequiredFieldValidator ID="RFV_TB_StandardDimension" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_StandardDimension" ValidationGroup="Submit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                        <asp:CustomValidator ID="CV_TB_StandardDimension" runat="server" ControlToValidate="TB_StandardDimension" ValidationGroup="Submit" ErrorMessage="Invalid format! Use '27.3 ± 2 mm' or '420 mm'."  Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                        <asp:CustomValidator ID="CV_TB_StandardDimension" runat="server" ControlToValidate="TB_StandardDimension" ValidationGroup="Submit" ErrorMessage="Invalid format! Use '27.3 ± 2 mm' or '420 mm'." Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                         <div class="input-group-sm">
                                             <asp:TextBox ID="TB_StandardDimension" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="e.g., 27.3 ± 2 mm" MaxLength="15" onkeyup="validateObservedDimension()" ClientIDMode="Static"></asp:TextBox>
                                         </div>
@@ -496,23 +556,23 @@
                                     </div>
                                 </div>
 
-                                <%--std--%>
+                                <%--std  INK--%>
                                 <div class="col-md-3" id="Std_gsmwt_Div" runat="server" visible="true">
                                     <div class="mb-3">
-                                        <asp:Label ID="Lbl_TB_StandardGSM" runat="server" AssociatedControlID="TB_StandardGSM" Text="GSM/WT per 10 PS (STD):" ForeColor="Black" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                        <asp:Label ID="Lbl_TB_StandardGSM" runat="server" AssociatedControlID="TB_StandardGSM" Text="INK GSM/WT per 10 PS (STD):" ForeColor="Black" Font-Bold="true" Font-Size="Small"></asp:Label>
                                         <asp:Literal ID="span_GMS" runat="server" Text='<%# string.IsNullOrEmpty(Eval("GMS_Std")?.ToString()) ? "0.00" : Eval("GMS_Std") %>'></asp:Literal>
                                         <asp:RequiredFieldValidator ID="RFV_TB_StandardGSM" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_StandardGSM" ValidationGroup="Submit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
-                                        <asp:CustomValidator ID="CV_TB_StandardGSM" runat="server" ControlToValidate="TB_StandardGSM" ValidationGroup="Submit" ErrorMessage="Invalid input format! Use: '27.3 ± 5%', '8.2 to 10.2', or '420'"  Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                        <asp:CustomValidator ID="CV_TB_StandardGSM" runat="server" ControlToValidate="TB_StandardGSM" ValidationGroup="Submit" ErrorMessage="Invalid input format! Use: '27.3 ± 5%', '8.2 to 10.2', or '420'" Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
                                         <div class="input-group-sm">
                                             <asp:TextBox ID="TB_StandardGSM" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="e.g., 27.3 ± 2%" MaxLength="10" onkeyup="validateObservedGSM()" ClientIDMode="Static"></asp:TextBox>
                                         </div>
                                     </div>
                                 </div>
 
-                                <%--obs--%>
+                                <%--obs INK --%>
                                 <div class="col-md-3">
                                     <div class="mb-3">
-                                        <asp:Label ID="Lbl_TB_GSMObservation" runat="server" AssociatedControlID="TB_GSMObservation" Text="GSM/WT per 10 PS (OBS):" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                        <asp:Label ID="Lbl_TB_GSMObservation" runat="server" AssociatedControlID="TB_GSMObservation" Text="INK GSM/WT per 10 PS (OBS):" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                         <asp:RequiredFieldValidator ID="RFV_TB_GSMObservation" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_GSMObservation" ValidationGroup="Submit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
                                         <div class="input-group-sm">
                                             <asp:TextBox ID="TB_GSMObservation" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="Enter Observed GSM" MaxLength="10" onkeyup="validateObservedGSM()" ClientIDMode="Static"></asp:TextBox>
@@ -522,7 +582,7 @@
                                     </div>
                                 </div>
 
-                                <%--remarks--%>
+                                <%--INK remarks--%>
                                 <div class="col-md-3" id="GSM_ObsremarkSection" style="display: none;">
                                     <div class="mb-3">
                                         <asp:Label ID="lbl_TB_GSMRemarks" runat="server" AssociatedControlID="TB_GSMRemarks" Text="Please provide a remark for deviation:" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
@@ -532,6 +592,41 @@
                                     </div>
                                 </div>
 
+                                <%--std GUM --%>
+                                <div class="col-md-3" id="Std_gsmwtGUM_Div" runat="server" visible="true">
+                                    <div class="mb-3">
+                                        <asp:Label ID="Lbl_TB_StandardGSM_GUM" runat="server" AssociatedControlID="TB_StandardGSM_GUM" Text="Gum/Glue GSM/WT per 10 PS (STD):" ForeColor="Black" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                        <asp:Literal ID="span_GMS_GUM" runat="server" Text='<%# string.IsNullOrEmpty(Eval("GUM_GMS_Std")?.ToString()) ? "0.00" : Eval("GUM_GMS_Std") %>'></asp:Literal>
+                                        <asp:RequiredFieldValidator ID="RFV_TB_StandardGSM_GUM" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_StandardGSM_GUM" ValidationGroup="Submit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                        <asp:CustomValidator ID="CV_TB_StandardGSM_GUM" runat="server" ControlToValidate="TB_StandardGSM_GUM" ValidationGroup="Submit" ErrorMessage="Invalid input format! Use: '27.3 ± 5%', '8.2 to 10.2', or '420'" Display="Dynamic" ForeColor="Red"></asp:CustomValidator>
+                                        <div class="input-group-sm">
+                                            <asp:TextBox ID="TB_StandardGSM_GUM" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="e.g., 27.3 ± 2%" MaxLength="10" onkeyup="validateObservedGSM_GUM()" ClientIDMode="Static"></asp:TextBox>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <%--obs GUM --%>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <asp:Label ID="Lbl_TB_GSMObservation_GUM" runat="server" AssociatedControlID="TB_GSMObservation_GUM" Text="Gum/Glue GSM/WT per 10 PS (OBS):" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                        <asp:RequiredFieldValidator ID="RFV_TB_GSMObservation_GUM" runat="server" ErrorMessage="Input Required" ControlToValidate="TB_GSMObservation_GUM" ValidationGroup="Submit" InitialValue="" Display="Dynamic" ForeColor="Red"></asp:RequiredFieldValidator>
+                                        <div class="input-group-sm">
+                                            <asp:TextBox ID="TB_GSMObservation_GUM" runat="server" CssClass="form-control form-control-sm rounded" ValidationGroup="Submit" Placeholder="Enter Observed GUM GSM" MaxLength="10" onkeyup="validateObservedGSM_GUM()" ClientIDMode="Static"></asp:TextBox>
+                                            <small id="GUM_GSM_ValidRange" class="form-text text-muted" style="font-weight: bold; color: green;">Expected Range: (STD Value Missing)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <%--GUM remarks--%>
+                                <div class="col-md-3" id="GUM_GSM_ObsremarkSection" style="display: none;">
+                                    <div class="mb-3">
+                                        <asp:Label ID="lbl_TB_GUM_GSMRemarks" runat="server" AssociatedControlID="TB_GUM_GSMRemarks" Text="Please provide a remark for deviation:" ForeColor="Red" Font-Bold="true" Font-Size="Small"></asp:Label>
+                                        <div class="input-group-sm">
+                                            <asp:TextBox ID="TB_GUM_GSMRemarks" runat="server" CssClass="form-control form-control-sm rounded" Placeholder="Enter remark for deviation"></asp:TextBox>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div class="col-md-3">
                                     <div class="mb-3">
@@ -634,3 +729,4 @@
         </div>
     </div>
 </asp:Content>
+

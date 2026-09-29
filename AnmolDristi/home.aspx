@@ -8,7 +8,7 @@
             <div class="col-md-12 col-sm-12 col-lg-12 profile_details">
                 <div class="well profile_view col-sm-12 col-lg-12">
                     <div class="col-sm-12">
-                        <h4 class="brief"><b>Employee Card</b> :
+                        <h4 class="brief"><b>Employee Code</b> :
 							<asp:Label ID="lbl_empcode" runat="server" Text="N/A"></asp:Label>
                         </h4>
 
@@ -30,23 +30,11 @@
                             </p>
 
                             <p>
-                                <strong>Deputed Location :</strong>
-                                <asp:Label ID="lbl_wrkcopmany" runat="server" Text="N/A"></asp:Label>,
+                                <strong>Zone & Sub-Zone :</strong>
+                                <asp:Label ID="lbl_wrkcopmany" runat="server" Text="N/A" Visible="false"></asp:Label>
 								<asp:Label ID="lbl_region" runat="server" Text="N/A"></asp:Label>,
-								<asp:Label ID="lbl_state" runat="server" Text="N/A"></asp:Label>.
+								<asp:Label ID="lbl_branch" runat="server" Text="N/A"></asp:Label>.
                             </p>
-
-                            <p>
-                                <strong>Deputed Site :</strong>
-                                <asp:Label ID="lbl_wrksite" runat="server" Text="N/A"></asp:Label>
-                            </p>
-
-                            <ul class="list-unstyled">
-                                <li><i class="fa fa-calendar">&nbsp;</i><strong>DOJ :</strong> :
-									<asp:Label ID="lbl_doj" runat="server" Text="N/A"></asp:Label></li>
-                                <li><i class="fa fa-clock-o">&nbsp;</i>Work Tenure :
-									<asp:Label ID="lbl_workage" runat="server" Text="N/A"></asp:Label></li>
-                            </ul>
                         </div>
                     </div>
                 </div>

@@ -1,0 +1,5 @@
+2026-05-16 16:51:07 | PROFILE_UPDATE | CHANGES DETECTED:
+CompanyId: '0' -> '1094'
+PlantId: '0' -> '1789'
+Email: '' -> 'qamngr@anmolindustries.com' | By: Kaushik Kumar Majhi
+2026-05-16 16:51:19 | PASSWORD_RESET | Admin triggered manual password reset. Set to auto-generated temporary password. | By: Kaushik Kumar Majhi

@@ -648,7 +648,21 @@ namespace AnmolDristi
 
             int? bbdateyesno = string.IsNullOrEmpty(RBL_BBDateYesNo.SelectedValue) ? (int?)null : (int?)Convert.ToInt32(RBL_BBDateYesNo.SelectedValue);
             string bbdateyesnoRemarks = string.IsNullOrEmpty(TXB_BBDateYesNoRemarks.Text) ? null : TXB_BBDateYesNoRemarks.Text;
-            DateTime? bbDate = string.IsNullOrEmpty(TB_BeforeDate.Text) ? (DateTime?)null : DateTime.Parse(TB_BeforeDate.Text).Date;
+
+            //DateTime? bbDate = string.IsNullOrEmpty(TB_BeforeDate.Text) ? (DateTime?)null : DateTime.Parse(TB_BeforeDate.Text).Date;
+            List<DateTime?> bbDates = string.IsNullOrEmpty(TB_BeforeDate.Text)
+           ? new List<DateTime?>() // Return an empty list if the textbox is empty
+           : TB_BeforeDate.Text
+               .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) // Split by commas
+               .Select(dateStr =>
+               {
+                   DateTime parsedDate;
+                   return DateTime.TryParseExact(dateStr.Trim(), "dd-MM-yyyy",
+                       CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate)
+                       ? (DateTime?)parsedDate
+                       : null;
+               })
+               .ToList();
 
             int? fssaiyesno = string.IsNullOrEmpty(RBL_FassaiNoLogo.SelectedValue) ? (int?)null : (int?)Convert.ToInt32(RBL_FassaiNoLogo.SelectedValue);
             string fssaiyesnoRemarks = string.IsNullOrEmpty(TXB_FassaiNoLogo_Remarks.Text) ? null : TXB_FassaiNoLogo_Remarks.Text;
@@ -712,6 +726,7 @@ namespace AnmolDristi
             string retentionRemarks = string.IsNullOrEmpty(TXB_Retention_Remarks.Text) ? null : TXB_Retention_Remarks.Text;
 
             string bromate = string.IsNullOrEmpty(TB_Bromate.Text) ? null : TB_Bromate.Text;
+            //string bromateRemarks = string.IsNullOrEmpty(TXB_Bromate_Remarks.Text) ? null : TXB_Bromate_Remarks.Text;
 
             int submitstatus = 0;
             if (!string.IsNullOrEmpty(ash?.ToString()) && !string.IsNullOrEmpty(insolubleAsh?.ToString()) && !string.IsNullOrEmpty(glutentContent?.ToString()) && !string.IsNullOrEmpty(alcoholicAcidity?.ToString()))
@@ -719,6 +734,7 @@ namespace AnmolDristi
                 submitstatus = 1;
             }
 
+            string remarks = string.IsNullOrEmpty(TXB_Remarks.Text) ? null : TXB_Remarks.Text;
 
             DateTime submittedDate = DateTime.Now.Date;
             TimeSpan submittedTime = DateTime.Now.TimeOfDay;
@@ -761,6 +777,8 @@ namespace AnmolDristi
 
                         command.Parameters.AddWithValue("@Mfg_Dates", mfgDates.Any() ? string.Join(",", mfgDates.Where(d => d.HasValue).Select(d => d.Value.ToString("yyyy-MM-dd"))) : (object)DBNull.Value);
 
+                        command.Parameters.AddWithValue("@BB_Dates", mfgDates.Any() ? string.Join(",", bbDates.Where(d => d.HasValue).Select(d => d.Value.ToString("yyyy-MM-dd"))) : (object)DBNull.Value);
+
                         command.Parameters.AddWithValue("@BatchNo", (object)batchNo ?? DBNull.Value);
                         command.Parameters.AddWithValue("@LotNo", (object)lotNo ?? DBNull.Value);
                         command.Parameters.AddWithValue("@VehicleNo", (object)vehicleNo ?? DBNull.Value);
@@ -771,7 +789,7 @@ namespace AnmolDristi
 
                         command.Parameters.AddWithValue("@BBDateYesNo", (object)bbdateyesno ?? DBNull.Value);
                         command.Parameters.AddWithValue("@BBDateYesNoRemarks", (object)bbdateyesnoRemarks ?? DBNull.Value);
-                        command.Parameters.AddWithValue("@BeforeDate", (object)bbDate ?? DBNull.Value);
+                        //command.Parameters.AddWithValue("@BeforeDate", (object)bbDate ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@fssaiYesNo", (object)fssaiyesno ?? DBNull.Value);
                         command.Parameters.AddWithValue("@fssaiYesNoRemarks", (object)fssaiyesnoRemarks ?? DBNull.Value);
@@ -832,6 +850,9 @@ namespace AnmolDristi
                         command.Parameters.AddWithValue("@Retention_Remarks", (object)retentionRemarks ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@Bromate", (object)bromate ?? DBNull.Value);
+                        //command.Parameters.AddWithValue("@Bromate_Remarks", (object)bromateRemarks ?? DBNull.Value);
+
+                        command.Parameters.AddWithValue("@Remarks", (object)remarks ?? DBNull.Value);
 
                         command.Parameters.AddWithValue("@Material_Image", (object)ImgLink1 ?? DBNull.Value);
 

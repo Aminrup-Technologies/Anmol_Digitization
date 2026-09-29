@@ -23,7 +23,7 @@ namespace AnmolDristi
                 else
                 {
                     PlantBinder();
-                    BindGridView();
+                    //BindGridView();
                     //BindGridViewonLoad();
                 }
             }
@@ -253,43 +253,61 @@ namespace AnmolDristi
         protected void GridViewLineCatBrands_RowEditing(object sender, GridViewEditEventArgs e)
         {
             GridViewLineCatBrands.EditIndex = e.NewEditIndex;
-            BindGridView();
+            RebindGridWithFilters();
         }
 
         protected void GridViewLineCatBrands_RowCancelingEdit(object sender, GridViewCancelEditEventArgs e)
         {
             GridViewLineCatBrands.EditIndex = -1;
-            BindGridView();
+            RebindGridWithFilters();
         }
+
+        private void RebindGridWithFilters()
+        {
+            int plantID, lineID, categoryID;
+            bool hasPlant = int.TryParse(DDL_Plant.SelectedValue, out plantID);
+            bool hasLine = int.TryParse(DDL_PlantLine.SelectedValue, out lineID);
+            bool hasCategory = int.TryParse(DDL_ProductCategory.SelectedValue, out categoryID);
+
+            BindGridView(
+                hasPlant ? plantID : (int?)null,
+                hasLine ? lineID : (int?)null,
+                hasCategory ? categoryID : (int?)null
+            );
+        }
+
 
         protected void GridViewLineCatBrands_RowUpdating(object sender, GridViewUpdateEventArgs e)
         {
             GridViewRow row = GridViewLineCatBrands.Rows[e.RowIndex];
             int id = Convert.ToInt32(GridViewLineCatBrands.DataKeys[e.RowIndex].Values[0]);
-            //int plantID = Convert.ToInt32((row.FindControl("DDL_Plant") as DropDownList).SelectedValue);
-            //int lineID = Convert.ToInt32((row.FindControl("DDL_PlantLine") as DropDownList).SelectedValue);
-            //int categoryID = Convert.ToInt32((row.FindControl("DDL_ProductCategory") as DropDownList).SelectedValue);
-            string brandName = (row.FindControl("txtBrandName") as TextBox).Text;
-            string brandLocalName = (row.FindControl("txtBrandLocalName") as TextBox).Text;
-            string brandSapCode = (row.FindControl("txtBrandSapCode") as TextBox).Text;
-            //bool viewStatus = (row.FindControl("view_status") as CheckBox).Checked;
-            //bool deleteStatus = (row.FindControl("delete_status") as CheckBox).Checked;
+
+            string brandName = (row.FindControl("txtBrandName") as TextBox).Text.Trim();
+            string brandLocalName = (row.FindControl("txtBrandLocalName") as TextBox).Text.Trim();
+            string brandSapCode = (row.FindControl("txtBrandSapCode") as TextBox).Text.Trim();
+
+            // Use correct CheckBox IDs from EditItemTemplate
+            bool viewStatus = (row.FindControl("CheckBox1") as CheckBox).Checked;
+            bool deleteStatus = (row.FindControl("CheckBox2") as CheckBox).Checked;
 
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string updateQuery = @"UPDATE MST_LineCatBrands SET brand_name = @BrandName, brand_localname = @BrandLocalName, brand_sapcode = @BrandSapCode, view_status = @ViewStatus, delete_status = @DeleteStatus WHERE Id = @Id";
+                string updateQuery = @"UPDATE MST_LineCatBrands 
+                               SET brand_name = @BrandName, 
+                                   brand_localname = @BrandLocalName, 
+                                   brand_sapcode = @BrandSapCode, 
+                                   view_status = @ViewStatus, 
+                                   delete_status = @DeleteStatus 
+                               WHERE Id = @Id";
                 using (SqlCommand command = new SqlCommand(updateQuery, connection))
                 {
                     command.Parameters.AddWithValue("@Id", id);
-                    //command.Parameters.AddWithValue("@PlantID", plantID);
-                    //command.Parameters.AddWithValue("@LineID", lineID);
-                    //command.Parameters.AddWithValue("@CategoryID", categoryID);
                     command.Parameters.AddWithValue("@BrandName", brandName);
                     command.Parameters.AddWithValue("@BrandLocalName", brandLocalName);
                     command.Parameters.AddWithValue("@BrandSapCode", brandSapCode);
-                    command.Parameters.AddWithValue("@ViewStatus", 1);
-                    command.Parameters.AddWithValue("@DeleteStatus", 0);
+                    command.Parameters.AddWithValue("@ViewStatus", viewStatus);
+                    command.Parameters.AddWithValue("@DeleteStatus", deleteStatus);
 
                     connection.Open();
                     command.ExecuteNonQuery();
@@ -297,8 +315,20 @@ namespace AnmolDristi
             }
 
             GridViewLineCatBrands.EditIndex = -1;
-            BindGridView();
+
+            // Rebind with active filters if any
+            int plantID, lineID, categoryID;
+            bool hasPlant = int.TryParse(DDL_Plant.SelectedValue, out plantID);
+            bool hasLine = int.TryParse(DDL_PlantLine.SelectedValue, out lineID);
+            bool hasCategory = int.TryParse(DDL_ProductCategory.SelectedValue, out categoryID);
+
+            BindGridView(
+                hasPlant ? plantID : (int?)null,
+                hasLine ? lineID : (int?)null,
+                hasCategory ? categoryID : (int?)null
+            );
         }
+
 
         protected void GridViewLineCatBrands_RowDeleting(object sender, GridViewDeleteEventArgs e)
         {
@@ -306,16 +336,28 @@ namespace AnmolDristi
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string deleteQuery = "DELETE FROM MST_LineCatBrands WHERE Id = @Id";
+                string deleteQuery = "UPDATE MST_LineCatBrands SET view_status = @ViewStatus, delete_status = @DeleteStatus WHERE Id = @Id";
                 using (SqlCommand command = new SqlCommand(deleteQuery, connection))
                 {
                     command.Parameters.AddWithValue("@Id", id);
+                    command.Parameters.AddWithValue("@ViewStatus", 0);
+                    command.Parameters.AddWithValue("@DeleteStatus", 1);
                     connection.Open();
                     command.ExecuteNonQuery();
                 }
             }
 
-            BindGridView();
+            // Get filters only if valid
+            int plantID, lineID, categoryID;
+            bool hasPlant = int.TryParse(DDL_Plant.SelectedValue, out plantID);
+            bool hasLine = int.TryParse(DDL_PlantLine.SelectedValue, out lineID);
+            bool hasCategory = int.TryParse(DDL_ProductCategory.SelectedValue, out categoryID);
+
+            BindGridView(
+                hasPlant ? plantID : (int?)null,
+                hasLine ? lineID : (int?)null,
+                hasCategory ? categoryID : (int?)null
+            );
         }
 
         public int GetNextBrandId()
@@ -350,6 +392,7 @@ namespace AnmolDristi
         protected void btnSubmit_Click(object sender, EventArgs e)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            int plantID, lineID, categoryID;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
                 SqlTransaction transaction = null;
@@ -359,9 +402,9 @@ namespace AnmolDristi
                     transaction = connection.BeginTransaction();
 
                     // Retrieve the values from the input fields
-                    int plantID = Convert.ToInt32(DDL_Plant.SelectedValue);
-                    int lineID = Convert.ToInt32(DDL_PlantLine.SelectedValue);
-                    int categoryID = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
+                    plantID = Convert.ToInt32(DDL_Plant.SelectedValue);
+                    lineID = Convert.ToInt32(DDL_PlantLine.SelectedValue);
+                    categoryID = Convert.ToInt32(DDL_ProductCategory.SelectedValue);
                     //int BrandID = Convert.ToInt32(txtBrandID.Text);
                     int BrandID = GetNextBrandId();
                     string brandName = txtBrandName.Text;
@@ -414,7 +457,17 @@ namespace AnmolDristi
             }
 
             // Optionally, refresh the GridView or perform other actions after successful insertion
-            BindGridView();
+            // Get filters only if valid
+            //int plantID, lineID, categoryID;
+            bool hasPlant = int.TryParse(DDL_Plant.SelectedValue, out plantID);
+            bool hasLine = int.TryParse(DDL_PlantLine.SelectedValue, out lineID);
+            bool hasCategory = int.TryParse(DDL_ProductCategory.SelectedValue, out categoryID);
+
+            BindGridView(
+                hasPlant ? plantID : (int?)null,
+                hasLine ? lineID : (int?)null,
+                hasCategory ? categoryID : (int?)null
+            );
         }
 
         private void BindGridView()
@@ -435,12 +488,48 @@ namespace AnmolDristi
             }
         }
 
+        private void BindGridView(int? plantID = null, int? lineID = null, int? categoryID = null)
+        {
+            string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                string selectQuery = "SELECT * FROM MST_LineCatBrands WHERE 1=1";
+
+                if (plantID.HasValue)
+                    selectQuery += " AND plant_id = @PlantID";
+                if (lineID.HasValue)
+                    selectQuery += " AND line_id = @LineID";
+                if (categoryID.HasValue)
+                    selectQuery += " AND category_id = @CategoryID";
+
+                selectQuery += " and view_status=1 ORDER BY Id DESC";
+
+                using (SqlCommand command = new SqlCommand(selectQuery, connection))
+                {
+                    if (plantID.HasValue)
+                        command.Parameters.AddWithValue("@PlantID", plantID.Value);
+                    if (lineID.HasValue)
+                        command.Parameters.AddWithValue("@LineID", lineID.Value);
+                    if (categoryID.HasValue)
+                        command.Parameters.AddWithValue("@CategoryID", categoryID.Value);
+
+                    connection.Open();
+                    SqlDataAdapter adapter = new SqlDataAdapter(command);
+                    DataTable dt = new DataTable();
+                    adapter.Fill(dt);
+                    GridViewLineCatBrands.DataSource = dt;
+                    GridViewLineCatBrands.DataBind();
+                }
+            }
+        }
+
+
         private void BindGridViewbyPlant(string selectedPlantValue)
         {
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string selectQuery = "SELECT * FROM MST_LineCatBrands where plant_id='"+ selectedPlantValue + "' order by Id desc";
+                string selectQuery = "SELECT * FROM MST_LineCatBrands where plant_id='"+ selectedPlantValue + "' and view_status=1 order by Id desc";
                 using (SqlCommand command = new SqlCommand(selectQuery, connection))
                 {
                     connection.Open();
@@ -459,7 +548,7 @@ namespace AnmolDristi
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string selectQuery = "SELECT * FROM MST_LineCatBrands where plant_id='" + selectedPlantValue + "' and line_id='"+ selectedPlantLineValue + "' order by id desc";
+                string selectQuery = "SELECT * FROM MST_LineCatBrands where plant_id='" + selectedPlantValue + "' and line_id='"+ selectedPlantLineValue + "' and view_status=1 order by id desc";
                 using (SqlCommand command = new SqlCommand(selectQuery, connection))
                 {
                     connection.Open();
@@ -477,7 +566,7 @@ namespace AnmolDristi
             string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                string selectQuery = "SELECT * FROM MST_LineCatBrands where plant_id='" + selectedPlantValue + "' and line_id='" + selectedPlantLineValue + "' and category_id='"+ selectedProductCategoryValue + "' order by Id desc";
+                string selectQuery = "SELECT * FROM MST_LineCatBrands where plant_id='" + selectedPlantValue + "' and line_id='" + selectedPlantLineValue + "' and category_id='"+ selectedProductCategoryValue + "' and view_status=1 order by Id desc";
                 using (SqlCommand command = new SqlCommand(selectQuery, connection))
                 {
                     connection.Open();

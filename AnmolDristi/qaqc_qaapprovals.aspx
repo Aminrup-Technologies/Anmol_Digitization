@@ -25,7 +25,7 @@
                             <a class="btn btn-app" href="app_qc_inspectorreport.aspx">
                                 <span class="badge bg-green">Shift-2
                                     <asp:Label ID="Label2" runat="server" Text="0" Visible="false"></asp:Label></span>
-                                <i class="fa fa-edit"></i>Inspector Report
+                                <i class="fa fa-edit"></i>QA Reports
                             </a>
                             
                             <a class="btn btn-app" href="qaqc_rotaryline_approval.aspx" >

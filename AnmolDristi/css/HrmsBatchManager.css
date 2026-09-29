@@ -1,0 +1,759 @@
+/* ==========================================================================
+   HrmsBatchManager — page styles + Synchronization Information panel
+   ========================================================================== */
+
+.selected-row {
+    background-color: #eef !important;
+    border-left: 4px solid #007bff;
+}
+
+/* ---- Info triggers ---- */
+.hrms-help-trigger {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: #337ab7;
+    font-size: 15px;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: pointer;
+}
+
+.hrms-help-trigger:hover,
+.hrms-help-trigger:focus {
+    color: #23527c;
+    outline: none;
+    text-decoration: none;
+}
+
+.hrms-help-trigger:focus {
+    box-shadow: 0 0 0 2px rgba(51, 122, 183, 0.35);
+    border-radius: 2px;
+}
+
+.hrms-sync-config-title {
+    display: inline-block;
+    margin: 0;
+    float: left;
+}
+
+/* ---- Backdrop ---- */
+.hrms-sync-info-backdrop {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1040;
+    background: rgba(20, 28, 40, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 250ms ease, visibility 250ms ease;
+}
+
+.hrms-sync-info-backdrop.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ---- Slide-out panel ---- */
+.hrms-sync-info-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    width: min(440px, 100vw);
+    max-width: 100%;
+    height: 100%;
+    background: #f7f9fc;
+    box-shadow: -8px 0 24px rgba(20, 28, 40, 0.18);
+    transform: translateX(100%);
+    transition: transform 250ms ease;
+    visibility: hidden;
+}
+
+.hrms-sync-info-panel.is-open {
+    transform: translateX(0);
+    visibility: visible;
+}
+
+body.hrms-sync-info-open {
+    overflow: hidden;
+}
+
+.hrms-sync-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, #1e3a5f 0%, #2a5f8f 100%);
+    color: #fff;
+}
+
+.hrms-sync-info-header h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.hrms-sync-info-close {
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.hrms-sync-info-close:hover,
+.hrms-sync-info-close:focus {
+    background: rgba(255, 255, 255, 0.22);
+    outline: none;
+}
+
+.hrms-sync-info-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 18px 18px 28px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.hrms-sync-info-section {
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #d9e2ec;
+}
+
+.hrms-sync-info-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.hrms-sync-info-section.is-highlighted {
+    background: #eef5fb;
+    margin-left: -10px;
+    margin-right: -10px;
+    padding: 12px 10px 18px;
+    border-radius: 4px;
+    border-bottom-color: transparent;
+}
+
+.hrms-sync-info-section h4 {
+    margin: 0 0 10px;
+    color: #1e3a5f;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.hrms-sync-info-section h5 {
+    margin: 12px 0 6px;
+    color: #2a5f8f;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.hrms-sync-info-section p,
+.hrms-sync-info-section li {
+    color: #334e68;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.hrms-sync-info-section p {
+    margin: 0 0 8px;
+}
+
+.hrms-sync-info-section ul {
+    margin: 0 0 8px;
+    padding-left: 18px;
+}
+
+.hrms-sync-info-section .mode-block,
+.hrms-sync-info-section .module-block {
+    margin-bottom: 12px;
+}
+
+.hrms-sync-info-section .mode-block:last-child,
+.hrms-sync-info-section .module-block:last-child {
+    margin-bottom: 0;
+}
+
+.hrms-sync-info-section .mode-title,
+.hrms-sync-info-section .module-title {
+    display: block;
+    margin-bottom: 4px;
+    color: #1e3a5f;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.hrms-code-chain {
+    margin: 8px 0;
+    padding: 8px 10px;
+    background: #fff;
+    border-left: 3px solid #2a5f8f;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #334e68;
+}
+
+.hrms-code-chain .arrow {
+    display: block;
+    color: #627d98;
+    font-size: 11px;
+}
+
+/* ---- Execution flow ---- */
+.hrms-exec-flow {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.hrms-exec-flow li {
+    position: relative;
+    margin: 0;
+    padding: 10px 12px 10px 40px;
+    background: #fff;
+    border: 1px solid #d9e2ec;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #1e3a5f;
+}
+
+.hrms-exec-flow li + li {
+    margin-top: 22px;
+}
+
+.hrms-exec-flow li + li::before {
+    content: "";
+    position: absolute;
+    top: -16px;
+    left: 18px;
+    width: 2px;
+    height: 14px;
+    background: #7aa2c7;
+}
+
+.hrms-exec-flow li + li::after {
+    content: "\f107";
+    font-family: FontAwesome;
+    position: absolute;
+    top: -20px;
+    left: 11px;
+    width: 16px;
+    text-align: center;
+    color: #2a5f8f;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.hrms-exec-flow .step-num {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    width: 22px;
+    height: 22px;
+    margin-top: -11px;
+    border-radius: 50%;
+    background: #2a5f8f;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 22px;
+    text-align: center;
+}
+
+/* ---- Warning / Error callouts ---- */
+.hrms-callout {
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    background: #fff;
+    border: 1px solid #d9e2ec;
+}
+
+.hrms-callout-warning {
+    border-left: 4px solid #f0ad4e;
+}
+
+.hrms-callout-error {
+    border-left: 4px solid #d9534f;
+}
+
+.hrms-callout strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 13px;
+}
+
+.hrms-callout-warning strong {
+    color: #8a6d3b;
+}
+
+.hrms-callout-error strong {
+    color: #a94442;
+}
+
+/* ---- Status lifecycle ---- */
+.hrms-status-flow {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.hrms-status-flow li {
+    position: relative;
+    padding: 6px 0 6px 28px;
+    font-weight: 600;
+    color: #1e3a5f;
+}
+
+.hrms-status-flow li::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 12px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2a5f8f;
+}
+
+.hrms-status-flow li + li::after {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: -4px;
+    width: 2px;
+    height: 14px;
+    background: #7aa2c7;
+}
+
+.hrms-status-branch {
+    margin: 4px 0 0 28px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px dashed #7aa2c7;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334e68;
+}
+
+.hrms-status-branch span {
+    display: block;
+}
+
+.hrms-sync-info-footnote {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #627d98;
+}
+
+/* ---- Technical Details (Administrator Reference) ---- */
+.hrms-tech-section {
+    margin-top: 8px;
+    padding-top: 4px;
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.hrms-tech-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid #c5d4e3;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #f0f5fa 0%, #e4eef7 100%);
+    color: #1e3a5f;
+    text-align: left;
+    white-space: normal;
+}
+
+.hrms-tech-toggle:hover,
+.hrms-tech-toggle:focus {
+    background: linear-gradient(180deg, #e8f1f9 0%, #d9e7f4 100%);
+    color: #1e3a5f;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(42, 95, 143, 0.25);
+}
+
+.hrms-tech-toggle-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.hrms-tech-toggle-label .fa {
+    margin-right: 2px;
+}
+
+.hrms-tech-toggle .badge {
+    font-weight: 600;
+    font-size: 10px;
+    vertical-align: middle;
+}
+
+.hrms-tech-chevron {
+    flex-shrink: 0;
+    margin-left: 8px;
+    transition: transform 200ms ease;
+}
+
+.hrms-tech-toggle[aria-expanded="true"] .hrms-tech-chevron {
+    transform: rotate(180deg);
+}
+
+.hrms-tech-collapse {
+    margin-top: 12px;
+}
+
+.hrms-tech-intro {
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    background: #eef5fb;
+    border-left: 3px solid #2a5f8f;
+    font-size: 12px;
+    color: #334e68;
+}
+
+.hrms-tech-card {
+    margin-bottom: 12px;
+    border: 1px solid #d9e2ec;
+    border-radius: 4px;
+    box-shadow: none;
+    background: #fff;
+}
+
+.hrms-tech-card .card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f5f8fb;
+    border-bottom: 1px solid #d9e2ec;
+    color: #1e3a5f;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.hrms-tech-card .card-header .fa {
+    color: #2a5f8f;
+}
+
+.hrms-tech-card .card-header .badge {
+    margin-left: auto;
+    font-weight: 600;
+    font-size: 10px;
+}
+
+.hrms-tech-card .card-body {
+    padding: 12px;
+    font-size: 12px;
+    color: #334e68;
+}
+
+.hrms-tech-card .card-body p {
+    margin: 0 0 8px;
+    font-size: 12px;
+}
+
+.hrms-tech-card code {
+    padding: 1px 4px;
+    background: #eef2f7;
+    border-radius: 2px;
+    color: #1e3a5f;
+    font-size: 11px;
+}
+
+/* Vertical technical timeline */
+.hrms-tech-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 4px;
+}
+
+.hrms-tech-timeline li {
+    position: relative;
+    margin: 0;
+    padding: 8px 0 8px 28px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e3a5f;
+    line-height: 1.4;
+}
+
+.hrms-tech-timeline li::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 12px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #2a5f8f;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #2a5f8f;
+    z-index: 1;
+}
+
+.hrms-tech-timeline li + li::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: -2px;
+    width: 2px;
+    height: 14px;
+    background: #7aa2c7;
+}
+
+.hrms-tech-timeline-compact li {
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.hrms-tech-map {
+    margin-bottom: 14px;
+}
+
+.hrms-tech-map:last-child {
+    margin-bottom: 0;
+}
+
+.hrms-tech-map-title {
+    font-weight: 700;
+    color: #1e3a5f;
+    font-size: 12px;
+}
+
+.hrms-tech-map-arrow {
+    margin: 4px 0 6px;
+    color: #627d98;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.hrms-tech-table-list {
+    margin: 0;
+    padding: 8px 10px 8px 28px;
+    background: #f7f9fc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.hrms-tech-table-list li {
+    font-size: 12px;
+    font-family: Consolas, "Courier New", monospace;
+    color: #1e3a5f;
+}
+
+.hrms-tech-mode {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #d9e2ec;
+}
+
+.hrms-tech-mode:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.hrms-tech-mode .badge {
+    margin-right: 6px;
+}
+
+.hrms-tech-mode strong {
+    display: inline-block;
+    margin: 2px 0 4px;
+    color: #1e3a5f;
+    font-size: 12px;
+}
+
+.hrms-tech-mode ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+}
+
+.hrms-tech-mode li {
+    font-size: 12px;
+}
+
+.hrms-tech-code {
+    display: block;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    background: #1e3a5f;
+    color: #e8f1f9;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.hrms-tech-checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.hrms-tech-checklist li {
+    margin: 0 0 6px;
+    padding: 0;
+    font-size: 12px;
+    color: #334e68;
+}
+
+.hrms-tech-checklist .fa {
+    width: 14px;
+    margin-right: 6px;
+}
+
+.hrms-tech-version-table th {
+    width: 110px;
+    font-weight: 700;
+    color: #1e3a5f;
+    border-top: 0;
+    font-size: 12px;
+}
+
+.hrms-tech-version-table td {
+    border-top: 0;
+    font-size: 12px;
+    color: #334e68;
+}
+
+.hrms-tech-footer {
+    margin-top: 16px;
+    padding: 14px 12px 4px;
+    background: #1e3a5f;
+    color: #d9e6f2;
+    border-radius: 4px;
+}
+
+.hrms-tech-footer-rule {
+    height: 1px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.hrms-tech-footer-title {
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.hrms-tech-footer-meta {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 4px 8px;
+    margin: 0 0 10px;
+    font-size: 11px;
+}
+
+.hrms-tech-footer-meta dt {
+    margin: 0;
+    font-weight: 600;
+    color: #9fb6cc;
+}
+
+.hrms-tech-footer-meta dd {
+    margin: 0;
+    color: #e8f1f9;
+}
+
+.hrms-tech-footer-copy {
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 10px;
+    color: #9fb6cc;
+}
+
+/* ---- Phase A step workflow ---- */
+
+.hrms-step-panel {
+    margin-bottom: 12px;
+}
+
+.hrms-batch-meta {
+    margin-bottom: 8px;
+}
+
+.hrms-meta-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #73879c;
+    margin-bottom: 2px;
+}
+
+.hrms-meta-value {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2a3f54;
+}
+
+.hrms-step-block h4 {
+    margin-top: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.hrms-step-badge {
+    display: inline-block;
+    margin-right: 6px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: #2a3f54;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.hrms-lock-note {
+    display: block;
+    margin: 8px 0 12px;
+    padding: 8px 10px;
+    border-left: 4px solid #f0ad4e;
+    background: #fcf8e3;
+    color: #8a6d3b;
+    font-weight: 600;
+}
+
+@media (max-width: 575px) {
+    .hrms-sync-info-panel {
+        width: 100vw;
+    }
+
+    .hrms-sync-info-header h3 {
+        font-size: 15px;
+    }
+
+    .hrms-tech-footer-meta {
+        grid-template-columns: 90px 1fr;
+    }
+}

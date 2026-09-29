@@ -8,37 +8,120 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="<%= ResolveUrl("~/WebData/anmol_logo_GPTW.jpg") %>" type="image/ico" />
 
-    <link rel="icon" href="WebData/Anmol_Logo.png" type="image/ico" />
+    <title>Anmol Industries</title>
 
-    <title>Anmol</title>
+    <link href="<%= ResolveUrl("~/Resources/bootstrap/dist/css/bootstrap.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/font-awesome/css/font-awesome.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/nprogress/nprogress.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/iCheck/skins/flat/green.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/bootstrap-progressbar/css/bootstrap-progressbar-3.3.4.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/jqvmap/dist/jqvmap.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/bootstrap-daterangepicker/daterangepicker.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/DataTables/datatables.min.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.buttons.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.nonblock.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/loader/loader.css") %>" rel="stylesheet" />
+    <link href="<%= ResolveUrl("~/Resources/custom/custom.css") %>" rel="stylesheet" />
 
-    <link href="Resources/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="Resources/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
-    <link href="Resources/nprogress/nprogress.css" rel="stylesheet" />
-    <link href="Resources/iCheck/skins/flat/green.css" rel="stylesheet" />
-    <link href="Resources/bootstrap-progressbar/css/bootstrap-progressbar-3.3.4.min.css" rel="stylesheet" />
-    <link href="Resources/jqvmap/dist/jqvmap.min.css" rel="stylesheet" />
-    <link href="Resources/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet" />
-    <link href="Resources/DataTables/datatables.min.css" rel="stylesheet" />
-    <link href="Resources/pnotify/dist/pnotify.css" rel="stylesheet" />
-    <link href="Resources/pnotify/dist/pnotify.buttons.css" rel="stylesheet" />
-    <link href="Resources/pnotify/dist/pnotify.nonblock.css" rel="stylesheet" />
-    <link href="Resources/loader/loader.css" rel="stylesheet" />
-    <link href="Resources/custom/custom.css" rel="stylesheet" />
+    <style type="text/css">
+        /* =========================================================
+           DESKTOP ONLY (Screens 992px and wider)
+           ========================================================= */
+        @media (min-width: 992px) {
+            /* 1. Hide the hamburger toggle completely on desktop */
+            #menu_toggle {
+                display: none !important;
+            }
+
+            /* 2. KILL THE FLYOUTS: Completely hide floating menus */
+            body.nav-sm .nav.child_menu,
+            body.nav-sm .active-sm {
+                display: none !important;
+            }
+
+            /* 3. Lock main content so it NEVER jumps */
+            body.nav-md .container.body .right_col,
+            body.nav-sm .container.body .right_col {
+                margin-left: 70px !important;
+                width: auto !important;
+                padding: 10px 20px !important;
+                z-index: 1;
+            }
+
+            /* 4. Make the sidebar float OVER the content when expanded */
+            .col-md-3.left_col {
+                position: fixed !important;
+                z-index: 9999 !important;
+                height: 100vh !important;
+                overflow-y: auto !important;
+                transition: width 0.2s ease;
+            }
+
+            /* 5. Fix top navigation padding */
+            .nav_menu {
+                width: 100%;
+                margin-bottom: 0;
+            }
+
+            /* Impersonation banner: sit in the header column (below nav, clear of sidebar) */
+            .su-impersonation-banner {
+                clear: both;
+                position: relative;
+                z-index: 3;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            /* 6. Hide ANMOL text in narrow mode */
+            body.nav-sm .site_title span {
+                display: none !important;
+            }
+
+            body.nav-sm .nav_title {
+                width: 70px !important;
+            }
+        }
+
+        /* =========================================================
+           MOBILE ONLY (Screens smaller than 992px)
+           ========================================================= */
+        @media (max-width: 991px) {
+            /* Ensure the hamburger toggle is visible so users can tap it */
+            #menu_toggle {
+                display: block !important;
+            }
+        }
+    </style>
 
     <asp:ContentPlaceHolder ID="head" runat="server">
     </asp:ContentPlaceHolder>
 
-    <script src="Resources/Scripts/jquery-1.7.2.min.js"></script>
+    <script src="<%= ResolveUrl("~/Resources/Scripts/jquery-1.7.2.min.js") %>"></script>
+
+    <%-- Server authority: anonymous/public page flag for future visitor-isolation JS.
+         Do not duplicate AnonymousAccessPages filenames in client script. --%>
+    <script type="text/javascript">
+        window.__anonymousAccessPage = <%= IsAnonymousAccessPage() ? "true" : "false" %>;
+    </script>
+
+    <script type="text/javascript">
+        window.__loginUrl = '<%= ResolveUrl("~/login.aspx") %>';
+        window.__heartbeatUrl = '<%= ResolveUrl("~/heartbeat.aspx/Heartbeat") %>';
+        window.__logoutHandlerUrl = '<%= ResolveUrl("~/LogoutHandler.ashx") %>';
+        window.__logoutUrl = '<%= ResolveUrl("~/logout.aspx/EndSession") %>';
+    </script>
+
     <script type="text/javascript">
         var idleTimeout;
         var logoutTime;
 
         function startIdleTimer() {
             idleTimeout = setTimeout(function () {
-                location.href = 'login.aspx';
-            }, 10 * 60 * 1000); // 5 minutes in milliseconds
+                location.href = window.__loginUrl;
+            }, 10 * 60 * 1000); // 10 minutes in milliseconds
 
             // Calculate the logout time
             logoutTime = new Date();
@@ -74,26 +157,345 @@
 
             // If we've reached 0 minutes and 0 seconds, initiate logout
             if (timeLeft <= 0) {
-                location.href = 'login.aspx';
+                location.href = window.__loginUrl;
                 return;
             }
         }
 
         $(document).ready(function () {
-            startIdleTimer();
-            setInterval(updateDisplay, 1000);
-            document.addEventListener("mousemove", handleUserActivity);
-            document.addEventListener("keypress", handleUserActivity);
+            // ERP idle timeout must not run on anonymous/public VMS pages.
+            // Flag is server-rendered from IsAnonymousAccessPage() — do not add client page lists.
+            if (!window.__anonymousAccessPage) {
+                startIdleTimer();
+                setInterval(updateDisplay, 1000);
+                document.addEventListener("mousemove", handleUserActivity);
+                document.addEventListener("keypress", handleUserActivity);
+            }
         });
+
+        // run this on pages where the user is logged in (master page)
+        //(function () {
+        //    var HEARTBEAT_MINUTES = 5;
+        //    var HEARTBEAT_MS = HEARTBEAT_MINUTES * 60 * 1000;
+
+        //    function sendHeartbeat() {
+        //        try {
+        //            var id = sessionStorage.getItem('ActiveSessionId');
+        //            if (!id) return;
+
+        //            $.ajax({
+        //                type: 'POST',
+        //                url: 'heartbeat.aspx/Heartbeat',
+        //                data: JSON.stringify({ activeSessionId: parseInt(id, 10) }),
+        //                contentType: 'application/json; charset=utf-8',
+        //                dataType: 'json',
+        //                success: function (resp) {
+        //                    // resp.d is the WebMethod return if ASP.NET wraps it; handle both shapes
+        //                    var data = resp && resp.d ? resp.d : resp;
+        //                    if (!data || !data.ok) {
+        //                        // optionally force logout when server says not ok
+        //                        // console.warn('heartbeat not ok', data);
+        //                    }
+        //                },
+        //                error: function (xhr, status, err) {
+        //                    // optional: if status indicates 401/403, force logout
+        //                    if (xhr && (xhr.status === 401 || xhr.status === 403)) {
+        //                        // force client to logout
+        //                        sessionStorage.removeItem('ActiveSessionId');
+        //                        window.location.href = window.__loginUrl;
+        //                    }
+        //                    // otherwise, ignore and try again next interval
+        //                }
+        //            });
+        //        } catch (e) {
+        //            // swallow — heartbeat is best-effort
+        //            console.warn('heartbeat error', e);
+        //        }
+        //    }
+
+        //    // initial run and schedule
+        //    $(function () {
+        //        // send one soon after load if active session exists
+        //        setTimeout(sendHeartbeat, 2000);
+        //        // then repeat on interval
+        //        setInterval(sendHeartbeat, HEARTBEAT_MS);
+        //    });
+        //})();
+
+
+        (function () {
+            // CONFIG
+            var HEARTBEAT_URL = window.__heartbeatUrl;   // accepts { loginToken: "GUID" } and returns { ok: true/false }
+            var LOGOUT_URL = window.__logoutUrl;       // accepts { loginToken: "GUID" } and returns { ok:true }
+            var CHECK_INTERVAL_MS = 60 * 1000;                // how often to validate token (1 min)
+            var MAX_RETRIES = 2;                              // minor retries on transient network errors
+
+            // Helper: attempt to close window (may fail if not opened by script)
+            function tryCloseWindow() {
+                try {
+                    // If this tab was opened by another window via window.open,
+                    // attempt to close the opener and ourselves.
+                    if (window.opener && !window.opener.closed) {
+                        try { window.opener.close(); } catch (e) { /* ignore */ }
+                    }
+                    // Try to close this window (works only if opened by script in many browsers)
+                    window.close();
+                    // If close didn't work within short time, redirect to login as a fallback
+                    setTimeout(function () {
+                        if (!document.hidden) {
+                            window.location.href = window.__loginUrl;
+                        }
+                    }, 300);
+                } catch (e) {
+                    window.location.href = window.__loginUrl;
+                }
+            }
+
+            // Perform logout: notify server, clear storage, notify other tabs via localStorage, then close/redirect
+            function doLogout_OLD(reason) {
+                var token = sessionStorage.getItem('ActiveLoginToken');
+
+                // Clear client state immediately
+                try { sessionStorage.removeItem('ActiveLoginToken'); } catch (e) { }
+                try { sessionStorage.removeItem('ActiveSessionId'); } catch (e) { }
+
+                // Notify other tabs: write timestamped value so storage event fires
+                try {
+                    localStorage.setItem('app_logout', JSON.stringify({ ts: Date.now(), reason: reason || null }));
+                } catch (e) { /* ignore storage errors */ }
+
+                // Try to inform server (best-effort)
+                if (token) {
+                    // use fetch if available
+                    try {
+                        fetch(LOGOUT_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                            body: JSON.stringify({ loginToken: token })
+                        }).catch(function () { /* ignore */ })
+                          .finally(function () { tryCloseWindow(); });
+                    } catch (e) {
+                        tryCloseWindow();
+                    }
+                } else {
+                    tryCloseWindow();
+                }
+            }
+
+            function doLogout_OLD2(reason) {
+                // Clear client sessionStorage
+                try {
+                    sessionStorage.removeItem('ActiveLoginToken');
+                    sessionStorage.removeItem('ActiveSessionId');
+                } catch (e) { }
+
+                // Broadcast logout to other tabs (they listen for localStorage event)
+                try {
+                    localStorage.setItem('app_logout', JSON.stringify({ ts: Date.now(), reason: reason || null }));
+                } catch (e) { }
+
+                // Redirect this tab to login
+                // Small delay ensures storage event is fired before redirect
+                setTimeout(function () {
+                    window.location.href = window.__loginUrl;
+                }, 150);
+            }
+
+            function doLogout(reason) {
+                var token = null;
+                try {
+                    token = sessionStorage.getItem('ActiveLoginToken');
+                } catch (e) { }
+
+                if (token) {
+                    // Best-effort call to server to mark session inactive
+                    fetch(window.__logoutHandlerUrl + '?loginToken=' + encodeURIComponent(token), {
+                        method: 'GET'
+                    }).catch(function () {
+                        // ignore network errors, still proceed
+                    });
+                }
+
+                // Clear client sessionStorage
+                try {
+                    sessionStorage.removeItem('ActiveLoginToken');
+                    sessionStorage.removeItem('ActiveSessionId');
+                } catch (e) { }
+
+                // Notify other tabs
+                try {
+                    localStorage.setItem('app_logout', JSON.stringify({ ts: Date.now(), reason: reason || null }));
+                } catch (e) { }
+
+                // Redirect this tab
+                setTimeout(function () {
+                    window.location.href = window.__loginUrl;
+                }, 150);
+            }
+
+
+            // Called when another tab logged out (storage event)
+            function handleRemoteLogout(payload) {
+                // payload is the JSON object set into localStorage
+                try {
+                    // Clear local session storage
+                    sessionStorage.removeItem('ActiveLoginToken');
+                    sessionStorage.removeItem('ActiveSessionId');
+                } catch (e) { /* ignore */ }
+
+                // Try to close window or redirect
+                tryCloseWindow();
+            }
+
+            // Validate token with server via heartbeat endpoint. If invalid -> logout.
+            function validateTokenPing(retryCount) {
+                retryCount = retryCount || 0;
+                var token = sessionStorage.getItem('ActiveLoginToken');
+                if (!token) {
+                    // no token in this tab — treat as logged out
+                    doLogout('no-token');
+                    return;
+                }
+
+                // POST { loginToken: token }
+                try {
+                    fetch(HEARTBEAT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                        body: JSON.stringify({ loginToken: token })
+                    }).then(function (res) {
+                        if (res.status === 401 || res.status === 403) {
+                            // server says no - logout
+                            doLogout('unauthorized');
+                            return;
+                        }
+                        return res.json();
+                    }).then(function (json) {
+                        // some ASP.NET WebMethods wrap return in d; support both shapes
+                        var data = json && json.d ? json.d : json;
+                        if (!data) {
+                            // if nothing returned, treat as transient error
+                            if (retryCount < MAX_RETRIES) {
+                                setTimeout(function () { validateTokenPing(retryCount + 1); }, 1000);
+                            }
+                            return;
+                        }
+                        if (!data.ok) {
+                            // token invalid / inactive -> logout
+                            doLogout('invalid-token');
+                        }
+                        // else ok -> nothing to do
+                    }).catch(function (err) {
+                        // network error — optionally retry once
+                        if (retryCount < MAX_RETRIES) {
+                            setTimeout(function () { validateTokenPing(retryCount + 1); }, 1000);
+                        }
+                    });
+                } catch (e) {
+                    // unexpected error -> redirect as fallback
+                    doLogout('error');
+                }
+            }
+
+            // Start periodic checks
+            var checkTimer = null;
+            function startChecks() {
+                // initial quick validation
+                setTimeout(function () { validateTokenPing(0); }, 2000);
+                // regular check every CHECK_INTERVAL_MS
+                checkTimer = setInterval(function () { validateTokenPing(0); }, CHECK_INTERVAL_MS);
+            }
+
+            function stopChecks() {
+                if (checkTimer) { clearInterval(checkTimer); checkTimer = null; }
+            }
+
+            // Listen for remote logout via storage event
+            window.addEventListener('storage', function (e) {
+                // Anonymous/public VMS pages must not follow ERP cross-tab logout.
+                if (window.__anonymousAccessPage)
+                    return;
+
+                if (!e) return;
+                if (e.key === 'app_logout' && e.newValue) {
+                    // parse payload
+                    try {
+                        var payload = JSON.parse(e.newValue);
+                    } catch (ex) {
+                        payload = { ts: Date.now() };
+                    }
+                    handleRemoteLogout(payload);
+                }
+            }, false);
+
+            // Optional: when page loads, if it has no token we could redirect immediately
+            document.addEventListener('DOMContentLoaded', function () {
+                var token = sessionStorage.getItem('ActiveLoginToken');
+                if (!token) {
+                    // no token -> go to login
+                    // but allow explicit pages that don't require auth to skip (adjust as needed)
+                    // window.location.href = window.__loginUrl;
+                    return;
+                }
+                startChecks();
+            });
+
+            // Expose doLogout for manual logout button
+            window.appDoLogout = doLogout;
+
+        })();
     </script>
+    <script>
+        (function () {
+            try {
+                var intervalMs = 30000; // 30s
+                function sendHeartbeat() {
+                    try {
+                        var token = sessionStorage.getItem('LoginToken') || null;
+                        if (!token) return;
+                        var payload = JSON.stringify({ loginToken: token });
+                        fetch(window.__heartbeatUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json;charset=utf-8' },
+                            body: payload
+                        }).catch(function (e) { /* silent */ });
+                    } catch (e) { }
+                }
+                // run immediately and then periodically
+                sendHeartbeat();
+                setInterval(sendHeartbeat, intervalMs);
+            } catch (e) { }
+        })();
+    </script>
+    <script>
+        (function () {
+            setInterval(function () {
+                try {
+                    var token = sessionStorage.getItem("ActiveLoginToken");
+                    if (!token) return;
+
+                    fetch('<%= ResolveUrl("~/heartbeat.aspx/Heartbeat") %>', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Content-Type': 'application/json; charset=utf-8',
+                            'Cache-Control': 'no-cache'
+                        },
+                        body: JSON.stringify({ loginToken: token })
+                    });
+                } catch (e) { }
+            }, 60000); // 1 minute
+        })();
+    </script>
+
 </head>
-<body class="nav-md footer_fixed">
+<body class="nav-sm footer_fixed">
     <div id="loader">
-        <img src="WebData/Internal/Hourglass.gif" alt="loadergif" />
+        <img src="<%= ResolveUrl("~/WebData/Internal/Hourglass.gif") %>" alt="loadergif" />
     </div>
     <div style="display: none;" id="content">
         <form id="form1" runat="server">
-
+            <asp:ScriptManager ID="ScriptManager1" runat="server" />
             <div class="container body">
                 <div class="main_container">
 
@@ -101,100 +503,129 @@
                         <div class="left_col scroll-view">
                             <div class="navbar nav_title" style="border: 0;">
                                 <a href="#" class="site_title">
-                                    <asp:Image ID="Image1" runat="server" ImageUrl="~/WebData/Anmol_Logo.png" Height="40" Width="50" /><span>&nbsp;&nbsp;ANMOL</span>
+                                    <asp:Image ID="Image1" runat="server" ImageUrl="~/WebData/anmol_logo_GPTW.jpg" Height="40" Width="50" /><span>&nbsp;&nbsp;ANMOL</span>
                                 </a>
                             </div>
 
                             <div class="clearfix"></div>
 
-                            <!-- menu profile quick info -->
                             <div class="profile clearfix">
                                 <div class="profile_pic">
                                     <img id="ProfilePic_1" src="~/WebData/No_Image.jpg" runat="server" alt="..." class="img-circle profile_img">
                                 </div>
                                 <div class="profile_info">
                                     Hi,
-                                <asp:Label ID="lbl_loginusername1" runat="server" Text="Login_Name" Font-Bold="true"></asp:Label>
+                                <asp:Label ID="lbl_loginusername1" runat="server" Text="Unkown" Font-Bold="true"></asp:Label>
                                 </div>
                             </div>
-                            <!-- /menu profile quick info -->
-
                             <br />
 
-                            <!-- sidebar menu -->
                             <div id="sidebar-menu" class="main_menu_side hidden-print main_menu">
                                 <div class="menu_section">
                                     <h3>General</h3>
                                     <ul class="nav side-menu">
-                                        <li id="HomePage" runat="server" visible="true"><a><i class="fa fa-home"></i>Home <span class="fa fa-chevron-down"></span></a>
-                                            <ul class="nav child_menu">
-                                                <li id="Home1" runat="server" visible="true"><a href="home.aspx">Dashboard-1<span class="label label-success pull-right">Click !!</span></a></li>
-                                            </ul>
+                                        <li id="HomePage" runat="server" visible="false">
+                                            <a href="<%= ResolveUrl("~/home.aspx") %>" title="Dashboard-1"><i class="fa fa-home"></i>Home</a>
                                         </li>
 
-                                        <li id="ImputForms" runat="server" visible="true"><a><i class="fa fa-pencil-square-o"></i>Forms<span class="fa fa-chevron-down"></span></a>
+                                        <li id="ImputForms" runat="server" visible="false"><a><i class="fa fa-pencil-square-o"></i>Forms<span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="frms_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                <li id="frms_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="frms_qc" runat="server" class="sub_menu"><a href="qaqc_qahome.aspx">Quality Assurance</a></li>
-                                                        <li id="frms_qa" runat="server"><a href="qaqc_qchome.aspx">Quality Control</a></li>
+                                                        <li id="frms_qc" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/qaqc_qahome.aspx") %>">Quality Assurance</a></li>
+                                                        <li id="frms_qa" runat="server" visible="false"><a href="<%= ResolveUrl("~/qaqc_qchome.aspx") %>">Quality Control</a></li>
                                                     </ul>
                                                 </li>
-                                                <li id="frms_production" runat="server" visible="true"><a>Production<span class="fa fa-chevron-down"></span></a>
+                                                <li id="frms_production" runat="server" visible="false"><a>Production<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="Li3" runat="server" class="sub_menu"><a href="prod_misc.aspx">No Category</a></li>
-                                                    </ul>
-                                                </li>
-                                            </ul>
-                                        </li>
-
-                                        <li id="FormsApprovals" runat="server" visible="true"><a><i class="fa fa-file-text"></i>Approvals<span class="fa fa-chevron-down"></span></a>
-                                            <ul class="nav child_menu">
-                                                <li id="app_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
-                                                    <ul class="nav child_menu">
-                                                        <li id="app_qa" runat="server" class="sub_menu"><a href="qaqc_qaapprovals.aspx">Quality Assurance</a></li>
-                                                        <li id="app_qc" runat="server"><a href="qaqc_qcapprovals.aspx">Quality Control</a></li>
+                                                        <li id="frms_prod" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/prod_misc.aspx") %>">No Category</a></li>
                                                     </ul>
                                                 </li>
                                             </ul>
                                         </li>
 
-                                        <li id="Reports" runat="server" visible="true"><a><i class="fa fa-file-text"></i>Reports<span class="fa fa-chevron-down"></span></a>
+                                        <li id="FormsApprovals" runat="server" visible="false"><a><i class="fa fa-file-text"></i>Approvals<span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="rpts_quality" runat="server" visible="true"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                <li id="app_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
                                                     <ul class="nav child_menu">
-                                                        <li id="rpts_qa" runat="server" class="sub_menu"><a href="qaqc_qahome_rpt.aspx">Quality Assurance</a></li>
-                                                        <li id="rpts_qc" runat="server"><a href="qaqc_qchome_rpt.aspx">Quality Control</a></li>
-                                                    </ul>
-                                                </li>
-                                                <li id="rpts_production" runat="server" visible="true"><a>Production<span class="fa fa-chevron-down"></span></a>
-                                                    <ul class="nav child_menu">
-                                                        <li id="Li2" runat="server" class="sub_menu"><a href="prod_misc_rpts.aspx">No Category</a></li>
+                                                        <li id="app_qa" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/qaqc_qaapprovals.aspx") %>">Quality Assurance</a></li>
+                                                        <li id="app_qc" runat="server" visible="false"><a href="<%= ResolveUrl("~/qaqc_qcapprovals.aspx") %>">Quality Control</a></li>
                                                     </ul>
                                                 </li>
                                             </ul>
                                         </li>
 
-                                        <li id="AdminControl" runat="server" visible="true"><a><i class="fa fa-database"></i>ADMIN Control <span class="fa fa-chevron-down"></span></a>
+                                        <li id="Reports" runat="server" visible="false"><a><i class="fa fa-file-text"></i>Reports<span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="DataMST" runat="server" visible="true"><a href="datamastering_home.aspx">Data Mastering<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="FormMST" runat="server" visible="false"><a href="#">Forms Mastering<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="rpts_quality" runat="server" visible="false"><a>Quality<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="rpts_qa" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/qaqc_qahome_rpt.aspx") %>">Quality Assurance</a></li>
+                                                        <li id="rpts_qc" runat="server" visible="false"><a href="<%= ResolveUrl("~/qaqc_qchome_rpt.aspx") %>">Quality Control</a></li>
+                                                    </ul>
+                                                </li>
+                                                <li id="rpts_production" runat="server" visible="false"><a>Production<span class="fa fa-chevron-down"></span></a>
+                                                    <ul class="nav child_menu">
+                                                        <li id="rpts_prod" runat="server" visible="false" class="sub_menu"><a href="<%= ResolveUrl("~/prod_misc_rpts.aspx") %>">No Category</a></li>
+                                                    </ul>
+                                                </li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="AdminControl" runat="server" visible="false"><a><i class="fa fa-database"></i>ADMIN Control <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="DataMST" runat="server" visible="false"><a href="<%= ResolveUrl("~/datamastering_home.aspx") %>">Data Mastering<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="QualityAdmin" runat="server" visible="false"><a href="<%= ResolveUrl("~/qualitydatamastering_home.aspx") %>">Quality Admin<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="AccessMST" runat="server" visible="false"><a href="#">Access Controls<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
                                         </li>
 
                                         <li id="WebLogins" runat="server" visible="false"><a><i class="fa fa-database"></i>Web Logins <span class="fa fa-chevron-down"></span></a>
                                             <ul class="nav child_menu">
-                                                <li id="WebLogins_Add" runat="server" visible="true"><a href="webdetails.aspx">Add/Modify<span class="label label-success pull-right">Click !!</span></a></li>
-                                                <li id="WebLogins_Viewall" runat="server" visible="false"><a href="WebsiteCredentialsView.aspx">View All<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="WebLogins_Add" runat="server" visible="false"><a href="<%= ResolveUrl("~/webdetails.aspx") %>">Add/Modify<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="WebLogins_Viewall" runat="server" visible="false"><a href="<%= ResolveUrl("~/WebsiteCredentialsView.aspx") %>">View All<span class="label label-success pull-right">Click !!</span></a></li>
                                             </ul>
+                                        </li>
+
+                                        <li id="SO_TaDa_Module" runat="server" visible="false"><a><i class="fa fa-database"></i>TA/Da <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="SO_TaDa_AdminConfig" runat="server" visible="false"><a href="<%= ResolveUrl("~/Claims_Config.aspx") %>">Admin Config.<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_Submit" runat="server" visible="false"><a href="<%= ResolveUrl("~/SalesMonthlyReview.aspx") %>">Apply Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_View" runat="server" visible="false"><a href="<%= ResolveUrl("~/MyClaimsView_v2.aspx") %>">View Claims<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_Approve" runat="server" visible="false"><a href="<%= ResolveUrl("~/ClaimsApproval_v2.aspx") %>">View Pending<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="SO_TaDa_ViewApproved" runat="server" visible="false"><a href="<%= ResolveUrl("~/ApprovedClaimsView.aspx") %>">View Approved<span class="label label-success pull-right">Click !!</span></a></li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="VMS_Module" runat="server" visible="false"><a><i class="fa fa-database"></i>Anmol VMS <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="VMS_OrganizationDetails" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_OrganizationDetails.aspx") %>">Org. Details<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <%--<li id="VMS_SelfLogin" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_SelfLogin.aspx") %>">View All<span class="label label-success pull-right">Click !!</span></a></li>--%>
+                                                <li id="VMS_MyVisitors" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_MyVisitors.aspx") %>">My Visitors<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_MyVisits" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_MyVisits.aspx") %>">My Visits<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_GateScanner" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_GateScanner.aspx") %>">Gate Scanner<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_AdminPending" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_AdminPending.aspx") %>">Admin Pending<span class="label label-success pull-right">Click !!</span></a></li>
+                                                <li id="VMS_ReceptionistLogs" runat="server" visible="false"><a href="<%= ResolveUrl("~/VMS_ReceptionistLogs.aspx") %>">Reception View<span class="label label-success pull-right">Click !!</span></a></li>
+                                            </ul>
+                                        </li>
+
+                                        <%-- PermissionHelper maps control ID -> UI.{ID}.View.
+                                             Hidden until dbo.Permission catalog keys exist and are granted
+                                             (see Database/Scripts/010_ITSM_Sidebar_Permissions.sql). --%>
+                                        <li id="ITSM_Module" runat="server" visible="false"><a><i class="fa fa-ticket"></i> ITSM <span class="fa fa-chevron-down"></span></a>
+                                            <ul class="nav child_menu">
+                                                <li id="ITSM_TicketList" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/TicketList.aspx") %>">Ticket Queue</a></li>
+                                                <li id="ITSM_CreateTicket" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/CreateTicket.aspx") %>">Create Ticket</a></li>
+                                                <li id="ITSM_ApprovalConfig" runat="server" visible="false"><a href="<%= ResolveUrl("~/ITSM/UI/ApprovalConfig.aspx") %>">Approval Config</a></li>
+                                            </ul>
+                                        </li>
+
+                                        <li id="SwitchUserLink" runat="server" visible="false">
+                                            <a href="<%= ResolveUrl("~/SwitchUser.aspx") %>" title="Switch User"><i class="fa fa-user-secret"></i>Switch User</a>
                                         </li>
 
                                     </ul>
                                 </div>
                             </div>
-                            <!-- /sidebar menu -->
-
-                            <!-- /menu footer buttons -->
                             <div class="sidebar-footer hidden-small">
                                 <a data-toggle="tooltip" data-placement="top" title="Settings">
                                     <span class="glyphicon glyphicon-cog" aria-hidden="true"></span>
@@ -209,11 +640,9 @@
                                     <span class="glyphicon glyphicon-off" aria-hidden="true"></span>
                                 </a>
                             </div>
-                            <!-- /menu footer buttons -->
                         </div>
                     </div>
 
-                    <!-- top navigation -->
                     <div class="top_nav">
                         <div class="nav_menu">
                             <div class="nav toggle">
@@ -226,8 +655,8 @@
                                             <img id="ProfilePic_2" runat="server" alt="" src="~/WebData/No_Image.jpg"><asp:Label ID="lbl_loginusername2" runat="server" Text="Login_Name"></asp:Label>
                                         </a>
                                         <div class="dropdown-menu dropdown-usermenu pull-right" aria-labelledby="navbarDropdown">
-                                            <a class="dropdown-item" href="manage_profile.aspx">Manage Profile</a>
-                                            <a class="dropdown-item" target="_blank" href="#">Support</a>
+                                            <a class="dropdown-item" href="<%= ResolveUrl("~/pwdchange.aspx") %>">Change Password</a>
+                                            <%--<a class="dropdown-item" target="_blank" href="#">Support</a>--%>
                                             <%--<a class="dropdown-item" href="#"><i class="fa fa-sign-out pull-right"></i>Log Out</a>--%>
                                             <button type="button" class="dropdown-item btn btn-primary btn-sm" id="btn_Logout" data-toggle="modal" data-target="#MyModal_Logout">Logout</button>
                                             <%--<asp:Button ID="btn_Logout" runat="server" Text="Logout" CssClass="dropdown-item btn btn-primary btn-sm" data-toggle="modal" data-target="#MyModal_Logout"/>--%>
@@ -236,8 +665,20 @@
                                 </ul>
                             </nav>
                         </div>
+                        <div class="clearfix"></div>
+                        <%-- Inside top_nav so it inherits sidebar offset and pushes .right_col down. --%>
+                        <asp:Panel ID="pnlSuBanner" runat="server" Visible="false" CssClass="su-impersonation-banner" style="background:linear-gradient(135deg,#e67e22,#d35400);color:#fff;padding:10px 20px;margin:0 0 10px 0;font-weight:600;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                                <i class="fa fa-user-secret" style="font-size:18px;"></i>
+                                <span>
+                                    <strong>Impersonating:</strong> <asp:Label ID="lblSuBannerCurrent" runat="server" Text=""></asp:Label>
+                                    &nbsp;|&nbsp;
+                                    <span style="font-weight:400;font-size:13px;opacity:0.9;"><strong>Original User:</strong> <asp:Label ID="lblSuBannerOriginal" runat="server" Text=""></asp:Label></span>
+                                </span>
+                            </div>
+                            <a href="<%= ResolveUrl("~/SwitchUser.aspx?action=return") %>" class="btn btn-sm" style="background:#fff;color:#d35400;border:none;padding:5px 14px;border-radius:3px;font-weight:600;text-decoration:none;">Return to My Account</a>
+                        </asp:Panel>
                     </div>
-                    <!-- /top navigation -->
                 </div>
                 <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
             </div>
@@ -247,7 +688,7 @@
                     Autologout >
                 <asp:Label ID="lblTime1" runat="server" Text="N/A" Font-Bold="true" ForeColor="IndianRed" Visible="true"></asp:Label>
                     || Time :<asp:Label ID="lblTime" runat="server" Text="N/A" Font-Bold="true" ForeColor="Black" Visible="true"></asp:Label>
-                    || © 2024
+                    || © 2025
                 <asp:Label ID="Label1" runat="server" Text="Anmol " Font-Bold="true" ForeColor="Black" Visible="true"></asp:Label>
 
                 </div>
@@ -284,7 +725,6 @@
             </div>
             <%--- Logout Modal -------- END --%>
 
-            <!-- Small modal -->
             <asp:Button ID="ShowPopup" runat="server" Text="Button" class="btn btn-primary" Visible="false" data-toggle="modal" data-target=".bs-example-modal-sm" />
             <div id="MyPopup" class="modal fade bs-example-modal-sm" data-backdrop="static" tabindex="-1" role="dialog" aria-hidden="true">
                 <div class="modal-dialog modal-sm">
@@ -304,7 +744,6 @@
                     </div>
                 </div>
             </div>
-            <!-- Small Modal - END---->
             <script type="text/javascript">
                 document.addEventListener("DOMContentLoaded", function () {
                     document.getElementById('content').style.display = 'block';
@@ -318,31 +757,76 @@
                 }
             </script>
 
-            <script src="Resources/jquery/dist/jquery.min.js"></script>
-            <script src="Resources/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-            <script src="Resources/fastclick/lib/fastclick.js"></script>
-            <script src="Resources/nprogress/nprogress.js"></script>
-            <script src="Resources/Chart.js/dist/Chart.min.js"></script>
-            <script src="Resources/gauge.js/dist/gauge.min.js"></script>
-            <script src="Resources/bootstrap-progressbar/bootstrap-progressbar.min.js"></script>
-            <script src="Resources/iCheck/icheck.min.js"></script>
-            <script src="Resources/skycons/skycons.js"></script>
-            <script src="Resources/Flot/jquery.flot.js"></script>
-            <script src="Resources/Flot/jquery.flot.pie.js"></script>
-            <script src="Resources/Flot/jquery.flot.time.js"></script>
-            <script src="Resources/Flot/jquery.flot.stack.js"></script>
-            <script src="Resources/Flot/jquery.flot.resize.js"></script>
-            <script src="Resources/flot.orderbars/js/jquery.flot.orderBars.js"></script>
-            <script src="Resources/flot-spline/js/jquery.flot.spline.min.js"></script>
-            <script src="Resources/flot.curvedlines/curvedLines.js"></script>
-            <script src="Resources/DateJS/build/date.js"></script>
-            <script src="Resources/moment/min/moment.min.js"></script>
-            <script src="Resources/bootstrap-daterangepicker/daterangepicker.js"></script>
-            <script src="Resources/custom/custom.js"></script>
-            <script src="Resources//pnotify/dist/pnotify.js"></script>
-            <script src="Resources//pnotify/dist/pnotify.buttons.js"></script>
-            <script src="Resources//pnotify/dist/pnotify.nonblock.js"></script>
-            <script src="Resources//jQuery-Smart-Wizard/js/jquery.smartWizard.js"></script>
+            <script src="<%= ResolveUrl("~/Resources/jquery/dist/jquery.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/bootstrap/dist/js/bootstrap.bundle.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/fastclick/lib/fastclick.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/nprogress/nprogress.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Chart.js/dist/Chart.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/gauge.js/dist/gauge.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/bootstrap-progressbar/bootstrap-progressbar.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/iCheck/icheck.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/skycons/skycons.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.pie.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.time.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.stack.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/Flot/jquery.flot.resize.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/flot.orderbars/js/jquery.flot.orderBars.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/flot-spline/js/jquery.flot.spline.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/flot.curvedlines/curvedLines.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/DateJS/build/date.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/moment/min/moment.min.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/bootstrap-daterangepicker/daterangepicker.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/custom/custom.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.buttons.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/pnotify/dist/pnotify.nonblock.js") %>"></script>
+            <script src="<%= ResolveUrl("~/Resources/jQuery-Smart-Wizard/js/jquery.smartWizard.js") %>"></script>
+
+            <script type="text/javascript">
+                $(document).ready(function () {
+                    var $body = $('body');
+                    var $sidebar = $('.left_col');
+
+                    // Helper function to check if the user is on a Desktop
+                    function isDesktop() {
+                        return $(window).width() >= 992;
+                    }
+
+                    // 1. Initial Load setup
+                    if (isDesktop()) {
+                        // Force Narrow Mode on Desktop
+                        $body.removeClass('nav-md').addClass('nav-sm');
+                    } else {
+                        // Ensure mobile loads correctly (Gentelella usually hides the md menu on mobile via CSS)
+                        $body.removeClass('nav-sm').addClass('nav-md');
+                    }
+
+                    // 2. Temporarily expand the sidebar when hovered (ONLY ON DESKTOP)
+                    $sidebar.hover(
+                        function () {
+                            if (isDesktop()) {
+                                $body.removeClass('nav-sm').addClass('nav-md');
+                            }
+                        },
+                        function () {
+                            if (isDesktop()) {
+                                $body.removeClass('nav-md').addClass('nav-sm');
+                                // Close any open accordions
+                                $('.child_menu').slideUp(200);
+                                $('ul.side-menu li').removeClass('active');
+                            }
+                        }
+                    );
+
+                    // 3. Handle screen resizing (e.g., rotating a tablet)
+                    $(window).resize(function () {
+                        if (isDesktop()) {
+                            $body.removeClass('nav-md').addClass('nav-sm');
+                        }
+                    });
+                });
+            </script>
 
         </form>
     </div>

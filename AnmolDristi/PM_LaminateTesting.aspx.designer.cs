@@ -123,22 +123,31 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.Label Label6;
 
         /// <summary>
-        /// RFV_DDL_BrandSKU control.
+        /// RFV_TB_BrandSKU control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_DDL_BrandSKU;
+        protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_TB_BrandSKU;
 
         /// <summary>
-        /// DDL_BrandSKU control.
+        /// REV_TB_BrandSKU control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList DDL_BrandSKU;
+        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_TB_BrandSKU;
+
+        /// <summary>
+        /// TB_BrandSKU control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.TextBox TB_BrandSKU;
 
         /// <summary>
         /// Lbl_TB_Supplier control.
@@ -879,22 +888,13 @@ namespace AnmolDristi
         protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_TB_Std_GSM;
 
         /// <summary>
-        /// REV_TB_Std_GSM control.
+        /// CV_TB_Std_GSM control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.RegularExpressionValidator REV_TB_Std_GSM;
-
-        /// <summary>
-        /// RV_TB_Std_GSM control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RangeValidator RV_TB_Std_GSM;
+        protected global::System.Web.UI.WebControls.CustomValidator CV_TB_Std_GSM;
 
         /// <summary>
         /// TB_Std_GSM control.

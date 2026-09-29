@@ -522,7 +522,7 @@ namespace AnmolDristi
             string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
             using (SqlConnection conn = new SqlConnection(connStr))
             {
-                using (SqlCommand cmd = new SqlCommand("dbo.InsertQCInspectorRpt_BrandFieldsControl", conn))
+                using (SqlCommand cmd = new SqlCommand("dbo.InsertQCInspectorRpt_BrandFieldsControlUpsert", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
 

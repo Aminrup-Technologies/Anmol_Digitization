@@ -320,21 +320,12 @@ namespace AnmolDristi
         public static DataTable GetBrandFieldsControlByBrandId(int brandId)
         {
             DataTable dataTable = new DataTable();
-
-            // Create a SqlConnection
             using (SqlConnection connection = GetConnection())
             {
-                // Open the connection
-
-                // Create a SqlCommand for the stored procedure
                 using (SqlCommand command = new SqlCommand("GetBrandFieldsControlByBrandId", connection))
                 {
                     command.CommandType = CommandType.StoredProcedure;
-
-                    // Add parameters
                     command.Parameters.AddWithValue("@brand_id", brandId);
-
-                    // Execute the SqlCommand and load results into the DataTable
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
                         dataTable.Load(reader);
@@ -342,10 +333,215 @@ namespace AnmolDristi
                 }
                 connection.Close();
             }
-
             return dataTable;
         }
 
+
+        public static DataTable GetFormFieldControlByFormAndBrand_OLD(int formId, int plantId, int lineId, int brandId, int categoryId)
+        {
+            using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(@"
+                SELECT field_name, DisplayName,
+                       RFV_YesNo, RFV_ErrorMsg,
+                       REV_YesNo, REV_ErrorMsg, REV_Expression,
+                       RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue,
+                       ViewMode
+                FROM MST_FormFieldControls
+                WHERE FormID = @FormID 
+                  AND plant_id = @PlantID 
+                  AND LineId = @LineId 
+                  AND material_id = @BrandID
+                  AND category_id = @CategoryID
+                  AND IsDeleted = 0 AND IsLatest = 1", conn))
+                {
+                    cmd.Parameters.AddWithValue("@FormID", formId);
+                    cmd.Parameters.AddWithValue("@PlantID", plantId);
+                    cmd.Parameters.AddWithValue("@LineId", lineId);
+                    cmd.Parameters.AddWithValue("@BrandID", brandId);
+                    cmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        da.Fill(dt);
+                        return dt;
+                    }
+                }
+            }
+        }
+
+        public static DataTable GetFormFieldControlByFormAndBrand(int formId, int plantId, int lineId, int brandId, int categoryId, DateTime? submissionDate = null)
+        {
+            using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                conn.Open();
+
+                // 1. Define the base query components shared by both Specific and Fallback
+                string selectClause = @"
+            SELECT field_name, DisplayName,
+                   RFV_YesNo, RFV_ErrorMsg,
+                   REV_YesNo, REV_ErrorMsg, REV_Expression,
+                   RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue,
+                   ViewMode
+            FROM MST_FormFieldControls
+            WHERE FormID = @FormID AND RecordType = @RecordType ";
+
+                // 2. Define the temporal (time-travel) logic
+                string temporalLogic = "";
+                if (submissionDate.HasValue)
+                {
+                    // HISTORICAL MODE: Fetch rules active precisely on the submission date.
+                    // A rule is active if it was created before/on the submission date, 
+                    // and either it has never been modified (ModifiedOn IS NULL) 
+                    // or it was modified AFTER the submission date.
+                    temporalLogic = " AND CreatedOn <= @SubmissionDate AND (ModifiedOn IS NULL OR ModifiedOn > @SubmissionDate) ";
+                }
+                else
+                {
+                    // CURRENT/LIVE MODE: Fetch the latest active rules for new data entry.
+                    temporalLogic = " AND IsDeleted = 0 AND IsLatest = 1 ";
+                }
+
+                // 3. Step 1: Try Specific Match First
+                string specificQuery = selectClause + temporalLogic + @"
+              AND plant_id = @PlantID 
+              AND LineId = @LineId 
+              AND material_id = @BrandID
+              AND category_id = @CategoryID";
+
+                using (SqlCommand specificCmd = new SqlCommand(specificQuery, conn))
+                {
+                    specificCmd.Parameters.AddWithValue("@FormID", formId);
+                    specificCmd.Parameters.AddWithValue("@RecordType", "Specific");
+                    specificCmd.Parameters.AddWithValue("@PlantID", plantId);
+                    specificCmd.Parameters.AddWithValue("@LineId", lineId);
+                    specificCmd.Parameters.AddWithValue("@BrandID", brandId);
+                    specificCmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                    // Bind the date parameter if we are in historical mode
+                    if (submissionDate.HasValue)
+                    {
+                        specificCmd.Parameters.AddWithValue("@SubmissionDate", submissionDate.Value);
+                    }
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(specificCmd))
+                    {
+                        DataTable dtSpecific = new DataTable();
+                        da.Fill(dtSpecific);
+
+                        if (dtSpecific.Rows.Count > 0)
+                        {
+                            return dtSpecific;
+                        }
+                    }
+                }
+
+                // 4. Step 2: No specific match, try Fallback
+                string fallbackQuery = selectClause + temporalLogic + @"
+              AND (
+                   (plant_id IS NULL OR plant_id = @PlantID)
+                OR (LineId IS NULL OR LineId = @LineId)
+                OR (material_id IS NULL OR material_id = @BrandID)
+                OR (category_id IS NULL OR category_id = @CategoryID)
+              )";
+
+                using (SqlCommand fallbackCmd = new SqlCommand(fallbackQuery, conn))
+                {
+                    fallbackCmd.Parameters.AddWithValue("@FormID", formId);
+                    fallbackCmd.Parameters.AddWithValue("@RecordType", "Fallback");
+                    fallbackCmd.Parameters.AddWithValue("@PlantID", plantId);
+                    fallbackCmd.Parameters.AddWithValue("@LineId", lineId);
+                    fallbackCmd.Parameters.AddWithValue("@BrandID", brandId);
+                    fallbackCmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                    // Bind the date parameter if we are in historical mode
+                    if (submissionDate.HasValue)
+                    {
+                        fallbackCmd.Parameters.AddWithValue("@SubmissionDate", submissionDate.Value);
+                    }
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(fallbackCmd))
+                    {
+                        DataTable dtFallback = new DataTable();
+                        da.Fill(dtFallback);
+                        return dtFallback;
+                    }
+                }
+            }
+        }
+
+        public static DataTable GetFormFieldControlByFormAndBrand_OLD13May26(int formId, int plantId, int lineId, int brandId, int categoryId)
+        {
+            using (SqlConnection conn = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+            {
+                conn.Open();
+
+                // Step 1: Try Specific match first
+                using (SqlCommand specificCmd = new SqlCommand(@"
+                SELECT field_name, DisplayName,
+                       RFV_YesNo, RFV_ErrorMsg,
+                       REV_YesNo, REV_ErrorMsg, REV_Expression,
+                       RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue,
+                       ViewMode
+                FROM MST_FormFieldControls
+                WHERE FormID = @FormID 
+                  AND plant_id = @PlantID 
+                  AND LineId = @LineId 
+                  AND material_id = @BrandID
+                  AND category_id = @CategoryID
+                  AND RecordType = 'Specific'
+                  AND IsDeleted = 0 AND IsLatest = 1", conn))
+                {
+                    specificCmd.Parameters.AddWithValue("@FormID", formId);
+                    specificCmd.Parameters.AddWithValue("@PlantID", plantId);
+                    specificCmd.Parameters.AddWithValue("@LineId", lineId);
+                    specificCmd.Parameters.AddWithValue("@BrandID", brandId);
+                    specificCmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(specificCmd))
+                    {
+                        DataTable dtSpecific = new DataTable();
+                        da.Fill(dtSpecific);
+
+                        if (dtSpecific.Rows.Count > 0)
+                            return dtSpecific;
+                    }
+                }
+
+                // Step 2: No specific match, try fallback
+                using (SqlCommand fallbackCmd = new SqlCommand(@"
+                    SELECT field_name, DisplayName,
+                           RFV_YesNo, RFV_ErrorMsg,
+                           REV_YesNo, REV_ErrorMsg, REV_Expression,
+                           RV_Yesno, RV_ErrorMsg, RV_MinValue, RV_MaxValue,
+                           ViewMode
+                    FROM MST_FormFieldControls
+                    WHERE FormID = @FormID 
+                      AND RecordType = 'Fallback'
+                      AND IsDeleted = 0 AND IsLatest = 1
+                      AND (
+                           (plant_id IS NULL OR plant_id = @PlantID)
+                        OR (LineId IS NULL OR LineId = @LineId)
+                        OR (material_id IS NULL OR material_id = @BrandID)
+                        OR (category_id IS NULL OR category_id = @CategoryID)
+                      )", conn))
+                {
+                    fallbackCmd.Parameters.AddWithValue("@FormID", formId);
+                    fallbackCmd.Parameters.AddWithValue("@PlantID", plantId);
+                    fallbackCmd.Parameters.AddWithValue("@LineId", lineId);
+                    fallbackCmd.Parameters.AddWithValue("@BrandID", brandId);
+                    fallbackCmd.Parameters.AddWithValue("@CategoryID", categoryId);
+
+                    using (SqlDataAdapter da = new SqlDataAdapter(fallbackCmd))
+                    {
+                        DataTable dtFallback = new DataTable();
+                        da.Fill(dtFallback);
+                        return dtFallback;
+                    }
+                }
+            }
+        }
 
 
         public static void BindLiteralControl(string query, Literal span_L, Literal span_W, Literal span_H, Literal span_GSM, SqlParameter parameter, out bool recordsBound)

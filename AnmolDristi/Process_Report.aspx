@@ -71,7 +71,7 @@
                                                 <asp:Label ID="Label5" runat="server" AssociatedControlID="DDL_BrandSKU" Text="Brand SKU Type" ForeColor="Blue" Font-Bold="true" Font-Size="Small"></asp:Label>
                                                 <asp:RequiredFieldValidator ID="RFV_DDL_BrandSKU" runat="server" ErrorMessage="" ForeColor="Red" ControlToValidate="DDL_BrandSKU" InitialValue="" Display="Dynamic"></asp:RequiredFieldValidator>
                                                 <div class="input-group-sm">
-                                                    <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded"></asp:DropDownList>
+                                                    <asp:DropDownList ID="DDL_BrandSKU" runat="server" CssClass="form-control form-control-sm rounded" AutoPostBack="true" OnSelectedIndexChanged="DDL_BrandSKU_SelectedIndexChanged"></asp:DropDownList>
                                                 </div>
                                             </div>
                                         </div>
@@ -125,12 +125,15 @@
                         <div class="x_title">
                             <h2>
                                 <asp:Label ID="lbl_viewname" runat="server" Text="Label"></asp:Label>
-                                <asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" />
+                                <%--<asp:Button ID="ExportBtn" runat="server" Text="Export" CssClass="btn btn-info btn-sm" CausesValidation="false" OnClick="ExportBtn_Click" />--%>
                             </h2>
                             <div class="clearfix"></div>
                         </div>
                         <asp:GridView ID="GridView1" runat="server" Width="100%" CssClass="table table-striped table-hover table-bordered table-responsive table-sm table-condensed text-wrap"
                             AutoGenerateColumns="false" ShowHeaderWhenEmpty="true" EmptyDataText="No Data Found" OnRowCommand="GridView1_RowCommand">
+                            <EmptyDataTemplate>
+                                <div style="text-align: center; padding: 10px;">No records found for the selected filters.</div>
+                            </EmptyDataTemplate>
                             <Columns>
 
                                 <asp:TemplateField HeaderText="Sl" HeaderStyle-Width="5%">
@@ -148,6 +151,7 @@
                                         Line:<asp:Label ID="lbl_Line" runat="server" Text='<%# Eval("LineName") %>' Font-Bold="true" /><br />
                                         Category:<asp:Label ID="lbl_ProductCategory" runat="server" Text='<%# Eval("ProductCategory") %>' Font-Bold="true" /><br />
                                         Brand:<asp:Label ID="lbl_ProductBrand" runat="server" Text='<%# Eval("ProductBrand") %>' Font-Bold="true" /><br />
+                                        SKU:<asp:Label ID="lbl_BrandSku" runat="server" Text='<%# Eval("SKU_name") %>' Font-Bold="true" /><br />
                                     </ItemTemplate>
                                 </asp:TemplateField>
 
@@ -171,11 +175,11 @@
                                 <asp:TemplateField HeaderText="Approvals" HeaderStyle-Width="20%">
                                     <ItemTemplate>
                                         L1:<asp:Label ID="lbl_Approver1" runat="server" Text='<%# Eval("L1") %>' />
-                                        [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                        [<asp:Label ID="lbl_Approver1_Status" runat="server" Text='<%# Eval("Approver1_Status") != null && Convert.ToString(Eval("Approver1_Status"))== "1" ? "Approved" : "Pending" %>' />]<br />
                                         L2:<asp:Label ID="lbl_Approver2" runat="server" Text='<%# Eval("L2") %>' />
-                                        [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                        [<asp:Label ID="lbl_Approver2_Status" runat="server" Text='<%# Eval("Approver2_Status") != null && Convert.ToString(Eval("Approver2_Status"))== "1" ? "Approved" : "Pending" %>' />]<br />
                                         L3:<asp:Label ID="lbl_DottedLineApproverEmployeeCode" runat="server" Text='<%# Eval("L3") %>' />
-                                        [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status") == "0" ? "Approved" : "Pending" %>' />]<br />
+                                        [<asp:Label ID="lbl_DottedApprover_Status" runat="server" Text='<%# Eval("DottedApprover_Status") != null && Convert.ToString(Eval("DottedApprover_Status"))== "1" ? "Approved" : "Pending" %>' />]<br />
                                     </ItemTemplate>
                                     <ItemStyle CssClass="text" />
                                 </asp:TemplateField>

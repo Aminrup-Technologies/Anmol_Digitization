@@ -6,11 +6,15 @@ using System.IO;
 using System.Linq;
 using System.Web.UI;
 using System.Configuration;
+using System.Collections.Generic;
+using System.Web;
 
 namespace AnmolDristi
 {
     public partial class vw_app_qcireport : System.Web.UI.Page
     {
+        private readonly string connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+
         public static Int32 RecordID =0;
         public static Int32 ViewerMode = 0;
 
@@ -56,6 +60,7 @@ namespace AnmolDristi
             if (dt.Rows.Count > 0)
             {
                 BindData(dt);
+                LoadPacketWeightView(recordID);
             }
             else
             {
@@ -163,12 +168,12 @@ namespace AnmolDristi
                         FU_DesgImp_Img.Visible = true;
 
                         // Set the valid image URL from the database
-                        uploadedImage1.ImageUrl = imageUrl;
+                        uploadedImage2.ImageUrl = imageUrl;
                     }
                     else
                     {
                         // If the image URL is invalid, set the default "No Image" placeholder
-                        uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                        uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                         // Show the file uploader and hide the image control
                         FU_DesgImp_Upldr.Visible = false;
@@ -178,7 +183,7 @@ namespace AnmolDristi
                 else
                 {
                     // If no data exists, display a default "No Image" placeholder
-                    uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                    uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                     // Show the file uploader and hide the image control
                     FU_DesgImp_Upldr.Visible = true;
@@ -197,12 +202,12 @@ namespace AnmolDristi
                         FU_ClrApp_Img.Visible = true;
 
                         // Set the valid image URL from the database
-                        uploadedImage2.ImageUrl = imageUrl;
+                        uploadedImage1.ImageUrl = imageUrl;
                     }
                     else
                     {
                         // If the image URL is invalid, set the default "No Image" placeholder
-                        uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                        uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                         // Show the file uploader and hide the image control
                         FU_ClrApp_Upldr.Visible = false;
@@ -212,7 +217,7 @@ namespace AnmolDristi
                 else
                 {
                     // If no data exists, display a default "No Image" placeholder
-                    uploadedImage2.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
+                    uploadedImage1.ImageUrl = ResolveUrl("~/WebData/No_Image.jpg");
 
                     // Show the file uploader and hide the image control
                     FU_ClrApp_Upldr.Visible = true;
@@ -221,10 +226,39 @@ namespace AnmolDristi
 
                 //uploadedImage2.ImageUrl = row["ColourAndAppearance"].ToString();
 
-                StandardValue_Binder(ProdBrand);
+                //StandardValue_Binder(ProdBrand);
+
+                // --- Calculate Exact Submission DateTime for Historical Validation ---
+                DateTime submissionDateTime = DateTime.Now; // Default fallback to today
+
+                if (row.Table.Columns.Contains("SubmittedDate") && row["SubmittedDate"] != DBNull.Value)
+                {
+                    DateTime submittedDate = Convert.ToDateTime(row["SubmittedDate"]);
+
+                    // Add the specific time if it exists
+                    if (row.Table.Columns.Contains("SubmittedTime") && row["SubmittedTime"] != DBNull.Value)
+                    {
+                        TimeSpan submittedTime = (TimeSpan)row["SubmittedTime"];
+                        submissionDateTime = submittedDate.Add(submittedTime);
+                    }
+                    else
+                    {
+                        // If time is missing, default to end of day to capture rules active that day
+                        submissionDateTime = submittedDate.Add(new TimeSpan(23, 59, 59));
+                    }
+                }
+
+                // Pass the historical date into your binder!
+                StandardValue_Binder(PlantID, LineID, ProdCategoryID, ProdBrand, submissionDateTime);
                 string FormID = row["FormID"].ToString();
                 LoadFormDetails(FormID, PlantID, LineID);
 
+
+                // --- Bind Submitter Info ---
+                string submitterCode = row["SubmittedByEmployeeCode"].ToString();
+                SubmitterCodeLabel.Text = submitterCode;
+                // If you have a helper method to get the name, use it here:
+                SubmitterNameLabel.Text = GetMasterDescription($"EMP::{submitterCode}", "SELECT TOP 1 EmployeeName FROM MST_UserMaster WHERE EmployeeCode = @emp", p => p.AddWithValue("@emp", submitterCode)) ?? "Operator";
 
                 // Assume the logged-in user's Employee Code is stored in a session variable
                 string loggedInUserCode = Session["WORKMAN"].ToString(); // Example session variable
@@ -242,75 +276,96 @@ namespace AnmolDristi
                 // Boolean flag to track if the logged-in user is one of the approvers
                 bool isApprover = false;
 
-                // Approver 1
+                // --- APPROVER 1 LOGIC ---
                 if (App1_Status == "0") // Pending
                 {
-                    Approver1CodeLabel.ForeColor = Color.Brown;
+                    Approver1StatusBadge.Text = "Pending / Under Review";
+                    Approver1StatusBadge.CssClass = "badge bg-warning text-dark"; // Amber/Yellow
                     if (loggedInUserCode == row["Approver1EmployeeCode"].ToString())
                     {
-                        btnApprove.Enabled = true;
-                        btnReject.Enabled = true;
-                        isApprover = true;
+                        btnApprove.Enabled = true; btnReject.Enabled = true; isApprover = true;
                     }
                 }
                 else if (App1_Status == "1") // Approved
                 {
-                    Approver1CodeLabel.ForeColor = Color.Green;
+                    Approver1StatusBadge.Text = "Approved";
+                    Approver1StatusBadge.CssClass = "badge bg-success"; // Green
                     if (loggedInUserCode == row["Approver1EmployeeCode"].ToString())
                     {
-                        btnApprove.Text = "Approved";
-                        btnApprove.Enabled = false;
-                        btnReject.Enabled = false;
-                        isApprover = true;
+                        btnApprove.Text = "Approved"; btnApprove.Enabled = false; btnReject.Enabled = false; isApprover = true;
                         Lbl_btnSubmit.Text = "You have approved!";
                     }
                 }
+                else if (App1_Status == "2") // Rejected
+                {
+                    Approver1StatusBadge.Text = "Rejected / Correction Req.";
+                    Approver1StatusBadge.CssClass = "badge bg-danger"; // Red
+                    if (loggedInUserCode == row["Approver1EmployeeCode"].ToString())
+                    {
+                        btnReject.Text = "Rejected"; btnApprove.Enabled = false; btnReject.Enabled = false; isApprover = true;
+                        Lbl_btnSubmit.Text = "You have rejected this report.";
+                    }
+                }
 
-                // Approver 2
+                // --- APPROVER 2 LOGIC ---
                 if (App2_Status == "0") // Pending
                 {
-                    Approver2CodeLabel.ForeColor = Color.Brown;
+                    Approver2StatusBadge.Text = "Pending / Under Review";
+                    Approver2StatusBadge.CssClass = "badge bg-warning text-dark";
                     if (loggedInUserCode == row["Approver2EmployeeCode"].ToString())
                     {
-                        btnApprove.Enabled = true;
-                        btnReject.Enabled = true;
-                        isApprover = true;
+                        btnApprove.Enabled = true; btnReject.Enabled = true; isApprover = true;
                     }
                 }
                 else if (App2_Status == "1") // Approved
                 {
-                    Approver2CodeLabel.ForeColor = Color.Green;
+                    Approver2StatusBadge.Text = "Approved";
+                    Approver2StatusBadge.CssClass = "badge bg-success";
                     if (loggedInUserCode == row["Approver2EmployeeCode"].ToString())
                     {
-                        btnApprove.Text = "Approved";
-                        btnApprove.Enabled = false;
-                        btnReject.Enabled = false;
-                        isApprover = true;
+                        btnApprove.Text = "Approved"; btnApprove.Enabled = false; btnReject.Enabled = false; isApprover = true;
                         Lbl_btnSubmit.Text = "You have approved!";
                     }
                 }
+                else if (App2_Status == "2") // Rejected
+                {
+                    Approver2StatusBadge.Text = "Rejected / Correction Req.";
+                    Approver2StatusBadge.CssClass = "badge bg-danger";
+                    if (loggedInUserCode == row["Approver2EmployeeCode"].ToString())
+                    {
+                        btnReject.Text = "Rejected"; btnApprove.Enabled = false; btnReject.Enabled = false; isApprover = true;
+                        Lbl_btnSubmit.Text = "You have rejected this report.";
+                    }
+                }
 
-                // Dotted Line Approver
+                // --- DOTTED LINE (CQA) LOGIC ---
                 if (DottedApp_Status == "0") // Pending
                 {
-                    DottedLineApproverCodeLabel.ForeColor = Color.Brown;
+                    DottedAppStatusBadge.Text = "Pending / Under Review";
+                    DottedAppStatusBadge.CssClass = "badge bg-warning text-dark";
                     if (loggedInUserCode == row["DottedLineApproverEmployeeCode"].ToString())
                     {
-                        btnApprove.Enabled = true;
-                        btnReject.Enabled = true;
-                        isApprover = true;
+                        btnApprove.Enabled = true; btnReject.Enabled = true; isApprover = true;
                     }
                 }
                 else if (DottedApp_Status == "1") // Approved
                 {
-                    DottedLineApproverCodeLabel.ForeColor = Color.Green;
+                    DottedAppStatusBadge.Text = "Approved";
+                    DottedAppStatusBadge.CssClass = "badge bg-success";
                     if (loggedInUserCode == row["DottedLineApproverEmployeeCode"].ToString())
                     {
-                        btnApprove.Text = "Approved";
-                        btnApprove.Enabled = false;
-                        btnReject.Enabled = false;
-                        isApprover = true;
+                        btnApprove.Text = "Approved"; btnApprove.Enabled = false; btnReject.Enabled = false; isApprover = true;
                         Lbl_btnSubmit.Text = "You have approved!";
+                    }
+                }
+                else if (DottedApp_Status == "2") // Rejected
+                {
+                    DottedAppStatusBadge.Text = "Rejected / Correction Req.";
+                    DottedAppStatusBadge.CssClass = "badge bg-danger";
+                    if (loggedInUserCode == row["DottedLineApproverEmployeeCode"].ToString())
+                    {
+                        btnReject.Text = "Rejected"; btnApprove.Enabled = false; btnReject.Enabled = false; isApprover = true;
+                        Lbl_btnSubmit.Text = "You have rejected this report.";
                     }
                 }
 
@@ -353,7 +408,16 @@ namespace AnmolDristi
                 }
 
 
-                
+                // --- AUTO-HIGHLIGHT OOS FIELDS & SHOW STD VALUES ON LOAD ---
+
+                AutoHighlightOutOfSpec(TB_NoOfPcs, hdnMinNoOfPcs, hdnMaxNoOfPcs, null, Lbl_TB_NoOfPcs);
+                AutoHighlightOutOfSpec(TB_BakingTime, hdnMinBakingTime, hdnMaxBakingTime, null, Lbl_TB_BakingTime);
+                AutoHighlightOutOfSpec(TB_BakingTime2, hdnMinBakingTime2, hdnMaxBakingTime2, null, Lbl_TB_BakingTime2);
+                AutoHighlightOutOfSpec(TB_ShapeSize, hdnMinShapeSize, hdnMaxShapeSize, ShapeSizeRemarksDIV, Lbl_TB_ShapeSize);
+                AutoHighlightOutOfSpec(TB_GaugeLen, hdnMinGaugelen, hdnMaxGaugelen, GaugeLenRemarksDIV, Lbl_TB_GaugeLen);
+
+                // Hide the manual validation button to clean up the UI
+                btnSubmit.Visible = false;
 
                 ScriptManager.RegisterStartupScript(this, GetType(), "triggerButtonClick", Page.ClientScript.GetPostBackEventReference(btnSubmit, ""), true);
             }
@@ -604,7 +668,76 @@ namespace AnmolDristi
             public bool Visibility { get; set; }
         }
 
-        private void StandardValue_Binder(string ProdBrand)
+        private void StandardValue_Binder(string plantId, string lineId, string categoryId, string brandId, DateTime submissionDateTime)
+        {
+            // FormID is 1 for qaqc_inspector_rpt based on your database snapshot
+            int formId = 1;
+
+            // Fetch the historical configuration active at the exact time the report was submitted
+            DataTable dataTable = DatabaseHelper.GetFormFieldControlByFormAndBrand(
+                formId,
+                Convert.ToInt32(plantId),
+                Convert.ToInt32(lineId),
+                Convert.ToInt32(brandId),
+                Convert.ToInt32(categoryId),
+                submissionDateTime
+            );
+
+            // --- NEW: Bind the Consolidated Table ---
+            if (dataTable != null && dataTable.Rows.Count > 0)
+            {
+                // Filter out fields that are not visible so the Approver only sees relevant limits
+                DataView dv = new DataView(dataTable);
+                dv.RowFilter = "ViewMode = 1";
+
+                gvStandardLimits.DataSource = dv;
+                gvStandardLimits.DataBind();
+            }
+            // ----------------------------------------
+
+            // Iterate through the filtered rows and extract validation criteria
+            foreach (DataRow row in dataTable.Rows)
+            {
+                // Extract field name from the current row
+                string fieldName = row["field_name"].ToString();
+                string displayName = row["DisplayName"].ToString();
+
+                // Extract validation criteria from the DataRow
+                bool rfvEnabled = Convert.ToBoolean(row["RFV_YesNo"]);
+                string rfvErrorMessage = row["RFV_ErrorMsg"].ToString();
+
+                bool revEnabled = Convert.ToBoolean(row["REV_YesNo"]);
+                string revErrorMessage = row["REV_ErrorMsg"].ToString();
+                string revExpression = row["REV_Expression"].ToString();
+
+                // Use the actual Database value instead of hardcoding to true
+                bool rvEnabled = Convert.ToBoolean(row["RV_Yesno"]);
+                string rvErrorMessage = row["RV_ErrorMsg"].ToString();
+                string rvMinValue = row["RV_MinValue"].ToString();
+                string rvMaxValue = row["RV_MaxValue"].ToString();
+
+                bool isVisible = Convert.ToBoolean(row["ViewMode"]);
+
+                // Create a new instance of ValidationCriteria and populate it with data from the DataRow
+                ValidationCriteria criteria = new ValidationCriteria();
+                criteria.DisplayName = displayName;
+                criteria.RequiredFieldErrorMessage = rfvErrorMessage;
+                criteria.IsRequired = rfvEnabled;
+                criteria.RegularExpressionErrorMessage = revErrorMessage;
+                criteria.IsRegularExpressionRequired = revEnabled;
+                criteria.RegularExpression = revExpression;
+                criteria.RangeErrorMessage = rvErrorMessage;
+                criteria.IsRangeRequired = rvEnabled;
+                criteria.MinimumValue = rvMinValue;
+                criteria.MaximumValue = rvMaxValue;
+                criteria.Visibility = isVisible;
+
+                // Pass it to the method to set up validators and natively append the STD Range text
+                SetUpValidatorsForField(fieldName, criteria);
+            }
+        }
+
+        private void StandardValue_Binder_OLD13May26(string ProdBrand)
         {
             DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt32(ProdBrand));
 
@@ -650,434 +783,6 @@ namespace AnmolDristi
                 // Use the criteria as needed
                 // For example, you can pass it to a method to set up validators
                 SetUpValidatorsForField(fieldName, criteria);
-            }
-        }
-
-        private void SetUpValidatorsForField(string fieldName, ValidationCriteria criteria)
-        {
-            switch (fieldName)
-            {
-                case "no_of_pcs":
-
-                    TB_NoOfPcs_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_NoOfPcs.Text = criteria.DisplayName;
-
-                    RFV_TB_NoOfPcs.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_NoOfPcs.Enabled = criteria.IsRequired;
-
-                    TB_NoOfPcs.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_NoOfPcs.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_NoOfPcs.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_NoOfPcs.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_NoOfPcs.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_NoOfPcs.MinimumValue = criteria.MinimumValue;
-                    RV_TB_NoOfPcs.MaximumValue = criteria.MaximumValue;
-                    RV_TB_NoOfPcs.Enabled = criteria.IsRangeRequired;
-
-                    //hdnMinNoOfPcs.Value = criteria.MinimumValue.ToString();
-                    //hdnMaxNoOfPcs.Value = criteria.MaximumValue.ToString();
-
-                    break;
-
-                case "length":
-
-                    TB_Length_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_Length.Text = criteria.DisplayName;
-
-                    RFV_TB_Length.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_Length.Enabled = criteria.IsRequired;
-
-                    TB_Length.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_Length.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_Length.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_Length.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_Length.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_Length.MinimumValue = criteria.MinimumValue;
-                    RV_TB_Length.MaximumValue = criteria.MaximumValue;
-                    RV_TB_Length.Enabled = criteria.IsRangeRequired;
-
-                    break;
-
-                case "breadth":
-
-                    TB_Breadth_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_Breadth.Text = criteria.DisplayName;
-                    RFV_TB_Breadth.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_Breadth.Enabled = criteria.IsRequired;
-
-                    TB_Breadth.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_Breadth.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_Breadth.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_Breadth.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_Breadth.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_Breadth.MinimumValue = criteria.MinimumValue;
-                    RV_TB_Breadth.MaximumValue = criteria.MaximumValue;
-                    RV_TB_Breadth.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "height":
-
-                    TB_Height_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_Height.Text = criteria.DisplayName;
-                    RFV_TB_Height.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_Height.Enabled = criteria.IsRequired;
-
-                    TB_Height.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_Height.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_Height.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_Height.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_Height.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_Height.MinimumValue = criteria.MinimumValue;
-                    RV_TB_Height.MaximumValue = criteria.MaximumValue;
-                    RV_TB_Height.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "VartyPkt":
-
-                    TB_VartyPkt_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_VartyPkt.Text = criteria.DisplayName;
-
-                    RFV_TB_VartyPkt.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_VartyPkt.Enabled = criteria.IsRequired;
-
-                    TB_VartyPkt.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_VartyPkt.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_VartyPkt.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_VartyPkt.Enabled = criteria.IsRegularExpressionRequired;
-
-                    //RV_TB_VartyPkt.ErrorMessage = criteria.RangeErrorMessage;
-                    //RV_TB_VartyPkt.MinimumValue = criteria.MinimumValue;
-                    //RV_TB_VartyPkt.MaximumValue = criteria.MaximumValue;
-                    //RV_TB_VartyPkt.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "BakingTime":
-
-                    TB_BakingTime_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_BakingTime.Text = criteria.DisplayName;
-
-                    RFV_TB_BakingTime.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_BakingTime.Enabled = criteria.IsRequired;
-
-                    TB_BakingTime.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_BakingTime.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_BakingTime.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_BakingTime.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_BakingTime.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_BakingTime.MinimumValue = criteria.MinimumValue;
-                    RV_TB_BakingTime.MaximumValue = criteria.MaximumValue;
-                    RV_TB_BakingTime.Enabled = criteria.IsRangeRequired;
-
-                    hdnMinBakingTime.Value = criteria.MinimumValue.ToString();
-                    hdnMaxBakingTime.Value = criteria.MaximumValue.ToString();
-
-                    break;
-
-
-                case "BakingTime2":
-
-                    TB_BakingTime2_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_BakingTime2.Text = criteria.DisplayName;
-
-                    RFV_TB_BakingTime2.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_BakingTime2.Enabled = criteria.IsRequired;
-
-                    TB_BakingTime2.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_BakingTime2.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_BakingTime2.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_BakingTime2.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_BakingTime2.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_BakingTime2.MinimumValue = criteria.MinimumValue;
-                    RV_TB_BakingTime2.MaximumValue = criteria.MaximumValue;
-                    RV_TB_BakingTime2.Enabled = criteria.IsRangeRequired;
-
-                    hdnMinBakingTime2.Value = criteria.MinimumValue.ToString();
-                    hdnMaxBakingTime2.Value = criteria.MaximumValue.ToString();
-
-                    break;
-
-                case "FlavTst":
-
-
-                    Lbl_RBL_FlavTst.Text = criteria.DisplayName;
-
-                    RFV_RBL_FlavTst.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_RBL_FlavTst.Enabled = criteria.IsRequired;
-
-                    //RBL_FlavTst.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    //REV_RBL_FlavTst.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    //REV_RBL_FlavTst.ValidationExpression = criteria.RegularExpression;
-                    //REV_RBL_FlavTst.Enabled = criteria.IsRegularExpressionRequired;
-
-                    //RV_TB_DippedWeight.ErrorMessage = criteria.RangeErrorMessage;
-                    //RV_TB_DippedWeight.MinimumValue = criteria.MinimumValue;
-                    //RV_TB_DippedWeight.MaximumValue = criteria.MaximumValue;
-                    //RV_TB_DippedWeight.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "SpSz":
-
-                    TB_ShapeSize_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_ShapeSize.Text = criteria.DisplayName;
-
-                    RFV_TB_ShapeSize.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_ShapeSize.Enabled = criteria.IsRequired;
-
-                    TB_ShapeSize.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_ShapeSize.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_ShapeSize.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_ShapeSize.Enabled = criteria.IsRegularExpressionRequired;
-
-                    CV_TB_ShapeSize.ErrorMessage = criteria.RangeErrorMessage;
-                    //RV_TB_ShapeSize.ErrorMessage = criteria.RangeErrorMessage;
-                    //RV_TB_ShapeSize.MinimumValue = criteria.MinimumValue;
-                    //RV_TB_ShapeSize.MaximumValue = criteria.MaximumValue;
-                    //RV_TB_ShapeSize.Enabled = criteria.IsRangeRequired;
-
-                    hdnMinShapeSize.Value = criteria.MinimumValue.ToString();
-                    hdnMaxShapeSize.Value = criteria.MaximumValue.ToString();
-                    break;
-
-                case "TextureBite":
-
-                    Lbl_RBL_TextureBite.Text = criteria.DisplayName;
-                    RFV_RBL_TextureBite.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_RBL_TextureBite.Enabled = criteria.IsRequired;
-
-                    //TB_TextureBite.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    //REV_TB_TextureBite.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    //REV_TB_TextureBite.ValidationExpression = criteria.RegularExpression;
-                    //REV_TB_TextureBite.Enabled = criteria.IsRegularExpressionRequired;
-
-                    //RV_TB_TextureBite.ErrorMessage = criteria.RangeErrorMessage;
-                    //RV_TB_TextureBite.MinimumValue = criteria.MinimumValue;
-                    //RV_TB_TextureBite.MaximumValue = criteria.MaximumValue;
-                    //RV_TB_TextureBite.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "Moisture":
-
-                    Lbl_TB_Moisture.Text = criteria.DisplayName;
-
-                    RFV_TB_Moisture.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_Moisture.Enabled = criteria.IsRequired;
-
-                    TB_Moisture.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_Moisture.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_Moisture.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_Moisture.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_Moisture.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_Moisture.MinimumValue = criteria.MinimumValue;
-                    RV_TB_Moisture.MaximumValue = criteria.MaximumValue;
-                    RV_TB_Moisture.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "aW_max":
-
-                    TB_aWMAX_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_aWMAX.Text = criteria.DisplayName;
-
-                    RFV_TB_aWMAX.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_aWMAX.Enabled = criteria.IsRequired;
-
-                    TB_aWMAX.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_aWMAX.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_aWMAX.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_aWMAX.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_aWMAX.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_aWMAX.MinimumValue = criteria.MinimumValue;
-                    RV_TB_aWMAX.MaximumValue = criteria.MaximumValue;
-                    RV_TB_aWMAX.Enabled = criteria.IsRangeRequired;
-                    break;
-
-
-                case "pH_value":
-
-                    TB_pHvalue_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_pHvalue.Text = criteria.DisplayName;
-
-                    RFV_TB_pHvalue.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_pHvalue.Enabled = criteria.IsRequired;
-
-                    TB_pHvalue.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_pHvalue.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_pHvalue.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_pHvalue.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_pHvalue.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_pHvalue.MinimumValue = criteria.MinimumValue;
-                    RV_TB_pHvalue.MaximumValue = criteria.MaximumValue;
-                    RV_TB_pHvalue.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "GaugeLen":
-
-                    TB_GaugeLen_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_GaugeLen.Text = criteria.DisplayName;
-
-                    RFV_TB_GaugeLen.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_GaugeLen.Enabled = criteria.IsRequired;
-
-                    TB_GaugeLen.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_GaugeLen.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_GaugeLen.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_GaugeLen.Enabled = criteria.IsRegularExpressionRequired;
-
-                    CV_TB_GaugeLen.ErrorMessage = criteria.RangeErrorMessage;
-                    //CV_TB_GaugeLen.MinimumValue = criteria.MinimumValue;
-                    //RV_TB_GaugeLen.MaximumValue = criteria.MaximumValue;
-                    CV_TB_GaugeLen.Enabled = criteria.IsRangeRequired;
-
-                    hdnMinGaugelen.Value = criteria.MinimumValue.ToString();
-                    hdnMaxGaugelen.Value = criteria.MaximumValue.ToString();
-
-                    break;
-
-                case "wgtwtoil":
-
-                    TB_wgtwtoil_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_wgtwtoil.Text = criteria.DisplayName;
-
-                    //weight without oil or dry weight
-                    RFV_TB_wgtwtoil.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_wgtwtoil.Enabled = criteria.IsRequired;
-
-                    TB_wgtwtoil.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_wgtwtoil.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_wgtwtoil.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_wgtwtoil.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_wgtwtoil.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_wgtwtoil.MinimumValue = criteria.MinimumValue;
-                    RV_TB_wgtwtoil.MaximumValue = criteria.MaximumValue;
-                    RV_TB_wgtwtoil.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "wgtwoil":
-
-                    TB_wgtwoil_DIV.Visible = criteria.Visibility;
-                    Lbl_TB_wgtwoil.Text = criteria.DisplayName;
-
-                    //weight with oil or dipped weight
-                    RFV_TB_wgtwoil.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_wgtwoil.Enabled = criteria.IsRequired;
-
-                    TB_wgtwoil.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_wgtwoil.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_wgtwoil.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_wgtwoil.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_wgtwoil.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_wgtwoil.MinimumValue = criteria.MinimumValue;
-                    RV_TB_wgtwoil.MaximumValue = criteria.MaximumValue;
-                    RV_TB_wgtwoil.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "oilpercent":
-
-                    TB_oilpercent_DIV.Visible = criteria.Visibility;
-
-                    RV_TB_oilpercent.Text = criteria.DisplayName;
-
-                    RFV_TB_oilpercent.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_oilpercent.Enabled = criteria.IsRequired;
-
-                    TB_oilpercent.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_oilpercent.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_oilpercent.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_oilpercent.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_oilpercent.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_oilpercent.MinimumValue = criteria.MinimumValue;
-                    RV_TB_oilpercent.MaximumValue = criteria.MaximumValue;
-                    RV_TB_oilpercent.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "PktWgt":
-
-                    Lbl_TB_PktWgt.Text = criteria.DisplayName;
-
-                    RFV_TB_PktWgt.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_TB_PktWgt.Enabled = criteria.IsRequired;
-
-                    TB_PktWgt.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    REV_TB_PktWgt.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    REV_TB_PktWgt.ValidationExpression = criteria.RegularExpression;
-                    REV_TB_PktWgt.Enabled = criteria.IsRegularExpressionRequired;
-
-                    RV_TB_PktWgt.ErrorMessage = criteria.RangeErrorMessage;
-                    RV_TB_PktWgt.MinimumValue = criteria.MinimumValue;
-                    RV_TB_PktWgt.MaximumValue = criteria.MaximumValue;
-                    RV_TB_PktWgt.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "productview":
-
-                    Lbl_FU_DesgImp.Text = criteria.DisplayName;
-
-                    RFV_FU_DesgImp.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_FU_DesgImp.Enabled = criteria.IsRequired;
-
-                    //TB_PktWgt.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    //REV_TB_PktWgt.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    //REV_TB_PktWgt.ValidationExpression = criteria.RegularExpression;
-                    //REV_TB_PktWgt.Enabled = criteria.IsRegularExpressionRequired;
-
-                    //RV_TB_PktWgt.ErrorMessage = criteria.RangeErrorMessage;
-                    //RV_TB_PktWgt.MinimumValue = criteria.MinimumValue;
-                    //RV_TB_PktWgt.MaximumValue = criteria.MaximumValue;
-                    //RV_TB_PktWgt.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                case "packetview":
-
-                    Lbl_FU_ClrApp.Text = criteria.DisplayName;
-
-                    RFV_FU_ClrApp.ErrorMessage = criteria.RequiredFieldErrorMessage;
-                    RFV_FU_ClrApp.Enabled = criteria.IsRequired;
-
-                    //TB_PktWgt.Attributes["placeholder"] = criteria.RangeErrorMessage;
-
-                    //REV_TB_PktWgt.ErrorMessage = criteria.RegularExpressionErrorMessage;
-                    //REV_TB_PktWgt.ValidationExpression = criteria.RegularExpression;
-                    //REV_TB_PktWgt.Enabled = criteria.IsRegularExpressionRequired;
-
-                    //RV_TB_PktWgt.ErrorMessage = criteria.RangeErrorMessage;
-                    //RV_TB_PktWgt.MinimumValue = criteria.MinimumValue;
-                    //RV_TB_PktWgt.MaximumValue = criteria.MaximumValue;
-                    //RV_TB_PktWgt.Enabled = criteria.IsRangeRequired;
-                    break;
-
-                default:
-                    // Handle unrecognized field names
-                    break;
             }
         }
 
@@ -1208,13 +913,16 @@ namespace AnmolDristi
                     switch (approverType)
                     {
                         case "Approver1":
-                            updateQuery = "UPDATE TRN_qcinspector SET Approver1_Status = 0, Approver1_TimeStamp = @TimeStamp WHERE Approver1EmployeeCode = @Condition and ID=@ID";
+                            // Changed Status from 0 to 2
+                            updateQuery = "UPDATE TRN_qcinspector SET Approver1_Status = 2, Approver1_TimeStamp = @TimeStamp WHERE Approver1EmployeeCode = @Condition and ID=@ID";
                             break;
                         case "Approver2":
-                            updateQuery = "UPDATE TRN_qcinspector SET Approver2_Status = 0, Approver2_TimeStamp = @TimeStamp WHERE Approver2EmployeeCode = @Condition and ID=@ID";
+                            // Changed Status from 0 to 2
+                            updateQuery = "UPDATE TRN_qcinspector SET Approver2_Status = 2, Approver2_TimeStamp = @TimeStamp WHERE Approver2EmployeeCode = @Condition and ID=@ID";
                             break;
                         case "DottedLineApprover":
-                            updateQuery = "UPDATE TRN_qcinspector SET DottedApprover_Status = 0, DottedApprover_TimeStamp = @TimeStamp WHERE DottedLineApproverEmployeeCode = @Condition and ID=@ID";
+                            // Changed Status from 0 to 2
+                            updateQuery = "UPDATE TRN_qcinspector SET DottedApprover_Status = 2, DottedApprover_TimeStamp = @TimeStamp WHERE DottedLineApproverEmployeeCode = @Condition and ID=@ID";
                             break;
                     }
 
@@ -1259,5 +967,732 @@ namespace AnmolDristi
                 Response.Redirect("home.aspx", false);
             }
         }
+
+        public class PacketIntervalView
+        {
+            public TimeSpan IntervalStart { get; set; }
+            public TimeSpan IntervalEnd { get; set; }
+            public decimal? Packet1 { get; set; }
+            public decimal? Packet2 { get; set; }
+            public decimal? Packet3 { get; set; }
+            public decimal? Packet4 { get; set; }
+            public decimal? Packet5 { get; set; }
+        }
+
+        private void LoadPacketWeightView(int qcInspectorId)
+        {
+            int packetHdrId = 0;
+
+            // 1️⃣ Load Header + QC Context + System Calculations
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT 
+                    h.PacketHdrID,
+                    h.StandardWeight,
+                    h.MinWeight,
+                    h.MaxWeight,
+                    h.AvgWeight,
+                    h.WindowStartTime,
+                    h.WindowEndTime,
+                    h.GiveAwayPercent,
+                    q.PlantName,
+                    q.Line,
+                    q.SKUId,
+                    q.ProductCategory,
+                    q.ProductBrand,
+                    q.SubmittedDate,
+                    q.SubmittedTime,
+                    q.Shift
+                FROM TRN_qc_packet_weight_hdr h
+                INNER JOIN TRN_qcinspector q 
+                    ON q.ID = h.QCInspectorID
+                WHERE h.QCInspectorID = @QCInspectorID", con))
+            {
+                cmd.Parameters.AddWithValue("@QCInspectorID", qcInspectorId);
+                con.Open();
+
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    if (!dr.Read())
+                    {
+                        lblError.Text = "Packet Weight data not found for this QC.";
+                        return;
+                    }
+
+                    packetHdrId = Convert.ToInt32(dr["PacketHdrID"]);
+
+                    lbl_qcid.Text = qcInspectorId.ToString();
+
+                    // QC Context
+                    //lblPlant.Text = dr["PlantName"].ToString();
+                    lblPlant.Text = GetPlantName(Convert.ToInt32(dr["PlantName"])) ?? dr["PlantName"].ToString();
+
+                    //lblLine.Text = dr["Line"].ToString();
+                    lblLine.Text = GetLineName(
+                        Convert.ToInt32(dr["PlantName"]),
+                        Convert.ToInt32(dr["Line"])
+                    ) ?? dr["Line"].ToString();
+
+                    //lblSKU.Text = dr["SKUId"].ToString();
+                    lblSKU.Text = GetSKUName(dr["SKUId"].ToString()) ?? dr["SKUId"].ToString();
+
+                    //lblVariety.Text = dr["ProductBrand"].ToString();
+                    lblVariety.Text = GetBrandName(
+                        Convert.ToInt32(dr["PlantName"]),
+                        Convert.ToInt32(dr["Line"]),
+                        Convert.ToInt32(dr["ProductCategory"]),
+                        Convert.ToInt32(dr["ProductBrand"])
+                    ) ?? dr["ProductBrand"].ToString();
+
+                    lblShift.Text = dr["Shift"].ToString();
+                    if (dr["WindowStartTime"] != DBNull.Value && dr["WindowEndTime"] != DBNull.Value)
+                    {
+                        TimeSpan windowStart = (TimeSpan)dr["WindowStartTime"];
+                        TimeSpan windowEnd = (TimeSpan)dr["WindowEndTime"];
+
+                        lblWindow.Text = $"{windowStart:hh\\:mm} – {windowEnd:hh\\:mm}";
+                    }
+                    else
+                    {
+                        lblWindow.Text = "N/A";
+                    }
+
+                    DateTime qcSubmitted = Convert.ToDateTime(dr["SubmittedDate"]).Add((TimeSpan)dr["SubmittedTime"]);
+                    lblQCSubmittedAt.Text = qcSubmitted.ToString("dd-MMM-yyyy HH:mm");
+
+                    // System Calculations (DB authoritative)
+                    lblMinWeight.Text = dr["MinWeight"].ToString();
+                    lblMaxWeight.Text = dr["MaxWeight"].ToString();
+                    lblAverage.Text = dr["AvgWeight"].ToString();
+                    lblGiveAway.Text = dr["GiveAwayPercent"].ToString() + " %";
+                }
+            }
+
+            // 2️⃣ Load Packet Detail Rows
+            DataTable dtDtl = new DataTable();
+
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT 
+            IntervalStart,
+            IntervalEnd,
+            PacketNo,
+            PacketWeight
+        FROM TRN_qc_packet_weight_dtl
+        WHERE PacketHdrID = @PacketHdrID
+        ORDER BY IntervalStart, PacketNo
+    ", con))
+            {
+                cmd.Parameters.AddWithValue("@PacketHdrID", packetHdrId);
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    da.Fill(dtDtl);
+            }
+
+            // 3️⃣ Shape Detail → Interval-wise View Model
+            var intervalGroups = dtDtl.AsEnumerable()
+                .GroupBy(r => new
+                {
+                    Start = r.Field<TimeSpan>("IntervalStart"),
+                    End = r.Field<TimeSpan>("IntervalEnd")
+                });
+
+            List<PacketIntervalView> viewList = new List<PacketIntervalView>();
+
+            foreach (var g in intervalGroups)
+            {
+                PacketIntervalView v = new PacketIntervalView
+                {
+                    IntervalStart = g.Key.Start,
+                    IntervalEnd = g.Key.End
+                };
+
+                foreach (var row in g)
+                {
+                    int p = row.Field<int>("PacketNo");
+                    decimal w = row.Field<decimal>("PacketWeight");
+
+                    if (p == 1) v.Packet1 = w;
+                    else if (p == 2) v.Packet2 = w;
+                    else if (p == 3) v.Packet3 = w;
+                    else if (p == 4) v.Packet4 = w;
+                    else if (p == 5) v.Packet5 = w;
+                }
+
+                viewList.Add(v);
+            }
+
+            // 4️⃣ Bind to Repeater (Read-only)
+            rptIntervalsView.DataSource = viewList;
+            rptIntervalsView.DataBind();
+        }
+
+        private string GetMasterDescription(string cachePrefix, string sql, Action<SqlParameterCollection> bindParams, int cacheSeconds = 300)
+        {
+            string cacheKey = cachePrefix;
+            var cached = HttpRuntime.Cache[cacheKey] as string;
+            if (!string.IsNullOrEmpty(cached)) return cached;
+
+            try
+            {
+                using (var con = new SqlConnection(
+                       ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
+                using (var cmd = new SqlCommand(sql, con))
+                {
+                    bindParams(cmd.Parameters);
+                    con.Open();
+
+                    var result = cmd.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        string value = Convert.ToString(result);
+                        HttpRuntime.Cache.Insert(
+                            cacheKey,
+                            value,
+                            null,
+                            DateTime.Now.AddSeconds(cacheSeconds),
+                            System.Web.Caching.Cache.NoSlidingExpiration);
+
+                        return value;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Warn("MasterLookup", ex.ToString());
+            }
+
+            return null;
+        }
+
+        private string GetPlantName(int plantId)
+        {
+            return GetMasterDescription(
+                $"PLANT::{plantId}",
+                @"SELECT TOP 1 plant_name + ' (' + sap_code + ')'
+          FROM MST_PlantDetails
+          WHERE plant_id = @plant_id",
+                p => p.AddWithValue("@plant_id", plantId)
+            );
+        }
+        private string GetLineName(int plantId, int lineId)
+        {
+            return GetMasterDescription(
+                $"LINE::{plantId}::{lineId}",
+                @"SELECT TOP 1 line_name
+          FROM MST_Plant_Lines
+          WHERE plant_id = @plant_id AND line_id = @line_id",
+                p =>
+                {
+                    p.AddWithValue("@plant_id", plantId);
+                    p.AddWithValue("@line_id", lineId);
+                }
+            );
+        }
+        private string GetCategoryName(int plantId, int lineId, int categoryId)
+        {
+            return GetMasterDescription(
+                $"CAT::{plantId}::{lineId}::{categoryId}",
+                @"SELECT TOP 1 category_name
+          FROM MST_LineCategory
+          WHERE plant_id=@plant AND line_id=@line AND category_id=@cat",
+                p =>
+                {
+                    p.AddWithValue("@plant", plantId);
+                    p.AddWithValue("@line", lineId);
+                    p.AddWithValue("@cat", categoryId);
+                }
+            );
+        }
+        private string GetBrandName(int plantId, int lineId, int categoryId, int brandId)
+        {
+            return GetMasterDescription(
+                $"BRAND::{plantId}::{lineId}::{categoryId}::{brandId}",
+                @"SELECT TOP 1 brand_name
+          FROM MST_LineCatBrands
+          WHERE plant_id=@p AND line_id=@l AND category_id=@c AND brand_id=@b",
+                p =>
+                {
+                    p.AddWithValue("@p", plantId);
+                    p.AddWithValue("@l", lineId);
+                    p.AddWithValue("@c", categoryId);
+                    p.AddWithValue("@b", brandId);
+                }
+            );
+        }
+        private string GetSKUName(string skuId)
+        {
+            return GetMasterDescription(
+                $"SKU::{skuId}",
+                @"SELECT TOP 1 SKU_name
+          FROM MST_Brand_SKU
+          WHERE SKUId=@sku",
+                p => p.AddWithValue("@sku", skuId)
+            );
+        }
+
+
+        private List<PacketIntervalView> BuildIntervalView(int packetHdrId)
+        {
+            DataTable dt = new DataTable();
+
+            using (SqlConnection con = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(@"
+        SELECT IntervalStart, IntervalEnd, PacketNo, PacketWeight
+        FROM TRN_qc_packet_weight_dtl
+        WHERE PacketHdrID = @PacketHdrID
+        ORDER BY IntervalStart, PacketNo", con))
+            {
+                cmd.Parameters.AddWithValue("@PacketHdrID", packetHdrId);
+                using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                    da.Fill(dt);
+            }
+
+            var grouped = dt.AsEnumerable()
+                .GroupBy(r => new
+                {
+                    Start = r.Field<TimeSpan>("IntervalStart"),
+                    End = r.Field<TimeSpan>("IntervalEnd")
+                });
+
+            List<PacketIntervalView> list = new List<PacketIntervalView>();
+
+            foreach (var g in grouped)
+            {
+                PacketIntervalView v = new PacketIntervalView
+                {
+                    IntervalStart = g.Key.Start,
+                    IntervalEnd = g.Key.End
+                };
+
+                foreach (var row in g)
+                {
+                    int p = row.Field<int>("PacketNo");
+                    decimal w = row.Field<decimal>("PacketWeight");
+
+                    if (p == 1) v.Packet1 = w;
+                    if (p == 2) v.Packet2 = w;
+                    if (p == 3) v.Packet3 = w;
+                    if (p == 4) v.Packet4 = w;
+                    if (p == 5) v.Packet5 = w;
+                }
+
+                list.Add(v);
+            }
+
+            return list;
+        }
+
+        private void AutoHighlightOutOfSpec_OLD(System.Web.UI.WebControls.TextBox txtActual, System.Web.UI.WebControls.HiddenField hdnMin, System.Web.UI.WebControls.HiddenField hdnMax, System.Web.UI.HtmlControls.HtmlGenericControl remarksDiv, System.Web.UI.WebControls.Label fieldLabel)
+        {
+            if (txtActual != null && hdnMin != null && hdnMax != null)
+            {
+                double actualValue = 0;
+                double minValue = 0;
+                double maxValue = 0;
+
+                string actualStr = (txtActual.Text ?? "").Trim();
+                string minStr = (hdnMin.Value ?? "").Trim();
+                string maxStr = (hdnMax.Value ?? "").Trim();
+
+                if (double.TryParse(actualStr, out actualValue) &&
+                    double.TryParse(minStr, out minValue) &&
+                    double.TryParse(maxStr, out maxValue))
+                {
+                    if (actualValue < minValue || actualValue > maxValue)
+                    {
+                        // Highlight the Input box Red
+                        txtActual.Style.Add("background-color", "#ffcccc !important");
+                        txtActual.Style.Add("color", "#8b0000 !important");
+                        txtActual.Style.Add("font-weight", "bold !important");
+                        txtActual.Style.Add("border", "1px solid #8b0000 !important");
+
+                        // Highlight the existing STD label in Red
+                        if (fieldLabel != null)
+                        {
+                            fieldLabel.Text = fieldLabel.Text.Replace("color:#73879C;", "color:#d9534f; font-weight:bold;");
+                        }
+
+                        // Show the Remarks DIV natively
+                        if (remarksDiv != null)
+                        {
+                            remarksDiv.Style.Remove("display");
+                            remarksDiv.Style.Add("display", "block !important");
+                            remarksDiv.Visible = true;
+                        }
+                    }
+                    else
+                    {
+                        txtActual.Style.Add("background-color", "#f9f9f9 !important");
+                    }
+                }
+            }
+        }
+
+        private void AutoHighlightOutOfSpec(System.Web.UI.WebControls.TextBox txtActual, System.Web.UI.WebControls.HiddenField hdnMin, System.Web.UI.WebControls.HiddenField hdnMax, System.Web.UI.HtmlControls.HtmlGenericControl remarksDiv, System.Web.UI.WebControls.Label fieldLabel)
+        {
+            if (txtActual != null && hdnMin != null && hdnMax != null)
+            {
+                double actualValue = 0;
+                double minValue = 0;
+                double maxValue = 0;
+
+                string actualStr = (txtActual.Text ?? "").Trim();
+                string minStr = (hdnMin.Value ?? "").Trim();
+                string maxStr = (hdnMax.Value ?? "").Trim();
+
+                if (double.TryParse(actualStr, out actualValue) &&
+                    double.TryParse(minStr, out minValue) &&
+                    double.TryParse(maxStr, out maxValue))
+                {
+                    if (actualValue < minValue || actualValue > maxValue)
+                    {
+                        // Highlight the Input box Red
+                        txtActual.Style.Add("background-color", "#ffcccc !important");
+                        txtActual.Style.Add("color", "#8b0000 !important");
+                        txtActual.Style.Add("font-weight", "bold !important");
+                        txtActual.Style.Add("border", "1px solid #8b0000 !important");
+
+                        // Turn the blue Info Icon RED to highlight the deviation
+                        if (fieldLabel != null && fieldLabel.Text.Contains("text-info"))
+                        {
+                            fieldLabel.Text = fieldLabel.Text.Replace("text-info", "text-danger");
+                        }
+
+                        // Show the Remarks DIV natively
+                        if (remarksDiv != null)
+                        {
+                            remarksDiv.Style.Remove("display");
+                            remarksDiv.Style.Add("display", "block !important");
+                            remarksDiv.Visible = true;
+                        }
+                    }
+                    else
+                    {
+                        txtActual.Style.Add("background-color", "#f9f9f9 !important");
+                    }
+                }
+            }
+        }
+
+        private void SetUpValidatorsForField(string fieldName, ValidationCriteria criteria)
+        {
+            // NATIVE STD DISPLAY: Format the Standard Range exactly as it appears for the Operator
+            string rangeDisplay = "";
+            if (criteria.IsRangeRequired && !string.IsNullOrEmpty(criteria.MinimumValue) && !string.IsNullOrEmpty(criteria.MaximumValue))
+            {
+                rangeDisplay = $" <br/><span class='std-range-label' style='font-size:11px; color:#73879C; font-weight:normal;'>Std: [{criteria.MinimumValue} - {criteria.MaximumValue}]</span>";
+            }
+
+            // Generate an interactive "Info" Icon Tooltip instead of inline text
+            string infoButton = "";
+            if (criteria.IsRangeRequired && !string.IsNullOrEmpty(criteria.MinimumValue) && !string.IsNullOrEmpty(criteria.MaximumValue))
+            {
+                // Uses FontAwesome icon (fa-info-circle) and Bootstrap tooltip
+                infoButton = $" <i class='fa fa-info-circle text-info' style='cursor:pointer; margin-left:5px;' data-toggle='tooltip' data-placement='top' title='Standard Limits:<br/><b>Min: {criteria.MinimumValue}</b><br/><b>Max: {criteria.MaximumValue}</b>'></i>";
+            }
+
+            // Ensure you continue to append this 'infoButton' to your labels inside the switch cases just like before:
+            // e.g., Lbl_TB_NoOfPcs.Text = criteria.DisplayName + infoButton;
+
+            switch (fieldName)
+            {
+                case "no_of_pcs":
+                    TB_NoOfPcs_DIV.Visible = criteria.Visibility;
+                    // Append the STD Range natively to the Display Name
+                    Lbl_TB_NoOfPcs.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_NoOfPcs.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_NoOfPcs.Enabled = criteria.IsRequired;
+
+                    TB_NoOfPcs.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_NoOfPcs.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_NoOfPcs.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_NoOfPcs.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_NoOfPcs.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_NoOfPcs.MinimumValue = criteria.MinimumValue;
+                    RV_TB_NoOfPcs.MaximumValue = criteria.MaximumValue;
+                    RV_TB_NoOfPcs.Enabled = criteria.IsRangeRequired;
+
+                    hdnMinNoOfPcs.Value = criteria.MinimumValue;
+                    hdnMaxNoOfPcs.Value = criteria.MaximumValue;
+                    break;
+
+                case "length":
+                    TB_Length_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_Length.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_Length.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_Length.Enabled = criteria.IsRequired;
+
+                    TB_Length.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_Length.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_Length.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_Length.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_Length.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_Length.MinimumValue = criteria.MinimumValue;
+                    RV_TB_Length.MaximumValue = criteria.MaximumValue;
+                    RV_TB_Length.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "breadth":
+                    TB_Breadth_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_Breadth.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_Breadth.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_Breadth.Enabled = criteria.IsRequired;
+
+                    TB_Breadth.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_Breadth.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_Breadth.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_Breadth.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_Breadth.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_Breadth.MinimumValue = criteria.MinimumValue;
+                    RV_TB_Breadth.MaximumValue = criteria.MaximumValue;
+                    RV_TB_Breadth.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "height":
+                    TB_Height_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_Height.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_Height.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_Height.Enabled = criteria.IsRequired;
+
+                    TB_Height.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_Height.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_Height.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_Height.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_Height.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_Height.MinimumValue = criteria.MinimumValue;
+                    RV_TB_Height.MaximumValue = criteria.MaximumValue;
+                    RV_TB_Height.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "BakingTime":
+                    TB_BakingTime_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_BakingTime.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_BakingTime.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_BakingTime.Enabled = criteria.IsRequired;
+
+                    TB_BakingTime.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_BakingTime.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_BakingTime.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_BakingTime.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_BakingTime.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_BakingTime.MinimumValue = criteria.MinimumValue;
+                    RV_TB_BakingTime.MaximumValue = criteria.MaximumValue;
+                    RV_TB_BakingTime.Enabled = criteria.IsRangeRequired;
+
+                    hdnMinBakingTime.Value = criteria.MinimumValue;
+                    hdnMaxBakingTime.Value = criteria.MaximumValue;
+                    break;
+
+                case "BakingTime2":
+                    TB_BakingTime2_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_BakingTime2.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_BakingTime2.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_BakingTime2.Enabled = criteria.IsRequired;
+
+                    TB_BakingTime2.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_BakingTime2.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_BakingTime2.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_BakingTime2.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_BakingTime2.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_BakingTime2.MinimumValue = criteria.MinimumValue;
+                    RV_TB_BakingTime2.MaximumValue = criteria.MaximumValue;
+                    RV_TB_BakingTime2.Enabled = criteria.IsRangeRequired;
+
+                    hdnMinBakingTime2.Value = criteria.MinimumValue;
+                    hdnMaxBakingTime2.Value = criteria.MaximumValue;
+                    break;
+
+                case "SpSz":
+                    TB_ShapeSize_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_ShapeSize.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_ShapeSize.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_ShapeSize.Enabled = criteria.IsRequired;
+
+                    TB_ShapeSize.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_ShapeSize.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_ShapeSize.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_ShapeSize.Enabled = criteria.IsRegularExpressionRequired;
+
+                    hdnMinShapeSize.Value = criteria.MinimumValue;
+                    hdnMaxShapeSize.Value = criteria.MaximumValue;
+                    break;
+
+                case "Moisture":
+                    TB_Moisture_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_Moisture.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_Moisture.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_Moisture.Enabled = criteria.IsRequired;
+
+                    TB_Moisture.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_Moisture.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_Moisture.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_Moisture.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_Moisture.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_Moisture.MinimumValue = criteria.MinimumValue;
+                    RV_TB_Moisture.MaximumValue = criteria.MaximumValue;
+                    RV_TB_Moisture.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "aW_max":
+                    TB_aWMAX_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_aWMAX.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_aWMAX.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_aWMAX.Enabled = criteria.IsRequired;
+
+                    TB_aWMAX.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_aWMAX.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_aWMAX.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_aWMAX.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_aWMAX.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_aWMAX.MinimumValue = criteria.MinimumValue;
+                    RV_TB_aWMAX.MaximumValue = criteria.MaximumValue;
+                    RV_TB_aWMAX.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "pH_value":
+                    TB_pHvalue_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_pHvalue.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_pHvalue.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_pHvalue.Enabled = criteria.IsRequired;
+
+                    TB_pHvalue.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_pHvalue.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_pHvalue.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_pHvalue.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_pHvalue.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_pHvalue.MinimumValue = criteria.MinimumValue;
+                    RV_TB_pHvalue.MaximumValue = criteria.MaximumValue;
+                    RV_TB_pHvalue.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "GaugeLen":
+                    TB_GaugeLen_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_GaugeLen.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_GaugeLen.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_GaugeLen.Enabled = criteria.IsRequired;
+
+                    TB_GaugeLen.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_GaugeLen.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_GaugeLen.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_GaugeLen.Enabled = criteria.IsRegularExpressionRequired;
+
+                    hdnMinGaugelen.Value = criteria.MinimumValue;
+                    hdnMaxGaugelen.Value = criteria.MaximumValue;
+                    break;
+
+                case "wgtwtoil":
+                    TB_wgtwtoil_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_wgtwtoil.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_wgtwtoil.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_wgtwtoil.Enabled = criteria.IsRequired;
+
+                    TB_wgtwtoil.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_wgtwtoil.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_wgtwtoil.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_wgtwtoil.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_wgtwtoil.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_wgtwtoil.MinimumValue = criteria.MinimumValue;
+                    RV_TB_wgtwtoil.MaximumValue = criteria.MaximumValue;
+                    RV_TB_wgtwtoil.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "wgtwoil":
+                    TB_wgtwoil_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_wgtwoil.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_wgtwoil.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_wgtwoil.Enabled = criteria.IsRequired;
+
+                    TB_wgtwoil.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_wgtwoil.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_wgtwoil.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_wgtwoil.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_wgtwoil.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_wgtwoil.MinimumValue = criteria.MinimumValue;
+                    RV_TB_wgtwoil.MaximumValue = criteria.MaximumValue;
+                    RV_TB_wgtwoil.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "oilpercent":
+                    TB_oilpercent_DIV.Visible = criteria.Visibility;
+                    Lbl_TB_oilpercent.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_oilpercent.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_oilpercent.Enabled = criteria.IsRequired;
+
+                    TB_oilpercent.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_oilpercent.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_oilpercent.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_oilpercent.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_oilpercent.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_oilpercent.MinimumValue = criteria.MinimumValue;
+                    RV_TB_oilpercent.MaximumValue = criteria.MaximumValue;
+                    RV_TB_oilpercent.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                case "PktWgt":
+                    Lbl_TB_PktWgt.Text = criteria.DisplayName + rangeDisplay;
+
+                    RFV_TB_PktWgt.ErrorMessage = criteria.RequiredFieldErrorMessage;
+                    RFV_TB_PktWgt.Enabled = criteria.IsRequired;
+
+                    TB_PktWgt.Attributes["placeholder"] = criteria.RangeErrorMessage;
+
+                    REV_TB_PktWgt.ErrorMessage = criteria.RegularExpressionErrorMessage;
+                    REV_TB_PktWgt.ValidationExpression = criteria.RegularExpression;
+                    REV_TB_PktWgt.Enabled = criteria.IsRegularExpressionRequired;
+
+                    RV_TB_PktWgt.ErrorMessage = criteria.RangeErrorMessage;
+                    RV_TB_PktWgt.MinimumValue = criteria.MinimumValue;
+                    RV_TB_PktWgt.MaximumValue = criteria.MaximumValue;
+                    RV_TB_PktWgt.Enabled = criteria.IsRangeRequired;
+                    break;
+
+                // Note: Checkbox Lists (FlavTst, TextureBite) do not utilize numeric ranges, 
+                // so we exclude them from the rangeDisplay append block.
+
+                default:
+                    break;
+            }
+        }
+
     }
 }

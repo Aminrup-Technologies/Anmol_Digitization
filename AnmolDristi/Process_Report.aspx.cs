@@ -12,6 +12,7 @@ using System.IO;
 using System.Web.Services;
 using System.Security.Cryptography;
 using System.Text;
+using ClosedXML.Excel;
 
 //using Microsoft.Office.Interop.Excel;
 //using System.Runtime.InteropServices; // Optional, for Excel interop cleanup
@@ -61,6 +62,7 @@ namespace AnmolDristi
                         l.line_name AS LineName,
 	                    pc.category_name AS ProductCategory,
 	                    pb.brand_name AS ProductBrand,
+                        s.SKU_name ,
                         c.SubmittedByEmployeeCode as EmpCode,
                         u.EmployeeName AS EmpName,
                         c.SubmittedDate as SDate,
@@ -86,6 +88,8 @@ namespace AnmolDristi
                         MST_LineCategory pc ON c.ProductCategory = pc.category_id
                     LEFT JOIN 
                         MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                    LEFT JOIN 
+                        MST_Brand_SKU s ON c.SKUId = s.SKUId
                     LEFT JOIN
                         MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                     WHERE 
@@ -102,6 +106,7 @@ namespace AnmolDristi
                         SqlDataAdapter sda = new SqlDataAdapter(cmd);
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
                     }
@@ -328,6 +333,7 @@ namespace AnmolDristi
             {
                 string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
                 BrandSKUBinder(selectedProductBrandValue);
+                DataLoader();
 
                 //DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
                 System.Data.DataTable dataTable = DatabaseHelper.GetBrandFieldsControlByBrandId(Convert.ToInt16(selectedProductBrandValue));
@@ -369,7 +375,7 @@ namespace AnmolDristi
                     // For example, you can pass it to a method to set up validators
                     //SetUpValidatorsForField(fieldName, criteria);
                 }
-                DataLoader();
+                
             }
             else
             {
@@ -409,17 +415,42 @@ namespace AnmolDristi
                         </script>";
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowBrandSKUBinderErrorNotification", BrandSKUBinder_Error_script, false);
             }
-            DataLoader();
+            //DataLoader();
         }
 
+        protected void DDL_BrandSKU_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (DDL_Plant.SelectedIndex != 0)
+            {
+                if (DDL_PlantLine.SelectedIndex != 0)
+                {
+                    if (DDL_ProductCategory.SelectedIndex != 0)
+                    {
+                        if (DDL_ProductBrand.SelectedIndex != 0)
+                        {
+                            if (DDL_BrandSKU.SelectedIndex != 0)
+                            {
+                                string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
+                                string selectedPlantLineValue = DDL_PlantLine.SelectedValue.ToString();
+                                string selectedProductCategoryValue = DDL_ProductCategory.SelectedValue.ToString();
+                                string selectedProductBrandValue = DDL_ProductBrand.SelectedValue.ToString();
+                                string selectedBrandSKU = DDL_BrandSKU.SelectedValue.ToString();
 
+                                DataLoader();
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx",false);
+            Response.Redirect("qaqc_qahome_rpt.aspx");
         }
         protected void ReportbtnReset_Click(object sender, EventArgs e)
         {
-            Response.Redirect("Process_Report.aspx",false);
+            Response.Redirect("Process_Report.aspx", false);
         }
         protected void ReportbtnSubmit_Click(object sender, EventArgs e)
         {
@@ -449,16 +480,24 @@ namespace AnmolDristi
                 {
                     cmd.Parameters.AddWithValue("@FromDate", fromDate);
                     cmd.Parameters.AddWithValue("@ToDate", toDate);
+
+                    cmd.Parameters.AddWithValue("@Plant_Name", string.IsNullOrEmpty(DDL_Plant.SelectedValue) || DDL_Plant.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_Plant.SelectedValue));
+                    cmd.Parameters.AddWithValue("@Plant_Line", string.IsNullOrEmpty(DDL_PlantLine.SelectedValue) || DDL_PlantLine.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_PlantLine.SelectedValue));
+                    cmd.Parameters.AddWithValue("@Product_Category", string.IsNullOrEmpty(DDL_ProductCategory.SelectedValue) || DDL_ProductCategory.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_ProductCategory.SelectedValue));
+                    cmd.Parameters.AddWithValue("@Product_Brand", string.IsNullOrEmpty(DDL_ProductBrand.SelectedValue) || DDL_ProductBrand.SelectedValue == "0" ? (object)DBNull.Value : Convert.ToInt32(DDL_ProductBrand.SelectedValue));
+                    cmd.Parameters.AddWithValue("@SkuId", string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) || DDL_BrandSKU.SelectedValue == "0" ? (object)DBNull.Value : DDL_BrandSKU.SelectedValue);
+
                     cmd.CommandType = CommandType.StoredProcedure;
                     using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
                     {
                         System.Data.DataTable dt = new System.Data.DataTable();
                         sda.Fill(dt);
-                        if (dt.Rows.Count > 0)
-                        {
-                            GridView1.DataSource = dt;
-                            GridView1.DataBind();
-                        }
+                        //if (dt.Rows.Count > 0)
+                        //{
+                        ViewState["ExportData"] = dt;
+                        GridView1.DataSource = dt;
+                        GridView1.DataBind();
+                        //}
                     }
                 }
             }
@@ -580,6 +619,7 @@ namespace AnmolDristi
                     {
                         System.Data.DataTable dt = new System.Data.DataTable();
                         sda.Fill(dt);
+                        ViewState["ExportData"] = dt;
                         GridView1.DataSource = dt;
                         GridView1.DataBind();
                     }
@@ -730,6 +770,7 @@ namespace AnmolDristi
                     l.line_name AS LineName,
                     pc.category_name AS ProductCategory,
                     pb.brand_name AS ProductBrand,
+                    s.SKU_name,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
@@ -744,12 +785,14 @@ namespace AnmolDristi
                     c.Approver2_TimeStamp,
                     c.DottedLineApproverEmployeeCode AS L3,
                     c.DottedApprover_Status,
-                    c.DottedApprover_TimeStamp
+                    c.DottedApprover_TimeStamp,
+                    c.*
                 FROM TRN_ProcessChecking_BasicData c
                 LEFT JOIN MST_PlantDetails p ON c.PlantName = p.plant_id
                 LEFT JOIN MST_Plant_Lines l ON c.Line = l.line_id
                 LEFT JOIN MST_LineCategory pc ON c.ProductCategory = pc.category_id
                 LEFT JOIN MST_LineCatBrands pb ON c.ProductBrand = pb.brand_id
+                LEFT JOIN MST_Brand_SKU s ON c.SKUId = s.SKUId
                 LEFT JOIN MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
                 WHERE 1 = 1");
 
@@ -790,6 +833,12 @@ namespace AnmolDristi
             {
                 queryBuilder.Append(" AND c.ProductBrand = @ProductBrand");
                 parameters.Add(new SqlParameter("@ProductBrand", SqlDbType.Int) { Value = DDL_ProductBrand.SelectedValue });
+            }
+
+            if (!string.IsNullOrEmpty(DDL_BrandSKU.SelectedValue) && DDL_BrandSKU.SelectedValue != "0")
+            {
+                queryBuilder.Append(" AND c.SKUId = @SKUId");
+                parameters.Add(new SqlParameter("@SKUId", SqlDbType.VarChar) { Value = DDL_BrandSKU.SelectedValue });
             }
 
             queryBuilder.Append(" ORDER BY c.SubmittedDate DESC, c.SubmittedTime DESC");
@@ -868,6 +917,46 @@ namespace AnmolDristi
             if (e.CommandName == "View")
             {
                 Response.Redirect("Process_FinalApproval.aspx?PcrNo=" + pcrno + "&ID=" + dbid + "&VM=0", false);
+            }
+        }
+
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
+
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCProcessCheckingReport");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCProcessCheckingRecords.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
             }
         }
     }

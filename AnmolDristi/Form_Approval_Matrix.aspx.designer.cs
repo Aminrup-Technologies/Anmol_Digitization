@@ -55,7 +55,16 @@ namespace AnmolDristi {
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList DDL_FormName;
+        protected global::System.Web.UI.WebControls.ListBox DDL_FormName;
+        
+        /// <summary>
+        /// BtnFilter control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.LinkButton BtnFilter;
         
         /// <summary>
         /// Lbl_DDL_Plant control.
@@ -74,15 +83,6 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_DDL_Plant_Value;
-        
-        /// <summary>
-        /// RFV_DDL_Plant control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.RequiredFieldValidator RFV_DDL_Plant;
         
         /// <summary>
         /// DDL_Plant control.

@@ -1,7 +1,15 @@
 ﻿using AnmolDristi.DAL;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Transactions;
 using System.Configuration;
 
 namespace AnmolDristi
@@ -38,7 +46,7 @@ namespace AnmolDristi
             hdn_shiftvalue.Value = currentShift;
         }
 
-        public void PlantBinder()
+        public void PlantBinder_OLD()
         {
             string query = "SELECT plant_id, CONCAT(plant_name, '[', sap_code, ']') AS plant_name FROM MST_PlantDetails";
             string textField = "plant_name";
@@ -65,6 +73,76 @@ namespace AnmolDristi
                 // RegisterStartupScript adds the JavaScript code to the page
                 ClientScript.RegisterStartupScript(this.GetType(), "ShowPlantBinderErrorNotification", PlantBinder_Error_script, false);
 
+            }
+        }
+        public void PlantBinder()
+        {
+            // 1. Bind the DropDownList with all available ERP plants
+            string query = "SELECT plant_id, CONCAT(plant_name, '[', sap_code, ']') AS plant_name FROM MST_PlantDetails";
+            bool recordsBound;
+
+            DatabaseHelper.BindDropDownList(query, DDL_Plant, "plant_name", "plant_id", out recordsBound);
+
+            // If binding fails, set default and exit early
+            if (!recordsBound)
+            {
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_Plant);
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
+                lbl_DDL_Plant_Value.Text = "Error";
+                DDL_Plant.Enabled = false; // Disable on error
+                return;
+            }
+
+            // Grab both the Local Plant ID and the Mapped ERP Plant ID from Session
+            string localPlantId = Session["PLANTID"] != null ? Session["PLANTID"].ToString() : "";
+            string sessionErpPlantId = Session["ERPPlantId"] != null ? Session["ERPPlantId"].ToString() : "0";
+
+            // 2. Handle the "Common" (PAN INDIA) Edge Case
+            if (localPlantId == "1089")
+            {
+                lbl_DDL_Plant_Value.Text = "PAN INDIA";
+
+                DDL_Plant.ClearSelection();
+                ListItem defaultItem = DDL_Plant.Items.FindByValue("0");
+                if (defaultItem != null)
+                {
+                    defaultItem.Selected = true;
+                }
+
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
+
+                // --- NEW: Keep the dropdown unlocked so PAN INDIA can change plants ---
+                DDL_Plant.Enabled = true;
+            }
+            // 3. Handle standard mapped employees
+            else if (sessionErpPlantId != "0")
+            {
+                DDL_Plant.ClearSelection();
+                ListItem itemToSelect = DDL_Plant.Items.FindByValue(sessionErpPlantId);
+
+                if (itemToSelect != null)
+                {
+                    itemToSelect.Selected = true;
+                    lbl_DDL_Plant_Value.Text = itemToSelect.Value;
+
+                    PlantLinesBinder(itemToSelect.Value);
+
+                    // --- NEW: Lock the dropdown so standard users cannot change it ---
+                    DDL_Plant.Enabled = false;
+                }
+                else
+                {
+                    lbl_DDL_Plant_Value.Text = "Not Found";
+                    DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
+                    DDL_Plant.Enabled = false; // Lock on missing mapping
+                }
+            }
+            // 4. Fallback for unmapped or broken records
+            else
+            {
+                lbl_DDL_Plant_Value.Text = "N/A";
+                DatabaseHelper.BindWithDefaultNoRecords(DDL_PlantLine);
+                DDL_Plant.Enabled = false; // Lock on error
             }
         }
         public class ValidationCriteria

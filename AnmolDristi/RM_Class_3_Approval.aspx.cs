@@ -8,6 +8,8 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Text;
+using ClosedXML.Excel;
+using System.IO;
 
 namespace AnmolDristi
 {
@@ -66,7 +68,7 @@ namespace AnmolDristi
             {
                 string selectedMaterialValue = DDL_Material.SelectedValue.ToString();
                 PlantBinder();
-
+                DataLoader();
                 // Call method to show relevant controls based on selected material
                 //DivBinders(selectedMaterialValue);
             }
@@ -122,7 +124,7 @@ namespace AnmolDristi
             if (DDL_Plant.SelectedIndex != 0)
             {
                 string selectedPlantValue = DDL_Plant.SelectedValue.ToString();
-
+                DataLoader();
             }
             else
             {
@@ -142,7 +144,7 @@ namespace AnmolDristi
 
         protected void ReportbtnCancel_Click(object sender, EventArgs e)
         {
-            Response.Redirect("home.aspx");
+            Response.Redirect("qaqc_qcapprovals.aspx");
         }
 
         protected void ReportbtnReset_Click(object sender, EventArgs e)
@@ -164,38 +166,165 @@ namespace AnmolDristi
 
                 string query = @"
                     SELECT TOP(30)
-                    c.ID AS DBID,
-                    c.FormID as FormID,
-                    'NA' as RecordID,
-	                m.Material_Name AS MaterialName,
-                    p.plant_name AS PlantName,
-                    c.SubmittedByEmployeeCode as EmpCode,
-                    u.EmployeeName AS EmpName,
-                    c.SubmittedDate as SDate,
-                    c.SubmittedTime as STime,
-                    c.Approver1EmployeeCode as L1,
-                    c.Approver1_Status,
-                    c.Approver1_TimeStamp,
-                    c.Approver2EmployeeCode as L2,
-                    c.Approver2_Status,
-                    c.Approver2_TimeStamp,
-                    c.DottedLineApproverEmployeeCode as L3,
-                    c.DottedApprover_Status,
-                    c.DottedApprover_TimeStamp
-                    FROM 
-                        TRN_RM_CLASS_3 c
-                    LEFT JOIN
-                        RM_MATERIAL m ON c.MaterialName = m.Material_Id
-                    LEFT JOIN 
-                        MST_PlantDetails p ON c.PlantName = p.plant_id
-                    LEFT JOIN
-                        MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
-                    WHERE 
-                        1 = 1
-                    ORDER BY 
-                        c.[SubmittedDate] DESC, 
-                        c.[SubmittedTime] DESC;
-                ";
+                        c.ID AS DBID,
+                        c.FormID as FormID,
+                        RMFID as RecordID,
+                        m.Material_Name AS MaterialName,
+                        p.plant_name AS PlantName,
+                        c.SubmittedByEmployeeCode as EmpCode,
+                        u.EmployeeName AS EmpName,
+                        c.SubmittedDate as SDate,
+                        c.SubmittedTime as STime,
+                        c.ReceivingDate,
+                        c.Quantity,
+                        c.CommentsForQuantity,
+                        c.SampleSize,
+                        c.Supplier_Name,
+                        c.ProductBrand,
+                        c.MfgBatchNo,
+                        c.Challan_No,
+                        c.Challan_Dates,
+                        c.Lot_No,
+                        c.Mfg_Dates,
+                        c.BB_Dates,
+                        c.Vehicle_No,
+                        c.MfgName,
+                        c.FssaiNo,
+                        CASE 
+                            WHEN c.MfgYesNo = 1 THEN 'Yes'
+                            WHEN c.MfgYesNo = 0 THEN 'No'
+                        END AS MfgYesNo,
+                        c.MfgYesNoRemarks,
+                        CASE 
+                            WHEN c.PkdDate_YesNo = 1 THEN 'Yes'
+                            WHEN c.PkdDate_YesNo = 0 THEN 'No'
+                        END AS PkdDate_YesNo,
+                        c.PkdDateYesNoRemarks,
+                        CASE 
+                            WHEN c.BestbfrDate_YesNo = 1 THEN 'Yes'
+                            WHEN c.BestbfrDate_YesNo = 0 THEN 'No'
+                        END AS BestbfrDate_YesNo,
+                        c.BestbfrDate_YesNoRemarks,
+                        CASE 
+                            WHEN c.BatchLotNo_YesNo = 1 THEN 'Yes'
+                            WHEN c.BatchLotNo_YesNo = 0 THEN 'No'
+                        END AS BatchLotNo_YesNo,
+                        c.BatchLotNo_YesNoRemarks,   
+                        CASE 
+	                        WHEN c.Fssai_Logo = 1 THEN 'Present'
+	                        WHEN c.Fssai_Logo = 0 THEN 'Absent'
+                        END AS Fssai_Logo,
+                        CASE 
+                            WHEN c.Veg_Logo = 1 THEN 'Absent'
+                            WHEN c.Veg_Logo = 0 THEN 'Present'
+                        END AS Veg_Logo,
+                        CASE 
+                            WHEN c.Smell = 1 THEN 'Ok'
+                            WHEN c.Smell = 0 THEN 'Not Ok'
+                        END AS Smell,
+                        c.CommentsForSmell,
+                        CASE 
+                            WHEN c.OdourAftrAcid = 1 THEN 'Absent'
+                            WHEN c.OdourAftrAcid = 0 THEN 'Present'
+                        END AS OdourAftrAcid,
+                        c.OdourAftrAcid_Remarks,
+                        CASE 
+                            WHEN c.Packing_Condition = 1 THEN 'Ok'
+                            WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+                        END AS Packing_Condition,
+                        c.PackingCondition_Remarks,
+                        CASE 
+                            WHEN c.Appearance = 1 THEN 'Ok'
+                            WHEN c.Appearance = 0 THEN 'Not Ok'
+                        END AS Appearance,
+                        c.CommentsForAppearance,
+                        CASE 
+                            WHEN c.Color = 1 THEN 'Ok'
+                            WHEN c.Color = 0 THEN 'Not Ok'
+                        END AS Color,
+                        c.CommentsForColor,
+                        CASE 
+                            WHEN c.Taste = 1 THEN 'Ok'
+                            WHEN c.Taste = 0 THEN 'Not Ok'
+                        END AS Taste,
+                        c.CommentsForTaste,
+                        CASE 
+                            WHEN c.Grade = 1 THEN 'Yes'
+                            WHEN c.Grade = 0 THEN 'No'
+                        END AS Grade,
+                        c.CommentsForGrade,
+                        CASE 
+                            WHEN c.Foreign_Matter_YesNo = 1 THEN 'Absent'
+                            WHEN c.Foreign_Matter_YesNo = 0 THEN 'Present'
+                        END AS Foreign_Matter_YesNo,
+                        c.Foreign_Matter_YesNoRemarks,
+                        c.Foreign_Matter_Impurities,
+                        c.PH,
+                        c.CommentsForPH,
+                        c.Moisture,
+                        c.CommentsForMoisture,
+                        c.Total_Ash,
+                        c.CommentsForTotalAsh,
+                        c.Acid_Insoluble_Ash,
+                        c.CommentsForInsolubleAsh,
+                        c.Total_Solids,
+                        c.CommentsForSolid,
+                        c.Dextrose_Equivalent,
+                        c.CommentsForDextroseEquivalent,
+                        c.Titrable_Acidity,
+                        c.CommentsForTitrableAcidity,
+                        c.Alcoholic_Acidity,
+                        c.CommentsForAlcoholicAcidity,
+                        c.SO2,
+                        c.CommentsForSO2,
+                        c.Glycerine_Content,
+                        c.CommentsForGlycerineContent,
+                        c.Glucose_Content,
+                        c.CommentsForGlucoseContent,
+                        c.Loss_On_Drying,
+                        c.CommentsForLossOnDrying,
+                        c.Solubility,
+                        c.CommentsForSolubility,
+                        c.WIM,
+                        c.CommentsForWIM,
+                        c.Sucrose_Content,
+                        c.CommentsForSucroseContent,
+                        c.Sulphide_Content,
+                        c.CommentsForSulphideContent,
+                        c.SulphatedAsh,
+                        c.CommentsForSulphatedAsh,
+                        CASE 
+                        WHEN c.Beverage = 1 THEN 'Positive'
+                        WHEN c.Beverage = 0 THEN 'Negative'
+                    END AS Beverage,
+                        c.Material_Image,
+                        CASE
+                            WHEN c.ApprovalStatus = 1 THEN 'Accepted'
+                            WHEN C.ApprovalStatus = 0 THEN 'Rejected'
+                        END AS ApprovalStatus,
+                        c.Remarks,
+                        c.Approver1EmployeeCode as L1,
+                        c.Approver1_Status,
+                        c.Approver1_TimeStamp,
+                        c.Approver2EmployeeCode as L2,
+                        c.Approver2_Status,
+                        c.Approver2_TimeStamp,
+                        c.DottedLineApproverEmployeeCode as L3,
+                        c.DottedApprover_Status,
+                        c.DottedApprover_TimeStamp
+                        FROM 
+                            TRN_RM_CLASS_3 c
+                        LEFT JOIN
+                            RM_MATERIAL m ON c.MaterialName = m.Material_Id
+                        LEFT JOIN 
+                            MST_PlantDetails p ON c.PlantName = p.plant_id
+                        LEFT JOIN
+                            MST_UserMaster u ON c.SubmittedByEmployeeCode = u.EmployeeCode
+                        WHERE 
+                            1 = 1
+                        ORDER BY 
+                            c.[SubmittedDate] DESC, 
+                            c.[SubmittedTime] DESC;                  ";
 
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
@@ -205,6 +334,7 @@ namespace AnmolDristi
                         DataTable dt = new DataTable();
                         sda.Fill(dt);
                         GridView1.DataSource = dt;
+                        ViewState["ExportData"] = dt;
                         GridView1.DataBind();
                     }
                 }
@@ -225,13 +355,138 @@ namespace AnmolDristi
                 SELECT 
                     c.ID AS DBID,
                     c.FormID AS FormID,
+                    RMFID as RecordID,
 	                m.Material_Name AS MaterialName,
                     p.plant_name AS PlantName,
                     c.SubmittedByEmployeeCode AS EmpCode,
                     u.EmployeeName AS EmpName,
                     c.SubmittedDate AS SDate,
                     c.SubmittedTime AS STime,
-                    'No Comment' AS Remarks,
+                    c.ReceivingDate,
+                    c.Quantity,
+                    c.CommentsForQuantity,
+                    c.SampleSize,
+                    c.Supplier_Name,
+                    c.ProductBrand,
+                    c.MfgBatchNo,
+                    c.Challan_No,
+                    c.Challan_Dates,
+                    c.Lot_No,
+                    c.Mfg_Dates,
+                    c.BB_Dates,
+                    c.Vehicle_No,
+                    c.MfgName,
+                    c.FssaiNo,
+                    CASE 
+                        WHEN c.MfgYesNo = 1 THEN 'Yes'
+                        WHEN c.MfgYesNo = 0 THEN 'No'
+                    END AS MfgYesNo,
+                    c.MfgYesNoRemarks,
+                    CASE 
+                        WHEN c.PkdDate_YesNo = 1 THEN 'Yes'
+                        WHEN c.PkdDate_YesNo = 0 THEN 'No'
+                    END AS PkdDate_YesNo,
+                    c.PkdDateYesNoRemarks,
+                    CASE 
+                        WHEN c.BestbfrDate_YesNo = 1 THEN 'Yes'
+                        WHEN c.BestbfrDate_YesNo = 0 THEN 'No'
+                    END AS BestbfrDate_YesNo,
+                    c.BestbfrDate_YesNoRemarks,
+                    CASE 
+                        WHEN c.BatchLotNo_YesNo = 1 THEN 'Yes'
+                        WHEN c.BatchLotNo_YesNo = 0 THEN 'No'
+                    END AS BatchLotNo_YesNo,
+                    c.BatchLotNo_YesNoRemarks,   
+                    CASE 
+	                    WHEN c.Fssai_Logo = 1 THEN 'Present'
+	                    WHEN c.Fssai_Logo = 0 THEN 'Absent'
+                    END AS Fssai_Logo,
+                    CASE 
+                        WHEN c.Veg_Logo = 1 THEN 'Absent'
+                        WHEN c.Veg_Logo = 0 THEN 'Present'
+                    END AS Veg_Logo,
+                    CASE 
+                        WHEN c.Smell = 1 THEN 'Ok'
+                        WHEN c.Smell = 0 THEN 'Not Ok'
+                    END AS Smell,
+                    c.CommentsForSmell,
+                    CASE 
+                        WHEN c.OdourAftrAcid = 1 THEN 'Absent'
+                        WHEN c.OdourAftrAcid = 0 THEN 'Present'
+                    END AS OdourAftrAcid,
+                    c.OdourAftrAcid_Remarks,
+                    CASE 
+                        WHEN c.Packing_Condition = 1 THEN 'Ok'
+                        WHEN c.Packing_Condition = 0 THEN 'Not Ok'
+                    END AS Packing_Condition,
+                    c.PackingCondition_Remarks,
+                    CASE 
+                        WHEN c.Appearance = 1 THEN 'Ok'
+                        WHEN c.Appearance = 0 THEN 'Not Ok'
+                    END AS Appearance,
+                    c.CommentsForAppearance,
+                    CASE 
+                        WHEN c.Color = 1 THEN 'Ok'
+                        WHEN c.Color = 0 THEN 'Not Ok'
+                    END AS Color,
+                    c.CommentsForColor,
+                    CASE 
+                        WHEN c.Taste = 1 THEN 'Ok'
+                        WHEN c.Taste = 0 THEN 'Not Ok'
+                    END AS Taste,
+                    c.CommentsForTaste,
+                    CASE 
+                        WHEN c.Grade = 1 THEN 'Yes'
+                        WHEN c.Grade = 0 THEN 'No'
+                    END AS Grade,
+                    c.CommentsForGrade,
+                    CASE 
+                        WHEN c.Foreign_Matter_YesNo = 1 THEN 'Absent'
+                        WHEN c.Foreign_Matter_YesNo = 0 THEN 'Present'
+                    END AS Foreign_Matter_YesNo,
+                    c.Foreign_Matter_YesNoRemarks,
+                    c.Foreign_Matter_Impurities,
+                    c.PH,
+                    c.CommentsForPH,
+                    c.Moisture,
+                    c.CommentsForMoisture,
+                    c.Total_Ash,
+                    c.CommentsForTotalAsh,
+                    c.Acid_Insoluble_Ash,
+                    c.CommentsForInsolubleAsh,
+                    c.Total_Solids,
+                    c.CommentsForSolid,
+                    c.Dextrose_Equivalent,
+                    c.CommentsForDextroseEquivalent,
+                    c.Titrable_Acidity,
+                    c.CommentsForTitrableAcidity,
+                    c.Alcoholic_Acidity,
+                    c.CommentsForAlcoholicAcidity,
+                    c.SO2,
+                    c.CommentsForSO2,
+                    c.Glycerine_Content,
+                    c.CommentsForGlycerineContent,
+                    c.Glucose_Content,
+                    c.CommentsForGlucoseContent,
+                    c.Loss_On_Drying,
+                    c.CommentsForLossOnDrying,
+                    c.Solubility,
+                    c.CommentsForSolubility,
+                    c.WIM,
+                    c.CommentsForWIM,
+                    c.Sucrose_Content,
+                    c.CommentsForSucroseContent,
+                    c.Sulphide_Content,
+                    c.CommentsForSulphideContent,
+                    c.SulphatedAsh,
+                    c.CommentsForSulphatedAsh,
+                    c.Beverage,
+                    c.Material_Image,
+                    CASE
+                        WHEN c.ApprovalStatus = 1 THEN 'Accepted'
+                        WHEN C.ApprovalStatus = 0 THEN 'Rejected'
+                    END AS ApprovalStatus,
+                    c.Remarks,
                     c.Approver1EmployeeCode AS L1,
                     c.Approver1_Status,
                     c.Approver1_TimeStamp,
@@ -298,6 +553,7 @@ namespace AnmolDristi
             {
                 DataTable filteredData = GetDataFromTable(queryBuilder.ToString(), parameters.ToArray());
                 GridView1.DataSource = filteredData;
+                ViewState["ExportData"] = filteredData;
                 GridView1.DataBind();
             }
             catch (Exception ex)
@@ -350,7 +606,45 @@ namespace AnmolDristi
             }
         }
 
+        protected void ExportBtn_Click(object sender, EventArgs e)
+        {
+            if (ViewState["ExportData"] != null)
+            {
+                DataTable dt = ViewState["ExportData"] as DataTable;
 
+                if (dt != null && dt.Rows.Count > 0)
+                {
+                    using (XLWorkbook wb = new XLWorkbook())
+                    {
+                        wb.Worksheets.Add(dt, "QCRMClass3Report");
+
+                        Response.Clear();
+                        Response.Buffer = true;
+                        Response.Charset = "";
+                        Response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                        Response.AddHeader("content-disposition", "attachment;filename=QCRMClass3Records.xlsx");
+
+                        using (MemoryStream MyMemoryStream = new MemoryStream())
+                        {
+                            wb.SaveAs(MyMemoryStream);
+                            MyMemoryStream.WriteTo(Response.OutputStream);
+                            Response.Flush();
+                            Response.End();
+                        }
+                    }
+                }
+                else
+                {
+                    // Handle the case where the DataTable is empty
+                    Response.Write("No data available to export.");
+                }
+            }
+            else
+            {
+                // Handle the case where ViewState["ExportData"] is null
+                Response.Write("No data available to export.");
+            }
+        }
 
     }
 

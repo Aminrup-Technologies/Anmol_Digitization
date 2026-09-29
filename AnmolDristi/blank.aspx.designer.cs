@@ -13,48 +13,66 @@ namespace AnmolDristi.Account {
     public partial class blank {
         
         /// <summary>
-        /// DDL_WorkRegion control.
+        /// hfTotalDistance control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList DDL_WorkRegion;
+        protected global::System.Web.UI.WebControls.HiddenField hfTotalDistance;
         
         /// <summary>
-        /// DropDownList1 control.
+        /// hfTravelMode control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.DropDownList DropDownList1;
+        protected global::System.Web.UI.WebControls.HiddenField hfTravelMode;
         
         /// <summary>
-        /// lbl_msg control.
+        /// hfOriginName control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lbl_msg;
+        protected global::System.Web.UI.WebControls.HiddenField hfOriginName;
         
         /// <summary>
-        /// btn_submit control.
+        /// hfDestinationName control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button btn_submit;
+        protected global::System.Web.UI.WebControls.HiddenField hfDestinationName;
         
         /// <summary>
-        /// ShowPopup control.
+        /// hfWaypointsJSON control.
         /// </summary>
         /// <remarks>
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Button ShowPopup;
+        protected global::System.Web.UI.WebControls.HiddenField hfWaypointsJSON;
+        
+        /// <summary>
+        /// btnSubmitApproval control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Button btnSubmitApproval;
+        
+        /// <summary>
+        /// lblServerMessage control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.Label lblServerMessage;
     }
 }

@@ -3,6 +3,7 @@ using System.Configuration;
 using System.Data.SqlClient;
 using System.Data;
 using System.Drawing;
+using System.Web.UI.WebControls;
 
 namespace AnmolDristi
 {
@@ -19,20 +20,34 @@ namespace AnmolDristi
         public static string App2_Status = string.Empty;
         public static string DottedApp_Status = string.Empty;
 
-
+        public static string RecordID = string.Empty;
+        public static Int32 ViewerMode = 0;
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (!IsPostBack)
-            {
-                if (Request.QueryString["ID"] != null)
-                {
-                    DBID = Request.QueryString["ID"];
+            //if (!IsPostBack)
+            //{
+            //    if (Request.QueryString["ID"] != null)
+            //    {
+            //        DBID = Request.QueryString["ID"];
 
-                    PlantBinder();
-                    getDetails(DBID);
-                }
+            //        PlantBinder();
+            //        getDetails(DBID);
+            //    }
+            //}
+
+            if (Request.QueryString["ID"] != null)
+            {
+                string batchid = Request.QueryString["ID"];
+                RecordID = Request.QueryString["ID"];
+                ViewerMode = Convert.ToInt32(Request.QueryString["VM"]);
+                DataBinder(RecordID);
+            }
+            else
+            {
+                Response.Write("<script>alert('BatchID is missing in the query string.');</script>");
             }
         }
+
 
         private void PlantBinder()
         {
@@ -441,13 +456,15 @@ namespace AnmolDristi
         protected void btnApprove_Click(object sender, EventArgs e)
         {
             UpdateColumnBasedOnApproverType();
-            getDetails(DBID);
+            //getDetails(DBID);
+            DataBinder(RecordID);
         }
 
         protected void btnReject_Click(object sender, EventArgs e)
         {
             RejectionBasedOnApproverType();
-            getDetails(DBID);
+            //getDetails(DBID);
+            DataBinder(RecordID);
         }
 
 
@@ -484,13 +501,13 @@ namespace AnmolDristi
                     switch (approverType)
                     {
                         case "Approver1":
-                            updateQuery = "UPDATE TRN_RotaryLine_OvenEnd SET Approver1_Status = 1, Approver1_TimeStamp = @TimeStamp WHERE Approver1EmployeeCode = @Condition and ID=@ID";
+                            updateQuery = "UPDATE TRN_Pre_Dispatch_Clearance_Report SET Approver1_Status = 1, Approver1_TimeStamp = @TimeStamp WHERE Approver1EmployeeCode = @Condition and ID=@ID";
                             break;
                         case "Approver2":
-                            updateQuery = "UPDATE TRN_RotaryLine_OvenEnd SET Approver2_Status = 1, Approver2_TimeStamp = @TimeStamp WHERE Approver2EmployeeCode = @Condition and ID=@ID";
+                            updateQuery = "UPDATE TRN_Pre_Dispatch_Clearance_Report SET Approver2_Status = 1, Approver2_TimeStamp = @TimeStamp WHERE Approver2EmployeeCode = @Condition and ID=@ID";
                             break;
                         case "DottedLineApprover":
-                            updateQuery = "UPDATE TRN_RotaryLine_OvenEnd SET DottedApprover_Status = 1, DottedApprover_TimeStamp = @TimeStamp WHERE DottedLineApproverEmployeeCode = @Condition and ID=@ID";
+                            updateQuery = "UPDATE TRN_Pre_Dispatch_Clearance_Report SET DottedApprover_Status = 1, DottedApprover_TimeStamp = @TimeStamp WHERE DottedLineApproverEmployeeCode = @Condition and ID=@ID";
                             break;
                     }
 
@@ -501,7 +518,7 @@ namespace AnmolDristi
                             SqlCommand cmd = new SqlCommand(updateQuery, conn);
                             cmd.Parameters.AddWithValue("@TimeStamp", DateTime.Now);
                             cmd.Parameters.AddWithValue("@Condition", employeeCode);
-                            cmd.Parameters.AddWithValue("@ID", DBID);
+                            cmd.Parameters.AddWithValue("@ID", RecordID);
                             try
                             {
                                 conn.Open();
@@ -550,13 +567,13 @@ namespace AnmolDristi
                     switch (approverType)
                     {
                         case "Approver1":
-                            updateQuery = "UPDATE TRN_RotaryLine_OvenEnd SET Approver1_Status = 0, Approver1_TimeStamp = @TimeStamp WHERE Approver1EmployeeCode = @Condition and ID=@ID";
+                            updateQuery = "UPDATE TRN_Pre_Dispatch_Clearance_Report SET Approver1_Status = 0, Approver1_TimeStamp = @TimeStamp WHERE Approver1EmployeeCode = @Condition and ID=@ID";
                             break;
                         case "Approver2":
-                            updateQuery = "UPDATE TRN_RotaryLine_OvenEnd SET Approver2_Status = 0, Approver2_TimeStamp = @TimeStamp WHERE Approver2EmployeeCode = @Condition and ID=@ID";
+                            updateQuery = "UPDATE TRN_Pre_Dispatch_Clearance_Report SET Approver2_Status = 0, Approver2_TimeStamp = @TimeStamp WHERE Approver2EmployeeCode = @Condition and ID=@ID";
                             break;
                         case "DottedLineApprover":
-                            updateQuery = "UPDATE TRN_RotaryLine_OvenEnd SET DottedApprover_Status = 0, DottedApprover_TimeStamp = @TimeStamp WHERE DottedLineApproverEmployeeCode = @Condition and ID=@ID";
+                            updateQuery = "UPDATE TRN_Pre_Dispatch_Clearance_Report SET DottedApprover_Status = 0, DottedApprover_TimeStamp = @TimeStamp WHERE DottedLineApproverEmployeeCode = @Condition and ID=@ID";
                             break;
                     }
 
@@ -567,7 +584,7 @@ namespace AnmolDristi
                             SqlCommand cmd = new SqlCommand(updateQuery, conn);
                             cmd.Parameters.AddWithValue("@TimeStamp", DateTime.Now);
                             cmd.Parameters.AddWithValue("@Condition", employeeCode);
-                            cmd.Parameters.AddWithValue("@ID", DBID);
+                            cmd.Parameters.AddWithValue("@ID", RecordID);
                             try
                             {
                                 conn.Open();
@@ -586,7 +603,253 @@ namespace AnmolDristi
 
         protected void btnBack_Click(object sender, EventArgs e)
         {
-            Response.Redirect("preDispatchVM.aspx", false);
+            //Response.Redirect("preDispatchVM.aspx", false);
+            if (ViewerMode == 0)
+            {
+                //View List Page name for the submitter
+                Response.Redirect("preDispatchVM.aspx", false);
+            }
+            else if (ViewerMode == 1)
+            {
+                Response.Redirect("preDispatchVM.aspx", false);
+            }
+            else
+            {
+                Response.Redirect("home.aspx", false);
+            }
         }
+
+        //25 April 2025
+
+        private void DataBinder(string batchid)
+        {
+            try
+            {
+                string connectionString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+                string query = @"
+                       SELECT
+                            A.plant_name AS Plant, 
+                            B.line_name AS PlantLine, 
+                            C.category_name AS ProductCategory, 
+                            D.brand_name AS ProductBrand, 
+                            E.SKU_name AS BrandSKU, 
+                            P.InspectionLot AS InspectionLot,
+                            P.MaterialCode AS MaterialCode,
+                            P.CBB_Produced AS NoOfCBBProduced,
+                            P.CBB_Checked AS NoOfCBBChecked,
+                            CASE 
+                                WHEN  P.CBB_Box_Condition = 1 THEN 'Ok'
+                                WHEN  P.CBB_Box_Condition = 0 THEN 'Not Ok'
+                            END AS BoxCondition,
+                            CASE 
+				                WHEN P.CBB_Box_ConditionRemarks IS NULL OR P.CBB_Box_ConditionRemarks = '' THEN 'No Remarks'
+				                ELSE P.CBB_Box_ConditionRemarks
+			                END AS BoxConditionRemarks,
+                            P.Packets_CBB AS NoOfPacketsInCBB,
+                            CASE 
+                                WHEN  P.CBB_tapping = 1 THEN 'Ok'
+                                WHEN  P.CBB_tapping = 0 THEN 'Not Ok'
+                            END AS TappingOfCBB,
+                            CASE 
+                                WHEN P.CBB_tappingRemarks IS NULL OR P.CBB_tappingRemarks = '' THEN 'No Remarks'
+                                ELSE P.CBB_tappingRemarks 
+                            END AS TappingOfCBBRemarks,
+                            P.PacketsChecked_CBB AS PktsCheckedCBBBox,
+                            P.WeightofPackets AS WtOfPkts,
+                            P.PackageDate AS PkgDate,
+                            P.BatchNo AS BatchLotNo,
+                            P.PacketsMRP AS MRPOfPkts,
+                            CASE 
+                                WHEN P.LongSeal= 1 THEN 'Ok'
+                                WHEN P.LongSeal = 0 THEN 'Not Ok'
+                            END AS LongSealCondition,
+                            CASE 
+                                WHEN P.LongSealRemarks IS NULL OR P.LongSealRemarks = '' THEN 'No Remarks'
+                                ELSE P.LongSealRemarks 
+                            END AS LongSealConditionRemarks,
+                            CASE 
+                                WHEN P.EndSeal = 1 THEN 'Ok'
+                                WHEN P.EndSeal = 0 THEN 'Not Ok'
+                            END AS EndSealCondition,
+                            CASE 
+                                WHEN P.EndSealRemarks IS NULL OR P.EndSealRemarks = '' THEN 'No Remarks'
+                                ELSE P.EndSealRemarks 
+                            END AS EndSealConditionRemarks,
+                            CASE 
+                                WHEN P.MainPanel = 1 THEN 'Ok'
+                                WHEN P.MainPanel = 0 THEN 'Not Ok'
+                            END AS MainPanelCentralNot,
+                            CASE 
+                                WHEN P.MainPanelRemarks IS NULL OR P.MainPanelRemarks = '' THEN 'No Remarks'
+                                ELSE P.MainPanelRemarks 
+                            END AS MainPanelCentralRemarks,
+                            CASE 
+                                WHEN P.Cuts_Packets = 1 THEN 'NO'
+                                WHEN P.Cuts_Packets  = 0 THEN 'Yes'
+                            END AS CutsInPackets,
+                            CASE 
+                                WHEN P.Cuts_PacketsRemarks IS NULL OR P.Cuts_PacketsRemarks = '' THEN 'No Remarks'
+                                ELSE P.Cuts_PacketsRemarks 
+                            END AS CutsInPacketsRemarks,
+                            CASE 
+                                WHEN P.BackingStatus= 1 THEN 'Ok'
+                                WHEN P.BackingStatus = 0 THEN 'Under/Over Baked'
+                            END AS BakingUnderOverBaked,
+                            CASE 
+                                WHEN P.BackingStatusRemarks IS NULL OR P.BackingStatusRemarks = '' THEN 'No Remarks'
+                                ELSE P.BackingStatusRemarks 
+                            END AS BakingUnderOverBakedRemarks,
+                            CASE 
+                                WHEN P.ElongOval= 1 THEN 'Ok'
+                                WHEN P.ElongOval = 0 THEN 'Not Ok'
+                            END AS ShapeConditionElongatedOrOval,
+                            CASE 
+                                WHEN P.ElongOvalRemarks IS NULL OR P.ElongOvalRemarks = '' THEN 'No Remarks'
+                                ELSE P.ElongOvalRemarks 
+                            END AS ShapeConditionElongatedOrOvalRemarks,
+                            CASE 
+           	                    WHEN P.Cupping = 1 THEN 'NO'
+           	                    WHEN P.Cupping = 0 THEN 'Yes'
+           	                END AS CuppingCondition,
+                            CASE 
+                                WHEN P.CuppingRemarks IS NULL OR P.CuppingRemarks = '' THEN 'No Remarks'
+                                ELSE P.CuppingRemarks 
+                            END AS CuppingConditionRemarks,
+                            CASE 
+              		            WHEN P.Impression= 1 THEN 'Ok'
+              		            WHEN P.Impression = 0 THEN 'Not Ok'
+           	                END AS ImpressionOnBiscuits,
+                            CASE 
+                                WHEN P.ImpressionRemarks IS NULL OR P.ImpressionRemarks = '' THEN 'No Remarks'
+                                ELSE P.ImpressionRemarks 
+                            END AS ImpressionOnBiscuitsRemarks,
+                            CASE
+              		            WHEN P.SoggyStatus = 1 THEN 'Ok'
+              		            WHEN P.SoggyStatus  = 0 THEN 'Not Ok'
+           	                END AS BiscuitSoggy,
+                            CASE 
+                                WHEN P.SoggyStatusRemarks IS NULL OR P.SoggyStatusRemarks = '' THEN 'No Remarks'
+                                ELSE P.SoggyStatusRemarks 
+                            END AS BiscuitSoggyRemarks,
+                            CASE
+              		            WHEN P.ForeignBody= 1 THEN 'NO'
+           	                    WHEN P.ForeignBody = 0 THEN 'Yes'
+           	                END AS ForeignBodyInBiscuit,
+                            CASE 
+                                WHEN P.ForeignBodyRemarks IS NULL OR P.ForeignBodyRemarks = '' THEN 'No Remarks'
+                                ELSE P.ForeignBodyRemarks 
+                            END AS ForeignBodyInBiscuitRemarks,
+                            CASE
+                                WHEN P.OffOdour= 1 THEN 'NO'
+                                WHEN P.OffOdour = 0 THEN 'Yes'
+                            END AS OffOdour,
+                            CASE 
+                                WHEN P.OffOdourRemarks IS NULL OR P.OffOdourRemarks = '' THEN 'No Remarks'
+                                ELSE P.OffOdourRemarks 
+                            END AS OffOdourRemarks,
+                            P.Remarks AS Remarks
+                    FROM
+                        TRN_Pre_Dispatch_Clearance_Report P
+                    JOIN dbo.MST_PlantDetails A ON P.PlantName = A.plant_id
+                    JOIN dbo.MST_Plant_Lines B ON P.Line = B.line_id
+                    JOIN dbo.MST_LineCategory C ON P.ProductCategory = C.category_id
+                    JOIN dbo.MST_LineCatBrands D ON P.ProductBrand = D.brand_id
+                    JOIN dbo.MST_Brand_SKU E ON P.SKUId = E.SKUId   
+                    WHERE P.BatchID = @BatchID";
+
+
+                using (SqlConnection con = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand(query, con))
+                    {
+                        cmd.Parameters.AddWithValue("@BatchID", batchid);
+
+                        con.Open();
+                        using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
+                        {
+                            System.Data.DataTable dt = new System.Data.DataTable();
+                            sda.Fill(dt);
+
+                            if (dt.Rows.Count > 0)
+                            {
+                                gvData.DataSource = dt;
+                                gvData.DataBind();
+                                ViewState["OriginalData"] = dt;
+
+                            }
+                            else
+                            {
+                                Response.Write("<script>alert('No data found for the given BatchID.');</script>");
+                                gvData.DataSource = null;
+                                gvData.DataBind();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Response.Write($"<script>alert('Error: {ex.Message}');</script>");
+            }
+        }
+
+
+        protected void btnTranspose_Click(object sender, EventArgs e)
+        {
+            DataTable dt = ViewState["OriginalData"] as DataTable;
+
+            if (dt != null)
+            {
+                DataTable transposed = TransposeDataTable(dt);
+
+                BindTransposedGrid(transposed);
+            }
+        }
+
+        private DataTable TransposeDataTable(DataTable dt)
+        {
+            DataTable dtTransposed = new DataTable();
+
+            dtTransposed.Columns.Add("Field");
+
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                dtTransposed.Columns.Add("Row " + (i + 1));
+            }
+
+            for (int j = 0; j < dt.Columns.Count; j++)
+            {
+                DataRow newRow = dtTransposed.NewRow();
+                newRow[0] = dt.Columns[j].ColumnName;
+
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    newRow[i + 1] = dt.Rows[i][j];
+                }
+
+                dtTransposed.Rows.Add(newRow);
+            }
+
+            return dtTransposed;
+        }
+
+        private void BindTransposedGrid(DataTable dtTransposed)
+        {
+            gvData.Columns.Clear();
+
+            foreach (DataColumn col in dtTransposed.Columns)
+            {
+                BoundField bf = new BoundField();
+                bf.DataField = col.ColumnName;
+                bf.HeaderText = col.ColumnName;
+                gvData.Columns.Add(bf);
+            }
+
+            gvData.DataSource = dtTransposed;
+            gvData.DataBind();
+        }
+
+
+
     }
 }

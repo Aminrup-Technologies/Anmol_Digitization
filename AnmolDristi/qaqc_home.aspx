@@ -14,7 +14,6 @@
             <div class="clearfix"></div>
 
             <div class="row">
-                
 
                 <div class="col-md-12" id="Div1" runat="server" visible="true">
                     <div class="x_panel">

@@ -1000,7 +1000,7 @@ namespace AnmolDristi
             string submittedByEmployeeCode = Session["WORKMAN"].ToString();
 
             string approver1EmployeeCode = Approver1CodeLabel.Text.ToString();
-            string approver2EmployeeCode = Approver1CodeLabel.Text.ToString();
+            string approver2EmployeeCode = Approver2CodeLabel.Text.ToString();
             string dottedLineApproverEmployeeCode = DottedLineApproverCodeLabel.Text.ToString();
 
             try

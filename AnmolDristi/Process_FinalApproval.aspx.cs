@@ -290,7 +290,9 @@ namespace AnmolDristi
 
                                 TB_MaidaBrand.Text = dt.Rows[0]["MaidaBrand"].ToString();
                                 TB_MaidaBatchNo.Text = dt.Rows[0]["MaidaBatchNo"].ToString();
-                                TB_MaidaMfg.Text = dt.Rows[0]["MaidaMfgDate"].ToString();
+
+                                //TB_MaidaMfg.Text = dt.Rows[0]["MaidaMfgDate"].ToString();
+                                TB_MaidaMfg.Text = dt.Rows[0]["MaidaMfg_Dates"].ToString();     // 26 May 2025
 
                                 RBL_MaidaColorApp.SelectedValue = dt.Rows[0]["MaidaAppearanceColor"].ToString();
                                 TXB_MaidaColorApp_Remarks.Text = dt.Rows[0]["CommentForMaidaColor"].ToString();
@@ -431,6 +433,16 @@ namespace AnmolDristi
                                 // Assume the logged-in user's Employee Code is stored in a session variable
                                 string loggedInUserCode = Session["WORKMAN"].ToString(); // Example session variable
                                 // Boolean flag to track if the logged-in user is one of the approvers
+                                // Retrieve approval statuses from the row
+                                App1_Status = row["Approver1_Status"].ToString();
+                                Approver1CodeLabel.Text = row["Approver1EmployeeCode"].ToString();
+
+                                App2_Status = row["Approver2_Status"].ToString();
+                                Approver2CodeLabel.Text = row["Approver2EmployeeCode"].ToString();
+
+                                DottedApp_Status = row["DottedApprover_Status"].ToString();
+                                DottedLineApproverCodeLabel.Text = row["DottedLineApproverEmployeeCode"].ToString();
+
                                 bool isApprover = false;
 
                                 // Approver 1
@@ -545,7 +557,7 @@ namespace AnmolDristi
                             }
                         }
                     }
-                }
+                }                              
             }
             catch (Exception ex)
             {
