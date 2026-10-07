@@ -947,7 +947,7 @@
                                                     <ItemTemplate>
                                                         <asp:LinkButton ID="lnkExpenses" runat="server"
                                                             CommandName="OpenExpenses" 
-                                                            CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate") + "|" + Eval("Planned_Beat") + "|" + Eval("Order_Distributor_Name") + "|" + Eval("TotalDistanceKM") + "|" + HttpUtility.HtmlEncode(
+                                                            CommandArgument='<%# Eval("ActivityId") + "|" + Eval("ActivityDate", "{0:yyyy-MM-dd}") + "|" + Eval("Planned_Beat") + "|" + Eval("Order_Distributor_Name") + "|" + Eval("TotalDistanceKM") + "|" + HttpUtility.HtmlEncode(
                                                                 ((System.Data.DataRowView)Container.DataItem).Row.Table.Columns.Contains("DetailRemarks") &&
                                                                 ((System.Data.DataRowView)Container.DataItem)["DetailRemarks"] != DBNull.Value
                                                                     ? ((System.Data.DataRowView)Container.DataItem)["DetailRemarks"].ToString()

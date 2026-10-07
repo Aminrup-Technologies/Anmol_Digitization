@@ -22,6 +22,7 @@ namespace AnmolDristi
     {
         private string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private const string SESSION_KEY_GV_ACTIVITIES = "gvActivities_DataTable";
+        private const string InvalidActivityDateMessage = "Activity date is invalid. Please reopen the activity and try again.";
         private readonly PolicyResolutionService _policyResolutionService = new PolicyResolutionService();
 
         // --- FIX FOR BROKEN VISUAL STUDIO DESIGNER FILE ---
@@ -578,9 +579,16 @@ namespace AnmolDristi
         private void ApplySelectedActivityContext(string activityId, string activityDate)
         {
             string id = activityId ?? string.Empty;
-            string date = activityDate ?? string.Empty;
+            string canonical = string.Empty;
+            DateTime parsed;
+            if (TryParseCanonicalActivityDate(activityDate, out parsed))
+            {
+                parsed = parsed.Date;
+                canonical = parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+
             if (HF_ActivityId != null) HF_ActivityId.Value = id;
-            if (HF_ActivityDate != null) HF_ActivityDate.Value = date;
+            if (HF_ActivityDate != null) HF_ActivityDate.Value = canonical;
             if (hdnActivityId != null) hdnActivityId.Value = id;
             if (HF_RouteActivityId != null) HF_RouteActivityId.Value = id;
         }
@@ -1003,12 +1011,14 @@ namespace AnmolDristi
                     if (TXT_DAAmount != null && HF_SnapResolvedDA != null) TXT_DAAmount.Text = HF_SnapResolvedDA.Value;
 
                     DateTime parsed;
-                    if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
+                    if (TryParseCanonicalActivityDate(activityDate, out parsed))
                     {
-                        if (TXT_HotelFromDate != null) TXT_HotelFromDate.Text = parsed.ToString("yyyy-MM-dd");
-                        if (TXT_HotelToDate != null) TXT_HotelToDate.Text = parsed.ToString("yyyy-MM-dd");
-                        if (TXT_TravelDate != null) TXT_TravelDate.Text = parsed.ToString("yyyy-MM-dd");
-                        if (lbl_traveldate != null) lbl_traveldate.Text = parsed.ToString("dd-MM-yyyy");
+                        parsed = parsed.Date;
+                        string canonicalActivityDate = parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        if (TXT_HotelFromDate != null) TXT_HotelFromDate.Text = canonicalActivityDate;
+                        if (TXT_HotelToDate != null) TXT_HotelToDate.Text = canonicalActivityDate;
+                        if (TXT_TravelDate != null) TXT_TravelDate.Text = canonicalActivityDate;
+                        if (lbl_traveldate != null) lbl_traveldate.Text = parsed.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture);
                     }
 
                     string clearScript = string.Format("$('#{0}').val('');", FU_Attachment != null ? FU_Attachment.ClientID : "FU_Attachment");
@@ -1044,8 +1054,18 @@ namespace AnmolDristi
                     {
                         DateTime parsedActivity;
                         string actDateStr = HF_ActivityDate != null ? HF_ActivityDate.Value : "";
-                        if (!string.IsNullOrWhiteSpace(actDateStr) && DateTime.TryParse(actDateStr, out parsedActivity)) { if (!hotelFrom.HasValue) hotelFrom = parsedActivity.Date; if (!hotelTo.HasValue) hotelTo = parsedActivity.Date; }
-                        else { var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time"); var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist).Date; if (!hotelFrom.HasValue) hotelFrom = nowIst; if (!hotelTo.HasValue) hotelTo = nowIst; }
+                        if (string.IsNullOrWhiteSpace(actDateStr))
+                        {
+                            var ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+                            var nowIst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ist).Date;
+                            if (!hotelFrom.HasValue) hotelFrom = nowIst;
+                            if (!hotelTo.HasValue) hotelTo = nowIst;
+                        }
+                        else if (TryParseCanonicalActivityDate(actDateStr, out parsedActivity))
+                        {
+                            if (!hotelFrom.HasValue) hotelFrom = parsedActivity.Date;
+                            if (!hotelTo.HasValue) hotelTo = parsedActivity.Date;
+                        }
                     }
 
                     if (TXT_HotelFromDate != null) TXT_HotelFromDate.Text = hotelFrom.HasValue ? hotelFrom.Value.ToString("yyyy-MM-dd") : string.Empty;
@@ -1083,15 +1103,20 @@ namespace AnmolDristi
                 string maxKm = parts.Length > 3 ? parts[3] : "";
                 string activityDate = parts.Length > 4 ? parts[4] : "";
 
+                string canonicalActivityDate = string.Empty;
                 DateTime parsed;
-                if (!string.IsNullOrWhiteSpace(activityDate) && DateTime.TryParse(activityDate, out parsed))
-                    if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = parsed.ToString("dd-MM-yyyy");
+                if (TryParseCanonicalActivityDate(activityDate, out parsed))
+                {
+                    parsed = parsed.Date;
+                    if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = parsed.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture);
+                    canonicalActivityDate = parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                }
 
             if (txtModalKM != null) txtModalKM.Text = currentKm;
             if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
 
             InitializeKmModalSession(activityId);
-            RehydrateKmModalOnOpen(activityId, activityDate);
+            RehydrateKmModalOnOpen(activityId, canonicalActivityDate);
             ApplyExpenseModalViewOnlyStateForKmModal(activityId);
 
             decimal baselineKm;
@@ -1349,15 +1374,22 @@ namespace AnmolDristi
                 totalKm = Convert.ToDecimal(row["TotalDistanceKM"]);
 
             string currentKm = totalKm.ToString("0.##", CultureInfo.InvariantCulture);
-            string activityDate = row.Table.Columns.Contains("ActivityDate") && row["ActivityDate"] != DBNull.Value ? Convert.ToDateTime(row["ActivityDate"]).ToString("dd-MM-yyyy") : "";
+            string displayActivityDate = string.Empty;
+            string canonicalActivityDate = string.Empty;
+            if (row.Table.Columns.Contains("ActivityDate") && row["ActivityDate"] != DBNull.Value)
+            {
+                DateTime activityDate = Convert.ToDateTime(row["ActivityDate"]).Date;
+                displayActivityDate = activityDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture);
+                canonicalActivityDate = activityDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
 
             if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
             if (txtModalKM != null) txtModalKM.Text = currentKm;
             if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
-            if (!string.IsNullOrEmpty(activityDate) && lbl_kmmodal_date != null) lbl_kmmodal_date.Text = activityDate;
+            if (!string.IsNullOrEmpty(displayActivityDate) && lbl_kmmodal_date != null) lbl_kmmodal_date.Text = displayActivityDate;
 
             InitializeKmModalSession(activityId);
-            RehydrateKmModalOnOpen(activityId, activityDate);
+            RehydrateKmModalOnOpen(activityId, canonicalActivityDate);
 
             var tolerance = ResolveToleranceForActivity(activityId, row);
             ConfigureKmModalDisplay(activityId, totalKm, tolerance);
@@ -1383,10 +1415,16 @@ namespace AnmolDristi
                         if (hdnActivityId != null) hdnActivityId.Value = activityId.ToString();
                         if (txtModalKM != null) txtModalKM.Text = currentKm;
                         if (hdnOriginalKm != null) hdnOriginalKm.Value = currentKm;
-                        if (aDate.HasValue && lbl_kmmodal_date != null) lbl_kmmodal_date.Text = aDate.Value.ToString("dd-MM-yyyy");
+                        string canonicalActivityDate = string.Empty;
+                        if (aDate.HasValue)
+                        {
+                            DateTime activityDate = aDate.Value.Date;
+                            if (lbl_kmmodal_date != null) lbl_kmmodal_date.Text = activityDate.ToString("dd-MM-yyyy", CultureInfo.InvariantCulture);
+                            canonicalActivityDate = activityDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        }
 
                         InitializeKmModalSession(activityId);
-                        RehydrateKmModalOnOpen(activityId, aDate.HasValue ? aDate.Value.ToString("dd-MM-yyyy") : string.Empty);
+                        RehydrateKmModalOnOpen(activityId, canonicalActivityDate);
 
                         var tolerance = ResolveToleranceForActivity(activityId, null);
                         ConfigureKmModalDisplay(activityId, totalKm, tolerance);
@@ -2824,7 +2862,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             if (!string.IsNullOrWhiteSpace(txtTravelDateStr))
             {
                 DateTime tmp;
-                if (DateTime.TryParse(txtTravelDateStr.Trim(), out tmp)) travelDateNullable = tmp.Date;
+                if (TryParseCanonicalActivityDate(txtTravelDateStr, out tmp)) travelDateNullable = tmp.Date;
                 else if (expenseType.Equals("Travel", StringComparison.OrdinalIgnoreCase))
                 {
                     if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Invalid Travel Date.";
@@ -2838,7 +2876,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             if (!string.IsNullOrWhiteSpace(txtHotelFromStr))
             {
                 DateTime tmp;
-                if (DateTime.TryParse(txtHotelFromStr.Trim(), out tmp)) fromDate = tmp.Date;
+                if (TryParseCanonicalActivityDate(txtHotelFromStr, out tmp)) fromDate = tmp.Date;
                 else
                 {
                     if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Invalid Hotel From Date.";
@@ -2851,7 +2889,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             if (!string.IsNullOrWhiteSpace(txtHotelToStr))
             {
                 DateTime tmp;
-                if (DateTime.TryParse(txtHotelToStr.Trim(), out tmp)) toDate = tmp.Date;
+                if (TryParseCanonicalActivityDate(txtHotelToStr, out tmp)) toDate = tmp.Date;
                 else
                 {
                     if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = "Invalid Hotel To Date.";
@@ -3006,6 +3044,15 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                 string fromPlace = txtDaFromStr.Trim();
                                 string toPlace = txtDaToStr.Trim();
 
+                                DateTime expDate;
+                                string hfActDateStr = HF_ActivityDate != null && HF_ActivityDate.Value != null ? HF_ActivityDate.Value : "";
+                                if (!TryParseCanonicalActivityDate(hfActDateStr, out expDate))
+                                {
+                                    if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = InvalidActivityDateMessage;
+                                    ShowExpenseModal();
+                                    return;
+                                }
+
                                 using (SqlCommand chkCmd = new SqlCommand("SELECT COUNT(1) FROM dbo.SalesDailyExpense WITH (UPDLOCK) WHERE ActivityId = @ActId AND ExpenseType = 'DA' AND IsDeleted = 0", con, tx))
                                 {
                                     chkCmd.Parameters.AddWithValue("@ActId", activityId);
@@ -3021,12 +3068,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                     cmd.CommandType = CommandType.StoredProcedure;
                                     cmd.Parameters.AddWithValue("@ActivityId", activityId);
                                     cmd.Parameters.AddWithValue("@ExpenseType", "DA");
-
-                                    DateTime expDate; DateTime? expDateNullable = null;
-                                    string hfActDateStr = HF_ActivityDate != null && HF_ActivityDate.Value != null ? HF_ActivityDate.Value : "";
-                                    if (!string.IsNullOrWhiteSpace(hfActDateStr) && DateTime.TryParse(hfActDateStr.Trim(), out expDate)) expDateNullable = expDate.Date;
-
-                                    cmd.Parameters.AddWithValue("@ExpenseDate", expDateNullable.HasValue ? (object)expDateNullable.Value : (object)DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@ExpenseDate", expDate.Date);
                                     cmd.Parameters.AddWithValue("@Amount", daAmt);
                                     cmd.Parameters.AddWithValue("@FromPlace", string.IsNullOrWhiteSpace(fromPlace) ? (object)DBNull.Value : fromPlace);
                                     cmd.Parameters.AddWithValue("@ToPlace", string.IsNullOrWhiteSpace(toPlace) ? (object)DBNull.Value : toPlace);
@@ -3121,8 +3163,11 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
                                     if (autoDA > 0m)
                                     {
-                                        DateTime canonicalDate = Convert.ToDateTime(HF_ActivityDate.Value).Date;
-                                        EnsureAutoDA(activityId, canonicalDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
+                                        DateTime canonicalDate;
+                                        string autoDateRaw = HF_ActivityDate != null ? HF_ActivityDate.Value : null;
+                                        if (!TryParseCanonicalActivityDate(autoDateRaw, out canonicalDate))
+                                            throw new InvalidOperationException(InvalidActivityDateMessage);
+                                        EnsureAutoDA(activityId, canonicalDate.Date, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
                                     }
                                 }
                             }
@@ -3179,8 +3224,11 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
                                         if (autoDA > 0m)
                                         {
-                                            DateTime canonicalDate = Convert.ToDateTime(HF_ActivityDate.Value).Date;
-                                            EnsureAutoDA(activityId, canonicalDate, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
+                                            DateTime canonicalDate;
+                                            string autoDateRaw = HF_ActivityDate != null ? HF_ActivityDate.Value : null;
+                                            if (!TryParseCanonicalActivityDate(autoDateRaw, out canonicalDate))
+                                                throw new InvalidOperationException(InvalidActivityDateMessage);
+                                            EnsureAutoDA(activityId, canonicalDate.Date, autoDA, policyMode, policySnapshot, GetCurrentUserLoginId(), con, tx);
                                         }
                                     }
                                 }
@@ -3197,12 +3245,16 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                     cmd.Parameters.AddWithValue("@ActivityId", activityId);
                                     cmd.Parameters.AddWithValue("@ExpenseType", "Stationary");
 
-                                    DateTime expDate; DateTime? expDateNullable = null;
+                                    DateTime expDate;
                                     string hfActDateStr = HF_ActivityDate != null ? HF_ActivityDate.Value : "";
-                                    if (!string.IsNullOrWhiteSpace(hfActDateStr) && DateTime.TryParse(hfActDateStr.Trim(), out expDate))
-                                        expDateNullable = expDate.Date;
+                                    if (!TryParseCanonicalActivityDate(hfActDateStr, out expDate))
+                                    {
+                                        if (LBL_ExpenseMsg != null) LBL_ExpenseMsg.Text = InvalidActivityDateMessage;
+                                        ShowExpenseModal();
+                                        return;
+                                    }
 
-                                    cmd.Parameters.AddWithValue("@ExpenseDate", expDateNullable.HasValue ? (object)expDateNullable.Value : DBNull.Value);
+                                    cmd.Parameters.AddWithValue("@ExpenseDate", expDate.Date);
                                     cmd.Parameters.AddWithValue("@Amount", stationaryAmt);
                                     cmd.Parameters.AddWithValue("@FromPlace", DBNull.Value);
                                     cmd.Parameters.AddWithValue("@ToPlace", DBNull.Value);
@@ -3341,6 +3393,22 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             }
         }
 
+        private static bool TryParseCanonicalActivityDate(string value, out DateTime activityDate)
+        {
+            if (!DateTime.TryParseExact(
+                (value ?? string.Empty).Trim(),
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out activityDate))
+            {
+                return false;
+            }
+
+            activityDate = activityDate.Date;
+            return true;
+        }
+
         private void EnsureAutoDA(int activityId, DateTime expenseDate, decimal amount, string policyMode, string policySnapshot, string createdBy, SqlConnection con, SqlTransaction tx)
         {
             // FIX: Added 'WITH (UPDLOCK)' for transaction safety and 'AND IsDeleted = 0' to ignore soft-deleted records!
@@ -3450,8 +3518,8 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             if (expenseType == "Hotel")
             {
                 DateTime fromDate, toDate;
-                if (!DateTime.TryParse(TXT_HotelFromDate.Text, out fromDate)) { errorMessage = "Please enter a valid 'Stay From' date."; return false; }
-                if (!DateTime.TryParse(TXT_HotelToDate.Text, out toDate)) { errorMessage = "Please enter a valid 'Stay To' date."; return false; }
+                if (!TryParseCanonicalActivityDate(TXT_HotelFromDate.Text, out fromDate)) { errorMessage = "Please enter a valid 'Stay From' date."; return false; }
+                if (!TryParseCanonicalActivityDate(TXT_HotelToDate.Text, out toDate)) { errorMessage = "Please enter a valid 'Stay To' date."; return false; }
                 if (toDate < fromDate) { errorMessage = "'Stay To' cannot be before 'Stay From'."; return false; }
                 if (!decimal.TryParse(TXT_HotelAmount.Text, out amt) || amt <= 0) { errorMessage = "Please enter a valid hotel amount."; return false; }
 
@@ -3471,7 +3539,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             }
             else if (expenseType == "Travel")
             {
-                if (!DateTime.TryParse(TXT_TravelDate.Text, out dt)) { errorMessage = "Please enter a valid Travel Date."; return false; }
+                if (!TryParseCanonicalActivityDate(TXT_TravelDate.Text, out dt)) { errorMessage = "Please enter a valid Travel Date."; return false; }
                 if (string.IsNullOrWhiteSpace(TXT_FromPlace.Text) || string.IsNullOrWhiteSpace(TXT_ToPlace.Text)) { errorMessage = "Please enter From and To places for travel."; return false; }
                 if (!decimal.TryParse(TXT_TravelAmount.Text, out amt) || amt <= 0) { errorMessage = "Please enter a valid Travel amount."; return false; }
                 if (CHK_TravelInvoice.Checked && string.IsNullOrWhiteSpace(TXT_TravelInvoiceNo.Text)) { errorMessage = "Please enter Invoice No when 'With Invoice' is checked."; return false; }
