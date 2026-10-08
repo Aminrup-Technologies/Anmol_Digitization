@@ -80,24 +80,138 @@ BEGIN
             RETURN;
         END;
 
-        SELECT
-            @ExistingRequestCount=COUNT(DISTINCT a.ApprovalRequestId),
-            @ApprovalRequestId=MAX(a.ApprovalRequestId)
-        FROM dbo.SalesDailyActivity a
-        INNER JOIN @Updates u ON a.ActivityId=u.ActivityId
-        WHERE a.ApprovalRequestId IS NOT NULL;
+        -----------------------------------------------------------------
+        -- One active header per employee/year/month.
+        -- Returned and Pending are active lifecycles.
+        -- Completed, ReadyForPayment, and Processed are terminal.
+        -- Draft and Rejected are closed predecessors and must not be reused.
+        -- Any other carried status fails closed.
+        -- UPDLOCK, HOLDLOCK is held until COMMIT/ROLLBACK.
+        -----------------------------------------------------------------
+        DECLARE @ActiveMonthRequest TABLE
+        (
+            ApprovalRequestId INT NOT NULL PRIMARY KEY,
+            Status NVARCHAR(50) NOT NULL
+        );
 
-        IF @ExistingRequestCount>1
+        INSERT INTO @ActiveMonthRequest (ApprovalRequestId, Status)
+        SELECT r.ApprovalRequestId, r.Status
+        FROM dbo.SalesApprovalRequest r WITH (UPDLOCK, HOLDLOCK)
+        WHERE r.RequesterLoginId = @LoginId
+          AND r.YearNo = @Year
+          AND r.MonthNo = @Month
+          AND UPPER(LTRIM(RTRIM(r.Status))) IN
+              (N'RETURNED', N'PENDING', N'COMPLETED', N'READYFORPAYMENT', N'PROCESSED');
+
+        DECLARE @ActiveHeaderCount INT = (SELECT COUNT(*) FROM @ActiveMonthRequest);
+        DECLARE @ActiveRequestId INT = NULL;
+        DECLARE @ActiveStatus NVARCHAR(50) = NULL;
+
+        IF @ActiveHeaderCount > 1
         BEGIN
-            RAISERROR('Activities belong to multiple approval requests.',16,1);
+            IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+            RAISERROR('Multiple active approval requests exist for this employee and month.', 16, 1);
             RETURN;
         END;
 
-        SET @SubmissionMode=
-            CASE WHEN @ExistingRequestCount=0 THEN 'NEW'
+        IF @ActiveHeaderCount = 1
+            SELECT @ActiveRequestId = ApprovalRequestId, @ActiveStatus = Status
+            FROM @ActiveMonthRequest;
+
+        SELECT
+            @ExistingRequestCount = COUNT(DISTINCT a.ApprovalRequestId),
+            @ApprovalRequestId = MAX(a.ApprovalRequestId)
+        FROM dbo.SalesDailyActivity a
+        INNER JOIN @Updates u ON a.ActivityId = u.ActivityId
+        WHERE a.ApprovalRequestId IS NOT NULL;
+
+        IF @ExistingRequestCount > 1
+        BEGIN
+            IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+            RAISERROR('Activities belong to multiple approval requests.', 16, 1);
+            RETURN;
+        END;
+
+        DECLARE @ResolvedStatus NVARCHAR(50) = NULL;
+        DECLARE @ClosedActivityRequest BIT = 0;
+
+        IF @ExistingRequestCount = 1
+        BEGIN
+            SELECT @ResolvedStatus = r.Status
+            FROM dbo.SalesApprovalRequest r WITH (UPDLOCK, HOLDLOCK)
+            WHERE r.ApprovalRequestId = @ApprovalRequestId
+              AND r.RequesterLoginId = @LoginId
+              AND r.YearNo = @Year
+              AND r.MonthNo = @Month;
+
+            DECLARE @NormalizedResolvedStatus NVARCHAR(50) =
+                UPPER(LTRIM(RTRIM(ISNULL(@ResolvedStatus, N''))));
+
+            -- Processed is terminal, same as Completed and ReadyForPayment.
+            -- This return is before closed-predecessor clearing, so Processed
+            -- cannot be dropped and reused as a new Pending request.
+            IF @NormalizedResolvedStatus IN (N'COMPLETED', N'READYFORPAYMENT', N'PROCESSED')
+            BEGIN
+                IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+                RAISERROR('A finalized request already exists for this month and cannot be submitted.', 16, 1);
+                RETURN;
+            END;
+
+            -- Returned and Pending keep this request.
+            -- Draft, Rejected, and a missing header row are closed predecessors.
+            -- Any other non-null carried status fails closed.
+            IF @NormalizedResolvedStatus IN (N'RETURNED', N'PENDING')
+            BEGIN
+                SET @ClosedActivityRequest = 0;
+            END
+            ELSE IF @ResolvedStatus IS NULL
+                OR @NormalizedResolvedStatus IN (N'DRAFT', N'REJECTED')
+            BEGIN
+                SET @ClosedActivityRequest = 1;
+                SET @ApprovalRequestId = NULL;
+                SET @ExistingRequestCount = 0;
+            END
+            ELSE
+            BEGIN
+                IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+                RAISERROR('This month has an approval request in an unexpected status and cannot be submitted.', 16, 1);
+                RETURN;
+            END;
+        END;
+
+        IF @ExistingRequestCount = 0 AND @ActiveHeaderCount = 1
+        BEGIN
+            IF @ClosedActivityRequest = 1
+            BEGIN
+                IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+                RAISERROR('Submitted activities belong to a closed approval request and cannot be attached to the active request for this month.', 16, 1);
+                RETURN;
+            END;
+
+            IF UPPER(LTRIM(RTRIM(@ActiveStatus))) = N'RETURNED'
+            BEGIN
+                SET @ApprovalRequestId = @ActiveRequestId;
+                SET @ExistingRequestCount = 1;
+            END
+            ELSE IF UPPER(LTRIM(RTRIM(@ActiveStatus))) = N'PENDING'
+            BEGIN
+                IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+                RAISERROR('A pending request already exists.', 16, 1);
+                RETURN;
+            END
+            ELSE
+            BEGIN
+                IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+                RAISERROR('A finalized request already exists for this month and cannot be submitted.', 16, 1);
+                RETURN;
+            END;
+        END;
+
+        SET @SubmissionMode =
+            CASE WHEN @ExistingRequestCount = 0 THEN 'NEW'
                  ELSE 'RESUBMIT' END;
 
-        IF @SubmissionMode='RESUBMIT'
+        IF @SubmissionMode = 'RESUBMIT'
         BEGIN
             IF EXISTS
             (
@@ -107,6 +221,7 @@ BEGIN
                 WHERE a.ClaimStatus<>'Returned'
             )
             BEGIN
+                IF @@TRANCOUNT > 0 ROLLBACK TRAN;
                 RAISERROR('Resubmission can contain only Returned activities.',16,1);
                 RETURN;
             END;
@@ -119,6 +234,7 @@ BEGIN
                   AND RequesterLoginId=@LoginId
             )
             BEGIN
+                IF @@TRANCOUNT > 0 ROLLBACK TRAN;
                 RAISERROR('Approval Request not found.',16,1);
                 RETURN;
             END;
@@ -131,23 +247,21 @@ BEGIN
                 CurrentApproverLoginId=@L1Code,
                 CurrentApproverLevel=1
             WHERE ApprovalRequestId=@ApprovalRequestId;
+
+            -- Bind returned activities that do not already carry this request
+            -- before later snapshot rows are inserted for the same id.
+            UPDATE a
+            SET a.ApprovalRequestId = @ApprovalRequestId
+            FROM dbo.SalesDailyActivity a
+            INNER JOIN @Updates u ON a.ActivityId = u.ActivityId
+            WHERE a.Login_Id = @LoginId
+              AND YEAR(a.ActivityDate) = @Year
+              AND MONTH(a.ActivityDate) = @Month
+              AND a.ClaimStatus = 'Returned'
+              AND a.ApprovalRequestId IS NULL;
         END
         ELSE
         BEGIN
-            IF EXISTS
-            (
-                SELECT 1
-                FROM dbo.SalesApprovalRequest
-                WHERE RequesterLoginId=@LoginId
-                  AND YearNo=@Year
-                  AND MonthNo=@Month
-                  AND Status='Pending'
-            )
-            BEGIN
-                RAISERROR('A pending request already exists.',16,1);
-                RETURN;
-            END;
-
             INSERT INTO dbo.SalesApprovalRequest
             (
                 RequesterLoginId,RequestDate,YearNo,MonthNo,Status,
