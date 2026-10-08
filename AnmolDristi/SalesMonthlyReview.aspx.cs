@@ -196,6 +196,8 @@ namespace AnmolDristi
 
                 bool monthLocked = false;
                 bool allowSubmission = false;
+                bool blockTerminalResubmission = false;
+                string terminalBlockMessage = null;
                 int? approvalRequestId = null;
                 string approvalStatus = null;
                 string loginId = GetCurrentUserLoginId();
@@ -203,28 +205,28 @@ namespace AnmolDristi
                 using (SqlConnection con = new SqlConnection(connString))
                 {
                     con.Open();
-                    using (SqlCommand cmd = new SqlCommand("SELECT TOP 1 ApprovalRequestId, Status FROM dbo.SalesApprovalRequest WHERE RequesterLoginId = @LoginId AND YearNo = @Year AND MonthNo = @Month ORDER BY RequestDate DESC", con))
+                    MonthClaimHeader monthHeader = LoadMonthClaimHeader(con, loginId, year, month);
+                    if (monthHeader.AmbiguousActive)
                     {
-                        cmd.Parameters.AddWithValue("@LoginId", loginId);
-                        cmd.Parameters.AddWithValue("@Year", year);
-                        cmd.Parameters.AddWithValue("@Month", month);
-                        using (SqlDataReader rdr = cmd.ExecuteReader())
-                        {
-                            if (rdr.Read())
-                            {
-                                approvalRequestId = rdr["ApprovalRequestId"] != DBNull.Value ? (int?)Convert.ToInt32(rdr["ApprovalRequestId"]) : null;
-                                approvalStatus = rdr["Status"] != DBNull.Value ? rdr["Status"].ToString() : null;
-                            }
-                        }
+                        monthLocked = true;
+                        allowSubmission = false;
+                        foreach (DataRow row in dt.Rows) row["IsEditable"] = false;
+                        lbl_msg.Text = AmbiguousActiveClaimMessage;
+                        lbl_msg.ForeColor = System.Drawing.Color.Red;
+                    }
+                    else
+                    {
+                        approvalRequestId = monthHeader.ApprovalRequestId;
+                        approvalStatus = monthHeader.Status;
                     }
 
-                    if (!approvalRequestId.HasValue)
+                    if (!monthHeader.AmbiguousActive && !approvalRequestId.HasValue)
                     {
                         monthLocked = false;
                         allowSubmission = true;
                         foreach (DataRow row in dt.Rows) row["IsEditable"] = true;
                     }
-                    else
+                    else if (!monthHeader.AmbiguousActive)
                     {
                         string s = (approvalStatus ?? "").Trim();
 
@@ -236,6 +238,19 @@ namespace AnmolDristi
                             monthLocked = false;
                             allowSubmission = true;
                             foreach (DataRow row in dt.Rows) row["IsEditable"] = true;
+                        }
+                        else if (ClaimStatuses.Equals(s, ClaimStatuses.Processed)
+                            || !IsRecognizedMonthClaimStatus(s))
+                        {
+                            // Processed is terminal. Any other unrecognized header fails closed.
+                            // Neither path opens line-item resubmission or a new claim.
+                            monthLocked = true;
+                            allowSubmission = false;
+                            blockTerminalResubmission = true;
+                            terminalBlockMessage = ClaimStatuses.Equals(s, ClaimStatuses.Processed)
+                                ? FinalizedClaimMessage
+                                : UnexpectedClaimStatusMessage;
+                            foreach (DataRow row in dt.Rows) row["IsEditable"] = false;
                         }
                         else
                         {
@@ -433,7 +448,14 @@ namespace AnmolDristi
 
                 BindMonthlyConfidenceUx(dt, monthLocked, allowSubmission, allowExecution, grandCalc, grandDA, grandHotel, grandTravel, grandStationary);
 
-                if (monthLocked && !allowSubmission)
+                if (blockTerminalResubmission)
+                {
+                    lbl_msg.Text = terminalBlockMessage;
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+                    string safeTerminal = (terminalBlockMessage ?? string.Empty).Replace("'", "\\'");
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyTerminal", "showPNotify('Submission blocked', '" + safeTerminal + "', 'error');", true);
+                }
+                else if (monthLocked && !allowSubmission)
                 {
                     lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for returned days awaiting your correction.";
                     lbl_msg.ForeColor = System.Drawing.Color.Orange;
@@ -4707,6 +4729,117 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
         }
         */
 
+        private const string AmbiguousActiveClaimMessage =
+            "Multiple active approval requests exist for this employee and month.";
+
+        private const string FinalizedClaimMessage =
+            "A finalized request already exists for this month and cannot be submitted.";
+
+        private const string UnexpectedClaimStatusMessage =
+            "This month has an approval request in an unexpected status and cannot be submitted.";
+
+        private sealed class MonthClaimHeader
+        {
+            public int? ApprovalRequestId { get; set; }
+            public string Status { get; set; }
+            public bool AmbiguousActive { get; set; }
+        }
+
+        private sealed class MonthClaimHeaderRow
+        {
+            public int ApprovalRequestId { get; set; }
+            public string Status { get; set; }
+            public DateTime RequestDate { get; set; }
+        }
+
+        private static bool IsFinalizedMonthClaimStatus(string status)
+        {
+            return ClaimStatuses.Equals(status, ClaimStatuses.Completed)
+                || ClaimStatuses.Equals(status, ClaimStatuses.ReadyForPayment)
+                || ClaimStatuses.Equals(status, ClaimStatuses.Processed);
+        }
+
+        private static bool IsActiveMonthClaimStatus(string status)
+        {
+            return ClaimStatuses.Equals(status, ClaimStatuses.Returned)
+                || ClaimStatuses.Equals(status, ClaimStatuses.Pending)
+                || IsFinalizedMonthClaimStatus(status);
+        }
+
+        private static bool IsRecognizedMonthClaimStatus(string status)
+        {
+            return ClaimStatuses.Equals(status, ClaimStatuses.Draft)
+                || ClaimStatuses.Equals(status, ClaimStatuses.Rejected)
+                || ClaimStatuses.Equals(status, ClaimStatuses.Returned)
+                || ClaimStatuses.Equals(status, ClaimStatuses.Pending)
+                || IsFinalizedMonthClaimStatus(status);
+        }
+
+        private static MonthClaimHeader LoadMonthClaimHeader(SqlConnection con, string loginId, int year, int month)
+        {
+            var rows = new List<MonthClaimHeaderRow>();
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT ApprovalRequestId, Status, RequestDate
+                FROM dbo.SalesApprovalRequest
+                WHERE RequesterLoginId = @LoginId
+                  AND YearNo = @Year
+                  AND MonthNo = @Month", con))
+            {
+                cmd.Parameters.AddWithValue("@LoginId", loginId);
+                cmd.Parameters.AddWithValue("@Year", year);
+                cmd.Parameters.AddWithValue("@Month", month);
+                using (SqlDataReader rdr = cmd.ExecuteReader())
+                {
+                    while (rdr.Read())
+                    {
+                        rows.Add(new MonthClaimHeaderRow
+                        {
+                            ApprovalRequestId = Convert.ToInt32(rdr["ApprovalRequestId"]),
+                            Status = rdr["Status"] == DBNull.Value ? null : rdr["Status"].ToString().Trim(),
+                            RequestDate = rdr["RequestDate"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(rdr["RequestDate"])
+                        });
+                    }
+                }
+            }
+
+            var active = new List<MonthClaimHeaderRow>();
+            foreach (MonthClaimHeaderRow row in rows)
+            {
+                if (IsActiveMonthClaimStatus(row.Status))
+                    active.Add(row);
+            }
+
+            if (active.Count > 1)
+                return new MonthClaimHeader { AmbiguousActive = true };
+
+            if (active.Count == 1)
+            {
+                return new MonthClaimHeader
+                {
+                    ApprovalRequestId = active[0].ApprovalRequestId,
+                    Status = active[0].Status
+                };
+            }
+
+            MonthClaimHeaderRow closed = null;
+            foreach (MonthClaimHeaderRow row in rows)
+            {
+                if (closed == null
+                    || row.RequestDate > closed.RequestDate
+                    || (row.RequestDate == closed.RequestDate && row.ApprovalRequestId > closed.ApprovalRequestId))
+                    closed = row;
+            }
+
+            if (closed == null)
+                return new MonthClaimHeader();
+
+            return new MonthClaimHeader
+            {
+                ApprovalRequestId = closed.ApprovalRequestId,
+                Status = closed.Status
+            };
+        }
+
         private bool TryPreparePartialResubmission(int year, int month, DataTable tvp, out DataTable filteredTvp, out string message)
         {
             filteredTvp = tvp;
@@ -4719,35 +4852,42 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                 int? requestId = null;
                 string requestStatus = null;
 
-                using (SqlCommand cmd = new SqlCommand(
-                    @"SELECT TOP 1 ApprovalRequestId, Status
-                      FROM dbo.SalesApprovalRequest
-                      WHERE RequesterLoginId = @LoginId AND YearNo = @Year AND MonthNo = @Month
-                      ORDER BY RequestDate DESC", con))
+                MonthClaimHeader monthHeader = LoadMonthClaimHeader(con, loginId, year, month);
+                if (monthHeader.AmbiguousActive)
                 {
-                    cmd.Parameters.AddWithValue("@LoginId", loginId);
-                    cmd.Parameters.AddWithValue("@Year", year);
-                    cmd.Parameters.AddWithValue("@Month", month);
-                    using (SqlDataReader rdr = cmd.ExecuteReader())
-                    {
-                        if (!rdr.Read())
-                            return false;
-
-                        requestId = rdr["ApprovalRequestId"] != DBNull.Value
-                            ? (int?)Convert.ToInt32(rdr["ApprovalRequestId"])
-                            : null;
-                        requestStatus = rdr["Status"] != DBNull.Value ? rdr["Status"].ToString().Trim() : null;
-                    }
+                    message = AmbiguousActiveClaimMessage;
+                    filteredTvp = tvp.Clone();
+                    return true;
                 }
+
+                requestId = monthHeader.ApprovalRequestId;
+                requestStatus = monthHeader.Status;
 
                 if (!requestId.HasValue)
                     return false;
 
-                // Draft/Rejected = global reopen (ApprovalRequestId NULL) → NEW.
-                // Returned = line-item return; keep ApprovalRequestId and filter to latest Returned rows.
+                if (IsFinalizedMonthClaimStatus(requestStatus))
+                {
+                    message = FinalizedClaimMessage;
+                    filteredTvp = tvp.Clone();
+                    return true;
+                }
+
+                // Draft/Rejected = closed predecessor (activity ApprovalRequestId stays unset) → NEW.
+                // Returned/Pending = line-item return; keep the existing request and filter to latest Returned rows.
+                // Completed/ReadyForPayment/Processed are finalized above.
+                // Any other status fails closed and must not start a new claim.
                 if (ClaimStatuses.Equals(requestStatus, ClaimStatuses.Draft) ||
                     ClaimStatuses.Equals(requestStatus, ClaimStatuses.Rejected))
                     return false;
+
+                if (!ClaimStatuses.Equals(requestStatus, ClaimStatuses.Returned) &&
+                    !ClaimStatuses.Equals(requestStatus, ClaimStatuses.Pending))
+                {
+                    message = UnexpectedClaimStatusMessage;
+                    filteredTvp = tvp.Clone();
+                    return true;
+                }
 
                 var returnedActivityIds = LoadLatestReturnedActivityIds(con, requestId.Value);
 
