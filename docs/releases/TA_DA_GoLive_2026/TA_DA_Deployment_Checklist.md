@@ -277,3 +277,106 @@ Pack: `pvt-evidence/2026-09-23-rc024-live-cab/` (retained outside Git).
 | UAT restore post-cutover | **PASS** | DeployPackages `DbConn` restored to `AnmolDristiDev` @ `2026-09-24 02:02:50 +05:30` |
 
 **Production Go / No-Go:** **GO** — RC-023 package live on Production (`4644baf` / `rc-023-uat-certified`).
+
+---
+
+## LIVE deployment closure — SO-TA/DA_ClaimsApplication
+
+Operational closure for the TA/DA Claims release. RC-001 through RC-024 records above are unchanged. No dedicated RC-017 execution log exists for this release; this section is the closure entry on the existing LIVE deployment checklist. Certified baseline documents and existing UAT evidence are not rewritten here.
+
+UAT evidence: `AnmolDristi/Database/Operational/TA_DA_SQL_Reconciliation/TA_DA_UAT_CLOSURE_EVIDENCE.md`. SQL reconciliation package: `AnmolDristi/Database/Operational/TA_DA_SQL_Reconciliation/`.
+
+### Classification
+
+| Item | Classification |
+| --- | --- |
+| UAT | RESOLVED / PASS |
+| SQL reconciliation | RESOLVED / semantic-executable parity PASS |
+| SQL checksum exactness | ACCEPTED — text-only residue |
+| LIVE artifact identity | ACCEPTED DEVIATION |
+| Rollback artifacts | PRESERVED |
+| Future LIVE incidents | Investigate against actual deployed state |
+
+### Closure statement
+
+LIVE TA/DA deployment is closed with an Accepted Deviation on application binary identity. LIVE SQL reconciliation achieved semantic/executable parity; the verification checksum retains known text-only residue and is not treated as executable SQL drift. UAT completed with GO. Pre-deployment LIVE application and bin rollback artifacts remain preserved. The actual LIVE AnmolDristi.dll SHA-256 is 15B6B16FDDF70338E9152E35C6B3C5B1C1A3B3043844786ECF2D558AF85B9708, which differs from the certified release artifact SHA-256 268FFFE7C61879220877F49B0237F31BC080F04D03BDCDAA3DE754206FEBAC58. This binary identity difference is accepted for the current LIVE state. Future LIVE incidents shall be assessed against the actual deployed binary, current LIVE SQL state, production evidence, and preserved rollback artifacts.
+
+SQL semantic/executable parity PASS; checksum verifier retains accepted text-only residue.
+
+### Identities
+
+These four identities stay distinct. The certified DLL hash is the release baseline. It is not recorded as the DLL that is on LIVE.
+
+| Role | Identity |
+| --- | --- |
+| Project | SO-TA/DA_ClaimsApplication |
+| Lifecycle | Employee -> L1 -> Auditor -> Completed -> ReadyForPayment |
+| Certified source commit | `70ff21a30cf146881507165e96b566a09184ed42` |
+| Certified WebForms DLL SHA-256 | `268FFFE7C61879220877F49B0237F31BC080F04D03BDCDAA3DE754206FEBAC58` |
+| Certified assembly / file version | 1.0.0.0 |
+| Actual LIVE DLL | `D:\anmolapps\qaqcroot\bin\AnmolDristi.dll` |
+| Actual LIVE DLL SHA-256 | `15B6B16FDDF70338E9152E35C6B3C5B1C1A3B3043844786ECF2D558AF85B9708` |
+| LIVE artifact identity | ACCEPTED DEVIATION |
+
+### LIVE environment
+
+| Field | Value |
+| --- | --- |
+| SQL Server | `MUMANMOAPP01\SQLEXPRESS` |
+| LIVE database | `AnmolDristi` |
+| IIS server | `MUMANMOAPP01` |
+| IIS site | `qaqc` |
+| IIS app pool | `qaqc` |
+| LIVE physical path | `D:\anmolapps\qaqcroot` |
+
+### UAT
+
+| Field | Value |
+| --- | --- |
+| UAT database | `AnmolDristiDev` |
+| Tester | Ayushi Jaiswal |
+| Test date | 2026-10-08 |
+| UAT result | PASS |
+| Release decision | GO |
+| Requests exercised | #111 and #112 |
+
+UAT closure evidence established latest-version behavior, resubmission preservation, approval flow, Completed, ReadyForPayment, and SQL-side approved amount evidence. The controlled returned-KM edit itself was not proven in the DB evidence.
+
+### SQL reconciliation
+
+TA/DA SQL reconciliation was executed against LIVE `AnmolDristi`. Semantic/executable parity is accepted. The verification output still reports checksum/length FAIL for ten procedures. The remaining differences are known text-only formatting/banner residue and are not executable SQL differences. This record does not treat that result as exact checksum equality.
+
+### LIVE database backup
+
+| Field | Value |
+| --- | --- |
+| Backup file | `D:\anmoldb\Backups\AnmolDristi_23Sep26.bak` |
+| RESTORE HEADERONLY backup start | 2026-10-08 11:02:39 |
+| RESTORE HEADERONLY backup finish | 2026-10-08 11:02:57 |
+| Backup type | Full database backup |
+| IsDamaged | 0 |
+| Checksums | Present |
+| RESTORE VERIFYONLY | Passed. "The backup set on file 1 is valid." |
+
+### Rollback artifacts
+
+Preserved. This closure does not modify them.
+
+| Artifact | Value |
+| --- | --- |
+| Pre-deployment LIVE DLL copy | `D:\Last_Published\2026\10.Oct26\AnmolDristi.dll` |
+| Pre-deployment LIVE DLL SHA-256 | `2387BB161F9A1C001451489FA162D501F5CF58B3C49CE9AA4BA7E7094F217F60` |
+| Pre-deployment LIVE bin folder | `D:\Last_Published\2026\10.Oct26\bin` |
+
+### Future LIVE incidents
+
+Assess a future LIVE incident against:
+
+1. the actual deployed LIVE DLL, SHA-256 `15B6B16FDDF70338E9152E35C6B3C5B1C1A3B3043844786ECF2D558AF85B9708`;
+2. the current LIVE SQL definitions and state;
+3. the actual production logs and data;
+4. the preserved rollback artifacts, where relevant.
+
+A future incident is not attributed to certified source commit `70ff21a30cf146881507165e96b566a09184ed42` merely because that commit was the intended release source.
+
+No deployment clock, IIS recycle clock, LIVE smoke-test result, or user-incident status is stated in this section. Those facts were not part of the supplied closure evidence.
