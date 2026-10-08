@@ -204,7 +204,9 @@ BEGIN
             WHERE e.ActivityId = a.ActivityId
               AND e.IsDeleted = 0   -- 🚩 ADDED: Hides deleted rows to prevent errors
             FOR JSON PATH
-        ), '[]') AS ExpensesJson
+        ), '[]') AS ExpensesJson,
+        d.DetailVersion,
+        d.PreviousDetailId
 
     FROM dbo.SalesApprovalRequestDetail d
     INNER JOIN dbo.SalesDailyActivity a
