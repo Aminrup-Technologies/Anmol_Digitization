@@ -198,6 +198,24 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfIsAuditor;
+
+        /// <summary>
+        /// hfAuditorKmEdit control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfAuditorKmEdit;
+
+        /// <summary>
+        /// hfL1MayReturnApprovedDay control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.WebControls.HiddenField hfL1MayReturnApprovedDay;
         
         /// <summary>
         /// hfPendingApproveDetailId control.

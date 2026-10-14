@@ -400,25 +400,41 @@ namespace AnmolDristi {
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl VMS_ReceptionistLogs;
         
         /// <summary>
-        /// ITSM_Module control. Visibility: UI.ITSM_Module.View
+        /// ITSM_Module control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_Module;
         
         /// <summary>
-        /// ITSM_TicketList control. Visibility: UI.ITSM_TicketList.View
+        /// ITSM_TicketList control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_TicketList;
         
         /// <summary>
-        /// ITSM_CreateTicket control. Visibility: UI.ITSM_CreateTicket.View
+        /// ITSM_CreateTicket control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_CreateTicket;
         
         /// <summary>
-        /// ITSM_ApprovalConfig control. Visibility: UI.ITSM_ApprovalConfig.View
+        /// ITSM_ApprovalConfig control.
         /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl ITSM_ApprovalConfig;
-
+        
         /// <summary>
         /// SwitchUserLink control.
         /// </summary>
@@ -427,7 +443,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl SwitchUserLink;
-
+        
         /// <summary>
         /// ProfilePic_2 control.
         /// </summary>
@@ -445,7 +461,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lbl_loginusername2;
-
+        
         /// <summary>
         /// pnlSuBanner control.
         /// </summary>
@@ -454,7 +470,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Panel pnlSuBanner;
-
+        
         /// <summary>
         /// lblSuBannerCurrent control.
         /// </summary>
@@ -463,7 +479,7 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSuBannerCurrent;
-
+        
         /// <summary>
         /// lblSuBannerOriginal control.
         /// </summary>

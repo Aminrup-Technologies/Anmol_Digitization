@@ -1,0 +1,50 @@
+L2-R19 UAT preimage export
+Server=MUMANMOAPP01\SQLEXPRESS
+Database=AnmolDristiDev
+ProductVersion=15.0.2000.5
+Export method=OBJECT_DEFINITION converted with CONVERT(varchar(max), CONVERT(varbinary(max), definition), 2), split into 4000-character hex parts, concatenated in part order.
+Hash command=SHA256 of those decoded bytes. The bytes are the UTF-16LE module text with no BOM.
+Identity reconfirmed before export. TranCount=0.
+
+usp_UpdateSalesDailyExpenseStatus
+expected_len=8010
+observed_len=8010
+expected_datalength=16020
+observed_datalength=16020
+expected_sha256=3DA56C797403A1CC0EBFF57CE5F7FF5705DC7E036E9B6EFC7A1F272FBC34EC9E
+observed_sha256=3DA56C797403A1CC0EBFF57CE5F7FF5705DC7E036E9B6EFC7A1F272FBC34EC9E
+match=True
+bin=D:\PersonalRnD\AminrupWorks\Anmol_Digitization\docs\reviews\L2_Auditor_AsIs\L2R19_preimage_export_2026-10-13T071700Z\usp_UpdateSalesDailyExpenseStatus.utf16le.bin
+
+usp_ProcessApprovalAction
+expected_len=33635
+observed_len=33635
+expected_datalength=67270
+observed_datalength=67270
+expected_sha256=F6471A308779E26D74A2B84B00A6DAF71DAA84FDFD5A7C71189F0DA5B61E13EE
+observed_sha256=F6471A308779E26D74A2B84B00A6DAF71DAA84FDFD5A7C71189F0DA5B61E13EE
+match=True
+bin=D:\PersonalRnD\AminrupWorks\Anmol_Digitization\docs\reviews\L2_Auditor_AsIs\L2R19_preimage_export_2026-10-13T071700Z\usp_ProcessApprovalAction.utf16le.bin
+
+usp_SubmitSalesDailyActivities
+expected_len=24828
+observed_len=24828
+expected_datalength=49656
+observed_datalength=49656
+expected_sha256=5BEDA23C85279789D325C66B573C37BB1E037DA5C0153695A435DEA9E7D37547
+observed_sha256=5BEDA23C85279789D325C66B573C37BB1E037DA5C0153695A435DEA9E7D37547
+match=True
+bin=D:\PersonalRnD\AminrupWorks\Anmol_Digitization\docs\reviews\L2_Auditor_AsIs\L2R19_preimage_export_2026-10-13T071700Z\usp_SubmitSalesDailyActivities.utf16le.bin
+
+usp_RecalculateApprovalRequest
+expected_len=6940
+observed_len=6940
+expected_datalength=13880
+observed_datalength=13880
+expected_sha256=D14FEF7DFF5F8C4E008B2485D445B897CA4B76FBB60D6E5CEF68745894BE5A9D
+observed_sha256=D14FEF7DFF5F8C4E008B2485D445B897CA4B76FBB60D6E5CEF68745894BE5A9D
+match=True
+bin=D:\PersonalRnD\AminrupWorks\Anmol_Digitization\docs\reviews\L2_Auditor_AsIs\L2R19_preimage_export_2026-10-13T071700Z\usp_RecalculateApprovalRequest.utf16le.bin
+
+rollback_embedded_recheck=PASS for all five preimages
+gates=@Execute 0, @RollbackApproved 0, @AllFivePreimagesPresent 0

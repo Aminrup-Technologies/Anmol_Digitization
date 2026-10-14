@@ -1,3 +1,17 @@
+/* ============================================================================
+   NAME:        submit_refreshes_final_approved_amount
+   WHEN:        2026-10-13
+   WHY:         Return recalculates and drops Returned latest rows from
+                FinalApprovedAmount and Approved*. Resubmission inserts a new
+                Pending latest row for those activities but did not recalculate,
+                so the payable amount stayed on the returned snapshot until an
+                approver opened the claim.
+   WHAT:        Call dbo.usp_RecalculateApprovalRequest after the new latest
+                rows and the L1 pointer are written, before COMMIT. New and
+                resubmitted Pending rows are included. Rejected and Returned
+                latest rows stay out. Recalc remains the only formula.
+   ============================================================================ */
+
 /*
     Object:      [dbo].[usp_SubmitSalesDailyActivities]
     Type:        STORED PROCEDURE
@@ -382,15 +396,22 @@ BEGIN
                  THEN ISNULL(e.Amount,0)
                  ELSE 0 END),
 
-        SUM(ISNULL(e.Amount,0))
+        SUM(CASE WHEN e.ExpenseType = 'DA' THEN ISNULL(e.Amount, 0) ELSE 0 END)
+      + SUM(CASE WHEN e.ExpenseType = 'Hotel' THEN ISNULL(e.Amount, 0) ELSE 0 END)
+      + SUM(CASE WHEN e.ExpenseType = 'Travel' THEN ISNULL(e.Amount, 0) ELSE 0 END)
+      + SUM(CASE WHEN e.ExpenseType = 'Stationary' THEN ISNULL(e.Amount, 0) ELSE 0 END) AS ExpenseTotal
 
     FROM dbo.SalesDailyExpense e
 
     INNER JOIN @Updates u
         ON e.ActivityId = u.ActivityId
 
+    -- Same predicate as dbo.usp_RecalculateApprovalRequest.
+    -- Soft-deleted rows stay out. Rejected rows stay Rejected and stay out.
+    -- A null ClaimStatus is not Rejected, so it remains in the snapshot.
     WHERE
         e.IsDeleted = 0
+    AND ISNULL(e.ClaimStatus, '') <> 'Rejected'
 
     GROUP BY
         e.ActivityId;
@@ -652,6 +673,33 @@ BEGIN
 			  )
 		),
 
+		TotalExpenseEntries =
+		(
+			SELECT COUNT(*)
+			FROM dbo.SalesDailyExpense e
+			INNER JOIN
+			(
+				SELECT canon.ActivityId
+				FROM
+				(
+					SELECT
+						d.ActivityId,
+						ROW_NUMBER() OVER
+						(
+							PARTITION BY d.ApprovalRequestId, d.ActivityId
+							ORDER BY
+								d.DetailVersion DESC,
+								d.ApprovalRequestDetailId DESC
+						) AS RN
+					FROM dbo.SalesApprovalRequestDetail d
+					WHERE d.ApprovalRequestId = @ApprovalRequestId
+				) canon
+				WHERE canon.RN = 1
+			) latest
+				ON latest.ActivityId = e.ActivityId
+			WHERE e.IsDeleted = 0
+		),
+
 		ModifiedOn = @Now,
 		ModifiedBy = @LoginId
 
@@ -849,6 +897,14 @@ END;
             ELSE 'Resubmitted after corrections'
         END
     );
+
+        ---------------------------------------------------------------------
+        -- Payable totals for the latest rows written above.
+        -- Return excluded Returned rows. A resubmitted activity is Pending
+        -- again and must be included before this transaction commits.
+        ---------------------------------------------------------------------
+        EXEC dbo.usp_RecalculateApprovalRequest
+            @ApprovalRequestId = @ApprovalRequestId;
 
 	/*==============================================================================
  Part 4 : Commit / Rollback / Error Handling

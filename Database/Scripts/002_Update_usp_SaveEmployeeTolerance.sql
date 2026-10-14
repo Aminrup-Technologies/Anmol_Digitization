@@ -4,7 +4,8 @@
     Purpose:
       - Adds support for MaxKmModificationCount.
       - Preserves all existing insert/update behavior.
-      - Normalizes invalid values to a minimum of 1.
+      - Normalizes an omitted, null, or sub-1 count to the global default of 2.
+      - An explicit count of 1 or greater is stored as supplied.
 
     Dependency:
       - Requires 001_Add_MaxKmModificationCount.sql.
@@ -18,13 +19,13 @@ ALTER PROCEDURE [dbo].[usp_SaveEmployeeTolerance]
     @EffectiveFrom DATE = NULL,
     @EffectiveTo DATE = NULL,
     @ModifiedBy NVARCHAR(100),
-    @MaxKmModificationCount INT = 1
+    @MaxKmModificationCount INT = 2
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF ISNULL(@MaxKmModificationCount, 0) < 1
-        SET @MaxKmModificationCount = 1;
+    IF @MaxKmModificationCount IS NULL OR @MaxKmModificationCount < 1
+        SET @MaxKmModificationCount = 2;
 
     IF @ToleranceId = 0
     BEGIN

@@ -1,0 +1,19 @@
+{
+  "name": "anmol-rc014b-safety-review",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "review": "node --experimental-strip-types review-rc014b-safety.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cursor/sdk": "1.0.37"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "typescript": "^5.9.3"
+  }
+}

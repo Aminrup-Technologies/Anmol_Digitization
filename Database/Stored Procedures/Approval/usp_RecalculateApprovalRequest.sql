@@ -5,6 +5,13 @@
    WHAT:        usp_RecalculateApprovalRequest refreshes latest day snapshots and writes header Approved* + FinalApprovedAmount
    ============================================================================ */
 
+/* ============================================================================
+   NAME:        l2r19_recalculate_participates_in_caller_transaction
+   WHEN:        2026-10-13
+   WHY:         RAISERROR plus RETURN does not stop a caller transaction
+   WHAT:        The two guard failures THROW. ReadyForPayment returns without rewriting totals. The snapshot and Approved* formula is unchanged.
+   ============================================================================ */
+
 /*
     Object:      [dbo].[usp_RecalculateApprovalRequest]
     Type:        STORED PROCEDURE
@@ -20,20 +27,20 @@ BEGIN
     SET NOCOUNT ON;
 
     IF @ApprovalRequestId IS NULL
-    BEGIN
-        RAISERROR('ApprovalRequestId cannot be NULL.', 16, 1);
-        RETURN;
-    END;
+        THROW 59121, 'ApprovalRequestId cannot be NULL.', 1;
 
-    IF NOT EXISTS (
-        SELECT 1
-        FROM dbo.SalesApprovalRequest
-        WHERE ApprovalRequestId = @ApprovalRequestId
-    )
-    BEGIN
-        RAISERROR('Approval Request not found.', 16, 1);
+    DECLARE @HeaderStatus NVARCHAR(50);
+
+    SELECT @HeaderStatus = Status
+    FROM dbo.SalesApprovalRequest
+    WHERE ApprovalRequestId = @ApprovalRequestId;
+
+    IF @HeaderStatus IS NULL
+        THROW 59122, 'Approval Request not found.', 1;
+
+    /* Payment lock. Mark Ready calls this procedure before it writes ReadyForPayment. */
+    IF @HeaderStatus = N'ReadyForPayment'
         RETURN;
-    END;
 
     /* Latest detail per activity: MAX(DetailVersion) then MAX(ApprovalRequestDetailId) — RC-012 */
     ;WITH Latest AS

@@ -16,7 +16,7 @@ BEGIN
         EmployeeCode,
         MinAllowedKM,
         MaxAllowedKM,
-        ISNULL(MaxKmModificationCount, 1) AS MaxKmModificationCount,
+        ISNULL(MaxKmModificationCount, 2) AS MaxKmModificationCount,
         EffectiveFrom,
         EffectiveTo,
         CreatedBy,

@@ -17,6 +17,9 @@ namespace AnmolDristi
     public partial class ClaimsApproval : BasePage
     {
         private string connString = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
+        private static readonly bool ApproverKmEditEnabled = false;
+        private const string ApproverKmEditDisabledMessage =
+            "Approver KM editing is disabled for this release. Return the day so the employee can correct the KM.";
         // class-level accumulators (page-level)
         private decimal _totalDistance = 0m;
         private decimal _totalTAClaim = 0m;
@@ -613,7 +616,8 @@ namespace AnmolDristi
             bool isProcessed =
                 ClaimStatuses.Equals(claimStatus, ClaimStatuses.Processed);
 
-            bool canEditKM = ClaimEditabilityHelper.CanEditKmAsApprover(claimStatus, isAuditor, isProcessed);
+            bool canEditKM = ApproverKmEditEnabled
+                && ClaimEditabilityHelper.CanEditKmAsApprover(claimStatus, isAuditor, isProcessed);
 
             var lnkEdit = row.FindControl("lnkEditKM") as LinkButton;
             if (lnkEdit != null)
@@ -722,7 +726,8 @@ namespace AnmolDristi
                 : 0;
             bool isAuditor = currentUserLevel == 2;
             bool isProcessed = ClaimStatuses.Equals(claimStatus, ClaimStatuses.Processed);
-            bool canEditKm = ClaimEditabilityHelper.CanEditKmAsApprover(claimStatus, isAuditor, isProcessed);
+            bool canEditKm = ApproverKmEditEnabled
+                && ClaimEditabilityHelper.CanEditKmAsApprover(claimStatus, isAuditor, isProcessed);
 
             // Find edit control by ID (matches TemplateField LinkButton ID: lnkEditKM)
             var lnkEdit = row.FindControl("lnkEditKM") as LinkButton;
@@ -1643,6 +1648,11 @@ namespace AnmolDristi
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
         public static object UpdateActivityKM(int activityId, decimal? newKm, string reason)
         {
+            // usp_UpdateActivityKM_WithHistory changes snapshot KM without the claim amount, so
+            // ApprovedKM and ApprovedClaimAmount diverge. Employees correct KM via SalesMonthlyReview.
+            if (!ApproverKmEditEnabled)
+                return new { success = false, message = ApproverKmEditDisabledMessage };
+
             try
             {
                 if (!newKm.HasValue)

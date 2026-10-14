@@ -1,0 +1,51 @@
+RC-014B return catalog evidence
+Script: Database/Tests/RC014B/03_verify_return_catalog_readonly.sql
+dbo.usp_ReturnClaimToEmployee was not called.
+No application data was modified by this runner. The script under test is read-only catalog metadata.
+Client: System.Data.SqlClient
+TCP data source: 115.112.186.71
+Configured initial catalog: AnmolDristiDev
+Application Name: RC014B-catalog-readonly
+Corrected script SHA256 before run: 582480AB2A04A49BE689B5A368712E49E231F78EA182BEA94609CE21D3C9BE60
+Corrected script SHA256 after read: 582480AB2A04A49BE689B5A368712E49E231F78EA182BEA94609CE21D3C9BE60
+Prior failed script SHA256: 13885AAB807D72B21787212E51D0C061D339481847CEC17996218819F8F521E2
+Prior failed record: docs/reviews/L2_Auditor_AsIs/RC014B_catalog_readonly_2026-10-11T083006.7022388.txt
+Prior failed record SHA256 before run: F44736B27CDFA705CE4698385B710D4BB094228E1663C884E755EFA7CC2816A8
+This run does not overwrite the failed execution record.
+--- preflight ---
+PREFLIGHT | ServerName=MUMANMOAPP01\SQLEXPRESS
+PREFLIGHT | DatabaseName=AnmolDristiDev
+PREFLIGHT | ProductVersion=15.0.2000.5
+PREFLIGHT | LoginName=sa
+PREFLIGHT | OriginalLogin=sa
+PREFLIGHT | TranCount=0
+PREFLIGHT | ImplicitTransactionsOn=0
+PREFLIGHT | ServerLocalDateTime=2026-10-11T08:36:00.4916002
+PREFLIGHT | id_SalesApprovalRequestDetail=1108915022
+PREFLIGHT | id_SalesDailyActivity=580913141
+PREFLIGHT | id_SalesDailyExpense=1003866643
+PREFLIGHT | id_SalesApprovalRequestApprover=1188915307
+PREFLIGHT | id_SalesApprovalRequest=1556916618
+PREFLIGHT | id_ApprovalRequestStatusHistory=1348915877
+PREFLIGHT | vd_SalesApprovalRequestDetail=1
+PREFLIGHT | vd_SalesDailyActivity=1
+PREFLIGHT | vd_SalesDailyExpense=1
+PREFLIGHT | vd_SalesApprovalRequestApprover=1
+PREFLIGHT | vd_SalesApprovalRequest=1
+PREFLIGHT | vd_ApprovalRequestStatusHistory=1
+PREFLIGHT | authorized target and catalog visibility confirmed. Executing the corrected catalog script as one batch.
+SQLCMD | C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\SQLCMD.EXE
+SQLCMD | -S 115.112.186.71 -d AnmolDristiDev -I -b -f 65001 -y 0 -Y 0 -w 8000 -s "|" -i Database/Tests/RC014B/03_verify_return_catalog_readonly.sql
+--- script output ---
+Msg 207, Level 16, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 157
+Invalid column name 'is_encrypted'.
+Msg 207, Level 16, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 173
+Invalid column name 'is_encrypted'.
+Msg 207, Level 16, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 215
+Invalid column name 'is_encrypted'.
+Msg 207, Level 16, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 218
+Invalid column name 'is_encrypted'.
+SQLCMD | exit_code=1
+--- end script output ---
+Corrected script SHA256 after run: 582480AB2A04A49BE689B5A368712E49E231F78EA182BEA94609CE21D3C9BE60
+Prior failed record SHA256 after run: F44736B27CDFA705CE4698385B710D4BB094228E1663C884E755EFA7CC2816A8

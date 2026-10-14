@@ -1,0 +1,38 @@
+RC-014B definition shape evidence
+Script: Database/Tests/RC014B/01_definition_shape_readonly.sql
+Executed as one batch from the corrected harness. dbo.usp_ProcessApprovalAction was not called.
+02_behavior_tran_rollback.sql was not executed.
+Prior evidence retained as FAIL: docs/reviews/L2_Auditor_AsIs/RC014B_definition_shape_readonly_2026-10-10T230407.8740319.txt
+Client: System.Data.SqlClient. Local sqlcmd could not resolve MUMANMOAPP01\SQLEXPRESS.
+TCP data source: 115.112.186.71
+Application Name: RC014B-definition-readonly
+BEFORE Server=MUMANMOAPP01\SQLEXPRESS
+BEFORE Database=AnmolDristiDev
+BEFORE ServerLocalDateTime=2026-10-10T23:26:01.2660244
+BEFORE ImplicitTransactionsOn=0
+AFTER Server=MUMANMOAPP01\SQLEXPRESS
+AFTER Database=AnmolDristiDev
+AFTER ServerLocalDateTime=2026-10-10T23:26:01.4468144
+--- script messages ---
+Changed database context to 'AnmolDristiDev'.
+===== RC-014B definition shape (read-only, not a certified result) =====
+Server=MUMANMOAPP01\SQLEXPRESS Database=AnmolDristiDev
+INFO | SHA2_256 OBJECT_DEFINITION=F6471A308779E26D74A2B84B00A6DAF71DAA84FDFD5A7C71189F0DA5B61E13EE
+INFO | human-supplied pre-change baseline hash=F6471A308779E26D74A2B84B00A6DAF71DAA84FDFD5A7C71189F0DA5B61E13EE
+INFO | baseline hash comparison | MATCH
+CHECK hf231 Pending banner present | PASS
+CHECK stale banner retained (accepted comment, not runtime proof) | PASS
+CHECK non-Auditor Completed branch still present (accepted 39a12b0 baseline) | PASS
+CHECK Auditor terminal branch sets Pending and does not fall through to partial handling | PASS
+CHECK payment lock still names ReadyForPayment | PASS
+CHECK definition does not assign ReadyForPayment | PASS
+CHECK DetailVersion then MAX(ApprovalRequestDetailId) markers present | PASS
+CHECK parameter signature still four parameters | PASS
+INFO | BEGIN TRANSACTION count=1 COMMIT TRANSACTION count=1 ROLLBACK TRANSACTION count=1
+CHECK single unnamed BEGIN, COMMIT, and ROLLBACK plus SET XACT_ABORT ON | PASS
+UNVERIFIED | no C# override | not observable from sys.sql_modules
+UNVERIFIED | Employee cannot skip L1 | this procedure does not submit a claim
+UNVERIFIED | universal L1 cannot skip Auditor | true only while a higher Pending required approver exists
+G4-G7 | NOT AUTHORIZED
+RC014B definition | RESULT | NO FAIL ROWS | fails=0
+--- end script messages ---

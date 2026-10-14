@@ -134,7 +134,7 @@
                                             </asp:TemplateField>
 
                                             <asp:TemplateField HeaderText="Approved (₹)">
-                                                <ItemTemplate><span class="font-weight-bold text-success"><%# String.Format("{0:N2}", Eval("TotalApprovedAmount")) %></span></ItemTemplate>
+                                                <ItemTemplate><asp:Label ID="lblApprovedAmount" runat="server" CssClass="font-weight-bold text-success" Text='<%# String.Format("{0:N2}", Eval("TotalApprovedAmount")) %>' /></ItemTemplate>
                                             </asp:TemplateField>
 
                                             <asp:TemplateField HeaderText="Status" ItemStyle-CssClass="text-center">
@@ -270,7 +270,7 @@
                             </small>
                         </div>
 
-                        <div class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
+                        <div id="divSummaryDeduction" runat="server" class="dashboard-box bg-white border border-danger" style="cursor: pointer; transition: 0.2s;" onclick="showDeductionsBreakdown()" title="Click to view deduction details">
                             <span class="dashboard-label text-danger">Total Deductions <i class="fa fa-info-circle ml-1"></i></span>
                             <h5 class="dashboard-value text-danger mb-0">(-) ₹<asp:Label ID="lblSummaryDeduction" runat="server" Text="0.00" /></h5>
                             <small class="font-weight-bold text-danger d-block mt-1">
@@ -278,7 +278,7 @@
                             </small>
                         </div>
 
-                        <div class="dashboard-box bg-success text-white border border-success">
+                        <div id="divSummaryApproved" runat="server" class="dashboard-box bg-success text-white border border-success">
                             <span class="dashboard-label text-white" style="opacity: 0.9">Net Approved</span>
                             <h5 class="dashboard-value text-white mb-0">₹<asp:Label ID="lblSummaryApproved" runat="server" Text="0.00" /></h5>
                             <small class="font-weight-bold text-white d-block mt-1">

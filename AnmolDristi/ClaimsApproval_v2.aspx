@@ -333,6 +333,10 @@
 
         #forwardNextApproverModal { z-index: 1080; }
         #claimsUxConfirmModal { z-index: 1090; }
+        /* Above the day modal and the shared confirm modal. Not nested in #unifiedDayModal. */
+        #expenseRejectReasonModal { z-index: 1110; }
+        #expenseRejectReasonModal .modal-dialog { max-width: 520px; }
+        .expense-reject-backdrop { z-index: 1100 !important; }
 
         /* Sticky details modal action footer */
         #detailsModal .modal-content { display: flex; flex-direction: column; max-height: 92vh; }
@@ -560,6 +564,8 @@
                             <asp:HiddenField ID="hfCurrentUserLevel" runat="server" ClientIDMode="Static" />
                             <asp:HiddenField ID="hfIsFinalApprover" runat="server" />
                             <asp:HiddenField ID="hfIsAuditor" runat="server" ClientIDMode="Static" Value="0" />
+                            <asp:HiddenField ID="hfAuditorKmEdit" runat="server" ClientIDMode="Static" Value="0" />
+                            <asp:HiddenField ID="hfL1MayReturnApprovedDay" runat="server" ClientIDMode="Static" Value="0" />
                             <asp:HiddenField ID="hfPendingApproveDetailId" runat="server" />
                             <asp:HiddenField ID="hfPendingApproveRemark" runat="server" />
                             <asp:HiddenField ID="hfPendingBulkApprove" runat="server" Value="0" />
@@ -835,16 +841,16 @@
                                     <div class="col-md-3">
                                         <div class="form-group mb-0">
                                             <label class="font-weight-bold text-primary small mb-1 text-uppercase">Modify KM To</label>
-                                            <input type="number" step="0.01" id="km_modal_new" class="form-control border-primary text-center font-weight-bold claims-ux-track-dirty" />
+                                            <input type="number" step="0.01" min="0" id="km_modal_new" class="form-control border-primary text-center font-weight-bold claims-ux-track-dirty" readonly />
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group mb-0">
                                             <label class="font-weight-bold text-muted small mb-1 text-uppercase">Reason for change</label>
                                             <div class="input-group">
-                                                <input type="text" id="km_modal_reason" class="form-control claims-ux-track-dirty" placeholder="Required if changing KM..." />
+                                                <input type="text" id="km_modal_reason" class="form-control claims-ux-track-dirty" placeholder="Required if changing KM..." readonly />
                                                 <div class="input-group-append">
-                                                    <button type="button" id="km_modal_save" class="btn btn-primary shadow-sm" onclick="saveKM()"><i class="fa fa-save mr-1"></i>Save</button>
+                                                    <button type="button" id="km_modal_save" class="btn btn-primary shadow-sm" onclick="saveKM()" disabled><i class="fa fa-save mr-1"></i>Save</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -947,6 +953,28 @@
             </div>
         </div>
 
+        <div class="modal fade" id="expenseRejectReasonModal" tabindex="-1" role="dialog" aria-labelledby="expenseRejectReasonTitle" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title font-weight-bold" id="expenseRejectReasonTitle">Reject this expense?</h5>
+                        <button type="button" class="close text-white" id="expenseRejectClose" aria-label="Cancel">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">A reason is required. The expense stays unchanged until the server accepts the rejection.</p>
+                        <label for="expenseRejectReason" class="font-weight-bold small text-uppercase text-muted">Rejection reason</label>
+                        <textarea id="expenseRejectReason" class="form-control" rows="4" maxlength="1000" placeholder="Enter the reason for rejecting this expense"></textarea>
+                        <div id="expenseRejectValidation" class="text-danger small mt-2" style="display:none;" role="alert"></div>
+                        <div id="expenseRejectError" class="alert alert-danger py-2 mt-3 mb-0" style="display:none;" role="alert"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="expenseRejectCancel">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="expenseRejectSubmit">Reject expense</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" id="forwardNextApproverModal" tabindex="-1" role="dialog" data-backdrop="static">
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
@@ -1024,46 +1052,41 @@
         // =========================================================
         // 1. UNIFIED DAY MODAL TRIGGER & LOGIC
         // =========================================================
-        $(document).on('click', '.btn-day-action', function(e) {
-            e.preventDefault();
-            var $row = $(this).closest('tr');
-
-            // 1. Extract base data from grid
-            var actId = $(this).data('activityid');
-            var detailId = $(this).data('detailid'); 
+        function readDayActionContext($btn) {
+            if (!$btn || !$btn.length) return null;
+            var $row = $btn.closest('tr');
+            var actId = $btn.data('activityid');
+            var detailId = $btn.data('detailid');
             var currentKm = $row.find('.km-value').text().trim();
-            var expensesJson = $(this).attr('data-expenses');
+            var expensesJson = $btn.attr('data-expenses');
 
-            // 2. Extract Data for Phase 6 Summary Header
             var details = {
                 ActivityDate: $row.find('td:nth-child(2)').text().trim(),
                 Day: $row.find('td:nth-child(2) small').text().trim(),
-                PolicyMode: $(this).attr('data-policymode'),
-                ResolvedMaxKM: $(this).attr('data-resolved-maxkm'),
-                ResolvedRatePerKm: $(this).attr('data-resolved-rateperkm'),
-                ResolvedDA: $(this).attr('data-resolved-da'),
-                ResolvedOutstationDA: $(this).attr('data-resolved-outstationda'),
-                ResolvedOwnAllowance: $(this).attr('data-resolved-ownallowance'),
-                Hotel: $(this).data('hotel'),
-                Travel: $(this).data('travel'),
-                Stationary: $(this).data('stationary'),
-                ClaimType: $(this).data('claimtype'),
-                ClaimStatus: $(this).data('status'),
+                PolicyMode: $btn.attr('data-policymode'),
+                ResolvedMaxKM: $btn.attr('data-resolved-maxkm'),
+                ResolvedRatePerKm: $btn.attr('data-resolved-rateperkm'),
+                ResolvedDA: $btn.attr('data-resolved-da'),
+                ResolvedOutstationDA: $btn.attr('data-resolved-outstationda'),
+                ResolvedOwnAllowance: $btn.attr('data-resolved-ownallowance'),
+                Hotel: $btn.data('hotel'),
+                Travel: $btn.data('travel'),
+                Stationary: $btn.data('stationary'),
+                ClaimType: $btn.data('claimtype'),
+                ClaimStatus: $btn.data('status'),
                 StatusClass:
                 $row.find('.status-badge').hasClass('badge-success')
                     ? 'success'
                     : ($row.find('.status-badge').hasClass('badge-danger')
                         ? 'danger'
                         : 'warning'),
-                TotalDistanceKM: $(this).data('distance'),
-                TotalTA: $(this).data('ta'),
-                TotalDA: $(this).data('da'),
+                TotalDistanceKM: $btn.data('distance'),
+                TotalTA: $btn.data('ta'),
+                TotalDA: $btn.data('da'),
             };
 
-            // CHECK LOCK STATE: "✔ Done" means approved at this level.
-            // Returned is not a completed approval — do not lock line-item actions.
             var $btnApproveRow = $row.find('input[id*="btnApproveRow"]');
-            var rowStatus = String($(this).data('status') || '').toLowerCase();
+            var rowStatus = String($btn.data('status') || '').toLowerCase();
             var isReturned = $row.find('.claims-badge-returned').length > 0
                 || rowStatus === 'returned';
             var isRejected = rowStatus === 'rejected';
@@ -1085,52 +1108,89 @@
             }
 
             var dayStatus = details.ClaimStatus || 'Pending';
-
-            // Set UI Controls based on user level AND row lock state
-            var activeLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(),10) || 0;
+            var activeLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(), 10) || 0;
             var canAction = activeLevel > 0 && !isRowLocked;
-        
-            var currentLevel = parseInt($('#<%=hfCurrentUserLevel.ClientID%>').val(), 10);
-            var finalLevel = parseInt($('#<%=hfIsFinalApprover.ClientID%>').val(), 10);
             var isAuditor = $('#hfIsAuditor').val() === "1";
 
-            // Setup Distance Tab & Hidden Fields
-            $('#km_modal_activityid').val(actId);
-            $('#km_modal_detailid').val(detailId); 
-            $('#km_modal_current').val(currentKm);
-            $('#km_modal_new').val(currentKm);
+            return {
+                $row: $row,
+                actId: actId,
+                detailId: detailId,
+                currentKm: currentKm,
+                expensesJson: expensesJson,
+                details: details,
+                dayStatus: dayStatus,
+                isRowLocked: isRowLocked,
+                canAction: canAction,
+                isAuditor: isAuditor
+            };
+        }
+
+        function findDayActionButton(detailId) {
+            var id = String(detailId || '');
+            if (!id) return $();
+            return $('.btn-day-action').filter(function () {
+                return String($(this).attr('data-detailid')) === id;
+            }).first();
+        }
+
+        function refreshOpenDayExpenseCards(detailId) {
+            if (!unifiedDayModalActive) return false;
+            var openId = String($('#km_modal_detailid').val() || '');
+            if (!detailId || openId !== String(detailId)) return false;
+            var ctx = readDayActionContext(findDayActionButton(detailId));
+            if (!ctx || ctx.expensesJson == null) return false;
+            renderUnifiedExpensesModal(
+                ctx.details,
+                ctx.expensesJson,
+                ctx.isRowLocked,
+                ctx.canAction,
+                ctx.isAuditor
+            );
+            return true;
+        }
+
+        $(document).on('click', '.btn-day-action', function(e) {
+            e.preventDefault();
+            var ctx = readDayActionContext($(this));
+            if (!ctx) return;
+
+            $('#km_modal_activityid').val(ctx.actId);
+            $('#km_modal_detailid').val(ctx.detailId);
+            $('#km_modal_current').val(ctx.currentKm);
+            $('#km_modal_new').val(ctx.currentKm);
             $('#km_modal_reason').val('');
             $('#km_modal_message').empty();
+            applyAuditorKmEditState(ctx.dayStatus);
             $('#unified_modal_message').empty();
 
-            loadKmHistory(actId);
+            loadKmHistory(ctx.actId);
 
             renderUnifiedExpensesModal(
-                details,
-                expensesJson,
-                isRowLocked,
-                canAction,
-                isAuditor
+                ctx.details,
+                ctx.expensesJson,
+                ctx.isRowLocked,
+                ctx.canAction,
+                ctx.isAuditor
             );
 
             unifiedDayStateContext = {
-                status: dayStatus,
-                canAction: canAction,
-                isAuditor: isAuditor,
-                approvedAtCurrentLevel: isRowLocked && normalizeDayStatus(dayStatus) === 'Approved',
-                detailId: detailId
+                status: ctx.dayStatus,
+                canAction: ctx.canAction,
+                isAuditor: ctx.isAuditor,
+                approvedAtCurrentLevel: ctx.isRowLocked && normalizeDayStatus(ctx.dayStatus) === 'Approved',
+                detailId: ctx.detailId
             };
 
-            renderUnifiedDayState(dayStatus, {
-                canAction: canAction,
-                isAuditor: isAuditor,
+            renderUnifiedDayState(ctx.dayStatus, {
+                canAction: ctx.canAction,
+                isAuditor: ctx.isAuditor,
                 applyVisibility: true,
-                $row: $row,
+                $row: ctx.$row,
                 approvedAtCurrentLevel: unifiedDayStateContext.approvedAtCurrentLevel,
-                detailId: detailId
+                detailId: ctx.detailId
             });
 
-            // Show Modal
             $('#dayModalTabs a[href="#tab-receipts"]').tab('show');
             setTimeout(function () {
                 document.getElementById('divKmControls')
@@ -1741,17 +1801,8 @@
 
                 case "REJECT":
 
-                    remark = prompt("Reason for rejecting this expense:");
-
-                    if (remark === null)
-                        return;
-
-                    if ($.trim(remark) === "") {
-                        alert("Reject reason is mandatory.");
-                        return;
-                    }
-
-                    break;
+                    openExpenseRejectModal(expenseId, btn);
+                    return;
             }
 
             $(btn).prop("disabled", true);
@@ -1784,14 +1835,245 @@
 
         }
 
+        var expenseRejectUi = {
+            inFlight: false,
+            expenseId: null,
+            detailId: null,
+            sourceButton: null,
+            completed: {}
+        };
+        var pendingExpenseCardRefresh = null;
+        var expenseCardRefreshPostbackStarted = false;
+
+        function resetExpenseRejectFields() {
+            $('#expenseRejectReason').val('').removeClass('is-invalid');
+            $('#expenseRejectValidation').hide().text('');
+            $('#expenseRejectError').hide().text('');
+        }
+
+        function setExpenseRejectBusy(isBusy) {
+            expenseRejectUi.inFlight = !!isBusy;
+            $('#expenseRejectSubmit, #expenseRejectCancel, #expenseRejectClose, #expenseRejectReason')
+                .prop('disabled', !!isBusy);
+            $('#expenseRejectSubmit').text(isBusy ? 'Rejecting...' : 'Reject expense');
+        }
+
+        function showExpenseRejectValidation(message) {
+            $('#expenseRejectError').hide().text('');
+            $('#expenseRejectReason').addClass('is-invalid');
+            $('#expenseRejectValidation').text(message).show();
+        }
+
+        function showExpenseRejectFailure(message) {
+            $('#expenseRejectValidation').hide().text('');
+            $('#expenseRejectReason').addClass('is-invalid');
+            $('#expenseRejectError').text(message || 'Unable to update expense.').show();
+        }
+
+        function restoreOpenModalsAfterExpenseReject() {
+            if ($('#unifiedDayModal').hasClass('show') || $('#detailsModal').hasClass('show')) {
+                $('body').addClass('modal-open');
+            }
+        }
+
+        function expenseRejectBackdrop() {
+            var inst = $('#expenseRejectReasonModal').data('bs.modal');
+            if (inst && inst._backdrop && document.body.contains(inst._backdrop)) {
+                return $(inst._backdrop);
+            }
+            // Bootstrap 4.3.1 appends each backdrop to body. The newest one belongs
+            // to the modal that just opened when the instance reference is missing.
+            return $('.modal-backdrop').last();
+        }
+
+        function raiseExpenseRejectModal() {
+            var $modal = $('#expenseRejectReasonModal');
+            $modal.appendTo('body').css('z-index', 1110);
+            var $backdrop = expenseRejectBackdrop();
+            if ($backdrop.length) {
+                $backdrop.addClass('expense-reject-backdrop');
+            }
+        }
+
+        function clearExpenseRejectBackdrop() {
+            $('.modal-backdrop.expense-reject-backdrop').removeClass('expense-reject-backdrop');
+        }
+
+        function openExpenseRejectModal(expenseId, btn) {
+            if (!unifiedDayModalActive || expenseRejectUi.inFlight) return;
+            if ($('#expenseRejectReasonModal').hasClass('show')) return;
+            var id = parseInt(expenseId, 10);
+            if (!id) return;
+            if (expenseRejectUi.completed[id]) {
+                $('#unified_modal_message').html(
+                    '<span class="text-info font-weight-bold">This expense was already rejected. The day view is showing the last refresh from the server.</span>'
+                );
+                return;
+            }
+
+            expenseRejectUi.expenseId = id;
+            expenseRejectUi.detailId = String($('#km_modal_detailid').val() || '');
+            expenseRejectUi.sourceButton = btn || null;
+            resetExpenseRejectFields();
+            setExpenseRejectBusy(false);
+            $('#expenseRejectReasonModal').appendTo('body').modal({
+                backdrop: 'static',
+                keyboard: false,
+                show: true
+            });
+            raiseExpenseRejectModal();
+        }
+
+        function cancelExpenseRejection() {
+            if (expenseRejectUi.inFlight) return;
+            $('#expenseRejectReasonModal').modal('hide');
+        }
+
+        function reportExpenseRefreshFailure(message) {
+            var safe = $('<div>').text(message || 'The day view could not be refreshed.').html();
+            $('#unified_modal_message').html('<span class="text-danger font-weight-bold">' + safe + '</span>');
+            if (expenseRejectUi.sourceButton) {
+                $(expenseRejectUi.sourceButton).prop('disabled', false);
+            }
+        }
+
+        function startExpenseCardRefreshPostback() {
+            var refreshBtn = document.getElementById('btnRefreshCalculations');
+            if (!refreshBtn) {
+                pendingExpenseCardRefresh = null;
+                reportExpenseRefreshFailure('The rejection was saved, but the day view could not be reloaded from the server.');
+                return;
+            }
+            expenseCardRefreshPostbackStarted = true;
+            if (pendingExpenseCardRefresh) pendingExpenseCardRefresh.waitingToStart = false;
+            $('#unified_modal_message').html(
+                '<span class="text-info"><i class="fa fa-spinner fa-spin mr-1"></i>Updating this day from the server...</span>'
+            );
+            refreshBtn.click();
+        }
+
+        function queueAuthoritativeExpenseCardRefresh(detailId) {
+            pendingExpenseCardRefresh = {
+                detailId: String(detailId || ''),
+                waitingToStart: false
+            };
+            var prm = (typeof Sys !== 'undefined' && Sys.WebForms && Sys.WebForms.PageRequestManager)
+                ? Sys.WebForms.PageRequestManager.getInstance()
+                : null;
+            if (prm && prm.get_isInAsyncPostBack()) {
+                pendingExpenseCardRefresh.waitingToStart = true;
+                return;
+            }
+            startExpenseCardRefreshPostback();
+        }
+
+        function finishExpenseCardRefresh(args) {
+            var pending = pendingExpenseCardRefresh;
+            pendingExpenseCardRefresh = null;
+            expenseCardRefreshPostbackStarted = false;
+            if (!pending || !unifiedDayModalActive) return;
+            if (args && args.get_error && args.get_error()) {
+                reportExpenseRefreshFailure('The rejection was saved, but the day view could not be reloaded from the server.');
+                return;
+            }
+            if (!refreshOpenDayExpenseCards(pending.detailId)) {
+                reportExpenseRefreshFailure('The rejection was saved, but the open day could not be redrawn from the refreshed row.');
+                return;
+            }
+            $('#unified_modal_message').empty();
+        }
+
+        function submitExpenseRejection() {
+            if (expenseRejectUi.inFlight) return;
+            var expenseId = expenseRejectUi.expenseId;
+            if (!expenseId || expenseRejectUi.completed[expenseId]) return;
+
+            var remark = $.trim($('#expenseRejectReason').val() || '');
+            if (!remark) {
+                showExpenseRejectValidation('Enter a rejection reason before submitting.');
+                $('#expenseRejectReason').trigger('focus');
+                return;
+            }
+
+            setExpenseRejectBusy(true);
+            if (expenseRejectUi.sourceButton) {
+                $(expenseRejectUi.sourceButton).prop('disabled', true);
+            }
+
+            $.ajax({
+                type: 'POST',
+                url: 'ClaimsApproval_v2.aspx/UpdateIndividualExpense',
+                data: JSON.stringify({
+                    expenseId: expenseId,
+                    action: 'REJECT',
+                    remark: remark
+                }),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (r) {
+                    if (r.d && r.d.success) {
+                        expenseRejectUi.completed[expenseId] = true;
+                        setExpenseRejectBusy(false);
+                        $('#expenseRejectReasonModal').modal('hide');
+                        queueAuthoritativeExpenseCardRefresh(expenseRejectUi.detailId);
+                        return;
+                    }
+                    setExpenseRejectBusy(false);
+                    if (expenseRejectUi.sourceButton) {
+                        $(expenseRejectUi.sourceButton).prop('disabled', false);
+                    }
+                    showExpenseRejectFailure((r.d && r.d.message) ? r.d.message : 'Unable to update expense.');
+                    $('#expenseRejectReason').trigger('focus');
+                },
+                error: function (xhr) {
+                    setExpenseRejectBusy(false);
+                    if (expenseRejectUi.sourceButton) {
+                        $(expenseRejectUi.sourceButton).prop('disabled', false);
+                    }
+                    var message = 'Server error.';
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.Message) {
+                        message = xhr.responseJSON.Message;
+                    }
+                    showExpenseRejectFailure(message);
+                    $('#expenseRejectReason').trigger('focus');
+                }
+            });
+        }
+
+        function auditorMayEditKm(dayStatus) {
+            var status = normalizeDayStatus(dayStatus);
+            return $('#hfAuditorKmEdit').val() === '1'
+                && status !== 'Rejected'
+                && status !== 'Returned';
+        }
+
+        function applyAuditorKmEditState(dayStatus) {
+            var allowed = auditorMayEditKm(dayStatus);
+            $('#km_modal_new, #km_modal_reason').prop('readOnly', !allowed);
+            $('#km_modal_save').prop('disabled', !allowed);
+            if ($('#hfAuditorKmEdit').val() === '1' && !allowed) {
+                $('#km_modal_message').html('<div class="text-warning font-weight-bold">Returned and rejected days are corrected by the employee.</div>');
+            }
+        }
+
         function saveKM() {
             if (!unifiedDayModalActive) return;
 
             var $saveBtn = $('#km_modal_save');
+            var dayStatus = unifiedDayStateContext.status;
+            if (!auditorMayEditKm(dayStatus)) {
+                applyAuditorKmEditState(dayStatus);
+                if (!$('#km_modal_message').text()) {
+                    $('#km_modal_message').html('<div class="text-danger font-weight-bold">Only the Auditor who currently holds this pending request can modify KM.</div>');
+                }
+                return;
+            }
+
             $saveBtn.prop('disabled', true);
             $('#km_modal_message').empty();
 
             var id = $('#km_modal_activityid').val();
+            var detailId = parseInt($('#km_modal_detailid').val(), 10);
             var km = $('#km_modal_new').val();
             var reason = $('#km_modal_reason').val();
             var curKm = $('#km_modal_current').val();
@@ -1806,11 +2088,16 @@
                 $saveBtn.prop('disabled', false);
                 return;
             }
+            if (!(detailId > 0)) {
+                $('#km_modal_message').html('<div class="text-danger font-weight-bold">The activity detail is missing. Reopen the day and try again.</div>');
+                $saveBtn.prop('disabled', false);
+                return;
+            }
 
             $.ajax({
                 type: "POST",
                 url: "ClaimsApproval_v2.aspx/UpdateActivityKM",
-                data: JSON.stringify({ activityId: parseInt(id), newKm: parseFloat(km), reason: reason }),
+                data: JSON.stringify({ activityId: parseInt(id, 10), newKm: parseFloat(km), reason: reason, expectedDetailId: detailId }),
                 contentType: "application/json; charset=utf-8",
                 dataType: "json",
                 success: function(r) {
@@ -1825,11 +2112,15 @@
                             $('#km_modal_message').fadeOut('fast', function() { $(this).empty().show(); }); 
                         }, 4000);
                     } else {
-                        $('#km_modal_message').html('<div class="text-danger font-weight-bold">Error: ' + r.d.message + '</div>');
+                        var serverMessage = (r.d && r.d.message) ? r.d.message : 'The KM change was not saved.';
+                        $('#km_modal_message').html('<div class="text-danger font-weight-bold">Error: ' + serverMessage + '</div>');
                     }
                 },
+                error: function() {
+                    $('#km_modal_message').html('<div class="text-danger font-weight-bold">The KM change was not saved.</div>');
+                },
                 complete: function() {
-                    $saveBtn.prop('disabled', false);
+                    $saveBtn.prop('disabled', !auditorMayEditKm(unifiedDayStateContext.status));
                 }
             });
         }
@@ -2046,6 +2337,9 @@
                 ClaimsUx.suppressDirtyCheck = true;
             }
             setUnifiedDayModalActive(false);
+            if (!expenseRejectUi.inFlight) {
+                hideModalImmediate($('#expenseRejectReasonModal'));
+            }
             hideModalImmediate($('#claimsUxConfirmModal'));
             hideModalImmediate($('#unifiedDayModal'));
             restoreDetailsModalStack();
@@ -2087,7 +2381,14 @@
 
         function evaluateDayActionRule(rule, dependsFallback, ctx) {
             if (rule === 'DependsOnLevel') {
-                if (ctx.approvedAtCurrentLevel) return false;
+                if (ctx.approvedAtCurrentLevel) {
+                    // Return uses ManagerOnly as its fallback. Approve and Reject do not,
+                    // so an ordinary L1-approved day stays closed unless Auditor has routed
+                    // this Pending request back to the acting L1.
+                    return !!ctx.l1MayReturnApprovedDay
+                        && dependsFallback === 'ManagerOnly'
+                        && !ctx.isAuditor;
+                }
                 return evaluateDayActionRule(dependsFallback, dependsFallback, ctx);
             }
             switch (rule) {
@@ -2106,7 +2407,8 @@
             var ctx = {
                 isAuditor: !!options.isAuditor,
                 hasPendingReceipts: !!options.hasPendingReceipts,
-                approvedAtCurrentLevel: !!options.approvedAtCurrentLevel
+                approvedAtCurrentLevel: !!options.approvedAtCurrentLevel,
+                l1MayReturnApprovedDay: !!options.l1MayReturnApprovedDay
             };
 
             var perm = {
@@ -2128,7 +2430,9 @@
                 perm.rejectTitle = 'This day has already been rejected.';
             } else if (perm.isDoneAtLevel) {
                 perm.approveTitle = 'You are not authorized to perform this action.';
-                perm.returnTitle = 'You are not authorized to perform this action.';
+                perm.returnTitle = perm.canReturn
+                    ? 'Return entire day to employee for correction'
+                    : 'You are not authorized to perform this action.';
                 perm.rejectTitle = 'You are not authorized to perform this action.';
             } else if (!perm.canApprove && ctx.hasPendingReceipts) {
                 perm.approveTitle = 'You must open the folder and approve or reject all receipts first.';
@@ -2149,6 +2453,7 @@
             var dayStatus = normalizeDayStatus(status);
             var canAction = !!options.canAction;
             var isAuditor = !!options.isAuditor;
+            var l1MayReturnApprovedDay = $('#hfL1MayReturnApprovedDay').val() === '1';
             var unauthorized = 'You are not authorized to perform this action.';
             var $row = (options.$row && options.$row.length) ? options.$row : null;
             if (!$row && options.detailId != null && options.detailId !== '') {
@@ -2157,6 +2462,7 @@
             }
 
             if (options.applyVisibility) {
+                var mayReturnApprovedDay = l1MayReturnApprovedDay && dayStatus === 'Approved' && !isAuditor;
                 if (canAction) {
                     $('#divKmControls').show();
                     $('#btnUnifiedApproveDay').show();
@@ -2167,6 +2473,11 @@
                         $('#btnUnifiedReturnDay').show();
                         $('#btnUnifiedRejectDay').hide();
                     }
+                } else if (mayReturnApprovedDay) {
+                    $('#divKmControls').hide();
+                    $('#btnUnifiedApproveDay').hide();
+                    $('#btnUnifiedRejectDay').hide();
+                    $('#btnUnifiedReturnDay').show();
                 } else {
                     $('#divKmControls').hide();
                     $('#btnUnifiedApproveDay').hide();
@@ -2179,11 +2490,12 @@
                 isAuditor: isAuditor,
                 hasPendingReceipts: !!options.hasPendingReceipts,
                 approvedAtCurrentLevel: !!options.approvedAtCurrentLevel
-                    || (dayStatus === 'Approved' && !canAction)
+                    || (dayStatus === 'Approved' && !canAction),
+                l1MayReturnApprovedDay: l1MayReturnApprovedDay
             });
 
             var approveEnabled = canAction && perm.canApprove;
-            var returnEnabled = canAction && perm.canReturn;
+            var returnEnabled = perm.canReturn && (canAction || (l1MayReturnApprovedDay && dayStatus === 'Approved' && !isAuditor));
             var rejectEnabled = canAction && perm.canReject;
 
             $('#btnUnifiedApproveDay')
@@ -2641,6 +2953,13 @@
                 initDataTablesSafe();
                 decorateReceiptCounts();
                 decorateKmEditedBadges();
+                if (pendingExpenseCardRefresh && pendingExpenseCardRefresh.waitingToStart && !expenseCardRefreshPostbackStarted) {
+                    startExpenseCardRefreshPostback();
+                    return;
+                }
+                if (expenseCardRefreshPostbackStarted) {
+                    finishExpenseCardRefresh(args);
+                }
             });
         }
 
@@ -2744,8 +3063,49 @@
         });
 
         var reopenDetailsModal = false;
+        $(document).on('shown.bs.modal', '#expenseRejectReasonModal', function (e) {
+            e.stopPropagation();
+            raiseExpenseRejectModal();
+            if (!expenseRejectUi.inFlight) {
+                var reason = document.getElementById('expenseRejectReason');
+                if (reason) reason.focus();
+            }
+        });
+
+        $(document).on('hide.bs.modal', '#expenseRejectReasonModal', function (e) {
+            e.stopPropagation();
+            if (expenseRejectUi.inFlight) e.preventDefault();
+        });
+
+        $(document).on('hidden.bs.modal', '#expenseRejectReasonModal', function (e) {
+            e.stopPropagation();
+            clearExpenseRejectBackdrop();
+            if (!expenseRejectUi.inFlight) resetExpenseRejectFields();
+            restoreOpenModalsAfterExpenseReject();
+        });
+
+        $(document).on('click', '#expenseRejectCancel, #expenseRejectClose', function (e) {
+            e.preventDefault();
+            cancelExpenseRejection();
+        });
+
+        $(document).on('click', '#expenseRejectSubmit', function (e) {
+            e.preventDefault();
+            submitExpenseRejection();
+        });
+
+        $(document).on('input', '#expenseRejectReason', function () {
+            if ($.trim($(this).val() || '')) {
+                $('#expenseRejectValidation').hide().text('');
+                $(this).removeClass('is-invalid');
+            }
+        });
+
         $('#unifiedDayModal').on('hidden.bs.modal', function () {
             setUnifiedDayModalActive(false);
+            if (!expenseRejectUi.inFlight && $('#expenseRejectReasonModal').hasClass('show')) {
+                $('#expenseRejectReasonModal').modal('hide');
+            }
             if ($('#detailsModal').hasClass('show'))
                 $('body').addClass('modal-open');
 

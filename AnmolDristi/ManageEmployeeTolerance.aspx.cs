@@ -58,7 +58,7 @@ namespace AnmolDristi
             txtLoginId.Text = "";
             txtMinKM.Text = "";
             txtMaxKM.Text = "";
-            txtMaxKmModificationCount.Text = "1";
+            txtMaxKmModificationCount.Text = KmToleranceHelper.DefaultMaxModificationCount.ToString();
             txtEffectiveFrom.Text = "";
             txtEffectiveTo.Text = "";
             chkIsActive.Checked = true;
@@ -122,7 +122,7 @@ namespace AnmolDristi
                         if (HasColumn(r, "MaxKmModificationCount") && r["MaxKmModificationCount"] != DBNull.Value)
                             txtMaxKmModificationCount.Text = Convert.ToInt32(r["MaxKmModificationCount"]).ToString();
                         else
-                            txtMaxKmModificationCount.Text = "1";
+                            txtMaxKmModificationCount.Text = KmToleranceHelper.DefaultMaxModificationCount.ToString();
                         txtEffectiveFrom.Text = r["EffectiveFrom"] == DBNull.Value ? "" : ((DateTime)r["EffectiveFrom"]).ToString("yyyy-MM-dd");
                         txtEffectiveTo.Text = r["EffectiveTo"] == DBNull.Value ? "" : ((DateTime)r["EffectiveTo"]).ToString("yyyy-MM-dd");
                         chkIsActive.Checked = r["IsActive"] == DBNull.Value ? true : Convert.ToBoolean(r["IsActive"]);

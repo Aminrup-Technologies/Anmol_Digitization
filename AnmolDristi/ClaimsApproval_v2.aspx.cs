@@ -31,6 +31,9 @@ namespace AnmolDristi
         // Workflow-pending day count (RC-022): uses IsDetailActionableAtCurrentLevel, not button.Enabled.
         private int _actionableWorkflowDayCount = 0;
 
+        // Request-scoped. True only while this L1 holds a Pending request that the Auditor has routed back.
+        private bool _l1MayReturnApprovedDay = false;
+
         protected void Page_Load(object sender, EventArgs e)
         {
             if (!IsPostBack)
@@ -48,6 +51,9 @@ namespace AnmolDristi
         }
 
         private const string SessionApproverRoleKey = "ClaimsApproval_ApproverRole";
+        private const int WholeClaimReturnReasonMaxLength = 1000;
+        private const int ApprovalHistoryRemarksMaxLength = 1000;
+        private const string AuditorReturnToL1HistoryPrefix = "Auditor returned to L1 for correction: ";
 
         private void PopulateFilters()
         {
@@ -403,6 +409,7 @@ namespace AnmolDristi
             if (e.CommandName == "View")
             {
                 int reqId = Convert.ToInt32(e.CommandArgument);
+                ViewState["ActionApprovalRequestId"] = reqId;
                 SetCurrentUserApproverDetails(reqId); // Identifies exact role in hierarchy
                 ShowDetailsModal(reqId);
             }
@@ -411,6 +418,7 @@ namespace AnmolDristi
         // --- 2. DETAILS & CALCULATION ENGINE ---
         protected void ShowDetailsModal(int reqId)
         {
+            ViewState["ActionApprovalRequestId"] = reqId;
             hfActionRequestId.Value = reqId.ToString();
             lblModalRequestId.Text = reqId.ToString();
             BindDetailsGrid(reqId);
@@ -426,6 +434,8 @@ namespace AnmolDristi
             _actionableWorkflowDayCount = 0;
 
             SetCurrentUserApproverDetails(reqId); // Ensure state is fresh
+            _l1MayReturnApprovedDay = IsPendingWithL1AfterAuditorReturn(reqId);
+            hfL1MayReturnApprovedDay.Value = _l1MayReturnApprovedDay ? "1" : "0";
 
             DataTable dt = new DataTable();
             string requesterName = "";
@@ -626,8 +636,9 @@ namespace AnmolDristi
             // Auditor marks ready for payment when no Returned items remain.
             btnMarkReadyForPayment.Visible = isAuditorCheck && canFinalize;
 
-            // Whole-claim return is a manager action only.
-            btnReturnToEmployee.Visible = isIntermediate;
+            // Whole-claim return is the current L1 approver only.
+            // Day and expense RETURN stay on the row and expense routes.
+            btnReturnToEmployee.Visible = currentLvl == 1 && !isAuditorCheck;
 
             if (hasReturnedItems)
             {
@@ -1043,19 +1054,125 @@ namespace AnmolDristi
             }
         }
 
+        private bool IsSessionUserCurrentL1Approver(int approvalRequestId, string user)
+        {
+            if (approvalRequestId <= 0 || string.IsNullOrWhiteSpace(user))
+                return false;
+
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"
+                SELECT 1
+                FROM dbo.SalesApprovalRequest r
+                INNER JOIN dbo.SalesApprovalRequestApprover a
+                    ON a.ApprovalRequestId = r.ApprovalRequestId
+                WHERE r.ApprovalRequestId = @Id
+                  AND r.Status = @Pending
+                  AND r.CurrentApproverLevel = 1
+                  AND UPPER(LTRIM(RTRIM(r.CurrentApproverLoginId))) = UPPER(LTRIM(RTRIM(@User)))
+                  AND a.ApproverLevel = 1
+                  AND a.Status = @Pending
+                  AND UPPER(LTRIM(RTRIM(a.ApproverRole))) = N'L1'
+                  AND UPPER(LTRIM(RTRIM(a.ApproverLoginId))) = UPPER(LTRIM(RTRIM(@User)))", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", approvalRequestId);
+                cmd.Parameters.AddWithValue("@User", user.Trim());
+                cmd.Parameters.AddWithValue("@Pending", ClaimStatuses.Pending);
+                con.Open();
+                object found = cmd.ExecuteScalar();
+                return found != null && found != DBNull.Value;
+            }
+        }
+
+        private bool IsSessionUserAssignedLevel2Auditor(int approvalRequestId, string user)
+        {
+            if (approvalRequestId <= 0 || string.IsNullOrWhiteSpace(user))
+                return false;
+
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"
+                SELECT CASE
+                    WHEN
+                    (
+                        SELECT COUNT(*)
+                        FROM dbo.SalesApprovalRequest r
+                        INNER JOIN dbo.SalesApprovalRequestApprover aud
+                            ON aud.ApprovalRequestId = r.ApprovalRequestId
+                        WHERE r.ApprovalRequestId = @Id
+                          AND r.Status = @Pending
+                          AND r.CurrentApproverLevel = 2
+                          AND UPPER(LTRIM(RTRIM(r.CurrentApproverLoginId))) = UPPER(LTRIM(RTRIM(@User)))
+                          AND aud.ApproverLevel = 2
+                          AND aud.Status = @Pending
+                          AND UPPER(LTRIM(RTRIM(aud.ApproverRole))) = N'AUDITOR'
+                          AND UPPER(LTRIM(RTRIM(aud.ApproverLoginId))) = UPPER(LTRIM(RTRIM(@User)))
+                    ) = 1
+                    AND
+                    (
+                        SELECT COUNT(*)
+                        FROM dbo.SalesApprovalRequestApprover l1
+                        WHERE l1.ApprovalRequestId = @Id
+                          AND l1.ApproverLevel = 1
+                          AND l1.Status = @Approved
+                          AND UPPER(LTRIM(RTRIM(l1.ApproverRole))) = N'L1'
+                          AND NULLIF(LTRIM(RTRIM(l1.ApproverLoginId)), N'') IS NOT NULL
+                    ) = 1
+                    THEN 1 ELSE 0 END", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", approvalRequestId);
+                cmd.Parameters.AddWithValue("@User", user.Trim());
+                cmd.Parameters.AddWithValue("@Pending", ClaimStatuses.Pending);
+                cmd.Parameters.AddWithValue("@Approved", ClaimStatuses.Approved);
+                con.Open();
+                object found = cmd.ExecuteScalar();
+                return found != null && found != DBNull.Value && Convert.ToInt32(found) == 1;
+            }
+        }
+
         protected void btnReturnToEmployee_Click(object sender, EventArgs e)
         {
             try
             {
-                int reqId = Convert.ToInt32(hfActionRequestId.Value);
-                string user = GetLoggedInEmployeeCode();
-                //string reason = hfReturnReason.Value.Trim();
-                string rawReason = hfReturnReason.Value.Trim();
-                string reason = AppendUserToRemark(rawReason, user);
+                int reqId;
+                if (!int.TryParse(hfActionRequestId.Value, out reqId) || reqId <= 0)
+                {
+                    lblModalMessage.Text = "A valid approval request is required.";
+                    lblModalMessage.CssClass = "text-danger font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
 
-                if (string.IsNullOrEmpty(reason))
+                string user = GetLoggedInEmployeeCode();
+                if (string.IsNullOrWhiteSpace(user))
+                {
+                    lblModalMessage.Text = "User session expired. Please log in again.";
+                    lblModalMessage.CssClass = "text-danger font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
+
+                // hfActionRequestId identifies the claim. L1 authority is the session
+                // user matched to the pending header and pending L1 approver row.
+                if (!IsSessionUserCurrentL1Approver(reqId, user))
+                {
+                    lblModalMessage.Text = "Only the current L1 approver can return this claim.";
+                    lblModalMessage.CssClass = "text-danger font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
+
+                string rawReason = (hfReturnReason.Value ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(rawReason))
                 {
                     lblModalMessage.Text = "A return reason is mandatory.";
+                    lblModalMessage.CssClass = "text-danger font-weight-bold";
+                    upDetails.Update();
+                    return;
+                }
+
+                string reason = AppendUserToRemark(rawReason, user);
+                if (string.IsNullOrWhiteSpace(reason) || reason.Length > WholeClaimReturnReasonMaxLength)
+                {
+                    lblModalMessage.Text = "The return reason exceeds " + WholeClaimReturnReasonMaxLength + " characters.";
                     lblModalMessage.CssClass = "text-danger font-weight-bold";
                     upDetails.Update();
                     return;
@@ -1065,9 +1182,9 @@ namespace AnmolDristi
                 using (var cmd = new SqlCommand("dbo.usp_ReturnClaimToEmployee", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                    cmd.Parameters.AddWithValue("@ActionBy", user);
-                    cmd.Parameters.AddWithValue("@ReturnReason", reason);
+                    cmd.Parameters.Add("@ApprovalRequestId", SqlDbType.Int).Value = reqId;
+                    cmd.Parameters.Add("@ActionBy", SqlDbType.NVarChar, 100).Value = user.Trim();
+                    cmd.Parameters.Add("@ReturnReason", SqlDbType.NVarChar, WholeClaimReturnReasonMaxLength).Value = reason;
 
                     con.Open();
                     cmd.ExecuteNonQuery();
@@ -1084,6 +1201,13 @@ namespace AnmolDristi
                 lblModalMessage.CssClass = "text-danger font-weight-bold";
                 upDetails.Update();
             }
+        }
+
+        protected void btnReturnToL1_Click(object sender, EventArgs e)
+        {
+            lblModalMessage.Text = "Return to L1 for Correction is not available in this release.";
+            lblModalMessage.CssClass = "text-danger font-weight-bold";
+            upDetails.Update();
         }
 
         protected void gvDetails_RowDataBound(object sender, GridViewRowEventArgs e)
@@ -1201,7 +1325,7 @@ namespace AnmolDristi
 
             bool isAuditor = IsCurrentUserAuditor();
             DayActionPermission perm = ResolveDayActionPermissions(
-                detailStatus, approvedLevel, currentLevel, hasPendingReceipts, isAuditor);
+                detailStatus, approvedLevel, currentLevel, hasPendingReceipts, isAuditor, _l1MayReturnApprovedDay);
 
             if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Rejected))
             {
@@ -1222,6 +1346,8 @@ namespace AnmolDristi
                     btnApprove.CssClass = "btn btn-sm btn-success";
                 }
                 ApplyActionEnablement(btnApprove, btnReturn, btnRejectDay, perm);
+                if (perm.CanReturn && txtRemark != null)
+                    txtRemark.ReadOnly = false;
             }
             else if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel < currentLevel)
             {
@@ -1312,7 +1438,8 @@ namespace AnmolDristi
             int approvedLevel,
             int currentLevel,
             bool hasPendingReceipts,
-            bool isAuditor)
+            bool isAuditor,
+            bool l1MayReturnApprovedDay = false)
         {
             string status = string.IsNullOrEmpty(detailStatus) ? ClaimStatuses.Pending : detailStatus;
             DayActionMatrixRow row;
@@ -1336,6 +1463,17 @@ namespace AnmolDristi
                     approvedLevel, currentLevel, hasPendingReceipts, isAuditor)
             };
 
+            // Approved-at-this-level stays closed during an ordinary L1 pass.
+            // After Auditor routes the Pending request back to this L1, that same day can be returned.
+            if (!perm.CanReturn
+                && approvedAtCurrentLevel
+                && l1MayReturnApprovedDay
+                && !isAuditor
+                && currentLevel == 1)
+            {
+                perm.CanReturn = true;
+            }
+
             if (ClaimStatuses.Equals(status, ClaimStatuses.Returned))
             {
                 perm.ApproveTitle = "Returned days cannot be approved until the employee resubmits.";
@@ -1351,8 +1489,8 @@ namespace AnmolDristi
             else if (approvedAtCurrentLevel)
             {
                 perm.ApproveTitle = "";
-                perm.ReturnTitle = "";
                 perm.RejectTitle = "";
+                perm.ReturnTitle = perm.CanReturn ? "Return entire day to employee for correction" : "";
             }
             else if (!perm.CanApprove && hasPendingReceipts)
             {
@@ -1698,6 +1836,64 @@ namespace AnmolDristi
                 || (ClaimStatuses.Equals(status, ClaimStatuses.Approved) && ctx.DetailApprovedLevel < currentLevel);
         }
 
+        // Return-only. Does not make an Approved-at-current-level day approvable or forwardable.
+        private bool IsReturnableAtCurrentLevel(BulkDetailDbContext ctx, int currentLevel)
+        {
+            if (IsDetailActionableAtCurrentLevel(ctx, currentLevel))
+                return true;
+
+            if (!_l1MayReturnApprovedDay || ctx == null || !ctx.IsLatestDetailVersion || currentLevel != 1)
+                return false;
+
+            string status = ctx.DetailStatus ?? ClaimStatuses.Pending;
+            return ClaimStatuses.Equals(status, ClaimStatuses.Approved)
+                && ctx.DetailApprovedLevel == currentLevel;
+        }
+
+        private bool IsPendingWithL1AfterAuditorReturn(int reqId)
+        {
+            string user = GetLoggedInEmployeeCode();
+            if (string.IsNullOrWhiteSpace(user) || reqId <= 0)
+                return false;
+
+            const string sql = @"
+                SELECT CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM dbo.SalesApprovalRequest r
+                    WHERE r.ApprovalRequestId = @Id
+                      AND r.Status = @Pending
+                      AND ISNULL(r.CurrentApproverLevel, 0) = 1
+                      AND EXISTS (
+                          SELECT 1
+                          FROM dbo.ApprovalRequestStatusHistory h
+                          WHERE h.ApprovalRequestId = r.ApprovalRequestId
+                            AND h.OldStatus = @Pending
+                            AND h.NewStatus = @Pending
+                            AND h.Remarks LIKE @HistoryPrefix
+                      )
+                      AND EXISTS (
+                          SELECT 1
+                          FROM dbo.SalesApprovalRequestApprover a
+                          WHERE a.ApprovalRequestId = r.ApprovalRequestId
+                            AND a.ApproverLevel = 1
+                            AND a.Status = @Pending
+                            AND UPPER(LTRIM(RTRIM(a.ApproverRole))) = N'L1'
+                            AND UPPER(LTRIM(RTRIM(a.ApproverLoginId))) = UPPER(LTRIM(RTRIM(@User)))
+                      )
+                ) THEN 1 ELSE 0 END";
+
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(sql, con))
+            {
+                cmd.Parameters.Add("@Id", SqlDbType.Int).Value = reqId;
+                cmd.Parameters.Add("@Pending", SqlDbType.NVarChar, 50).Value = ClaimStatuses.Pending;
+                cmd.Parameters.Add("@HistoryPrefix", SqlDbType.NVarChar, 120).Value = AuditorReturnToL1HistoryPrefix + "%";
+                cmd.Parameters.Add("@User", SqlDbType.NVarChar, 100).Value = user.Trim();
+                con.Open();
+                return Convert.ToInt32(cmd.ExecuteScalar()) == 1;
+            }
+        }
+
         private static bool HasPendingReceiptsFromDb(IList<string> expenseStatuses)
         {
             if (expenseStatuses == null || expenseStatuses.Count == 0)
@@ -1773,6 +1969,17 @@ namespace AnmolDristi
                 return false;
             }
 
+            if (action == DayDetailAction.Return)
+            {
+                if (!IsReturnableAtCurrentLevel(ctx, currentLevel))
+                {
+                    skipReason = "Already processed";
+                    return false;
+                }
+
+                return true;
+            }
+
             if (!IsDetailActionableAtCurrentLevel(ctx, currentLevel))
             {
                 skipReason = "Already processed";
@@ -1794,9 +2001,6 @@ namespace AnmolDristi
                         return false;
                     }
 
-                    return true;
-
-                case DayDetailAction.Return:
                     return true;
 
                 case DayDetailAction.Reject:
@@ -2139,6 +2343,7 @@ namespace AnmolDristi
                 if (string.IsNullOrEmpty(hfActionRequestId.Value)) return;
 
                 int reqId = Convert.ToInt32(hfActionRequestId.Value);
+                _l1MayReturnApprovedDay = IsPendingWithL1AfterAuditorReturn(reqId);
                 string auditor = GetLoggedInEmployeeCode();
                 string rawRemarks = txtBulkRemarks.Text.Trim();
                 string remarks = AppendUserToRemark(rawRemarks, auditor);
@@ -2408,21 +2613,67 @@ namespace AnmolDristi
             return (ctx.Session["WORKMAN"] ?? ctx.Session["workman"]) as string;
         }
 
-        private static string GetLatestDetailStatus(int detailId, int reqId)
+        private static string GetLatestDetailStatus(int detailId, int reqId, SqlConnection con = null, SqlTransaction tran = null)
         {
-            using (var con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString))
-            using (var cmd = new SqlCommand(
-                @"SELECT d.DetailStatus
-                  FROM dbo.SalesApprovalRequestDetail d
-                  WHERE d.ApprovalRequestId = @Id
-                    AND d.ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId)
-                    AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim(), con))
+            // A bulk batch holds exclusive locks until its outer commit. A second
+            // connection scanning the same details waits out the 30-second command timeout.
+            bool ownsConnection = con == null;
+            if (ownsConnection)
             {
-                cmd.Parameters.AddWithValue("@Id", reqId);
-                cmd.Parameters.AddWithValue("@DetailId", detailId);
+                con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString);
                 con.Open();
-                object val = cmd.ExecuteScalar();
-                return val == null || val == DBNull.Value ? string.Empty : val.ToString().Trim();
+            }
+
+            try
+            {
+                using (var cmd = new SqlCommand(
+                    @"SELECT d.DetailStatus
+                      FROM dbo.SalesApprovalRequestDetail d
+                      WHERE d.ApprovalRequestId = @Id
+                        AND d.ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId)
+                        AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim(), con, tran))
+                {
+                    cmd.Parameters.AddWithValue("@Id", reqId);
+                    cmd.Parameters.AddWithValue("@DetailId", detailId);
+                    object val = cmd.ExecuteScalar();
+                    return val == null || val == DBNull.Value ? string.Empty : val.ToString().Trim();
+                }
+            }
+            finally
+            {
+                if (ownsConnection)
+                    con.Dispose();
+            }
+        }
+
+        private static int GetLatestDetailApprovedLevel(int detailId, int reqId, SqlConnection con = null, SqlTransaction tran = null)
+        {
+            bool ownsConnection = con == null;
+            if (ownsConnection)
+            {
+                con = new SqlConnection(ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString);
+                con.Open();
+            }
+
+            try
+            {
+                using (var cmd = new SqlCommand(
+                    @"SELECT ISNULL(d.DetailApprovedLevel, 0)
+                      FROM dbo.SalesApprovalRequestDetail d
+                      WHERE d.ApprovalRequestId = @Id
+                        AND d.ActivityId = (SELECT ActivityId FROM dbo.SalesApprovalRequestDetail WHERE ApprovalRequestDetailId = @DetailId)
+                        AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim(), con, tran))
+                {
+                    cmd.Parameters.AddWithValue("@Id", reqId);
+                    cmd.Parameters.AddWithValue("@DetailId", detailId);
+                    object val = cmd.ExecuteScalar();
+                    return val == null || val == DBNull.Value ? 0 : Convert.ToInt32(val);
+                }
+            }
+            finally
+            {
+                if (ownsConnection)
+                    con.Dispose();
             }
         }
 
@@ -2437,14 +2688,22 @@ namespace AnmolDristi
 
             if (action == DayDetailAction.Return)
             {
-                string detailStatus = GetLatestDetailStatus(detailId, reqId);
+                string detailStatus = GetLatestDetailStatus(detailId, reqId, con, tran);
                 if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
                     return;
+
+                int approvedLevel = GetLatestDetailApprovedLevel(detailId, reqId, con, tran);
+                int currentLevel = Convert.ToInt32(ViewState["CurrentUserLevel"] ?? 0);
+                if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Approved) && approvedLevel == currentLevel)
+                {
+                    if (!IsPendingWithL1AfterAuditorReturn(reqId))
+                        throw new Exception("This day has already been approved at your level.");
+                }
             }
 
             if (action == DayDetailAction.Approve)
             {
-                string detailStatus = GetLatestDetailStatus(detailId, reqId);
+                string detailStatus = GetLatestDetailStatus(detailId, reqId, con, tran);
                 if (ClaimStatuses.Equals(detailStatus, ClaimStatuses.Returned))
                     throw new Exception("Returned days cannot be approved until the employee resubmits.");
             }
@@ -2638,83 +2897,20 @@ namespace AnmolDristi
                 int reqId = Convert.ToInt32(hfActionRequestId.Value);
                 string auditor = GetLoggedInEmployeeCode();
 
+                // Advisory only. The procedure acquires the lock, recalculates, and writes status.
                 if (!IsCurrentUserAuditor())
                     throw new Exception("Only auditors can mark a claim ready for payment.");
 
                 EnsureCanFinalizeRequest(reqId);
-                ExecuteRecalculationSQL(reqId);
 
                 using (var con = new SqlConnection(connString))
+                using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
+                    cmd.Parameters.AddWithValue("@ActionBy", auditor ?? (object)DBNull.Value);
                     con.Open();
-                    EnsureHeaderCompletedForPayment(reqId, auditor, con);
-                    using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                        cmd.Parameters.AddWithValue("@ActionBy", auditor);
-                        cmd.ExecuteNonQuery();
-                    }
-
-                    //con.Open();
-                    //using (var tran = con.BeginTransaction())
-                    //{
-                    //    try
-                    //    {
-                    //        //    string fixStatusSql = @"
-                    //        //UPDATE dbo.SalesApprovalRequest 
-                    //        //SET Status = '" + ClaimStatuses.Completed + @"' 
-                    //        //WHERE ApprovalRequestId = @Id AND Status = '" + ClaimStatuses.Pending + @"';
-
-                    //        //IF @@ROWCOUNT > 0
-                    //        //BEGIN
-                    //        //    INSERT INTO dbo.ApprovalRequestStatusHistory 
-                    //        //    (ApprovalRequestId, OldStatus, NewStatus, ChangedBy, Remarks)
-                    //        //    VALUES 
-                    //        //    (@Id, 'Pending', 'Completed', @AuditorId, 'Auditor finalized all rows and synced calculations.');
-                    //        //END";
-
-                    //        //    using (var cmdFix = new SqlCommand(fixStatusSql, con, tran))
-                    //        //    {
-                    //        //        cmdFix.Parameters.AddWithValue("@Id", reqId);
-                    //        //        cmdFix.Parameters.AddWithValue("@AuditorId", auditor);
-                    //        //        cmdFix.ExecuteNonQuery();
-                    //        //    }
-
-                    //        //    string sqlWorkflow = @"
-                    //        //UPDATE dbo.SalesApprovalRequestApprover 
-                    //        //SET 
-                    //        //    Status = '" + ClaimStatuses.Approved + @"', 
-                    //        //    ActionBy = @AuditorId, 
-                    //        //    ActionDate = GETDATE() 
-                    //        //WHERE ApprovalRequestId = @Id 
-                    //        //  AND ApproverLevel = 2 
-                    //        //  AND Status = '" + ClaimStatuses.Pending + @"'";
-
-                    //        //    using (var cmdWorkflow = new SqlCommand(sqlWorkflow, con, tran))
-                    //        //    {
-                    //        //        cmdWorkflow.Parameters.AddWithValue("@Id", reqId);
-                    //        //        cmdWorkflow.Parameters.AddWithValue("@AuditorId", auditor);
-                    //        //        cmdWorkflow.ExecuteNonQuery();
-                    //        //    }
-
-                    //        using (var cmd = new SqlCommand("dbo.usp_MarkRequestReadyForPayment", con, tran))
-                    //        {
-                    //            cmd.CommandType = CommandType.StoredProcedure;
-                    //            cmd.Parameters.AddWithValue("@ApprovalRequestId", reqId);
-                    //            cmd.Parameters.AddWithValue("@ActionBy", auditor);
-                    //            cmd.ExecuteNonQuery();
-                    //        }
-
-                    //        // Commit the transaction
-                    //        tran.Commit();
-                    //    }
-                    //    catch (Exception ex)
-                    //    {
-                    //        tran.Rollback();
-                    //        throw new Exception("Finalization failed. Transaction rolled back.", ex);
-                    //    }
-                    //}
+                    cmd.ExecuteNonQuery();
                 }
 
                 lblModalMessage.Text = "Calculated & Marked Ready for Payment.";
@@ -2796,11 +2992,26 @@ namespace AnmolDristi
 
         [WebMethod(EnableSession = true)]
         [ScriptMethod(ResponseFormat = ResponseFormat.Json)]
-        public static object UpdateActivityKM(int activityId, decimal newKm, string reason)
+        public static object UpdateActivityKM(int activityId, decimal newKm, string reason, int expectedDetailId)
         {
+            string user = GetLoggedInEmployeeCodeFromSession();
+            if (string.IsNullOrWhiteSpace(user))
+                return new { success = false, message = "Your session has expired. Sign in again." };
+
+            if (!IsAuditorRole(GetApproverRoleFromSession()))
+                return new { success = false, message = "Only the Auditor who currently holds this request can modify KM." };
+
+            if (expectedDetailId <= 0)
+                return new { success = false, message = "The activity detail is missing. Reopen the day and try again." };
+
+            if (string.IsNullOrWhiteSpace(reason))
+                return new { success = false, message = "A reason is required to modify KM." };
+
+            if (newKm < 0m)
+                return new { success = false, message = "New KM must be zero or greater." };
+
             try
             {
-                string user = GetLoggedInEmployeeCodeFromSession() ?? "System";
                 string conn = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
                 using (var con = new SqlConnection(conn))
                 using (var cmd = new SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
@@ -2809,10 +3020,8 @@ namespace AnmolDristi
                     cmd.Parameters.AddWithValue("@ActivityId", activityId);
                     cmd.Parameters.AddWithValue("@NewKM", newKm);
                     cmd.Parameters.AddWithValue("@ChangedBy", user);
-                    //cmd.Parameters.AddWithValue("@Reason", reason);
-                    // Format the reason before sending to DB
-                    string formattedReason = AppendUserToRemark(reason, user);
-                    cmd.Parameters.AddWithValue("@Reason", formattedReason);
+                    cmd.Parameters.AddWithValue("@Reason", AppendUserToRemark(reason, user));
+                    cmd.Parameters.AddWithValue("@ExpectedDetailId", expectedDetailId);
                     con.Open();
                     cmd.ExecuteNonQuery();
                 }
@@ -2996,7 +3205,12 @@ namespace AnmolDristi
             string user = GetLoggedInEmployeeCode();
             using (var con = new SqlConnection(connString))
             using (var cmd = new SqlCommand(@"
-                SELECT TOP 1 a.ApproverLevel, a.ApproverRole
+                SELECT TOP 1
+                      a.ApproverLevel
+                    , a.ApproverRole
+                    , a.Status AS ApproverStatus
+                    , r.Status AS HeaderStatus
+                    , r.CurrentApproverLoginId
                 FROM dbo.SalesApprovalRequestApprover a
                 INNER JOIN dbo.SalesApprovalRequest r ON r.ApprovalRequestId = a.ApprovalRequestId
                 WHERE a.ApprovalRequestId = @Id
@@ -3018,10 +3232,18 @@ namespace AnmolDristi
                     if (rdr.Read())
                     {
                         string role = rdr["ApproverRole"].ToString();
+                        string approverStatus = rdr["ApproverStatus"] == DBNull.Value ? string.Empty : rdr["ApproverStatus"].ToString();
+                        string headerStatus = rdr["HeaderStatus"] == DBNull.Value ? string.Empty : rdr["HeaderStatus"].ToString();
+                        string currentApprover = rdr["CurrentApproverLoginId"] == DBNull.Value ? string.Empty : rdr["CurrentApproverLoginId"].ToString();
                         ViewState["CurrentUserLevel"] = Convert.ToInt32(rdr["ApproverLevel"]);
                         ViewState["CurrentUserRole"] = role;
                         Session[SessionApproverRoleKey] = role;
                         hfIsAuditor.Value = IsAuditorRole(role) ? "1" : "0";
+                        bool auditorHoldsPendingRequest = IsAuditorRole(role)
+                            && ClaimStatuses.Equals(approverStatus, ClaimStatuses.Pending)
+                            && ClaimStatuses.Equals(headerStatus, ClaimStatuses.Pending)
+                            && string.Equals(currentApprover, user, StringComparison.OrdinalIgnoreCase);
+                        hfAuditorKmEdit.Value = auditorHoldsPendingRequest ? "1" : "0";
                     }
                     else
                     {
@@ -3029,6 +3251,7 @@ namespace AnmolDristi
                         ViewState["CurrentUserRole"] = "";
                         Session[SessionApproverRoleKey] = "";
                         hfIsAuditor.Value = "0";
+                        hfAuditorKmEdit.Value = "0";
                     }
                 }
             }

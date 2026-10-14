@@ -8,7 +8,7 @@ namespace AnmolDristi
     /// </summary>
     public static class KmToleranceHelper
     {
-        public const int DefaultMaxModificationCount = 1;
+        public const int DefaultMaxModificationCount = 2;
 
         public static void ComputeAllowedRange(
             decimal currentKm,

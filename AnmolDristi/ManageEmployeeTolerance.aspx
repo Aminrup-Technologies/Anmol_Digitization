@@ -85,7 +85,7 @@
                                                 </div>
                                                 <div class="form-group">
                                                     <label>Maximum KM Modifications per Activity</label>
-                                                    <asp:TextBox ID="txtMaxKmModificationCount" runat="server" CssClass="form-control" Text="1" />
+                                                    <asp:TextBox ID="txtMaxKmModificationCount" runat="server" CssClass="form-control" Text="2" />
                                                     <small class="text-muted">Must be at least 1. Counts successful KM history entries per activity.</small>
                                                 </div>
                                                 <div class="form-group">

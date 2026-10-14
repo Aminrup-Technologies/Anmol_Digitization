@@ -1,0 +1,80 @@
+L2-R19 read-only preflight evidence
+Script inspected: Database/Deployments/L2R19_UAT/A_Preflight_ReadOnly_UAT.sql
+Target: AnmolDristiDev on MUMANMOAPP01\SQLEXPRESS
+Client: user-AnmolDristi-UAT-Reader execute_query and get_stored_procedure_definition
+The literal script batch was not submitted. The reader allows only SELECT text, and the script also contains SET NOCOUNT ON and THROW 58302.
+Each SELECT result set below was executed separately and the rows shown are the rows returned.
+No apply, rollback, post-apply, backup, restore, publish, or claim procedure was run.
+Hash method: HASHBYTES('SHA2_256', CONVERT(varbinary(max), definition)). That is SHA-256 of the UTF-16LE module text, with no BOM. LEN is characters. DATALENGTH is bytes.
+
+--- identity ---
+ServerName=MUMANMOAPP01\SQLEXPRESS
+DatabaseName=AnmolDristiDev
+ProductVersion=15.0.2000.5
+ServerPropertyName=MUMANMOAPP01\SQLEXPRESS
+LoginName=sa
+OriginalLogin=sa
+TranCount=0
+IdentityResult=IDENTITY MATCHES THE AUTHORIZED UAT TARGET
+The identity THROW was not executed.
+
+--- module hashes, 12 rows, none omitted ---
+procedure_name|modify_date|len_chars|data_length|sha256
+usp_Export_Auditor_Final_Excel|2026-10-08 08:50:40.810|3275|6550|381FB7CD94BFBA503F4E18F0003FD364A0C07FD291C296708259681EE4F8199C
+usp_ForwardApprovalRequest|2026-10-08 08:50:40.420|16455|32910|71B71698CD9B0F0555E9E213E508E3412824D932FE128D879AC40E2295068B1D
+usp_GetApprovalRequest|2026-09-15 23:56:30.760|2659|5318|C19617BE89B7BBC9AC5E3DC5B0972019EB709FAB881886072C730650148A440F
+usp_MarkRequestReadyForPayment|2026-10-12 14:02:57.583|2882|5764|8B2ECBCE8AC258D67A2C3CFCC6C45CC385F01354B8F5D8B5594409889685E158
+usp_ProcessApprovalAction|2026-10-10 11:01:43.440|33635|67270|F6471A308779E26D74A2B84B00A6DAF71DAA84FDFD5A7C71189F0DA5B61E13EE
+usp_RecalculateApprovalRequest|2026-09-15 23:55:42.430|6940|13880|D14FEF7DFF5F8C4E008B2485D445B897CA4B76FBB60D6E5CEF68745894BE5A9D
+usp_RecalculateSalesClaim|2026-10-08 08:50:40.357|28782|57564|F9CF46C81A1673FE35762282E2C6A1844536A7EF7DF7934372B488726D2D8597
+usp_ReturnClaimToEmployee|2026-06-15 11:10:29.793|2577|5154|E1093DEE0BFD51FA30A10D481DE33E819905E55D63FBFA60B3CC5527406434C1
+usp_SubmitSalesDailyActivities|2026-10-12 02:28:21.320|24828|49656|5BEDA23C85279789D325C66B573C37BB1E037DA5C0153695A435DEA9E7D37547
+usp_UpdateActivityKM|2026-10-08 08:50:40.530|7039|14078|CD6205400D9CB66A5E791A55502B061D859569A6A822A285A5460E005484A1D0
+usp_UpdateActivityKM_WithHistory|2026-10-08 08:50:40.467|3670|7340|EF7D5551D6867556B4A4FCB166512395B106E11B08AC6B940542B834E626AD28
+usp_UpdateSalesDailyExpenseStatus|2026-10-08 08:50:40.590|8010|16020|3DA56C797403A1CC0EBFF57CE5F7FF5705DC7E036E9B6EFC7A1F272FBC34EC9E
+
+--- schema objects, 13 rows ---
+dbo.TVP_ActivityUpdate|PASS
+dbo.usp_ForwardApprovalRequest|PASS
+SalesApprovalRequest.FinalApprovedAmount|PASS
+SalesApprovalRequest.CurrentApproverLoginId|PASS
+SalesApprovalRequest.CurrentApproverLevel|PASS
+SalesApprovalRequest.Status|PASS
+SalesApprovalRequestDetail.DetailVersion|PASS
+SalesApprovalRequestDetail.ApprovalRequestDetailId|PASS
+SalesApprovalRequestDetail.DetailApprovedLevel|PASS
+SalesDailyExpense.ClaimStatus|PASS
+SalesDailyExpense.IsDeleted|PASS
+SalesApprovalRequestApprover.ApproverRole|PASS
+ApprovalRequestStatusHistory.OldStatus|PASS
+
+--- indexes, 3 rows ---
+SalesApprovalRequestApprover|UX_SAR_Auditor_Once|unique=1|filter=1|([ApproverRole]='Auditor')|PASS
+SalesApprovalRequestDetail|IX_SalesApprovalRequestDetail_RequestId|unique=0|filter=0|(null)|PASS
+SalesDailyExpense|UQ_SalesDailyExpense_ActivityDateExpenseType_Seq|unique=1|filter=1|([IsDeleted]=(0))|PASS
+
+--- newest full backups, 5 rows, VERIFYONLY not run ---
+AnmolDristiDev|D|2026-10-08T11:02:11.000Z|2026-10-08T11:02:17.000Z|is_damaged=false|has_backup_checksums=true|D:\anmoldb\Backups\AnmolDristiDev_23Sep26.bak|DOES NOT QUALIFY
+AnmolDristiDev|D|2026-09-23T15:29:07.000Z|2026-09-23T15:29:16.000Z|is_damaged=false|has_backup_checksums=true|D:\anmoldb\Backups\AnmolDristiDev_23Sep26.bak|DOES NOT QUALIFY
+AnmolDristiDev|D|2026-09-23T15:15:37.000Z|2026-09-23T15:15:40.000Z|is_damaged=false|has_backup_checksums=true|D:\anmoldb\Backups\AnmolDristiDev_200726|DOES NOT QUALIFY
+AnmolDristiDev|D|2026-09-23T15:15:37.000Z|2026-09-23T15:15:40.000Z|is_damaged=false|has_backup_checksums=true|D:\anmoldb\Backups\AnmolDristiDev_16Sep26.bak|DOES NOT QUALIFY
+AnmolDristiDev|D|2026-09-16T14:12:07.000Z|2026-09-16T14:12:12.000Z|is_damaged=false|has_backup_checksums=true|D:\anmoldb\Backups\AnmolDristiDev_200726|DOES NOT QUALIFY
+
+--- five live definitions ---
+Retrieved with get_stored_procedure_definition, formatOutput=false, method OBJECT_DEFINITION().
+length_characters matched LEN for every procedure.
+Signatures observed in that text:
+usp_UpdateSalesDailyExpenseStatus(@ExpenseId INT, @NewStatus NVARCHAR(50), @ActionBy NVARCHAR(100), @Remarks NVARCHAR(MAX) = NULL)
+usp_ProcessApprovalAction(@ApprovalRequestDetailId INT, @Action NVARCHAR(20), @ActionBy NVARCHAR(100), @Remarks NVARCHAR(MAX) = NULL)
+usp_SubmitSalesDailyActivities(@Updates dbo.TVP_ActivityUpdate READONLY, @LoginId NVARCHAR(100), @Year INT, @Month INT, @Remarks NVARCHAR(1000)=NULL, @L1Code NVARCHAR(100), @L2Code NVARCHAR(100)=NULL, @L3Code NVARCHAR(100)=NULL, @AuditorCode NVARCHAR(100))
+usp_MarkRequestReadyForPayment(@ApprovalRequestId INT, @ActionBy NVARCHAR(100), @Remarks NVARCHAR(MAX) = NULL)
+usp_RecalculateApprovalRequest(@ApprovalRequestId INT)
+The module text is not repeated in this log. A second transcription was not written here, because only a file whose UTF-16LE SHA-256 equals the sha256 column is a rollback preimage.
+No live or Git definition was pasted into D_Rollback_L2R19_Finalization_UAT.sql.
+
+--- candidate comparison, catalog hashes already recorded for the working-tree package ---
+usp_UpdateSalesDailyExpenseStatus live LEN 8010 SHA 3DA56C797403A1CC0EBFF57CE5F7FF5705DC7E036E9B6EFC7A1F272FBC34EC9E differs from candidate LEN 12445 SHA 7C9007750F36C24F696B56EBC1AD7FC0A2CEC6441AD45A00815934D4FBC7E040. Live text calls usp_RecalculateSalesClaim and does not call usp_ProcessApprovalAction.
+usp_ProcessApprovalAction live LEN 33635 SHA F6471A308779E26D74A2B84B00A6DAF71DAA84FDFD5A7C71189F0DA5B61E13EE differs from candidate LEN 42021 SHA 3E86754A9C605F752468C616D9923BD7B22F2396FE84363FAAB0E5CFBDA04EB9.
+usp_SubmitSalesDailyActivities live LEN 24828 SHA 5BEDA23C85279789D325C66B573C37BB1E037DA5C0153695A435DEA9E7D37547 differs from candidate LEN 28066 SHA 18B9D5854ED396CCDD2CCC94AD80E6904FA1891C9DF3F907BD94D312F1A472BF. Live text commits without calling usp_RecalculateApprovalRequest.
+usp_MarkRequestReadyForPayment live LEN 2882 SHA 8B2ECBCE8AC258D67A2C3CFCC6C45CC385F01354B8F5D8B5594409889685E158 differs from candidate LEN 11179 SHA 118A8333EC49E8C11AAA2BCE46F4490A3DE7D11FD9EC84E01D6990DA8EBB4274. Live text has no error 59112. The live hash equals the hash already recorded for the embedded rollback preimage.
+usp_RecalculateApprovalRequest live LEN 6940 SHA D14FEF7DFF5F8C4E008B2485D445B897CA4B76FBB60D6E5CEF68745894BE5A9D differs from candidate LEN 7557 SHA 3ECC03CBD6C1AFF40CF7F6B7ECF5E637399A7D07B4A6AA4AB1FB219231F7900F. Live text uses RAISERROR and RETURN.

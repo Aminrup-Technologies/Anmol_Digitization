@@ -1,0 +1,51 @@
+RC-014B return catalog evidence
+Script: Database/Tests/RC014B/03_verify_return_catalog_readonly.sql
+dbo.usp_ReturnClaimToEmployee was not called.
+No application data was modified by this runner. The script under test is read-only catalog metadata.
+Client: System.Data.SqlClient
+TCP data source: 115.112.186.71
+Configured initial catalog: AnmolDristiDev
+Application Name: RC014B-catalog-readonly
+Script SHA256 before run: 13885AAB807D72B21787212E51D0C061D339481847CEC17996218819F8F521E2
+Script SHA256 after read: 13885AAB807D72B21787212E51D0C061D339481847CEC17996218819F8F521E2
+--- preflight ---
+PREFLIGHT | ServerName=MUMANMOAPP01\SQLEXPRESS
+PREFLIGHT | DatabaseName=AnmolDristiDev
+PREFLIGHT | ProductVersion=15.0.2000.5
+PREFLIGHT | LoginName=sa
+PREFLIGHT | OriginalLogin=sa
+PREFLIGHT | TranCount=0
+PREFLIGHT | ImplicitTransactionsOn=0
+PREFLIGHT | ServerLocalDateTime=2026-10-11T08:30:06.7022388
+PREFLIGHT | id_SalesApprovalRequestDetail=1108915022
+PREFLIGHT | id_SalesDailyActivity=580913141
+PREFLIGHT | id_SalesDailyExpense=1003866643
+PREFLIGHT | id_SalesApprovalRequestApprover=1188915307
+PREFLIGHT | id_SalesApprovalRequest=1556916618
+PREFLIGHT | id_ApprovalRequestStatusHistory=1348915877
+PREFLIGHT | vd_SalesApprovalRequestDetail=1
+PREFLIGHT | vd_SalesDailyActivity=1
+PREFLIGHT | vd_SalesDailyExpense=1
+PREFLIGHT | vd_SalesApprovalRequestApprover=1
+PREFLIGHT | vd_SalesApprovalRequest=1
+PREFLIGHT | vd_ApprovalRequestStatusHistory=1
+PREFLIGHT | authorized target and catalog visibility confirmed. Executing the catalog script unchanged.
+Client note | System.Data.SqlClient ExecuteReader returns "Subqueries are not allowed in this context" for this script's FOR XML PATH expressions before any catalog row is returned. sqlcmd executes the file as a batch. The script file is not modified.
+SQLCMD | C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\130\Tools\Binn\SQLCMD.EXE
+SQLCMD | -S 115.112.186.71 -d AnmolDristiDev -I -b -f 65001 -y 0 -Y 0 -w 8000 -s "|" -i Database/Tests/RC014B/03_verify_return_catalog_readonly.sql
+--- script output ---
+Msg 1046, Level 15, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 312
+Subqueries are not allowed in this context. Only scalar expressions are allowed.
+Msg 1046, Level 15, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 325
+Subqueries are not allowed in this context. Only scalar expressions are allowed.
+Msg 1046, Level 15, State 1, Server MUMANMOAPP01\SQLEXPRESS, Line 339
+Subqueries are not allowed in this context. Only scalar expressions are allowed.
+SQLCMD | exit_code=1
+--- end script output ---
+Script SHA256 after run: 13885AAB807D72B21787212E51D0C061D339481847CEC17996218819F8F521E2
+
+--- review ---
+The client note above is withdrawn. sqlcmd executed the unmodified file and SQL Server rejected the batch at compile time with the same error 1046. The reported lines are the three PRINT expressions that embed subqueries: index count at line 312, unique index count at line 325, and key constraint count at line 339. They are not the FOR XML PATH expressions.
+No CONTEXT line, trigger row, verdict, or approver-index row was returned. sqlcmd exit_code=1. The catalog script did not complete.
+Preflight confirmed the instance, database, and VIEW DEFINITION only. Preflight is not a substitute for the script result sets.
+Conclusion: NOT RUN as a catalog result. Do not treat this file as PASS. dbo.usp_ReturnClaimToEmployee was not called.

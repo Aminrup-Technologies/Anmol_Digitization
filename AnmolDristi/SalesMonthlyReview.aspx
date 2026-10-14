@@ -1544,7 +1544,7 @@
         </div>
 
 
-        <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-hidden="true" id="expenseModal">
+        <div class="modal fade bs-example-modal-lg" tabindex="-1" role="dialog" aria-hidden="true" id="expenseModal" data-backdrop="static" data-keyboard="false">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -2565,16 +2565,43 @@
                 if (!f3 || f3.length === 0) { showInlineError($resolve('FU_Attachment'), 'Invoice attachment is mandatory for Stationary'); return false; }
             }
             window.__so_expenseSaveInFlight = true;
+            // Full postback: a dirty flag here would raise the browser "Leave site?" beforeunload prompt.
+            if (window.ClaimsUx) ClaimsUx.clearDirty();
             var $btnSave = $resolve('BTN_SaveExpense');
             if ($btnSave.length) {
                 $btnSave.css({ 'pointer-events': 'none', 'opacity': '0.6' });
-                setTimeout(function () { $btnSave.prop('disabled', true); }, 0);
+                setTimeout(function () { if (window.__so_expenseSaveInFlight) $btnSave.prop('disabled', true); }, 0);
             }
             if (typeof showPageLoader === 'function') {
                 showPageLoader('Saving expense...', 'Please wait.');
             }
             return true;
         };
+
+        window.resetExpenseSaveState = function () {
+            if (!window.__so_expenseSaveInFlight) return;
+            window.__so_expenseSaveInFlight = false;
+            var $btnSave = $resolve('BTN_SaveExpense');
+            if ($btnSave.length) {
+                $btnSave.prop('disabled', false).css({ 'pointer-events': '', 'opacity': '' });
+            }
+            if (typeof hidePageLoader === 'function') hidePageLoader();
+        };
+
+        // Browser constraint validation (e.g. step="0.01") cancels the submit after the click handler has already shown the loader.
+        document.addEventListener('invalid', function () {
+            if (window.__so_expenseSaveInFlight) {
+                resetExpenseSaveState();
+
+                if (window.ClaimsUx && typeof window.ClaimsUx.markDirty === 'function') {
+                    window.ClaimsUx.markDirty();
+                }
+            }
+        }, true);
+
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) resetExpenseSaveState();
+        });
 
         $(document).on('input change', '.so-err, input, select, textarea', function () { removeInlineError($(this)); });
 

@@ -1,4 +1,21 @@
 /* ============================================================================
+   NAME:        expense_return_opens_employee_correction
+   WHEN:        2026-10-13
+   WHY:         Returning one expense set only SalesDailyExpense.ClaimStatus.
+                The latest detail, activity, header, and L1 approver stayed
+                Pending. Forward then refused the Returned expense, and the
+                employee page only reopens a day whose latest detail is
+                Returned. The receipt could not be corrected or resubmitted.
+   WHAT:        A Returned expense calls dbo.usp_ProcessApprovalAction for that
+                latest detail with RETURN, in the same transaction as the
+                expense update. That is the existing day-return path: latest
+                detail, activity, non-rejected expenses on that day, the L1
+                approver row, and the header become Returned, then recalc runs
+                before commit. Approve and Reject still update the one expense,
+                then recalc writes FinalApprovedAmount before commit.
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        rc023_expense_auth_payment_lock
    WHEN:        2026-09-23
    WHY:         Expense mutations had no current-approver, header-status, or payment lock
@@ -34,6 +51,7 @@ CREATE OR ALTER PROCEDURE [dbo].[usp_UpdateSalesDailyExpenseStatus]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
     DECLARE
           @NormalizedStatus         NVARCHAR(50) = UPPER(LTRIM(RTRIM(ISNULL(@NewStatus, N''))))
@@ -116,12 +134,15 @@ BEGIN
         RETURN;
     END;
 
-    SELECT
-          @RequestStatus          = r.Status
-        , @CurrentApproverLoginId = r.CurrentApproverLoginId
-        , @CurrentApproverLevel   = r.CurrentApproverLevel
-    FROM dbo.SalesApprovalRequest r WITH (UPDLOCK, HOLDLOCK)
-    WHERE r.ApprovalRequestId = @ApprovalRequestId;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        SELECT
+              @RequestStatus          = r.Status
+            , @CurrentApproverLoginId = r.CurrentApproverLoginId
+            , @CurrentApproverLevel   = r.CurrentApproverLevel
+        FROM dbo.SalesApprovalRequest r WITH (UPDLOCK, HOLDLOCK)
+        WHERE r.ApprovalRequestId = @ApprovalRequestId;
 
     SELECT TOP (1)
           @CurrentApproverRole = a.ApproverRole
@@ -134,29 +155,20 @@ BEGIN
     -- Payment Lock: Completed / ReadyForPayment are immutable for expense mutations.
     --------------------------------------------------------------------
     IF ISNULL(@RequestStatus, N'') IN (N'Completed', N'ReadyForPayment')
-    BEGIN
-        RAISERROR('This approval request is locked for payment and cannot be modified.', 16, 1);
-        RETURN;
-    END;
+        THROW 59131, 'This approval request is locked for payment and cannot be modified.', 1;
 
     --------------------------------------------------------------------
     -- Header status: expense actions only while Pending.
     --------------------------------------------------------------------
     IF ISNULL(@RequestStatus, N'') <> N'Pending'
-    BEGIN
-        RAISERROR('This approval request is not currently awaiting approval and cannot be processed.', 16, 1);
-        RETURN;
-    END;
+        THROW 59132, 'This approval request is not currently awaiting approval and cannot be processed.', 1;
 
     --------------------------------------------------------------------
     -- Current Approver: only the holder of the request may mutate expenses.
     --------------------------------------------------------------------
     IF @CurrentApproverLoginId IS NULL
        OR UPPER(LTRIM(RTRIM(@CurrentApproverLoginId))) <> UPPER(LTRIM(RTRIM(@ActionBy)))
-    BEGIN
-        RAISERROR('You are not the current approver for this approval request.', 16, 1);
-        RETURN;
-    END;
+        THROW 59133, 'You are not the current approver for this approval request.', 1;
 
     --------------------------------------------------------------------
     -- Role enforcement (expense-level; mirrors day-level ProcessApprovalAction).
@@ -164,31 +176,39 @@ BEGIN
     --   Auditor : Approve or Reject. Must NOT Return.
     --------------------------------------------------------------------
     IF @NormalizedStatus = N'REJECTED' AND ISNULL(@CurrentApproverRole, N'') <> N'Auditor'
-    BEGIN
-        RAISERROR('Only the Auditor may reject an expense. Managers return an expense for correction instead.', 16, 1);
-        RETURN;
-    END;
+        THROW 59134, 'Only the Auditor may reject an expense. Managers return an expense for correction instead.', 1;
 
     IF @NormalizedStatus = N'RETURNED' AND ISNULL(@CurrentApproverRole, N'') = N'Auditor'
-    BEGIN
-        RAISERROR('The Auditor cannot return an expense. Auditors approve or reject; managers return for correction.', 16, 1);
-        RETURN;
-    END;
+        THROW 59135, 'The Auditor cannot return an expense. Auditors approve or reject; managers return for correction.', 1;
 
-    -- 2️⃣ Update the Expense Status AND Remarks
-    UPDATE dbo.SalesDailyExpense
-    SET
-        ClaimStatus = @NewStatus,
-        Remarks = @Remarks,
-        ClaimProcessedBy = @ActionBy,
-        ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
-        ModifiedBy = @ActionBy,
-        ModifiedOn = SYSUTCDATETIME()
-    WHERE ExpenseId = @ExpenseId;
+        -- 2️⃣ Update the Expense Status AND Remarks
+        UPDATE dbo.SalesDailyExpense
+        SET
+            ClaimStatus = @NewStatus,
+            Remarks = @Remarks,
+            ClaimProcessedBy = @ActionBy,
+            ClaimProcessedDate = DATEADD(MINUTE, 330, SYSUTCDATETIME()),
+            ModifiedBy = @ActionBy,
+            ModifiedOn = SYSUTCDATETIME()
+        WHERE ExpenseId = @ExpenseId;
 
-    -- 3️⃣ CHAIN REACTION: RECALCULATE latest-detail snapshots (four-part incl. Stationary)
-    IF @ApprovalRequestDetailId IS NOT NULL
-    BEGIN
+        IF @@ROWCOUNT <> 1
+            THROW 59136, 'The expense row was not updated.', 1;
+
+        IF @NewStatus = N'Returned'
+        BEGIN
+            -- Day return owns the correction lifecycle: latest detail, activity,
+            -- non-rejected expenses on that day, L1 approver, header, history,
+            -- and dbo.usp_RecalculateApprovalRequest. A failure rolls back the
+            -- expense update above.
+            EXEC dbo.usp_ProcessApprovalAction
+                  @ApprovalRequestDetailId = @ApprovalRequestDetailId
+                , @Action = N'RETURN'
+                , @ActionBy = @ActionBy
+                , @Remarks = @Remarks;
+        END
+        ELSE IF @ApprovalRequestDetailId IS NOT NULL
+        BEGIN
         UPDATE dbo.SalesApprovalRequestDetail
         SET
             Snapshot_DAAmount = ISNULL((SELECT SUM(Amount) FROM dbo.SalesDailyExpense WHERE ActivityId = @ActivityId AND ExpenseType = 'DA' AND IsDeleted = 0 AND ISNULL(ClaimStatus,'') <> 'Rejected'), 0),
@@ -228,11 +248,23 @@ BEGIN
             ON d.ApprovalRequestDetailId = latest.LatestDetailId
         WHERE d.ApprovalRequestId = @ApprovalRequestId;
 
-        UPDATE dbo.SalesApprovalRequest
-        SET
-            TotalClaimAmount = @HeaderTotalClaim,
-            TotalExpenseAmount = @HeaderTotalExpense,
-            ModifiedOn = SYSUTCDATETIME()
-        WHERE ApprovalRequestId = @ApprovalRequestId;
-    END
+            UPDATE dbo.SalesApprovalRequest
+            SET
+                TotalClaimAmount = @HeaderTotalClaim,
+                TotalExpenseAmount = @HeaderTotalExpense,
+                ModifiedOn = SYSUTCDATETIME()
+            WHERE ApprovalRequestId = @ApprovalRequestId;
+
+            EXEC dbo.usp_RecalculateApprovalRequest
+                @ApprovalRequestId = @ApprovalRequestId;
+        END
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        THROW;
+    END CATCH
 END

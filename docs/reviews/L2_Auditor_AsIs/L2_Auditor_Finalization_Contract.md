@@ -5,7 +5,11 @@
 **Sources:** repository + SQL MCP `anmol_uat` → `AnmolDristiDev`  
 **Constraint:** definitions/catalog only. No DML. No repository or SQL changes.
 
-**Verdict: FAIL**
+**Supersession 2026-10-12:** This 2026-09-15 proof is not the current finalization path. UAT Request 126 recorded Pending → Completed, then Completed → ReadyForPayment. The FAIL table below is the historical proof only.
+
+**Proposed candidate 2026-10-13 (not an approved contract):** Repository and UAT `usp_ProcessApprovalAction` leave the final Auditor row and the header Pending. LIVE executable text, read 2026-10-13, approves that Auditor row and writes header Completed, clearing `CurrentApproverLevel`. The working-tree candidate accepts both shapes: it approves a Pending Auditor row once, does not write an already Approved row again, and writes ReadyForPayment after recalculation under detail, expense, approver, then header locks. It has not been executed and is not the release contract. Current release status remains L2-R19: **BLOCKED — OWNER APPROVAL REQUIRED**. UAT preparation on 2026-10-13 found no material source defect. The UAT reader was `AnmolDristiDev` on `MUMANMOAPP01\SQLEXPRESS`. The newest full backup of that database finished 2026-10-08 11:02:17 and is not a current recovery point. The unexecuted package is `Database/Deployments/L2R19_UAT`.
+
+**Verdict at capture (2026-09-15): FAIL**
 
 The live Auditor path never writes `SalesApprovalRequest.Status = 'Completed'`. `usp_MarkRequestReadyForPayment` requires that value. No live v2 caller patches the header afterward.
 

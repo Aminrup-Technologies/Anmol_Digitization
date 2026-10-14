@@ -193,6 +193,15 @@ namespace AnmolDristi {
         protected global::System.Web.UI.WebControls.Label lblSummaryOriginalKM;
         
         /// <summary>
+        /// divSummaryDeduction control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divSummaryDeduction;
+        
+        /// <summary>
         /// lblSummaryDeduction control.
         /// </summary>
         /// <remarks>
@@ -209,6 +218,15 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.Label lblSummaryDeductedKM;
+        
+        /// <summary>
+        /// divSummaryApproved control.
+        /// </summary>
+        /// <remarks>
+        /// Auto-generated field.
+        /// To modify move field declaration from designer file to code-behind file.
+        /// </remarks>
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divSummaryApproved;
         
         /// <summary>
         /// lblSummaryApproved control.

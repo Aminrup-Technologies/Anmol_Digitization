@@ -276,6 +276,14 @@ namespace AnmolDristi
                         lblPendingWith.CssClass = "badge badge-warning text-dark px-2 py-1";
                     }
 
+                    // Pending/Returned header approved totals are not final until SQL recalculates them.
+                    Label lblApprovedAmount = e.Row.FindControl("lblApprovedAmount") as Label;
+                    if (lblApprovedAmount != null && IsApprovedAmountHiddenForStatus(status))
+                    {
+                        lblApprovedAmount.Text = isReturned ? "Corrections Required" : "Under Review";
+                        lblApprovedAmount.CssClass = "small font-weight-bold text-muted";
+                    }
+
                     if (lblStatus != null)
                     {
                         if (ClaimStatuses.Equals(status, ClaimStatuses.Rejected))
@@ -695,6 +703,16 @@ namespace AnmolDristi
             lblSummaryOriginalKM.Text = originalClaimedKM.ToString("N2");
             lblSummaryApprovedKM.Text = currentApprovedKM.ToString("N2");
             lblSummaryDeductedKM.Text = totalDeductedKM.ToString("N2");
+
+            bool hideApproved = IsApprovedAmountHiddenForStatus(_currentHeaderStatus);
+            divSummaryDeduction.Visible = !hideApproved;
+            divSummaryApproved.Visible = !hideApproved;
+        }
+
+        private static bool IsApprovedAmountHiddenForStatus(string headerStatus)
+        {
+            return ClaimStatuses.Equals(headerStatus, ClaimStatuses.Pending)
+                || ClaimStatuses.Equals(headerStatus, ClaimStatuses.Returned);
         }
 
         protected void gvDetails_RowDataBound(object sender, GridViewRowEventArgs e)

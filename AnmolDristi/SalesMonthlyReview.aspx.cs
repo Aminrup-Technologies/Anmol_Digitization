@@ -230,14 +230,18 @@ namespace AnmolDristi
                     {
                         string s = (approvalStatus ?? "").Trim();
 
-                        // ⬅️ 1. Add "Returned" to the overall status check
                         if (ClaimStatuses.Equals(s, ClaimStatuses.Draft) ||
-                            ClaimStatuses.Equals(s, ClaimStatuses.Rejected) ||
-                            ClaimStatuses.Equals(s, ClaimStatuses.Returned))
+                            ClaimStatuses.Equals(s, ClaimStatuses.Rejected))
                         {
                             monthLocked = false;
                             allowSubmission = true;
                             foreach (DataRow row in dt.Rows) row["IsEditable"] = true;
+                        }
+                        else if (ClaimStatuses.Equals(s, ClaimStatuses.Returned))
+                        {
+                            monthLocked = true;
+                            allowSubmission = false;
+                            MarkEligibleLatestReturnedRows(dt, con, approvalRequestId.Value, ref allowSubmission);
                         }
                         else if (ClaimStatuses.Equals(s, ClaimStatuses.Processed)
                             || !IsRecognizedMonthClaimStatus(s))
@@ -459,12 +463,12 @@ namespace AnmolDristi
                 {
                     lbl_msg.Text = "Monthly claims for this period have been submitted for approval. Editing is disabled except for returned days awaiting your correction.";
                     lbl_msg.ForeColor = System.Drawing.Color.Orange;
-                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLocked", "showPNotify('Submitted for Approval', 'Monthly claims are submitted. Editing disabled except rejected rows.', 'info');", true);
+                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLocked", "showPNotify('Submitted for Approval', 'Monthly claims are submitted. Editing disabled except returned days.', 'info');", true);
                 }
                 else if (monthLocked && allowSubmission)
                 {
                     // ⬅️ 5. NEW: Bold warning telling the SO to fix and Submit
-                    lbl_msg.Text = "⚠️ Action Required: You have Returned/Rejected claims. Please edit the highlighted rows and click 'Submit' below to re-send them for approval.";
+                    lbl_msg.Text = "⚠️ Action Required: You have returned claims. Please edit the highlighted returned days and click 'Submit' below to re-send them for approval.";
                     lbl_msg.ForeColor = System.Drawing.Color.Red;
                     ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyAction", "showPNotify('Action Required', 'Please fix your Returned claims and hit Submit.', 'error');", true);
                 }
@@ -514,9 +518,9 @@ namespace AnmolDristi
             int actId;
             if (!int.TryParse(activityId, out actId) || actId <= 0) return;
 
-            string claimStatus = GetActivityClaimStatus(actId);
-            string detailStatus = GetActivityDetailStatus(actId);
-            bool canEditExpense = ClaimEditabilityHelper.CanEditExpense(claimStatus, detailStatus);
+            ActivityEditContext ctx = LoadActivityEditContext(actId);
+            bool canEditExpense = CanEmployeeEditActivityExpenses(ctx);
+            string claimStatus = ctx.Found ? ctx.ClaimStatus : ClaimStatuses.Unknown;
 
             if (!canEditExpense)
             {
@@ -540,7 +544,7 @@ namespace AnmolDristi
 
                 if (LBL_ExpenseMsg != null)
                 {
-                    LBL_ExpenseMsg.Text = ClaimEditabilityHelper.IsRejectedDay(claimStatus, detailStatus)
+                    LBL_ExpenseMsg.Text = ClaimEditabilityHelper.IsRejectedDay(ctx.ClaimStatus, ctx.DetailStatus)
                         ? "This day was rejected by the auditor. Expenses cannot be edited."
                         : "This day is " + claimStatus + ". You are in view-only mode.";
                     LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
@@ -1158,9 +1162,12 @@ namespace AnmolDristi
 
         private void ApplyExpenseModalViewOnlyStateForKmModal(int activityId)
         {
-            string detailStatus = GetActivityDetailStatus(activityId);
+            ActivityEditContext ctx = LoadActivityEditContext(activityId);
+            string detailStatus = ctx.Found && !string.IsNullOrWhiteSpace(ctx.DetailStatus)
+                ? ctx.DetailStatus
+                : ClaimStatuses.Draft;
 
-            if (!ClaimEditabilityHelper.CanEditExpenseByDetailStatus(detailStatus))
+            if (!CanEmployeeEditActivityExpenses(ctx))
             {
                 if (BTN_SaveExpense != null) BTN_SaveExpense.Visible = false;
                 if (DDL_ExpenseType != null) DDL_ExpenseType.Enabled = false;
@@ -1197,53 +1204,101 @@ namespace AnmolDristi
             }
         }
 
-        private string GetActivityClaimStatus(int activityId)
+        private sealed class ActivityEditContext
         {
-            string currentStatus = ClaimStatuses.Draft;
-            using (SqlConnection conStat = new SqlConnection(connString))
-            using (SqlCommand cmdStat = new SqlCommand("SELECT ClaimStatus FROM dbo.SalesDailyActivity WITH (NOLOCK) WHERE ActivityId = @ActId", conStat))
-            {
-                cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                conStat.Open();
-                object statObj = cmdStat.ExecuteScalar();
-                if (statObj != null && statObj != DBNull.Value) currentStatus = statObj.ToString().Trim();
-            }
-            return currentStatus;
+            public bool Found;
+            public string ClaimStatus = ClaimStatuses.Draft;
+            public string DetailStatus = string.Empty;
+            public string RequestStatus = string.Empty;
+            public bool IsEligibleLatestReturned;
         }
 
-        private string GetActivityDetailStatus(int activityId)
+        private ActivityEditContext LoadActivityEditContext(int activityId)
         {
-            string detailStatus = ClaimStatuses.Draft;
-            using (SqlConnection conStat = new SqlConnection(connString))
-            using (SqlCommand cmdStat = new SqlCommand(@"
-                SELECT ISNULL(d.DetailStatus, '" + ClaimStatuses.Draft + @"')
-                FROM dbo.SalesApprovalRequestDetail d WITH (NOLOCK)
-                INNER JOIN (
-                    SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
-                    FROM dbo.SalesApprovalRequestDetail WITH (NOLOCK)
-                    WHERE ActivityId = @ActId
-                    GROUP BY ActivityId
+            var ctx = new ActivityEditContext();
+            if (activityId <= 0) return ctx;
+
+            string loginId = GetCurrentUserLoginId(false);
+            if (string.IsNullOrWhiteSpace(loginId)) return ctx;
+
+            using (SqlConnection con = new SqlConnection(connString))
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT
+                      a.ClaimStatus
+                    , r.Status AS RequestStatus
+                    , latest.DetailStatus
+                FROM dbo.SalesDailyActivity a
+                LEFT JOIN dbo.SalesApprovalRequest r
+                    ON r.ApprovalRequestId = a.ApprovalRequestId
+                OUTER APPLY (
+                    SELECT TOP (1) d.DetailStatus
+                    FROM dbo.SalesApprovalRequestDetail d
+                    WHERE d.ActivityId = a.ActivityId
+                      AND d.ApprovalRequestId = a.ApprovalRequestId
+                    ORDER BY ISNULL(d.DetailVersion, 1) DESC, d.ApprovalRequestDetailId DESC
                 ) latest
-                    ON latest.ActivityId = d.ActivityId
-                   AND ISNULL(d.DetailVersion, 1) = latest.LatestVersion
-                WHERE d.ActivityId = @ActId", conStat))
+                WHERE a.ActivityId = @ActId
+                  AND a.Login_Id = @LoginId", con))
             {
-                cmdStat.Parameters.AddWithValue("@ActId", activityId);
-                conStat.Open();
-                object statObj = cmdStat.ExecuteScalar();
-                if (statObj != null && statObj != DBNull.Value) detailStatus = statObj.ToString().Trim();
+                cmd.Parameters.AddWithValue("@ActId", activityId);
+                cmd.Parameters.AddWithValue("@LoginId", loginId);
+                con.Open();
+                using (SqlDataReader rdr = cmd.ExecuteReader())
+                {
+                    if (!rdr.Read()) return ctx;
+                    ctx.Found = true;
+                    if (rdr["ClaimStatus"] != DBNull.Value)
+                        ctx.ClaimStatus = rdr["ClaimStatus"].ToString().Trim();
+                    if (rdr["RequestStatus"] != DBNull.Value)
+                        ctx.RequestStatus = rdr["RequestStatus"].ToString().Trim();
+                    if (rdr["DetailStatus"] != DBNull.Value)
+                        ctx.DetailStatus = rdr["DetailStatus"].ToString().Trim();
+                }
             }
-            return detailStatus;
+
+            ctx.IsEligibleLatestReturned =
+                ClaimStatuses.Equals(ctx.RequestStatus, ClaimStatuses.Returned)
+                && ClaimStatuses.Equals(ctx.DetailStatus, ClaimStatuses.Returned)
+                && !ClaimStatuses.Equals(ctx.ClaimStatus, ClaimStatuses.Rejected);
+            return ctx;
+        }
+
+        private static bool CanEmployeeEditActivityExpenses(ActivityEditContext ctx)
+        {
+            if (ctx == null || !ctx.Found) return false;
+            if (ClaimEditabilityHelper.IsRejectedDay(ctx.ClaimStatus, ctx.DetailStatus))
+                return false;
+            if (ClaimStatuses.Equals(ctx.RequestStatus, ClaimStatuses.Returned))
+                return ctx.IsEligibleLatestReturned;
+            return ClaimEditabilityHelper.CanEditExpense(ctx.ClaimStatus, ctx.DetailStatus);
         }
 
         private bool CanPersistActivityKm(int activityId, out string currentStatus)
         {
-            string claimStatus = GetActivityClaimStatus(activityId);
-            string detailStatus = GetActivityDetailStatus(activityId);
+            ActivityEditContext ctx = LoadActivityEditContext(activityId);
+            if (!ctx.Found)
+            {
+                currentStatus = ClaimStatuses.Unknown;
+                return false;
+            }
+
+            if (ClaimEditabilityHelper.IsRejectedDay(ctx.ClaimStatus, ctx.DetailStatus))
+            {
+                currentStatus = ClaimStatuses.Rejected;
+                return false;
+            }
+
+            if (ClaimStatuses.Equals(ctx.RequestStatus, ClaimStatuses.Returned))
+            {
+                currentStatus = ClaimStatuses.Returned;
+                return ctx.IsEligibleLatestReturned;
+            }
+
+            string claimStatus = ctx.ClaimStatus;
+            string detailStatus = ctx.DetailStatus;
 
             if (ClaimStatuses.Equals(claimStatus, ClaimStatuses.Approved)
-                || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending)
-                || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Rejected))
+                || ClaimStatuses.Equals(claimStatus, ClaimStatuses.Pending))
             {
                 currentStatus = claimStatus;
                 return false;
@@ -1261,6 +1316,82 @@ namespace AnmolDristi
 
             currentStatus = !string.IsNullOrWhiteSpace(detailStatus) ? detailStatus : claimStatus;
             return false;
+        }
+
+        private void MarkEligibleLatestReturnedRows(DataTable dt, SqlConnection con, int approvalRequestId, ref bool allowSubmission)
+        {
+            var detailStatusByActivity = new Dictionary<int, string>();
+            var detailRemarksByActivity = new Dictionary<int, string>();
+            var detailApprovedByByActivity = new Dictionary<int, string>();
+
+            using (SqlCommand cmd2 = new SqlCommand(@"
+                SELECT ActivityId, DetailStatus, DetailRemarks, DetailApprovedBy
+                FROM (
+                    SELECT ActivityId, DetailStatus, DetailRemarks, DetailApprovedBy,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY ActivityId
+                               ORDER BY ISNULL(DetailVersion, 1) DESC, ApprovalRequestDetailId DESC
+                           ) AS rn
+                    FROM dbo.SalesApprovalRequestDetail
+                    WHERE ApprovalRequestId = @Id
+                ) x
+                WHERE rn = 1", con))
+            {
+                cmd2.Parameters.AddWithValue("@Id", approvalRequestId);
+                using (SqlDataReader rdr = cmd2.ExecuteReader())
+                {
+                    while (rdr.Read())
+                    {
+                        int aid = rdr["ActivityId"] != DBNull.Value ? Convert.ToInt32(rdr["ActivityId"]) : 0;
+                        if (aid <= 0) continue;
+
+                        string detail = rdr["DetailStatus"] != DBNull.Value ? rdr["DetailStatus"].ToString() : null;
+                        if (!string.IsNullOrWhiteSpace(detail))
+                            detailStatusByActivity[aid] = detail;
+
+                        if (rdr["DetailRemarks"] != DBNull.Value)
+                        {
+                            string remarks = rdr["DetailRemarks"].ToString();
+                            if (!string.IsNullOrWhiteSpace(remarks))
+                                detailRemarksByActivity[aid] = remarks;
+                        }
+
+                        if (rdr["DetailApprovedBy"] != DBNull.Value)
+                        {
+                            string approvedBy = rdr["DetailApprovedBy"].ToString();
+                            if (!string.IsNullOrWhiteSpace(approvedBy))
+                                detailApprovedByByActivity[aid] = approvedBy;
+                        }
+                    }
+                }
+            }
+
+            if (!dt.Columns.Contains("DetailStatus"))
+                dt.Columns.Add("DetailStatus", typeof(string));
+            if (!dt.Columns.Contains("DetailRemarks"))
+                dt.Columns.Add("DetailRemarks", typeof(string));
+            if (!dt.Columns.Contains("DetailApprovedBy"))
+                dt.Columns.Add("DetailApprovedBy", typeof(string));
+
+            foreach (DataRow row in dt.Rows)
+            {
+                int actId = row["ActivityId"] != DBNull.Value ? Convert.ToInt32(row["ActivityId"]) : 0;
+                string detail = detailStatusByActivity.ContainsKey(actId) ? detailStatusByActivity[actId] : string.Empty;
+                string claimStatus = row.Table.Columns.Contains("ClaimStatus") && row["ClaimStatus"] != DBNull.Value
+                    ? row["ClaimStatus"].ToString().Trim()
+                    : string.Empty;
+                bool eligible = ClaimStatuses.Equals(detail, ClaimStatuses.Returned)
+                    && !ClaimEditabilityHelper.IsRejectedDay(claimStatus, detail);
+
+                row["IsEditable"] = eligible;
+                row["DetailStatus"] = string.IsNullOrWhiteSpace(detail) ? (object)DBNull.Value : detail;
+                if (detailRemarksByActivity.ContainsKey(actId))
+                    row["DetailRemarks"] = detailRemarksByActivity[actId];
+                if (detailApprovedByByActivity.ContainsKey(actId))
+                    row["DetailApprovedBy"] = detailApprovedByByActivity[actId];
+                if (eligible)
+                    allowSubmission = true;
+            }
         }
 
         private void HandleEditRowCommand(string commandArgument)
@@ -1567,7 +1698,7 @@ namespace AnmolDristi
             {
                 using (SqlConnection con = new SqlConnection(connString))
                 using (SqlCommand cmd = new SqlCommand(@"
-SELECT TOP 1 ISNULL(MaxKmModificationCount, 1)
+SELECT TOP 1 ISNULL(MaxKmModificationCount, " + KmToleranceHelper.DefaultMaxModificationCount.ToString(CultureInfo.InvariantCulture) + @")
 FROM dbo.MST_EmployeeTolerance WITH (NOLOCK)
 WHERE EmployeeCode = @EmployeeCode
   AND IsActive = 1
@@ -1627,7 +1758,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             {
                 using (SqlConnection con = new SqlConnection(connString))
                 using (SqlCommand cmd = new SqlCommand(@"
-SELECT TOP 1 MinAllowedKM, MaxAllowedKM, ISNULL(MaxKmModificationCount, 1) AS MaxKmModificationCount
+SELECT TOP 1 MinAllowedKM, MaxAllowedKM, ISNULL(MaxKmModificationCount, " + KmToleranceHelper.DefaultMaxModificationCount.ToString(CultureInfo.InvariantCulture) + @") AS MaxKmModificationCount
 FROM dbo.MST_EmployeeTolerance WITH (NOLOCK)
 WHERE EmployeeCode = @EmployeeCode
   AND IsActive = 1
@@ -1683,7 +1814,9 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             BindParentTravelDistance(currentKm);
 
             int usedCount = GetKmModificationCount(activityId);
-            bool canSave = usedCount < tolerance.MaxModificationCount;
+            string blockedStatus;
+            bool canPersistKm = CanPersistActivityKm(activityId, out blockedStatus);
+            bool canSave = canPersistKm && usedCount < tolerance.MaxModificationCount;
             if (btnSaveKm != null) btnSaveKm.Enabled = canSave;
 
             decimal? allowedMin;
@@ -2388,32 +2521,109 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
         private bool IsActivityEditableForExpenseDelete(int activityId)
         {
-            if (activityId <= 0) return false;
+            return ActivityAllowsExpenseDelete(LoadActivityEditContext(activityId));
+        }
 
-            string claimStatus = ClaimStatuses.Draft;
-            string detailStatus = string.Empty;
+        private static bool ActivityAllowsExpenseDelete(ActivityEditContext ctx)
+        {
+            if (ctx == null || !ctx.Found) return false;
+            if (ClaimEditabilityHelper.IsRejectedDay(ctx.ClaimStatus, ctx.DetailStatus))
+                return false;
+            if (ClaimStatuses.Equals(ctx.RequestStatus, ClaimStatuses.Returned))
+                return ctx.IsEligibleLatestReturned;
+            return ClaimEditabilityHelper.CanDeleteExpenseForActivity(ctx.ClaimStatus, ctx.DetailStatus);
+        }
 
-            using (SqlConnection con = new SqlConnection(connString))
-            using (SqlCommand cmd = new SqlCommand(
-                @"SELECT a.ClaimStatus,
-                         (SELECT TOP 1 ISNULL(d.DetailStatus, '')
-                          FROM dbo.SalesApprovalRequestDetail d
-                          WHERE d.ActivityId = a.ActivityId
-                          ORDER BY d.ApprovalRequestDetailId DESC) AS DetailStatus
-                  FROM dbo.SalesDailyActivity a WITH (NOLOCK)
-                  WHERE a.ActivityId = @ActId", con))
+        private ActivityEditContext LoadLockedActivityEditContext(SqlConnection con, SqlTransaction tx, int activityId)
+        {
+            var ctx = new ActivityEditContext();
+            if (activityId <= 0 || con == null || tx == null) return ctx;
+
+            string loginId = GetCurrentUserLoginId(false);
+            if (string.IsNullOrWhiteSpace(loginId)) return ctx;
+
+            int approvalRequestId = 0;
+            using (var actCmd = new SqlCommand(@"
+                SELECT a.ClaimStatus, a.ApprovalRequestId
+                FROM dbo.SalesDailyActivity a WITH (UPDLOCK, HOLDLOCK)
+                WHERE a.ActivityId = @ActId
+                  AND a.Login_Id = @LoginId", con, tx))
             {
-                cmd.Parameters.AddWithValue("@ActId", activityId);
-                con.Open();
-                using (SqlDataReader rdr = cmd.ExecuteReader())
+                actCmd.Parameters.AddWithValue("@ActId", activityId);
+                actCmd.Parameters.AddWithValue("@LoginId", loginId);
+                using (SqlDataReader rdr = actCmd.ExecuteReader())
                 {
-                    if (!rdr.Read()) return false;
-                    if (rdr["ClaimStatus"] != DBNull.Value) claimStatus = rdr["ClaimStatus"].ToString().Trim();
-                    if (rdr["DetailStatus"] != DBNull.Value) detailStatus = rdr["DetailStatus"].ToString().Trim();
+                    if (!rdr.Read()) return ctx;
+                    ctx.Found = true;
+                    if (rdr["ClaimStatus"] != DBNull.Value)
+                        ctx.ClaimStatus = rdr["ClaimStatus"].ToString().Trim();
+                    if (rdr["ApprovalRequestId"] != DBNull.Value)
+                        approvalRequestId = Convert.ToInt32(rdr["ApprovalRequestId"]);
                 }
             }
 
-            return ClaimEditabilityHelper.CanDeleteExpenseForActivity(claimStatus, detailStatus);
+            if (approvalRequestId > 0)
+            {
+                using (var reqCmd = new SqlCommand(@"
+                    SELECT r.Status
+                    FROM dbo.SalesApprovalRequest r WITH (UPDLOCK, HOLDLOCK)
+                    WHERE r.ApprovalRequestId = @ReqId", con, tx))
+                {
+                    reqCmd.Parameters.AddWithValue("@ReqId", approvalRequestId);
+                    object status = reqCmd.ExecuteScalar();
+                    if (status != null && status != DBNull.Value)
+                        ctx.RequestStatus = status.ToString().Trim();
+                }
+
+                // Lock every version for this activity and request, then keep the latest row:
+                // MAX(ISNULL(DetailVersion, 1)), then the highest ApprovalRequestDetailId.
+                int latestVersion = int.MinValue;
+                int latestDetailId = int.MinValue;
+                string latestDetailStatus = null;
+                bool hasDetail = false;
+                using (var detCmd = new SqlCommand(@"
+                    SELECT
+                          d.ApprovalRequestDetailId
+                        , ISNULL(d.DetailVersion, 1) AS DetailVersion
+                        , d.DetailStatus
+                    FROM dbo.SalesApprovalRequestDetail d WITH (UPDLOCK, HOLDLOCK)
+                    WHERE d.ApprovalRequestId = @ReqId
+                      AND d.ActivityId = @ActId", con, tx))
+                {
+                    detCmd.Parameters.AddWithValue("@ReqId", approvalRequestId);
+                    detCmd.Parameters.AddWithValue("@ActId", activityId);
+                    using (SqlDataReader rdr = detCmd.ExecuteReader())
+                    {
+                        while (rdr.Read())
+                        {
+                            int detailId = rdr["ApprovalRequestDetailId"] != DBNull.Value
+                                ? Convert.ToInt32(rdr["ApprovalRequestDetailId"])
+                                : 0;
+                            int version = rdr["DetailVersion"] != DBNull.Value
+                                ? Convert.ToInt32(rdr["DetailVersion"])
+                                : 1;
+                            if (!hasDetail || version > latestVersion || (version == latestVersion && detailId > latestDetailId))
+                            {
+                                hasDetail = true;
+                                latestVersion = version;
+                                latestDetailId = detailId;
+                                latestDetailStatus = rdr["DetailStatus"] != DBNull.Value
+                                    ? rdr["DetailStatus"].ToString().Trim()
+                                    : string.Empty;
+                            }
+                        }
+                    }
+                }
+
+                if (hasDetail)
+                    ctx.DetailStatus = latestDetailStatus ?? string.Empty;
+            }
+
+            ctx.IsEligibleLatestReturned =
+                ClaimStatuses.Equals(ctx.RequestStatus, ClaimStatuses.Returned)
+                && ClaimStatuses.Equals(ctx.DetailStatus, ClaimStatuses.Returned)
+                && !ClaimStatuses.Equals(ctx.ClaimStatus, ClaimStatuses.Rejected);
+            return ctx;
         }
 
         private const string SoftDeleteExpenseSql = @"
@@ -2489,8 +2699,13 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             string claimStatus = drv.Row.Table.Columns.Contains("ClaimStatus") && drv["ClaimStatus"] != DBNull.Value ? drv["ClaimStatus"].ToString().Trim() : string.Empty;
             string detailStatus = drv.Row.Table.Columns.Contains("DetailStatus") && drv["DetailStatus"] != DBNull.Value ? drv["DetailStatus"].ToString().Trim() : string.Empty;
+            bool rejectedActivity = ClaimEditabilityHelper.IsRejectedDay(claimStatus, detailStatus);
+            if (rejectedActivity)
+                isEditable = false;
 
-            string effectiveVisualStatus = ClaimEditabilityHelper.ResolveEffectiveVisualStatus(claimStatus, detailStatus, isEditable);
+            string effectiveVisualStatus = rejectedActivity
+                ? ClaimStatuses.Rejected
+                : ClaimEditabilityHelper.ResolveEffectiveVisualStatus(claimStatus, detailStatus, isEditable);
 
             Func<string, string, string> IconHtml = delegate (string iconClass, string clrClass) { return string.Format("<i class='{0} {1}' aria-hidden='true'></i>", iconClass, clrClass); };
 
@@ -2510,7 +2725,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             if (lnkEdit != null)
             {
-                bool showEdit = ClaimEditabilityHelper.CanEditActivity(claimStatus, detailStatus, isEditable);
+                bool showEdit = !rejectedActivity && ClaimEditabilityHelper.CanEditActivity(claimStatus, detailStatus, isEditable);
 
                 lnkEdit.Visible = showEdit; lnkEdit.Enabled = showEdit; lnkEdit.CssClass = neutralBtnClass;
                 lnkEdit.Text = editIconHtml; lnkEdit.ToolTip = showEdit ? "Edit" : "Edit (disabled)";
@@ -2518,14 +2733,15 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
             if (lnkExpenses != null)
             {
-                bool canOpenExpenses = ClaimEditabilityHelper.CanOpenExpensesForActivity(claimStatus, detailStatus);
+                bool canOpenExpenses = !rejectedActivity && ClaimEditabilityHelper.CanOpenExpensesForActivity(claimStatus, detailStatus);
                 lnkExpenses.Visible = true; lnkExpenses.Enabled = canOpenExpenses; lnkExpenses.CssClass = neutralBtnClass;
                 lnkExpenses.Text = expenseIconHtml;
                 lnkExpenses.ToolTip = canOpenExpenses ? "View / Add Expenses" : "Rejected days cannot be edited";
             }
 
-            if (txtKM != null) { txtKM.ReadOnly = !ClaimEditabilityHelper.CanEditActivityKmInGrid(isEditable, claimStatus, detailStatus); txtKM.CssClass = txtKM.CssClass + (isEditable ? " editable" : " readonly"); }
-            if (lnkUpdate != null) lnkUpdate.Enabled = ClaimEditabilityHelper.CanEditActivityKmInGrid(isEditable, claimStatus, detailStatus);
+            bool canEditGridKm = !rejectedActivity && ClaimEditabilityHelper.CanEditActivityKmInGrid(isEditable, claimStatus, detailStatus);
+            if (txtKM != null) { txtKM.ReadOnly = !canEditGridKm; txtKM.CssClass = txtKM.CssClass + (canEditGridKm ? " editable" : " readonly"); }
+            if (lnkUpdate != null) lnkUpdate.Enabled = canEditGridKm;
             if (lnkCancel != null) lnkCancel.Enabled = true;
             if (lblKM != null) { lblKM.Text = drv["TotalDistanceKM"] != DBNull.Value ? Convert.ToDecimal(drv["TotalDistanceKM"]).ToString("N2") + " km" : "—"; lblKM.Visible = true; }
 
@@ -2562,6 +2778,24 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
         protected void gvActivities_RowEditing(object sender, GridViewEditEventArgs e)
         {
+            int activityId = 0;
+            if (gvActivities != null && gvActivities.DataKeys != null && e.NewEditIndex >= 0 && e.NewEditIndex < gvActivities.DataKeys.Count)
+                activityId = Convert.ToInt32(gvActivities.DataKeys[e.NewEditIndex].Value);
+
+            string currentStatus;
+            if (!CanPersistActivityKm(activityId, out currentStatus))
+            {
+                e.Cancel = true;
+                if (lbl_msg != null)
+                {
+                    lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
+                        ? "Cannot edit row. This day was rejected by the auditor."
+                        : "Cannot edit row. This claim is " + currentStatus + ".";
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+                }
+                return;
+            }
+
             if (gvActivities != null) gvActivities.EditIndex = e.NewEditIndex;
             Session.Remove(GetCurrentSessionKey());
             BindGrid(false);
@@ -2585,6 +2819,20 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             }
 
             int activityId = Convert.ToInt32(gvActivities.DataKeys[rowIndex].Value);
+            string currentStatus;
+            if (!CanPersistActivityKm(activityId, out currentStatus))
+            {
+                if (lbl_msg != null)
+                {
+                    lbl_msg.Text = ClaimStatuses.Equals(currentStatus, ClaimStatuses.Rejected)
+                        ? "Update blocked. This day was rejected by the auditor."
+                        : "Update blocked. This claim is " + currentStatus + ".";
+                    lbl_msg.ForeColor = System.Drawing.Color.Red;
+                }
+                if (gvActivities != null) gvActivities.EditIndex = -1;
+                return;
+            }
+
             GridViewRow row = gvActivities.Rows[rowIndex];
             TextBox txtKM = row.FindControl("txtKM") as TextBox;
             if (txtKM == null) { if (lbl_msg != null) { lbl_msg.Text = "KM textbox not found."; lbl_msg.ForeColor = System.Drawing.Color.Red; } return; }
@@ -2702,15 +2950,22 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
         private bool TryValidateExpenseSavePermission(int activityId, out string currentStatus)
         {
-            currentStatus = GetActivityDetailStatus(activityId);
-            if (ClaimEditabilityHelper.CanEditExpenseByDetailStatus(currentStatus)) return true;
+            ActivityEditContext ctx = LoadActivityEditContext(activityId);
+            currentStatus = ctx.Found
+                ? (!string.IsNullOrWhiteSpace(ctx.DetailStatus) ? ctx.DetailStatus : ctx.ClaimStatus)
+                : ClaimStatuses.Unknown;
+            if (CanEmployeeEditActivityExpenses(ctx)) return true;
 
             if (LBL_ExpenseMsg != null)
             {
                 LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                LBL_ExpenseMsg.Text = "Access Denied: You cannot modify expenses for a submitted claim.";
+                LBL_ExpenseMsg.Text = ClaimEditabilityHelper.IsRejectedDay(ctx.ClaimStatus, ctx.DetailStatus)
+                    ? "This day was rejected by the auditor. Expenses cannot be edited."
+                    : "Access Denied: You cannot modify expenses for a submitted claim.";
             }
-            string safeErr = "Cannot modify expenses. The claim for this month is currently " + currentStatus + ".";
+            string safeErr = ClaimEditabilityHelper.IsRejectedDay(ctx.ClaimStatus, ctx.DetailStatus)
+                ? "Cannot modify expenses. This day was rejected by the auditor."
+                : "Cannot modify expenses. The claim for this month is currently " + currentStatus + ".";
             ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErr", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
             ShowExpenseModal();
             return false;
@@ -3856,6 +4111,21 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
             return null;
         }
 
+        private const string ExpenseDeleteConflictMessage =
+            "This expense could not be deleted because another update was in progress. Please try again.";
+
+        private static bool IsSqlDeadlockVictim(Exception ex)
+        {
+            SqlException sqlEx = ex as SqlException;
+            if (sqlEx == null) return false;
+            if (sqlEx.Number == 1205) return true;
+            for (int i = 0; i < sqlEx.Errors.Count; i++)
+            {
+                if (sqlEx.Errors[i].Number == 1205) return true;
+            }
+            return false;
+        }
+
         protected void rptExpenses_ItemCommand(object source, RepeaterCommandEventArgs e)
         {
             if (e.CommandName == "DeleteExpense")
@@ -3898,13 +4168,14 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                     using (SqlConnection con = new SqlConnection(connString))
                     {
                         con.Open();
-                        string lookupSql = @"SELECT e.ExpenseId, e.ActivityId, e.ExpenseType, e.ExpenseDate, e.FromDate, e.ToDate, e.AttachmentPath, e.IsAutoDA, e.ClaimStatus AS ExpenseClaimStatus, a.ClaimStatus AS ActivityClaimStatus, e.ExpenseSeq, e.CreatedDateTime FROM dbo.SalesDailyExpense e LEFT JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId WHERE e.ExpenseId = @ExpenseId";
+                        string lookupSql = @"SELECT e.ExpenseId, e.ActivityId, e.ExpenseType, e.ExpenseDate, e.FromDate, e.ToDate, e.AttachmentPath, e.IsAutoDA, e.ClaimStatus AS ExpenseClaimStatus, a.ClaimStatus AS ActivityClaimStatus, e.ExpenseSeq, e.CreatedDateTime FROM dbo.SalesDailyExpense e LEFT JOIN dbo.SalesDailyActivity a ON e.ActivityId = a.ActivityId WHERE e.ExpenseId = @ExpenseId AND e.ActivityId = @ActivityId";
                         int activityId = 0; string expenseType = null; DateTime? expDate = null, fromDate = null, toDate = null;
                         string attachmentPath = incomingAttachmentPath; bool isAutoRow = false; string expenseClaimStatus = null;
 
                         using (var lookup = new SqlCommand(lookupSql, con))
                         {
                             lookup.Parameters.Add(new SqlParameter("@ExpenseId", SqlDbType.Int) { Value = expenseId });
+                            lookup.Parameters.Add(new SqlParameter("@ActivityId", SqlDbType.Int) { Value = activityIdFromArg });
                             using (var rdr = lookup.ExecuteReader())
                             {
                                 if (!rdr.Read())
@@ -3956,11 +4227,46 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
 
                         using (SqlTransaction tx = con.BeginTransaction())
                         {
+                            bool deleteCommitted = false;
                             try
                             {
-                                using (var del = new SqlCommand(SoftDeleteExpenseSql, con, tx))
+                                // Re-check activity editability under this transaction so header and latest-detail state cannot change before the write.
+                                ActivityEditContext lockedCtx = LoadLockedActivityEditContext(con, tx, activityIdFromArg);
+                                if (!ActivityAllowsExpenseDelete(lockedCtx))
+                                {
+                                    tx.Rollback();
+                                    string safeErr = "Cannot delete this expense. This day is not open for editing.";
+                                    ScriptManager.RegisterStartupScript(this, GetType(), "pnotifyLockErrDel", "showPNotify('Locked', '" + safeErr + "', 'error');", true);
+                                    return;
+                                }
+
+                                // Re-check ownership under the delete transaction so the row cannot move to another activity before the write.
+                                using (var ownCmd = new SqlCommand(
+                                    @"SELECT 1
+                                      FROM dbo.SalesDailyExpense WITH (UPDLOCK, HOLDLOCK)
+                                      WHERE ExpenseId = @ExpenseId
+                                        AND ActivityId = @ActivityId", con, tx))
+                                {
+                                    ownCmd.Parameters.AddWithValue("@ExpenseId", expenseId);
+                                    ownCmd.Parameters.AddWithValue("@ActivityId", activityIdFromArg);
+                                    object owned = ownCmd.ExecuteScalar();
+                                    if (owned == null || owned == DBNull.Value)
+                                    {
+                                        tx.Rollback();
+                                        if (LBL_ExpenseMsg != null)
+                                        {
+                                            LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
+                                            LBL_ExpenseMsg.Text = "Expense not found.";
+                                        }
+                                        ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
+                                        return;
+                                    }
+                                }
+
+                                using (var del = new SqlCommand(SoftDeleteExpenseSql + " AND ActivityId = @ActivityId", con, tx))
                                 {
                                     del.Parameters.AddWithValue("@ExpenseId", expenseId);
+                                    del.Parameters.AddWithValue("@ActivityId", activityIdFromArg);
                                     AddSoftDeleteParameters(del, Session["WORKMAN"].ToString(), "User removed editable expense");
                                     if (del.ExecuteNonQuery() <= 0)
                                     {
@@ -4019,6 +4325,7 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                                 }
 
                                 tx.Commit();
+                                deleteCommitted = true;
                                 DataTable dtAfterDel = LoadExpenseForActivity(activityId.ToString());
                                 Session.Remove(GetCurrentSessionKey());
                                 BindGrid(false);
@@ -4041,11 +4348,16 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                             }
                             catch (Exception ex)
                             {
-                                try { tx.Rollback(); } catch { }
+                                if (!deleteCommitted)
+                                {
+                                    try { tx.Rollback(); } catch { }
+                                }
                                 if (LBL_ExpenseMsg != null)
                                 {
                                     LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                                    LBL_ExpenseMsg.Text = ex.Message;
+                                    LBL_ExpenseMsg.Text = (!deleteCommitted && IsSqlDeadlockVictim(ex))
+                                        ? ExpenseDeleteConflictMessage
+                                        : ex.Message;
                                 }
                                 ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                                 return;
@@ -4058,7 +4370,9 @@ ORDER BY EffectiveFrom DESC, ToleranceId DESC", con))
                     if (LBL_ExpenseMsg != null)
                     {
                         LBL_ExpenseMsg.ForeColor = System.Drawing.Color.Red;
-                        LBL_ExpenseMsg.Text = sqx.Message;
+                        LBL_ExpenseMsg.Text = IsSqlDeadlockVictim(sqx)
+                            ? ExpenseDeleteConflictMessage
+                            : sqx.Message;
                     }
                     ScriptManager.RegisterStartupScript(this, this.GetType(), "showExpense", "$('#expenseModal').modal('show');", true);
                 }

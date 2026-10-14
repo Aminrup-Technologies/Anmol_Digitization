@@ -1,4 +1,47 @@
 /* ============================================================================
+   NAME:        day_action_locks_header_before_authorization
+   WHEN:        2026-10-13
+   WHY:         Current approver, header status, and latest-detail checks ran
+                before BEGIN TRANSACTION. Two overlapping actions could both
+                authorize against the same header, then both mutate.
+   WHAT:        After the detail id is resolved, BEGIN TRANSACTION and take
+                UPDLOCK, HOLDLOCK on the header — the same first lock as
+                usp_ForwardApprovalRequest — then re-validate status, current
+                approver, role, and latest detail before any write. Child
+                writes stay in the existing order: detail, activity, expense,
+                approver, header, history. A refusal rolls that transaction
+                back. Deadlock freedom against other procedures is not claimed.
+   ============================================================================ */
+
+/* ============================================================================
+   NAME:        final_approve_refuses_open_expenses
+   WHEN:        2026-10-13
+   WHY:         The last day APPROVE completed the current level and moved the
+                header while another latest activity still had a non-deleted
+                Pending or Returned expense. usp_ForwardApprovalRequest refuses
+                that state.
+   WHAT:        Before the level-completion writes, count those expenses with
+                the forward predicate. Approved and Rejected expenses do not
+                count. When the branch would forward or complete a non-auditor
+                level, THROW 51013 and roll the day action back. The Auditor
+                terminal path still leaves the header Pending for Mark Ready.
+   ============================================================================ */
+
+/* ============================================================================
+   NAME:        day_action_refreshes_final_approved_amount
+   WHEN:        2026-10-13
+   WHY:         This procedure wrote ApprovedKM and the component Approved*
+                amounts, but not FinalApprovedAmount. The live day modal commits
+                this procedure, then asks the page to recalculate on a second
+                request. A failed or skipped refresh left the payable amount on
+                the pre-action rows, including a day that had just been Returned
+                or Rejected.
+   WHAT:        Call dbo.usp_RecalculateApprovalRequest in this transaction
+                after the day, activity, and expense statuses are written and
+                before COMMIT. Recalc remains the only approved-amount formula.
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        hf231_auditor_ready_for_payment_checkpoint
    WHEN:        2026-09-28
    WHY:         Last Auditor approve wrote Completed and cleared the current approver,
@@ -100,9 +143,11 @@ BEGIN
         , @ReturnedLatestCount    INT = 0
         , @RejectedLatestCount    INT = 0
         , @ApprovedLatestCount    INT = 0
+        , @UnresolvedExpenseCount INT = 0
         , @NextApproverLevel      INT
         , @NextApproverLoginId    NVARCHAR(100)
-        , @NextApproverRole       NVARCHAR(100);
+        , @NextApproverRole       NVARCHAR(100)
+        , @HeaderLocked           BIT = 0;
 
     SET @NormalizedAction = UPPER(LTRIM(RTRIM(ISNULL(@Action, ''))));
 
@@ -143,92 +188,6 @@ BEGIN
         RETURN;
     END;
 
-    -- Only the latest immutable snapshot per activity can be actioned
-    -- (DetailVersion then ApprovalRequestDetailId — RC-012 / RC-023).
-    IF @ApprovalRequestDetailId <>
-    (
-        SELECT TOP (1) d2.ApprovalRequestDetailId
-        FROM dbo.SalesApprovalRequestDetail d2
-        INNER JOIN (
-            SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
-            FROM dbo.SalesApprovalRequestDetail
-            WHERE ApprovalRequestId = @ApprovalRequestId
-              AND ActivityId = @ActivityId
-            GROUP BY ActivityId
-        ) lv
-            ON lv.ActivityId = d2.ActivityId
-           AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
-        WHERE d2.ApprovalRequestId = @ApprovalRequestId
-          AND d2.ActivityId = @ActivityId
-        ORDER BY d2.ApprovalRequestDetailId DESC
-    )
-    BEGIN
-        RAISERROR('Only the latest detail version for this activity can be processed.', 16, 1);
-        RETURN;
-    END;
-
-    SELECT
-          @CurrentApproverLevel   = r.CurrentApproverLevel
-        , @CurrentApproverLoginId = r.CurrentApproverLoginId
-        , @OldRequestStatus       = r.Status
-    FROM dbo.SalesApprovalRequest r
-    WHERE r.ApprovalRequestId = @ApprovalRequestId;
-
-    SELECT TOP (1)
-          @CurrentApproverRole = a.ApproverRole
-    FROM dbo.SalesApprovalRequestApprover a
-    WHERE a.ApprovalRequestId = @ApprovalRequestId
-      AND a.ApproverLevel = @CurrentApproverLevel
-    ORDER BY a.ApproverLevel;
-
-    --------------------------------------------------------------------
-    -- Payment Lock: Completed / ReadyForPayment are immutable.
-    --------------------------------------------------------------------
-    IF ISNULL(@OldRequestStatus, '') IN ('Completed', 'ReadyForPayment')
-    BEGIN
-        RAISERROR('This approval request is locked for payment and cannot be modified.', 16, 1);
-        RETURN;
-    END;
-
-    --------------------------------------------------------------------
-    -- Header status validation: an approval action may only be processed
-    -- while the request is actively awaiting approval.
-    --------------------------------------------------------------------
-    IF ISNULL(@OldRequestStatus, '') <> 'Pending'
-    BEGIN
-        RAISERROR('This approval request is not currently awaiting approval and cannot be processed.', 16, 1);
-        RETURN;
-    END;
-
-    --------------------------------------------------------------------
-    -- Current Approver validation: only the approver currently holding
-    -- the request may process an action against it.
-    --------------------------------------------------------------------
-    IF @CurrentApproverLoginId IS NULL
-       OR UPPER(LTRIM(RTRIM(@CurrentApproverLoginId))) <> UPPER(LTRIM(RTRIM(@ActionBy)))
-    BEGIN
-        RAISERROR('You are not the current approver for this approval request.', 16, 1);
-        RETURN;
-    END;
-
-    --------------------------------------------------------------------
-    -- Role enforcement (day-level actions only; expense-level role rules
-    -- are enforced by usp_UpdateSalesDailyExpenseStatus).
-    --   Manager : may Approve or Return a day. Must NOT Reject a day.
-    --   Auditor : may Approve or Reject a day. Must NOT Return a day.
-    --------------------------------------------------------------------
-    IF @NormalizedAction = 'REJECT' AND ISNULL(@CurrentApproverRole, '') <> 'Auditor'
-    BEGIN
-        RAISERROR('Only the Auditor may reject a day. Managers return a day for correction instead.', 16, 1);
-        RETURN;
-    END;
-
-    IF @NormalizedAction = 'RETURN' AND ISNULL(@CurrentApproverRole, '') = 'Auditor'
-    BEGIN
-        RAISERROR('The Auditor cannot return a day. Auditors approve or reject; managers return a day for correction.', 16, 1);
-        RETURN;
-    END;
-
     -- Map action to persisted status words (aligned with ClaimStatuses.cs).
     SET @MappedDetailStatus =
         CASE @NormalizedAction
@@ -241,6 +200,115 @@ BEGIN
 
     BEGIN TRY
         BEGIN TRANSACTION;
+
+        --------------------------------------------------------------------
+        -- 0) Authorize against the locked header before any mutation.
+        --    First lock matches usp_ForwardApprovalRequest: the header.
+        --    usp_MarkRequestReadyForPayment still locks detail, expense,
+        --    and the auditor row before the header. That difference is not
+        --    claimed to be deadlock-free.
+        --------------------------------------------------------------------
+        SET @HeaderLocked = 0;
+        SET @CurrentApproverLevel = NULL;
+        SET @CurrentApproverLoginId = NULL;
+        SET @OldRequestStatus = NULL;
+
+        SELECT
+              @CurrentApproverLevel   = r.CurrentApproverLevel
+            , @CurrentApproverLoginId = r.CurrentApproverLoginId
+            , @OldRequestStatus       = r.Status
+            , @HeaderLocked           = 1
+        FROM dbo.SalesApprovalRequest r WITH (UPDLOCK, HOLDLOCK)
+        WHERE r.ApprovalRequestId = @ApprovalRequestId;
+
+        IF @HeaderLocked = 0
+        BEGIN
+            RAISERROR('Approval request was not found.', 16, 1);
+        END;
+
+        SELECT @ActivityId = d.ActivityId
+        FROM dbo.SalesApprovalRequestDetail d
+        WHERE d.ApprovalRequestDetailId = @ApprovalRequestDetailId
+          AND d.ApprovalRequestId = @ApprovalRequestId;
+
+        IF @@ROWCOUNT = 0
+        BEGIN
+            RAISERROR('Approval request detail %d was not found.', 16, 1, @ApprovalRequestDetailId);
+        END;
+
+        -- Latest snapshot: highest DetailVersion, then highest ApprovalRequestDetailId.
+        IF @ApprovalRequestDetailId <>
+        (
+            SELECT TOP (1) d2.ApprovalRequestDetailId
+            FROM dbo.SalesApprovalRequestDetail d2
+            INNER JOIN (
+                SELECT ActivityId, MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                FROM dbo.SalesApprovalRequestDetail
+                WHERE ApprovalRequestId = @ApprovalRequestId
+                  AND ActivityId = @ActivityId
+                GROUP BY ActivityId
+            ) lv
+                ON lv.ActivityId = d2.ActivityId
+               AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+            WHERE d2.ApprovalRequestId = @ApprovalRequestId
+              AND d2.ActivityId = @ActivityId
+            ORDER BY d2.ApprovalRequestDetailId DESC
+        )
+        BEGIN
+            RAISERROR('Only the latest detail version for this activity can be processed.', 16, 1);
+        END;
+
+        SET @CurrentApproverRole = NULL;
+
+        SELECT TOP (1)
+              @CurrentApproverRole = a.ApproverRole
+        FROM dbo.SalesApprovalRequestApprover a
+        WHERE a.ApprovalRequestId = @ApprovalRequestId
+          AND a.ApproverLevel = @CurrentApproverLevel
+        ORDER BY a.ApproverLevel;
+
+        --------------------------------------------------------------------
+        -- Payment Lock: Completed / ReadyForPayment are immutable.
+        --------------------------------------------------------------------
+        IF ISNULL(@OldRequestStatus, '') IN ('Completed', 'ReadyForPayment')
+        BEGIN
+            RAISERROR('This approval request is locked for payment and cannot be modified.', 16, 1);
+        END;
+
+        --------------------------------------------------------------------
+        -- Header status validation: an approval action may only be processed
+        -- while the request is actively awaiting approval.
+        --------------------------------------------------------------------
+        IF ISNULL(@OldRequestStatus, '') <> 'Pending'
+        BEGIN
+            RAISERROR('This approval request is not currently awaiting approval and cannot be processed.', 16, 1);
+        END;
+
+        --------------------------------------------------------------------
+        -- Current Approver validation: only the approver currently holding
+        -- the locked request may process an action against it.
+        --------------------------------------------------------------------
+        IF @CurrentApproverLoginId IS NULL
+           OR UPPER(LTRIM(RTRIM(@CurrentApproverLoginId))) <> UPPER(LTRIM(RTRIM(@ActionBy)))
+        BEGIN
+            RAISERROR('You are not the current approver for this approval request.', 16, 1);
+        END;
+
+        --------------------------------------------------------------------
+        -- Role enforcement (day-level actions only; expense-level role rules
+        -- are enforced by usp_UpdateSalesDailyExpenseStatus).
+        --   Manager : may Approve or Return a day. Must NOT Reject a day.
+        --   Auditor : may Approve or Reject a day. Must NOT Return a day.
+        --------------------------------------------------------------------
+        IF @NormalizedAction = 'REJECT' AND ISNULL(@CurrentApproverRole, '') <> 'Auditor'
+        BEGIN
+            RAISERROR('Only the Auditor may reject a day. Managers return a day for correction instead.', 16, 1);
+        END;
+
+        IF @NormalizedAction = 'RETURN' AND ISNULL(@CurrentApproverRole, '') = 'Auditor'
+        BEGIN
+            RAISERROR('The Auditor cannot return a day. Auditors approve or reject; managers return a day for correction.', 16, 1);
+        END;
 
         --------------------------------------------------------------------
         -- 1) Detail snapshot transition (immutable row is updated in place;
@@ -381,6 +449,71 @@ BEGIN
             -- and advance routing (manager -> auditor, etc.).
             IF @PendingLatestCount = 0 AND @ReturnedLatestCount = 0
             BEGIN
+                -- Read the next required level before any approver or header write.
+                SET @NextApproverLevel = NULL;
+                SET @NextApproverLoginId = NULL;
+                SET @NextApproverRole = NULL;
+
+                SELECT TOP (1)
+                      @NextApproverLevel    = a.ApproverLevel
+                    , @NextApproverLoginId  = a.ApproverLoginId
+                    , @NextApproverRole      = a.ApproverRole
+                FROM dbo.SalesApprovalRequestApprover a
+                WHERE a.ApprovalRequestId = @ApprovalRequestId
+                  AND a.ApproverLevel > @CurrentApproverLevel
+                  AND a.Status = 'Pending'
+                  AND ISNULL(a.IsRequired, 1) = 1
+                ORDER BY a.ApproverLevel ASC;
+
+                -- Same expense predicate as usp_ForwardApprovalRequest (51013).
+                -- This day's non-rejected expenses were already aligned above.
+                -- Approved and Rejected expenses are not unresolved.
+                -- The Auditor terminal path does not move the header; Mark Ready
+                -- still refuses an unresolved expense. A forward or non-auditor
+                -- completion refuses here and rolls this day action back.
+                SELECT
+                    @UnresolvedExpenseCount = COUNT(*)
+                FROM dbo.SalesDailyExpense e
+                INNER JOIN
+                (
+                    SELECT d.ActivityId
+                    FROM dbo.SalesApprovalRequestDetail d
+                    INNER JOIN
+                    (
+                        SELECT
+                              d2.ActivityId
+                            , MAX(d2.ApprovalRequestDetailId) AS LatestDetailId
+                        FROM dbo.SalesApprovalRequestDetail d2
+                        INNER JOIN
+                        (
+                            SELECT
+                                  ActivityId
+                                , MAX(ISNULL(DetailVersion, 1)) AS LatestVersion
+                            FROM dbo.SalesApprovalRequestDetail
+                            WHERE ApprovalRequestId = @ApprovalRequestId
+                            GROUP BY ActivityId
+                        ) lv
+                            ON lv.ActivityId = d2.ActivityId
+                           AND ISNULL(d2.DetailVersion, 1) = lv.LatestVersion
+                        WHERE d2.ApprovalRequestId = @ApprovalRequestId
+                        GROUP BY d2.ActivityId
+                    ) latest
+                        ON d.ApprovalRequestDetailId = latest.LatestDetailId
+                    WHERE d.ApprovalRequestId = @ApprovalRequestId
+                ) claimActivities
+                    ON e.ActivityId = claimActivities.ActivityId
+                WHERE e.IsDeleted = 0
+                  AND ISNULL(e.ClaimStatus, N'') IN (N'Pending', N'Returned');
+
+                IF ISNULL(@UnresolvedExpenseCount, 0) > 0
+                   AND (
+                        @NextApproverLevel IS NOT NULL
+                        OR ISNULL(@CurrentApproverRole, N'') <> N'Auditor'
+                   )
+                BEGIN
+                    THROW 51013, 'Some expenses are still Pending or Returned and must be resolved before forwarding.', 1;
+                END;
+
                 UPDATE dbo.SalesApprovalRequestApprover
                 SET
                       Status     = 'Approved'
@@ -407,20 +540,9 @@ BEGIN
 
                 -- TODO (Sprint 2 - Task 02):
                 -- Routing responsibility will be migrated to usp_ForwardApprovalRequest.
-                -- The next-approver lookup and the CurrentApproverLevel/CurrentApproverLoginId
+                -- The next-approver lookup above and the CurrentApproverLevel/CurrentApproverLoginId
                 -- update below are left fully functional so the workflow continues to advance
                 -- until that migration is complete.
-                SELECT TOP (1)
-                      @NextApproverLevel    = a.ApproverLevel
-                    , @NextApproverLoginId  = a.ApproverLoginId
-                    , @NextApproverRole      = a.ApproverRole
-                FROM dbo.SalesApprovalRequestApprover a
-                WHERE a.ApprovalRequestId = @ApprovalRequestId
-                  AND a.ApproverLevel > @CurrentApproverLevel
-                  AND a.Status = 'Pending'
-                  AND ISNULL(a.IsRequired, 1) = 1
-                ORDER BY a.ApproverLevel ASC;
-
                 IF @NextApproverLevel IS NOT NULL
                 BEGIN
                     -- Activate next approver; request stays Pending for the next review pass.
@@ -707,6 +829,15 @@ BEGIN
                   )
             );
         END;
+
+        --------------------------------------------------------------------
+        -- 8) Payable totals. Section 6 does not write FinalApprovedAmount
+        --    and does not refresh expense snapshots after the status cascade.
+        --    Recalc has no transaction of its own; a failure here rolls this
+        --    day action back with it.
+        --------------------------------------------------------------------
+        EXEC dbo.usp_RecalculateApprovalRequest
+            @ApprovalRequestId = @ApprovalRequestId;
 
         COMMIT TRANSACTION;
     END TRY
