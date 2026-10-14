@@ -4,6 +4,8 @@ using System.Configuration;
 using System.Data.SqlClient;
 using System.Globalization;
 using System.Text;
+using AnmolDristi.BLL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -400,22 +402,22 @@ namespace AnmolDristi
                 if (string.Equals(parent, "Pending", StringComparison.OrdinalIgnoreCase))
                 {
                     statusText = "Pending";
-                    statusCss = "badge-pending";
+                    statusCss = VmsUiStatus.Pending;
                 }
                 else if (string.Equals(parent, "Rejected", StringComparison.OrdinalIgnoreCase))
                 {
                     statusText = "Rejected";
-                    statusCss = "badge-rejected";
+                    statusCss = VmsUiStatus.Rejected;
                 }
                 else if (day.IsDayApproved)
                 {
                     statusText = "Approved";
-                    statusCss = "badge-approved";
+                    statusCss = VmsUiStatus.Approved;
                 }
                 else
                 {
                     statusText = "Not approved";
-                    statusCss = "badge-rejected";
+                    statusCss = VmsUiStatus.NotApproved;
                 }
 
                 rows.Add(new VisitDayScheduleRow
@@ -442,13 +444,13 @@ namespace AnmolDristi
             var sb = new StringBuilder();
             sb.Append("<div class=\"day-window\">");
             sb.Append("<div class=\"day-window-title\">Visit days</div>");
-            sb.Append("<table class=\"day-window-table\">");
-            sb.Append("<thead><tr><th>Date</th><th>Status</th><th>Entry</th><th>Exit</th></tr></thead><tbody>");
+            sb.Append("<table class=\"day-window-table\" role=\"table\" aria-label=\"Visit days\">");
+            sb.Append("<thead><tr><th scope=\"col\">Date</th><th scope=\"col\">Status</th><th scope=\"col\">Entry</th><th scope=\"col\">Exit</th></tr></thead><tbody>");
             foreach (VisitDayScheduleRow row in rows)
             {
                 sb.Append("<tr>");
                 sb.Append("<td>").Append(HtmlEncode(row.DateText)).Append("</td>");
-                sb.Append("<td><span class=\"badge ").Append(HtmlEncode(row.StatusCss)).Append("\">");
+                sb.Append("<td><span class=\"vms-status-badge badge ").Append(HtmlEncode(row.StatusCss)).Append("\">");
                 sb.Append(HtmlEncode(row.StatusText)).Append("</span></td>");
                 sb.Append("<td>").Append(HtmlEncode(row.EntryWindow)).Append("</td>");
                 sb.Append("<td>").Append(HtmlEncode(row.ExitWindow)).Append("</td>");
@@ -601,7 +603,21 @@ namespace AnmolDristi
             if (visitRows != 1)
                 return false;
 
-            WriteCheckInHistory(con, trans, dayLogId, logId, guardId);
+            bool autoClosed = WriteCheckInHistory(con, trans, dayLogId, logId, guardId);
+            string actorRole = AuditEventService.ActorRoleFromAttendanceActor(guardId);
+            string source = ResolveAttendanceSource(guardId);
+            if (autoClosed)
+            {
+                AuditEventService.Publish(
+                    con, trans, logId, AuditEventType.AutoClosed,
+                    AuditActorRole.System, guardId, dayLogId,
+                    AuditEventService.Metadata("source", source));
+            }
+
+            AuditEventService.Publish(
+                con, trans, logId, AuditEventType.CheckedIn,
+                actorRole, guardId, dayLogId,
+                AuditEventService.Metadata("source", source));
             return true;
         }
 
@@ -666,6 +682,12 @@ namespace AnmolDristi
                 return false;
 
             CloseOpenAttendanceHistory(con, trans, dayLogId);
+            AuditEventService.Publish(
+                con, trans, logId, AuditEventType.CheckedOut,
+                AuditEventService.ActorRoleFromAttendanceActor(guardId),
+                guardId,
+                dayLogId,
+                AuditEventService.Metadata("source", ResolveAttendanceSource(guardId)));
             return true;
         }
 
@@ -1309,14 +1331,14 @@ namespace AnmolDristi
             return "Gate";
         }
 
-        private static void WriteCheckInHistory(
+        private static bool WriteCheckInHistory(
             SqlConnection con,
             SqlTransaction trans,
             int dayLogId,
             int logId,
             string actor)
         {
-            CloseOpenAttendanceHistory(con, trans, dayLogId);
+            bool autoClosed = CloseOpenAttendanceHistory(con, trans, dayLogId) > 0;
 
             using (SqlCommand cmd = new SqlCommand(@"
                 IF OBJECT_ID('dbo.VMS_VisitAttendanceHistory', 'U') IS NOT NULL
@@ -1333,9 +1355,11 @@ namespace AnmolDristi
                 cmd.Parameters.AddWithValue("@Actor", actor ?? "SecurityGate");
                 cmd.ExecuteNonQuery();
             }
+
+            return autoClosed;
         }
 
-        private static void CloseOpenAttendanceHistory(
+        private static int CloseOpenAttendanceHistory(
             SqlConnection con,
             SqlTransaction trans,
             int dayLogId)
@@ -1350,7 +1374,7 @@ namespace AnmolDristi
                 END", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
-                cmd.ExecuteNonQuery();
+                return cmd.ExecuteNonQuery();
             }
         }
 

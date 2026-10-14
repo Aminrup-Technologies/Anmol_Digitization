@@ -1,6 +1,9 @@
 ﻿<%@ Page Title="My Visits" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="VMS_MyVisits.aspx.cs" Inherits="AnmolDristi.VMS_MyVisits" %>
+<%@ Register Src="~/Controls/VisitWindowControl.ascx" TagPrefix="vms" TagName="VisitWindow" %>
+<%@ Register Src="~/Controls/StatusBadgeControl.ascx" TagPrefix="vms" TagName="StatusBadge" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <link href="css/vms-ui.css" rel="stylesheet" />
     <style>
         .visit-card {
             background: #fff;
@@ -63,28 +66,6 @@
             text-align: right;
         }
 
-        .badge {
-            padding: 5px 10px;
-            border-radius: 12px;
-            font-weight: normal;
-            font-size: 11px;
-        }
-
-        .badge-pending {
-            background-color: #F39C12;
-            color: #fff;
-        }
-
-        .badge-approved {
-            background-color: #1ABB9C;
-            color: #fff;
-        }
-
-        .badge-rejected {
-            background-color: #E74C3C;
-            color: #fff;
-        }
-
         .btn-pass {
             background-color: #1ABB9C;
             color: white;
@@ -129,36 +110,6 @@
             padding-top: 10px;
             border-top: 1px dashed #eee;
         }
-
-        .day-window-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: #73879C;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-
-        .day-window-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-
-            .day-window-table th {
-                text-align: left;
-                color: #888;
-                font-weight: 600;
-                padding: 4px 6px 6px 0;
-                border-bottom: 1px solid #eee;
-            }
-
-            .day-window-table td {
-                padding: 6px 6px 6px 0;
-                color: #333;
-                border-bottom: 1px solid #f3f3f3;
-                vertical-align: middle;
-            }
     </style>
 </asp:Content>
 
@@ -215,14 +166,14 @@
                                             <span class="detail-label">Schedule:</span>
                                             <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
-                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                        <vms:VisitWindow ID="ucVisitWindow" runat="server" />
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>
                                         </div>
                                         <div class="detail-row" style="margin-top: 12px;">
                                             <span class="detail-label">Status:</span>
-                                            <asp:Label ID="lblStatus" runat="server" Text='<%# Eval("ApprovalStatus") %>'></asp:Label>
+                                            <vms:StatusBadge ID="ucStatus" runat="server" />
                                         </div>
                                     </div>
                                     <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer text-center" Visible="false">
@@ -260,14 +211,14 @@
                                             <span class="detail-label">Schedule:</span>
                                             <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
-                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                        <vms:VisitWindow ID="ucVisitWindow" runat="server" />
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>
                                         </div>
                                         <div class="detail-row" style="margin-top: 12px;">
                                             <span class="detail-label">Status:</span>
-                                            <asp:Label ID="lblStatus" runat="server" Text='<%# Eval("ApprovalStatus") %>'></asp:Label>
+                                            <vms:StatusBadge ID="ucStatus" runat="server" />
                                         </div>
                                     </div>
                                     <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer text-center" Visible="false">
@@ -305,14 +256,14 @@
                                             <span class="detail-label">Schedule:</span>
                                             <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
-                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                        <vms:VisitWindow ID="ucVisitWindow" runat="server" />
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>
                                         </div>
                                         <div class="detail-row" style="margin-top: 12px;">
                                             <span class="detail-label">Status:</span>
-                                            <asp:Label ID="lblStatus" runat="server" Text='<%# Eval("ApprovalStatus") %>'></asp:Label>
+                                            <vms:StatusBadge ID="ucStatus" runat="server" />
                                         </div>
                                     </div>
                                     <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer text-center" Visible="false">
@@ -349,14 +300,14 @@
                                             <span class="detail-label">Schedule:</span>
                                             <span><%# FormatVisitSchedule(Eval("ScheduleType"), Eval("RequestedValidFrom"), Eval("RequestedValidUpto"), Eval("ValidFrom"), Eval("ValidUpto"), Eval("ApprovalStatus")) %></span>
                                         </div>
-                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                        <vms:VisitWindow ID="ucVisitWindow" runat="server" />
                                         <div class="detail-row">
                                             <span class="detail-label">Today's Visit:</span>
                                             <span><%# Eval("VisitStatus") %></span>
                                         </div>
                                         <div class="detail-row" style="margin-top: 12px;">
                                             <span class="detail-label">Status:</span>
-                                            <asp:Label ID="lblStatus" runat="server" Text='<%# Eval("ApprovalStatus") %>'></asp:Label>
+                                            <vms:StatusBadge ID="ucStatus" runat="server" />
                                         </div>
                                     </div>
                                     <asp:Panel ID="pnlFooter" runat="server" CssClass="card-footer text-center" Visible="false">

@@ -360,7 +360,14 @@
     <Content Include="Scripts\claims-ux-stabilization.js" />
     <Content Include="Scripts\HrmsBatchManager.js" />
     <Content Include="css\HrmsBatchManager.css" />
+    <Content Include="css\vms-ui.css" />
+    <Content Include="Scripts\VMS_UI.js" />
     <Content Include="Controls\HrmsSyncInfoPanel.ascx" />
+    <Content Include="Controls\VisitWindowControl.ascx" />
+    <Content Include="Controls\HoursWarningControl.ascx" />
+    <Content Include="Controls\EmployeeCardControl.ascx" />
+    <Content Include="Controls\StatusBadgeControl.ascx" />
+    <Content Include="Controls\ApprovalSummaryControl.ascx" />
     <Content Include="SubmitClaim.aspx" />
     <Content Include="UiControlMapper.aspx" />
     <Content Include="UserRoleAudit.aspx" />
@@ -839,6 +846,42 @@
     </Compile>
     <Compile Include="Controls\HrmsSyncInfoPanel.ascx.designer.cs">
       <DependentUpon>HrmsSyncInfoPanel.ascx</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\VmsUiStatus.cs" />
+    <Compile Include="Controls\VisitWindowControl.ascx.cs">
+      <DependentUpon>VisitWindowControl.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Controls\VisitWindowControl.ascx.designer.cs">
+      <DependentUpon>VisitWindowControl.ascx</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\HoursWarningControl.ascx.cs">
+      <DependentUpon>HoursWarningControl.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Controls\HoursWarningControl.ascx.designer.cs">
+      <DependentUpon>HoursWarningControl.ascx</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\EmployeeCardControl.ascx.cs">
+      <DependentUpon>EmployeeCardControl.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Controls\EmployeeCardControl.ascx.designer.cs">
+      <DependentUpon>EmployeeCardControl.ascx</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\StatusBadgeControl.ascx.cs">
+      <DependentUpon>StatusBadgeControl.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Controls\StatusBadgeControl.ascx.designer.cs">
+      <DependentUpon>StatusBadgeControl.ascx</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\ApprovalSummaryControl.ascx.cs">
+      <DependentUpon>ApprovalSummaryControl.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Controls\ApprovalSummaryControl.ascx.designer.cs">
+      <DependentUpon>ApprovalSummaryControl.ascx</DependentUpon>
     </Compile>
     <Compile Include="HrmsBatchManager.aspx.cs">
       <DependentUpon>HrmsBatchManager.aspx</DependentUpon>
@@ -1540,11 +1583,16 @@
     <Compile Include="PolicyExceptionSerializer.cs" />
     <Compile Include="BLL\PolicyExceptionService.cs" />
     <Compile Include="BLL\PolicyResolutionService.cs" />
+    <Compile Include="BLL\ApprovalModels.cs" />
+    <Compile Include="BLL\ApprovalService.cs" />
+    <Compile Include="BLL\AuditEventModels.cs" />
+    <Compile Include="BLL\AuditEventService.cs" />
     <Compile Include="DAL\PolicyExceptionDataAccess.cs" />
     <Compile Include="DAL\PolicyResolutionDataAccess.cs" />
     <Compile Include="DAL\VmsOtpRepository.cs" />
     <Compile Include="DAL\VmsVisitorRepository.cs" />
     <Compile Include="DAL\VmsVisitorManagementRepository.cs" />
+    <Compile Include="DAL\VmsAuditEventRepository.cs" />
     <Compile Include="DAL\VmsGateScannerRepository.cs" />
     <Compile Include="ITSM\DAL\Entities\RequestType.cs" />
     <Compile Include="ITSM\DAL\Entities\Category.cs" />

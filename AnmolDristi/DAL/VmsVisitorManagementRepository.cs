@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using AnmolDristi.BLL;
 
 namespace AnmolDristi.DAL
 {
@@ -55,6 +56,9 @@ namespace AnmolDristi.DAL
         /// After-hours audit actor. Host uses employee code; Admin/Receptionist pass "Admin:…" / "Receptionist:…".
         /// </summary>
         public string ApprovedBy { get; set; }
+
+        /// <summary>Host, Admin, or Receptionist. Used for VMS_AuditEvent only.</summary>
+        public string ActorRole { get; set; }
     }
 
     public class VisitorApprovalResult
@@ -64,6 +68,15 @@ namespace AnmolDristi.DAL
         public int LogId { get; set; }
         public Guid? QrToken { get; set; }
         public DateTime? ValidUpto { get; set; }
+        public bool QrGenerated { get; set; }
+        public bool AuditWritten { get; set; }
+        public string WarningMessage { get; set; }
+    }
+
+    public class AfterHoursAuditOutcome
+    {
+        public bool Written { get; set; }
+        public string WarningMessage { get; set; }
     }
 
     /// <summary>
@@ -210,6 +223,13 @@ namespace AnmolDristi.DAL
                         }
 
                         CancelVisitDayLogs(con, logId, trans);
+                        AuditEventService.Publish(
+                            con,
+                            trans,
+                            logId,
+                            AuditEventType.Rejected,
+                            AuditActorRole.Host,
+                            resolvedHost);
                         trans.Commit();
                         return true;
                     }
@@ -353,6 +373,14 @@ namespace AnmolDristi.DAL
                             return false;
                         }
 
+                        if (!useDayLogPath)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, logId, AuditEventType.CheckedIn,
+                                AuditActorRole.Host, resolvedHost,
+                                metadata: AuditEventService.Metadata("source", "Host"));
+                        }
+
                         trans.Commit();
                         return true;
                     }
@@ -418,6 +446,14 @@ namespace AnmolDristi.DAL
                         {
                             try { trans.Rollback(); } catch { }
                             return false;
+                        }
+
+                        if (!useDayLogPath)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, logId, AuditEventType.CheckedOut,
+                                AuditActorRole.Host, resolvedHost,
+                                metadata: AuditEventService.Metadata("source", "Host"));
                         }
 
                         trans.Commit();
@@ -567,6 +603,14 @@ namespace AnmolDristi.DAL
                             return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
                         }
 
+                        if (!useDayLogPath)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, logId, AuditEventType.CheckedIn,
+                                AuditActorRole.Receptionist, "Receptionist",
+                                metadata: AuditEventService.Metadata("source", "Reception"));
+                        }
+
                         trans.Commit();
                         return new ReceptionistAttendanceResult
                         {
@@ -636,6 +680,14 @@ namespace AnmolDristi.DAL
                         {
                             try { trans.Rollback(); } catch { }
                             return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
+                        }
+
+                        if (!useDayLogPath)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, logId, AuditEventType.CheckedOut,
+                                AuditActorRole.Receptionist, "Receptionist",
+                                metadata: AuditEventService.Metadata("source", "Reception"));
                         }
 
                         trans.Commit();
@@ -794,6 +846,16 @@ namespace AnmolDristi.DAL
 
                         AppendAdminCorrectionRemark(con, trans, logId, auditTrail);
 
+                        int? inDayLogId = useDayLogPath ? (int?)todayLog.DayLogId : null;
+                        AuditEventService.Publish(
+                            con, trans, logId, AuditEventType.GateOverride,
+                            AuditActorRole.Admin, auditName, inDayLogId,
+                            AuditEventService.Metadata(new Dictionary<string, string>
+                            {
+                                { "field", "InTime" },
+                                { "source", "AdminInline" }
+                            }));
+
                         trans.Commit();
                         return new AdminCorrectionResult
                         {
@@ -869,6 +931,16 @@ namespace AnmolDristi.DAL
                             $" | [Check-Out Time: {oldRecord}->{adminOutTime:dd-MMM HH:mm} by {auditName}] Rsn: {reason}";
 
                         AppendAdminCorrectionRemark(con, trans, logId, auditTrail);
+
+                        int? outDayLogId = useDayLogPath ? (int?)todayLog.DayLogId : null;
+                        AuditEventService.Publish(
+                            con, trans, logId, AuditEventType.GateOverride,
+                            AuditActorRole.Admin, auditName, outDayLogId,
+                            AuditEventService.Metadata(new Dictionary<string, string>
+                            {
+                                { "field", "OutTime" },
+                                { "source", "AdminInline" }
+                            }));
 
                         trans.Commit();
                         return new AdminCorrectionResult
@@ -1115,38 +1187,39 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Host/MyVisitors approval — Pending + HostEmployeeCode authorization.
-        /// Lifecycle owned by <see cref="ApproveVisitCore"/>.
+        /// Lifecycle owned by <see cref="ExecuteApprovalLifecycle"/>.
+        /// Prefer <see cref="AnmolDristi.BLL.ApprovalService.Execute"/> from UI callers.
         /// </summary>
         public VisitorApprovalResult ApprovePendingVisit(VisitorApprovalRequest request)
         {
-            return ApproveVisitCore(request, ApprovalAuthorizationMode.HostOwnership);
+            return ExecuteApprovalLifecycle(request, ApprovalAuthorizationMode.HostOwnership);
         }
 
         /// <summary>
         /// Admin on-behalf approval — Pending-only authorization (host ownership bypassed).
-        /// Produces the same VisitLog + DayLog + QR + validity + pass-notification lifecycle.
-        /// Valid* comes from ApproveVisitSchedule(RequestedValid*); ApprovedOn may use schedDate override.
+        /// Prefer <see cref="AnmolDristi.BLL.ApprovalService.Execute"/> from UI callers.
         /// </summary>
         public VisitorApprovalResult ApproveVisitOnBehalf(VisitorApprovalRequest request)
         {
-            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
+            return ExecuteApprovalLifecycle(request, ApprovalAuthorizationMode.PendingOnly);
         }
 
         /// <summary>
         /// Receptionist force-approve — Pending-only authorization.
-        /// Issues QR, DayLog authorization via ApproveVisitSchedule, and visitor pass notification.
+        /// Prefer <see cref="AnmolDristi.BLL.ApprovalService.Execute"/> from UI callers.
         /// </summary>
         public VisitorApprovalResult ApproveVisitByReceptionist(VisitorApprovalRequest request)
         {
-            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
+            return ExecuteApprovalLifecycle(request, ApprovalAuthorizationMode.PendingOnly);
         }
 
         /// <summary>
-        /// Shared approval lifecycle (AR-VMS-02):
-        /// selected days → QR → guarded VisitLog UPDATE → ApproveVisitSchedule →
-        /// re-apply selected days → optional time override → pass notify → optional host on-behalf notify → COMMIT.
+        /// Shared approval lifecycle (AR-VMS-02). Called only through
+        /// <see cref="AnmolDristi.BLL.ApprovalService"/> (or the thin role wrappers above).
+        /// Sequence: load visit → validate status → DayLog flags → QR → VisitLog snapshot →
+        /// ApproveVisitSchedule / validity times → pass notify → after-hours audit → commit.
         /// </summary>
-        private VisitorApprovalResult ApproveVisitCore(
+        public VisitorApprovalResult ExecuteApprovalLifecycle(
             VisitorApprovalRequest request,
             ApprovalAuthorizationMode authMode)
         {
@@ -1162,6 +1235,27 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        string visitStatus;
+                        string visitHost;
+                        if (!TryLoadVisitForApproval(con, trans, request.LogId, out visitStatus, out visitHost))
+                        {
+                            trans.Rollback();
+                            return FailedApproval(request.LogId, ApprovalFailureReason.NotFoundOrNotOwned);
+                        }
+
+                        if (authMode == ApprovalAuthorizationMode.HostOwnership
+                            && !string.Equals(visitHost, hostEmployeeCode, StringComparison.OrdinalIgnoreCase))
+                        {
+                            trans.Rollback();
+                            return FailedApproval(request.LogId, ApprovalFailureReason.NotFoundOrNotOwned);
+                        }
+
+                        if (!string.Equals(visitStatus, "Pending", StringComparison.OrdinalIgnoreCase))
+                        {
+                            trans.Rollback();
+                            return FailedApproval(request.LogId, ApprovalFailureReason.NotPending);
+                        }
+
                         if (request.SelectedDays != null)
                         {
                             ApplySelectedDayApprovals(con, trans, request.LogId, request.SelectedDays);
@@ -1191,13 +1285,7 @@ namespace AnmolDristi.DAL
                                 // Do not mask the approval failure result.
                             }
 
-                            return new VisitorApprovalResult
-                            {
-                                Succeeded = false,
-                                FailureReason = reason,
-                                LogId = request.LogId,
-                                QrToken = null
-                            };
+                            return FailedApproval(request.LogId, reason);
                         }
 
                         // Full requested range: SelectedDays null → all RequestedValid* days approved;
@@ -1219,6 +1307,23 @@ namespace AnmolDristi.DAL
                                 request.ApprovedFromTime.Value,
                                 request.ApprovedToTime.Value);
                         }
+
+                        string approvalActorRole = ResolveApprovalActorRole(request, authMode);
+                        string approvalActorId = !string.IsNullOrWhiteSpace(request.ApprovedBy)
+                            ? request.ApprovedBy
+                            : hostEmployeeCode;
+                        AuditEventService.Publish(
+                            con,
+                            trans,
+                            request.LogId,
+                            AuditEventType.Approved,
+                            approvalActorRole,
+                            approvalActorId,
+                            metadata: AuditEventService.Metadata(
+                                "mode",
+                                authMode == ApprovalAuthorizationMode.HostOwnership
+                                    ? "Host"
+                                    : "OverrideFullRange"));
 
                         string visitorName;
                         string visitorEmail;
@@ -1248,7 +1353,7 @@ namespace AnmolDristi.DAL
 
                         DateTime? validUpto = LoadValidUpto(con, trans, request.LogId);
 
-                        TryWriteAfterHoursApprovalAudit(
+                        AfterHoursAuditOutcome audit = TryWriteAfterHoursApprovalAudit(
                             con,
                             trans,
                             request,
@@ -1263,7 +1368,10 @@ namespace AnmolDristi.DAL
                             FailureReason = ApprovalFailureReason.None,
                             LogId = request.LogId,
                             QrToken = qrToken,
-                            ValidUpto = validUpto
+                            ValidUpto = validUpto,
+                            QrGenerated = true,
+                            AuditWritten = audit != null && audit.Written,
+                            WarningMessage = audit != null ? audit.WarningMessage : null
                         };
                     }
                     catch
@@ -1279,6 +1387,51 @@ namespace AnmolDristi.DAL
 
                         throw;
                     }
+                }
+            }
+        }
+
+        private static VisitorApprovalResult FailedApproval(int logId, ApprovalFailureReason reason)
+        {
+            return new VisitorApprovalResult
+            {
+                Succeeded = false,
+                FailureReason = reason,
+                LogId = logId,
+                QrToken = null,
+                QrGenerated = false,
+                AuditWritten = false
+            };
+        }
+
+        private static bool TryLoadVisitForApproval(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            out string approvalStatus,
+            out string hostEmployeeCode)
+        {
+            approvalStatus = string.Empty;
+            hostEmployeeCode = string.Empty;
+
+            using (SqlCommand cmd = new SqlCommand(
+                "SELECT HostEmployeeCode, ApprovalStatus FROM VMS_VisitLog WHERE LogID = @LogID",
+                con,
+                trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return false;
+
+                    hostEmployeeCode = reader["HostEmployeeCode"] == DBNull.Value
+                        ? string.Empty
+                        : reader["HostEmployeeCode"].ToString();
+                    approvalStatus = reader["ApprovalStatus"] == DBNull.Value
+                        ? string.Empty
+                        : reader["ApprovalStatus"].ToString();
+                    return true;
                 }
             }
         }
@@ -1382,13 +1535,14 @@ namespace AnmolDristi.DAL
             }
         }
 
-        private static void TryWriteAfterHoursApprovalAudit(
+        private static AfterHoursAuditOutcome TryWriteAfterHoursApprovalAudit(
             SqlConnection con,
             SqlTransaction trans,
             VisitorApprovalRequest request,
             string hostEmployeeCode,
             ApprovalAuthorizationMode authMode)
         {
+            var outcome = new AfterHoursAuditOutcome();
             var selectedDates = new List<DateTime>();
             if (request.SelectedDays != null)
             {
@@ -1408,7 +1562,9 @@ namespace AnmolDristi.DAL
                 trans);
 
             if (evaluation == null || !evaluation.RequiresNotice)
-                return;
+                return outcome;
+
+            outcome.WarningMessage = evaluation.HostWarningMessage;
 
             int branchId = 0;
             DateTime scheduledFrom = DateTime.Now;
@@ -1426,7 +1582,7 @@ namespace AnmolDristi.DAL
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (!reader.Read())
-                        return;
+                        return outcome;
                     branchId = Convert.ToInt32(reader["TargetBranchID"]);
                     if (reader["HostEmployeeCode"] != DBNull.Value)
                         visitHost = reader["HostEmployeeCode"].ToString();
@@ -1500,8 +1656,39 @@ namespace AnmolDristi.DAL
                 insertCmd.Parameters.AddWithValue("@ApprovedBy", approvedBy);
                 insertCmd.Parameters.AddWithValue("@Reason",
                     string.IsNullOrEmpty(reason) ? (object)DBNull.Value : reason);
-                insertCmd.ExecuteNonQuery();
+                outcome.Written = insertCmd.ExecuteNonQuery() > 0;
             }
+
+            if (outcome.Written)
+            {
+                AuditEventService.Publish(
+                    con,
+                    trans,
+                    request.LogId,
+                    AuditEventType.AfterHoursApproved,
+                    ResolveApprovalActorRole(request, authMode),
+                    approvedBy,
+                    dayLogId);
+            }
+
+            return outcome;
+        }
+
+        private static string ResolveApprovalActorRole(
+            VisitorApprovalRequest request,
+            ApprovalAuthorizationMode authMode)
+        {
+            if (request != null && !string.IsNullOrWhiteSpace(request.ActorRole))
+                return request.ActorRole.Trim();
+            if (authMode == ApprovalAuthorizationMode.HostOwnership)
+                return AuditActorRole.Host;
+            if (request != null && request.QueueHostOnBehalfNotification)
+                return AuditActorRole.Admin;
+            string approvedBy = request != null ? request.ApprovedBy : null;
+            if (!string.IsNullOrWhiteSpace(approvedBy) &&
+                approvedBy.StartsWith("Admin", StringComparison.OrdinalIgnoreCase))
+                return AuditActorRole.Admin;
+            return AuditActorRole.Receptionist;
         }
 
         private static void ApplySelectedDayApprovals(

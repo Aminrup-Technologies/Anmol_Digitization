@@ -96,6 +96,9 @@ namespace AnmolDristi {
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
         protected global::System.Web.UI.WebControls.HiddenField hfConfirmedEmpCode;
+
+        protected global::AnmolDristi.Controls.HoursWarningControl ucHoursWarning;
+        protected global::AnmolDristi.Controls.EmployeeCardControl ucEmployeeCard;
         
         /// <summary>
         /// divQuickHosts control.
