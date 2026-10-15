@@ -115,3 +115,25 @@ Recorded with this gate. Unstaged. Not part of RC-019.
 | `Database/Scripts/015_RC018_Phase0_Discovery.sql` | Untracked | RC-018 Phase 0 discovery. Read only. |
 | `Database/Scripts/015b_RC018_Phase0_CrossDiff.sql` | Untracked | RC-018 Phase 0 cross-database diff. Read only. |
 | `Database/Scripts/015c_RC018_Phase0_KeysIndexes.sql` | Untracked | RC-018 Phase 0 keys and indexes. Read only. |
+
+---
+
+## Evidence-availability notice (added by repository review 2026-10-15)
+
+The "Constraints" and "Closed governance record" sections above reference RC-018 packaging that is **not present in this checkout**. Nothing above was changed; this notice records the verified repository state so those constraints are not read as satisfied at `HEAD`.
+
+Verified by `git ls-tree -r --name-only` and `git show --name-status`:
+
+| Referenced | Tag `rc018-executed-production-20260927` (`9ab2e588`) | `main` (`13e1694`) | `HEAD` (`52c1f32`) |
+| --- | --- | --- | --- |
+| `docs/reviews/Post_GoLive/RC018/` | 36 files, including `RC018_SHA256_Manifest.md`, `RC018_Execution_Manifest_v1.md`, `RC018_Master_Runbook.md`, `RC018_Phase0_Discovery_Report.md` | 35 files | 1 file (`RC018_Execution_Closeout_20260927.md`) |
+| `Database/Scripts/016*` through `029*` | present | present | absent |
+| `Database/Scripts/` total | 56 files | 42 files | 23 files |
+
+Removed by commit `9fdeb78` (2026-09-28 22:29:29 +0530, "RC-017C: drop RC-018 packaging so the pull request is only the soft-delete face refresh.", 78 deleted paths: 42 under `Database/Scripts`, 36 under `docs/reviews/Post_GoLive/RC018`). That commit is a descendant of `9ab2e588` and an ancestor of `HEAD`. The same commit replaced `.gitattributes`, removing its `*.sql`, `*.config`, `*.xml`, and `*.md` line-ending entries.
+
+Consequences: constraints 2 and 3 above cannot be checked against `HEAD`; constraint 4's certified baseline is not the tree at `HEAD`; and any constraint that depends on the RC-018 hash manifest is currently unverifiable from this checkout. Recovering the deleted artifacts is a release-owner decision, not a repository fix.
+
+The two "local-only inventory" rows for `Database/Scripts/015_RC018_Phase0_Discovery.sql` and its `b`/`c` siblings are **correct as written**: those files were never tracked in any commit in this repository.
+
+See `docs/INDEX.md` sections 8 and 9.

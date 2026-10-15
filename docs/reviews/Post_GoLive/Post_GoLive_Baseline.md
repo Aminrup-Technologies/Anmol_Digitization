@@ -245,3 +245,19 @@ Still open (do not treat as in-scope for a hotfix unless Sprint 3 picks them):
 ---
 
 **Freeze statement:** RC-001 through RC-014D are UAT-certified. This document is the Sprint 3 starting line. The next change to application code, SQL, or Git is a new RC against this baseline, not an amendment of the go-live tag.
+
+---
+
+## Conflict notice (added by repository review 2026-10-15)
+
+This file declares itself "the frozen reference point for all future TA/DA work" and "the Sprint 3 starting line", and its closing "Freeze statement" says the next change "is a new RC against this baseline". Later commits and records make parts of it historical. Both are preserved; the decision on which baseline governs is **pending**.
+
+| This file | Later record |
+| --- | --- |
+| States RC-001 through RC-014D are UAT-certified and fixes the SQL registry at UAT `modify_date` values spanning **2026-07-28 through 2026-09-15** (earliest `usp_SubmitSalesDailyActivities` 2026-07-28 12:39:02; latest `usp_GetApprovalRequest` / `usp_Export_Auditor_Final_Excel` 2026-09-15 23:56:30, per `TA_DA_PostGoLive_Consolidated_Certification.md` §3.4) | `TA_DA_PostGoLive_Consolidated_Certification.md` adds RC-015A-G and, in its section 8, RC-023/RC-024 (LIVE CAB execution 2026-09-23) |
+| Does not mention RC-017 to RC-024 | Tags `tada-v1.1-rc017-live-hotfix-2026` (`47f3f65b`, 2026-09-24), `rc018-executed-production-20260927` (`9ab2e588`, 2026-09-27), `rc019-foundation-20260928` (`3f60f966`) |
+| Does not mention the 2026-09-28 checkpoint change | Commit `e1ddf06` ("HOTFIX: Preserve Auditor ownership until Ready for Payment"), present at tag `tada-post-rc019-2026-09-28` (`bc87682f`) |
+| Section 2 lists `usp_MarkRequestReadyForPayment` as the payment writer with "no detail version predicate" | A later unapproved candidate adds a transaction, locks, and an Auditor-row write; `Database/Deployments/L2R19_UAT/README.md` and `TA_DA_Deployment_Checklist.md` from L386 record its status |
+| Does not mention the kilometre-deduction package | `SubmittedTravelBaseline_UAT_Execution.md` (2026-10-15, verdict HOLD) states it does not amend `RC015G` or any RC-017 artifact |
+
+No text above this notice was changed. This notice adds no baseline and selects none; tag targets are listed in `docs/INDEX.md` section 10.
