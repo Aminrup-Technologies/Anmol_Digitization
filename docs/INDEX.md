@@ -63,6 +63,7 @@ Companion file: [`AGENTS.md`](../AGENTS.md) — how to work in this repository.
 | `docs/reviews/Post_GoLive/RC017C_SoftDelete_Face_Refresh.md` | `execution-record` | RC-017C. Companion raw capture: `RC017C_UAT_Evidence_1136.txt`. |
 | `docs/reviews/Post_GoLive/RC018/RC018_Execution_Closeout_20260927.md` | `execution-record` | The only RC-018 artifact left in this directory at `HEAD`. The rest of the RC-018 pack is **`not-in-git`** at `HEAD` — see §9. |
 | `docs/reviews/Post_GoLive/SubmittedTravelBaseline_UAT_Execution.md` | `execution-record` · untracked | Kilometre-deduction UAT, verdict **HOLD**. States it does not amend `RC015G` or any RC-017 artifact. |
+| `docs/reviews/Post_GoLive/Recovered_Conflict_Register_20261015.md` | `recovered-evidence` · `open-conflict` | Preserves the review's `F-01`–`F-18` conflict register verbatim from its recovered source, with the counts reconciled from its own `Status` column: `RESOLVED` 4 · `NOTICE ADDED` 4 · `DOCUMENTED` 1 · `BLOCKED` 8 · `NO ACTION` 1 = **18**. It also carries the recovered `D-1`–`D-9` decision register. No decision is made there. See §8 and §9. |
 
 ## 4. L2 Auditor As-Is pack
 
@@ -118,6 +119,14 @@ are third-party vendor documents and are not project instructions.
 Both sides are preserved and the decision is **pending**. No resolution is
 asserted by this index.
 
+The earlier review's `F-`-series conflict register (`F-01`–`F-18`, status
+`BLOCKED` 8 · `NOTICE ADDED` 4 · `RESOLVED` 4 · `DOCUMENTED` 1 · `NO ACTION` 1) is
+recovered verbatim in `docs/reviews/Post_GoLive/Recovered_Conflict_Register_20261015.md`,
+whose `Status` column — not the original summary, which claimed "10 conflicts
+registered" — is the authority for those counts. That series is distinct from the
+`C-1`–`C-10` register above and from the Functional Specification's unrelated
+`F-01`–`F-11` forbidden-transition table; cite the source when citing an `F-` ID.
+
 | ID | Conflict | Sources | Decision owner |
 | --- | --- | --- | --- |
 | C-1 | **Which procedure pair owns Auditor finalization.** At tag `tada-v1.1-postgolive-fsot-2026` (`3779d185`) `usp_ProcessApprovalAction` writes `Completed` on the last Auditor day and `usp_MarkRequestReadyForPayment` requires `Completed`. At `HEAD` and tag `tada-post-rc019-2026-09-28` (`bc87682f`) the first leaves the header `Pending`, while the second still requires `Completed` at `bc87682f` and additionally accepts `Pending` at `HEAD`. | `Database/Stored Procedures/Approval/usp_ProcessApprovalAction.sql`; `.../usp_MarkRequestReadyForPayment.sql`; the two tags | Release owner / IT Application Owner |
@@ -166,7 +175,7 @@ them would assert a fact that the repository does not establish.
 | `AnmolDristi/Database/Operational/TA_DA_SQL_Reconciliation/` | `TA_DA_Deployment_Checklist.md` L289 | The path exists in no commit and no stash. Recorded evidence unavailable to this repository. |
 | `docs/reviews/RC019/executions/`, `docs/reviews/RC019/evidence/` | `docs/reviews/RC019/templates/*` | Prescribed, intentionally empty destinations. Not broken links. |
 | `AnmolDristi/PolicyResolutionService.cs` | `TechnicalDesignSpecification_...` L185 | The row lists two candidate locations; the existing file is `AnmolDristi/BLL/PolicyResolutionService.cs`. Editing a specification to pick one is a design claim, not a navigation fix. |
-| `See §8, D-3.` (formerly on the `Database/Deployments/MarkReadyAuditorRow/` row) | `docs/INDEX.md` §6 | **Unresolved — no target established.** The §8 register uses `C-1`–`C-10` and no `D-n` series exists anywhere in this repository; a worktree-wide search for `D-3` returns only unrelated matches (`MOD-3` in `docs/HRMS_Import_Module/07_Business_Rules.md`, vendor library strings, and addresses inside uploaded CSV files). By subject matter the row is closest to `C-5` (an unapproved candidate whose apply script ships closed), but no repository artifact states that `C-5` was the intended target, so no replacement is asserted here. **Evidence needed:** the authoring source of the `D-3` label — the review report in which it was written, which is conversation output and not a repository file — or an owner decision naming the intended register entry. |
+| `See §8, D-3.` (formerly on the `Database/Deployments/MarkReadyAuditorRow/` row) | `docs/INDEX.md` §6 · source recovered 2026-10-15 | **Unresolved — target not established; mapping awaits owner confirmation.** The authoring source has since been recovered: `D-3` is not a conflict ID but decision `D-3` of the earlier authority-audit decision register (`D-1`–`D-9`), preserved verbatim in `docs/reviews/Post_GoLive/Recovered_Conflict_Register_20261015.md` §6 — "Is the 2026-10-14 07:58 Production promotion of `usp_MarkRequestReadyForPayment` (`E9097D3A…`, LEN 11181) accepted as a valid production state …", owner **CAB + IT Application Owner**. The label was written on a row that points at §8, which holds the `C-1`–`C-10` conflict register — hence it does not resolve in this file. Its subject matter corresponds to `C-5` (owner "CAB / IT Application Owner") and it cites the same repository fact (`Production_B_Apply.sql` `@Execute = 0`, L39–42), but **no source states that the label meant `C-5`, so that mapping is not asserted here**. **Required:** an owner confirmation that §8 `C-5` is the intended target, or an edit re-pointing the row. |
 | `packages/**/README.md` relative links | vendored NuGet packages | Third-party content; out of scope. |
 
 ## 10. Verified baseline references
