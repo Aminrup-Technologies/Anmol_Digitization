@@ -569,6 +569,7 @@
                             <asp:HiddenField ID="hfPendingApproveDetailId" runat="server" />
                             <asp:HiddenField ID="hfPendingApproveRemark" runat="server" />
                             <asp:HiddenField ID="hfPendingBulkApprove" runat="server" Value="0" />
+                            <asp:HiddenField ID="hfPendingBulkDetailIds" runat="server" Value="" />
                             <asp:HiddenField ID="hfSummaryDaysApproved" runat="server" Value="0" />
                             <asp:HiddenField ID="hfSummaryDaysReturned" runat="server" Value="0" />
                             <asp:HiddenField ID="hfSummaryDaysRejected" runat="server" Value="0" />

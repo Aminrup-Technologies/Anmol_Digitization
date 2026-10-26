@@ -28,6 +28,8 @@ namespace AnmolDristi
         private decimal _totalTravel = 0m;
         private decimal _totalStationary = 0m; // <-- ADD THIS
 
+        protected global::System.Web.UI.WebControls.HiddenField hfPendingBulkDetailIds;
+
         // Workflow-pending day count (RC-022): uses IsDetailActionableAtCurrentLevel, not button.Enabled.
         private int _actionableWorkflowDayCount = 0;
 
@@ -539,20 +541,18 @@ namespace AnmolDristi
         
                     UNION ALL
         
-                    SELECT 
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
-                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
-                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
-                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount,
-                        (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
+                    SELECT
+                        CAST(d.SubmittedClaimAmount - ISNULL(d.Snapshot_CalculatedClaimAmount, 0) AS DECIMAL(18,2)) AS DeductedAmount,
+                        CAST(CASE
+                            WHEN d.SubmittedDistanceKM IS NULL THEN 0
+                            WHEN d.SubmittedDistanceKM > ISNULL(d.Snapshot_TotalDistanceKM, 0)
+                                THEN d.SubmittedDistanceKM - ISNULL(d.Snapshot_TotalDistanceKM, 0)
+                            ELSE 0
+                        END AS DECIMAL(18,2)) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    INNER JOIN (
-                        SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
-                        FROM dbo.SalesDailyActivityKMHistory
-                        GROUP BY ActivityId
-                    ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id 
-                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM 
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.SubmittedClaimAmount IS NOT NULL
+                      AND d.SubmittedClaimAmount > ISNULL(d.Snapshot_CalculatedClaimAmount, 0)
                       AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                 ) x;
@@ -2331,6 +2331,50 @@ namespace AnmolDristi
         protected void btnReturnSelected_Click(object sender, EventArgs e) { ProcessBulkAction(DayDetailAction.Return); }
         protected void btnRejectDaysSelected_Click(object sender, EventArgs e) { ProcessBulkAction(DayDetailAction.Reject); }
 
+        private void ClearPreservedBulkSelection()
+        {
+            if (hfPendingBulkDetailIds != null)
+                hfPendingBulkDetailIds.Value = "";
+            hfPendingBulkApprove.Value = "0";
+        }
+
+        private void PreserveBulkDetailIds(IEnumerable<int> detailIds)
+        {
+            if (hfPendingBulkDetailIds == null) return;
+            hfPendingBulkDetailIds.Value = string.Join(",", detailIds.Distinct());
+        }
+
+        private bool TryReadPreservedBulkDetailIds(out List<int> detailIds, out bool malformed)
+        {
+            detailIds = new List<int>();
+            malformed = false;
+            string raw = hfPendingBulkDetailIds == null || hfPendingBulkDetailIds.Value == null
+                ? ""
+                : hfPendingBulkDetailIds.Value.Trim();
+            if (raw.Length == 0)
+                return false;
+
+            var seen = new HashSet<int>();
+            foreach (string token in raw.Split(','))
+            {
+                string text = token.Trim();
+                if (text.Length == 0) continue;
+
+                int detailId;
+                if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out detailId) || detailId <= 0)
+                {
+                    malformed = true;
+                    detailIds.Clear();
+                    return false;
+                }
+
+                if (seen.Add(detailId))
+                    detailIds.Add(detailId);
+            }
+
+            return detailIds.Count > 0;
+        }
+
         private void ProcessBulkAction(DayDetailAction action)
         {
             ProcessBulkAction(action, false);
@@ -2379,23 +2423,47 @@ namespace AnmolDristi
 
                 var selectedRows = new List<Tuple<int, string>>();
 
-                foreach (GridViewRow row in gvDetails.Rows)
+                if (forwardConfirmed)
                 {
-                    if (row.RowType != DataControlRowType.DataRow) continue;
-
-                    var chk = row.FindControl("chkSelect") as CheckBox;
-                    if (chk == null || !chk.Checked) continue;
-
-                    int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
-                    string rowRemark = remarks;
-                    if (action != DayDetailAction.Approve)
+                    List<int> preservedIds;
+                    bool malformed;
+                    if (!TryReadPreservedBulkDetailIds(out preservedIds, out malformed))
                     {
-                        var txtRowRemark = row.FindControl("txtRowRemark") as TextBox;
-                        if (txtRowRemark != null && !string.IsNullOrWhiteSpace(txtRowRemark.Text))
-                            rowRemark = AppendUserToRemark(txtRowRemark.Text.Trim(), auditor);
+                        lblModalMessage.Text = malformed
+                            ? "The preserved selection is invalid, so nothing was approved."
+                            : "No preserved selection was found, so nothing was approved.";
+                        lblModalMessage.CssClass = "text-warning font-weight-bold";
+                        if (!malformed)
+                            hfPendingBulkApprove.Value = "0";
+                        upDetails.Update();
+                        return;
                     }
 
-                    selectedRows.Add(Tuple.Create(detailId, rowRemark));
+                    foreach (int preservedId in preservedIds)
+                        selectedRows.Add(Tuple.Create(preservedId, remarks));
+                }
+                else
+                {
+                    ClearPreservedBulkSelection();
+
+                    foreach (GridViewRow row in gvDetails.Rows)
+                    {
+                        if (row.RowType != DataControlRowType.DataRow) continue;
+
+                        var chk = row.FindControl("chkSelect") as CheckBox;
+                        if (chk == null || !chk.Checked) continue;
+
+                        int detailId = Convert.ToInt32(gvDetails.DataKeys[row.RowIndex].Value);
+                        string rowRemark = remarks;
+                        if (action != DayDetailAction.Approve)
+                        {
+                            var txtRowRemark = row.FindControl("txtRowRemark") as TextBox;
+                            if (txtRowRemark != null && !string.IsNullOrWhiteSpace(txtRowRemark.Text))
+                                rowRemark = AppendUserToRemark(txtRowRemark.Text.Trim(), auditor);
+                        }
+
+                        selectedRows.Add(Tuple.Create(detailId, rowRemark));
+                    }
                 }
 
                 var detailIds = selectedRows.Select(x => x.Item1).ToList();
@@ -2435,6 +2503,7 @@ namespace AnmolDristi
                         && ShouldConfirmForwardToNextApprover(reqId, rowsToProcess.Select(x => x.Item1).ToList()))
                     {
                         hfPendingBulkApprove.Value = "1";
+                        PreserveBulkDetailIds(selectedRows.Select(x => x.Item1));
                         hfPendingApproveDetailId.Value = "";
                         hfPendingApproveRemark.Value = "";
                         ScriptManager.RegisterStartupScript(upDetails, upDetails.GetType(), "showForwardNext",
@@ -2460,7 +2529,14 @@ namespace AnmolDristi
                             }
                             catch
                             {
-                                tran.Rollback();
+                                try
+                                {
+                                    if (tran.Connection != null)
+                                        tran.Rollback();
+                                }
+                                catch
+                                {
+                                }
                                 throw;
                             }
                         }
@@ -2475,6 +2551,9 @@ namespace AnmolDristi
                             "closeClaimWorkflowAfterReturn();showReturnedSuccessNotify();", true);
                     }
                 }
+
+                if (forwardConfirmed)
+                    ClearPreservedBulkSelection();
 
                 int skippedCount = skipReasons.Values.Sum();
                 if (forwardConfirmed && processedCount > 0)
@@ -2504,6 +2583,8 @@ namespace AnmolDristi
             }
             catch (Exception ex)
             {
+                if (hfPendingBulkDetailIds != null && !string.IsNullOrWhiteSpace(hfPendingBulkDetailIds.Value))
+                    hfPendingBulkApprove.Value = "1";
                 lblModalMessage.Text = "Error processing bulk action: " + ex.Message;
                 lblModalMessage.CssClass = "text-danger font-weight-bold";
                 upDetails.Update();
@@ -3101,9 +3182,6 @@ namespace AnmolDristi
         {
             if (hfPendingBulkApprove.Value == "1")
             {
-                hfPendingBulkApprove.Value = "0";
-                hfPendingApproveDetailId.Value = "";
-                hfPendingApproveRemark.Value = "";
                 ProcessBulkAction(DayDetailAction.Approve, true);
                 return;
             }
@@ -3435,25 +3513,24 @@ namespace AnmolDristi
 
                     UNION ALL
 
-                    SELECT 
+                    SELECT
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
-                        'KM Reduced (' + CAST(fk.ClaimedKM AS varchar) + ' to ' + CAST(d.Snapshot_TotalDistanceKM AS varchar) + ')' AS DeductionType,
-                        ISNULL((SELECT TOP 1 Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = a.ActivityId ORDER BY ModifiedDateTime DESC), 'KM corrected') AS Reason,
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
-                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
-                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
-                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount
+                        'Submitted travel ₹' + CONVERT(varchar(40), d.SubmittedClaimAmount)
+                            + ' to ₹' + CONVERT(varchar(40), ISNULL(d.Snapshot_CalculatedClaimAmount, 0))
+                            + CASE
+                                WHEN d.SubmittedDistanceKM IS NULL THEN ''
+                                ELSE ' (' + CONVERT(varchar(40), d.SubmittedDistanceKM) + ' km to '
+                                     + CONVERT(varchar(40), ISNULL(d.Snapshot_TotalDistanceKM, 0)) + ' km)'
+                              END AS DeductionType,
+                        'Current travel snapshot is below the submitted travel amount' AS Reason,
+                        CAST(d.SubmittedClaimAmount - ISNULL(d.Snapshot_CalculatedClaimAmount, 0) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    INNER JOIN (
-                        SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
-                        FROM dbo.SalesDailyActivityKMHistory
-                        GROUP BY ActivityId
-                    ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id 
-                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.SubmittedClaimAmount IS NOT NULL
+                      AND d.SubmittedClaimAmount > ISNULL(d.Snapshot_CalculatedClaimAmount, 0)
                       AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
-                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"        
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                     ORDER BY ActivityDate ASC;";
 
                 using (var con = new SqlConnection(connString))
