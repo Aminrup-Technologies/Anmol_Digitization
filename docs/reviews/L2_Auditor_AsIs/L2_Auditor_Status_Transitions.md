@@ -112,3 +112,17 @@ UAT `usp_ProcessApprovalAction` also supports REJECT (maps to `Rejected`) with l
 - `GetReturnedItemCount` = 0
 
 That is a UI gate only. Persist still requires header `Completed` inside `usp_MarkRequestReadyForPayment` (UAT `modify_date` 2026-01-09).
+
+---
+
+## Conflict notice (added by repository review 2026-10-15)
+
+This file is an **as-is capture dated 2026-09-15**, taken before RC-014B. Its statements about the Auditor terminal path contradict later certified and checkpoint records. Both sources are preserved; the decision is **pending**.
+
+| This file says | Contradicted by |
+| --- | --- |
+| Section 1, Section 6, Section 7: the last Auditor day leaves the header `Pending`, and `usp_MarkRequestReadyForPayment` then refuses to run | `usp_ProcessApprovalAction.sql`, changelog block `auditor_terminal_completed_status` (2026-09-15), present at tag `tada-v1.1-postgolive-fsot-2026` (`3779d185`): the Auditor terminal branch writes header `Completed`, and Mark Ready then succeeds |
+| Section 7: "Persist still requires header `Completed`" stated without qualification | Still required at tag `tada-post-rc019-2026-09-28` (`bc87682f`), but that tag's `usp_ProcessApprovalAction` carries `hf231_auditor_ready_for_payment_checkpoint` and leaves the header `Pending`, so on that tag no reachable writer produces the required `Completed`. At `HEAD` the candidate Mark Ready also accepts `Pending`. |
+| Section 1: "Auditor Ready for Payment - refused" | Recorded as PASS on 2026-10-12 in the L2-R19 row of `L2_Auditor_Risk_Register.md` - history `Pending -> Completed`, then `Completed -> ReadyForPayment` (quoted record, not verified here) |
+
+No text above this notice was changed. Nothing here selects a procedure body: that choice is unresolved and is listed as C-1 in `docs/INDEX.md`.

@@ -45,7 +45,7 @@ Verified rollback preimage already embedded:
 | --- | --- | --- |
 | `usp_MarkRequestReadyForPayment` before apply | `8B2ECBCE8AC258D67A2C3CFCC6C45CC385F01354B8F5D8B5594409889685E158` | 2882 |
 
-Missing rollback preimages: `usp_UpdateSalesDailyExpenseStatus`, `usp_ProcessApprovalAction`, `usp_SubmitSalesDailyActivities`, and `usp_RecalculateApprovalRequest`. Do not substitute git, LIVE, or `Database/Deployments/RC014B`.
+Rollback preimages for those four procedures are present in the repository. They were exported from `OBJECT_DEFINITION` on the UAT reader and embedded in `D_Rollback_L2R19_Finalization_UAT.sql`; the export and its hash record are in `docs/reviews/L2_Auditor_AsIs/L2R19_preimage_export_2026-10-13T071700Z/`, where `HASH_VERIFICATION.txt` records `match=True` for all four. This section previously recorded them as missing; the gates below stay closed regardless. Do not substitute git, LIVE, or `Database/Deployments/RC014B`, and do not re-export over these files without an owner decision.
 
 ## Execution order
 
@@ -55,7 +55,7 @@ UAT and LIVE are separate. Do not reuse a UAT hash, backup, or test result as pr
 | --- | --- | --- |
 | 1 | `A_Preflight_ReadOnly_UAT.sql` with Results to File. Save the five definitions and hashes. | Do not run this package. |
 | 2 | New undamaged full backup of `AnmolDristiDev` finishing after `2026-10-12 14:02:57.583`, with checksums, then `RESTORE VERIFYONLY FROM DISK = N'<backup path>' WITH CHECKSUM`. | A later production package needs its own production preimages and backup. |
-| 3 | Paste the four missing preimages into `D_Rollback` and their hashes into `B_Apply`. Set `@PreimageBodiesSaved` and `@AllFivePreimagesPresent` only after each pasted body hashes to the preflight value. | Not this folder. |
+| 3 | Confirm the four embedded preimages in `D_Rollback` and their hashes in `B_Apply`. Set `@PreimageBodiesSaved` and `@AllFivePreimagesPresent` only after each embedded body hashes to the preflight value. | Not this folder. |
 | 4 | Named owner sets `@OwnerApproved`, `@OwnerName`, `@RequiredBackupFinish`, and `@BackupVerifyOnlyPassed` on `B_Apply`. A separate named decision sets `@AppPublishAuthorizedBy`. That flag records the decision. It does not publish IIS. | Separate production authorization. |
 | 5 | `B_Apply_L2R19_Finalization_UAT.sql` | No. |
 | 6 | `C_PostApply_Verification_UAT.sql` | No. |
@@ -72,5 +72,22 @@ Protected claims 97, 100, 111, 112, 118, 119, 121, and 122 stay unread and uncha
 | `A_Preflight_ReadOnly_UAT.sql` | Identity, five module hashes and definitions, dependency hashes, TVP, columns, index filters, and the newest full backups. |
 | `B_Apply_L2R19_Finalization_UAT.sql` | Five-procedure alter. Shipped closed. |
 | `C_PostApply_Verification_UAT.sql` | Read-only comparison with the catalog hashes above. |
-| `D_Rollback_L2R19_Finalization_UAT.sql` | Five-procedure restore. Shipped closed. Only the Mark Ready preimage is present. |
+| `D_Rollback_L2R19_Finalization_UAT.sql` | Five-procedure restore. Shipped closed. All five preimages are embedded and hash-checked; `@Execute`, `@RollbackApproved`, and `@AllFivePreimagesPresent` remain 0. |
 | `E_UAT_Evidence_Queries.sql` | Read-only before and after evidence for one application-created claim. |
+
+---
+
+## Conflict notice (added by repository review 2026-10-15)
+
+Two repository files make opposite claims about authorization for this package. Both are preserved; the decision is **pending** and this repository does not resolve it.
+
+| Source | Claim |
+| --- | --- |
+| `Database/Stored Procedures/Approval/usp_MarkRequestReadyForPayment.sql`, lines 1-14 | "Review candidate only. Not authorized for UAT or LIVE execution." |
+| `docs/releases/TA_DA_GoLive_2026/TA_DA_Deployment_Checklist.md`, L800-812 and L843 | Records a Production promotion on 2026-10-14 07:58-07:59 whose read-back is `LEN 11181`, SHA-256 `E9097D3A83D66D61960F52C7B599F47F595B8943662601C4F4F0A9E6402FB409`, described there as "Matches the UAT-verified module" |
+
+The checklist entries are **quoted records** and were not independently verified here. No live environment was contacted, and this package neither confirms nor denies the deployed state.
+
+The same window records that `usp_ProcessApprovalAction` was **not** applied, while this candidate is designed to pair with a specific `usp_ProcessApprovalAction` body. Selecting that pair is unresolved. See `docs/INDEX.md` conflicts C-1 and C-5.
+
+Nothing above this notice was altered, and no gate is opened by it. Open gates in `B_Apply_L2R19_Finalization_UAT.sql` (L42-48): `@Execute` 0, `@OwnerApproved` 0, `@OwnerName` empty, `@RequiredBackupFinish` NULL, `@BackupVerifyOnlyPassed` 0, `@AppPublishAuthorizedBy` empty, `@PreimageBodiesSaved` 0. Open gates in `D_Rollback_L2R19_Finalization_UAT.sql` (L38-40): `@Execute` 0, `@RollbackApproved` 0, `@AllFivePreimagesPresent` 0.

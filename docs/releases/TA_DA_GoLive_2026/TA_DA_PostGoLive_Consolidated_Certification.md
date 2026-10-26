@@ -371,3 +371,18 @@ Pack: `pvt-evidence/2026-09-23-rc024-live-cab/` (retained outside Git). Anchors:
 | UAT restore | **PASS** | DeployPackages restored to `AnmolDristiDev` `2026-09-24 02:02:50 +05:30` |
 
 **RC-023 Production Go / No-Go:** **GO** (RC-024, 2026-09-23). Does not reopen or rewrite RC-001–RC-022 certified sections above.
+
+---
+
+## Appendix - conflict notice added by repository review 2026-10-15 (not part of the certification)
+
+The certification content above is unchanged. This appendix records that two of its conclusions are qualified by later commits and records. Both sides are preserved; the decision is **pending**.
+
+| Certification conclusion | Qualifying later evidence |
+| --- | --- |
+| Section 3.1: "Ready-for-Payment - PASS", anchored on Request 97 with RC-014B/RC-014D | `L2_Auditor_Finalization_Contract.md` records, dated 2026-10-12 and 2026-10-13, that this historical proof "is not the current finalization path", that repository and UAT `usp_ProcessApprovalAction` leave the final Auditor row and the header `Pending`, that LIVE executable text approves that Auditor row and writes `Completed`, and that the release status remains "L2-R19: BLOCKED - OWNER APPROVAL REQUIRED" |
+| Section 3.4 SQL deployment inventory (UAT `modify_date` values of 2026-09-15) | `L2_Auditor_Risk_Register.md` (L2-R25) records repository, UAT, and LIVE bodies differing for several procedures; `TA_DA_Deployment_Checklist.md` L837-851 records different Production stamp values |
+| Section 3.3 and section 4 leave RC-015B "OPEN" | Nothing in this document, or in the later records checked, closes it |
+| This document does not mention the 2026-09-28 checkpoint change or the 2026-10-13 finalization candidate | Commit `e1ddf06`; `Database/Stored Procedures/Approval/usp_MarkRequestReadyForPayment.sql`; `Database/Deployments/L2R19_UAT/` |
+
+The evidence packs this document cites are unaffected by this appendix. It supersedes nothing and certifies nothing. Conflict identifiers are listed in `docs/INDEX.md` section 8.
