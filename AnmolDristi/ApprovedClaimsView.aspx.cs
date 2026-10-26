@@ -361,20 +361,18 @@ namespace AnmolDristi
 
                     UNION ALL
 
-                    SELECT 
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
-                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
-                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
-                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount,
-                        (fk.ClaimedKM - d.Snapshot_TotalDistanceKM) AS DeductedKM
+                    SELECT
+                        CAST(d.SubmittedClaimAmount - ISNULL(d.Snapshot_CalculatedClaimAmount, 0) AS DECIMAL(18,2)) AS DeductedAmount,
+                        CAST(CASE
+                            WHEN d.SubmittedDistanceKM IS NULL THEN 0
+                            WHEN d.SubmittedDistanceKM > ISNULL(d.Snapshot_TotalDistanceKM, 0)
+                                THEN d.SubmittedDistanceKM - ISNULL(d.Snapshot_TotalDistanceKM, 0)
+                            ELSE 0
+                        END AS DECIMAL(18,2)) AS DeductedKM
                     FROM dbo.SalesApprovalRequestDetail d
-                    INNER JOIN (
-                        SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
-                        FROM dbo.SalesDailyActivityKMHistory
-                        GROUP BY ActivityId
-                    ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id 
-                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM 
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.SubmittedClaimAmount IS NOT NULL
+                      AND d.SubmittedClaimAmount > ISNULL(d.Snapshot_CalculatedClaimAmount, 0)
                       AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
                       AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                 ) x;";
@@ -528,25 +526,24 @@ namespace AnmolDristi
 
                     UNION ALL
 
-                    SELECT 
+                    SELECT
                         CONVERT(varchar, a.ActivityDate, 106) AS ActivityDate,
-                        'KM Reduced (' + CAST(fk.ClaimedKM AS varchar) + ' to ' + CAST(d.Snapshot_TotalDistanceKM AS varchar) + ')' AS DeductionType,
-                        ISNULL((SELECT TOP 1 Reason FROM dbo.SalesDailyActivityKMHistory WHERE ActivityId = a.ActivityId ORDER BY ModifiedDateTime DESC), 'KM corrected') AS Reason,
-                        CAST(ROUND((fk.ClaimedKM - d.Snapshot_TotalDistanceKM) * 
-                            CASE WHEN ISNULL(d.Snapshot_TotalDistanceKM, 0) > 0 
-                                 THEN ISNULL(d.Snapshot_CalculatedClaimAmount, 0) / d.Snapshot_TotalDistanceKM 
-                                 ELSE 3.75 END, 2) AS DECIMAL(18,2)) AS DeductedAmount
+                        'Submitted travel ₹' + CONVERT(varchar(40), d.SubmittedClaimAmount)
+                            + ' to ₹' + CONVERT(varchar(40), ISNULL(d.Snapshot_CalculatedClaimAmount, 0))
+                            + CASE
+                                WHEN d.SubmittedDistanceKM IS NULL THEN ''
+                                ELSE ' (' + CONVERT(varchar(40), d.SubmittedDistanceKM) + ' km to '
+                                     + CONVERT(varchar(40), ISNULL(d.Snapshot_TotalDistanceKM, 0)) + ' km)'
+                              END AS DeductionType,
+                        'Current travel snapshot is below the submitted travel amount' AS Reason,
+                        CAST(d.SubmittedClaimAmount - ISNULL(d.Snapshot_CalculatedClaimAmount, 0) AS DECIMAL(18,2)) AS DeductedAmount
                     FROM dbo.SalesApprovalRequestDetail d
                     INNER JOIN dbo.SalesDailyActivity a ON d.ActivityId = a.ActivityId
-                    INNER JOIN (
-                        SELECT ActivityId, MAX(CASE WHEN NewKM > ISNULL(OldKM,0) THEN NewKM ELSE OldKM END) AS ClaimedKM 
-                        FROM dbo.SalesDailyActivityKMHistory
-                        GROUP BY ActivityId
-                    ) fk ON d.ActivityId = fk.ActivityId
-                    WHERE d.ApprovalRequestId = @Id 
-                      AND fk.ClaimedKM > d.Snapshot_TotalDistanceKM
+                    WHERE d.ApprovalRequestId = @Id
+                      AND d.SubmittedClaimAmount IS NOT NULL
+                      AND d.SubmittedClaimAmount > ISNULL(d.Snapshot_CalculatedClaimAmount, 0)
                       AND ISNULL(d.DetailStatus, '') <> '" + ClaimStatuses.Rejected + @"'
-                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"        
+                      AND " + SalesApprovalDetailVersionHelper.LatestDetailWhereForD.Trim() + @"
                     ORDER BY ActivityDate ASC;";
 
                 using (var con = new SqlConnection(connString))
