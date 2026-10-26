@@ -1,4 +1,17 @@
 /* ============================================================================
+   NAME:        submitted_travel_baseline
+   WHEN:        2026-10-14
+   WHY:         Recalculation replaces the live travel snapshot, so the
+                submitted kilometres and travel amount must be stored separately.
+   WHAT:        Each new detail version copies SalesDailyActivity.TotalDistanceKM
+                and CalculatedClaimAmount into SubmittedDistanceKM and
+                SubmittedClaimAmount in the same insert as the snapshot.
+                Resubmission reads the activity row again. It does not copy
+                the previous version. No later statement in this procedure
+                assigns those columns.
+   ============================================================================ */
+
+/* ============================================================================
    NAME:        submit_refreshes_final_approved_amount
    WHEN:        2026-10-13
    WHY:         Return recalculates and drops Returned latest rows from
@@ -458,6 +471,10 @@ BEGIN
 
         Snapshot_CalculatedClaimAmount,
 
+        SubmittedDistanceKM,
+
+        SubmittedClaimAmount,
+
         Snapshot_DAAmount,
 
         Snapshot_HotelAmount,
@@ -484,6 +501,10 @@ BEGIN
         @ApprovalRequestId,
 
         a.ActivityId,
+
+        a.TotalDistanceKM,
+
+        a.CalculatedClaimAmount,
 
         a.TotalDistanceKM,
 
