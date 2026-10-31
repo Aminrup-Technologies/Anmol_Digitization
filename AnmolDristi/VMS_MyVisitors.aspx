@@ -1,18 +1,12 @@
 ﻿<%@ Page Title="My Visitors" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="VMS_MyVisitors.aspx.cs" Inherits="AnmolDristi.VMS_MyVisitors" %>
+<%@ Register Src="~/Controls/VisitWindowControl.ascx" TagPrefix="vms" TagName="VisitWindow" %>
+<%@ Register Src="~/Controls/StatusBadgeControl.ascx" TagPrefix="vms" TagName="StatusBadge" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <link href="css/vms-ui.css" rel="stylesheet" />
+    <script src="Scripts/VMS_UI.js"></script>
     <style>
         .visitor-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #1ABB9C; }
-        .badge-pending { background-color: #f0ad4e; }
-        .badge-approved { background-color: #1ABB9C; }
-        .badge-rejected { background-color: #d9534f; }
-        .schedule-summary { font-size: 12px; color: #333; font-weight: 600; margin-bottom: 8px; }
-        .day-window { margin-top: 4px; min-width: 280px; }
-        .day-window-title { font-size: 11px; font-weight: 700; color: #73879C; margin-bottom: 6px; text-transform: uppercase; }
-        .day-window-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .day-window-table th { text-align: left; color: #888; font-weight: 600; padding: 3px 8px 5px 0; border-bottom: 1px solid #eee; }
-        .day-window-table td { padding: 5px 8px 5px 0; color: #333; border-bottom: 1px solid #f3f3f3; vertical-align: middle; white-space: nowrap; }
-        .badge { padding: 3px 8px; border-radius: 10px; font-weight: 600; font-size: 10px; color: #fff; }
     </style>
 </asp:Content>
 
@@ -55,7 +49,7 @@
                                                 <asp:BoundField DataField="PurposeOfVisit" HeaderText="Purpose" />
                                                 <asp:TemplateField HeaderText="Visit Window">
                                                     <ItemTemplate>
-                                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                                        <vms:VisitWindow ID="ucVisitWindow" runat="server" />
                                                     </ItemTemplate>
                                                 </asp:TemplateField>
                                                 <asp:BoundField DataField="CreatedDate" HeaderText="Arrived At" DataFormatString="{0:dd MMM hh:mm tt}" />
@@ -79,18 +73,20 @@
                                                 <asp:BoundField DataField="VisitorCompany" HeaderText="Company" />
                                                 <asp:TemplateField HeaderText="Visit Window">
                                                     <ItemTemplate>
-                                                        <asp:Literal ID="litDayWindow" runat="server"></asp:Literal>
+                                                        <vms:VisitWindow ID="ucVisitWindow" runat="server" />
                                                     </ItemTemplate>
                                                 </asp:TemplateField>
                                                 <asp:BoundField DataField="CreatedDate" HeaderText="Requested" DataFormatString="{0:dd MMM yyyy}" />
                                                 <asp:TemplateField HeaderText="Status">
                                                     <ItemTemplate>
-                                                        <span class='badge <%# Eval("ApprovalStatus").ToString() == "Approved" ? "badge-approved" : "badge-rejected" %>'>
-                                                            <%# Eval("ApprovalStatus") %>
-                                                        </span>
+                                                        <vms:StatusBadge ID="ucApprovalStatus" runat="server" />
                                                     </ItemTemplate>
                                                 </asp:TemplateField>
-                                                <asp:BoundField DataField="VisitStatus" HeaderText="Gate Status" />
+                                                <asp:TemplateField HeaderText="Gate Status">
+                                                    <ItemTemplate>
+                                                        <vms:StatusBadge ID="ucGateStatus" runat="server" />
+                                                    </ItemTemplate>
+                                                </asp:TemplateField>
                                                 
                                                 <asp:TemplateField HeaderText="Host Actions">
                                                     <ItemTemplate>
@@ -169,118 +165,15 @@
     </div>
 
     <script type="text/javascript">
-        function parseTimeSpan(value) {
-            if (!value) return null;
-            var parts = value.split(":");
-            if (parts.length < 2) return null;
-            var h = parseInt(parts[0], 10);
-            var m = parseInt(parts[1], 10);
-            if (isNaN(h) || isNaN(m)) return null;
-            return (h * 60) + m;
-        }
-        function weekdayName(dateValue) {
-            var names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-            var d = new Date(dateValue + "T00:00:00");
-            return names[d.getDay()];
-        }
-        function formatClock(minutes) {
-            if (minutes === null || minutes === undefined) return "";
-            var h = Math.floor(minutes / 60);
-            var m = minutes % 60;
-            var suffix = h >= 12 ? "PM" : "AM";
-            var hour12 = h % 12;
-            if (hour12 === 0) hour12 = 12;
-            return (hour12 < 10 ? "0" : "") + hour12 + ":" + (m < 10 ? "0" : "") + m + " " + suffix;
-        }
-        function formatNoticeDate(dateValue) {
-            var d = new Date(dateValue + "T00:00:00");
-            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            return weekdayName(dateValue) + " " + ("0" + d.getDate()).slice(-2) + " " + months[d.getMonth()];
-        }
-        function classifyPlantHourWindow(startMin, endMin, timing) {
-            var result = { plantClosed: false, arrivalBeforeOpen: false, arrivalAfterClose: false, departureAfterClose: false, openMin: null, closeMin: null, hasViolation: false };
-            if (!timing) return result;
-            result.openMin = parseTimeSpan(timing.open);
-            result.closeMin = parseTimeSpan(timing.close);
-            if (!timing.open && !timing.close) {
-                result.plantClosed = true;
-                result.hasViolation = true;
-                return result;
-            }
-            if (result.openMin !== null && startMin < result.openMin) result.arrivalBeforeOpen = true;
-            if (result.closeMin !== null) {
-                if (startMin >= result.closeMin) result.arrivalAfterClose = true;
-                if (endMin > result.closeMin) result.departureAfterClose = true;
-            }
-            result.hasViolation = result.plantClosed || result.arrivalBeforeOpen || result.arrivalAfterClose || result.departureAfterClose;
-            return result;
-        }
-        function describeCurrentTimeViolation(nowMin, timing, context) {
-            if (!timing) return "";
-            var leadIn = context === "approval"
-                ? "Current approval is outside today's working hours."
-                : "Current registration is outside today's working hours.";
-            if (!timing.open && !timing.close)
-                return leadIn + " The plant is closed today.";
-            var openMin = parseTimeSpan(timing.open);
-            var closeMin = parseTimeSpan(timing.close);
-            if (openMin !== null && nowMin < openMin)
-                return leadIn + " The plant opens at " + formatClock(openMin) + ".";
-            if (closeMin !== null && nowMin >= closeMin)
-                return leadIn + " The plant closed at " + formatClock(closeMin) + ".";
-            return "";
-        }
-        function formatDayViolationBlock(dateValue, startMin, endMin, classification) {
-            var block = formatNoticeDate(dateValue);
-            if (classification.plantClosed) {
-                block += "\n• The plant is closed this day.";
-                return block;
-            }
-            if (classification.arrivalBeforeOpen)
-                block += "\n• Arrival time (" + formatClock(startMin) + ") is before plant opening (" + formatClock(classification.openMin) + ").";
-            if (classification.arrivalAfterClose)
-                block += "\n• Arrival time (" + formatClock(startMin) + ") is after plant closing (" + formatClock(classification.closeMin) + ").";
-            if (classification.departureAfterClose)
-                block += "\n• Departure time (" + formatClock(endMin) + ") is after plant closing (" + formatClock(classification.closeMin) + ").";
-            return block;
-        }
-        function buildHostHoursWarning(timings, timeFrom, timeTo, dateIsos) {
-            var now = new Date();
-            var todayName = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
-            var nowMin = now.getHours() * 60 + now.getMinutes();
-            var currentViolation = describeCurrentTimeViolation(nowMin, timings[todayName], "approval");
-            var dayBlocks = [];
-            if (timeFrom !== null && timeTo !== null) {
-                for (var i = 0; i < dateIsos.length; i++) {
-                    var classification = classifyPlantHourWindow(timeFrom, timeTo, timings[weekdayName(dateIsos[i])]);
-                    if (classification.hasViolation)
-                        dayBlocks.push(formatDayViolationBlock(dateIsos[i], timeFrom, timeTo, classification));
-                }
-            }
-            if (!currentViolation && dayBlocks.length === 0)
-                return "";
-            var msg = "Warning:";
-            if (currentViolation)
-                msg += "\n" + currentViolation;
-            if (dayBlocks.length)
-                msg += (currentViolation ? "\n\n" : "\n") + dayBlocks.join("\n\n");
-            msg += "\n\nApproving this visit will be recorded as an after-hours approval.";
-            return msg;
-        }
         function confirmHostScheduleApproval() {
-            var timings = {};
-            try {
-                var raw = $("#<%= hfPlantTimingsJson.ClientID %>").val();
-                if (raw) timings = JSON.parse(raw);
-            } catch (e) { timings = {}; }
-
-            var timeFrom = parseTimeSpan($("#<%= txtApprovedTimeFrom.ClientID %>").val());
-            var timeTo = parseTimeSpan($("#<%= txtApprovedTimeTo.ClientID %>").val());
+            var timings = VmsUI.parseTimingsJson($("#<%= hfPlantTimingsJson.ClientID %>").val());
+            var timeFrom = VmsUI.parseTimeSpan($("#<%= txtApprovedTimeFrom.ClientID %>").val());
+            var timeTo = VmsUI.parseTimeSpan($("#<%= txtApprovedTimeTo.ClientID %>").val());
             var dates = [];
             $("#<%= cblModalDays.ClientID %> input:checked").each(function () {
                 dates.push($(this).val());
             });
-            var warning = buildHostHoursWarning(timings, timeFrom, timeTo, dates);
+            var warning = VmsUI.buildHostHoursWarning(timings, timeFrom, timeTo, dates);
             if (!warning)
                 return true;
             return confirm(warning);

@@ -7,6 +7,8 @@ using System.Web.UI.WebControls;
 using System.Drawing;
 using System.Web.UI;
 using AnmolDristi.DAL;
+using AnmolDristi.BLL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -15,6 +17,7 @@ namespace AnmolDristi
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsVisitorManagementRepository _visitorManagementRepository =
             new VmsVisitorManagementRepository();
+        private readonly ApprovalService _approvalService = new ApprovalService();
         private Dictionary<int, List<VisitDayLogInfo>> _dayLogsByVisit;
 
         protected void Page_Load(object sender, EventArgs e)
@@ -152,34 +155,7 @@ namespace AnmolDristi
 
         private void BindScheduleCell(GridViewRow row, string approvalStatus)
         {
-            Literal litDayWindow = row.FindControl("litDayWindow") as Literal;
-            if (litDayWindow == null)
-                return;
-
-            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
-            if (logIdObj == null || logIdObj == DBNull.Value)
-                return;
-
-            int logId = Convert.ToInt32(logIdObj);
-            List<VisitDayLogInfo> days = null;
-            if (_dayLogsByVisit != null)
-                _dayLogsByVisit.TryGetValue(logId, out days);
-
-            litDayWindow.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
-                Convert.ToString(DataBinder.Eval(row.DataItem, "ScheduleType")),
-                approvalStatus,
-                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidFrom")),
-                ReadDate(DataBinder.Eval(row.DataItem, "RequestedValidUpto")),
-                ReadDate(DataBinder.Eval(row.DataItem, "ValidFrom")),
-                ReadDate(DataBinder.Eval(row.DataItem, "ValidUpto")),
-                days);
-        }
-
-        private static DateTime? ReadDate(object value)
-        {
-            if (value == null || value == DBNull.Value)
-                return null;
-            return Convert.ToDateTime(value);
+            VisitWindowControl.BindHostFromRow(row, approvalStatus, _dayLogsByVisit);
         }
 
         // ==========================================
@@ -804,21 +780,18 @@ namespace AnmolDristi
         private void ApproveOnBehalf(int logId, string visEmail, string visName, string hostEmail, string hostName, string remarks, DateTime schedDate)
         {
             // visEmail retained for call-site compatibility; pass notify loads contact from DB inside the repository.
-            VisitorApprovalResult result = _visitorManagementRepository.ApproveVisitOnBehalf(new VisitorApprovalRequest
-            {
-                LogId = logId,
-                ApprovalRemarksSuffix = remarks,
-                ApprovedOnOverride = schedDate,
-                QueueHostOnBehalfNotification = true,
-                OnBehalfHostEmail = hostEmail,
-                OnBehalfHostName = hostName,
-                ApprovedBy = ResolveAdminApprovedBy()
-            });
+            ApprovalResult result = _approvalService.Execute(ApprovalRequest.ForAdmin(
+                logId,
+                ResolveAdminApprovedBy(),
+                remarks,
+                schedDate,
+                hostEmail,
+                hostName));
 
-            if (!result.Succeeded)
+            if (!result.Success)
             {
                 lblMessage.ForeColor = Color.Red;
-                lblMessage.Text = $"<i class='fa fa-exclamation-triangle'></i> {FormatOnBehalfFailure(result.FailureReason)}";
+                lblMessage.Text = $"<i class='fa fa-exclamation-triangle'></i> {result.Message}";
                 return;
             }
 
@@ -828,7 +801,7 @@ namespace AnmolDristi
 
             lblMessage.ForeColor = Color.Green;
             lblMessage.Text =
-                $"<i class='fa fa-check-circle'></i> Visitor {visName} approved on-behalf (Valid Upto: {validUptoText}).";
+                $"<i class='fa fa-check-circle'></i> {result.Message} Visitor {visName} (Valid Upto: {validUptoText}).";
         }
 
         private string ResolveAdminApprovedBy()
@@ -838,19 +811,6 @@ namespace AnmolDristi
                 Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : null,
                 Session["EmpCode"] != null ? Session["EmpCode"].ToString() : null,
                 Session["UserName"] != null ? Session["UserName"].ToString() : null);
-        }
-
-        private static string FormatOnBehalfFailure(ApprovalFailureReason reason)
-        {
-            switch (reason)
-            {
-                case ApprovalFailureReason.NotFoundOrNotOwned:
-                    return "Unable to approve on-behalf. Visit was not found.";
-                case ApprovalFailureReason.NotPending:
-                    return "Unable to approve on-behalf. Visit is no longer pending.";
-                default:
-                    return "Unable to approve on-behalf. Please try again.";
-            }
         }
 
         protected string RenderTimeSuggestion(string fieldType, object currentValue, object createdDate, object approvedOn, object actualInTime)

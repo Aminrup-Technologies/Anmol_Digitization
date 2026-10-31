@@ -154,25 +154,12 @@ namespace AnmolDristi {
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Panel pnlVisitDays;
+        protected global::AnmolDristi.Controls.VisitWindowControl ucVisitDays;
         
         /// <summary>
-        /// litVisitDays control.
+        /// ucStatusBadge control.
         /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Literal litVisitDays;
-        
-        /// <summary>
-        /// lblStatusBadge control.
-        /// </summary>
-        /// <remarks>
-        /// Auto-generated field.
-        /// To modify move field declaration from designer file to code-behind file.
-        /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblStatusBadge;
+        protected global::AnmolDristi.Controls.StatusBadgeControl ucStatusBadge;
         
         /// <summary>
         /// lblStatusMessage control.

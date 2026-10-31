@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using AnmolDristi.BLL;
 
 namespace AnmolDristi.DAL
 {
@@ -38,7 +39,9 @@ namespace AnmolDristi.DAL
             string visitStatus,
             object actualInTime,
             object approvedOn,
-            VisitScheduleRequest visitSchedule)
+            VisitScheduleRequest visitSchedule,
+            bool otpVerified = false,
+            bool employeeConfirmed = false)
         {
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
@@ -153,6 +156,33 @@ namespace AnmolDristi.DAL
                             newVisitId,
                             visitSchedule,
                             approvalStatus == "Approved");
+
+                        string actorId = string.IsNullOrWhiteSpace(mobile) ? "Visitor" : mobile;
+                        if (otpVerified)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, newVisitId, AuditEventType.OTPVerified,
+                                AuditActorRole.Visitor, actorId);
+                        }
+
+                        if (employeeConfirmed)
+                        {
+                            AuditEventService.Publish(
+                                con, trans, newVisitId, AuditEventType.EmployeeConfirmed,
+                                AuditActorRole.Visitor, actorId);
+                        }
+
+                        AuditEventService.Publish(
+                            con, trans, newVisitId, AuditEventType.Registered,
+                            AuditActorRole.Visitor, actorId);
+
+                        if (string.Equals(approvalStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AuditEventService.Publish(
+                                con, trans, newVisitId, AuditEventType.Approved,
+                                AuditActorRole.System, actorId,
+                                metadata: AuditEventService.Metadata("source", "Registration"));
+                        }
 
                         trans.Commit();
                         return newVisitId;

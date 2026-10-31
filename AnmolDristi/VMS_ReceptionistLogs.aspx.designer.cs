@@ -109,7 +109,7 @@ namespace AnmolDristi {
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Label lblMdlStatusBadge;
+        protected global::AnmolDristi.Controls.StatusBadgeControl ucMdlStatusBadge;
         
         /// <summary>
         /// lblMdlName control.
@@ -217,6 +217,6 @@ namespace AnmolDristi {
         /// Auto-generated field.
         /// To modify move field declaration from designer file to code-behind file.
         /// </remarks>
-        protected global::System.Web.UI.WebControls.Literal litMdlVisitDays;
+        protected global::AnmolDristi.Controls.ApprovalSummaryControl ucMdlVisitDays;
     }
 }

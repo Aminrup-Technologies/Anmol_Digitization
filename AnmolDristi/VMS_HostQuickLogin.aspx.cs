@@ -5,6 +5,8 @@ using System.Configuration;
 using System.Globalization;
 using System.Web.UI.WebControls;
 using AnmolDristi.DAL;
+using AnmolDristi.BLL;
+using AnmolDristi.Controls;
 
 namespace AnmolDristi
 {
@@ -12,6 +14,7 @@ namespace AnmolDristi
     {
         string connStr = ConfigurationManager.ConnectionStrings["DbConn"].ConnectionString;
         private readonly VmsVisitorManagementRepository _repository = new VmsVisitorManagementRepository();
+        private readonly ApprovalService _approvalService = new ApprovalService();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -148,12 +151,11 @@ namespace AnmolDristi
                 || days.Count > 1;
             if (!isMultiDay || days.Count == 0)
             {
-                litPendingVisitDays.Text = string.Empty;
+                ucPendingVisitDays.Clear();
                 return;
             }
 
-            List<VisitDayScheduleRow> rows = VmsVisitScheduleHelper.BuildVisitorDaySchedule(days, "Pending");
-            litPendingVisitDays.Text = VmsVisitScheduleHelper.BuildVisitorDayScheduleHtml(rows);
+            ucPendingVisitDays.BindVisitorDays(days, "Pending");
         }
 
         private void BindVisitDaysRecap(
@@ -167,7 +169,7 @@ namespace AnmolDristi
             DateTime? validTo)
         {
             List<VisitDayLogInfo> days = VmsVisitScheduleHelper.GetDayLogsForVisit(con, visitId);
-            litVisitDaysRecap.Text = VmsVisitScheduleHelper.BuildHostScheduleDisplayHtml(
+            ucVisitDaysRecap.BindHostSchedule(
                 scheduleType,
                 approvalStatus,
                 requestedFrom,
@@ -175,7 +177,7 @@ namespace AnmolDristi
                 validFrom,
                 validTo,
                 days);
-            pnlVisitDaysRecap.Visible = !string.IsNullOrEmpty(litVisitDaysRecap.Text);
+            pnlVisitDaysRecap.Visible = ucVisitDaysRecap.Visible;
         }
 
         private void BindVisitDaysRecap(int visitId, string approvalStatus)
@@ -389,27 +391,25 @@ namespace AnmolDristi
                     }
                 }
 
-                VisitorApprovalResult result = _repository.ApprovePendingVisit(new VisitorApprovalRequest
-                {
-                    LogId = logId,
-                    HostEmployeeCode = hostEmployeeCode,
-                    SelectedDays = selectedDays,
-                    ApprovedFromTime = approvedFromTime,
-                    ApprovedToTime = approvedToTime
-                });
+                ApprovalResult result = _approvalService.Execute(ApprovalRequest.ForHost(
+                    logId,
+                    hostEmployeeCode,
+                    selectedDays,
+                    approvedFromTime,
+                    approvedToTime));
 
-                if (!result.Succeeded)
+                if (!result.Success)
                 {
                     lblMessage.CssClass = "error";
                     lblMessage.Visible = true;
-                    lblMessage.Text = FormatApprovalFailureMessage(result.FailureReason);
+                    lblMessage.Text = result.Message;
                     return;
                 }
 
                 pnlAction.Visible = false;
                 lblMessage.Visible = true;
                 lblMessage.CssClass = "success";
-                lblMessage.Text = "Visitor Approved successfully! The digital gate pass has been sent to them.";
+                lblMessage.Text = result.Message;
                 BindVisitDaysRecap(logId, "Approved");
                 return;
             }
@@ -517,19 +517,6 @@ namespace AnmolDristi
             lblMessage.Visible = true;
             lblMessage.CssClass = "error";
             lblMessage.Text = "This approval link is no longer valid.";
-        }
-
-        private static string FormatApprovalFailureMessage(ApprovalFailureReason reason)
-        {
-            switch (reason)
-            {
-                case ApprovalFailureReason.NotFoundOrNotOwned:
-                    return "Visitor not found or you are not authorized to approve this request.";
-                case ApprovalFailureReason.NotPending:
-                    return "This request has already been processed.";
-                default:
-                    return "Unable to approve this visit. Please try again.";
-            }
         }
 
         private void DispatchVisitorNotification_OBSOLETE(SqlConnection con, string visitId, Guid token)
