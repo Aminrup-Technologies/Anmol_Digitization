@@ -719,6 +719,33 @@ namespace AnmolDristi
             return timings;
         }
 
+        public enum PlantDayConfigState { Missing, Closed, Open, Invalid }
+
+        public static readonly string[] PlantTimingWeekdays =
+            { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+
+        /// <summary>
+        /// No row = Missing; NULL/NULL = Closed; 00:00 &lt;= Open &lt; Close &lt; 24:00 = Open; anything else = Invalid.
+        /// </summary>
+        public static PlantDayConfigState ClassifyPlantDayConfig(PlantDayTiming timing)
+        {
+            if (timing == null)
+                return PlantDayConfigState.Missing;
+            if (!timing.OpenTime.HasValue && !timing.CloseTime.HasValue)
+                return PlantDayConfigState.Closed;
+            return timing.OpenTime.HasValue && timing.CloseTime.HasValue
+                && timing.OpenTime.Value >= TimeSpan.Zero
+                && timing.CloseTime.Value < TimeSpan.FromDays(1)
+                && timing.CloseTime.Value > timing.OpenTime.Value
+                ? PlantDayConfigState.Open
+                : PlantDayConfigState.Invalid;
+        }
+
+        public static bool TryParsePlantTime(string text, out TimeSpan value)
+        {
+            return TimeSpan.TryParseExact(text, new[] { @"hh\:mm", @"hh\:mm\:ss" }, CultureInfo.InvariantCulture, out value);
+        }
+
         public static string GetPlantTimingsJson(int branchId)
         {
             Dictionary<string, PlantDayTiming> timings = LoadPlantTimings(branchId);
