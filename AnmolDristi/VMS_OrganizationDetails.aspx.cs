@@ -501,29 +501,42 @@ namespace AnmolDristi
                 string preconfiguredHosts = txtPreconfiguredHosts.Text.Trim();
                 string escalationEmails = txtEscalationEmails.Text.Trim();
 
+                // VMS_OfficeSettings and VMS_PlantTimings commit or roll back together.
                 using (SqlConnection con = new SqlConnection(connStr))
                 {
-                    using (SqlCommand cmd = new SqlCommand(query, con))
+                    con.Open();
+                    using (SqlTransaction trans = con.BeginTransaction())
                     {
-                        cmd.Parameters.AddWithValue("@BranchID", branchId);
-                        cmd.Parameters.AddWithValue("@AliasName", txtAlias.Text.Trim());
-                        cmd.Parameters.AddWithValue("@FullAddress", txtAddress.Text.Trim());
-                        cmd.Parameters.AddWithValue("@Policy", txtPolicy.Text.Trim());
-                        cmd.Parameters.AddWithValue("@TimeZone", ddlTimeZone.SelectedValue);
-                        cmd.Parameters.AddWithValue("@EmpCode", empCode);
-                        cmd.Parameters.AddWithValue("@PreconfiguredHostCodes",
-                            string.IsNullOrEmpty(preconfiguredHosts) ? (object)DBNull.Value : preconfiguredHosts);
-                        cmd.Parameters.AddWithValue("@EscalationEmailList",
-                            string.IsNullOrEmpty(escalationEmails) ? (object)DBNull.Value : escalationEmails);
-                        cmd.Parameters.AddWithValue("@EscalationTimeout", string.IsNullOrEmpty(txtEscalationTimeout.Text) ? 15 : Convert.ToInt32(txtEscalationTimeout.Text));
-                        con.Open();
-                        cmd.ExecuteNonQuery();
-                        con.Close();
+                        try
+                        {
+                            using (SqlCommand cmd = new SqlCommand(query, con, trans))
+                            {
+                                cmd.Parameters.AddWithValue("@BranchID", branchId);
+                                cmd.Parameters.AddWithValue("@AliasName", txtAlias.Text.Trim());
+                                cmd.Parameters.AddWithValue("@FullAddress", txtAddress.Text.Trim());
+                                cmd.Parameters.AddWithValue("@Policy", txtPolicy.Text.Trim());
+                                cmd.Parameters.AddWithValue("@TimeZone", ddlTimeZone.SelectedValue);
+                                cmd.Parameters.AddWithValue("@EmpCode", empCode);
+                                cmd.Parameters.AddWithValue("@PreconfiguredHostCodes",
+                                    string.IsNullOrEmpty(preconfiguredHosts) ? (object)DBNull.Value : preconfiguredHosts);
+                                cmd.Parameters.AddWithValue("@EscalationEmailList",
+                                    string.IsNullOrEmpty(escalationEmails) ? (object)DBNull.Value : escalationEmails);
+                                cmd.Parameters.AddWithValue("@EscalationTimeout", string.IsNullOrEmpty(txtEscalationTimeout.Text) ? 15 : Convert.ToInt32(txtEscalationTimeout.Text));
+                                cmd.ExecuteNonQuery();
+                            }
+
+                            // Persist office timings from Tab 3 in the same save action
+                            SaveOfficeTimings(con, trans, branchId);
+
+                            trans.Commit();
+                        }
+                        catch
+                        {
+                            try { trans.Rollback(); } catch { }
+                            throw;
+                        }
                     }
                 }
-
-                // Persist office timings from Tab 3 in the same save action
-                SaveOfficeTimings(branchId);
 
                 lblMsg.ForeColor = Color.Green;
                 lblMsg.Text = "Details updated successfully!";
@@ -601,47 +614,45 @@ namespace AnmolDristi
             rptTimings.DataBind();
         }
 
-        private void SaveOfficeTimings(int branchId)
+        /// <summary>
+        /// Replaces this branch's VMS_PlantTimings rows inside the caller's open transaction; the caller commits or rolls back.
+        /// </summary>
+        private void SaveOfficeTimings(SqlConnection con, SqlTransaction trans, int branchId)
         {
-            using (SqlConnection con = new SqlConnection(connStr))
+            string delQuery = "DELETE FROM VMS_PlantTimings WHERE Branch_ID = @BranchID";
+            using (SqlCommand cmdDel = new SqlCommand(delQuery, con, trans))
             {
-                con.Open();
+                cmdDel.Parameters.AddWithValue("@BranchID", branchId);
+                cmdDel.ExecuteNonQuery();
+            }
 
-                string delQuery = "DELETE FROM VMS_PlantTimings WHERE Branch_ID = @BranchID";
-                using (SqlCommand cmdDel = new SqlCommand(delQuery, con))
+            string insQuery = "INSERT INTO VMS_PlantTimings (Branch_ID, DayOfWeek, OpenTime, CloseTime) VALUES (@BranchID, @DayOfWeek, @OpenTime, @CloseTime)";
+
+            foreach (RepeaterItem item in rptTimings.Items)
+            {
+                if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
                 {
-                    cmdDel.Parameters.AddWithValue("@BranchID", branchId);
-                    cmdDel.ExecuteNonQuery();
-                }
+                    HiddenField hfDay = (HiddenField)item.FindControl("hfDay");
+                    CheckBox chkIsOpen = (CheckBox)item.FindControl("chkIsOpen");
+                    TextBox txtOpenTime = (TextBox)item.FindControl("txtOpenTime");
+                    TextBox txtCloseTime = (TextBox)item.FindControl("txtCloseTime");
 
-                string insQuery = "INSERT INTO VMS_PlantTimings (Branch_ID, DayOfWeek, OpenTime, CloseTime) VALUES (@BranchID, @DayOfWeek, @OpenTime, @CloseTime)";
-
-                foreach (RepeaterItem item in rptTimings.Items)
-                {
-                    if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
+                    using (SqlCommand cmdIns = new SqlCommand(insQuery, con, trans))
                     {
-                        HiddenField hfDay = (HiddenField)item.FindControl("hfDay");
-                        CheckBox chkIsOpen = (CheckBox)item.FindControl("chkIsOpen");
-                        TextBox txtOpenTime = (TextBox)item.FindControl("txtOpenTime");
-                        TextBox txtCloseTime = (TextBox)item.FindControl("txtCloseTime");
+                        cmdIns.Parameters.AddWithValue("@BranchID", branchId);
+                        cmdIns.Parameters.AddWithValue("@DayOfWeek", hfDay.Value);
 
-                        using (SqlCommand cmdIns = new SqlCommand(insQuery, con))
+                        if (chkIsOpen.Checked && !string.IsNullOrEmpty(txtOpenTime.Text) && !string.IsNullOrEmpty(txtCloseTime.Text))
                         {
-                            cmdIns.Parameters.AddWithValue("@BranchID", branchId);
-                            cmdIns.Parameters.AddWithValue("@DayOfWeek", hfDay.Value);
-
-                            if (chkIsOpen.Checked && !string.IsNullOrEmpty(txtOpenTime.Text) && !string.IsNullOrEmpty(txtCloseTime.Text))
-                            {
-                                cmdIns.Parameters.AddWithValue("@OpenTime", txtOpenTime.Text);
-                                cmdIns.Parameters.AddWithValue("@CloseTime", txtCloseTime.Text);
-                            }
-                            else
-                            {
-                                cmdIns.Parameters.AddWithValue("@OpenTime", DBNull.Value);
-                                cmdIns.Parameters.AddWithValue("@CloseTime", DBNull.Value);
-                            }
-                            cmdIns.ExecuteNonQuery();
+                            cmdIns.Parameters.AddWithValue("@OpenTime", txtOpenTime.Text);
+                            cmdIns.Parameters.AddWithValue("@CloseTime", txtCloseTime.Text);
                         }
+                        else
+                        {
+                            cmdIns.Parameters.AddWithValue("@OpenTime", DBNull.Value);
+                            cmdIns.Parameters.AddWithValue("@CloseTime", DBNull.Value);
+                        }
+                        cmdIns.ExecuteNonQuery();
                     }
                 }
             }
