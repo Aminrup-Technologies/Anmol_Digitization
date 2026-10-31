@@ -818,7 +818,7 @@ namespace AnmolDristi
             if (!result.Succeeded)
             {
                 lblMessage.ForeColor = Color.Red;
-                lblMessage.Text = $"<i class='fa fa-exclamation-triangle'></i> {FormatOnBehalfFailure(result.FailureReason)}";
+                lblMessage.Text = $"<i class='fa fa-exclamation-triangle'></i> {FormatOnBehalfFailure(result.FailureReason, result.FailureDetail)}";
                 return;
             }
 
@@ -840,7 +840,7 @@ namespace AnmolDristi
                 Session["UserName"] != null ? Session["UserName"].ToString() : null);
         }
 
-        private static string FormatOnBehalfFailure(ApprovalFailureReason reason)
+        private static string FormatOnBehalfFailure(ApprovalFailureReason reason, string detail)
         {
             switch (reason)
             {
@@ -848,6 +848,11 @@ namespace AnmolDristi
                     return "Unable to approve on-behalf. Visit was not found.";
                 case ApprovalFailureReason.NotPending:
                     return "Unable to approve on-behalf. Visit is no longer pending.";
+                case ApprovalFailureReason.InvalidBranch:
+                    return "Unable to approve on-behalf. The visit has no valid branch, so plant timings cannot be verified. Nothing was approved.";
+                case ApprovalFailureReason.PlantTimingNotConfigured:
+                    return $"Unable to approve on-behalf. Plant timings for this branch are missing or invalid for: {detail}. " +
+                        "Set each of these days to Open or Closed in VMS Organization Details, then try again. Nothing was approved.";
                 default:
                     return "Unable to approve on-behalf. Please try again.";
             }

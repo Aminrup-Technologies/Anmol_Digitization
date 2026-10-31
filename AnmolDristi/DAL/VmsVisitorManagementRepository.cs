@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 
 namespace AnmolDristi.DAL
 {
@@ -11,7 +12,11 @@ namespace AnmolDristi.DAL
         None = 0,
         NotFoundOrNotOwned = 1,
         NotPending = 2,
-        Unexpected = 3
+        Unexpected = 3,
+        /// <summary>Admin On-Behalf only: TargetBranchID is missing or has no MST_Branch record.</summary>
+        InvalidBranch = 4,
+        /// <summary>Admin On-Behalf only: a day in the approved window is Missing or Invalid in VMS_PlantTimings.</summary>
+        PlantTimingNotConfigured = 5
     }
 
     /// <summary>
@@ -61,6 +66,8 @@ namespace AnmolDristi.DAL
     {
         public bool Succeeded { get; set; }
         public ApprovalFailureReason FailureReason { get; set; }
+        /// <summary>Weekdays blocking approval when FailureReason is PlantTimingNotConfigured.</summary>
+        public string FailureDetail { get; set; }
         public int LogId { get; set; }
         public Guid? QrToken { get; set; }
         public DateTime? ValidUpto { get; set; }
@@ -1126,10 +1133,11 @@ namespace AnmolDristi.DAL
         /// Admin on-behalf approval — Pending-only authorization (host ownership bypassed).
         /// Produces the same VisitLog + DayLog + QR + validity + pass-notification lifecycle.
         /// Valid* comes from ApproveVisitSchedule(RequestedValid*); ApprovedOn may use schedDate override.
+        /// Missing branch or Missing/Invalid plant timings on any approved day block approval (OOH-02/12).
         /// </summary>
         public VisitorApprovalResult ApproveVisitOnBehalf(VisitorApprovalRequest request)
         {
-            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly, requireConfiguredPlantDays: true);
         }
 
         /// <summary>
@@ -1143,12 +1151,13 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Shared approval lifecycle (AR-VMS-02):
-        /// selected days → QR → guarded VisitLog UPDATE → ApproveVisitSchedule →
+        /// selected days → QR → guarded VisitLog UPDATE → ApproveVisitSchedule → [on-behalf plant-day guard] →
         /// re-apply selected days → optional time override → pass notify → optional host on-behalf notify → COMMIT.
         /// </summary>
         private VisitorApprovalResult ApproveVisitCore(
             VisitorApprovalRequest request,
-            ApprovalAuthorizationMode authMode)
+            ApprovalAuthorizationMode authMode,
+            bool requireConfiguredPlantDays = false)
         {
             if (request == null)
                 throw new ArgumentNullException("request");
@@ -1203,6 +1212,31 @@ namespace AnmolDristi.DAL
                         // Full requested range: SelectedDays null → all RequestedValid* days approved;
                         // out-of-range days cancelled. MultiDay Admin/Receptionist use this path (no day UI).
                         VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, request.LogId, null, null);
+
+                        if (requireConfiguredPlantDays)
+                        {
+                            string blockedDays;
+                            ApprovalFailureReason guardReason = ValidateApprovedPlantDays(con, trans, request.LogId, out blockedDays);
+                            if (guardReason != ApprovalFailureReason.None)
+                            {
+                                try
+                                {
+                                    trans.Rollback();
+                                }
+                                catch
+                                {
+                                    // Do not mask the validation failure result.
+                                }
+
+                                return new VisitorApprovalResult
+                                {
+                                    Succeeded = false,
+                                    FailureReason = guardReason,
+                                    FailureDetail = blockedDays,
+                                    LogId = request.LogId
+                                };
+                            }
+                        }
 
                         // Re-apply selective day flags so range-based schedule approval does not overwrite them
                         if (request.SelectedDays != null)
@@ -1588,6 +1622,61 @@ namespace AnmolDristi.DAL
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Runs inside the approval transaction after ApproveVisitSchedule(null, null), so it checks exactly the
+        /// ApprovedValidFrom–ApprovedValidUpto calendar days that method approved. The branch must be &gt; 0 with an
+        /// MST_Branch record; each day must classify Open or Closed — Missing and Invalid are never treated as open.
+        /// </summary>
+        private static ApprovalFailureReason ValidateApprovedPlantDays(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            out string blockedDays)
+        {
+            blockedDays = null;
+            int branchId;
+            DateTime start, end;
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT v.TargetBranchID, v.ApprovedValidFrom, v.ApprovedValidUpto
+                FROM VMS_VisitLog v
+                WHERE v.LogID = @LogID
+                  AND v.TargetBranchID > 0
+                  AND EXISTS (SELECT 1 FROM MST_Branch b WHERE b.Branch_ID = v.TargetBranchID)", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return ApprovalFailureReason.InvalidBranch;
+                    branchId = Convert.ToInt32(reader["TargetBranchID"]);
+                    start = Convert.ToDateTime(reader["ApprovedValidFrom"]).Date;
+                    end = Convert.ToDateTime(reader["ApprovedValidUpto"]).Date;
+                }
+            }
+
+            Dictionary<string, PlantDayTiming> timings = VmsVisitScheduleHelper.LoadPlantTimings(branchId, con, trans);
+            var blocked = new List<string>();
+            if (end < start)
+                end = start;
+            for (DateTime day = start; day <= end; day = day.AddDays(1))
+            {
+                string weekday = day.ToString("dddd", CultureInfo.InvariantCulture);
+                PlantDayTiming timing;
+                timings.TryGetValue(weekday, out timing);
+                VmsVisitScheduleHelper.PlantDayConfigState state = VmsVisitScheduleHelper.ClassifyPlantDayConfig(timing);
+                if (state == VmsVisitScheduleHelper.PlantDayConfigState.Open || state == VmsVisitScheduleHelper.PlantDayConfigState.Closed)
+                    continue;
+                string entry = weekday + (state == VmsVisitScheduleHelper.PlantDayConfigState.Missing ? " (not configured)" : " (invalid timings)");
+                if (!blocked.Contains(entry))
+                    blocked.Add(entry);
+            }
+
+            if (blocked.Count == 0)
+                return ApprovalFailureReason.None;
+            blockedDays = string.Join(", ", blocked);
+            return ApprovalFailureReason.PlantTimingNotConfigured;
         }
 
         private static ApprovalFailureReason ResolveApprovalFailure(
