@@ -55,32 +55,30 @@ namespace AnmolDristi.DAL
             string query = @"
                 SELECT 
                     v.LogID,
-                    ISNULL(d.DayLogID, 0) AS DayLogID,
+                    d.DayLogID,
                     v.VisitorName, 
                     v.VisitorCompany, 
                     ISNULL(NULLIF(v.VisitorMobile, ''), v.VisitorEmail) AS ContactInfo,
                     ISNULL(u.EmployeeName, 'Unknown') AS HostName,
-                    COALESCE(d.ActualInTime, v.ActualInTime) AS ActualInTime,
+                    COALESCE(h.CheckInTime, d.ActualInTime) AS ActualInTime,
                     COALESCE(d.DayValidUpto, v.ValidUpto) AS ValidUpto,
                     v.PhotoPath
                 FROM VMS_VisitLog v
-                LEFT JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
+                INNER JOIN VMS_VisitDayLog d ON v.LogID = d.LogID
                     AND d.VisitDate = CAST(GETDATE() AS date)
+                    AND d.IsDayApproved = 1
                     AND d.VisitStatus = 'Checked-In'
+                INNER JOIN VMS_VisitAttendanceHistory h ON h.DayLogID = d.DayLogID
+                    AND h.CheckOutTime IS NULL
                 LEFT JOIN MST_UserMaster u ON v.HostEmployeeCode = u.EmployeeCode
-                WHERE (
-                    (d.DayLogID IS NOT NULL)
-                    OR (v.VisitStatus = 'Checked-In' AND NOT EXISTS (
-                        SELECT 1 FROM VMS_VisitDayLog dx WHERE dx.LogID = v.LogID
-                    ))
-                )";
+                WHERE 1 = 1";
 
             if (branchId.HasValue)
             {
                 query += " AND v.TargetBranchID = @BranchId";
             }
 
-            query += " ORDER BY COALESCE(d.ActualInTime, v.ActualInTime) DESC";
+            query += " ORDER BY COALESCE(h.CheckInTime, d.ActualInTime) DESC";
 
             using (SqlConnection con = new SqlConnection(_connectionString))
             using (SqlCommand cmd = new SqlCommand(query, con))
@@ -175,7 +173,7 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Atomically check in a visit (day-aware or legacy) and optionally queue arrival notification.
+        /// Atomically check in today's approved day and optionally queue arrival notification.
         /// When <paramref name="gateBranchId"/> is set (Specific Gate), VisitLog.TargetBranchID must match
         /// under the same transaction (AR-VMS-08B). Null = Universal Gate (no branch restriction).
         /// Arrival notification identity is loaded from VMS_VisitLog + MST_UserMaster for the mutated LogID
@@ -216,8 +214,7 @@ namespace AnmolDristi.DAL
                         }
 
                         // AR-VMS-10: client dayLogId is never authoritative. Always resolve today's
-                        // DayLog from the database. Unapproved today fails closed; no today DayLog
-                        // preserves the AR-VMS-06A legacy Parent-only fallback.
+                        // DayLog from the database. Missing or unapproved today fails closed.
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
                         int resolvedDayLogId = 0;
                         if (todayLog != null && todayLog.DayLogId > 0)
@@ -244,13 +241,9 @@ namespace AnmolDristi.DAL
                             resolvedDayLogId = todayLog.DayLogId;
                         }
 
-                        bool transitionSucceeded;
-                        if (resolvedDayLogId > 0)
-                            transitionSucceeded = VmsVisitScheduleHelper.CheckInDay(
+                        bool transitionSucceeded = resolvedDayLogId > 0 &&
+                            VmsVisitScheduleHelper.CheckInDay(
                                 con, resolvedDayLogId, logId, resolvedGuardId, trans);
-                        else
-                            transitionSucceeded = UpdateGateStatus(
-                                con, trans, logId, "Checked-In", "ActualInTime", resolvedGuardId, "Scheduled", gateBranchId);
 
                         if (!transitionSucceeded)
                         {
@@ -310,7 +303,7 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Atomically check out a visit (day-aware or legacy) and optionally queue departure notification.
+        /// Atomically check out today's open attendance session and optionally queue departure notification.
         /// When <paramref name="gateBranchId"/> is set (Specific Gate), VisitLog.TargetBranchID must match
         /// under the same transaction (AR-VMS-08B). Null = Universal Gate (no branch restriction).
         /// </summary>
@@ -351,8 +344,7 @@ namespace AnmolDristi.DAL
                         LoadCheckoutVisitor(con, trans, logId, out visName, out company, out hostName, out hostEmail);
 
                         // AR-VMS-10: client dayLogId is never authoritative. Always resolve today's
-                        // DayLog from the database. Unapproved today fails closed; no today DayLog
-                        // preserves the legacy Parent-only fallback.
+                        // DayLog from the database. Missing or unapproved today fails closed.
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
                         int resolvedDayLogId = 0;
                         if (todayLog != null && todayLog.DayLogId > 0)
@@ -379,13 +371,9 @@ namespace AnmolDristi.DAL
                             resolvedDayLogId = todayLog.DayLogId;
                         }
 
-                        bool transitionSucceeded;
-                        if (resolvedDayLogId > 0)
-                            transitionSucceeded = VmsVisitScheduleHelper.CheckOutDay(
+                        bool transitionSucceeded = resolvedDayLogId > 0 &&
+                            VmsVisitScheduleHelper.CheckOutDay(
                                 con, resolvedDayLogId, logId, resolvedGuardId, trans);
-                        else
-                            transitionSucceeded = UpdateGateStatus(
-                                con, trans, logId, "Checked-Out", "ActualOutTime", resolvedGuardId, "Checked-In", gateBranchId);
 
                         if (!transitionSucceeded)
                         {
@@ -505,39 +493,6 @@ namespace AnmolDristi.DAL
                         hostEmail = sdr["HostEmail"].ToString();
                     }
                 }
-            }
-        }
-
-        /// <summary>
-        /// Legacy parent-only VisitLog status update. Requires expectedCurrentStatus,
-        /// ApprovalStatus='Approved' (AR-VMS-07B), and rowsAffected == 1.
-        /// When gateBranchId is set (Specific Gate), also requires TargetBranchID match (AR-VMS-08B).
-        /// </summary>
-        private static bool UpdateGateStatus(
-            SqlConnection con,
-            SqlTransaction trans,
-            int logId,
-            string newStatus,
-            string timeColumn,
-            string guardId,
-            string expectedCurrentStatus,
-            int? gateBranchId = null)
-        {
-            string branchPredicate = gateBranchId.HasValue
-                ? " AND TargetBranchID = @GateBranchId"
-                : string.Empty;
-
-            string updateQuery =
-                $"UPDATE VMS_VisitLog SET VisitStatus = @Status, {timeColumn} = GETDATE(), CheckedOutBy = @GuardId WHERE LogID = @LogID AND VisitStatus = @ExpectedStatus AND ApprovalStatus = 'Approved'{branchPredicate}";
-            using (SqlCommand cmd = new SqlCommand(updateQuery, con, trans))
-            {
-                cmd.Parameters.AddWithValue("@Status", newStatus);
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@GuardId", guardId ?? "SecurityGate");
-                cmd.Parameters.AddWithValue("@ExpectedStatus", expectedCurrentStatus);
-                if (gateBranchId.HasValue)
-                    cmd.Parameters.AddWithValue("@GateBranchId", gateBranchId.Value);
-                return cmd.ExecuteNonQuery() == 1;
             }
         }
 

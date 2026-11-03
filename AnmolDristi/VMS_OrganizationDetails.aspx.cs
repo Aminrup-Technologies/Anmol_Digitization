@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Data.SqlClient;
 using System.Configuration;
 using System.Web.UI.WebControls;
@@ -509,6 +511,17 @@ namespace AnmolDristi
                     {
                         try
                         {
+                            string timingError;
+                            List<PlantDayTiming> timings = ValidateSubmittedTimings(
+                                VmsVisitScheduleHelper.LoadPlantTimings(branchId, con, trans), out timingError);
+                            if (timings == null)
+                            {
+                                trans.Rollback();
+                                lblMsg.ForeColor = Color.Red;
+                                lblMsg.Text = "Nothing was saved. Correct the office timings:<br/>" + timingError;
+                                return;
+                            }
+
                             using (SqlCommand cmd = new SqlCommand(query, con, trans))
                             {
                                 cmd.Parameters.AddWithValue("@BranchID", branchId);
@@ -526,7 +539,7 @@ namespace AnmolDristi
                             }
 
                             // Persist office timings from Tab 3 in the same save action
-                            SaveOfficeTimings(con, trans, branchId);
+                            SaveOfficeTimings(con, trans, branchId, timings);
 
                             trans.Commit();
                         }
@@ -569,44 +582,32 @@ namespace AnmolDristi
         {
             DataTable dtTimings = new DataTable();
             dtTimings.Columns.Add("DayOfWeek");
-            dtTimings.Columns.Add("IsOpen");
+            dtTimings.Columns.Add("DayState");
             dtTimings.Columns.Add("OpenTime");
             dtTimings.Columns.Add("CloseTime");
+            dtTimings.Columns.Add("SavedStatus");
+            dtTimings.Columns.Add("SavedStatusCss");
 
-            using (SqlConnection con = new SqlConnection(connStr))
+            Dictionary<string, PlantDayTiming> saved = VmsVisitScheduleHelper.LoadPlantTimings(branchId);
+            foreach (string day in VmsVisitScheduleHelper.PlantTimingWeekdays)
             {
-                string query = "SELECT DayOfWeek, OpenTime, CloseTime FROM VMS_PlantTimings WHERE Branch_ID = @BranchID";
-                using (SqlCommand cmd = new SqlCommand(query, con))
+                PlantDayTiming timing;
+                saved.TryGetValue(day, out timing);
+                switch (VmsVisitScheduleHelper.ClassifyPlantDayConfig(timing))
                 {
-                    cmd.Parameters.AddWithValue("@BranchID", branchId);
-                    using (SqlDataAdapter sda = new SqlDataAdapter(cmd))
-                    {
-                        DataTable dbData = new DataTable();
-                        sda.Fill(dbData);
-
-                        string[] days = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
-
-                        foreach (string day in days)
-                        {
-                            DataRow[] foundRows = dbData.Select($"DayOfWeek = '{day}'");
-
-                            if (foundRows.Length > 0)
-                            {
-                                string openT = foundRows[0]["OpenTime"] != DBNull.Value ? DateTime.Parse(foundRows[0]["OpenTime"].ToString()).ToString("HH:mm") : "";
-                                string closeT = foundRows[0]["CloseTime"] != DBNull.Value ? DateTime.Parse(foundRows[0]["CloseTime"].ToString()).ToString("HH:mm") : "";
-                                string isOpen = string.IsNullOrEmpty(openT) ? "0" : "1";
-
-                                dtTimings.Rows.Add(day, isOpen, openT, closeT);
-                            }
-                            else
-                            {
-                                if (day == "Sunday")
-                                    dtTimings.Rows.Add(day, "0", "", "");
-                                else
-                                    dtTimings.Rows.Add(day, "1", "10:00", "18:30");
-                            }
-                        }
-                    }
+                    case VmsVisitScheduleHelper.PlantDayConfigState.Open:
+                        dtTimings.Rows.Add(day, "OPEN", FormatPlantTime(timing.OpenTime), FormatPlantTime(timing.CloseTime), "Open", "label label-success");
+                        break;
+                    case VmsVisitScheduleHelper.PlantDayConfigState.Closed:
+                        dtTimings.Rows.Add(day, "CLOSED", "", "", "Closed", "label label-default");
+                        break;
+                    case VmsVisitScheduleHelper.PlantDayConfigState.Invalid:
+                        dtTimings.Rows.Add(day, "", FormatPlantTime(timing.OpenTime), FormatPlantTime(timing.CloseTime),
+                            "Invalid - select Open or Closed", "label label-danger");
+                        break;
+                    default:
+                        dtTimings.Rows.Add(day, "", "", "", "Not Configured", "label label-warning");
+                        break;
                 }
             }
 
@@ -614,10 +615,74 @@ namespace AnmolDristi
             rptTimings.DataBind();
         }
 
+        private static string FormatPlantTime(TimeSpan? time)
+        {
+            return time.HasValue && time.Value >= TimeSpan.Zero && time.Value < TimeSpan.FromDays(1)
+                ? time.Value.ToString(@"hh\:mm", CultureInfo.InvariantCulture) : "";
+        }
+
+        /// <summary>
+        /// Validates all seven submitted weekdays against the persisted state. Returns null (with error) when any day fails.
+        /// </summary>
+        private List<PlantDayTiming> ValidateSubmittedTimings(Dictionary<string, PlantDayTiming> existing, out string error)
+        {
+            var timings = new List<PlantDayTiming>();
+            var errors = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (RepeaterItem item in rptTimings.Items)
+            {
+                if (item.ItemType != ListItemType.Item && item.ItemType != ListItemType.AlternatingItem)
+                    continue;
+
+                string submittedDay = ((HiddenField)item.FindControl("hfDay")).Value.Trim();
+                string day = Array.Find(VmsVisitScheduleHelper.PlantTimingWeekdays,
+                    d => string.Equals(d, submittedDay, StringComparison.OrdinalIgnoreCase));
+                if (day == null || !seen.Add(day))
+                {
+                    errors.Add("Unrecognized or duplicate weekday in the timing grid.");
+                    continue;
+                }
+
+                PlantDayTiming persisted;
+                existing.TryGetValue(day, out persisted);
+                VmsVisitScheduleHelper.PlantDayConfigState persistedState = VmsVisitScheduleHelper.ClassifyPlantDayConfig(persisted);
+                string state = ((DropDownList)item.FindControl("ddlDayState")).SelectedValue;
+                string openText = ((TextBox)item.FindControl("txtOpenTime")).Text.Trim();
+                string closeText = ((TextBox)item.FindControl("txtCloseTime")).Text.Trim();
+                TimeSpan open, close;
+
+                if (state == "")
+                {
+                    if (persistedState != VmsVisitScheduleHelper.PlantDayConfigState.Missing)
+                        errors.Add(day + ": a saved or invalid day cannot be reset to Not Configured; select Open or Closed.");
+                    else if (openText.Length > 0 || closeText.Length > 0)
+                        errors.Add(day + ": select Open to save these times, or clear them to leave the day not configured.");
+                }
+                else if (state == "CLOSED")
+                    timings.Add(new PlantDayTiming { DayOfWeek = day });
+                else if (state != "OPEN")
+                    errors.Add(day + ": unrecognized Day Status.");
+                else if (!VmsVisitScheduleHelper.TryParsePlantTime(openText, out open)
+                    || !VmsVisitScheduleHelper.TryParsePlantTime(closeText, out close))
+                    errors.Add(day + ": an open day needs a valid Open Time and Close Time.");
+                else if (close <= open)
+                    errors.Add(day + ": Close Time must be after Open Time; overnight hours are not supported.");
+                else
+                    timings.Add(new PlantDayTiming { DayOfWeek = day, OpenTime = open, CloseTime = close });
+            }
+
+            if (seen.Count != VmsVisitScheduleHelper.PlantTimingWeekdays.Length)
+                errors.Add("The timing grid is incomplete; reopen the office and try again.");
+
+            error = string.Join("<br/>", errors);
+            return errors.Count == 0 ? timings : null;
+        }
+
         /// <summary>
         /// Replaces this branch's VMS_PlantTimings rows inside the caller's open transaction; the caller commits or rolls back.
         /// </summary>
-        private void SaveOfficeTimings(SqlConnection con, SqlTransaction trans, int branchId)
+        private void SaveOfficeTimings(SqlConnection con, SqlTransaction trans, int branchId, List<PlantDayTiming> timings)
         {
             string delQuery = "DELETE FROM VMS_PlantTimings WHERE Branch_ID = @BranchID";
             using (SqlCommand cmdDel = new SqlCommand(delQuery, con, trans))
@@ -628,32 +693,15 @@ namespace AnmolDristi
 
             string insQuery = "INSERT INTO VMS_PlantTimings (Branch_ID, DayOfWeek, OpenTime, CloseTime) VALUES (@BranchID, @DayOfWeek, @OpenTime, @CloseTime)";
 
-            foreach (RepeaterItem item in rptTimings.Items)
+            foreach (PlantDayTiming timing in timings)
             {
-                if (item.ItemType == ListItemType.Item || item.ItemType == ListItemType.AlternatingItem)
+                using (SqlCommand cmdIns = new SqlCommand(insQuery, con, trans))
                 {
-                    HiddenField hfDay = (HiddenField)item.FindControl("hfDay");
-                    CheckBox chkIsOpen = (CheckBox)item.FindControl("chkIsOpen");
-                    TextBox txtOpenTime = (TextBox)item.FindControl("txtOpenTime");
-                    TextBox txtCloseTime = (TextBox)item.FindControl("txtCloseTime");
-
-                    using (SqlCommand cmdIns = new SqlCommand(insQuery, con, trans))
-                    {
-                        cmdIns.Parameters.AddWithValue("@BranchID", branchId);
-                        cmdIns.Parameters.AddWithValue("@DayOfWeek", hfDay.Value);
-
-                        if (chkIsOpen.Checked && !string.IsNullOrEmpty(txtOpenTime.Text) && !string.IsNullOrEmpty(txtCloseTime.Text))
-                        {
-                            cmdIns.Parameters.AddWithValue("@OpenTime", txtOpenTime.Text);
-                            cmdIns.Parameters.AddWithValue("@CloseTime", txtCloseTime.Text);
-                        }
-                        else
-                        {
-                            cmdIns.Parameters.AddWithValue("@OpenTime", DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@CloseTime", DBNull.Value);
-                        }
-                        cmdIns.ExecuteNonQuery();
-                    }
+                    cmdIns.Parameters.AddWithValue("@BranchID", branchId);
+                    cmdIns.Parameters.AddWithValue("@DayOfWeek", timing.DayOfWeek);
+                    cmdIns.Parameters.AddWithValue("@OpenTime", timing.OpenTime.HasValue ? (object)timing.OpenTime.Value : DBNull.Value);
+                    cmdIns.Parameters.AddWithValue("@CloseTime", timing.CloseTime.HasValue ? (object)timing.CloseTime.Value : DBNull.Value);
+                    cmdIns.ExecuteNonQuery();
                 }
             }
         }

@@ -178,6 +178,42 @@ namespace AnmolDristi
                   AND NOT EXISTS (
                             SELECT 1 FROM VMS_VisitAttendanceHistory hx WHERE hx.LogID = v2.LogID
                         )
+
+                UNION ALL
+
+                SELECT
+                    d.LogID,
+                    d.VisitDate AS AttendanceDate,
+                    d.ActualInTime,
+                    d.ActualOutTime,
+                    ISNULL(d.VisitStatus, 'Scheduled') AS CycleStatus
+                FROM VMS_VisitDayLog d
+                WHERE d.VisitDate = CAST(GETDATE() AS date)
+                  AND d.IsDayApproved = 1
+                  AND d.VisitDate >= @FromDate
+                  AND d.VisitDate <= @ToDate
+                  AND d.ActualInTime IS NULL
+                  AND NOT EXISTS (
+                        SELECT 1 FROM VMS_VisitAttendanceHistory hx WHERE hx.DayLogID = d.DayLogID
+                  )
+                  AND NOT EXISTS (
+                        SELECT 1
+                        FROM VMS_VisitLog v3
+                        WHERE v3.LogID = d.LogID
+                          AND CAST(ISNULL(v3.ValidFrom, ISNULL(v3.RequestedValidFrom, v3.CreatedDate)) AS date) >= @FromDate
+                          AND CAST(ISNULL(v3.ValidFrom, ISNULL(v3.RequestedValidFrom, v3.CreatedDate)) AS date) <= @ToDate
+                          AND (
+                                ISNULL(v3.ApprovalStatus, '') = 'Pending'
+                                OR (ISNULL(v3.ApprovalStatus, '') = 'Approved' AND ISNULL(v3.VisitStatus, '') = 'Scheduled')
+                              )
+                          AND NOT EXISTS (
+                                SELECT 1 FROM VMS_VisitDayLog dx
+                                WHERE dx.LogID = v3.LogID AND dx.ActualInTime IS NOT NULL
+                          )
+                          AND NOT EXISTS (
+                                SELECT 1 FROM VMS_VisitAttendanceHistory hx WHERE hx.LogID = v3.LogID
+                          )
+                  )
             ) src
             INNER JOIN VMS_VisitLog v ON v.LogID = src.LogID
             LEFT JOIN MST_Branch b ON v.TargetBranchID = b.Branch_ID
@@ -198,7 +234,7 @@ namespace AnmolDristi
                 }
                 else if (ddlStatus.SelectedValue == "Checked-In")
                 {
-                    query += " AND src.CycleStatus = 'Active' ";
+                    query += " AND src.CycleStatus = 'Active' AND src.AttendanceDate = CAST(GETDATE() AS date) ";
                 }
                 else if (ddlStatus.SelectedValue == "Checked-Out")
                 {
@@ -466,6 +502,7 @@ namespace AnmolDristi
                 return;
 
             BindScheduleCell(e.Row);
+            ApplyTodayAttendanceActions(e.Row);
 
             LinkButton lnkApprove = e.Row.FindControl("lnkApprove") as LinkButton;
             if (lnkApprove == null || !lnkApprove.Visible)
@@ -490,6 +527,57 @@ namespace AnmolDristi
                         Convert.ToString(DataBinder.Eval(e.Row.DataItem, "ScheduleType")),
                         days),
                     onBehalf: false));
+        }
+
+        private void ApplyTodayAttendanceActions(GridViewRow row)
+        {
+            LinkButton lnkIn = row.FindControl("lnkCheckIn") as LinkButton;
+            LinkButton lnkOut = row.FindControl("lnkCheckOut") as LinkButton;
+            if (lnkIn == null && lnkOut == null)
+                return;
+
+            bool approved = string.Equals(
+                Convert.ToString(DataBinder.Eval(row.DataItem, "ApprovalStatus")),
+                "Approved",
+                StringComparison.OrdinalIgnoreCase);
+
+            object attendanceObj = DataBinder.Eval(row.DataItem, "AttendanceDate");
+            bool rowIsToday = attendanceObj != null
+                && attendanceObj != DBNull.Value
+                && Convert.ToDateTime(attendanceObj).Date == DateTime.Now.Date;
+            bool rowActive = string.Equals(
+                Convert.ToString(DataBinder.Eval(row.DataItem, "CycleStatus")),
+                "Active",
+                StringComparison.OrdinalIgnoreCase);
+
+            VisitDayLogInfo today = null;
+            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
+            List<VisitDayLogInfo> days;
+            if (logIdObj != null && logIdObj != DBNull.Value && _dayLogsByVisit != null
+                && _dayLogsByVisit.TryGetValue(Convert.ToInt32(logIdObj), out days) && days != null)
+            {
+                DateTime todayDate = DateTime.Now.Date;
+                foreach (VisitDayLogInfo day in days)
+                {
+                    if (day.VisitDate.Date == todayDate)
+                    {
+                        today = day;
+                        break;
+                    }
+                }
+            }
+
+            bool todayApproved = today != null && today.IsDayApproved;
+            string status = today == null || today.VisitStatus == null ? string.Empty : today.VisitStatus;
+            bool inside = todayApproved && string.Equals(status, "Checked-In", StringComparison.OrdinalIgnoreCase);
+            bool canEnter = todayApproved &&
+                (string.Equals(status, "Scheduled", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(status, "Checked-Out", StringComparison.OrdinalIgnoreCase));
+
+            if (lnkIn != null)
+                lnkIn.Visible = approved && rowIsToday && !rowActive && canEnter;
+            if (lnkOut != null)
+                lnkOut.Visible = approved && rowIsToday && rowActive && inside;
         }
 
         private void BindScheduleCell(GridViewRow row)

@@ -178,14 +178,14 @@
 
                                                 <asp:LinkButton ID="lnkCheckIn" runat="server" CommandName="CheckInVisit" CommandArgument='<%# Eval("LogID") %>'
                                                     CssClass="btn btn-primary btn-xs" ToolTip="Manual Check-In"
-                                                    Visible='<%# Eval("VisitStatus").ToString() == "Scheduled" && Eval("ApprovalStatus").ToString() == "Approved" %>'
+                                                    Visible="false"
                                                     OnClientClick="return confirm('Are you sure you want to manually Check-In this visitor?');">
                                                     <i class="fa fa-sign-in"></i>
                                                 </asp:LinkButton>
 
                                                 <asp:LinkButton ID="lnkCheckOut" runat="server" CommandName="CheckOutVisit" CommandArgument='<%# Eval("LogID") %>'
                                                     CssClass="btn btn-warning btn-xs" ToolTip="Manual Check-Out"
-                                                    Visible='<%# Eval("VisitStatus").ToString() == "Checked-In" && Convert.ToString(Eval("CycleStatus")) == "Active" %>'
+                                                    Visible="false"
                                                     OnClientClick="return confirm('Are you sure you want to manually Check-Out this visitor?');">
                                                     <i class="fa fa-sign-out"></i>
                                                 </asp:LinkButton>

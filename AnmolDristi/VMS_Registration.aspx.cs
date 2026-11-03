@@ -169,7 +169,8 @@ namespace AnmolDristi
             if (!Directory.Exists(folderPath))
                 Directory.CreateDirectory(folderPath);
 
-            string fileName = $"Vis_{DateTime.Now.Ticks}{extension}";
+            // Name must stay within VMS_HostQuickLogin's VisitorPhotoPathPattern ([A-Za-z0-9_-]).
+            string fileName = $"Vis_{DateTime.Now.Ticks}_{Guid.NewGuid():N}{extension}";
             string physicalFullPath = Path.Combine(folderPath, fileName);
             File.WriteAllBytes(physicalFullPath, imageBytes);
 
@@ -934,13 +935,6 @@ namespace AnmolDristi
                 }
 
                 // ==========================================================
-                // 4. SELFIE VALIDATION
-                // ==========================================================
-                string photoPath = PersistSelfie();
-                fullPath = Server.MapPath("~" + photoPath);
-                dbPhotoPath = photoPath;
-
-                // ==========================================================
                 // 6. DEFAULT VISIT VALUES / APPROVAL RESOLUTION
                 // ==========================================================
                 string purposeOfVisit = ddlPurpose.SelectedItem != null
@@ -985,6 +979,15 @@ namespace AnmolDristi
                 string scheduleSummary = VmsVisitScheduleHelper.FormatScheduleSummary(visitSchedule);
 
                 // ==========================================================
+                // 6d. SELFIE VALIDATION + FILE WRITE
+                // Runs after every early-return check so a rejected request
+                // never leaves an orphaned photo on disk.
+                // ==========================================================
+                string photoPath = PersistSelfie();
+                fullPath = Server.MapPath("~" + photoPath);
+                dbPhotoPath = photoPath;
+
+                // ==========================================================
                 // 8-11. PERSIST VISITOR VISIT (repository transaction)
                 // ==========================================================
                 DateTime validFrom = visitSchedule.RequestedValidFrom;
@@ -1012,6 +1015,9 @@ namespace AnmolDristi
                     actualInTime,
                     approvedOn,
                     visitSchedule);
+
+                // The committed visit now references the photo; a later failure must not delete it.
+                fullPath = "";
 
                 QueueNotifications(
                     newVisitId,

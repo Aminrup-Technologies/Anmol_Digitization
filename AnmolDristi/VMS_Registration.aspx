@@ -44,7 +44,7 @@
                     <div class="ln_solid"></div>
 
                     <asp:HiddenField ID="hfBranchId" runat="server" />
-                    <asp:HiddenField ID="hfSelfieBase64" runat="server" />
+                    <asp:HiddenField ID="hfSelfieBase64" runat="server" EnableViewState="false" />
                     <asp:HiddenField ID="hfSelectedHostCode" runat="server" />
                     <asp:HiddenField ID="hfIsFacilityOpen" runat="server" />
                     <asp:HiddenField ID="hfPlantTimingsJson" runat="server" />
@@ -89,8 +89,8 @@
                         <div class="camera-box">
                             <video id="videoElement" autoplay playsinline></video>
                             <canvas id="canvasElement" style="display: none;"></canvas>
-                            <br />
-                            <button type="button" id="btnSnap" class="btn btn-info btn-sm mt-2"><i class="fa fa-camera"></i>Take Photo</button>
+                            <small id="cameraStatus" class="text-muted" style="display: block;"></small>
+                            <button type="button" id="btnSnap" class="btn btn-info btn-sm mt-2" disabled="disabled"><i class="fa fa-camera"></i>Take Photo</button>
                             <button type="button" id="btnRetake" class="btn btn-warning btn-sm mt-2" style="display: none;"><i class="fa fa-refresh"></i>Retake</button>
                         </div>
                     </div>
@@ -415,44 +415,224 @@
             const snap = document.getElementById('btnSnap');
             const retake = document.getElementById('btnRetake');
             const hfSelfie = document.getElementById('<%= hfSelfieBase64.ClientID %>');
+            const hfCameraActive = document.getElementById('<%= hfCameraActive.ClientID %>');
+            const cameraStatus = document.getElementById('cameraStatus');
+            // Long-edge cap keeps the posted JPEG small while staying above the server's 240px minimum.
+            const MaxCaptureEdge = 1280;
+            let cameraStream = null;
+            let cameraRequestId = 0;
 
-            // 2026-08-22: Camera initialization updated — hfCameraActive flag set on successful getUserMedia.
-            // This flag is checked in validateForm() and sent to server for validation.
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-                    .then(function (stream) {
-                        video.srcObject = stream;
-                        document.getElementById('<%= hfCameraActive.ClientID %>').value = "true";
-                    })
-                    .catch(function (error) {
-                        console.error("Camera Error:", error);
-                        document.getElementById('<%= hfCameraActive.ClientID %>').value = "false";
-                        alert("Camera access is required to take a visitor photo. Please enable camera permissions and refresh the page.");
-                    });
+            // hfCameraActive is "true" only once a real video frame is available (or a photo was captured
+            // from one); validateForm() and btnSubmit_Click both require it.
+            function setCameraReady(isReady) {
+                hfCameraActive.value = isReady ? "true" : "false";
+                snap.disabled = !isReady;
             }
 
-            snap.addEventListener("click", function () {
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            function setCameraStatus(message, isError) {
+                cameraStatus.textContent = message || "";
+                cameraStatus.style.color = isError ? "#d9534f" : "";
+            }
 
-                const dataUrl = canvas.toDataURL('image/png');
-                hfSelfie.value = dataUrl;
+            function isVideoFrameReady() {
+                return video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
+            }
 
-                video.style.display = 'none';
-                canvas.style.display = 'inline-block';
-                snap.style.display = 'none';
-                retake.style.display = 'inline-block';
-            });
+            function isImageDataUrl(value) {
+                return /^data:image\/(jpeg|png);base64,[A-Za-z0-9+\/]/i.test(value || "");
+            }
 
-            retake.addEventListener("click", function () {
-                hfSelfie.value = "";
+            function showLiveState() {
                 video.style.display = 'inline-block';
                 canvas.style.display = 'none';
                 snap.style.display = 'inline-block';
                 retake.style.display = 'none';
+            }
+
+            function showCapturedState() {
+                video.style.display = 'none';
+                canvas.style.display = 'inline-block';
+                snap.style.display = 'none';
+                retake.style.display = 'inline-block';
+            }
+
+            function stopCamera() {
+                cameraRequestId++;
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(function (track) {
+                        track.removeEventListener("ended", onCameraTrackEnded);
+                        track.stop();
+                    });
+                    cameraStream = null;
+                }
+                video.srcObject = null;
+            }
+
+            function onCameraTrackEnded() {
+                if (!cameraStream) return;
+                stopCamera();
+                setCameraReady(false);
+                retake.style.display = 'inline-block';
+                setCameraStatus("The camera was interrupted. Tap Retake to restart it.", true);
+            }
+
+            function showCameraError(errorName) {
+                let message;
+                let canRetry = true;
+                switch (errorName) {
+                    case "NotAllowedError":
+                    case "PermissionDeniedError":
+                        message = "Camera permission was denied. Please allow camera access for this site in your browser settings, then tap Retake.";
+                        break;
+                    case "NotFoundError":
+                    case "DevicesNotFoundError":
+                        message = "No camera was found on this device. Please use a device with a working camera.";
+                        canRetry = false;
+                        break;
+                    case "NotReadableError":
+                    case "TrackStartError":
+                    case "AbortError":
+                        message = "The camera is busy or unavailable. Please close other apps or tabs using the camera, then tap Retake.";
+                        break;
+                    case "OverconstrainedError":
+                    case "ConstraintNotSatisfiedError":
+                        message = "This camera does not support the required settings. Please try a different device or browser.";
+                        canRetry = false;
+                        break;
+                    case "SecurityError":
+                        message = "The browser blocked camera access for this page. Please open the registration link over HTTPS in Chrome, Edge or Safari.";
+                        canRetry = false;
+                        break;
+                    default:
+                        message = "The camera could not be started. Please tap Retake to try again, or use a different browser.";
+                        break;
+                }
+                setCameraReady(false);
+                retake.style.display = canRetry ? 'inline-block' : 'none';
+                setCameraStatus(message, true);
+                alert(message);
+            }
+
+            function requestCameraStream(constraints, allowConstraintFallback, requestId) {
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(function (stream) {
+                        if (requestId !== cameraRequestId) {
+                            stream.getTracks().forEach(function (track) { track.stop(); });
+                            return;
+                        }
+                        cameraStream = stream;
+                        stream.getVideoTracks().forEach(function (track) {
+                            track.addEventListener("ended", onCameraTrackEnded);
+                        });
+                        video.srcObject = stream;
+                        const playPromise = video.play();
+                        if (playPromise && typeof playPromise.catch === "function") {
+                            playPromise.catch(function (error) {
+                                if (stream !== cameraStream || isVideoFrameReady()) return;
+                                console.error("Camera Playback Error:", error);
+                                setCameraStatus("The camera preview did not start. Tap the preview to start it.", true);
+                            });
+                        }
+                    })
+                    .catch(function (error) {
+                        if (requestId !== cameraRequestId) return;
+                        const errorName = error && error.name ? error.name : "";
+                        if (allowConstraintFallback &&
+                            (errorName === "OverconstrainedError" || errorName === "ConstraintNotSatisfiedError")) {
+                            requestCameraStream({ video: true }, false, requestId);
+                            return;
+                        }
+                        console.error("Camera Error:", error);
+                        showCameraError(errorName);
+                    });
+            }
+
+            function startCamera() {
+                stopCamera();
+                setCameraReady(false);
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    retake.style.display = 'none';
+                    setCameraStatus("This browser cannot access the camera. Please open the registration link over HTTPS in Chrome, Edge or Safari.", true);
+                    return;
+                }
+                setCameraStatus("Starting camera...", false);
+                requestCameraStream({ video: { facingMode: "user" } }, true, cameraRequestId);
+            }
+
+            function onVideoFrameAvailable() {
+                if (!cameraStream || video.srcObject !== cameraStream || !isVideoFrameReady()) return;
+                setCameraReady(true);
+                setCameraStatus("", false);
+            }
+
+            video.addEventListener("loadeddata", onVideoFrameAvailable);
+            video.addEventListener("playing", onVideoFrameAvailable);
+            video.addEventListener("resize", onVideoFrameAvailable);
+
+            video.addEventListener("click", function () {
+                if (cameraStream && video.paused) {
+                    video.play().catch(function (error) { console.error("Camera Playback Error:", error); });
+                }
             });
+
+            snap.addEventListener("click", function () {
+                if (!cameraStream || !isVideoFrameReady()) {
+                    setCameraStatus("The camera is still starting. Please wait a moment and try again.", true);
+                    return;
+                }
+
+                const scale = Math.min(1, MaxCaptureEdge / Math.max(video.videoWidth, video.videoHeight));
+                canvas.width = Math.round(video.videoWidth * scale);
+                canvas.height = Math.round(video.videoHeight * scale);
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                if (!isImageDataUrl(dataUrl)) {
+                    setCameraStatus("The photo could not be captured. Please try again.", true);
+                    return;
+                }
+
+                hfSelfie.value = dataUrl;
+                stopCamera();
+                setCameraStatus("", false);
+                showCapturedState();
+            });
+
+            retake.addEventListener("click", function () {
+                hfSelfie.value = "";
+                showLiveState();
+                startCamera();
+            });
+
+            window.addEventListener("pagehide", stopCamera);
+            window.addEventListener("pageshow", function (e) {
+                if (e.persisted && !isImageDataUrl(hfSelfie.value)) {
+                    showLiveState();
+                    startCamera();
+                }
+            });
+
+            // A server-side rejection re-renders the page with the posted photo still in hfSelfieBase64;
+            // show that photo instead of a live preview that hides it.
+            if (isImageDataUrl(hfSelfie.value)) {
+                const postedPhoto = new Image();
+                postedPhoto.onload = function () {
+                    canvas.width = postedPhoto.naturalWidth;
+                    canvas.height = postedPhoto.naturalHeight;
+                    canvas.getContext('2d').drawImage(postedPhoto, 0, 0);
+                    showCapturedState();
+                };
+                postedPhoto.onerror = function () {
+                    hfSelfie.value = "";
+                    showLiveState();
+                    startCamera();
+                };
+                postedPhoto.src = hfSelfie.value;
+            } else {
+                hfSelfie.value = "";
+                showLiveState();
+                startCamera();
+            }
 
             // --- 2. Safe Host Search Autocomplete Logic ---
             function initializeAutocomplete() {
@@ -525,7 +705,7 @@
 
             // Photo mandatory — requires camera activation and capture
             if ($("#<%= hfCameraActive.ClientID %>").val() !== "true") {
-                alert("Camera access is required. Please allow camera permissions and take a photo.");
+                alert($("#cameraStatus").text() || "A camera photo is required. Please wait for the camera to start and take a photo.");
                 return false;
             }
             if ($("#<%= hfSelfieBase64.ClientID %>").val() === "") {

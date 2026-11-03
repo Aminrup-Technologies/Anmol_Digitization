@@ -544,15 +544,14 @@ namespace AnmolDristi
         }
 
         /// <summary>
-        /// Day-aware check-in. Returns true only when both DayLog and VisitLog
-        /// transitioned (rowsAffected == 1 each).
+        /// Day-aware check-in. Returns true only when today's approved day, the parent
+        /// summary, and one new open history row all succeed. Caller rolls back otherwise.
         /// DayLogID must belong to the same LogID (AR-VMS-08A).
-        /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
+        /// Eligibility is today's approved day, parent ApprovalStatus='Approved', and the
+        /// parent ∩ day window (AR-GS-11). Parent VisitStatus is not an eligibility predicate.
+        /// Another day's open session is not read or closed.
         /// DayLog may be Scheduled or Checked-Out (same-day re-entry).
-        /// Parent may be Scheduled or Checked-Out (SingleDay after checkout is Checked-Out).
-        /// ActualInTime is the latest active check-in stamp for this DayLog row.
-        /// One DayLog exists per (LogID, VisitDate); this UPDATE is that row's current state.
-        /// Also appends VMS_VisitAttendanceHistory: auto-closes any open cycle, then inserts a new open row.
+        /// ActualInTime on this day, and the parent pair, are the latest-cycle summary.
         /// </summary>
         public static bool CheckInDay(
             SqlConnection con,
@@ -574,7 +573,13 @@ namespace AnmolDristi
                   AND d.VisitDate = CAST(GETDATE() AS date)
                   AND d.IsDayApproved = 1
                   AND d.VisitStatus IN ('Scheduled', 'Checked-Out')
-                  AND v.ApprovalStatus = 'Approved'", con, trans))
+                  AND v.ApprovalStatus = 'Approved'
+                  AND v.ValidFrom IS NOT NULL
+                  AND v.ValidUpto IS NOT NULL
+                  AND CASE WHEN v.ValidFrom > d.DayValidFrom THEN v.ValidFrom ELSE d.DayValidFrom END
+                      <= CASE WHEN v.ValidUpto < d.DayValidUpto THEN v.ValidUpto ELSE d.DayValidUpto END
+                  AND GETDATE() >= CASE WHEN v.ValidFrom > d.DayValidFrom THEN v.ValidFrom ELSE d.DayValidFrom END
+                  AND GETDATE() <= CASE WHEN v.ValidUpto < d.DayValidUpto THEN v.ValidUpto ELSE d.DayValidUpto END", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -591,7 +596,6 @@ namespace AnmolDristi
                     ActualInTime = GETDATE(),
                     ActualOutTime = NULL
                 WHERE LogID = @LogID
-                  AND VisitStatus IN ('Scheduled', 'Checked-Out')
                   AND ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -601,16 +605,15 @@ namespace AnmolDristi
             if (visitRows != 1)
                 return false;
 
-            WriteCheckInHistory(con, trans, dayLogId, logId, guardId);
-            return true;
+            return TryInsertOpenAttendanceHistory(con, trans, dayLogId, logId, guardId);
         }
 
         /// <summary>
-        /// Day-aware check-out. Returns true only when both DayLog and VisitLog
-        /// transitioned from Checked-In (rowsAffected == 1 each).
-        /// DayLogID must belong to the same LogID (AR-VMS-08A).
-        /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
-        /// Closes the open VMS_VisitAttendanceHistory row for this DayLog; does not insert a second row.
+        /// Day-aware check-out. Returns true only when today's Checked-In day, the parent
+        /// summary, and exactly one open history row for this DayLogID all succeed.
+        /// Zero or multiple history rows fail so the caller can roll the day and parent back.
+        /// Does not close another day's session and does not apply the entry window.
+        /// Parent status after checkout is a display summary from HasFutureApprovedDays.
         /// </summary>
         public static bool CheckOutDay(
             SqlConnection con,
@@ -665,14 +668,14 @@ namespace AnmolDristi
             if (visitRows != 1)
                 return false;
 
-            CloseOpenAttendanceHistory(con, trans, dayLogId);
-            return true;
+            return TryCloseOpenAttendanceHistory(con, trans, dayLogId);
         }
 
         public static Dictionary<string, PlantDayTiming> LoadPlantTimings(
             int branchId,
             SqlConnection con = null,
-            SqlTransaction trans = null)
+            SqlTransaction trans = null,
+            bool lockPlantTimings = false)
         {
             var timings = new Dictionary<string, PlantDayTiming>(StringComparer.OrdinalIgnoreCase);
             bool ownsConnection = con == null;
@@ -684,10 +687,18 @@ namespace AnmolDristi
                 if (ownsConnection)
                     con.Open();
 
-                using (SqlCommand cmd = new SqlCommand(@"
+                string sql = lockPlantTimings
+                    ? @"
+                    SELECT DayOfWeek, OpenTime, CloseTime
+                    FROM dbo.VMS_PlantTimings
+                         WITH (UPDLOCK, HOLDLOCK, INDEX(UQ_Plant_Day))
+                    WHERE Branch_ID = @BranchID"
+                    : @"
                     SELECT DayOfWeek, OpenTime, CloseTime
                     FROM VMS_PlantTimings
-                    WHERE Branch_ID = @BranchID", con, trans))
+                    WHERE Branch_ID = @BranchID";
+
+                using (SqlCommand cmd = new SqlCommand(sql, con, trans))
                 {
                     cmd.Parameters.AddWithValue("@BranchID", branchId);
                     using (SqlDataReader reader = cmd.ExecuteReader())
@@ -717,6 +728,33 @@ namespace AnmolDristi
             }
 
             return timings;
+        }
+
+        public enum PlantDayConfigState { Missing, Closed, Open, Invalid }
+
+        public static readonly string[] PlantTimingWeekdays =
+            { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+
+        /// <summary>
+        /// No row = Missing; NULL/NULL = Closed; 00:00 &lt;= Open &lt; Close &lt; 24:00 = Open; anything else = Invalid.
+        /// </summary>
+        public static PlantDayConfigState ClassifyPlantDayConfig(PlantDayTiming timing)
+        {
+            if (timing == null)
+                return PlantDayConfigState.Missing;
+            if (!timing.OpenTime.HasValue && !timing.CloseTime.HasValue)
+                return PlantDayConfigState.Closed;
+            return timing.OpenTime.HasValue && timing.CloseTime.HasValue
+                && timing.OpenTime.Value >= TimeSpan.Zero
+                && timing.CloseTime.Value < TimeSpan.FromDays(1)
+                && timing.CloseTime.Value > timing.OpenTime.Value
+                ? PlantDayConfigState.Open
+                : PlantDayConfigState.Invalid;
+        }
+
+        public static bool TryParsePlantTime(string text, out TimeSpan value)
+        {
+            return TimeSpan.TryParseExact(text, new[] { @"hh\:mm", @"hh\:mm\:ss" }, CultureInfo.InvariantCulture, out value);
         }
 
         public static string GetPlantTimingsJson(int branchId)
@@ -1309,49 +1347,76 @@ namespace AnmolDristi
             return "Gate";
         }
 
-        private static void WriteCheckInHistory(
+        /// <summary>
+        /// Inserts one open history row for this DayLogID. Does not update any existing row.
+        /// A filtered-unique-index conflict returns false so the caller rolls back;
+        /// any other SQL error is rethrown after the caller-owned transaction can roll back.
+        /// </summary>
+        private static bool TryInsertOpenAttendanceHistory(
             SqlConnection con,
             SqlTransaction trans,
             int dayLogId,
             int logId,
             string actor)
         {
-            CloseOpenAttendanceHistory(con, trans, dayLogId);
-
-            using (SqlCommand cmd = new SqlCommand(@"
-                IF OBJECT_ID('dbo.VMS_VisitAttendanceHistory', 'U') IS NOT NULL
-                BEGIN
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand(@"
                     INSERT INTO VMS_VisitAttendanceHistory
                         (LogID, DayLogID, CheckInTime, CheckOutTime, Source, Actor, CreatedOn)
                     VALUES
-                        (@LogID, @DayLogID, GETDATE(), NULL, @Source, @Actor, GETDATE())
-                END", con, trans))
+                        (@LogID, @DayLogID, GETDATE(), NULL, @Source, @Actor, GETDATE())", con, trans))
+                {
+                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                    cmd.Parameters.AddWithValue("@Source", ResolveAttendanceSource(actor));
+                    cmd.Parameters.AddWithValue("@Actor", actor ?? "SecurityGate");
+                    cmd.ExecuteNonQuery();
+                }
+
+                return true;
+            }
+            catch (SqlException ex)
             {
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
-                cmd.Parameters.AddWithValue("@Source", ResolveAttendanceSource(actor));
-                cmd.Parameters.AddWithValue("@Actor", actor ?? "SecurityGate");
-                cmd.ExecuteNonQuery();
+                if (IsOpenSessionConflict(ex))
+                    return false;
+                throw;
             }
         }
 
-        private static void CloseOpenAttendanceHistory(
+        /// <summary>
+        /// Closes the single open history row for this DayLogID. Any other count fails.
+        /// </summary>
+        private static bool TryCloseOpenAttendanceHistory(
             SqlConnection con,
             SqlTransaction trans,
             int dayLogId)
         {
             using (SqlCommand cmd = new SqlCommand(@"
-                IF OBJECT_ID('dbo.VMS_VisitAttendanceHistory', 'U') IS NOT NULL
-                BEGIN
-                    UPDATE VMS_VisitAttendanceHistory
-                    SET CheckOutTime = GETDATE()
-                    WHERE DayLogID = @DayLogID
-                      AND CheckOutTime IS NULL
-                END", con, trans))
+                UPDATE VMS_VisitAttendanceHistory
+                SET CheckOutTime = GETDATE()
+                WHERE DayLogID = @DayLogID
+                  AND CheckOutTime IS NULL", con, trans))
             {
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
-                cmd.ExecuteNonQuery();
+                return cmd.ExecuteNonQuery() == 1;
             }
+        }
+
+        private static bool IsOpenSessionConflict(SqlException ex)
+        {
+            if (ex == null)
+                return false;
+            if (ex.Number == 2601 || ex.Number == 2627)
+                return true;
+
+            foreach (SqlError error in ex.Errors)
+            {
+                if (error.Number == 2601 || error.Number == 2627)
+                    return true;
+            }
+
+            return false;
         }
 
         private static VisitDayLogInfo MapDayLog(SqlDataReader reader)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 
 namespace AnmolDristi.DAL
 {
@@ -11,7 +12,11 @@ namespace AnmolDristi.DAL
         None = 0,
         NotFoundOrNotOwned = 1,
         NotPending = 2,
-        Unexpected = 3
+        Unexpected = 3,
+        /// <summary>Admin On-Behalf only: TargetBranchID is missing or has no MST_Branch record.</summary>
+        InvalidBranch = 4,
+        /// <summary>Admin On-Behalf only: a day in the approved window is Missing or Invalid in VMS_PlantTimings.</summary>
+        PlantTimingNotConfigured = 5
     }
 
     /// <summary>
@@ -61,6 +66,8 @@ namespace AnmolDristi.DAL
     {
         public bool Succeeded { get; set; }
         public ApprovalFailureReason FailureReason { get; set; }
+        /// <summary>Weekdays blocking approval when FailureReason is PlantTimingNotConfigured.</summary>
+        public string FailureDetail { get; set; }
         public int LogId { get; set; }
         public Guid? QrToken { get; set; }
         public DateTime? ValidUpto { get; set; }
@@ -291,10 +298,10 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Host convenience Check-In (AR-VMS-03A + AR-VMS-07A ownership).
-        /// When an approved today VisitDayLog exists: reuse CheckInDay (Parent+DayLog, guarded).
-        /// When no today DayLog row exists: legacy guarded parent-only VisitLog update.
+        /// Requires an approved today VisitDayLog and reuses CheckInDay, including the
+        /// parent ∩ day window. Missing or unapproved today fails closed.
         /// Requires HostEmployeeCode ownership under the same transaction.
-        /// Does not create DayLogs, enforce Gate validity, or queue arrival notifications.
+        /// Does not create DayLogs or queue arrival notifications.
         /// </summary>
         /// <returns>True only when ownership and the guarded mutation succeeded.</returns>
         public bool ManualCheckIn(int logId, string hostEmployeeCode)
@@ -319,33 +326,15 @@ namespace AnmolDristi.DAL
 
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
 
-                        // Applicable = today's DayLog row exists and is host-approved for the day.
-                        // Missing row → legacy parent-only. Unapproved/cancelled today → not DayLog-aware
-                        // (do not fabricate/approve a day); fall through to legacy only when no row.
-                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
-
-                        bool succeeded;
-                        if (useDayLogPath)
-                        {
-                            // Reuse canonical CheckInDay — do not duplicate status-guard SQL.
-                            succeeded = VmsVisitScheduleHelper.CheckInDay(
+                        bool succeeded = todayLog != null
+                            && todayLog.DayLogId > 0
+                            && todayLog.IsDayApproved
+                            && VmsVisitScheduleHelper.CheckInDay(
                                 con,
                                 todayLog.DayLogId,
                                 logId,
                                 "HostManual",
                                 trans);
-                        }
-                        else if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
-                        {
-                            // Today exists but not approved (or not selectable): do not parent-only
-                            // desync; controlled failure.
-                            succeeded = false;
-                        }
-                        else
-                        {
-                            // Legacy niche: VisitLog with no VisitDayLog for today.
-                            succeeded = LegacyManualCheckInParentOnly(con, trans, logId, resolvedHost);
-                        }
 
                         if (!succeeded)
                         {
@@ -367,8 +356,8 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Host convenience Check-Out (AR-VMS-03A + AR-VMS-07A ownership).
-        /// When an approved today VisitDayLog exists: reuse CheckOutDay (MultiDay → Parent Scheduled
-        /// when future approved days remain). Otherwise legacy guarded parent-only Check-Out.
+        /// Requires an approved today VisitDayLog and reuses CheckOutDay. Missing or
+        /// unapproved today fails closed. Parent status remains a display summary.
         /// Requires HostEmployeeCode ownership under the same transaction. No departure notifications.
         /// </summary>
         public bool ManualCheckOut(int logId, string hostEmployeeCode)
@@ -393,26 +382,15 @@ namespace AnmolDristi.DAL
 
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
 
-                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
-
-                        bool succeeded;
-                        if (useDayLogPath)
-                        {
-                            succeeded = VmsVisitScheduleHelper.CheckOutDay(
+                        bool succeeded = todayLog != null
+                            && todayLog.DayLogId > 0
+                            && todayLog.IsDayApproved
+                            && VmsVisitScheduleHelper.CheckOutDay(
                                 con,
                                 todayLog.DayLogId,
                                 logId,
                                 "HostManual",
                                 trans);
-                        }
-                        else if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
-                        {
-                            succeeded = false;
-                        }
-                        else
-                        {
-                            succeeded = LegacyManualCheckOutParentOnly(con, trans, logId, resolvedHost);
-                        }
 
                         if (!succeeded)
                         {
@@ -460,62 +438,9 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Legacy parent-only Check-In when no today VisitDayLog row exists.
-        /// Guarded: VisitStatus must be Scheduled, HostEmployeeCode must match, and
-        /// ApprovalStatus must be Approved (AR-VMS-07B); ActualInTime preserves first stamp.
-        /// </summary>
-        private static bool LegacyManualCheckInParentOnly(
-            SqlConnection con,
-            SqlTransaction trans,
-            int logId,
-            string hostEmployeeCode)
-        {
-            using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitLog
-                SET VisitStatus = 'Checked-In',
-                    ActualInTime = COALESCE(ActualInTime, GETDATE())
-                WHERE LogID = @LogID
-                  AND VisitStatus = 'Scheduled'
-                  AND HostEmployeeCode = @HostEmployeeCode
-                  AND ApprovalStatus = 'Approved'", con, trans))
-            {
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
-                return cmd.ExecuteNonQuery() == 1;
-            }
-        }
-
-        /// <summary>
-        /// Legacy parent-only Check-Out when no today VisitDayLog row exists.
-        /// Guarded: VisitStatus must be Checked-In, HostEmployeeCode must match, and
-        /// ApprovalStatus must be Approved (AR-VMS-07B).
-        /// Does not set CheckedOutBy (MyVisitors contract).
-        /// </summary>
-        private static bool LegacyManualCheckOutParentOnly(
-            SqlConnection con,
-            SqlTransaction trans,
-            int logId,
-            string hostEmployeeCode)
-        {
-            using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitLog
-                SET VisitStatus = 'Checked-Out',
-                    ActualOutTime = GETDATE()
-                WHERE LogID = @LogID
-                  AND VisitStatus = 'Checked-In'
-                  AND HostEmployeeCode = @HostEmployeeCode
-                  AND ApprovalStatus = 'Approved'", con, trans))
-            {
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@HostEmployeeCode", hostEmployeeCode);
-                return cmd.ExecuteNonQuery() == 1;
-            }
-        }
-
-        /// <summary>
-        /// Receptionist desk Check-In (AR-VMS-03B). DayLog-aware when today's DayLog is approved;
-        /// legacy guarded parent-only when no today row; FAIL when today exists but unapproved.
-        /// Preserves [Reception Override] remarks. No Gate validity, branch predicate, or notifications.
+        /// Receptionist desk Check-In (AR-VMS-03B). Requires an approved today VisitDayLog and
+        /// reuses CheckInDay, including the parent ∩ day window. Missing or unapproved today
+        /// fails closed. Preserves [Reception Override] remarks. No branch predicate or notifications.
         /// </summary>
         public ReceptionistAttendanceResult ReceptionistManualCheckIn(int logId)
         {
@@ -534,31 +459,23 @@ namespace AnmolDristi.DAL
                             return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.TodayNotApproved);
                         }
 
-                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
-                        bool succeeded;
-
-                        if (useDayLogPath)
-                        {
-                            succeeded = VmsVisitScheduleHelper.CheckInDay(
+                        bool succeeded = todayLog != null
+                            && todayLog.DayLogId > 0
+                            && todayLog.IsDayApproved
+                            && VmsVisitScheduleHelper.CheckInDay(
                                 con,
                                 todayLog.DayLogId,
                                 logId,
                                 "Receptionist",
                                 trans);
 
-                            if (succeeded)
-                            {
-                                // Metadata-only: do not alter VisitStatus / ActualInTime / DayLog status.
-                                AppendReceptionOverrideRemark(
-                                    con,
-                                    trans,
-                                    logId,
-                                    "[Reception Override] Manual Check-In on " + DateTime.Now.ToString("dd-MMM-yy HH:mm"));
-                            }
-                        }
-                        else
+                        if (succeeded)
                         {
-                            succeeded = LegacyReceptionistCheckInParentOnly(con, trans, logId);
+                            AppendReceptionOverrideRemark(
+                                con,
+                                trans,
+                                logId,
+                                "[Reception Override] Manual Check-In on " + DateTime.Now.ToString("dd-MMM-yy HH:mm"));
                         }
 
                         if (!succeeded)
@@ -585,9 +502,9 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Receptionist desk Check-Out (AR-VMS-03B). Reuses CheckOutDay for MultiDay Parent→Scheduled
-        /// when future approved days remain. CheckedOutBy = Receptionist on DayLog path via helper
-        /// and on legacy path explicitly. No departure notifications.
+        /// Receptionist desk Check-Out (AR-VMS-03B). Requires an approved today VisitDayLog and
+        /// reuses CheckOutDay. Missing or unapproved today fails closed. CheckedOutBy comes from
+        /// the shared engine. No departure notifications.
         /// </summary>
         public ReceptionistAttendanceResult ReceptionistManualCheckOut(int logId)
         {
@@ -606,30 +523,23 @@ namespace AnmolDristi.DAL
                             return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.TodayNotApproved);
                         }
 
-                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
-                        bool succeeded;
-
-                        if (useDayLogPath)
-                        {
-                            succeeded = VmsVisitScheduleHelper.CheckOutDay(
+                        bool succeeded = todayLog != null
+                            && todayLog.DayLogId > 0
+                            && todayLog.IsDayApproved
+                            && VmsVisitScheduleHelper.CheckOutDay(
                                 con,
                                 todayLog.DayLogId,
                                 logId,
                                 "Receptionist",
                                 trans);
 
-                            if (succeeded)
-                            {
-                                AppendReceptionOverrideRemark(
-                                    con,
-                                    trans,
-                                    logId,
-                                    "[Reception Override] Manual Check-Out on " + DateTime.Now.ToString("dd-MMM-yy HH:mm"));
-                            }
-                        }
-                        else
+                        if (succeeded)
                         {
-                            succeeded = LegacyReceptionistCheckOutParentOnly(con, trans, logId);
+                            AppendReceptionOverrideRemark(
+                                con,
+                                trans,
+                                logId,
+                                "[Reception Override] Manual Check-Out on " + DateTime.Now.ToString("dd-MMM-yy HH:mm"));
                         }
 
                         if (!succeeded)
@@ -685,53 +595,6 @@ namespace AnmolDristi.DAL
                 cmd.Parameters.AddWithValue("@LogID", logId);
                 cmd.Parameters.AddWithValue("@Remark", remark);
                 cmd.ExecuteNonQuery();
-            }
-        }
-
-        private static bool LegacyReceptionistCheckInParentOnly(
-            SqlConnection con,
-            SqlTransaction trans,
-            int logId)
-        {
-            string remark =
-                "[Reception Override] Manual Check-In on " + DateTime.Now.ToString("dd-MMM-yy HH:mm");
-
-            using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitLog
-                SET VisitStatus = 'Checked-In',
-                    ActualInTime = COALESCE(ActualInTime, GETDATE()),
-                    ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | ' + @Remark
-                WHERE LogID = @LogID
-                  AND VisitStatus = 'Scheduled'
-                  AND ApprovalStatus = 'Approved'", con, trans))
-            {
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@Remark", remark);
-                return cmd.ExecuteNonQuery() == 1;
-            }
-        }
-
-        private static bool LegacyReceptionistCheckOutParentOnly(
-            SqlConnection con,
-            SqlTransaction trans,
-            int logId)
-        {
-            string remark =
-                "[Reception Override] Manual Check-Out on " + DateTime.Now.ToString("dd-MMM-yy HH:mm");
-
-            using (SqlCommand cmd = new SqlCommand(@"
-                UPDATE VMS_VisitLog
-                SET VisitStatus = 'Checked-Out',
-                    ActualOutTime = GETDATE(),
-                    CheckedOutBy = 'Receptionist',
-                    ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), '') + ' | ' + @Remark
-                WHERE LogID = @LogID
-                  AND VisitStatus = 'Checked-In'
-                  AND ApprovalStatus = 'Approved'", con, trans))
-            {
-                cmd.Parameters.AddWithValue("@LogID", logId);
-                cmd.Parameters.AddWithValue("@Remark", remark);
-                return cmd.ExecuteNonQuery() == 1;
             }
         }
 
@@ -1126,10 +989,11 @@ namespace AnmolDristi.DAL
         /// Admin on-behalf approval — Pending-only authorization (host ownership bypassed).
         /// Produces the same VisitLog + DayLog + QR + validity + pass-notification lifecycle.
         /// Valid* comes from ApproveVisitSchedule(RequestedValid*); ApprovedOn may use schedDate override.
+        /// Missing branch or Missing/Invalid plant timings on any approved day block approval (OOH-02/12).
         /// </summary>
         public VisitorApprovalResult ApproveVisitOnBehalf(VisitorApprovalRequest request)
         {
-            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly);
+            return ApproveVisitCore(request, ApprovalAuthorizationMode.PendingOnly, requireConfiguredPlantDays: true);
         }
 
         /// <summary>
@@ -1143,12 +1007,13 @@ namespace AnmolDristi.DAL
 
         /// <summary>
         /// Shared approval lifecycle (AR-VMS-02):
-        /// selected days → QR → guarded VisitLog UPDATE → ApproveVisitSchedule →
+        /// selected days → QR → guarded VisitLog UPDATE → ApproveVisitSchedule → [on-behalf plant-day guard] →
         /// re-apply selected days → optional time override → pass notify → optional host on-behalf notify → COMMIT.
         /// </summary>
         private VisitorApprovalResult ApproveVisitCore(
             VisitorApprovalRequest request,
-            ApprovalAuthorizationMode authMode)
+            ApprovalAuthorizationMode authMode,
+            bool requireConfiguredPlantDays = false)
         {
             if (request == null)
                 throw new ArgumentNullException("request");
@@ -1203,6 +1068,31 @@ namespace AnmolDristi.DAL
                         // Full requested range: SelectedDays null → all RequestedValid* days approved;
                         // out-of-range days cancelled. MultiDay Admin/Receptionist use this path (no day UI).
                         VmsVisitScheduleHelper.ApproveVisitSchedule(con, trans, request.LogId, null, null);
+
+                        if (requireConfiguredPlantDays)
+                        {
+                            string blockedDays;
+                            ApprovalFailureReason guardReason = ValidateApprovedPlantDays(con, trans, request.LogId, out blockedDays);
+                            if (guardReason != ApprovalFailureReason.None)
+                            {
+                                try
+                                {
+                                    trans.Rollback();
+                                }
+                                catch
+                                {
+                                    // Do not mask the validation failure result.
+                                }
+
+                                return new VisitorApprovalResult
+                                {
+                                    Succeeded = false,
+                                    FailureReason = guardReason,
+                                    FailureDetail = blockedDays,
+                                    LogId = request.LogId
+                                };
+                            }
+                        }
 
                         // Re-apply selective day flags so range-based schedule approval does not overwrite them
                         if (request.SelectedDays != null)
@@ -1588,6 +1478,61 @@ namespace AnmolDristi.DAL
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Runs inside the approval transaction after ApproveVisitSchedule(null, null), so it checks exactly the
+        /// ApprovedValidFrom–ApprovedValidUpto calendar days that method approved. The branch must be &gt; 0 with an
+        /// MST_Branch record; each day must classify Open or Closed — Missing and Invalid are never treated as open.
+        /// </summary>
+        private static ApprovalFailureReason ValidateApprovedPlantDays(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            out string blockedDays)
+        {
+            blockedDays = null;
+            int branchId;
+            DateTime start, end;
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT v.TargetBranchID, v.ApprovedValidFrom, v.ApprovedValidUpto
+                FROM VMS_VisitLog v
+                WHERE v.LogID = @LogID
+                  AND v.TargetBranchID > 0
+                  AND EXISTS (SELECT 1 FROM MST_Branch b WHERE b.Branch_ID = v.TargetBranchID)", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return ApprovalFailureReason.InvalidBranch;
+                    branchId = Convert.ToInt32(reader["TargetBranchID"]);
+                    start = Convert.ToDateTime(reader["ApprovedValidFrom"]).Date;
+                    end = Convert.ToDateTime(reader["ApprovedValidUpto"]).Date;
+                }
+            }
+
+            Dictionary<string, PlantDayTiming> timings = VmsVisitScheduleHelper.LoadPlantTimings(branchId, con, trans, lockPlantTimings: true);
+            var blocked = new List<string>();
+            if (end < start)
+                end = start;
+            for (DateTime day = start; day <= end; day = day.AddDays(1))
+            {
+                string weekday = day.ToString("dddd", CultureInfo.InvariantCulture);
+                PlantDayTiming timing;
+                timings.TryGetValue(weekday, out timing);
+                VmsVisitScheduleHelper.PlantDayConfigState state = VmsVisitScheduleHelper.ClassifyPlantDayConfig(timing);
+                if (state == VmsVisitScheduleHelper.PlantDayConfigState.Open || state == VmsVisitScheduleHelper.PlantDayConfigState.Closed)
+                    continue;
+                string entry = weekday + (state == VmsVisitScheduleHelper.PlantDayConfigState.Missing ? " (not configured)" : " (invalid timings)");
+                if (!blocked.Contains(entry))
+                    blocked.Add(entry);
+            }
+
+            if (blocked.Count == 0)
+                return ApprovalFailureReason.None;
+            blockedDays = string.Join(", ", blocked);
+            return ApprovalFailureReason.PlantTimingNotConfigured;
         }
 
         private static ApprovalFailureReason ResolveApprovalFailure(

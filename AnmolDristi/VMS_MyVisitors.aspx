@@ -96,14 +96,14 @@
                                                     <ItemTemplate>
                                                         <asp:LinkButton ID="btnManualCheckIn" runat="server" CommandName="ManualCheckIn" CommandArgument='<%# Eval("LogID") %>' 
                                                             CssClass="btn btn-info btn-xs" 
-                                                            Visible='<%# Convert.ToString(Eval("ApprovalStatus")) == "Approved" && Convert.ToString(Eval("VisitStatus")) != "Checked-In" && Convert.ToString(Eval("VisitStatus")) != "Checked-Out" %>' 
+                                                            Visible="false" 
                                                             OnClientClick="return confirm('Are you sure you want to manually Check-IN this visitor?');">
                                                             <i class="fa fa-sign-in"></i> Check-In
                                                         </asp:LinkButton>
                                                         
                                                         <asp:LinkButton ID="btnManualCheckOut" runat="server" CommandName="ManualCheckOut" CommandArgument='<%# Eval("LogID") %>' 
                                                             CssClass="btn btn-warning btn-xs" 
-                                                            Visible='<%# Convert.ToString(Eval("ApprovalStatus")) == "Approved" && Convert.ToString(Eval("VisitStatus")) == "Checked-In" %>' 
+                                                            Visible="false" 
                                                             OnClientClick="return confirm('Are you sure you want to manually Check-OUT this visitor?');">
                                                             <i class="fa fa-sign-out"></i> Check-Out
                                                         </asp:LinkButton>

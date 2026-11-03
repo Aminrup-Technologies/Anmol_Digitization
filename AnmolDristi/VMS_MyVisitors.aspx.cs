@@ -163,6 +163,47 @@ namespace AnmolDristi
 
             string approvalStatus = Convert.ToString(DataBinder.Eval(e.Row.DataItem, "ApprovalStatus"));
             BindHostScheduleCell(e.Row, approvalStatus);
+            ApplyHostAttendanceActions(e.Row, approvalStatus);
+        }
+
+        private void ApplyHostAttendanceActions(GridViewRow row, string approvalStatus)
+        {
+            LinkButton btnIn = row.FindControl("btnManualCheckIn") as LinkButton;
+            LinkButton btnOut = row.FindControl("btnManualCheckOut") as LinkButton;
+            if (btnIn == null && btnOut == null)
+                return;
+
+            bool approved = string.Equals(approvalStatus, "Approved", StringComparison.OrdinalIgnoreCase);
+            VisitDayLogInfo today = FindLoadedDay(DataBinder.Eval(row.DataItem, "LogID"), DateTime.Now.Date);
+            bool todayApproved = today != null && today.IsDayApproved;
+            string status = today == null || today.VisitStatus == null ? string.Empty : today.VisitStatus;
+            bool inside = todayApproved && string.Equals(status, "Checked-In", StringComparison.OrdinalIgnoreCase);
+            bool canEnter = todayApproved &&
+                (string.Equals(status, "Scheduled", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(status, "Checked-Out", StringComparison.OrdinalIgnoreCase));
+
+            if (btnIn != null)
+                btnIn.Visible = approved && canEnter;
+            if (btnOut != null)
+                btnOut.Visible = approved && inside;
+        }
+
+        private VisitDayLogInfo FindLoadedDay(object logIdObj, DateTime visitDate)
+        {
+            if (logIdObj == null || logIdObj == DBNull.Value || _dayLogsByVisit == null)
+                return null;
+
+            List<VisitDayLogInfo> days;
+            if (!_dayLogsByVisit.TryGetValue(Convert.ToInt32(logIdObj), out days) || days == null)
+                return null;
+
+            foreach (VisitDayLogInfo day in days)
+            {
+                if (day.VisitDate.Date == visitDate.Date)
+                    return day;
+            }
+
+            return null;
         }
 
         private void BindHostScheduleCell(GridViewRow row, string approvalStatus)
@@ -522,7 +563,7 @@ namespace AnmolDristi
                     {
                         lblHistoryMsg.ForeColor = Color.Red;
                         lblHistoryMsg.Text =
-                            "Unable to Check-IN. Status may have changed, today is not approved, or the visitor is already checked in.";
+                            "Unable to Check-IN. Today is not an approved day inside the pass window, or attendance state has changed.";
                     }
                 }
                 else if (e.CommandName == "ManualCheckOut")
@@ -536,7 +577,7 @@ namespace AnmolDristi
                     {
                         lblHistoryMsg.ForeColor = Color.Red;
                         lblHistoryMsg.Text =
-                            "Unable to Check-OUT. Status may have changed, today is not approved, or the visitor is not checked in.";
+                            "Unable to Check-OUT. Today has no open attendance session, or attendance state has changed.";
                     }
                 }
 
