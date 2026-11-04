@@ -103,7 +103,21 @@ namespace AnmolDristi.DAL
         StateChanged = 1,
         /// <summary>Today's VisitDayLog exists but IsDayApproved = 0 — correction must fail closed.</summary>
         UnapprovedToday = 2,
-        UnexpectedFailure = 3
+        UnexpectedFailure = 3,
+        /// <summary>Target DayLogID has more than one open attendance-history row.</summary>
+        InconsistentAttendanceHistory = 4
+    }
+
+    /// <summary>
+    /// How an Admin Out-Time correction reconciled the target day's existing history rows.
+    /// In-Time corrections leave this as <see cref="NotApplicable"/>.
+    /// </summary>
+    public enum AdminOutTimeHistoryOutcome
+    {
+        NotApplicable = 0,
+        ClosedExisting = 1,
+        MissingHistoryNoSyntheticRow = 2,
+        NoOpenHistoryRow = 3
     }
 
     public class AdminCorrectionResult
@@ -111,6 +125,12 @@ namespace AnmolDristi.DAL
         public bool Succeeded { get; set; }
         public AdminCorrectionFailureReason FailureReason { get; set; }
         public int LogId { get; set; }
+        public AdminOutTimeHistoryOutcome HistoryOutcome { get; set; }
+        /// <summary>
+        /// Controlled operator text for a failed correction. The page shows this instead of a generic reason.
+        /// Never assigned from a SQL exception message.
+        /// </summary>
+        public string OperatorMessage { get; set; }
     }
 
     public class DigitalPassDetails
@@ -675,11 +695,17 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Admin Inline Gate Override — Out-Time correction (AR-VMS-04).
-        /// Uses the Admin-supplied timestamp (not GETDATE). Approved today DayLog: atomic
-        /// Parent+DayLog with MultiDay Parent→Scheduled when future approved days remain
-        /// (HasFutureApprovedDays). No today DayLog: guarded parent-only Checked-Out.
-        /// Unapproved today: FAIL. CheckedOutBy = ADMIN_INLINE. Does not call CheckOutDay.
+        /// Admin Inline Gate Override — Out-Time correction.
+        /// Resolves the DayLog for the date of <paramref name="adminOutTime"/> via
+        /// GetDayLogForDate. Does not call CheckOutDay and does not insert attendance history.
+        /// An approved, Checked-In target day is corrected in the same transaction as its
+        /// history reconciliation and the untruncated parent audit append.
+        /// Day rows for the LogID are held with UPDLOCK, HOLDLOCK on UQ_VMS_VisitDayLog_LogDate
+        /// before the target-day or legacy decision and until commit. That blocks CheckInDay's
+        /// day update (it locks the day before the parent) and blocks a new day insert for this
+        /// LogID. Parent VisitLog is updated only when no later approved day already has
+        /// attendance, and then keeps CheckedOutBy = ADMIN_INLINE. The DayLog records the Admin identity.
+        /// Legacy parent-only remains only when the locked read shows no VisitDayLog rows at all.
         /// </summary>
         public AdminCorrectionResult AdminCorrectOutTime(
             int logId,
@@ -687,6 +713,21 @@ namespace AnmolDristi.DAL
             string overrideReason,
             string userName)
         {
+            if (string.IsNullOrWhiteSpace(overrideReason))
+            {
+                return new AdminCorrectionResult
+                {
+                    Succeeded = false,
+                    FailureReason = AdminCorrectionFailureReason.UnexpectedFailure,
+                    LogId = logId,
+                    OperatorMessage = "You must type an Audit Reason BEFORE changing the date/time."
+                };
+            }
+
+            string adminIdentity = string.IsNullOrWhiteSpace(userName) ? "Admin" : userName.Trim();
+            string reason = overrideReason.Trim();
+            DateTime targetDate = adminOutTime.Date;
+
             using (SqlConnection con = new SqlConnection(_connectionString))
             {
                 con.Open();
@@ -694,60 +735,206 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
-                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
-
-                        if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
+                        List<VisitDayLogInfo> lockedDays = LockVisitDayLogs(con, trans, logId);
+                        VisitDayLogInfo targetLog = null;
+                        for (int i = 0; i < lockedDays.Count; i++)
                         {
-                            try { trans.Rollback(); } catch { }
-                            return FailAdminCorrection(logId, AdminCorrectionFailureReason.UnapprovedToday);
+                            if (lockedDays[i].VisitDate.Date == targetDate)
+                            {
+                                targetLog = lockedDays[i];
+                                break;
+                            }
                         }
 
-                        DateTime? oldOutTime = ReadParentActualOutTime(con, trans, logId);
-
-                        bool useDayLogPath = todayLog != null && todayLog.DayLogId > 0 && todayLog.IsDayApproved;
-                        bool mutated;
-
-                        if (useDayLogPath)
+                        if (targetLog != null && targetLog.DayLogId > 0)
                         {
-                            mutated = AdminCorrectOutTimeWithDayLog(
-                                con, trans, logId, todayLog.DayLogId, adminOutTime);
+                            if (targetLog.LogId != logId || targetLog.VisitDate.Date != targetDate)
+                            {
+                                return FailOutTime(trans, logId, AdminCorrectionFailureReason.StateChanged, null);
+                            }
+
+                            if (!targetLog.IsDayApproved)
+                            {
+                                return FailOutTime(trans, logId, AdminCorrectionFailureReason.UnapprovedToday, null);
+                            }
+
+                            ColumnCapacity checkedOutBy = ReadColumnCapacity(con, trans, "VMS_VisitDayLog", "CheckedOutBy");
+                            if (!checkedOutBy.Found)
+                            {
+                                return FailOutTime(
+                                    trans,
+                                    logId,
+                                    AdminCorrectionFailureReason.UnexpectedFailure,
+                                    "Out-Time correction was rejected because the visit-day CheckedOutBy column length could not be verified. No change was saved.");
+                            }
+
+                            if (!IdentityFits(con, trans, adminIdentity, checkedOutBy))
+                            {
+                                return FailOutTime(
+                                    trans,
+                                    logId,
+                                    AdminCorrectionFailureReason.UnexpectedFailure,
+                                    "Out-Time correction was rejected because the Admin identity does not fit the visit-day CheckedOutBy column. No change was saved.");
+                            }
+
+                            if (!UpdateTargetDayOutTime(
+                                con,
+                                trans,
+                                logId,
+                                targetLog.DayLogId,
+                                targetDate,
+                                adminOutTime,
+                                adminIdentity,
+                                checkedOutBy))
+                            {
+                                return FailOutTime(trans, logId, AdminCorrectionFailureReason.StateChanged, null);
+                            }
+
+                            AdminOutTimeHistoryOutcome historyOutcome;
+                            if (!TryReconcileTargetDayHistory(
+                                con,
+                                trans,
+                                logId,
+                                targetLog.DayLogId,
+                                adminOutTime,
+                                out historyOutcome))
+                            {
+                                return FailOutTime(
+                                    trans,
+                                    logId,
+                                    AdminCorrectionFailureReason.InconsistentAttendanceHistory,
+                                    null);
+                            }
+
+                            // Later days stay U-locked, so CheckInDay cannot commit a newer cycle
+                            // between this decision and the parent update.
+                            if (!LaterDayOwnsParentSummary(lockedDays, targetDate))
+                            {
+                                bool hasFutureApproved = false;
+                                for (int i = 0; i < lockedDays.Count; i++)
+                                {
+                                    if (lockedDays[i].IsDayApproved && lockedDays[i].VisitDate.Date > targetDate)
+                                    {
+                                        hasFutureApproved = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!UpdateParentOutTimeSummary(con, trans, logId, adminOutTime, hasFutureApproved))
+                                {
+                                    return FailOutTime(trans, logId, AdminCorrectionFailureReason.StateChanged, null);
+                                }
+                            }
+
+                            string auditTrail = BuildAdminOutTimeAuditTrail(
+                                logId,
+                                targetLog.DayLogId,
+                                targetLog.VisitDate.Date,
+                                targetLog.ActualOutTime,
+                                adminOutTime,
+                                adminIdentity,
+                                reason,
+                                HistoryToken(historyOutcome));
+
+                            if (!TryAppendAdminOutTimeAudit(con, trans, logId, auditTrail))
+                            {
+                                return FailOutTime(
+                                    trans,
+                                    logId,
+                                    AdminCorrectionFailureReason.UnexpectedFailure,
+                                    "Out-Time correction was rejected because the audit entry could not be stored in full. No change was saved.");
+                            }
+
+                            trans.Commit();
+                            return new AdminCorrectionResult
+                            {
+                                Succeeded = true,
+                                FailureReason = AdminCorrectionFailureReason.None,
+                                LogId = logId,
+                                HistoryOutcome = historyOutcome
+                            };
                         }
-                        else
+
+                        if (lockedDays.Count > 0)
                         {
-                            mutated = AdminCorrectOutTimeParentOnly(con, trans, logId, adminOutTime);
+                            return FailOutTime(
+                                trans,
+                                logId,
+                                AdminCorrectionFailureReason.StateChanged,
+                                "Out-Time correction was rejected because no visit day exists for the selected date. No other day was changed.");
                         }
 
-                        if (!mutated)
+                        DateTime? previousParentOut = ReadParentActualOutTime(con, trans, logId);
+                        if (!AdminCorrectOutTimeParentOnly(con, trans, logId, adminOutTime))
                         {
-                            try { trans.Rollback(); } catch { }
-                            return FailAdminCorrection(logId, AdminCorrectionFailureReason.StateChanged);
+                            return FailOutTime(trans, logId, AdminCorrectionFailureReason.StateChanged, null);
                         }
 
-                        string oldRecord = oldOutTime.HasValue
-                            ? oldOutTime.Value.ToString("dd-MMM HH:mm")
-                            : "Empty";
-                        string auditName = string.IsNullOrWhiteSpace(userName) ? "Admin" : userName.Trim();
-                        string reason = overrideReason ?? string.Empty;
-                        string auditTrail =
-                            $" | [Check-Out Time: {oldRecord}->{adminOutTime:dd-MMM HH:mm} by {auditName}] Rsn: {reason}";
+                        string legacyAudit = BuildAdminOutTimeAuditTrail(
+                            logId,
+                            null,
+                            targetDate,
+                            previousParentOut,
+                            adminOutTime,
+                            adminIdentity,
+                            reason,
+                            "NO_TARGET_DAYLOG");
 
-                        AppendAdminCorrectionRemark(con, trans, logId, auditTrail);
+                        if (!TryAppendAdminOutTimeAudit(con, trans, logId, legacyAudit))
+                        {
+                            return FailOutTime(
+                                trans,
+                                logId,
+                                AdminCorrectionFailureReason.UnexpectedFailure,
+                                "Out-Time correction was rejected because the audit entry could not be stored in full. No change was saved.");
+                        }
 
                         trans.Commit();
                         return new AdminCorrectionResult
                         {
                             Succeeded = true,
                             FailureReason = AdminCorrectionFailureReason.None,
-                            LogId = logId
+                            LogId = logId,
+                            HistoryOutcome = AdminOutTimeHistoryOutcome.NotApplicable
                         };
                     }
                     catch
                     {
                         try { trans.Rollback(); } catch { }
-                        throw;
+                        return new AdminCorrectionResult
+                        {
+                            Succeeded = false,
+                            FailureReason = AdminCorrectionFailureReason.UnexpectedFailure,
+                            LogId = logId,
+                            OperatorMessage = "Out-Time correction could not be completed. No change was saved."
+                        };
                     }
                 }
             }
+        }
+
+        private static AdminCorrectionResult FailOutTime(
+            SqlTransaction trans,
+            int logId,
+            AdminCorrectionFailureReason reason,
+            string operatorMessage)
+        {
+            try
+            {
+                if (trans != null)
+                    trans.Rollback();
+            }
+            catch
+            {
+            }
+
+            return new AdminCorrectionResult
+            {
+                Succeeded = false,
+                FailureReason = reason,
+                LogId = logId,
+                OperatorMessage = operatorMessage
+            };
         }
 
         private static AdminCorrectionResult FailAdminCorrection(
@@ -872,46 +1059,183 @@ namespace AnmolDristi.DAL
         }
 
         /// <summary>
-        /// Approved today DayLog: DayLog → Checked-Out with @AdminOutTime; Parent VisitStatus
-        /// Scheduled when HasFutureApprovedDays, else Checked-Out. CheckedOutBy = ADMIN_INLINE.
-        /// DayLogID must belong to the same LogID (AR-VMS-08A).
-        /// Requires today's approved DayLog and Parent ApprovalStatus='Approved' (AR-VMS-10).
+        /// Updates only the target DayLog. VisitDate, LogID, approval, and Checked-In are required.
+        /// CheckedOutBy is the Admin identity and is never truncated to fit the column.
         /// </summary>
-        private static bool AdminCorrectOutTimeWithDayLog(
+        private static bool UpdateTargetDayOutTime(
             SqlConnection con,
             SqlTransaction trans,
             int logId,
             int dayLogId,
-            DateTime adminOutTime)
+            DateTime targetDate,
+            DateTime adminOutTime,
+            string adminIdentity,
+            ColumnCapacity checkedOutBy)
         {
-            int dayRows;
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE d
                 SET d.ActualOutTime = @AdminOutTime,
-                    d.VisitStatus = 'Checked-Out'
+                    d.VisitStatus = 'Checked-Out',
+                    d.CheckedOutBy = @CheckedOutBy
                 FROM VMS_VisitDayLog d
                 INNER JOIN VMS_VisitLog v ON v.LogID = d.LogID
                 WHERE d.DayLogID = @DayLogID
                   AND d.LogID = @LogID
-                  AND d.VisitDate = CAST(GETDATE() AS date)
+                  AND d.VisitDate = @VisitDate
                   AND d.IsDayApproved = 1
                   AND d.VisitStatus = 'Checked-In'
                   AND v.ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
+                SqlDbType identityType = checkedOutBy.IsUnicode ? SqlDbType.NVarChar : SqlDbType.VarChar;
+                int size = checkedOutBy.IsMax
+                    ? -1
+                    : (checkedOutBy.IsUnicode ? checkedOutBy.MaxLengthBytes / 2 : checkedOutBy.MaxLengthBytes);
+                cmd.Parameters.Add("@CheckedOutBy", identityType, size).Value = adminIdentity;
                 cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
                 cmd.Parameters.AddWithValue("@LogID", logId);
-                dayRows = cmd.ExecuteNonQuery();
+                cmd.Parameters.AddWithValue("@VisitDate", targetDate.Date);
+                return cmd.ExecuteNonQuery() == 1;
+            }
+        }
+
+        /// <summary>
+        /// Reconciles existing history for this DayLogID only. Never inserts a row and never
+        /// updates Source, Actor, CheckInTime, or CreatedOn. More than one open row fails closed.
+        /// </summary>
+        private static bool TryReconcileTargetDayHistory(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            int dayLogId,
+            DateTime adminOutTime,
+            out AdminOutTimeHistoryOutcome outcome)
+        {
+            outcome = AdminOutTimeHistoryOutcome.NotApplicable;
+
+            int totalRows;
+            int openRows;
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT
+                    COUNT(1) AS TotalRows,
+                    SUM(CASE WHEN CheckOutTime IS NULL THEN 1 ELSE 0 END) AS OpenRows
+                FROM dbo.VMS_VisitAttendanceHistory WITH (UPDLOCK, HOLDLOCK)
+                WHERE DayLogID = @DayLogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    totalRows = Convert.ToInt32(reader["TotalRows"]);
+                    openRows = reader["OpenRows"] == DBNull.Value ? 0 : Convert.ToInt32(reader["OpenRows"]);
+                }
             }
 
-            if (dayRows != 1)
+            if (openRows > 1)
                 return false;
 
-            bool hasFutureDays = VmsVisitScheduleHelper.HasFutureApprovedDays(
-                con, logId, DateTime.Now.Date, trans);
-            string nextVisitStatus = hasFutureDays ? "Scheduled" : "Checked-Out";
+            if (openRows == 1)
+            {
+                using (SqlCommand cmd = new SqlCommand(@"
+                    UPDATE dbo.VMS_VisitAttendanceHistory
+                    SET CheckOutTime = @AdminOutTime
+                    WHERE DayLogID = @DayLogID
+                      AND LogID = @LogID
+                      AND CheckOutTime IS NULL", con, trans))
+                {
+                    cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
+                    cmd.Parameters.AddWithValue("@DayLogID", dayLogId);
+                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    if (cmd.ExecuteNonQuery() != 1)
+                        return false;
+                }
 
-            int visitRows;
+                outcome = AdminOutTimeHistoryOutcome.ClosedExisting;
+                return true;
+            }
+
+            if (totalRows == 0)
+            {
+                outcome = AdminOutTimeHistoryOutcome.MissingHistoryNoSyntheticRow;
+                return true;
+            }
+
+            outcome = AdminOutTimeHistoryOutcome.NoOpenHistoryRow;
+            return true;
+        }
+
+        /// <summary>
+        /// Locks every day row for this LogID, and the key range a new (LogID, VisitDate) would use.
+        /// CheckInDay updates a day row before the parent, so it waits here and cannot change the
+        /// parent summary until this transaction ends. CreateRequestedDayLogs inserts into the same
+        /// unique key, so it cannot add a day between this read and commit.
+        /// </summary>
+        private static List<VisitDayLogInfo> LockVisitDayLogs(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId)
+        {
+            var days = new List<VisitDayLogInfo>();
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT DayLogID, LogID, VisitDate, DayValidFrom, DayValidUpto,
+                       VisitStatus, ActualInTime, ActualOutTime, IsDayApproved
+                FROM dbo.VMS_VisitDayLog WITH (UPDLOCK, HOLDLOCK, INDEX(UQ_VMS_VisitDayLog_LogDate))
+                WHERE LogID = @LogID
+                ORDER BY VisitDate", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        days.Add(new VisitDayLogInfo
+                        {
+                            DayLogId = Convert.ToInt32(reader["DayLogID"]),
+                            LogId = Convert.ToInt32(reader["LogID"]),
+                            VisitDate = Convert.ToDateTime(reader["VisitDate"]),
+                            DayValidFrom = Convert.ToDateTime(reader["DayValidFrom"]),
+                            DayValidUpto = Convert.ToDateTime(reader["DayValidUpto"]),
+                            VisitStatus = reader["VisitStatus"] == DBNull.Value ? "Scheduled" : reader["VisitStatus"].ToString(),
+                            ActualInTime = reader["ActualInTime"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(reader["ActualInTime"]),
+                            ActualOutTime = reader["ActualOutTime"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(reader["ActualOutTime"]),
+                            IsDayApproved = reader["IsDayApproved"] != DBNull.Value && Convert.ToBoolean(reader["IsDayApproved"])
+                        });
+                    }
+                }
+            }
+
+            return days;
+        }
+
+        private static bool LaterDayOwnsParentSummary(List<VisitDayLogInfo> days, DateTime targetDate)
+        {
+            for (int i = 0; i < days.Count; i++)
+            {
+                VisitDayLogInfo day = days[i];
+                if (!day.IsDayApproved || day.VisitDate.Date <= targetDate.Date)
+                    continue;
+                if (day.ActualInTime.HasValue
+                    || string.Equals(day.VisitStatus, "Checked-In", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(day.VisitStatus, "Checked-Out", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Parent summary for the cycle being closed. CheckedOutBy stays ADMIN_INLINE.
+        /// Caller has already U-locked the visit's day rows.
+        /// </summary>
+        private static bool UpdateParentOutTimeSummary(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            DateTime adminOutTime,
+            bool hasFutureApprovedDays)
+        {
+            string nextVisitStatus = hasFutureApprovedDays ? "Scheduled" : "Checked-Out";
+
             using (SqlCommand cmd = new SqlCommand(@"
                 UPDATE VMS_VisitLog
                 SET ActualOutTime = @AdminOutTime,
@@ -924,15 +1248,238 @@ namespace AnmolDristi.DAL
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
                 cmd.Parameters.AddWithValue("@VisitStatus", nextVisitStatus);
                 cmd.Parameters.AddWithValue("@LogID", logId);
-                visitRows = cmd.ExecuteNonQuery();
+                return cmd.ExecuteNonQuery() == 1;
             }
+        }
 
-            return visitRows == 1;
+        private struct ColumnCapacity
+        {
+            public bool Found;
+            public bool IsUnicode;
+            public bool IsMax;
+            public int MaxLengthBytes;
+            public string CollationName;
         }
 
         /// <summary>
-        /// Legacy niche: no today VisitDayLog row — guarded parent-only Out-Time correction.
-        /// Requires ApprovalStatus='Approved' (AR-VMS-07B).
+        /// Column byte length and collation. Found is false when the column cannot be read.
+        /// The caller must not assign a value that does not fit.
+        /// </summary>
+        private static ColumnCapacity ReadColumnCapacity(
+            SqlConnection con,
+            SqlTransaction trans,
+            string tableName,
+            string columnName)
+        {
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT TYPE_NAME(c.system_type_id) AS TypeName, c.max_length, c.collation_name
+                FROM sys.columns c
+                WHERE c.object_id = OBJECT_ID(@QualifiedName)
+                  AND c.name = @ColumnName", con, trans))
+            {
+                cmd.Parameters.Add("@QualifiedName", SqlDbType.NVarChar, 128).Value = "dbo." + tableName;
+                cmd.Parameters.Add("@ColumnName", SqlDbType.NVarChar, 128).Value = columnName;
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return new ColumnCapacity();
+
+                    string typeName = Convert.ToString(reader["TypeName"]);
+                    int maxLength = Convert.ToInt32(reader["max_length"]);
+                    bool unicode = string.Equals(typeName, "nvarchar", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(typeName, "nchar", StringComparison.OrdinalIgnoreCase);
+
+                    return new ColumnCapacity
+                    {
+                        Found = true,
+                        IsUnicode = unicode,
+                        IsMax = maxLength < 0,
+                        MaxLengthBytes = maxLength,
+                        CollationName = reader["collation_name"] == DBNull.Value
+                            ? null
+                            : Convert.ToString(reader["collation_name"])
+                    };
+                }
+            }
+        }
+
+        /// <summary>
+        /// Unicode columns compare UTF-16 length with the character capacity.
+        /// Non-Unicode columns compare the collation's varchar byte length and reject a value
+        /// that would lose characters. Nothing is truncated.
+        /// </summary>
+        private static bool IdentityFits(
+            SqlConnection con,
+            SqlTransaction trans,
+            string identity,
+            ColumnCapacity column)
+        {
+            if (!column.Found || string.IsNullOrEmpty(identity))
+                return false;
+            if (column.IsUnicode)
+            {
+                if (column.IsMax)
+                    return true;
+                return identity.Length <= (column.MaxLengthBytes / 2);
+            }
+
+            int byteLength;
+            bool lossless;
+            if (!TryMeasureVarchar(con, trans, identity, column.CollationName, out byteLength, out lossless))
+                return false;
+            if (!lossless)
+                return false;
+            if (column.IsMax)
+                return true;
+            return byteLength >= 0 && byteLength <= column.MaxLengthBytes;
+        }
+
+        private static bool TryMeasureVarchar(
+            SqlConnection con,
+            SqlTransaction trans,
+            string identity,
+            string collationName,
+            out int byteLength,
+            out bool lossless)
+        {
+            byteLength = -1;
+            lossless = false;
+            string converted = "CONVERT(varchar(max), @Identity)";
+            if (!string.IsNullOrEmpty(collationName))
+            {
+                if (!IsSafeCollationName(collationName))
+                    return false;
+                converted = converted + " COLLATE " + collationName;
+            }
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT DATALENGTH(" + converted + @") AS ByteLength,
+                       CASE WHEN CONVERT(nvarchar(max), " + converted + @") = @Identity THEN 1 ELSE 0 END AS Lossless", con, trans))
+            {
+                cmd.Parameters.Add("@Identity", SqlDbType.NVarChar, -1).Value = identity;
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read() || reader["ByteLength"] == DBNull.Value)
+                        return false;
+                    byteLength = Convert.ToInt32(reader["ByteLength"]);
+                    lossless = Convert.ToInt32(reader["Lossless"]) == 1;
+                    return true;
+                }
+            }
+        }
+
+        private static bool IsSafeCollationName(string collationName)
+        {
+            for (int i = 0; i < collationName.Length; i++)
+            {
+                char c = collationName[i];
+                if (!char.IsLetterOrDigit(c) && c != '_')
+                    return false;
+            }
+
+            return collationName.Length > 0;
+        }
+
+        private static string HistoryToken(AdminOutTimeHistoryOutcome outcome)
+        {
+            switch (outcome)
+            {
+                case AdminOutTimeHistoryOutcome.ClosedExisting:
+                    return "CLOSED_EXISTING";
+                case AdminOutTimeHistoryOutcome.MissingHistoryNoSyntheticRow:
+                    return "MISSING_HISTORY_NO_SYNTHETIC_ROW";
+                case AdminOutTimeHistoryOutcome.NoOpenHistoryRow:
+                    return "NO_OPEN_HISTORY_ROW";
+                default:
+                    return "NO_TARGET_DAYLOG";
+            }
+        }
+
+        private static string FormatAuditTime(DateTime? value)
+        {
+            if (!value.HasValue)
+                return "Empty";
+            return value.Value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        }
+
+        private static string BuildAdminOutTimeAuditTrail(
+            int logId,
+            int? dayLogId,
+            DateTime visitDate,
+            DateTime? previousOutTime,
+            DateTime newOutTime,
+            string adminIdentity,
+            string reason,
+            string historyToken)
+        {
+            string dayText = dayLogId.HasValue
+                ? dayLogId.Value.ToString(CultureInfo.InvariantCulture)
+                : "none";
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                " | ADMIN_OUTTIME_CORRECTION LogID={0}; DayLogID={1}; VisitDate={2:yyyy-MM-dd}; PreviousOutTime={3}; NewOutTime={4:yyyy-MM-dd HH:mm:ss}; Admin={5}; Reason={6}; History={7}",
+                logId,
+                dayText,
+                visitDate,
+                FormatAuditTime(previousOutTime),
+                newOutTime,
+                adminIdentity,
+                reason,
+                historyToken);
+        }
+
+        /// <summary>
+        /// Appends the Out-Time audit event without the 250-character LEFT truncation.
+        /// Succeeds only when exactly one parent row is updated. A string-truncation error
+        /// returns false so the caller rolls the correction back.
+        /// </summary>
+        private static bool TryAppendAdminOutTimeAudit(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            string auditTrail)
+        {
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand(@"
+                    UPDATE VMS_VisitLog
+                    SET ApprovalRemarks = ISNULL(CAST(ApprovalRemarks AS NVARCHAR(MAX)), N'') + @AuditTrail
+                    WHERE LogID = @LogID", con, trans))
+                {
+                    cmd.Parameters.Add("@AuditTrail", SqlDbType.NVarChar, -1).Value = auditTrail ?? string.Empty;
+                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    return cmd.ExecuteNonQuery() == 1;
+                }
+            }
+            catch (SqlException ex)
+            {
+                if (IsStringTruncation(ex))
+                    return false;
+                throw;
+            }
+        }
+
+        private static bool IsStringTruncation(SqlException ex)
+        {
+            if (ex == null)
+                return false;
+            if (ex.Number == 8152 || ex.Number == 2628)
+                return true;
+
+            foreach (SqlError error in ex.Errors)
+            {
+                if (error.Number == 8152 || error.Number == 2628)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Legacy niche: the visit has no VisitDayLog rows. Guarded parent-only Out-Time correction.
+        /// Requires ApprovalStatus='Approved' and VisitStatus='Checked-In'. Not used when any
+        /// day row exists, including a MultiDay visit whose target date has no row.
         /// </summary>
         private static bool AdminCorrectOutTimeParentOnly(
             SqlConnection con,
