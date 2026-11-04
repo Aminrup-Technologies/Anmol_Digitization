@@ -19,6 +19,8 @@
         .badge-pending { background-color: #f0ad4e; }
         .badge-approved { background-color: #1ABB9C; }
         .badge-rejected { background-color: #d9534f; }
+        .out-day { margin-bottom: 8px; }
+        .out-day-label { display: block; color: #73879C; font-size: 11px; line-height: 1.3; margin-bottom: 2px; }
     </style>
 </asp:Content>
 
@@ -201,10 +203,19 @@
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
-                                                    <asp:TemplateField HeaderText="Out-Time" ItemStyle-Width="150px">
+                                                    <asp:TemplateField HeaderText="Out-Time" ItemStyle-Width="190px">
                                                         <ItemTemplate>
+                                                            <asp:Repeater ID="rptOutDays" runat="server" Visible="false" OnItemDataBound="rptOutDays_ItemDataBound">
+                                                                <ItemTemplate>
+                                                                    <div class="out-day">
+                                                                        <asp:Label ID="lblOutDay" runat="server" CssClass="out-day-label" />
+                                                                        <asp:HiddenField ID="hfVisitDate" runat="server" />
+                                                                        <asp:TextBox ID="txtDayOutTime" runat="server" TextMode="DateTimeLocal" AutoPostBack="true" OnTextChanged="InlineEdit_TextChanged" CssClass="form-control input-sm" />
+                                                                    </div>
+                                                                </ItemTemplate>
+                                                            </asp:Repeater>
                                                             <asp:TextBox ID="txtOutTime" runat="server" TextMode="DateTimeLocal" AutoPostBack="true" OnTextChanged="InlineEdit_TextChanged" Text='<%# Eval("ActualOutTime") != DBNull.Value ? Convert.ToDateTime(Eval("ActualOutTime")).ToString("yyyy-MM-ddTHH:mm") : "" %>' CssClass="form-control input-sm"></asp:TextBox>
-                                                            <%# RenderTimeSuggestion("OUT", Eval("ActualOutTime"), Eval("CreatedDate"), Eval("ApprovedOn"), Eval("ActualInTime")) %>
+                                                            <%# RenderGateOutSuggestion(Eval("LogID"), Eval("ScheduleType"), Eval("ActualOutTime"), Eval("CreatedDate"), Eval("ApprovedOn"), Eval("ActualInTime")) %>
                                                         </ItemTemplate>
                                                     </asp:TemplateField>
 
