@@ -176,7 +176,8 @@
                                                     <thead>
                                                         <tr class="headings">
                                                             <th>Day of the Week</th>
-                                                            <th>Is Open?</th>
+                                                            <th>Saved Status</th>
+                                                            <th>Day Status</th>
                                                             <th>Open Time</th>
                                                             <th>Close Time</th>
                                                         </tr>
@@ -191,7 +192,14 @@
                                                                         <asp:HiddenField ID="hfDay" runat="server" Value='<%# Eval("DayOfWeek") %>' />
                                                                     </td>
                                                                     <td>
-                                                                        <asp:CheckBox ID="chkIsOpen" runat="server" Checked='<%# Eval("IsOpen").ToString() == "1" %>' />
+                                                                        <asp:Label ID="lblSavedStatus" runat="server" CssClass='<%# Eval("SavedStatusCss") %>' Text='<%# Eval("SavedStatus") %>'></asp:Label>
+                                                                    </td>
+                                                                    <td>
+                                                                        <asp:DropDownList ID="ddlDayState" runat="server" CssClass="form-control" SelectedValue='<%# Eval("DayState") %>'>
+                                                                            <asp:ListItem Value="" Text="Not Configured"></asp:ListItem>
+                                                                            <asp:ListItem Value="CLOSED" Text="Closed"></asp:ListItem>
+                                                                            <asp:ListItem Value="OPEN" Text="Open"></asp:ListItem>
+                                                                        </asp:DropDownList>
                                                                     </td>
                                                                     <td>
                                                                         <asp:TextBox ID="txtOpenTime" runat="server" CssClass="form-control" TextMode="Time" Text='<%# Eval("OpenTime") %>'></asp:TextBox>
