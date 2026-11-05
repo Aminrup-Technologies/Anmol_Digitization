@@ -715,6 +715,15 @@ namespace AnmolDristi
                 {
                     try
                     {
+                        VmsVisitorManagementRepository.LockVisitDayRange(con, trans, logId);
+                        if (!VmsVisitorManagementRepository.LockVisitParent(con, trans, logId))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            ShowValidationError(
+                                "Cannot update Pass Validity. Visit is no longer Approved and Scheduled/Checked-In. Please refresh.");
+                            return;
+                        }
+
                         string scheduleType = "SingleDay";
                         using (SqlCommand scheduleCmd = new SqlCommand(
                             "SELECT ISNULL(ScheduleType, 'SingleDay') AS ScheduleType FROM VMS_VisitLog WHERE LogID = @LogID",
@@ -855,7 +864,7 @@ namespace AnmolDristi
             }
 
             using (SqlCommand cmd = new SqlCommand(@"
-                SELECT d.VisitDate, d.DayValidFrom, d.DayValidUpto,
+                SELECT d.VisitDate, d.DayValidFrom, d.DayValidUpto, v.ValidFrom,
                        ISNULL(d.VisitStatus, 'Scheduled') AS DayStatus,
                        COUNT(1) OVER () AS ConflictCount
                 FROM dbo.VMS_VisitDayLog d WITH (UPDLOCK, HOLDLOCK, INDEX(UQ_VMS_VisitDayLog_LogDate))
@@ -865,8 +874,14 @@ namespace AnmolDristi
                   AND v.VisitStatus IN ('Scheduled', 'Checked-In')
                   AND d.IsDayApproved = 1
                   AND ISNULL(d.VisitStatus, 'Scheduled') IN ('Scheduled', 'Checked-In')
-                  AND CASE WHEN v.ValidFrom > d.DayValidFrom THEN v.ValidFrom ELSE d.DayValidFrom END
-                      > CASE WHEN @ProposedValidUpto < d.DayValidUpto THEN @ProposedValidUpto ELSE d.DayValidUpto END
+                  AND (
+                        v.ValidFrom IS NULL
+                        OR d.DayValidFrom IS NULL
+                        OR d.DayValidUpto IS NULL
+                        OR @ProposedValidUpto IS NULL
+                        OR CASE WHEN v.ValidFrom > d.DayValidFrom THEN v.ValidFrom ELSE d.DayValidFrom END
+                           > CASE WHEN @ProposedValidUpto < d.DayValidUpto THEN @ProposedValidUpto ELSE d.DayValidUpto END
+                      )
                 ORDER BY d.VisitDate DESC", con, trans))
             {
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -876,20 +891,35 @@ namespace AnmolDristi
                     if (!reader.Read())
                         return null;
 
+                    bool missingBoundary = reader["ValidFrom"] == DBNull.Value
+                        || reader["DayValidFrom"] == DBNull.Value
+                        || reader["DayValidUpto"] == DBNull.Value;
                     DateTime visitDate = Convert.ToDateTime(reader["VisitDate"]);
-                    DateTime dayFrom = Convert.ToDateTime(reader["DayValidFrom"]);
-                    DateTime dayUpto = Convert.ToDateTime(reader["DayValidUpto"]);
                     string dayStatus = Convert.ToString(reader["DayStatus"]);
                     int conflictCount = Convert.ToInt32(reader["ConflictCount"]);
 
-                    string message = string.Format(
-                        CultureInfo.InvariantCulture,
-                        "Pass Validity cannot end at {0:dd-MMM-yyyy HH:mm}. Approved visit day {1:dd-MMM-yyyy} ({2}, {3:HH:mm}-{4:HH:mm}) would have no valid entry time",
-                        proposedValidUpto,
-                        visitDate,
-                        dayStatus,
-                        dayFrom,
-                        dayUpto);
+                    string message;
+                    if (missingBoundary)
+                    {
+                        message = string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Pass Validity cannot be saved. Approved visit day {0:dd-MMM-yyyy} ({1}) has an incomplete validity boundary",
+                            visitDate,
+                            dayStatus);
+                    }
+                    else
+                    {
+                        DateTime dayFrom = Convert.ToDateTime(reader["DayValidFrom"]);
+                        DateTime dayUpto = Convert.ToDateTime(reader["DayValidUpto"]);
+                        message = string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Pass Validity cannot end at {0:dd-MMM-yyyy HH:mm}. Approved visit day {1:dd-MMM-yyyy} ({2}, {3:HH:mm}-{4:HH:mm}) would have no valid entry time",
+                            proposedValidUpto,
+                            visitDate,
+                            dayStatus,
+                            dayFrom,
+                            dayUpto);
+                    }
                     if (conflictCount > 1)
                         message += string.Format(CultureInfo.InvariantCulture, " ({0} approved days affected)", conflictCount);
                     return message + ". No change was saved.";

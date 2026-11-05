@@ -208,6 +208,13 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        LockVisitDayRange(con, trans, logId);
+                        if (!LockVisitParent(con, trans, logId))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
                         int parentRows;
                         using (SqlCommand cmd = new SqlCommand(@"
                             UPDATE VMS_VisitLog
@@ -259,6 +266,13 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        LockVisitDayRange(con, trans, logId);
+                        if (!LockVisitParent(con, trans, logId))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return false;
+                        }
+
                         int parentRows;
                         using (SqlCommand cmd = new SqlCommand(@"
                             UPDATE VMS_VisitLog
@@ -331,6 +345,7 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        LockVisitDayRange(con, trans, logId);
                         if (!TryAssertHostOwnsVisit(con, trans, logId, resolvedHost))
                         {
                             try { trans.Rollback(); } catch { }
@@ -405,6 +420,7 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        LockVisitDayRange(con, trans, logId);
                         if (!TryAssertHostOwnsVisit(con, trans, logId, resolvedHost))
                         {
                             try { trans.Rollback(); } catch { }
@@ -546,6 +562,13 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        LockVisitDayRange(con, trans, logId);
+                        if (!LockVisitParent(con, trans, logId))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
+                        }
+
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
 
                         if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
@@ -618,6 +641,13 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        LockVisitDayRange(con, trans, logId);
+                        if (!LockVisitParent(con, trans, logId))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailReceptionistAttendance(logId, ReceptionistAttendanceFailureReason.StateChanged);
+                        }
+
                         VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
 
                         if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
@@ -775,7 +805,22 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
-                        VisitDayLogInfo todayLog = VmsVisitScheduleHelper.GetTodayDayLog(con, logId, trans);
+                        List<VisitDayLogInfo> lockedDays = LockVisitDayLogs(con, trans, logId);
+                        if (!LockVisitParent(con, trans, logId))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            return FailAdminCorrection(logId, AdminCorrectionFailureReason.StateChanged);
+                        }
+                        DateTime today = DateTime.Now.Date;
+                        VisitDayLogInfo todayLog = null;
+                        for (int i = 0; i < lockedDays.Count; i++)
+                        {
+                            if (lockedDays[i].VisitDate.Date == today)
+                            {
+                                todayLog = lockedDays[i];
+                                break;
+                            }
+                        }
 
                         if (todayLog != null && todayLog.DayLogId > 0 && !todayLog.IsDayApproved)
                         {
@@ -873,6 +918,10 @@ namespace AnmolDristi.DAL
                     try
                     {
                         List<VisitDayLogInfo> lockedDays = LockVisitDayLogs(con, trans, logId);
+                        if (!LockVisitParent(con, trans, logId))
+                        {
+                            return FailOutTime(trans, logId, AdminCorrectionFailureReason.StateChanged, null);
+                        }
                         VisitDayLogInfo targetLog = null;
                         for (int i = 0; i < lockedDays.Count; i++)
                         {
@@ -1221,6 +1270,8 @@ namespace AnmolDristi.DAL
                   AND d.VisitDate = @VisitDate
                   AND d.IsDayApproved = 1
                   AND d.VisitStatus = 'Checked-In'
+                  AND d.ActualInTime IS NOT NULL
+                  AND d.ActualInTime <= @AdminOutTime
                   AND v.ApprovalStatus = 'Approved'", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
@@ -1299,6 +1350,49 @@ namespace AnmolDristi.DAL
 
             outcome = AdminOutTimeHistoryOutcome.NoOpenHistoryRow;
             return true;
+        }
+
+        /// <summary>
+        /// Range U-lock for one existing visit. Touches only VMS_VisitDayLog.
+        /// Uses the caller's connection and transaction.
+        /// </summary>
+        internal static void LockVisitDayRange(SqlConnection con, SqlTransaction trans, int logId)
+        {
+            if (con == null || trans == null || trans.Connection != con)
+                throw new InvalidOperationException("Day-range lock requires the caller's transaction.");
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT DayLogID
+                FROM dbo.VMS_VisitDayLog WITH (UPDLOCK, HOLDLOCK, INDEX(UQ_VMS_VisitDayLog_LogDate))
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read()) { }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Explicit parent U-lock by LogID. Caller must already hold the day range.
+        /// Returns false when the parent row is absent, so the caller rolls back
+        /// without a mutation. Uses the caller's connection and transaction.
+        /// </summary>
+        internal static bool LockVisitParent(SqlConnection con, SqlTransaction trans, int logId)
+        {
+            if (con == null || trans == null || trans.Connection != con)
+                throw new InvalidOperationException("Parent lock requires the caller's transaction.");
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT LogID
+                FROM dbo.VMS_VisitLog WITH (UPDLOCK)
+                WHERE LogID = @LogID", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                object value = cmd.ExecuteScalar();
+                return value != null && value != DBNull.Value;
+            }
         }
 
         /// <summary>
@@ -1631,7 +1725,9 @@ namespace AnmolDristi.DAL
                     CheckedOutBy = 'ADMIN_INLINE'
                 WHERE LogID = @LogID
                   AND ApprovalStatus = 'Approved'
-                  AND VisitStatus = 'Checked-In'", con, trans))
+                  AND VisitStatus = 'Checked-In'
+                  AND ActualInTime IS NOT NULL
+                  AND ActualInTime <= @AdminOutTime", con, trans))
             {
                 cmd.Parameters.AddWithValue("@AdminOutTime", adminOutTime);
                 cmd.Parameters.AddWithValue("@LogID", logId);
@@ -1709,20 +1805,23 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        LockVisitDayRange(con, trans, request.LogId);
+
                         if (request.SelectedDays != null)
                         {
                             ApplySelectedDayApprovals(con, trans, request.LogId, request.SelectedDays);
                         }
 
                         Guid qrToken = Guid.NewGuid();
-
-                        int rowsAffected = ExecuteGuardedApprovalUpdate(
-                            con,
-                            trans,
-                            request,
-                            authMode,
-                            hostEmployeeCode,
-                            qrToken);
+                        int rowsAffected = LockVisitParent(con, trans, request.LogId)
+                            ? ExecuteGuardedApprovalUpdate(
+                                con,
+                                trans,
+                                request,
+                                authMode,
+                                hostEmployeeCode,
+                                qrToken)
+                            : 0;
 
                         if (rowsAffected != 1)
                         {
