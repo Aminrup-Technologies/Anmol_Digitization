@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
+using System.Globalization;
 using System.Web.UI.WebControls;
 using System.Drawing;
 using System.Web.UI;
@@ -414,6 +415,7 @@ namespace AnmolDristi
             if (e.Row.RowType == DataControlRowType.DataRow)
             {
                 BindScheduleCell(e.Row, "Approved");
+                BindOutTimeCell(e.Row);
 
                 int currentRowLogId = Convert.ToInt32(gvAdminGateOverride.DataKeys[e.Row.RowIndex].Values["LogID"]);
 
@@ -429,10 +431,143 @@ namespace AnmolDristi
             }
         }
 
+        /// <summary>
+        /// Multi-day Out-Time is bound to each already-loaded VisitDayLog.
+        /// Single-day and visits with no day rows keep the parent textbox.
+        /// </summary>
+        private void BindOutTimeCell(GridViewRow row)
+        {
+            TextBox txtOutTime = row.FindControl("txtOutTime") as TextBox;
+            Repeater rptOutDays = row.FindControl("rptOutDays") as Repeater;
+            if (txtOutTime == null || rptOutDays == null)
+                return;
+
+            object logIdObj = DataBinder.Eval(row.DataItem, "LogID");
+            object scheduleType = DataBinder.Eval(row.DataItem, "ScheduleType");
+            if (!IsMultiDayGateRow(logIdObj, scheduleType))
+            {
+                rptOutDays.Visible = false;
+                return;
+            }
+
+            int logId = Convert.ToInt32(logIdObj);
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+
+            txtOutTime.Visible = false;
+            txtOutTime.Enabled = false;
+            txtOutTime.Text = string.Empty;
+            if (days == null || days.Count == 0)
+            {
+                rptOutDays.Visible = false;
+                return;
+            }
+
+            rptOutDays.Visible = true;
+            rptOutDays.DataSource = days;
+            rptOutDays.DataBind();
+        }
+
+        protected void rptOutDays_ItemDataBound(object sender, RepeaterItemEventArgs e)
+        {
+            if (e.Item.ItemType != ListItemType.Item && e.Item.ItemType != ListItemType.AlternatingItem)
+                return;
+
+            VisitDayLogInfo day = e.Item.DataItem as VisitDayLogInfo;
+            Label lblOutDay = e.Item.FindControl("lblOutDay") as Label;
+            HiddenField hfVisitDate = e.Item.FindControl("hfVisitDate") as HiddenField;
+            TextBox txtDayOutTime = e.Item.FindControl("txtDayOutTime") as TextBox;
+            if (day == null || lblOutDay == null || hfVisitDate == null || txtDayOutTime == null)
+                return;
+
+            GridViewRow row = FindGridRow(e.Item);
+            int logId = 0;
+            if (row != null && row.DataItem != null)
+                logId = Convert.ToInt32(DataBinder.Eval(row.DataItem, "LogID"));
+
+            string status = !day.IsDayApproved
+                ? "Not approved"
+                : (string.IsNullOrWhiteSpace(day.VisitStatus) ? "Scheduled" : day.VisitStatus.Trim());
+            lblOutDay.Text = day.VisitDate.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) + " · " + status;
+            hfVisitDate.Value = day.VisitDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+            bool eligible = IsDayOutTimeEditable(day, logId);
+            txtDayOutTime.Enabled = eligible;
+            txtDayOutTime.Text = eligible && day.ActualOutTime.HasValue && day.ActualOutTime.Value.Date == day.VisitDate.Date
+                ? day.ActualOutTime.Value.ToString("yyyy-MM-ddTHH:mm")
+                : string.Empty;
+            txtDayOutTime.ToolTip = eligible
+                ? "Out-Time for this visit day"
+                : "Out-Time correction is available only when this day is approved and Checked-In";
+            if (!eligible)
+                return;
+
+            string dayToken = hfVisitDate.Value;
+            txtDayOutTime.Attributes["min"] = dayToken + "T00:00";
+            txtDayOutTime.Attributes["max"] = dayToken + "T23:59";
+        }
+
+        private static bool IsDayOutTimeEditable(VisitDayLogInfo day, int logId)
+        {
+            return day != null
+                && logId > 0
+                && day.DayLogId > 0
+                && day.LogId == logId
+                && day.VisitDate.Date != DateTime.MinValue.Date
+                && day.IsDayApproved
+                && string.Equals(day.VisitStatus, "Checked-In", StringComparison.OrdinalIgnoreCase)
+                && day.ActualInTime.HasValue;
+        }
+
+        private static bool PostedOutTimeMatchesVisitDay(TextBox txtDayOutTime, DateTime newTime)
+        {
+            HiddenField hfVisitDate = txtDayOutTime.NamingContainer.FindControl("hfVisitDate") as HiddenField;
+            DateTime visitDate;
+            return hfVisitDate != null
+                && DateTime.TryParseExact(
+                    hfVisitDate.Value,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out visitDate)
+                && newTime.Date == visitDate.Date;
+        }
+
+        private static GridViewRow FindGridRow(Control control)
+        {
+            for (Control node = control; node != null; node = node.NamingContainer)
+            {
+                GridViewRow row = node as GridViewRow;
+                if (row != null)
+                    return row;
+            }
+            return null;
+        }
+
+        private bool IsMultiDayGateRow(object logIdObj, object scheduleType)
+        {
+            int logId;
+            if (logIdObj == null || logIdObj == DBNull.Value || !int.TryParse(Convert.ToString(logIdObj), out logId) || logId <= 0)
+                return false;
+
+            List<VisitDayLogInfo> days = null;
+            if (_dayLogsByVisit != null)
+                _dayLogsByVisit.TryGetValue(logId, out days);
+            return days != null
+                && days.Count > 0
+                && VmsVisitScheduleHelper.IsMultiDaySchedule(Convert.ToString(scheduleType), days);
+        }
+
         protected void InlineEdit_TextChanged(object sender, EventArgs e)
         {
             TextBox txtChanged = (TextBox)sender;
-            GridViewRow row = (GridViewRow)txtChanged.NamingContainer;
+            GridViewRow row = FindGridRow(txtChanged);
+            if (row == null)
+            {
+                ShowValidationError("The override could not identify the visit row. No change was saved.");
+                return;
+            }
 
             int logId = Convert.ToInt32(gvAdminGateOverride.DataKeys[row.RowIndex].Values["LogID"]);
             string visName = gvAdminGateOverride.DataKeys[row.RowIndex].Values["VisitorName"].ToString();
@@ -499,15 +634,57 @@ namespace AnmolDristi
                 return;
             }
 
-            if (txtChanged.ID == "txtOutTime")
+            if (txtChanged.ID == "txtOutTime" || txtChanged.ID == "txtDayOutTime")
             {
-                if (!currentInTime.HasValue) { ShowValidationError("Cannot set Check-Out. Visitor has no Check-In time yet."); return; }
-                if (newTime < currentInTime.Value) { ShowValidationError("Check-Out cannot be BEFORE Check-In."); return; }
+                if (txtChanged.ID == "txtOutTime")
+                {
+                    Repeater rptOutDays = row.FindControl("rptOutDays") as Repeater;
+                    if (rptOutDays != null && rptOutDays.Visible)
+                    {
+                        ShowValidationError("Out-Time for a multi-day visit is corrected on the visit day. No change was saved.");
+                        return;
+                    }
+                }
+                else if (!PostedOutTimeMatchesVisitDay(txtChanged, newTime))
+                {
+                    ShowValidationError("Check-Out time must stay on this visit day. No change was saved.");
+                    return;
+                }
+
+                bool hasTargetDay;
+                DateTime? targetDayInTime;
+                if (!TryReadTargetDayCheckIn(logId, newTime.Date, out hasTargetDay, out targetDayInTime))
+                {
+                    ShowValidationError("Check-Out time could not be validated for the selected date.");
+                    return;
+                }
+
+                if (hasTargetDay)
+                {
+                    if (!targetDayInTime.HasValue) { ShowValidationError("Cannot set Check-Out. Visitor has no Check-In time yet."); return; }
+                    if (newTime < targetDayInTime.Value) { ShowValidationError("Check-Out cannot be BEFORE Check-In."); return; }
+                }
+                else
+                {
+                    if (!currentInTime.HasValue) { ShowValidationError("Cannot set Check-Out. Visitor has no Check-In time yet."); return; }
+                    if (newTime < currentInTime.Value) { ShowValidationError("Check-Out cannot be BEFORE Check-In."); return; }
+                }
+
                 if (newTime > DateTime.Now) { ShowValidationError("Check-Out cannot be set in the future."); return; }
                 if (currentValidUpto.HasValue && newTime > currentValidUpto.Value) { ShowValidationError("Check-Out cannot be AFTER Pass Expiry."); return; }
 
-                AdminCorrectionResult result = _visitorManagementRepository.AdminCorrectOutTime(
-                    logId, newTime, reason, adminName);
+                AdminCorrectionResult result;
+                try
+                {
+                    result = _visitorManagementRepository.AdminCorrectOutTime(
+                        logId, newTime, reason, adminName);
+                }
+                catch
+                {
+                    ShowValidationError("Out-Time correction could not be completed. No change was saved.");
+                    return;
+                }
+
                 HandleAdminCorrectionResult(result, "Check-Out Time", visName);
                 return;
             }
@@ -538,6 +715,15 @@ namespace AnmolDristi
                 {
                     try
                     {
+                        VmsVisitorManagementRepository.LockVisitDayRange(con, trans, logId);
+                        if (!VmsVisitorManagementRepository.LockVisitParent(con, trans, logId))
+                        {
+                            try { trans.Rollback(); } catch { }
+                            ShowValidationError(
+                                "Cannot update Pass Validity. Visit is no longer Approved and Scheduled/Checked-In. Please refresh.");
+                            return;
+                        }
+
                         string scheduleType = "SingleDay";
                         using (SqlCommand scheduleCmd = new SqlCommand(
                             "SELECT ISNULL(ScheduleType, 'SingleDay') AS ScheduleType FROM VMS_VisitLog WHERE LogID = @LogID",
@@ -548,6 +734,17 @@ namespace AnmolDristi
                             object scheduleResult = scheduleCmd.ExecuteScalar();
                             if (scheduleResult != null && scheduleResult != DBNull.Value)
                                 scheduleType = scheduleResult.ToString();
+                        }
+
+                        if (!string.Equals(scheduleType, "SingleDay", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string conflictMessage = FindMultiDayValidUptoConflict(con, trans, logId, newTime);
+                            if (conflictMessage != null)
+                            {
+                                try { trans.Rollback(); } catch { }
+                                ShowValidationError(conflictMessage);
+                                return;
+                            }
                         }
 
                         // AR-VMS-12: Parent ValidUpto mutation is authoritative — reassert lifecycle
@@ -641,14 +838,159 @@ namespace AnmolDristi
             KeepTabActive("tabGateOverride");
         }
 
+        /// <summary>
+        /// MultiDay ValidUpto guard. Returns null when every approved Scheduled/Checked-In day keeps a
+        /// non-empty parent ∩ day window under <paramref name="proposedValidUpto"/>; otherwise the
+        /// operator message. Day rows are U-locked (with key range) before the parent, the same order
+        /// as CheckInDay/CheckOutDay, and both stay locked until the caller commits or rolls back.
+        /// All day rows are locked because a Checked-Out or unapproved day can become applicable.
+        /// </summary>
+        private static string FindMultiDayValidUptoConflict(
+            SqlConnection con,
+            SqlTransaction trans,
+            int logId,
+            DateTime proposedValidUpto)
+        {
+            using (SqlCommand lockCmd = new SqlCommand(@"
+                SELECT DayLogID, DayValidFrom, DayValidUpto, VisitStatus, IsDayApproved
+                FROM dbo.VMS_VisitDayLog WITH (UPDLOCK, HOLDLOCK, INDEX(UQ_VMS_VisitDayLog_LogDate))
+                WHERE LogID = @LogID", con, trans))
+            {
+                lockCmd.Parameters.AddWithValue("@LogID", logId);
+                using (SqlDataReader reader = lockCmd.ExecuteReader())
+                {
+                    while (reader.Read()) { }
+                }
+            }
+
+            using (SqlCommand cmd = new SqlCommand(@"
+                SELECT d.VisitDate, d.DayValidFrom, d.DayValidUpto, v.ValidFrom,
+                       ISNULL(d.VisitStatus, 'Scheduled') AS DayStatus,
+                       COUNT(1) OVER () AS ConflictCount
+                FROM dbo.VMS_VisitDayLog d WITH (UPDLOCK, HOLDLOCK, INDEX(UQ_VMS_VisitDayLog_LogDate))
+                INNER JOIN dbo.VMS_VisitLog v WITH (UPDLOCK, ROWLOCK) ON v.LogID = d.LogID
+                WHERE d.LogID = @LogID
+                  AND v.ApprovalStatus = 'Approved'
+                  AND v.VisitStatus IN ('Scheduled', 'Checked-In')
+                  AND d.IsDayApproved = 1
+                  AND ISNULL(d.VisitStatus, 'Scheduled') IN ('Scheduled', 'Checked-In')
+                  AND (
+                        v.ValidFrom IS NULL
+                        OR d.DayValidFrom IS NULL
+                        OR d.DayValidUpto IS NULL
+                        OR @ProposedValidUpto IS NULL
+                        OR CASE WHEN v.ValidFrom > d.DayValidFrom THEN v.ValidFrom ELSE d.DayValidFrom END
+                           > CASE WHEN @ProposedValidUpto < d.DayValidUpto THEN @ProposedValidUpto ELSE d.DayValidUpto END
+                      )
+                ORDER BY d.VisitDate DESC", con, trans))
+            {
+                cmd.Parameters.AddWithValue("@LogID", logId);
+                cmd.Parameters.AddWithValue("@ProposedValidUpto", proposedValidUpto);
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                        return null;
+
+                    bool missingBoundary = reader["ValidFrom"] == DBNull.Value
+                        || reader["DayValidFrom"] == DBNull.Value
+                        || reader["DayValidUpto"] == DBNull.Value;
+                    DateTime visitDate = Convert.ToDateTime(reader["VisitDate"]);
+                    string dayStatus = Convert.ToString(reader["DayStatus"]);
+                    int conflictCount = Convert.ToInt32(reader["ConflictCount"]);
+
+                    string message;
+                    if (missingBoundary)
+                    {
+                        message = string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Pass Validity cannot be saved. Approved visit day {0:dd-MMM-yyyy} ({1}) has an incomplete validity boundary",
+                            visitDate,
+                            dayStatus);
+                    }
+                    else
+                    {
+                        DateTime dayFrom = Convert.ToDateTime(reader["DayValidFrom"]);
+                        DateTime dayUpto = Convert.ToDateTime(reader["DayValidUpto"]);
+                        message = string.Format(
+                            CultureInfo.InvariantCulture,
+                            "Pass Validity cannot end at {0:dd-MMM-yyyy HH:mm}. Approved visit day {1:dd-MMM-yyyy} ({2}, {3:HH:mm}-{4:HH:mm}) would have no valid entry time",
+                            proposedValidUpto,
+                            visitDate,
+                            dayStatus,
+                            dayFrom,
+                            dayUpto);
+                    }
+                    if (conflictCount > 1)
+                        message += string.Format(CultureInfo.InvariantCulture, " ({0} approved days affected)", conflictCount);
+                    return message + ". No change was saved.";
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads the target day's check-in so an Out-Time edit is compared with that day.
+        /// Returns false only when the read itself fails. A missing day is a successful read.
+        /// </summary>
+        private bool TryReadTargetDayCheckIn(
+            int logId,
+            DateTime visitDate,
+            out bool hasTargetDay,
+            out DateTime? actualInTime)
+        {
+            hasTargetDay = false;
+            actualInTime = null;
+            try
+            {
+                using (SqlConnection con = new SqlConnection(connStr))
+                using (SqlCommand cmd = new SqlCommand(@"
+                    SELECT ActualInTime
+                    FROM VMS_VisitDayLog
+                    WHERE LogID = @LogID
+                      AND VisitDate = @VisitDate", con))
+                {
+                    cmd.Parameters.AddWithValue("@LogID", logId);
+                    cmd.Parameters.AddWithValue("@VisitDate", visitDate.Date);
+                    con.Open();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.Read())
+                            return true;
+
+                        hasTargetDay = true;
+                        if (reader["ActualInTime"] != DBNull.Value)
+                            actualInTime = Convert.ToDateTime(reader["ActualInTime"]);
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private void HandleAdminCorrectionResult(AdminCorrectionResult result, string friendlyName, string visName)
         {
+            bool isOutTime = string.Equals(friendlyName, "Check-Out Time", StringComparison.Ordinal);
+
             if (result != null && result.Succeeded)
             {
-                lblMessage.ForeColor = System.Drawing.Color.Green;
-                lblMessage.Text = $"<i class='fa fa-check-circle'></i> Auto-Saved: {friendlyName} updated for {visName}.";
+                if (isOutTime)
+                    ApplyOutTimeSuccessMessage(result);
+                else
+                {
+                    lblMessage.ForeColor = System.Drawing.Color.Green;
+                    lblMessage.Text = $"<i class='fa fa-check-circle'></i> Auto-Saved: {friendlyName} updated for {visName}.";
+                }
+
                 BindAllGrids();
                 KeepTabActive("tabGateOverride");
+                return;
+            }
+
+            if (result != null && !string.IsNullOrEmpty(result.OperatorMessage))
+            {
+                ShowValidationError(result.OperatorMessage);
                 return;
             }
 
@@ -660,17 +1002,52 @@ namespace AnmolDristi
             switch (reason)
             {
                 case AdminCorrectionFailureReason.UnapprovedToday:
-                    message = "Today's visit day is not approved. Admin time correction was rejected.";
+                    message = isOutTime
+                        ? "The target visit day is not approved. Admin Out-Time correction was rejected."
+                        : "Today's visit day is not approved. Admin time correction was rejected.";
                     break;
                 case AdminCorrectionFailureReason.StateChanged:
                     message = "Visit status changed or is not eligible for this correction (concurrent update or wrong lifecycle state).";
                     break;
+                case AdminCorrectionFailureReason.InconsistentAttendanceHistory:
+                    message = "Out-Time correction was rejected because more than one open attendance-history record exists for this visit day. No change was saved.";
+                    break;
                 default:
-                    message = "Admin time correction failed unexpectedly.";
+                    message = isOutTime
+                        ? "Out-Time correction could not be completed. No change was saved."
+                        : "Admin time correction failed unexpectedly.";
                     break;
             }
 
             ShowValidationError(message);
+        }
+
+        private void ApplyOutTimeSuccessMessage(AdminCorrectionResult result)
+        {
+            string text;
+            Color color;
+            AdminOutTimeHistoryOutcome outcome = result != null
+                ? result.HistoryOutcome
+                : AdminOutTimeHistoryOutcome.NotApplicable;
+
+            switch (outcome)
+            {
+                case AdminOutTimeHistoryOutcome.MissingHistoryNoSyntheticRow:
+                    color = Color.DarkGoldenrod;
+                    text = "Out-Time corrected, but no attendance-history record existed. No history record was fabricated. The discrepancy has been recorded for audit.";
+                    break;
+                case AdminOutTimeHistoryOutcome.NoOpenHistoryRow:
+                    color = Color.DarkGoldenrod;
+                    text = "Out-Time corrected, but no open attendance-history record existed. Existing history was preserved and the discrepancy was recorded for audit.";
+                    break;
+                default:
+                    color = Color.Green;
+                    text = "Out-Time corrected successfully.";
+                    break;
+            }
+
+            lblMessage.ForeColor = color;
+            lblMessage.Text = "<i class='fa fa-check-circle'></i> " + text;
         }
 
         protected void gvAdminGateOverride_RowCommand(object sender, GridViewCommandEventArgs e)
@@ -856,6 +1233,13 @@ namespace AnmolDristi
                 default:
                     return "Unable to approve on-behalf. Please try again.";
             }
+        }
+
+        protected string RenderGateOutSuggestion(object logIdObj, object scheduleType, object currentValue, object createdDate, object approvedOn, object actualInTime)
+        {
+            if (IsMultiDayGateRow(logIdObj, scheduleType))
+                return string.Empty;
+            return RenderTimeSuggestion("OUT", currentValue, createdDate, approvedOn, actualInTime);
         }
 
         protected string RenderTimeSuggestion(string fieldType, object currentValue, object createdDate, object approvedOn, object actualInTime)

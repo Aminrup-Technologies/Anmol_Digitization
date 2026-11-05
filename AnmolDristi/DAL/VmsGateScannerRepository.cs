@@ -196,7 +196,28 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        VmsVisitorManagementRepository.LockVisitDayRange(con, trans, logId);
                         if (!TryAssertVisitBelongsToGateBranch(con, trans, logId, gateBranchId))
+                        {
+                            try
+                            {
+                                trans.Rollback();
+                            }
+                            catch
+                            {
+                                // Do not mask the controlled failure.
+                            }
+
+                            return new GateMutationResult
+                            {
+                                Succeeded = false,
+                                FailureReason = GateMutationFailureReason.StateChanged,
+                                LogId = logId
+                            };
+                        }
+
+                        if (!gateBranchId.HasValue
+                            && !VmsVisitorManagementRepository.LockVisitParent(con, trans, logId))
                         {
                             try
                             {
@@ -325,7 +346,28 @@ namespace AnmolDristi.DAL
                 {
                     try
                     {
+                        VmsVisitorManagementRepository.LockVisitDayRange(con, trans, logId);
                         if (!TryAssertVisitBelongsToGateBranch(con, trans, logId, gateBranchId))
+                        {
+                            try
+                            {
+                                trans.Rollback();
+                            }
+                            catch
+                            {
+                                // Do not mask the controlled failure.
+                            }
+
+                            return new GateMutationResult
+                            {
+                                Succeeded = false,
+                                FailureReason = GateMutationFailureReason.StateChanged,
+                                LogId = logId
+                            };
+                        }
+
+                        if (!gateBranchId.HasValue
+                            && !VmsVisitorManagementRepository.LockVisitParent(con, trans, logId))
                         {
                             try
                             {
