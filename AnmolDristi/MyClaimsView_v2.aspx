@@ -202,6 +202,9 @@
                                                             <span class='badge badge-<%# Eval("BootstrapColor") %> mt-1 mb-1'><%# Eval("Status") %></span><br />
                                                             <span class="text-muted d-block" style="font-size: 0.7rem;"><%# Eval("ActionDateStr") %></span>
                                                             <span class="<%# Eval("DaysCssClass") %> font-weight-bold" style="font-size: 0.75rem;"><%# Eval("DaysText") %></span>
+                                                            <asp:PlaceHolder ID="phResubmitted" runat="server" Visible='<%# ((string)Eval("ResubmittedText")).Length > 0 %>'>
+                                                                <span class="text-primary d-block font-weight-bold" style="font-size: 0.75rem;"><%# Eval("ResubmittedText") %></span>
+                                                            </asp:PlaceHolder>
                                                         </div>
                                                     </div>
                                                 </ItemTemplate>

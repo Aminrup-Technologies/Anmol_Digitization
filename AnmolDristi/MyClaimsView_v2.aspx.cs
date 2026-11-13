@@ -395,6 +395,47 @@ namespace AnmolDristi
         // ==========================================
         // DETAILS MODAL LOGIC
         // ==========================================
+        private static readonly TimeZoneInfo IndiaZone = ResolveIndiaZone();
+
+        private static TimeZoneInfo ResolveIndiaZone()
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                return null;
+            }
+            catch (InvalidTimeZoneException)
+            {
+                return null;
+            }
+        }
+
+        private static DateTime AsUtc(DateTime dbUtc)
+        {
+            return dbUtc.Kind == DateTimeKind.Utc
+                ? dbUtc
+                : DateTime.SpecifyKind(dbUtc, DateTimeKind.Utc);
+        }
+
+        private static DateTime UtcToIndia(DateTime dbUtc)
+        {
+            DateTime utc = AsUtc(dbUtc);
+            if (IndiaZone == null)
+                return utc.AddHours(5).AddMinutes(30);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, IndiaZone);
+        }
+
+        private static DateTime IndiaWallToUtc(DateTime indiaWall)
+        {
+            DateTime unspecified = DateTime.SpecifyKind(indiaWall, DateTimeKind.Unspecified);
+            if (IndiaZone == null)
+                return DateTime.SpecifyKind(unspecified.AddHours(-5).AddMinutes(-30), DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeToUtc(unspecified, IndiaZone);
+        }
+
         protected void ShowDetailsModal(int reqId)
         {
             if (!UserOwnsRequest(reqId)) RejectUnauthorized();
@@ -460,7 +501,9 @@ namespace AnmolDristi
                     ISNULL(um.EmployeeName, sar.RequesterLoginId) AS ApproverName,
                     '" + ClaimStatuses.Submitted + @"' AS Status,
                     sar.RequestDate AS ActionDate,
-                    sar.RequestDate
+                    sar.RequestDate,
+                    sar.CurrentApproverLevel,
+                    sar.Status AS HeaderStatus
                 FROM SalesApprovalRequest sar
                 LEFT JOIN MST_UserMaster um ON um.EmployeeCode = sar.RequesterLoginId
                 WHERE sar.ApprovalRequestId = @Id
@@ -473,14 +516,25 @@ namespace AnmolDristi
                     ISNULL(um.EmployeeName, sara.ApproverLoginId) AS ApproverName,
                     sara.Status,
                     sara.ActionDate,
-                    sar.RequestDate
+                    sar.RequestDate,
+                    sar.CurrentApproverLevel,
+                    sar.Status AS HeaderStatus
                 FROM SalesApprovalRequestApprover sara
                 INNER JOIN SalesApprovalRequest sar ON sar.ApprovalRequestId = sara.ApprovalRequestId
                 LEFT JOIN MST_UserMaster um ON um.EmployeeCode = sara.ApproverLoginId
                 WHERE sara.ApprovalRequestId = @Id
                 ORDER BY ApproverLevel ASC";
 
+            string sqlLatestResubmission = @"
+                SELECT TOP (1) h.ChangedOn
+                FROM dbo.ApprovalRequestStatusHistory h
+                WHERE h.ApprovalRequestId = @Id
+                  AND h.OldStatus = @OldStatus
+                  AND h.NewStatus = @NewStatus
+                ORDER BY h.ChangedOn DESC, h.HistoryId DESC";
+
             DataTable dtSteps = new DataTable();
+            DateTime? resubmittedOn = null;
             using (var conSteps = new SqlConnection(connString))
             {
                 using (var cmd = new SqlCommand(sqlSteps, conSteps))
@@ -491,6 +545,17 @@ namespace AnmolDristi
                         da.Fill(dtSteps);
                     }
                 }
+
+                using (var cmd = new SqlCommand(sqlLatestResubmission, conSteps))
+                {
+                    cmd.Parameters.AddWithValue("@Id", reqId);
+                    cmd.Parameters.AddWithValue("@OldStatus", ClaimStatuses.Returned);
+                    cmd.Parameters.AddWithValue("@NewStatus", ClaimStatuses.Pending);
+                    conSteps.Open();
+                    object scalar = cmd.ExecuteScalar();
+                    if (scalar != null && scalar != DBNull.Value)
+                        resubmittedOn = Convert.ToDateTime(scalar);
+                }
             }
 
             dtSteps.Columns.Add("BadgeColor", typeof(string));
@@ -500,15 +565,81 @@ namespace AnmolDristi
             dtSteps.Columns.Add("ActionDateStr", typeof(string));
             dtSteps.Columns.Add("DaysText", typeof(string));
             dtSteps.Columns.Add("DaysCssClass", typeof(string));
+            dtSteps.Columns.Add("ResubmittedText", typeof(string));
 
-            DateTime previousDate = dtSteps.Rows.Count > 0 ? Convert.ToDateTime(dtSteps.Rows[0]["RequestDate"]) : DateTime.Now;
+            DateTime cycleStart = DateTime.Now;
+            int? currentLevel = null;
+            bool headerIsPending = false;
+            if (dtSteps.Rows.Count > 0)
+            {
+                cycleStart = Convert.ToDateTime(dtSteps.Rows[0]["RequestDate"]);
+                if (resubmittedOn.HasValue)
+                    cycleStart = resubmittedOn.Value;
+                if (dtSteps.Rows[0]["CurrentApproverLevel"] != DBNull.Value)
+                    currentLevel = Convert.ToInt32(dtSteps.Rows[0]["CurrentApproverLevel"]);
+                headerIsPending = dtSteps.Rows[0]["HeaderStatus"].ToString() == ClaimStatuses.Pending;
+            }
+
+            DateTime? lastActionDate = null;
+            int? clockLevel = null;
+            string clockRole = null;
+            if (headerIsPending && currentLevel.HasValue)
+            {
+                for (int i = 0; i < dtSteps.Rows.Count; i++)
+                {
+                    DataRow candidate = dtSteps.Rows[i];
+                    int candidateLevel = Convert.ToInt32(candidate["ApproverLevel"]);
+                    bool candidateOpen = candidate["ActionDate"] == DBNull.Value
+                        && candidate["Status"].ToString() == ClaimStatuses.Pending
+                        && candidateLevel == currentLevel.Value;
+                    if (!candidateOpen)
+                        continue;
+                    clockLevel = candidateLevel;
+                    clockRole = candidate["ApproverRole"].ToString();
+                    break;
+                }
+
+                if (!clockLevel.HasValue)
+                {
+                    for (int i = 0; i < dtSteps.Rows.Count; i++)
+                    {
+                        DataRow candidate = dtSteps.Rows[i];
+                        int candidateLevel = Convert.ToInt32(candidate["ApproverLevel"]);
+                        bool candidateOpen = candidate["ActionDate"] == DBNull.Value
+                            && candidate["Status"].ToString() == ClaimStatuses.Pending
+                            && candidateLevel > currentLevel.Value;
+                        if (!candidateOpen)
+                            continue;
+                        clockLevel = candidateLevel;
+                        clockRole = candidate["ApproverRole"].ToString();
+                        break;
+                    }
+                }
+            }
+            else if (headerIsPending)
+            {
+                for (int i = 0; i < dtSteps.Rows.Count; i++)
+                {
+                    DataRow candidate = dtSteps.Rows[i];
+                    int candidateLevel = Convert.ToInt32(candidate["ApproverLevel"]);
+                    bool candidateOpen = candidate["ActionDate"] == DBNull.Value
+                        && candidate["Status"].ToString() == ClaimStatuses.Pending
+                        && candidateLevel > 0;
+                    if (!candidateOpen)
+                        continue;
+                    clockLevel = candidateLevel;
+                    clockRole = candidate["ApproverRole"].ToString();
+                    break;
+                }
+            }
 
             for (int i = 0; i < dtSteps.Rows.Count; i++)
             {
                 DataRow row = dtSteps.Rows[i];
                 string status = row["Status"].ToString();
+                int level = Convert.ToInt32(row["ApproverLevel"]);
                 DateTime? actionDate = row["ActionDate"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(row["ActionDate"]) : null;
-                DateTime stepStartDate = previousDate;
+                row["ResubmittedText"] = string.Empty;
 
                 // 1. Set Colors & Icons based on Status
                 if (status == ClaimStatuses.Submitted)
@@ -552,18 +683,23 @@ namespace AnmolDristi
                 {
                     row["ActionDateStr"] = actionDate.Value.ToString("dd-MMM yy, hh:mm tt");
 
-                    if (status == ClaimStatuses.Submitted)
+                    if (status == ClaimStatuses.Submitted && level == 0)
                     {
                         row["DaysText"] = "Initial Submission";
                         row["DaysCssClass"] = "text-primary";
+                        if (resubmittedOn.HasValue)
+                            row["ResubmittedText"] = "Resubmitted " + resubmittedOn.Value.ToString("dd-MMM yy, hh:mm tt");
                     }
                     else
                     {
-                        int days = (int)(actionDate.Value - stepStartDate).TotalDays;
+                        DateTime actionUtc = AsUtc(actionDate.Value);
+                        DateTime baselineUtc = lastActionDate ?? IndiaWallToUtc(cycleStart);
+                        int days = (int)(actionUtc - baselineUtc).TotalDays;
+                        row["ActionDateStr"] = UtcToIndia(actionUtc).ToString("dd-MMM yy, hh:mm tt");
                         row["DaysText"] = days == 0 ? "Actioned same day" : $"Took {days} day(s)";
                         row["DaysCssClass"] = "text-success";
+                        lastActionDate = actionUtc;
                     }
-                    previousDate = actionDate.Value;
                 }
                 else
                 {
@@ -575,10 +711,22 @@ namespace AnmolDristi
                     }
                     else
                     {
-                        row["ActionDateStr"] = "Awaiting Action";
-                        int daysPending = (int)(DateTime.Now - stepStartDate).TotalDays;
-                        row["DaysText"] = $"Pending for {daysPending} day(s)";
-                        row["DaysCssClass"] = daysPending > 3 ? "text-danger" : "text-warning text-dark";
+                        if (headerIsPending && clockLevel.HasValue && level == clockLevel.Value)
+                        {
+                            DateTime baselineUtc = lastActionDate ?? IndiaWallToUtc(cycleStart);
+                            row["ActionDateStr"] = "Awaiting Action";
+                            int daysPending = (int)(DateTime.UtcNow - baselineUtc).TotalDays;
+                            row["DaysText"] = $"Pending for {daysPending} day(s)";
+                            row["DaysCssClass"] = daysPending > 3 ? "text-danger" : "text-warning text-dark";
+                        }
+                        else
+                        {
+                            row["ActionDateStr"] = "Awaiting Action";
+                            row["DaysText"] = clockLevel.HasValue && level > clockLevel.Value && !string.IsNullOrEmpty(clockRole)
+                                ? "Waiting for " + clockRole
+                                : "Waiting for prior stage";
+                            row["DaysCssClass"] = "text-muted";
+                        }
                     }
                 }
             }
