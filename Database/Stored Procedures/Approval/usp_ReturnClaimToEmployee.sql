@@ -4,14 +4,18 @@
    WHY:         Employee correction requires the request Returned, the latest
                 detail Returned, and the activity not Rejected. Leaving Approved
                 and Pending lines unchanged blocked same-request correction.
-   WHAT:        Pending L1 whole-claim return keeps ApprovalRequestId and the
-                current-approver pointer. It sets the request, the matching L1
-                approver row, each non-rejected latest detail, and that activity
-                to Returned. Active non-rejected expenses on those activities
-                become Returned. In that same transaction, after those statuses
-                are set, it calls dbo.usp_RecalculateApprovalRequest. Rejected
-                lines, historical versions, soft-deleted expenses, expense
-                amounts, and expense remarks stay.
+   WHAT:        Pending whole-claim return keeps ApprovalRequestId and the
+                current-approver pointer. Level 1 keeps the L1 login and
+                exactly-one-pending-L1-row checks. Any other locked level
+                requires the header login and exactly one Pending row at
+                that level, and that row must be the acting Auditor.
+                It sets the request, that acting approver row, each
+                non-rejected latest detail, and that activity to Returned.
+                Active non-rejected expenses on those activities become
+                Returned. In that same transaction, after those statuses
+                are set, it calls dbo.usp_RecalculateApprovalRequest.
+                Rejected lines, historical versions, soft-deleted expenses,
+                expense amounts, and expense remarks stay.
    ============================================================================ */
 
 /*
@@ -22,6 +26,9 @@
     Note:        Signature is unchanged: @ApprovalRequestId, @ActionBy, @ReturnReason.
                  Latest-row ownership matches usp_ProcessApprovalAction:
                  MAX(ISNULL(DetailVersion, 1)) then MAX(ApprovalRequestDetailId).
+                 Level 1 is the existing L1 return. Any other current level
+                 returns only the acting Auditor row and does not assign
+                 CurrentApproverLoginId or CurrentApproverLevel.
 */
 
 CREATE   PROCEDURE [dbo].[usp_ReturnClaimToEmployee]
@@ -98,31 +105,72 @@ BEGIN
             RAISERROR('This approval request is not currently awaiting approval and cannot be returned.', 16, 1);
         END;
 
-        IF ISNULL(@CurrentApproverLevel, 0) <> 1
-           OR @CurrentApproverLoginId IS NULL
-           OR UPPER(LTRIM(RTRIM(@CurrentApproverLoginId))) <> UPPER(@TrimmedActor)
+        IF ISNULL(@CurrentApproverLevel, 0) <= 0
         BEGIN
-            RAISERROR('You are not the current L1 approver for this approval request.', 16, 1);
+            RAISERROR('The current approver level is invalid, so the return was not applied.', 16, 1);
         END;
 
-        DECLARE @PendingL1Count INT;
-
-        SELECT @PendingL1Count = COUNT(*)
-        FROM dbo.SalesApprovalRequestApprover a WITH (UPDLOCK, HOLDLOCK)
-        WHERE a.ApprovalRequestId = @ApprovalRequestId
-          AND a.ApproverLevel = 1
-          AND a.Status = N'Pending'
-          AND UPPER(LTRIM(RTRIM(a.ApproverRole))) = N'L1'
-          AND UPPER(LTRIM(RTRIM(a.ApproverLoginId))) = UPPER(@TrimmedActor);
-
-        IF @PendingL1Count = 0
+        IF ISNULL(@CurrentApproverLevel, 0) = 1
         BEGIN
-            RAISERROR('You are not the current L1 approver for this approval request.', 16, 1);
-        END;
+            IF @CurrentApproverLoginId IS NULL
+               OR UPPER(LTRIM(RTRIM(@CurrentApproverLoginId))) <> UPPER(@TrimmedActor)
+            BEGIN
+                RAISERROR('You are not the current L1 approver for this approval request.', 16, 1);
+            END;
 
-        IF @PendingL1Count > 1
+            DECLARE @PendingL1Count INT;
+
+            SELECT @PendingL1Count = COUNT(*)
+            FROM dbo.SalesApprovalRequestApprover a WITH (UPDLOCK, HOLDLOCK)
+            WHERE a.ApprovalRequestId = @ApprovalRequestId
+              AND a.ApproverLevel = 1
+              AND a.Status = N'Pending'
+              AND UPPER(LTRIM(RTRIM(a.ApproverRole))) = N'L1'
+              AND UPPER(LTRIM(RTRIM(a.ApproverLoginId))) = UPPER(@TrimmedActor);
+
+            IF @PendingL1Count = 0
+            BEGIN
+                RAISERROR('You are not the current L1 approver for this approval request.', 16, 1);
+            END;
+
+            IF @PendingL1Count > 1
+            BEGIN
+                RAISERROR('More than one pending L1 approver row matches the current approver, so the return was not applied.', 16, 1);
+            END;
+        END
+        ELSE
         BEGIN
-            RAISERROR('More than one pending L1 approver row matches the current approver, so the return was not applied.', 16, 1);
+            IF @CurrentApproverLoginId IS NULL
+               OR UPPER(LTRIM(RTRIM(@CurrentApproverLoginId))) <> UPPER(@TrimmedActor)
+            BEGIN
+                RAISERROR('You are not the current Auditor for this approval request.', 16, 1);
+            END;
+
+            DECLARE @PendingAtLevelCount INT;
+            DECLARE @PendingAuditorCount INT;
+
+            SELECT
+                  @PendingAtLevelCount = COUNT(*)
+                , @PendingAuditorCount = SUM(CASE
+                      WHEN UPPER(LTRIM(RTRIM(a.ApproverRole))) = N'AUDITOR'
+                       AND UPPER(LTRIM(RTRIM(a.ApproverLoginId))) = UPPER(@TrimmedActor)
+                      THEN 1 ELSE 0 END)
+            FROM dbo.SalesApprovalRequestApprover a WITH (UPDLOCK, HOLDLOCK)
+            WHERE a.ApprovalRequestId = @ApprovalRequestId
+              AND a.ApproverLevel = @CurrentApproverLevel
+              AND a.Status = N'Pending';
+
+            IF ISNULL(@PendingAtLevelCount, 0) > 1
+               OR ISNULL(@PendingAuditorCount, 0) > 1
+            BEGIN
+                RAISERROR('More than one pending approver row matches the current approver, so the return was not applied.', 16, 1);
+            END;
+
+            IF ISNULL(@PendingAtLevelCount, 0) <> 1
+               OR ISNULL(@PendingAuditorCount, 0) <> 1
+            BEGIN
+                RAISERROR('You are not the current Auditor for this approval request.', 16, 1);
+            END;
         END;
 
         IF EXISTS
@@ -269,7 +317,7 @@ BEGIN
         -- CK_SalesDailyExpense_NoUpdate_WhenDeleted requires ClaimStatus = Draft
         -- when IsDeleted = 1, so deleted rows are not updated and are not reactivated.
         -- Amount, Remarks, and IsDeleted are not assigned. The return reason stays
-        -- on the L1 approver row and the single history row below.
+        -- on the acting approver row and the single history row below.
         UPDATE ex
         SET
               ex.ClaimStatus = N'Returned'
@@ -294,39 +342,79 @@ BEGIN
         EXEC dbo.usp_RecalculateApprovalRequest
             @ApprovalRequestId = @ApprovalRequestId;
 
-        UPDATE dbo.SalesApprovalRequestApprover
-        SET
-              Status = N'Returned'
-            , ActionBy = @TrimmedActor
-            , ActionDate = @NowUtc
-            , Remarks = ISNULL(@TrimmedReason, Remarks)
-        WHERE ApprovalRequestId = @ApprovalRequestId
-          AND ApproverLevel = 1
-          AND Status = N'Pending'
-          AND UPPER(LTRIM(RTRIM(ApproverRole))) = N'L1'
-          AND UPPER(LTRIM(RTRIM(ApproverLoginId))) = UPPER(@TrimmedActor);
-
-        IF @@ROWCOUNT <> 1
+        IF ISNULL(@CurrentApproverLevel, 0) = 1
         BEGIN
-            RAISERROR('The pending L1 approver row could not be updated.', 16, 1);
-        END;
+            UPDATE dbo.SalesApprovalRequestApprover
+            SET
+                  Status = N'Returned'
+                , ActionBy = @TrimmedActor
+                , ActionDate = @NowUtc
+                , Remarks = ISNULL(@TrimmedReason, Remarks)
+            WHERE ApprovalRequestId = @ApprovalRequestId
+              AND ApproverLevel = 1
+              AND Status = N'Pending'
+              AND UPPER(LTRIM(RTRIM(ApproverRole))) = N'L1'
+              AND UPPER(LTRIM(RTRIM(ApproverLoginId))) = UPPER(@TrimmedActor);
 
-        -- Status and the return actor only. The six approved-amount columns
-        -- written above are not assigned here, and the approver pointer is not
-        -- assigned here.
-        UPDATE dbo.SalesApprovalRequest
-        SET
-              Status = N'Returned'
-            , ModifiedBy = @TrimmedActor
-            , ModifiedOn = @NowUtc
-        WHERE ApprovalRequestId = @ApprovalRequestId
-          AND Status = N'Pending'
-          AND CurrentApproverLevel = 1
-          AND UPPER(LTRIM(RTRIM(CurrentApproverLoginId))) = UPPER(@TrimmedActor);
+            IF @@ROWCOUNT <> 1
+            BEGIN
+                RAISERROR('The pending L1 approver row could not be updated.', 16, 1);
+            END;
 
-        IF @@ROWCOUNT <> 1
+            -- Status and the return actor only. The six approved-amount columns
+            -- written above are not assigned here, and the approver pointer is not
+            -- assigned here.
+            UPDATE dbo.SalesApprovalRequest
+            SET
+                  Status = N'Returned'
+                , ModifiedBy = @TrimmedActor
+                , ModifiedOn = @NowUtc
+            WHERE ApprovalRequestId = @ApprovalRequestId
+              AND Status = N'Pending'
+              AND CurrentApproverLevel = 1
+              AND UPPER(LTRIM(RTRIM(CurrentApproverLoginId))) = UPPER(@TrimmedActor);
+
+            IF @@ROWCOUNT <> 1
+            BEGIN
+                RAISERROR('The approval request header transition was inconsistent.', 16, 1);
+            END;
+        END
+        ELSE
         BEGIN
-            RAISERROR('The approval request header transition was inconsistent.', 16, 1);
+            UPDATE dbo.SalesApprovalRequestApprover
+            SET
+                  Status = N'Returned'
+                , ActionBy = @TrimmedActor
+                , ActionDate = @NowUtc
+                , Remarks = ISNULL(@TrimmedReason, Remarks)
+            WHERE ApprovalRequestId = @ApprovalRequestId
+              AND ApproverLevel = @CurrentApproverLevel
+              AND Status = N'Pending'
+              AND UPPER(LTRIM(RTRIM(ApproverRole))) = N'AUDITOR'
+              AND UPPER(LTRIM(RTRIM(ApproverLoginId))) = UPPER(@TrimmedActor);
+
+            IF @@ROWCOUNT <> 1
+            BEGIN
+                RAISERROR('The pending Auditor approver row could not be updated.', 16, 1);
+            END;
+
+            -- Status and the return actor only. CurrentApproverLoginId,
+            -- CurrentApproverLevel, and the approved-amount columns stay.
+            UPDATE dbo.SalesApprovalRequest
+            SET
+                  Status = N'Returned'
+                , ModifiedBy = @TrimmedActor
+                , ModifiedOn = @NowUtc
+            WHERE ApprovalRequestId = @ApprovalRequestId
+              AND Status = N'Pending'
+              AND ISNULL(CurrentApproverLevel, 0) <> 1
+              AND CurrentApproverLevel = @CurrentApproverLevel
+              AND UPPER(LTRIM(RTRIM(CurrentApproverLoginId))) = UPPER(@TrimmedActor);
+
+            IF @@ROWCOUNT <> 1
+            BEGIN
+                RAISERROR('The approval request header transition was inconsistent.', 16, 1);
+            END;
         END;
 
         INSERT INTO dbo.ApprovalRequestStatusHistory

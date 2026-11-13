@@ -636,9 +636,12 @@ namespace AnmolDristi
             // Auditor marks ready for payment when no Returned items remain.
             btnMarkReadyForPayment.Visible = isAuditorCheck && canFinalize;
 
-            // Whole-claim return is the current L1 approver only.
+            // Whole-claim return is the current L1 holder or the current Auditor holder.
+            // Authority is the pending header and the pending approver row, not ViewState.
             // Day and expense RETURN stay on the row and expense routes.
-            btnReturnToEmployee.Visible = currentLvl == 1 && !isAuditorCheck;
+            string returnActor = GetLoggedInEmployeeCode();
+            btnReturnToEmployee.Visible = IsSessionUserCurrentL1Approver(reqId, returnActor)
+                || IsSessionUserCurrentAuditor(reqId, returnActor);
 
             if (hasReturnedItems)
             {
@@ -1083,6 +1086,57 @@ namespace AnmolDristi
             }
         }
 
+        private bool IsSessionUserCurrentAuditor(int approvalRequestId, string user)
+        {
+            if (approvalRequestId <= 0 || string.IsNullOrWhiteSpace(user))
+                return false;
+
+            using (var con = new SqlConnection(connString))
+            using (var cmd = new SqlCommand(@"
+                SELECT CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM dbo.SalesApprovalRequest r
+                        WHERE r.ApprovalRequestId = @Id
+                          AND r.Status = @Pending
+                          AND r.CurrentApproverLevel > 1
+                          AND UPPER(LTRIM(RTRIM(r.CurrentApproverLoginId))) = UPPER(LTRIM(RTRIM(@User)))
+                    )
+                    AND (
+                        SELECT COUNT(*)
+                        FROM dbo.SalesApprovalRequestApprover a
+                        INNER JOIN dbo.SalesApprovalRequest r
+                            ON r.ApprovalRequestId = a.ApprovalRequestId
+                        WHERE r.ApprovalRequestId = @Id
+                          AND r.Status = @Pending
+                          AND r.CurrentApproverLevel > 1
+                          AND a.ApproverLevel = r.CurrentApproverLevel
+                          AND a.Status = @Pending
+                    ) = 1
+                    AND (
+                        SELECT COUNT(*)
+                        FROM dbo.SalesApprovalRequestApprover a
+                        INNER JOIN dbo.SalesApprovalRequest r
+                            ON r.ApprovalRequestId = a.ApprovalRequestId
+                        WHERE r.ApprovalRequestId = @Id
+                          AND r.Status = @Pending
+                          AND r.CurrentApproverLevel > 1
+                          AND a.ApproverLevel = r.CurrentApproverLevel
+                          AND a.Status = @Pending
+                          AND UPPER(LTRIM(RTRIM(a.ApproverRole))) = N'AUDITOR'
+                          AND UPPER(LTRIM(RTRIM(a.ApproverLoginId))) = UPPER(LTRIM(RTRIM(@User)))
+                    ) = 1
+                    THEN 1 ELSE 0 END", con))
+            {
+                cmd.Parameters.AddWithValue("@Id", approvalRequestId);
+                cmd.Parameters.AddWithValue("@User", user.Trim());
+                cmd.Parameters.AddWithValue("@Pending", ClaimStatuses.Pending);
+                con.Open();
+                object found = cmd.ExecuteScalar();
+                return found != null && found != DBNull.Value && Convert.ToInt32(found) == 1;
+            }
+        }
+
         private bool IsSessionUserAssignedLevel2Auditor(int approvalRequestId, string user)
         {
             if (approvalRequestId <= 0 || string.IsNullOrWhiteSpace(user))
@@ -1152,9 +1206,12 @@ namespace AnmolDristi
 
                 // hfActionRequestId identifies the claim. L1 authority is the session
                 // user matched to the pending header and pending L1 approver row.
-                if (!IsSessionUserCurrentL1Approver(reqId, user))
+                // Auditor authority is the same session login on a Pending header
+                // whose current level is not 1 and whose single pending row is Auditor.
+                if (!IsSessionUserCurrentL1Approver(reqId, user)
+                    && !IsSessionUserCurrentAuditor(reqId, user))
                 {
-                    lblModalMessage.Text = "Only the current L1 approver can return this claim.";
+                    lblModalMessage.Text = "Only the current L1 approver or the current Auditor can return this claim.";
                     lblModalMessage.CssClass = "text-danger font-weight-bold";
                     upDetails.Update();
                     return;
