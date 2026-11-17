@@ -134,7 +134,11 @@ BEGIN
         , @ApprovedDAAmount        DECIMAL(18,2) = 0
         , @ApprovedHotelAmount     DECIMAL(18,2) = 0
         , @ApprovedTravelAmount    DECIMAL(18,2) = 0
-        , @FinalApprovedAmount     DECIMAL(18,2) = 0;
+        , @FinalApprovedAmount     DECIMAL(18,2) = 0
+        , @TotalActivities         INT = 0
+        , @PendingActivities       INT = 0
+        , @ApprovedActivities      INT = 0
+        , @RejectedActivities      INT = 0;
 
     ;WITH Latest AS
     (
@@ -169,6 +173,25 @@ BEGIN
     WHERE d.ApprovalRequestId = @ApprovalRequestId
       AND ISNULL(d.DetailStatus, '') NOT IN ('Rejected', 'Returned');
 
+    ;WITH LatestDetail AS
+    (
+        SELECT
+              d.DetailStatus
+            , ROW_NUMBER() OVER (
+                  PARTITION BY d.ActivityId
+                  ORDER BY ISNULL(d.DetailVersion, 1) DESC, d.ApprovalRequestDetailId DESC
+              ) AS RN
+        FROM dbo.SalesApprovalRequestDetail d
+        WHERE d.ApprovalRequestId = @ApprovalRequestId
+    )
+    SELECT
+          @TotalActivities      = COUNT(*)
+        , @PendingActivities    = ISNULL(SUM(CASE WHEN DetailStatus = 'Pending'  THEN 1 ELSE 0 END), 0)
+        , @ApprovedActivities   = ISNULL(SUM(CASE WHEN DetailStatus = 'Approved' THEN 1 ELSE 0 END), 0)
+        , @RejectedActivities   = ISNULL(SUM(CASE WHEN DetailStatus = 'Rejected' THEN 1 ELSE 0 END), 0)
+    FROM LatestDetail
+    WHERE RN = 1;
+
     /* ApprovedExpenseAmount / TotalApprovedAmount are computed from components (no Stationary column yet).
        FinalApprovedAmount is the FSOT Net Payable (Claim + four-part ExpenseTotal). */
     UPDATE dbo.SalesApprovalRequest
@@ -179,6 +202,10 @@ BEGIN
         , ApprovedHotelAmount  = @ApprovedHotelAmount
         , ApprovedTravelAmount = @ApprovedTravelAmount
         , FinalApprovedAmount  = @FinalApprovedAmount
+        , TotalActivities      = @TotalActivities
+        , PendingActivities    = @PendingActivities
+        , ApprovedActivities   = @ApprovedActivities
+        , RejectedActivities   = @RejectedActivities
         , ModifiedOn           = SYSUTCDATETIME()
     WHERE ApprovalRequestId = @ApprovalRequestId;
 END
