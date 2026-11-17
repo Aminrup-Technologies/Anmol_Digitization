@@ -21,5 +21,8 @@ AnmolDristi/obj/Release/AnmolDristi.pdb
 
 # RC / CAB private evidence — retain outside Git (see D:\CAB-Evidence\)
 pvt-evidence/
+
+# Local environment configuration. Already tracked; this does not untrack the committed file.
+AnmolDristi/Web.config
 AnmolDristi/TempUploads/
 AnmolDristi/UploadedFiles/ClaimsAttachment/
