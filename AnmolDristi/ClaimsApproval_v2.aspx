@@ -842,14 +842,14 @@
                                     <div class="col-md-3">
                                         <div class="form-group mb-0">
                                             <label class="font-weight-bold text-primary small mb-1 text-uppercase">Modify KM To</label>
-                                            <input type="number" step="0.01" min="0" id="km_modal_new" class="form-control border-primary text-center font-weight-bold claims-ux-track-dirty" readonly />
+                                            <input type="number" step="0.01" min="0" max="99999999.99" id="km_modal_new" class="form-control border-primary text-center font-weight-bold claims-ux-track-dirty" readonly />
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group mb-0">
                                             <label class="font-weight-bold text-muted small mb-1 text-uppercase">Reason for change</label>
                                             <div class="input-group">
-                                                <input type="text" id="km_modal_reason" class="form-control claims-ux-track-dirty" placeholder="Required if changing KM..." readonly />
+                                                <input type="text" id="km_modal_reason" maxlength="1000" class="form-control claims-ux-track-dirty" placeholder="Required if changing KM..." readonly />
                                                 <div class="input-group-append">
                                                     <button type="button" id="km_modal_save" class="btn btn-primary shadow-sm" onclick="saveKM()" disabled><i class="fa fa-save mr-1"></i>Save</button>
                                                 </div>
@@ -869,6 +869,8 @@
                                                 <th class="border-top-0 text-right">Old KM</th>
                                                 <th class="border-top-0 text-right">New KM</th>
                                                 <th class="border-top-0">Changed By</th>
+                                                <th class="border-top-0">Role</th>
+                                                <th class="border-top-0">Level</th>
                                                 <th class="border-top-0">Reason</th>
                                             </tr>
                                         </thead>
@@ -1162,7 +1164,7 @@
             $('#km_modal_new').val(ctx.currentKm);
             $('#km_modal_reason').val('');
             $('#km_modal_message').empty();
-            applyAuditorKmEditState(ctx.dayStatus);
+            applyApproverKmEditState(ctx.dayStatus);
             $('#unified_modal_message').empty();
 
             loadKmHistory(ctx.actId);
@@ -2041,15 +2043,15 @@
             });
         }
 
-        function auditorMayEditKm(dayStatus) {
+        function approverMayEditKm(dayStatus) {
             var status = normalizeDayStatus(dayStatus);
             return $('#hfAuditorKmEdit').val() === '1'
                 && status !== 'Rejected'
                 && status !== 'Returned';
         }
 
-        function applyAuditorKmEditState(dayStatus) {
-            var allowed = auditorMayEditKm(dayStatus);
+        function applyApproverKmEditState(dayStatus) {
+            var allowed = approverMayEditKm(dayStatus);
             $('#km_modal_new, #km_modal_reason').prop('readOnly', !allowed);
             $('#km_modal_save').prop('disabled', !allowed);
             if ($('#hfAuditorKmEdit').val() === '1' && !allowed) {
@@ -2062,10 +2064,10 @@
 
             var $saveBtn = $('#km_modal_save');
             var dayStatus = unifiedDayStateContext.status;
-            if (!auditorMayEditKm(dayStatus)) {
-                applyAuditorKmEditState(dayStatus);
+            if (!approverMayEditKm(dayStatus)) {
+                applyApproverKmEditState(dayStatus);
                 if (!$('#km_modal_message').text()) {
-                    $('#km_modal_message').html('<div class="text-danger font-weight-bold">Only the Auditor who currently holds this pending request can modify KM.</div>');
+                    $('#km_modal_message').html('<div class="text-danger font-weight-bold">Only the approver who currently holds this pending request can modify KM.</div>');
                 }
                 return;
             }
@@ -2079,10 +2081,15 @@
             var reason = $('#km_modal_reason').val();
             var curKm = $('#km_modal_current').val();
 
-            if(!km || !reason) { 
+            if(!km || !reason || !String(reason).trim()) {
                 $('#km_modal_message').html('<div class="text-danger font-weight-bold">⚠️ Both New KM and Reason are strictly required.</div>');
                 $saveBtn.prop('disabled', false);
                 return; 
+            }
+            if (!/^\d+(\.\d{1,2})?$/.test(String(km).trim()) || Number(km) > 99999999.99) {
+                $('#km_modal_message').html('<div class="text-danger font-weight-bold">New KM must be zero or greater, with at most two decimal places.</div>');
+                $saveBtn.prop('disabled', false);
+                return;
             }
             if(parseFloat(km) === parseFloat(curKm)) {
                 $('#km_modal_message').html('<div class="text-warning font-weight-bold">⚠️ New KM must be different from Current KM.</div>');
@@ -2102,9 +2109,10 @@
                 contentType: "application/json; charset=utf-8",
                 dataType: "json",
                 success: function(r) {
-                    if(r.d && r.d.success) {
+                    if(r.d && r.d.success && r.d.totalDistanceKm !== undefined && r.d.totalDistanceKm !== null) {
                         $('#km_modal_message').html('<div class="alert alert-success py-2 mt-2 mb-0 font-weight-bold"><i class="fa fa-check-circle"></i> KM modified successfully!</div>');
-                        $('#km_modal_current').val(km);
+                        $('#km_modal_current').val(r.d.totalDistanceKm);
+                        $('#km_modal_new').val(r.d.totalDistanceKm);
                         $('#km_modal_reason').val('');
                         loadKmHistory(id);
                         document.getElementById('btnRefreshCalculations').click();
@@ -2121,13 +2129,13 @@
                     $('#km_modal_message').html('<div class="text-danger font-weight-bold">The KM change was not saved.</div>');
                 },
                 complete: function() {
-                    $saveBtn.prop('disabled', !auditorMayEditKm(unifiedDayStateContext.status));
+                    $saveBtn.prop('disabled', !approverMayEditKm(unifiedDayStateContext.status));
                 }
             });
         }
 
         function loadKmHistory(activityId) {
-            $('#km_history_tbl tbody').empty().append('<tr><td colspan="5">Loading...</td></tr>');
+            $('#km_history_tbl tbody').empty().append('<tr><td colspan="7">Loading...</td></tr>');
  
             $.ajax({
                 type: 'POST',
@@ -2138,7 +2146,7 @@
             }).done(function (resp) {
                 var res = resp.d;
                 if (!res || !res.success) {
-                    $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error: ' + (res ? res.message : 'Unknown error') + '</td></tr>');
+                    $('#km_history_tbl tbody').empty().append('<tr><td colspan="7" class="text-danger">Error: ' + (res ? res.message : 'Unknown error') + '</td></tr>');
                     return;
                 }
 
@@ -2157,7 +2165,7 @@
 
                 var $tbody = $('#km_history_tbl tbody').empty();
                 if (!res.history || res.history.length === 0) {
-                    $tbody.append('<tr><td colspan="5" class="text-muted text-center font-italic">No previous KM modifications found.</td></tr>');
+                    $tbody.append('<tr><td colspan="7" class="text-muted text-center font-italic">No previous KM modifications found.</td></tr>');
                     return;
                 }
 
@@ -2170,12 +2178,14 @@
                         '<td class="text-right">' + oldKm + '</td>' +
                         '<td class="text-right">' + newKm + '</td>' +
                         '<td>' + (r.ModifiedBy || '') + '</td>' +
+                        '<td>' + (r.ApproverRole || '') + '</td>' +
+                        '<td>' + (r.ApproverLevel != null ? r.ApproverLevel : '') + '</td>' +
                         '<td>' + (r.Reason || '') + '</td>' +
                         '</tr>'
                     );
                 });
             }).fail(function (xhr, status, err) {
-                $('#km_history_tbl tbody').empty().append('<tr><td colspan="5" class="text-danger">Error communicating with server.</td></tr>');
+                $('#km_history_tbl tbody').empty().append('<tr><td colspan="7" class="text-danger">Error communicating with server.</td></tr>');
             });
         }
 

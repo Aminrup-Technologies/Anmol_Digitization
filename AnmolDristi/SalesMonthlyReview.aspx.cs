@@ -1668,7 +1668,12 @@ namespace AnmolDristi
         {
             if (activityId <= 0) return 0;
             using (SqlConnection con = new SqlConnection(connString))
-            using (SqlCommand cmd = new SqlCommand("SELECT COUNT(1) FROM dbo.SalesDailyActivityKMHistory WITH (NOLOCK) WHERE ActivityId = @ActivityId", con))
+            using (SqlCommand cmd = new SqlCommand(@"
+DECLARE @sql nvarchar(300) =
+    N'SELECT COUNT(1) FROM dbo.SalesDailyActivityKMHistory WITH (NOLOCK) WHERE ActivityId = @ActivityId';
+IF COL_LENGTH(N'dbo.SalesDailyActivityKMHistory', N'ApproverRole') IS NOT NULL
+    SET @sql += N' AND ApproverRole IS NULL';
+EXEC sys.sp_executesql @sql, N'@ActivityId int', @ActivityId = @ActivityId;", con))
             {
                 cmd.Parameters.AddWithValue("@ActivityId", activityId);
                 con.Open();

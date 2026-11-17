@@ -693,6 +693,32 @@ namespace AnmolDristi
             return role != null && role.Equals("Auditor", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static bool IsEligibleKmApproverRole(string role)
+        {
+            if (string.IsNullOrWhiteSpace(role)) return false;
+            switch (role.Trim().ToUpperInvariant())
+            {
+                case "L1":
+                case "REPORTING_MANAGER1":
+                case "L2":
+                case "L3":
+                case "AUDITOR":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private const int KmReasonCapacity = 1000;
+        private const decimal KmMaxValue = 99999999.99m;
+
+        private static bool FitsStoredKm(decimal value)
+        {
+            return value >= 0m
+                && value <= KmMaxValue
+                && value == decimal.Round(value, 2, MidpointRounding.AwayFromZero);
+        }
+
         private static string GetApproverRoleFromSession()
         {
             return HttpContext.Current?.Session?[SessionApproverRoleKey] as string ?? "";
@@ -3135,18 +3161,25 @@ namespace AnmolDristi
             string user = GetLoggedInEmployeeCodeFromSession();
             if (string.IsNullOrWhiteSpace(user))
                 return new { success = false, message = "Your session has expired. Sign in again." };
+            user = user.Trim();
+            if (user.Length > 100)
+                return new { success = false, message = "The signed-in approver identity exceeds 100 characters." };
 
-            if (!IsAuditorRole(GetApproverRoleFromSession()))
-                return new { success = false, message = "Only the Auditor who currently holds this request can modify KM." };
+            if (activityId <= 0)
+                return new { success = false, message = "Activity is required." };
 
             if (expectedDetailId <= 0)
                 return new { success = false, message = "The activity detail is missing. Reopen the day and try again." };
 
+            if (!FitsStoredKm(newKm))
+                return new { success = false, message = "New KM must be zero or greater, with at most two decimal places, and no more than 99,999,999.99." };
+
             if (string.IsNullOrWhiteSpace(reason))
                 return new { success = false, message = "A reason is required to modify KM." };
 
-            if (newKm < 0m)
-                return new { success = false, message = "New KM must be zero or greater." };
+            string persistedReason = AppendUserToRemark(reason.Trim(), user);
+            if (string.IsNullOrWhiteSpace(persistedReason) || persistedReason.Length > KmReasonCapacity)
+                return new { success = false, message = "The reason, including the actor note, must be 1000 characters or fewer." };
 
             try
             {
@@ -3155,15 +3188,46 @@ namespace AnmolDristi
                 using (var cmd = new SqlCommand("dbo.usp_UpdateActivityKM_WithHistory", con))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@ActivityId", activityId);
-                    cmd.Parameters.AddWithValue("@NewKM", newKm);
-                    cmd.Parameters.AddWithValue("@ChangedBy", user);
-                    cmd.Parameters.AddWithValue("@Reason", AppendUserToRemark(reason, user));
-                    cmd.Parameters.AddWithValue("@ExpectedDetailId", expectedDetailId);
+                    cmd.Parameters.Add("@ActivityId", SqlDbType.Int).Value = activityId;
+                    var kmParameter = cmd.Parameters.Add("@NewKM", SqlDbType.Decimal);
+                    kmParameter.Precision = 10;
+                    kmParameter.Scale = 2;
+                    kmParameter.Value = newKm;
+                    cmd.Parameters.Add("@ChangedBy", SqlDbType.NVarChar, 100).Value = user;
+                    cmd.Parameters.Add("@Reason", SqlDbType.NVarChar, KmReasonCapacity).Value = persistedReason;
+                    cmd.Parameters.Add("@ExpectedDetailId", SqlDbType.Int).Value = expectedDetailId;
                     con.Open();
                     cmd.ExecuteNonQuery();
+
+                    using (var read = new SqlCommand(@"
+                        SELECT a.TotalDistanceKM, a.CalculatedClaimAmount, d.Snapshot_TotalDistanceKM
+                        FROM dbo.SalesDailyActivity a
+                        INNER JOIN dbo.SalesApprovalRequestDetail d
+                            ON d.ApprovalRequestDetailId = @ExpectedDetailId
+                           AND d.ActivityId = a.ActivityId
+                        WHERE a.ActivityId = @ActivityId", con))
+                    {
+                        read.Parameters.Add("@ActivityId", SqlDbType.Int).Value = activityId;
+                        read.Parameters.Add("@ExpectedDetailId", SqlDbType.Int).Value = expectedDetailId;
+                        using (var row = read.ExecuteReader())
+                        {
+                            if (!row.Read()
+                                || row["TotalDistanceKM"] == DBNull.Value
+                                || row["Snapshot_TotalDistanceKM"] == DBNull.Value
+                                || Convert.ToDecimal(row["TotalDistanceKM"]) != Convert.ToDecimal(row["Snapshot_TotalDistanceKM"]))
+                            {
+                                return new { success = false, message = "The KM change was saved, but the stored KM could not be confirmed. Reopen the day." };
+                            }
+
+                            return new
+                            {
+                                success = true,
+                                totalDistanceKm = Convert.ToDecimal(row["TotalDistanceKM"]),
+                                calculatedClaimAmount = row["CalculatedClaimAmount"] == DBNull.Value ? (decimal?)null : Convert.ToDecimal(row["CalculatedClaimAmount"])
+                            };
+                        }
+                    }
                 }
-                return new { success = true };
             }
             catch (Exception ex) { return new { success = false, message = ex.Message }; }
         }
@@ -3346,6 +3410,7 @@ namespace AnmolDristi
                     , a.Status AS ApproverStatus
                     , r.Status AS HeaderStatus
                     , r.CurrentApproverLoginId
+                    , r.CurrentApproverLevel
                 FROM dbo.SalesApprovalRequestApprover a
                 INNER JOIN dbo.SalesApprovalRequest r ON r.ApprovalRequestId = a.ApprovalRequestId
                 WHERE a.ApprovalRequestId = @Id
@@ -3374,11 +3439,40 @@ namespace AnmolDristi
                         ViewState["CurrentUserRole"] = role;
                         Session[SessionApproverRoleKey] = role;
                         hfIsAuditor.Value = IsAuditorRole(role) ? "1" : "0";
-                        bool auditorHoldsPendingRequest = IsAuditorRole(role)
-                            && ClaimStatuses.Equals(approverStatus, ClaimStatuses.Pending)
-                            && ClaimStatuses.Equals(headerStatus, ClaimStatuses.Pending)
+                        int approverLevel = Convert.ToInt32(rdr["ApproverLevel"]);
+                        int headerLevel = rdr["CurrentApproverLevel"] == DBNull.Value ? 0 : Convert.ToInt32(rdr["CurrentApproverLevel"]);
+                        bool sameHolder = ClaimStatuses.Equals(headerStatus, ClaimStatuses.Pending)
                             && string.Equals(currentApprover, user, StringComparison.OrdinalIgnoreCase);
-                        hfAuditorKmEdit.Value = auditorHoldsPendingRequest ? "1" : "0";
+                        bool holderMayEditKm = sameHolder
+                            && approverLevel == headerLevel
+                            && ClaimStatuses.Equals(approverStatus, ClaimStatuses.Pending)
+                            && IsEligibleKmApproverRole(role);
+                        if (sameHolder && !holderMayEditKm)
+                        {
+                            rdr.Close();
+                            using (var levelCmd = new SqlCommand(@"
+                                SELECT ApproverRole, Status
+                                FROM dbo.SalesApprovalRequestApprover
+                                WHERE ApprovalRequestId = @Id
+                                  AND ApproverLoginId = @User
+                                  AND ApproverLevel = @Level", con))
+                            {
+                                levelCmd.Parameters.AddWithValue("@Id", reqId);
+                                levelCmd.Parameters.AddWithValue("@User", user);
+                                levelCmd.Parameters.AddWithValue("@Level", headerLevel);
+                                using (var levelRow = levelCmd.ExecuteReader())
+                                {
+                                    if (levelRow.Read())
+                                    {
+                                        string levelRole = levelRow["ApproverRole"] == DBNull.Value ? string.Empty : levelRow["ApproverRole"].ToString();
+                                        string levelStatus = levelRow["Status"] == DBNull.Value ? string.Empty : levelRow["Status"].ToString();
+                                        holderMayEditKm = ClaimStatuses.Equals(levelStatus, ClaimStatuses.Pending)
+                                            && IsEligibleKmApproverRole(levelRole);
+                                    }
+                                }
+                            }
+                        }
+                        hfAuditorKmEdit.Value = holderMayEditKm ? "1" : "0";
                     }
                     else
                     {
@@ -3443,15 +3537,27 @@ namespace AnmolDristi
                     // -------------------------------------------------------
                     // 2. Get KM Modification History
                     // -------------------------------------------------------
-                    string sqlHistory = @"
+                    bool hasAuditColumns;
+                    using (var probe = new SqlCommand("SELECT COL_LENGTH(N'dbo.SalesDailyActivityKMHistory', N'ApproverRole')", con))
+                    {
+                        object length = probe.ExecuteScalar();
+                        hasAuditColumns = length != null && length != DBNull.Value;
+                    }
+
+                    string sqlHistory = hasAuditColumns
+                        ? @"
                 SELECT
-                    HistoryId,
-                    ActivityId,
-                    OldKM,
-                    NewKM,
-                    ModifiedBy,
-                    ModifiedDateTime,
-                    Reason
+                    HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason,
+                    ApprovalRequestId, ApproverRole, ApproverLevel
+                FROM dbo.SalesDailyActivityKMHistory
+                WHERE ActivityId = @ActivityId
+                ORDER BY ModifiedDateTime DESC;"
+                        : @"
+                SELECT
+                    HistoryId, ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason,
+                    CAST(NULL AS int) AS ApprovalRequestId,
+                    CAST(NULL AS nvarchar(20)) AS ApproverRole,
+                    CAST(NULL AS int) AS ApproverLevel
                 FROM dbo.SalesDailyActivityKMHistory
                 WHERE ActivityId = @ActivityId
                 ORDER BY ModifiedDateTime DESC;";
@@ -3485,6 +3591,9 @@ namespace AnmolDristi
                                     NewKM = rdr["NewKM"],
                                     ModifiedBy = rdr["ModifiedBy"]?.ToString(),
                                     Reason = rdr["Reason"]?.ToString(),
+                                    ApprovalRequestId = rdr["ApprovalRequestId"] == DBNull.Value ? (int?)null : Convert.ToInt32(rdr["ApprovalRequestId"]),
+                                    ApproverRole = rdr["ApproverRole"]?.ToString(),
+                                    ApproverLevel = rdr["ApproverLevel"] == DBNull.Value ? (int?)null : Convert.ToInt32(rdr["ApproverLevel"]),
                                     ModifiedDateTimeIST = ist.ToString("dd-MM-yyyy hh:mm:ss tt")
                                 });
                             }

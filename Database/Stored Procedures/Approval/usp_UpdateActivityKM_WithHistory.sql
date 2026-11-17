@@ -1,7 +1,13 @@
 /*
     Object:      [dbo].[usp_UpdateActivityKM_WithHistory]
     Type:        STORED PROCEDURE
-    Purpose:     Auditor KM correction for the current approval detail.
+    Purpose:     Current-holder KM correction for the latest approval detail.
+
+    The current approver may increase or decrease KM while the request is
+    Pending with that approver. Eligible roles are L1, L2, L3, and Auditor.
+    Reporting_Manager1 is accepted as L1 and the history row stores L1.
+    Historical Reporting_Manager1 assignments are not rewritten. This path
+    does not read or consume the employee KM modification count.
 
     The travel amount is not calculated here. After the kilometre change is
     locked to the latest detail, dbo.usp_RecalculateSalesClaim writes the
@@ -40,7 +46,7 @@ BEGIN
         IF @NewKM IS NULL OR @NewKM < 0
             THROW 59203, 'New KM must be zero or greater.', 1;
         IF NULLIF(LTRIM(RTRIM(@ChangedBy)), N'') IS NULL
-            THROW 59204, 'The signed-in Auditor is required.', 1;
+            THROW 59204, 'The signed-in approver is required.', 1;
         IF NULLIF(LTRIM(RTRIM(@Reason)), N'') IS NULL
             THROW 59205, 'A reason is required to modify KM.', 1;
 
@@ -64,6 +70,7 @@ BEGIN
             , @MonthNo INT
             , @ApproverRole NVARCHAR(100)
             , @ApproverStatus NVARCHAR(50)
+            , @CanonicalRole NVARCHAR(20)
             , @AccountsStatus NVARCHAR(50);
 
         SELECT
@@ -110,7 +117,7 @@ BEGIN
           AND ActivityId = @ActivityId;
 
         IF ISNULL(@DetailStatus, N'') IN (N'Rejected', N'Returned')
-            THROW 59210, 'Returned and rejected days are corrected by the employee, not by the Auditor.', 1;
+            THROW 59210, 'Returned and rejected days are corrected by the employee.', 1;
 
         SELECT
               @HeaderStatus = Status
@@ -127,7 +134,7 @@ BEGIN
         IF @HeaderStatus <> N'Pending'
             OR NULLIF(LTRIM(RTRIM(@CurrentApprover)), N'') IS NULL
             OR @CurrentApprover <> @ChangedBy
-            THROW 59212, 'KM can be modified only while the request is pending with the Auditor.', 1;
+            THROW 59212, 'KM can be modified only while the request is pending with the current approver.', 1;
 
         SELECT
               @ApproverRole = ApproverRole
@@ -137,8 +144,18 @@ BEGIN
           AND ApproverLoginId = @ChangedBy
           AND ApproverLevel = @CurrentLevel;
 
-        IF ISNULL(@ApproverRole, N'') <> N'Auditor' OR ISNULL(@ApproverStatus, N'') <> N'Pending'
-            THROW 59213, 'Only the Auditor who currently holds this request can modify KM.', 1;
+        SET @CanonicalRole =
+            CASE UPPER(LTRIM(RTRIM(@ApproverRole)))
+                WHEN N'L1' THEN N'L1'
+                WHEN N'REPORTING_MANAGER1' THEN N'L1'
+                WHEN N'L2' THEN N'L2'
+                WHEN N'L3' THEN N'L3'
+                WHEN N'AUDITOR' THEN N'Auditor'
+                ELSE NULL
+            END;
+
+        IF @CanonicalRole IS NULL OR ISNULL(@ApproverStatus, N'') <> N'Pending'
+            THROW 59213, 'Only the approver who currently holds this request can modify KM.', 1;
 
         SELECT @AccountsStatus = Status
         FROM dbo.SalesApprovalRequestApprover WITH (UPDLOCK, HOLDLOCK)
@@ -189,7 +206,7 @@ BEGIN
               @RegionRaw = NULLIF(LTRIM(RTRIM(TRY_CONVERT(VARCHAR(200), RegionId))), '')
             , @BranchRaw = NULLIF(LTRIM(RTRIM(TRY_CONVERT(VARCHAR(200), BranchId))), '')
             , @GradeRaw = NULLIF(LTRIM(RTRIM(TRY_CONVERT(VARCHAR(200), GradeId))), '')
-            , @DesignationRaw = NULLIF(LTRIM(RTRIM(TRY_CONVERT(VARCHAR(200), CategoryId))), '')
+            , @DesignationRaw = NULLIF(LTRIM(RTRIM(TRY_CONVERT(VARCHAR(200), Designation_ID))), '')
         FROM dbo.MST_UserMaster
         WHERE EmployeeCode = @EmployeeCode;
 
@@ -293,9 +310,9 @@ BEGIN
         WHERE ActivityId = @ActivityId;
 
         INSERT INTO dbo.SalesDailyActivityKMHistory
-            (ActivityId, OldKM, NewKM, ModifiedBy, Reason)
+            (ActivityId, OldKM, NewKM, ModifiedBy, ModifiedDateTime, Reason, ApprovalRequestId, ApproverRole, ApproverLevel)
         VALUES
-            (@ActivityId, @OldKM, @NewKM, @ChangedBy, @Reason);
+            (@ActivityId, @OldKM, @NewKM, @ChangedBy, DATEADD(MINUTE, 330, SYSUTCDATETIME()), @Reason, @ApprovalRequestId, @CanonicalRole, @CurrentLevel);
 
         CREATE TABLE #RecalcClaimActivity (
               ActivityId INT NULL
