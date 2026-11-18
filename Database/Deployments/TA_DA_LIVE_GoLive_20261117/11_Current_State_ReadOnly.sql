@@ -1,0 +1,92 @@
+/*
+    Package:  TA/DA LIVE Go-Live 20261117
+    File:     11_Current_State_ReadOnly.sql
+    Writes:   none. No procedure is executed. No table is created.
+    Purpose:  Re-read the 2026-11-18 Dev-to-LIVE fingerprints on AnmolDristi.
+
+    10_Preflight_ReadOnly.sql and 50_Postflight_ReadOnly.sql still judge the
+    2026-11-17 discovery snapshot. A FAIL from those files is expected on the
+    current catalog. It is not a reason to run 20, 30, 40, 60, or 61.
+
+    EXACT means the stored module hash equals the AnmolDristiDev hash captured
+    on 2026-11-18. FORMATTING_UNCHANGED means the LIVE hash is still the hash
+    classified in document 12 as quotes, spaces, or newlines only. DRIFT means
+    the module has moved since that read. This script does not compile modules
+    and does not prove a restore.
+*/
+SET NOCOUNT ON;
+
+SELECT
+    CASE
+        WHEN UPPER(CONVERT(nvarchar(256), @@SERVERNAME)) = N'MUMANMOAPP01\SQLEXPRESS'
+         AND DB_NAME() = N'AnmolDristi'
+        THEN N'PASS'
+        ELSE N'FAIL'
+    END AS IdentityCheck,
+    @@SERVERNAME AS ServerName,
+    DB_NAME() AS DatabaseName,
+    ORIGINAL_LOGIN() AS OriginalLogin,
+    USER_NAME() AS DatabaseUser,
+    @@TRANCOUNT AS OpenTransactionCount;
+
+SELECT
+    e.ObjectName,
+    LEN(d.definition) AS LiveChars,
+    DATALENGTH(d.definition) AS LiveBytes,
+    CONVERT(char(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), d.definition)), 2) AS LiveSha,
+    e.DevSha,
+    CASE
+        WHEN d.definition IS NULL THEN N'MISSING'
+        WHEN CONVERT(char(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), d.definition)), 2) = e.DevSha THEN N'EXACT'
+        WHEN CONVERT(char(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), d.definition)), 2) = e.LiveShaAt20261118
+         AND e.ClassAt20261118 = N'FORMATTING' THEN N'FORMATTING_UNCHANGED'
+        ELSE N'DRIFT'
+    END AS Result
+FROM
+(
+    VALUES
+    (N'usp_UpdateActivityKM_WithHistory', N'F6B07BE8B35F801CFE20053393B6B49E57BA175752FD56578049367E912915B9', N'F6B07BE8B35F801CFE20053393B6B49E57BA175752FD56578049367E912915B9', N'EXACT'),
+    (N'usp_RecalculateApprovalRequest',   N'57AF68BD0762111F88B687C336158151218968BA8C0325A19349DE607884733C', N'670E2D99199599A33216EB490E4020C7D54474CA66D48D555A7F2975DF9F308C', N'FORMATTING'),
+    (N'usp_RecalculateSalesClaim',        N'F9CF46C81A1673FE35762282E2C6A1844536A7EF7DF7934372B488726D2D8597', N'FC60A9CFC68BA480454A1D4A4653EAA9426D281267E6750AC3CD96DCC9A33ABC', N'FORMATTING'),
+    (N'usp_ProcessApprovalAction',        N'BF3A26BF5468796D98C245795FAC08F054163BFC15A1EEB0960FEC1AC3A6F4B3', N'379426A5DF44800E44ED0B1425AF778866110C35A5F6C2AEE8BFFD6C6D9F8ED0', N'FORMATTING'),
+    (N'usp_ReturnClaimToEmployee',        N'F510B5C9F9E373A89B766C66A36202DB57C957276607048E158CAC32A0720F86', N'7D83899D2316633A9F747D567293925F44192EF29999C0C881AB346F3E80B10F', N'FORMATTING'),
+    (N'usp_MarkRequestReadyForPayment',   N'E9097D3A83D66D61960F52C7B599F47F595B8943662601C4F4F0A9E6402FB409', N'2D565A377B668BFC23611F8288B8532B1F24727609EFA32394900B95EC6A69E2', N'FORMATTING'),
+    (N'usp_ForwardApprovalRequest',       N'71B71698CD9B0F0555E9E213E508E3412824D932FE128D879AC40E2295068B1D', N'02BC07F01C3EDB0B4519561427F679D6B897DBC74527BFC518970F0C000A9F77', N'FORMATTING'),
+    (N'usp_GetResolvedPolicy',            N'99ADB00C37DE0C62400F90B0CE4F6BB195A98129267A7221E490E196ACC2DA90', N'99ADB00C37DE0C62400F90B0CE4F6BB195A98129267A7221E490E196ACC2DA90', N'EXACT'),
+    (N'usp_ResolveDesignation',           N'3E65716AB518D0B17C59F2EAACF468CA6711575A0A98E4CC099750C460FE86E0', N'3E65716AB518D0B17C59F2EAACF468CA6711575A0A98E4CC099750C460FE86E0', N'EXACT'),
+    (N'usp_ResolveRegion',                N'AE775E56BA084315AEF5238D7FC0E4C1B780749B00678C39149959877DEFB601', N'AE775E56BA084315AEF5238D7FC0E4C1B780749B00678C39149959877DEFB601', N'EXACT'),
+    (N'usp_ResolveBranch',                N'B90A07B587348A066F3BA1BC1D15AEC4F566E72C46296FB4415A72EEEC06DE40', N'B90A07B587348A066F3BA1BC1D15AEC4F566E72C46296FB4415A72EEEC06DE40', N'EXACT'),
+    (N'usp_ResolveGrade',                 N'AF0E4E54B6B233FB587C5CD198F05653B2E3D6E2C9AC44EC54BF84D7796096A1', N'AF0E4E54B6B233FB587C5CD198F05653B2E3D6E2C9AC44EC54BF84D7796096A1', N'EXACT'),
+    (N'usp_UpdateActivityKM',             N'CD6205400D9CB66A5E791A55502B061D859569A6A822A285A5460E005484A1D0', N'6701BD23F2233FEF888C5E82476F332056D1D3B8411027D1685471F5048D25A1', N'FORMATTING'),
+    (N'usp_GetSalesDailyActivityKMHistory', N'1267653A00C8C5DDC077527F070B2DE16DE531CD04139403035D8ADE08CFEDA7', N'1267653A00C8C5DDC077527F070B2DE16DE531CD04139403035D8ADE08CFEDA7', N'EXACT')
+) AS e(ObjectName, DevSha, LiveShaAt20261118, ClassAt20261118)
+CROSS APPLY
+(
+    SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.' + e.ObjectName)) AS definition
+) AS d;
+
+SELECT
+    c.name AS ColumnName,
+    TYPE_NAME(c.user_type_id) AS TypeName,
+    c.max_length AS MaxBytes,
+    c.is_nullable AS IsNullable,
+    CASE
+        WHEN c.name = N'ApprovalRequestId' AND TYPE_NAME(c.user_type_id) = N'int' AND c.max_length = 4 AND c.is_nullable = 1 THEN N'PASS'
+        WHEN c.name = N'ApproverRole' AND TYPE_NAME(c.user_type_id) = N'nvarchar' AND c.max_length = 40 AND c.is_nullable = 1 THEN N'PASS'
+        WHEN c.name = N'ApproverLevel' AND TYPE_NAME(c.user_type_id) = N'int' AND c.max_length = 4 AND c.is_nullable = 1 THEN N'PASS'
+        ELSE N'FAIL'
+    END AS Result
+FROM sys.columns AS c
+WHERE c.object_id = OBJECT_ID(N'dbo.SalesDailyActivityKMHistory')
+  AND c.name IN (N'ApprovalRequestId', N'ApproverRole', N'ApproverLevel');
+
+SELECT
+    COUNT_BIG(*) AS HistoryRows,
+    SUM(CASE WHEN ApprovalRequestId IS NOT NULL AND ApproverRole IS NOT NULL AND ApproverLevel IS NOT NULL THEN 1 ELSE 0 END) AS AuditRowsComplete,
+    SUM(CASE
+            WHEN (ApprovalRequestId IS NULL AND ApproverRole IS NULL AND ApproverLevel IS NULL)
+              OR (ApprovalRequestId IS NOT NULL AND ApproverRole IS NOT NULL AND ApproverLevel IS NOT NULL)
+            THEN 0 ELSE 1
+        END) AS PartialAuditRows,
+    CASE WHEN OBJECT_ID(N'dbo.TaDaLiveGoLive_20261117_Preimage', N'U') IS NULL THEN N'ABSENT' ELSE N'PRESENT' END AS PackageEvidenceTable
+FROM dbo.SalesDailyActivityKMHistory;
