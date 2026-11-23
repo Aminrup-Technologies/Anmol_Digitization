@@ -6,6 +6,8 @@
 
 **Closure record, 2026-11-18.** `DR-NOCHANGE` below records the catalog result from document 12: no functional SQL difference requiring deployment for the tested TA/DA scope. Its choice, name, and date are blank. Formal DBA/IT acceptance is unsigned. This note does not fill any signature field. Feature implementation for that tested scope is closed. DBA/IT governance sign-off stays pending. Runtime financial and payment verification stay untested.
 
+**Additive notice, WP-03 stored values.** Document 12 records a stored-value accuracy defect: the four-counter formula is already on both catalogs, and the stored values do not match it. The counter-only design in that document excludes `ReadyForPayment`, leaves `ReturnedActivities` unchanged, and was not executed. Status: `WP-03 DESIGN PREPARED — CORRECTION NOT EXECUTED — FEATURE CLOSURE PENDING`. This note does not fill DR-COUNTER or any other signature.
+
 `docs/INDEX.md` §8 is the standing conflict record. C-1 and C-3 are **pending** there. RC-017 documents and scripts listed in `07` do not decide them. `INDEX` still prints `HEAD` as `52c1f32` in the C-1 pair table. Current `HEAD` is `c9eba192a1e504a0c8e4da2869a1b57d29246cf4`. The two workflow files are unchanged since `52c1f32`. That fact does not select a pair.
 
 A signature made before the evidence ID in the same row is accepted is not a valid decision. Blank name, choice, and date mean **unsigned**.
@@ -82,7 +84,7 @@ A signature made before the evidence ID in the same row is accepted is not a val
 | Acceptance reviewer | CAB |
 | What the commit contains | A local, unpushed edit to the Approval file only. It counts the latest detail per `ActivityId` (`DetailVersion` descending, then `ApprovalRequestDetailId` descending). It assigns `TotalActivities`, `PendingActivities`, `ApprovedActivities`, and `RejectedActivities`. A latest `Returned` row increments `TotalActivities` only. `ReturnedActivities` is not assigned. `ReadyForPayment` returns before any write. The approved-amount `SUM` is unchanged versus parent `98947eb` / `755b94e` for that file. |
 | Allowed choices | **A.** Accept `c9eba19` only when EV-RECALC's financial section matches that parent, or when the owner writes a separate sentence accepting each financial difference. **B.** Reject `c9eba19`. |
-| What does not close it | The untracked file `Database/Deployments/ApprovalRequestActivityCounters/B_Apply_ActivityCounters_UAT.sql`. Its declared hash was not read from LIVE, and the script aborts on `AnmolDristi`. DR-C3 choice B or C. |
+| What does not close it | The untracked file `Database/Deployments/ApprovalRequestActivityCounters/B_Apply_ActivityCounters_UAT.sql`. Its declared hash was not read from LIVE, and the script aborts on `AnmolDristi`. DR-C3 choice B or C. The unsigned counter-only design in document 12. That design was not executed and does not assign `ReturnedActivities`. |
 | Returned-column question | If the owner wants `ReturnedActivities` updated, that is a new candidate, not `c9eba19`. Record it as choice B and a follow-on change request. |
 | Choice | |
 | Name | |

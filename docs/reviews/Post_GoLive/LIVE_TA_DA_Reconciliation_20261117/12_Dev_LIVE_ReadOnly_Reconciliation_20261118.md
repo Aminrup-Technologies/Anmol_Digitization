@@ -4,7 +4,9 @@
 
 **Closure status: DOCUMENTATION UPDATED — NO-CHANGE DEPLOYMENT DECISION PENDING FORMAL ACCEPTANCE.**
 
-**Disposition.** Feature implementation for the tested TA/DA scope is CLOSED. Dev-to-LIVE SQL reconciliation for that scope is COMPLETE: no further functional SQL deployment is required. DBA/IT governance sign-off is pending. `DR-NOCHANGE`, C-1, and C-3 remain unsigned. Runtime financial and payment verification remain NOT TESTED. A local Git commit of these files is not a deployment, a backup verification, or a signature.
+**Disposition.** Feature implementation for the tested TA/DA scope is CLOSED. Dev-to-LIVE SQL reconciliation for that scope is COMPLETE: no further functional SQL deployment is required. DBA/IT governance sign-off is pending. `DR-NOCHANGE`, C-1, and C-3 remain unsigned. Runtime financial and payment verification remain NOT TESTED. A local Git commit of these files is not a deployment, a backup verification, or a signature. The statement that feature implementation is closed refers only to that tested procedure-deployment scope. WP-03 stored-counter acceptance remains pending.
+
+**Additive notice, WP-03 stored values.** A later read-only inspection found that the four-counter formula is already the executed procedure on both catalogs, and that the stored counter values do not match it. That is a stored-value accuracy defect. It does not change the procedure-body conclusion above, and it does not authorize file `40`. Status: `DESIGN CORRECTED — READY FOR INDEPENDENT REVIEW — EXECUTION NOT AUTHORIZED`. WP-03 stored-counter acceptance remains pending. The design is at the end of this file. No backfill was run. `ReturnedActivities` stays outside that design. DR-COUNTER stays unsigned.
 
 For the tested TA/DA SQL scope, no functional difference requiring a deployment was identified. WP-01 and WP-02 are already present on `AnmolDristi` and match `AnmolDristiDev`. Other procedure differences are formatting only and are not normalized. WP-03 stays excluded. Scripts `20`, `30`, `40`, `60`, and `61` are NOT TO BE EXECUTED for this outcome. `RESTORE VERIFYONLY` and an isolated restore remain NOT AVAILABLE. Runtime financial and payment verification remain NOT TESTED. `DR-NOCHANGE` in `08_Owner_Decision_Register.md` records that result with choice, name, and date left blank. This paragraph is not a DBA or IT signature.
 
@@ -158,3 +160,610 @@ Least privilege for a future state-changing login remains the matrix in `01_Depl
 ## Not tested
 
 Procedure execution, claim recalculation, payment transition, `RESTORE VERIFYONLY`, and an isolated restore were not performed. Financial correctness is not claimed from the text comparison.
+
+## WP-03 stored-counter defect and correction design
+
+**Status: `DESIGN CORRECTED — READY FOR INDEPENDENT REVIEW — EXECUTION NOT AUTHORIZED`.** WP-03 stored-counter acceptance remains pending.
+
+This section is additive. The procedure-replacement row above still stands: file `40_WP03_ActivityCounters.sql` stays `EXCLUDED — DO NOT EXECUTE`. This design does not alter `dbo.usp_RecalculateApprovalRequest`, does not assign `ReturnedActivities`, and does not write any amount, status, or detail column. No statement in this section has been executed.
+
+### Confirmed defect
+
+On 2026-11-18 the reader sessions were `AnmolDristi` and `AnmolDristiDev` on `MUMANMOAPP01\SQLEXPRESS`, both `ONLINE`. The executed modules were the Approval-file shape. LIVE was 8,751 characters, `modify_date` 2026-11-18 10:22:57.790. Dev was 8,747 characters, `modify_date` 2026-11-17 17:55:43.880. The visible difference is the LIVE brackets in `[dbo].[usp_RecalculateApprovalRequest]`. SHA-256 was not recomputed in that inspection. The earlier hashes remain historical evidence: LIVE `670E2D99199599A33216EB490E4020C7D54474CA66D48D555A7F2975DF9F308C`, Dev `57AF68BD0762111F88B687C336158151218968BA8C0325A19349DE607884733C`. Neither module contains `ReturnedActivities`.
+
+The formula counts one latest detail per activity, ordered by `ISNULL(DetailVersion, 1) DESC`, then `ApprovalRequestDetailId DESC`. `TotalActivities` is `COUNT(*)`. `PendingActivities`, `ApprovedActivities`, and `RejectedActivities` count the exact strings `Pending`, `Approved`, and `Rejected`. Any other latest status, including `Returned` and NULL, increases `TotalActivities` only. `ReadyForPayment` returns before those assignments.
+
+Stored values on that read:
+
+| Catalog | Requests | Rows matching the formula | `ReturnedActivities` not 0 |
+| --- | --- | --- | --- |
+| `AnmolDristi` | 2,269 | 45 | 0 |
+| `AnmolDristiDev` | 137 | 5 | 0 |
+
+LIVE `Pending`: 308 requests, 13 matching. 290 of those 308 had classified latest details while the three status counters were still 0. `TotalActivities` differed on 6 of the 308. LIVE `ReadyForPayment`: 1,810 requests, 1,779 not matching, 1,320 all four counters at 0. Those paid rows are excluded from the correction because the procedure itself does not rewrite them.
+
+No module other than `usp_RecalculateApprovalRequest`, `usp_SubmitSalesDailyActivities`, and `usp_GetApprovalRequest` references the four counters. No module references `ReturnedActivities`. The approval screen counts detail rows. Payment eligibility counts unresolved latest details. The column remains `int NOT NULL` default `((0))` and is left unchanged.
+
+### Target and exclusions
+
+The proposal below is for `AnmolDristi` only. Dev is evidence, not a target. At run time the script must recompute the population. It must not require the historical counts above, because ordinary workflow can change them before a later approval.
+
+| In the update | Out of the update |
+| --- | --- |
+| Header rows whose `Status` is not `ReadyForPayment` and whose four counters differ from the formula | Every `ReadyForPayment` row |
+| `TotalActivities`, `PendingActivities`, `ApprovedActivities`, `RejectedActivities` | `ReturnedActivities`, every amount column, `Status`, approver columns, detail rows, expenses, and the procedure text |
+
+A request with no detail rows uses the same result as the procedure's initialized variables: all four counters 0.
+
+### Schema evidence used by this design
+
+`Database/Tables/SalesApprovalRequest.sql` is the repository extraction dated 2026-08-02 from `AnmolDristiDev`. This task did not query the live catalog. In that script, `Status` is `nvarchar(50) NOT NULL` with default `Pending`. `ModifiedOn` is `datetime2(7) NULL`. `ModifiedBy` and `CurrentApproverLoginId` are `nvarchar(100) NULL`. `CurrentApproverLevel` is `int NULL`. `OriginalClaimAmount` and `TotalDeductionAmount` are `decimal(18,2) NULL`. The preflight below requires `Status` to be non-nullable `nvarchar(50)`. There is no approved NULL-status population.
+
+That script contains no trigger. A search of `Database/**/*.sql` finds one `CREATE TRIGGER`, `dbo.TR_PolicyExceptionHistory_PreventMutation`, and it is not on `SalesApprovalRequest`. No `SCHEMABINDING` view was found. Four foreign keys reference `ApprovalRequestId` and declare no `ON UPDATE` or `ON DELETE` action: `FK_ApprovalHistory_Request`, `FK_SARDetail_Request`, `FK_SalesApprovalRequestApprover_Request`, and `FK_Adjustment_Request`. This design does not change `ApprovalRequestId`, so those keys do not rewrite child rows. `sys.triggers` was not read. A live trigger outside this extraction remains unverified. The checks below can see a change only in the snapshotted columns. They do not prove that an unlisted trigger left every other table unchanged.
+
+### Safety controls
+
+The text aborts while `@CorrectionApproved` is `UNSIGNED` and while `@CommitMode` is `ROLLBACK-ONLY`. Replacing either literal is a later reviewed source change, not something to type into a session. It also aborts when the server, database, open transaction, counter column shape, or LIVE procedure fingerprint differs from this section. The fingerprint gate is the historical LIVE hash and length 8,751, plus the `ReadyForPayment` return and the absence of `ReturnedActivities`.
+
+This design acquires `UPDLOCK, HOLDLOCK` on the header rows before it acquires those hints on the detail rows. `usp_MarkRequestReadyForPayment` may acquire detail locks before header locks. Concurrent execution can therefore deadlock. SQL Server rolls back the deadlock victim's transaction. The surviving transaction may continue after the victim releases its locks. This design does not retry. The update predicate still requires the locked `Status`, `ModifiedOn`, four counters, `ReturnedActivities`, and amount columns to equal the before-image, so a change that committed before those locks were taken is not overwritten.
+
+There is no separate rollback file. Failure uses `ROLLBACK` and rethrows. The only committed-data reversal is a later reviewed update that restores the four counters from the before-image result set saved by the DBA. That reversal must use the same locks and must not touch amount or status columns. Scripts `40`, `60`, and `61` are not that reversal.
+
+### Before and after evidence required
+
+Before the update, while the transaction is open, the session returns:
+
+1. Server, database, procedure length, SHA-256, and the NULL-counter count. The SHA-256 gate uses the historical LIVE hash. This file does not re-verify that hash.
+2. Non-payment mismatch counts from `#before` and `#formula`, grouped by `Status`.
+3. The row-level before-image of every non-payment row whose four counters differ from `#formula`.
+4. One diagnostic count, `ReadyForPaymentFormulaMismatch`. It uses the same latest-detail formula and reads `#payBefore`. It is not an update target, and it is not the preservation check.
+
+`#payBefore` is the locked `ReadyForPayment` snapshot. Error `59540` compares the row count, the snapshotted values, and the row set. A current `ReadyForPayment` id missing from `#payBefore`, or a `#payBefore` id that is no longer `ReadyForPayment`, fails that check. The formula-mismatch diagnostic does not.
+
+After the preservation checks, and before throw `59537`, the session returns the summary grids and one row-level grid, `CounterReconciliation`, with `ApprovalRequestId` and the old, proposed, and current values of the four counters. The transaction is still open. Those grids are a rollback-only rehearsal, not committed after-state evidence.
+
+A future committed run would still need the saved grids, the DBA name, and the actual commit time. This document does not supply them. DR-COUNTER choice, name, and date stay blank. WP-03 stored-counter acceptance remains pending.
+
+```sql
+/*
+    WP-03 counter-only correction DESIGN.
+    Status: NOT TO BE EXECUTED.
+    Not a deployment script. Does not replace or run 40_WP03_ActivityCounters.sql.
+    Target: AnmolDristi on MUMANMOAPP01\SQLEXPRESS.
+    Writes, only after both gate literals are replaced in a reviewed revision:
+      TotalActivities, PendingActivities, ApprovedActivities, RejectedActivities
+      on headers whose Status is not ReadyForPayment.
+    Does not assign ReturnedActivities and does not change amounts, status, or details.
+*/
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+DECLARE @CorrectionApproved nvarchar(40) = N'UNSIGNED';
+DECLARE @CommitMode nvarchar(20) = N'ROLLBACK-ONLY';
+
+IF @CorrectionApproved <> N'DR-COUNTER-CORRECTION-A'
+    THROW 59530, N'ABORT: counter-only correction is unsigned. No row was changed.', 1;
+IF UPPER(CONVERT(nvarchar(256), SERVERPROPERTY('ServerName'))) <> N'MUMANMOAPP01\SQLEXPRESS'
+    OR UPPER(CONVERT(nvarchar(256), @@SERVERNAME)) <> N'MUMANMOAPP01\SQLEXPRESS'
+    THROW 59531, N'ABORT: server is not the approved target.', 1;
+IF DB_NAME() <> N'AnmolDristi'
+    THROW 59532, N'ABORT: database is not AnmolDristi.', 1;
+IF @@TRANCOUNT <> 0
+    THROW 59533, N'ABORT: a transaction is already open.', 1;
+IF DATABASEPROPERTYEX(DB_NAME(), 'Updateability') <> N'READ_WRITE'
+    THROW 59532, N'ABORT: database is not read-write.', 1;
+
+IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+        (N'TotalActivities'),
+        (N'PendingActivities'),
+        (N'ApprovedActivities'),
+        (N'RejectedActivities'),
+        (N'ReturnedActivities')
+    ) AS n(ColumnName)
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM sys.columns AS c
+        INNER JOIN sys.types AS t ON t.user_type_id = c.user_type_id
+        WHERE c.object_id = OBJECT_ID(N'dbo.SalesApprovalRequest')
+          AND c.name = n.ColumnName
+          AND t.name = N'int'
+          AND c.is_nullable = 0
+    )
+)
+    THROW 59534, N'ABORT: a counter column is missing or is not int NOT NULL.', 1;
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.columns AS c
+    INNER JOIN sys.types AS t ON t.user_type_id = c.user_type_id
+    WHERE c.object_id = OBJECT_ID(N'dbo.SalesApprovalRequest')
+      AND c.name = N'Status'
+      AND t.name = N'nvarchar'
+      AND c.max_length = 100
+      AND c.is_nullable = 0
+)
+    THROW 59541, N'ABORT: Status is not nvarchar(50) NOT NULL. The repository extraction has no NULL-status population.', 1;
+
+IF EXISTS (
+    SELECT 1
+    FROM (VALUES
+        (N'ModifiedOn', N'datetime2', 1),
+        (N'ModifiedBy', N'nvarchar', 1),
+        (N'CurrentApproverLoginId', N'nvarchar', 1),
+        (N'CurrentApproverLevel', N'int', 1),
+        (N'OriginalClaimAmount', N'decimal', 1),
+        (N'TotalDeductionAmount', N'decimal', 1)
+    ) AS e(ColumnName, TypeName, NullableBit)
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM sys.columns AS c
+        INNER JOIN sys.types AS t ON t.user_type_id = c.user_type_id
+        WHERE c.object_id = OBJECT_ID(N'dbo.SalesApprovalRequest')
+          AND c.name = e.ColumnName
+          AND t.name = e.TypeName
+          AND c.is_nullable = e.NullableBit
+    )
+)
+    THROW 59542, N'ABORT: an approver, routing, audit, or payment column is missing or has a different nullability.', 1;
+
+DECLARE @def nvarchar(max) = OBJECT_DEFINITION(OBJECT_ID(N'dbo.usp_RecalculateApprovalRequest'));
+DECLARE @sha char(64) = CONVERT(char(64), HASHBYTES('SHA2_256', CONVERT(varbinary(max), @def)), 2);
+IF @def IS NULL
+    OR LEN(@def) <> 8751
+    OR @sha <> N'670E2D99199599A33216EB490E4020C7D54474CA66D48D555A7F2975DF9F308C'
+    OR CHARINDEX(N'ReturnedActivities', @def) > 0
+    OR CHARINDEX(N'IF @HeaderStatus = N''ReadyForPayment''', @def) = 0
+    OR CHARINDEX(N'TotalActivities      = @TotalActivities', @def) = 0
+    OR CHARINDEX(N'PendingActivities    = @PendingActivities', @def) = 0
+    OR CHARINDEX(N'ApprovedActivities   = @ApprovedActivities', @def) = 0
+    OR CHARINDEX(N'RejectedActivities   = @RejectedActivities', @def) = 0
+    THROW 59535, N'ABORT: usp_RecalculateApprovalRequest is not the reviewed LIVE module.', 1;
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    CREATE TABLE #before
+    (
+        ApprovalRequestId int NOT NULL PRIMARY KEY,
+        Status nvarchar(50) NOT NULL,
+        ModifiedOn datetime2 NULL,
+        ModifiedBy nvarchar(100) NULL,
+        CurrentApproverLoginId nvarchar(100) NULL,
+        CurrentApproverLevel int NULL,
+        TotalActivities int NOT NULL,
+        PendingActivities int NOT NULL,
+        ApprovedActivities int NOT NULL,
+        RejectedActivities int NOT NULL,
+        ReturnedActivities int NOT NULL,
+        FinalApprovedAmount decimal(18,2) NULL,
+        ApprovedKM decimal(12,2) NULL,
+        ApprovedClaimAmount decimal(18,2) NULL,
+        ApprovedDAAmount decimal(18,2) NULL,
+        ApprovedHotelAmount decimal(18,2) NULL,
+        ApprovedTravelAmount decimal(18,2) NULL,
+        OriginalClaimAmount decimal(18,2) NULL,
+        TotalDeductionAmount decimal(18,2) NULL
+    );
+
+    CREATE TABLE #payBefore
+    (
+        ApprovalRequestId int NOT NULL PRIMARY KEY,
+        Status nvarchar(50) NOT NULL,
+        ModifiedOn datetime2 NULL,
+        ModifiedBy nvarchar(100) NULL,
+        CurrentApproverLoginId nvarchar(100) NULL,
+        CurrentApproverLevel int NULL,
+        TotalActivities int NOT NULL,
+        PendingActivities int NOT NULL,
+        ApprovedActivities int NOT NULL,
+        RejectedActivities int NOT NULL,
+        ReturnedActivities int NOT NULL,
+        FinalApprovedAmount decimal(18,2) NULL,
+        ApprovedKM decimal(12,2) NULL,
+        ApprovedClaimAmount decimal(18,2) NULL,
+        ApprovedDAAmount decimal(18,2) NULL,
+        ApprovedHotelAmount decimal(18,2) NULL,
+        ApprovedTravelAmount decimal(18,2) NULL,
+        OriginalClaimAmount decimal(18,2) NULL,
+        TotalDeductionAmount decimal(18,2) NULL
+    );
+
+    INSERT INTO #before
+    (
+        ApprovalRequestId, Status, ModifiedOn, ModifiedBy, CurrentApproverLoginId, CurrentApproverLevel,
+        TotalActivities, PendingActivities, ApprovedActivities, RejectedActivities, ReturnedActivities,
+        FinalApprovedAmount, ApprovedKM, ApprovedClaimAmount, ApprovedDAAmount, ApprovedHotelAmount, ApprovedTravelAmount,
+        OriginalClaimAmount, TotalDeductionAmount
+    )
+    SELECT
+        h.ApprovalRequestId, h.Status, h.ModifiedOn, h.ModifiedBy, h.CurrentApproverLoginId, h.CurrentApproverLevel,
+        h.TotalActivities, h.PendingActivities, h.ApprovedActivities, h.RejectedActivities, h.ReturnedActivities,
+        h.FinalApprovedAmount, h.ApprovedKM, h.ApprovedClaimAmount, h.ApprovedDAAmount, h.ApprovedHotelAmount, h.ApprovedTravelAmount,
+        h.OriginalClaimAmount, h.TotalDeductionAmount
+    FROM dbo.SalesApprovalRequest AS h WITH (UPDLOCK, HOLDLOCK)
+    WHERE h.Status <> N'ReadyForPayment';
+
+    INSERT INTO #payBefore
+    (
+        ApprovalRequestId, Status, ModifiedOn, ModifiedBy, CurrentApproverLoginId, CurrentApproverLevel,
+        TotalActivities, PendingActivities, ApprovedActivities, RejectedActivities, ReturnedActivities,
+        FinalApprovedAmount, ApprovedKM, ApprovedClaimAmount, ApprovedDAAmount, ApprovedHotelAmount, ApprovedTravelAmount,
+        OriginalClaimAmount, TotalDeductionAmount
+    )
+    SELECT
+        h.ApprovalRequestId, h.Status, h.ModifiedOn, h.ModifiedBy, h.CurrentApproverLoginId, h.CurrentApproverLevel,
+        h.TotalActivities, h.PendingActivities, h.ApprovedActivities, h.RejectedActivities, h.ReturnedActivities,
+        h.FinalApprovedAmount, h.ApprovedKM, h.ApprovedClaimAmount, h.ApprovedDAAmount, h.ApprovedHotelAmount, h.ApprovedTravelAmount,
+        h.OriginalClaimAmount, h.TotalDeductionAmount
+    FROM dbo.SalesApprovalRequest AS h WITH (UPDLOCK, HOLDLOCK)
+    WHERE h.Status = N'ReadyForPayment';
+
+    DECLARE @detailLock bigint;
+    SELECT @detailLock = COUNT_BIG(*)
+    FROM dbo.SalesApprovalRequestDetail AS d WITH (UPDLOCK, HOLDLOCK)
+    WHERE d.ApprovalRequestId IN (
+        SELECT b.ApprovalRequestId FROM #before AS b
+        UNION ALL
+        SELECT p.ApprovalRequestId FROM #payBefore AS p
+    );
+
+    CREATE TABLE #formula
+    (
+        ApprovalRequestId int NOT NULL PRIMARY KEY,
+        TotalActivities int NOT NULL,
+        PendingActivities int NOT NULL,
+        ApprovedActivities int NOT NULL,
+        RejectedActivities int NOT NULL
+    );
+
+    INSERT INTO #formula
+    (
+        ApprovalRequestId, TotalActivities, PendingActivities, ApprovedActivities, RejectedActivities
+    )
+    SELECT
+        ranked.ApprovalRequestId,
+        COUNT(*),
+        ISNULL(SUM(CASE WHEN ranked.DetailStatus = 'Pending'  THEN 1 ELSE 0 END), 0),
+        ISNULL(SUM(CASE WHEN ranked.DetailStatus = 'Approved' THEN 1 ELSE 0 END), 0),
+        ISNULL(SUM(CASE WHEN ranked.DetailStatus = 'Rejected' THEN 1 ELSE 0 END), 0)
+    FROM
+    (
+        SELECT
+            d.ApprovalRequestId,
+            d.DetailStatus,
+            ROW_NUMBER() OVER (
+                PARTITION BY d.ApprovalRequestId, d.ActivityId
+                ORDER BY ISNULL(d.DetailVersion, 1) DESC, d.ApprovalRequestDetailId DESC
+            ) AS RN
+        FROM dbo.SalesApprovalRequestDetail AS d
+        INNER JOIN #before AS b ON b.ApprovalRequestId = d.ApprovalRequestId
+    ) AS ranked
+    WHERE ranked.RN = 1
+    GROUP BY ranked.ApprovalRequestId;
+
+    INSERT INTO #formula
+    (
+        ApprovalRequestId, TotalActivities, PendingActivities, ApprovedActivities, RejectedActivities
+    )
+    SELECT b.ApprovalRequestId, 0, 0, 0, 0
+    FROM #before AS b
+    WHERE NOT EXISTS (SELECT 1 FROM #formula AS f WHERE f.ApprovalRequestId = b.ApprovalRequestId);
+
+    SELECT
+        DB_NAME() AS DatabaseName,
+        @@SERVERNAME AS ServerName,
+        LEN(@def) AS ProcedureCharacters,
+        @sha AS ProcedureSha256,
+        (SELECT COUNT(*) FROM dbo.SalesApprovalRequest WHERE TotalActivities IS NULL OR PendingActivities IS NULL OR ApprovedActivities IS NULL OR RejectedActivities IS NULL OR ReturnedActivities IS NULL) AS NullCounterRows;
+
+    SELECT
+        b.Status,
+        COUNT(*) AS RequestRows,
+        SUM(CASE
+            WHEN b.TotalActivities <> f.TotalActivities
+              OR b.PendingActivities <> f.PendingActivities
+              OR b.ApprovedActivities <> f.ApprovedActivities
+              OR b.RejectedActivities <> f.RejectedActivities
+            THEN 1 ELSE 0 END) AS NonPaymentMismatch
+    FROM #before AS b
+    INNER JOIN #formula AS f ON f.ApprovalRequestId = b.ApprovalRequestId
+    GROUP BY b.Status;
+
+    SELECT
+        b.ApprovalRequestId, b.Status, b.ModifiedOn, b.ReturnedActivities,
+        b.TotalActivities AS OldTotal, f.TotalActivities AS NewTotal,
+        b.PendingActivities AS OldPending, f.PendingActivities AS NewPending,
+        b.ApprovedActivities AS OldApproved, f.ApprovedActivities AS NewApproved,
+        b.RejectedActivities AS OldRejected, f.RejectedActivities AS NewRejected
+    FROM #before AS b
+    INNER JOIN #formula AS f ON f.ApprovalRequestId = b.ApprovalRequestId
+    WHERE b.TotalActivities <> f.TotalActivities
+       OR b.PendingActivities <> f.PendingActivities
+       OR b.ApprovedActivities <> f.ApprovedActivities
+       OR b.RejectedActivities <> f.RejectedActivities;
+
+    DECLARE @target int = (
+        SELECT COUNT(*)
+        FROM #before AS b
+        INNER JOIN #formula AS f ON f.ApprovalRequestId = b.ApprovalRequestId
+        WHERE b.TotalActivities <> f.TotalActivities
+           OR b.PendingActivities <> f.PendingActivities
+           OR b.ApprovedActivities <> f.ApprovedActivities
+           OR b.RejectedActivities <> f.RejectedActivities
+    );
+    DECLARE @paymentRows int = (SELECT COUNT(*) FROM #payBefore);
+
+    /* Read-only diagnostic. #payBefore rows are not inserted into #formula and are not an update target. */
+    SELECT
+        N'ReadyForPaymentFormulaMismatch' AS EvidenceSet,
+        COUNT(*) AS ReadyForPaymentFormulaMismatch
+    FROM #payBefore AS p
+    LEFT JOIN
+    (
+        SELECT
+            ranked.ApprovalRequestId,
+            COUNT(*) AS TotalActivities,
+            ISNULL(SUM(CASE WHEN ranked.DetailStatus = 'Pending'  THEN 1 ELSE 0 END), 0) AS PendingActivities,
+            ISNULL(SUM(CASE WHEN ranked.DetailStatus = 'Approved' THEN 1 ELSE 0 END), 0) AS ApprovedActivities,
+            ISNULL(SUM(CASE WHEN ranked.DetailStatus = 'Rejected' THEN 1 ELSE 0 END), 0) AS RejectedActivities
+        FROM
+        (
+            SELECT
+                d.ApprovalRequestId,
+                d.DetailStatus,
+                ROW_NUMBER() OVER (
+                    PARTITION BY d.ApprovalRequestId, d.ActivityId
+                    ORDER BY ISNULL(d.DetailVersion, 1) DESC, d.ApprovalRequestDetailId DESC
+                ) AS RN
+            FROM dbo.SalesApprovalRequestDetail AS d
+            INNER JOIN #payBefore AS pay ON pay.ApprovalRequestId = d.ApprovalRequestId
+        ) AS ranked
+        WHERE ranked.RN = 1
+        GROUP BY ranked.ApprovalRequestId
+    ) AS payFormula
+        ON payFormula.ApprovalRequestId = p.ApprovalRequestId
+    WHERE ISNULL(payFormula.TotalActivities, 0) <> p.TotalActivities
+       OR ISNULL(payFormula.PendingActivities, 0) <> p.PendingActivities
+       OR ISNULL(payFormula.ApprovedActivities, 0) <> p.ApprovedActivities
+       OR ISNULL(payFormula.RejectedActivities, 0) <> p.RejectedActivities;
+
+    UPDATE h
+    SET
+        h.TotalActivities = f.TotalActivities,
+        h.PendingActivities = f.PendingActivities,
+        h.ApprovedActivities = f.ApprovedActivities,
+        h.RejectedActivities = f.RejectedActivities
+    FROM dbo.SalesApprovalRequest AS h
+    INNER JOIN #before AS b ON b.ApprovalRequestId = h.ApprovalRequestId
+    INNER JOIN #formula AS f ON f.ApprovalRequestId = h.ApprovalRequestId
+    WHERE h.Status = b.Status
+      AND h.Status <> N'ReadyForPayment'
+      AND ((h.ModifiedOn = b.ModifiedOn) OR (h.ModifiedOn IS NULL AND b.ModifiedOn IS NULL))
+      AND h.TotalActivities = b.TotalActivities
+      AND h.PendingActivities = b.PendingActivities
+      AND h.ApprovedActivities = b.ApprovedActivities
+      AND h.RejectedActivities = b.RejectedActivities
+      AND h.ReturnedActivities = b.ReturnedActivities
+      AND ((h.FinalApprovedAmount = b.FinalApprovedAmount) OR (h.FinalApprovedAmount IS NULL AND b.FinalApprovedAmount IS NULL))
+      AND ((h.ApprovedKM = b.ApprovedKM) OR (h.ApprovedKM IS NULL AND b.ApprovedKM IS NULL))
+      AND ((h.ApprovedClaimAmount = b.ApprovedClaimAmount) OR (h.ApprovedClaimAmount IS NULL AND b.ApprovedClaimAmount IS NULL))
+      AND ((h.ApprovedDAAmount = b.ApprovedDAAmount) OR (h.ApprovedDAAmount IS NULL AND b.ApprovedDAAmount IS NULL))
+      AND ((h.ApprovedHotelAmount = b.ApprovedHotelAmount) OR (h.ApprovedHotelAmount IS NULL AND b.ApprovedHotelAmount IS NULL))
+      AND ((h.ApprovedTravelAmount = b.ApprovedTravelAmount) OR (h.ApprovedTravelAmount IS NULL AND b.ApprovedTravelAmount IS NULL))
+      AND EXISTS (SELECT h.ModifiedBy INTERSECT SELECT b.ModifiedBy)
+      AND EXISTS (SELECT h.CurrentApproverLoginId INTERSECT SELECT b.CurrentApproverLoginId)
+      AND EXISTS (SELECT h.CurrentApproverLevel INTERSECT SELECT b.CurrentApproverLevel)
+      AND EXISTS (SELECT h.OriginalClaimAmount INTERSECT SELECT b.OriginalClaimAmount)
+      AND EXISTS (SELECT h.TotalDeductionAmount INTERSECT SELECT b.TotalDeductionAmount)
+      AND (
+            b.TotalActivities <> f.TotalActivities
+         OR b.PendingActivities <> f.PendingActivities
+         OR b.ApprovedActivities <> f.ApprovedActivities
+         OR b.RejectedActivities <> f.RejectedActivities
+      );
+
+    DECLARE @updated int = @@ROWCOUNT;
+
+    IF @updated <> @target
+        THROW 59536, N'ABORT: a locked row changed or the update count moved. Rolled back.', 1;
+
+    IF (SELECT COUNT(*) FROM dbo.SalesApprovalRequest WHERE Status = N'ReadyForPayment') <> @paymentRows
+        OR EXISTS (
+            SELECT h.ApprovalRequestId
+            FROM dbo.SalesApprovalRequest AS h
+            WHERE h.Status = N'ReadyForPayment'
+            EXCEPT
+            SELECT p.ApprovalRequestId FROM #payBefore AS p
+        )
+        OR EXISTS (
+            SELECT p.ApprovalRequestId FROM #payBefore AS p
+            EXCEPT
+            SELECT h.ApprovalRequestId
+            FROM dbo.SalesApprovalRequest AS h
+            WHERE h.Status = N'ReadyForPayment'
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM #payBefore AS p
+            INNER JOIN dbo.SalesApprovalRequest AS h ON h.ApprovalRequestId = p.ApprovalRequestId
+            WHERE h.Status <> p.Status
+               OR h.TotalActivities <> p.TotalActivities
+               OR h.PendingActivities <> p.PendingActivities
+               OR h.ApprovedActivities <> p.ApprovedActivities
+               OR h.RejectedActivities <> p.RejectedActivities
+               OR h.ReturnedActivities <> p.ReturnedActivities
+               OR EXISTS (SELECT h.ModifiedOn EXCEPT SELECT p.ModifiedOn)
+               OR EXISTS (SELECT h.ModifiedBy EXCEPT SELECT p.ModifiedBy)
+               OR EXISTS (SELECT h.CurrentApproverLoginId EXCEPT SELECT p.CurrentApproverLoginId)
+               OR EXISTS (SELECT h.CurrentApproverLevel EXCEPT SELECT p.CurrentApproverLevel)
+               OR EXISTS (SELECT h.FinalApprovedAmount EXCEPT SELECT p.FinalApprovedAmount)
+               OR EXISTS (SELECT h.ApprovedKM EXCEPT SELECT p.ApprovedKM)
+               OR EXISTS (SELECT h.ApprovedClaimAmount EXCEPT SELECT p.ApprovedClaimAmount)
+               OR EXISTS (SELECT h.ApprovedDAAmount EXCEPT SELECT p.ApprovedDAAmount)
+               OR EXISTS (SELECT h.ApprovedHotelAmount EXCEPT SELECT p.ApprovedHotelAmount)
+               OR EXISTS (SELECT h.ApprovedTravelAmount EXCEPT SELECT p.ApprovedTravelAmount)
+               OR EXISTS (SELECT h.OriginalClaimAmount EXCEPT SELECT p.OriginalClaimAmount)
+               OR EXISTS (SELECT h.TotalDeductionAmount EXCEPT SELECT p.TotalDeductionAmount)
+        )
+        THROW 59540, N'ABORT: the ReadyForPayment row set or snapshot changed. This is not a formula-mismatch check. Rolled back.', 1;
+
+    IF EXISTS (
+        SELECT 1
+        FROM dbo.SalesApprovalRequest AS h
+        INNER JOIN #before AS b ON b.ApprovalRequestId = h.ApprovalRequestId
+        WHERE h.ReturnedActivities <> b.ReturnedActivities
+           OR h.Status <> b.Status
+           OR EXISTS (SELECT h.ModifiedOn EXCEPT SELECT b.ModifiedOn)
+           OR EXISTS (SELECT h.ModifiedBy EXCEPT SELECT b.ModifiedBy)
+           OR EXISTS (SELECT h.CurrentApproverLoginId EXCEPT SELECT b.CurrentApproverLoginId)
+           OR EXISTS (SELECT h.CurrentApproverLevel EXCEPT SELECT b.CurrentApproverLevel)
+           OR EXISTS (SELECT h.FinalApprovedAmount EXCEPT SELECT b.FinalApprovedAmount)
+           OR EXISTS (SELECT h.ApprovedKM EXCEPT SELECT b.ApprovedKM)
+           OR EXISTS (SELECT h.ApprovedClaimAmount EXCEPT SELECT b.ApprovedClaimAmount)
+           OR EXISTS (SELECT h.ApprovedDAAmount EXCEPT SELECT b.ApprovedDAAmount)
+           OR EXISTS (SELECT h.ApprovedHotelAmount EXCEPT SELECT b.ApprovedHotelAmount)
+           OR EXISTS (SELECT h.ApprovedTravelAmount EXCEPT SELECT b.ApprovedTravelAmount)
+           OR EXISTS (SELECT h.OriginalClaimAmount EXCEPT SELECT b.OriginalClaimAmount)
+           OR EXISTS (SELECT h.TotalDeductionAmount EXCEPT SELECT b.TotalDeductionAmount)
+    )
+        THROW 59538, N'ABORT: an excluded column changed. Rolled back.', 1;
+
+    IF EXISTS (
+        SELECT 1
+        FROM #before AS b
+        INNER JOIN #formula AS f ON f.ApprovalRequestId = b.ApprovalRequestId
+        INNER JOIN dbo.SalesApprovalRequest AS h ON h.ApprovalRequestId = b.ApprovalRequestId
+        WHERE h.TotalActivities <> f.TotalActivities
+           OR h.PendingActivities <> f.PendingActivities
+           OR h.ApprovedActivities <> f.ApprovedActivities
+           OR h.RejectedActivities <> f.RejectedActivities
+    )
+        THROW 59539, N'ABORT: a non-payment counter still mismatches. Rolled back.', 1;
+
+    /* Rehearsal diagnostics. The transaction is still open. These grids are not committed after-state evidence. */
+    SELECT
+        N'NonPaymentFormulaMismatchAfterUpdate' AS EvidenceSet,
+        COUNT(*) AS MismatchRows
+    FROM #before AS b
+    INNER JOIN #formula AS f ON f.ApprovalRequestId = b.ApprovalRequestId
+    INNER JOIN dbo.SalesApprovalRequest AS h ON h.ApprovalRequestId = b.ApprovalRequestId
+    WHERE h.TotalActivities <> f.TotalActivities
+       OR h.PendingActivities <> f.PendingActivities
+       OR h.ApprovedActivities <> f.ApprovedActivities
+       OR h.RejectedActivities <> f.RejectedActivities;
+
+    SELECT
+        N'ReadyForPaymentUnexpectedCurrent' AS EvidenceSet,
+        h.ApprovalRequestId
+    FROM dbo.SalesApprovalRequest AS h
+    WHERE h.Status = N'ReadyForPayment'
+      AND NOT EXISTS (SELECT 1 FROM #payBefore AS p WHERE p.ApprovalRequestId = h.ApprovalRequestId);
+
+    SELECT
+        N'ReadyForPaymentMissingCurrent' AS EvidenceSet,
+        p.ApprovalRequestId
+    FROM #payBefore AS p
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM dbo.SalesApprovalRequest AS h
+        WHERE h.ApprovalRequestId = p.ApprovalRequestId
+          AND h.Status = N'ReadyForPayment'
+    );
+
+    SELECT
+        N'ReadyForPaymentSnapshotDifference' AS EvidenceSet,
+        p.ApprovalRequestId
+    FROM #payBefore AS p
+    INNER JOIN dbo.SalesApprovalRequest AS h ON h.ApprovalRequestId = p.ApprovalRequestId
+    WHERE h.Status <> p.Status
+       OR h.TotalActivities <> p.TotalActivities
+       OR h.PendingActivities <> p.PendingActivities
+       OR h.ApprovedActivities <> p.ApprovedActivities
+       OR h.RejectedActivities <> p.RejectedActivities
+       OR h.ReturnedActivities <> p.ReturnedActivities
+       OR EXISTS (SELECT h.ModifiedOn EXCEPT SELECT p.ModifiedOn)
+       OR EXISTS (SELECT h.ModifiedBy EXCEPT SELECT p.ModifiedBy)
+       OR EXISTS (SELECT h.CurrentApproverLoginId EXCEPT SELECT p.CurrentApproverLoginId)
+       OR EXISTS (SELECT h.CurrentApproverLevel EXCEPT SELECT p.CurrentApproverLevel)
+       OR EXISTS (SELECT h.FinalApprovedAmount EXCEPT SELECT p.FinalApprovedAmount)
+       OR EXISTS (SELECT h.ApprovedKM EXCEPT SELECT p.ApprovedKM)
+       OR EXISTS (SELECT h.ApprovedClaimAmount EXCEPT SELECT p.ApprovedClaimAmount)
+       OR EXISTS (SELECT h.ApprovedDAAmount EXCEPT SELECT p.ApprovedDAAmount)
+       OR EXISTS (SELECT h.ApprovedHotelAmount EXCEPT SELECT p.ApprovedHotelAmount)
+       OR EXISTS (SELECT h.ApprovedTravelAmount EXCEPT SELECT p.ApprovedTravelAmount)
+       OR EXISTS (SELECT h.OriginalClaimAmount EXCEPT SELECT p.OriginalClaimAmount)
+       OR EXISTS (SELECT h.TotalDeductionAmount EXCEPT SELECT p.TotalDeductionAmount);
+
+    SELECT
+        N'ExcludedColumnDifference' AS EvidenceSet,
+        b.ApprovalRequestId
+    FROM #before AS b
+    INNER JOIN dbo.SalesApprovalRequest AS h ON h.ApprovalRequestId = b.ApprovalRequestId
+        WHERE h.ReturnedActivities <> b.ReturnedActivities
+           OR h.Status <> b.Status
+           OR EXISTS (SELECT h.ModifiedOn EXCEPT SELECT b.ModifiedOn)
+           OR EXISTS (SELECT h.ModifiedBy EXCEPT SELECT b.ModifiedBy)
+           OR EXISTS (SELECT h.CurrentApproverLoginId EXCEPT SELECT b.CurrentApproverLoginId)
+           OR EXISTS (SELECT h.CurrentApproverLevel EXCEPT SELECT b.CurrentApproverLevel)
+           OR EXISTS (SELECT h.FinalApprovedAmount EXCEPT SELECT b.FinalApprovedAmount)
+           OR EXISTS (SELECT h.ApprovedKM EXCEPT SELECT b.ApprovedKM)
+           OR EXISTS (SELECT h.ApprovedClaimAmount EXCEPT SELECT b.ApprovedClaimAmount)
+           OR EXISTS (SELECT h.ApprovedDAAmount EXCEPT SELECT b.ApprovedDAAmount)
+           OR EXISTS (SELECT h.ApprovedHotelAmount EXCEPT SELECT b.ApprovedHotelAmount)
+           OR EXISTS (SELECT h.ApprovedTravelAmount EXCEPT SELECT b.ApprovedTravelAmount)
+           OR EXISTS (SELECT h.OriginalClaimAmount EXCEPT SELECT b.OriginalClaimAmount)
+           OR EXISTS (SELECT h.TotalDeductionAmount EXCEPT SELECT b.TotalDeductionAmount);
+
+    SELECT
+        N'CounterReconciliation' AS EvidenceSet,
+        b.ApprovalRequestId,
+        b.TotalActivities AS OldTotal,
+        f.TotalActivities AS ProposedTotal,
+        h.TotalActivities AS CurrentTotal,
+        b.PendingActivities AS OldPending,
+        f.PendingActivities AS ProposedPending,
+        h.PendingActivities AS CurrentPending,
+        b.ApprovedActivities AS OldApproved,
+        f.ApprovedActivities AS ProposedApproved,
+        h.ApprovedActivities AS CurrentApproved,
+        b.RejectedActivities AS OldRejected,
+        f.RejectedActivities AS ProposedRejected,
+        h.RejectedActivities AS CurrentRejected
+    FROM #before AS b
+    INNER JOIN #formula AS f ON f.ApprovalRequestId = b.ApprovalRequestId
+    INNER JOIN dbo.SalesApprovalRequest AS h ON h.ApprovalRequestId = b.ApprovalRequestId
+    WHERE b.TotalActivities <> f.TotalActivities
+       OR b.PendingActivities <> f.PendingActivities
+       OR b.ApprovedActivities <> f.ApprovedActivities
+       OR b.RejectedActivities <> f.RejectedActivities;
+
+    SELECT
+        N'HeaderStatusDistribution' AS EvidenceSet,
+        h.Status,
+        COUNT(*) AS RequestRows
+    FROM dbo.SalesApprovalRequest AS h
+    GROUP BY h.Status;
+
+    SELECT
+        N'UpdateCount' AS EvidenceSet,
+        @updated AS UpdatedRows,
+        @target AS TargetRows;
+
+    IF @CommitMode <> N'COMMIT-APPROVED'
+    BEGIN
+        ROLLBACK TRANSACTION;
+        THROW 59537, N'ABORT: this revision rolls back. No row was committed.', 1;
+    END;
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0
+        ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
+```
+
+`#payBefore` is the locked `ReadyForPayment` snapshot. Error `59540` compares the row count, the snapshotted column values, and the row set: a current `ReadyForPayment` id absent from `#payBefore`, or a `#payBefore` id that is no longer `ReadyForPayment`, fails it. That is not a formula-mismatch calculation. `ReadyForPaymentFormulaMismatch` is the separate diagnostic selected before the update, and those rows are not part of `@target`. `CounterReconciliation` returns `ApprovalRequestId` with the old, proposed, and current four counters for the update target. The summary grids remain. All of those results are selected while the transaction is open. `@CommitMode` remains `ROLLBACK-ONLY`, so this revision then rolls back and throws `59537`. It does not reach `COMMIT`. The historical procedure hash was not recomputed. Live triggers were not read.

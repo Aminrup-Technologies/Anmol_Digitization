@@ -2,6 +2,8 @@
 
 **Additive notice, 2026-11-18 catalog read.** Document 12 records that WP-01 and WP-02 already match Dev. That is not a GO. No row below is signed. Do not treat a STOP as an instruction to run scripts `20` or `30`, and do not treat a current-catalog mismatch against the 2026-11-17 snapshot as an instruction to roll back.
 
+**Additive notice, WP-03 stored values.** Document 12 records that the four-counter formula is already on both catalogs and that the stored values do not match it. The proposed correction is counter-only, excludes `ReadyForPayment`, leaves `ReturnedActivities` unchanged, and has not been executed. That finding does not turn DR-COUNTER or WP-03 to GO. File `40` stays excluded. Status: `WP-03 DESIGN PREPARED — CORRECTION NOT EXECUTED — FEATURE CLOSURE PENDING`.
+
 **Additive notice, 2026-11-17 discovery.** `10_LIVE_Discovery_Capture.md` records a read-only capture of current LIVE fingerprints. Captured evidence is not accepted evidence. Every row below remains STOP until the acceptance reviewer named in `07` signs it and the decisions in `08` are signed.
 
 **Package status: BLOCKED.**
@@ -46,4 +48,4 @@ No current UAT script, rollback file, or RC-017 artifact moves a row to GO.
 
 ## Current result
 
-**BLOCKED.** The claim-procedure source text is recorded as received and is not filed in the repository, so EV-CLAIM stays STOP. C-1, C-3, and DR-COUNTER are unsigned and parked by scope decision A. They are not GO. Every remaining evidence row and every remaining decision stays STOP. LIVE execution is not claimed. No deployment is authorized.
+**BLOCKED.** The claim-procedure source text is recorded as received and is not filed in the repository, so EV-CLAIM stays STOP. C-1, C-3, and DR-COUNTER are unsigned and parked by scope decision A. They are not GO. Every remaining evidence row and every remaining decision stays STOP. LIVE execution is not claimed. No deployment is authorized. The WP-03 stored-value design in document 12 is also unsigned and was not executed.
