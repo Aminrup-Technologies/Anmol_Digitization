@@ -22,7 +22,9 @@ AnmolDristi/obj/Release/AnmolDristi.pdb
 # RC / CAB private evidence — retain outside Git (see D:\CAB-Evidence\)
 pvt-evidence/
 
-# Local environment configuration. Already tracked; this does not untrack the committed file.
+# Local configuration and imported conversation attachments.
+# Web.config is already tracked; this rule does not untrack the committed file.
 AnmolDristi/Web.config
+.cloud-attachments/
 AnmolDristi/TempUploads/
 AnmolDristi/UploadedFiles/ClaimsAttachment/
