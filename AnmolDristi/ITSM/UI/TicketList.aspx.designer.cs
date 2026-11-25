@@ -19,6 +19,10 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.LinkButton lnkMyQueue;
 
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabUnassigned;
+
+        protected global::System.Web.UI.WebControls.LinkButton lnkUnassigned;
+
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabAllOpen;
 
         protected global::System.Web.UI.WebControls.LinkButton lnkAllOpen;
