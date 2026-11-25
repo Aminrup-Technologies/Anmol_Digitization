@@ -15,3 +15,5 @@ Paths are app-relative. Login session required: `WORKMAN` + `USERID`.
 ```
 
 Tenant isolation: queues and detail load tickets where `Requester.CompanyId` matches the signed-in `MST_UserMaster.CompanyId` (ITGC).
+
+Category administration is `ITSM/UI/CategoryConfig.aspx`, sidebar control `ITSM_CategoryConfig`. The item stays `visible="false"` until `UI.ITSM_CategoryConfig.View` is granted. The page requires `ITSM.CategoryConfig.Manage`. `Dristi.Master.RefreshChromeAfterIdentityChange` does not force this item visible. The catalog is global and is not filtered by company.

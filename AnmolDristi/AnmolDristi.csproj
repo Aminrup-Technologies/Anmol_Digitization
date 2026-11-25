@@ -254,6 +254,7 @@
     <Content Include="ITSM\UI\TicketList.aspx" />
     <Content Include="ITSM\UI\TicketDetail.aspx" />
     <Content Include="ITSM\UI\ApprovalConfig.aspx" />
+    <Content Include="ITSM\UI\CategoryConfig.aspx" />
     <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
@@ -1580,6 +1581,7 @@
     <Compile Include="ITSM\BLL\TicketActionPolicy.cs" />
     <Compile Include="ITSM\BLL\ItsmNotification.cs" />
     <Compile Include="ITSM\BLL\ApprovalConfigurationService.cs" />
+    <Compile Include="ITSM\BLL\CategoryAdministrationService.cs" />
     <Compile Include="ITSM\BLL\TicketListService.cs" />
     <Compile Include="ITSM\BLL\TicketDetailService.cs" />
     <Compile Include="ITSM\BLL\TicketUpdateService.cs" />
@@ -1612,6 +1614,13 @@
     </Compile>
     <Compile Include="ITSM\UI\ApprovalConfig.aspx.designer.cs">
       <DependentUpon>ApprovalConfig.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\CategoryConfig.aspx.cs">
+      <DependentUpon>CategoryConfig.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\CategoryConfig.aspx.designer.cs">
+      <DependentUpon>CategoryConfig.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
