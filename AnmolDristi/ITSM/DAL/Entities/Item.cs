@@ -5,7 +5,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace AnmolDristi.ITSM.DAL.Entities
 {
     /// <summary>
-    /// Maps to itsm.MST_Item — third-tier taxonomy under SubCategory.
+    /// Maps to itsm.MST_Item — optional Sub-Category under a Category.
+    /// Deactivate with IsActive. Do not change SubCategoryId once a ticket references the row.
     /// </summary>
     [Table("MST_Item", Schema = "itsm")]
     public class Item
