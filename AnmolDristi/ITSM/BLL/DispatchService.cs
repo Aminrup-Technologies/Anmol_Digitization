@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using AnmolDristi.ITSM.DAL;
@@ -23,102 +25,97 @@ namespace AnmolDristi.ITSM.BLL
         {
             using (var context = new ItsmDbContext())
             {
-                // 1. Most specific: Item-level mapping
-                if (itemId.HasValue)
-                {
-                    var itemAgent = FindMapping(
-                        context, branchId, categoryId, subCategoryId, itemId);
-                    if (itemAgent != null)
-                    {
-                        return itemAgent;
-                    }
-                }
-
-                // 2. SubCategory-level mapping (ItemId IS NULL)
-                var subAgent = FindMapping(
-                    context, branchId, categoryId, subCategoryId, itemId: null);
-                if (subAgent != null)
-                {
-                    return subAgent;
-                }
-
-                // 3. Category-level mapping (SubCategoryId IS NULL, ItemId IS NULL)
-                var catAgent = FindCategoryMapping(context, branchId, categoryId);
-                if (catAgent != null)
-                {
-                    return catAgent;
-                }
-
-                // 4. Branch default
-                var defaultAgent = FindBranchDefault(context, branchId);
-                if (defaultAgent != null)
-                {
-                    return defaultAgent;
-                }
-
-                return null; // Unassigned — supervisor queue
+                return ResolveAssignee(context, branchId, categoryId, subCategoryId, itemId);
             }
         }
 
-        private static string FindMapping(
+        public static string ResolveAssignee(
             ItsmDbContext context,
             int branchId,
             int categoryId,
             int subCategoryId,
             int? itemId)
         {
-            IQueryable<SupportMapping> query = context.SupportMappings
+            var rows = context.SupportMappings
                 .AsNoTracking()
-                .Where(m =>
-                    m.IsActive
-                    && m.BranchId == branchId
-                    && m.CategoryId == categoryId
-                    && m.SubCategoryId == subCategoryId
-                    && !m.IsBranchDefault);
+                .Where(m => m.IsActive && m.BranchId == branchId)
+                .ToList();
+            return ResolveFromMappings(rows, categoryId, subCategoryId, itemId);
+        }
+
+        public static bool IsMappedAgent(
+            ItsmDbContext context,
+            int branchId,
+            int categoryId,
+            int subCategoryId,
+            int? itemId,
+            string actorCode)
+        {
+            var resolved = ResolveAssignee(context, branchId, categoryId, subCategoryId, itemId);
+            return !string.IsNullOrWhiteSpace(resolved)
+                && !string.IsNullOrWhiteSpace(actorCode)
+                && string.Equals(resolved.Trim(), actorCode.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// One cascade, lowest mapping Id wins at each step. A blank agent code
+        /// does not fall through to the next step: that count was not read.
+        /// </summary>
+        public static string ResolveFromMappings(
+            IEnumerable<SupportMapping> mappings,
+            int categoryId,
+            int subCategoryId,
+            int? itemId)
+        {
+            var rows = mappings == null
+                ? new List<SupportMapping>()
+                : mappings.ToList();
 
             if (itemId.HasValue)
             {
-                query = query.Where(m => m.ItemId == itemId.Value);
+                var itemAgent = FirstCode(rows, m =>
+                    m.CategoryId == categoryId
+                    && m.SubCategoryId == subCategoryId
+                    && m.ItemId == itemId
+                    && !m.IsBranchDefault);
+                if (itemAgent != null)
+                {
+                    return itemAgent;
+                }
             }
-            else
+
+            var subAgent = FirstCode(rows, m =>
+                m.CategoryId == categoryId
+                && m.SubCategoryId == subCategoryId
+                && m.ItemId == null
+                && !m.IsBranchDefault);
+            if (subAgent != null)
             {
-                query = query.Where(m => m.ItemId == null);
+                return subAgent;
             }
 
-            return query
-                .Select(m => m.SupportAgentCode)
-                .FirstOrDefault();
+            var categoryAgent = FirstCode(rows, m =>
+                m.CategoryId == categoryId
+                && m.SubCategoryId == null
+                && m.ItemId == null
+                && !m.IsBranchDefault);
+            if (categoryAgent != null)
+            {
+                return categoryAgent;
+            }
+
+            return FirstCode(rows, m =>
+                m.IsBranchDefault
+                && m.CategoryId == null
+                && m.SubCategoryId == null
+                && m.ItemId == null);
         }
 
-        private static string FindCategoryMapping(
-            ItsmDbContext context,
-            int branchId,
-            int categoryId)
+        private static string FirstCode(List<SupportMapping> rows, Func<SupportMapping, bool> predicate)
         {
-            return context.SupportMappings
-                .AsNoTracking()
-                .Where(m =>
-                    m.IsActive
-                    && m.BranchId == branchId
-                    && m.CategoryId == categoryId
-                    && m.SubCategoryId == null
-                    && m.ItemId == null
-                    && !m.IsBranchDefault)
-                .Select(m => m.SupportAgentCode)
-                .FirstOrDefault();
-        }
-
-        private static string FindBranchDefault(ItsmDbContext context, int branchId)
-        {
-            return context.SupportMappings
-                .AsNoTracking()
-                .Where(m =>
-                    m.IsActive
-                    && m.BranchId == branchId
-                    && m.IsBranchDefault
-                    && m.CategoryId == null
-                    && m.SubCategoryId == null
-                    && m.ItemId == null)
+            return rows
+                .Where(predicate)
+                .OrderBy(m => m.Id)
                 .Select(m => m.SupportAgentCode)
                 .FirstOrDefault();
         }

@@ -53,15 +53,31 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.Panel pnlWorkActions;
 
+        protected global::System.Web.UI.WebControls.Panel pnlStatusAction;
+
         protected global::System.Web.UI.WebControls.DropDownList ddlTargetStatus;
 
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl divHoldClass;
+
+        protected global::System.Web.UI.WebControls.DropDownList ddlHoldClass;
+
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl divResolution;
+
+        protected global::System.Web.UI.WebControls.Label lblActionReason;
 
         protected global::System.Web.UI.WebControls.TextBox txtResolution;
 
         protected global::System.Web.UI.WebControls.Button btnChangeStatus;
 
+        protected global::System.Web.UI.WebControls.Panel pnlTakeOwnership;
+
+        protected global::System.Web.UI.WebControls.Button btnTakeOwnership;
+
+        protected global::System.Web.UI.WebControls.Panel pnlAssigneeTools;
+
         protected global::System.Web.UI.WebControls.DropDownList ddlReassignTo;
+
+        protected global::System.Web.UI.WebControls.TextBox txtReassignReason;
 
         protected global::System.Web.UI.WebControls.Button btnReassign;
 
@@ -98,6 +114,8 @@ namespace AnmolDristi.ITSM.UI
         protected global::System.Web.UI.WebControls.Label lblCsatFeedback;
 
         protected global::System.Web.UI.WebControls.HiddenField hfTicketId;
+
+        protected global::System.Web.UI.WebControls.HiddenField hfStatusName;
 
         protected global::System.Web.UI.WebControls.HiddenField hfRowVersion;
     }

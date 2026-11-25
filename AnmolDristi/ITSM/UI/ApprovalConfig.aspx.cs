@@ -20,9 +20,11 @@ namespace AnmolDristi.ITSM.UI
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["USERID"] == null || Session["BRANCH"] == null)
+            if (Session["WORKMAN"] == null
+                || Session["USERID"] == null
+                || Session["BRANCH"] == null)
             {
-                RedirectToLogin();
+                Response.Redirect("~/login.aspx", true);
                 return;
             }
 
@@ -77,7 +79,9 @@ namespace AnmolDristi.ITSM.UI
             }
             catch (Exception ex)
             {
-                ShowMessage("Error updating approval policy: " + ex.Message, false);
+                System.Diagnostics.Trace.TraceError(
+                    "ITSM approval policy update failed." + Environment.NewLine + ex);
+                ShowMessage("The approval policy could not be updated.", false);
             }
         }
 
@@ -103,7 +107,9 @@ namespace AnmolDristi.ITSM.UI
             }
             catch (Exception ex)
             {
-                ShowMessage("Error setting IT Head: " + ex.Message, false);
+                System.Diagnostics.Trace.TraceError(
+                    "ITSM IT Head update failed." + Environment.NewLine + ex);
+                ShowMessage("The IT Head approver could not be updated.", false);
             }
         }
 

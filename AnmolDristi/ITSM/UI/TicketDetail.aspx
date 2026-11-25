@@ -19,6 +19,7 @@
             grid-template-columns: 1fr;
             gap: 16px;
         }
+        .itsm-prewrap { white-space: pre-wrap; }
         /* --- Tenant badge (requirement §23) --- */
         .tenant-badge-bar {
             display: flex;
@@ -222,13 +223,13 @@
 
                         <!-- Description -->
                         <div class="section-title">Description</div>
-                        <div style="background: #f8f9fa; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                        <div class="itsm-prewrap" style="background: #f8f9fa; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
                             <asp:Label ID="lblDescription" runat="server" />
                         </div>
 
                         <asp:Panel ID="pnlResolution" runat="server" Visible="false">
                             <div class="section-title">Resolution</div>
-                            <div style="background: #f8f9fa; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
+                            <div class="itsm-prewrap" style="background: #f8f9fa; padding: 12px; border-radius: 4px; margin-bottom: 15px;">
                                 <asp:Label ID="lblResolution" runat="server" />
                             </div>
                         </asp:Panel>
@@ -238,6 +239,7 @@
                             <div class="action-panel">
                                 <h4><i class="fa fa-cog"></i> Actions</h4>
                                 <asp:Panel ID="pnlWorkActions" runat="server">
+                                <asp:Panel ID="pnlStatusAction" runat="server">
                                 <div class="action-row">
                                     <div class="form-group">
                                         <label>Status</label>
@@ -249,11 +251,21 @@
                                             <asp:ListItem Text="-- Select Action --" Value="" />
                                         </asp:DropDownList>
                                     </div>
+                                    <div class="form-group" id="divHoldClass" runat="server" visible="false">
+                                        <label>Hold reason <span class="text-danger">*</span></label>
+                                        <asp:DropDownList ID="ddlHoldClass" runat="server"
+                                            CssClass="form-control input-sm" Width="180px">
+                                            <asp:ListItem Text="-- Select reason --" Value="" />
+                                            <asp:ListItem Text="Requester" Value="Requester" />
+                                            <asp:ListItem Text="Vendor" Value="Vendor" />
+                                            <asp:ListItem Text="Internal" Value="Internal" />
+                                        </asp:DropDownList>
+                                    </div>
                                     <div class="form-group" id="divResolution" runat="server" visible="false">
-                                        <label>Resolution Notes <span class="text-danger">*</span></label>
+                                        <label><asp:Label ID="lblActionReason" runat="server" Text="Resolution summary" /> <span class="text-danger">*</span></label>
                                         <asp:TextBox ID="txtResolution" runat="server" CssClass="form-control input-sm"
-                                            TextMode="MultiLine" Rows="3" Width="350px"
-                                            placeholder="Describe how the issue was resolved" />
+                                            TextMode="MultiLine" Rows="3" Width="350px" MaxLength="1000"
+                                            placeholder="Required" />
                                     </div>
                                     <div class="form-group" style="padding-top: 22px;">
                                         <asp:Button ID="btnChangeStatus" runat="server" Text="Apply"
@@ -261,7 +273,17 @@
                                             OnClick="btnChangeStatus_Click" />
                                     </div>
                                 </div>
+                                </asp:Panel>
 
+                                <asp:Panel ID="pnlTakeOwnership" runat="server" Visible="false">
+                                    <div class="action-row">
+                                        <asp:Button ID="btnTakeOwnership" runat="server" Text="Take ownership"
+                                            CssClass="btn btn-primary btn-sm"
+                                            OnClick="btnTakeOwnership_Click" />
+                                    </div>
+                                </asp:Panel>
+
+                                <asp:Panel ID="pnlAssigneeTools" runat="server">
                                 <!-- Reassignment -->
                                 <div class="action-row" style="margin-top: 10px;">
                                     <div class="form-group">
@@ -271,6 +293,12 @@
                                             AppendDataBoundItems="true" Width="220px">
                                             <asp:ListItem Text="-- Select Agent --" Value="" />
                                         </asp:DropDownList>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Reassignment reason <span class="text-danger">*</span></label>
+                                        <asp:TextBox ID="txtReassignReason" runat="server"
+                                            CssClass="form-control input-sm" Width="260px" MaxLength="1000"
+                                            placeholder="Required" />
                                     </div>
                                     <div class="form-group" style="padding-top: 22px;">
                                         <asp:Button ID="btnReassign" runat="server" Text="Reassign"
@@ -293,7 +321,7 @@
                                         <label>Override Reason <span class="text-danger">*</span></label>
                                         <asp:TextBox ID="txtOverrideReason" runat="server"
                                             CssClass="form-control input-sm" Width="260px"
-                                            MaxLength="500"
+                                            MaxLength="1000"
                                             placeholder="Mandatory ITGC justification" />
                                     </div>
                                     <div class="form-group" style="padding-top: 22px;">
@@ -302,6 +330,7 @@
                                             OnClick="btnOverridePriority_Click" />
                                     </div>
                                 </div>
+                                </asp:Panel>
                                 </asp:Panel>
 
                                 <!-- Approval Actions -->
@@ -316,7 +345,7 @@
                                         <div class="form-group">
                                             <label>Rejection Reason <span class="text-danger">*</span></label>
                                             <asp:TextBox ID="txtRejectionReason" runat="server"
-                                                CssClass="form-control input-sm" Width="300px"
+                                                CssClass="form-control input-sm" Width="300px" MaxLength="500"
                                                 placeholder="Mandatory for rejection" />
                                         </div>
                                         <div class="form-group" style="padding-top: 22px;">
@@ -336,7 +365,7 @@
                                 <div class="col-md-8">
                                     <asp:TextBox ID="txtComment" runat="server" CssClass="form-control"
                                         TextMode="MultiLine" Rows="3"
-                                        placeholder="Add a comment..." MaxLength="2000" />
+                                        placeholder="Add a comment..." MaxLength="1000" />
                                 </div>
                                 <div class="col-md-4" style="padding-top: 5px;">
                                     <asp:CheckBox ID="chkInternal" runat="server" Text="Internal note" />
@@ -358,7 +387,7 @@
                                     <%# Eval("IsInternal").ToString() == "True" ? "#ffc107" : "#007bff" %>;
                                     padding: 10px; margin-bottom: 8px; border-radius: 2px;">
                                     <div style="font-size: 12px; color: #666;">
-                                        <strong><%# Eval("CreatedByName") %></strong>
+                                        <strong><%# System.Web.HttpUtility.HtmlEncode(Convert.ToString(Eval("CreatedByName"))) %></strong>
                                         on <%# Eval("CreatedOn", "{0:dd-MMM-yyyy HH:mm}") %>
                                         <%# Eval("IsInternal").ToString() == "True"
                                             ? " <span style='color:#856404;'>(Internal)</span>" : "" %>
@@ -378,12 +407,12 @@
                             <ItemTemplate>
                                 <div style="background: #f8f9fa; padding: 10px; margin-bottom: 8px; border-radius: 2px;">
                                     <div style="font-size: 12px; color: #666;">
-                                        <strong><%# Eval("ApprovalLevel") %></strong> —
-                                        <%# Eval("ApproverName") %> —
+                                        <strong><%# System.Web.HttpUtility.HtmlEncode(Convert.ToString(Eval("ApprovalLevel"))) %></strong> —
+                                        <%# System.Web.HttpUtility.HtmlEncode(Convert.ToString(Eval("ApproverName"))) %> —
                                         <span class="label label-<%# Eval("ApprovalStatus").ToString() == "Approved"
                                             ? "success" : Eval("ApprovalStatus").ToString() == "Rejected"
                                             ? "danger" : "warning" %>">
-                                            <%# Eval("ApprovalStatus") %>
+                                            <%# System.Web.HttpUtility.HtmlEncode(Convert.ToString(Eval("ApprovalStatus"))) %>
                                         </span>
                                         <%# Eval("ActionedOn") != null
                                             ? " on " + Eval("ActionedOn", "{0:dd-MMM-yyyy HH:mm}")
@@ -434,6 +463,7 @@
 
                         <!-- Hidden fields for TicketId and RowVersion (lightweight ViewState, §13) -->
                         <asp:HiddenField ID="hfTicketId" runat="server" />
+                        <asp:HiddenField ID="hfStatusName" runat="server" />
                         <asp:HiddenField ID="hfRowVersion" runat="server" />
 
                     </asp:Panel>
