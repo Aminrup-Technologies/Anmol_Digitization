@@ -62,6 +62,14 @@ namespace AnmolDristi.ITSM.BLL
         public List<TicketApprovalDto> Approvals { get; set; }
         public List<TicketAuditLogDto> AuditHistory { get; set; }
         public List<TicketStatusDto> AvailableStatuses { get; set; }
+        public List<TicketAttachmentDto> Attachments { get; set; }
+    }
+
+    public class TicketAttachmentDto
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; }
+        public DateTime UploadedOn { get; set; }
     }
 
     public class TicketCommentDto
@@ -284,6 +292,19 @@ namespace AnmolDristi.ITSM.BLL
                                         ActorName = u != null ? u.EmployeeName : a.ActorCode,
                                         ActionedOn = a.ActionedOn
                                     }).ToList();
+
+                dto.Attachments = context.TicketAttachments
+                    .AsNoTracking()
+                    .Where(a => a.TicketId == ticketId)
+                    .OrderBy(a => a.UploadedOn)
+                    .ThenBy(a => a.Id)
+                    .Select(a => new TicketAttachmentDto
+                    {
+                        Id = a.Id,
+                        FileName = a.FileName,
+                        UploadedOn = a.UploadedOn
+                    })
+                    .ToList();
 
                 var allowedNames = TicketActionPolicy.AllowedTargetNames(
                     dto.StatusName,

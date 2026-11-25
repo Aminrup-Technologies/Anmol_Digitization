@@ -104,7 +104,10 @@ namespace AnmolDristi.ITSM.BLL
 
         public static bool CanComment(string actorCode, string requesterCode, string assigneeCode)
         {
-            return IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode);
+            return AttachmentAccessRules.IsRequesterOrAssignee(
+                actorCode,
+                requesterCode,
+                assigneeCode);
         }
 
         public static bool CanApproveTicket(
