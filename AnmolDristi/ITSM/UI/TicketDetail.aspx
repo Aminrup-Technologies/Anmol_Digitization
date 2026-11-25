@@ -226,6 +226,21 @@
                             <asp:Label ID="lblDescription" runat="server" />
                         </div>
 
+                        <div class="section-title">Attachments</div>
+                        <asp:Label ID="lblNoAttachments" runat="server" Text="No attachments." Visible="false" />
+                        <asp:Repeater ID="rptAttachments" runat="server">
+                            <ItemTemplate>
+                                <div style="margin-bottom: 6px;">
+                                    <a href='<%# ResolveUrl("~/ITSM/UI/DownloadAttachment.ashx?id=" + Eval("Id")) %>'>
+                                        <%# System.Web.HttpUtility.HtmlEncode(Convert.ToString(Eval("FileName"))) %>
+                                    </a>
+                                    <span style="color:#666;font-size:12px;">
+                                        <%# Eval("UploadedOn", "{0:dd-MMM-yyyy HH:mm}") %>
+                                    </span>
+                                </div>
+                            </ItemTemplate>
+                        </asp:Repeater>
+
                         <asp:Panel ID="pnlResolution" runat="server" Visible="false">
                             <div class="section-title">Resolution</div>
                             <div style="background: #f8f9fa; padding: 12px; border-radius: 4px; margin-bottom: 15px;">

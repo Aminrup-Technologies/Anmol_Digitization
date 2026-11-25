@@ -87,6 +87,10 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.Repeater rptComments;
 
+        protected global::System.Web.UI.WebControls.Label lblNoAttachments;
+
+        protected global::System.Web.UI.WebControls.Repeater rptAttachments;
+
         protected global::System.Web.UI.WebControls.Repeater rptApprovals;
 
         protected global::System.Web.UI.WebControls.GridView gvAudit;

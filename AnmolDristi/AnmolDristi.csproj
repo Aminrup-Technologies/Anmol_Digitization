@@ -253,6 +253,7 @@
     <Content Include="ITSM\UI\CreateTicket.aspx" />
     <Content Include="ITSM\UI\TicketList.aspx" />
     <Content Include="ITSM\UI\TicketDetail.aspx" />
+    <Content Include="ITSM\UI\DownloadAttachment.ashx" />
     <Content Include="ITSM\UI\ApprovalConfig.aspx" />
     <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
@@ -1583,6 +1584,12 @@
     <Compile Include="ITSM\BLL\TicketUpdateService.cs" />
     <Compile Include="ITSM\BLL\TicketMasterDataService.cs" />
     <Compile Include="ITSM\BLL\CreateTicketDiagnostics.cs" />
+    <Compile Include="ITSM\BLL\AttachmentModels.cs" />
+    <Compile Include="ITSM\BLL\AttachmentValidationService.cs" />
+    <Compile Include="ITSM\BLL\AttachmentAccessRules.cs" />
+    <Compile Include="ITSM\BLL\AttachmentUploadService.cs" />
+    <Compile Include="ITSM\BLL\TicketAttachmentService.cs" />
+    <Compile Include="ITSM\UI\ItsmAttachmentFeedback.cs" />
     <Compile Include="ITSM\UI\CreateTicket.aspx.cs">
       <DependentUpon>CreateTicket.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1603,6 +1610,9 @@
     </Compile>
     <Compile Include="ITSM\UI\TicketDetail.aspx.designer.cs">
       <DependentUpon>TicketDetail.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\DownloadAttachment.ashx.cs">
+      <DependentUpon>DownloadAttachment.ashx</DependentUpon>
     </Compile>
     <Compile Include="ITSM\UI\ApprovalConfig.aspx.cs">
       <DependentUpon>ApprovalConfig.aspx</DependentUpon>

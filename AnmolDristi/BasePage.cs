@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Web;
+using System.Web.SessionState;
 using System.Web.UI;
 
 namespace AnmolDristi  // use your project namespace
@@ -152,12 +153,55 @@ namespace AnmolDristi  // use your project namespace
 
         protected void RebuildSessionPermissions()
         {
+            var perms = LoadPermissionSet(Session);
+            if (perms == null) return;
+            Session[SessionPermSetKey] = perms;
+        }
+
+        /// <summary>
+        /// Same session permission set used by pages. Handlers call this so
+        /// they do not keep a second copy of the permission query.
+        /// </summary>
+        public static bool SessionHasPermission(HttpContext context, string permissionKey)
+        {
+            if (context == null
+                || context.Session == null
+                || string.IsNullOrWhiteSpace(permissionKey))
+            {
+                return false;
+            }
+
+            var set = context.Session[SessionPermSetKey] as HashSet<string>;
+            if (set == null)
+            {
+                set = LoadPermissionSet(context.Session);
+                if (set == null)
+                {
+                    return false;
+                }
+
+                context.Session[SessionPermSetKey] = set;
+            }
+
+            return set.Contains(permissionKey);
+        }
+
+        private static HashSet<string> LoadPermissionSet(HttpSessionState session)
+        {
             int userId;
-            if (!TryGetCurrentUserId(out userId)) return;
+            if (!TryReadUserId(session, out userId))
+            {
+                return null;
+            }
+
+            var settings = ConfigurationManager.ConnectionStrings["DbConn"];
+            if (settings == null || string.IsNullOrEmpty(settings.ConnectionString))
+            {
+                return null;
+            }
 
             var perms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            using (var cn = new SqlConnection(_connString))
+            using (var cn = new SqlConnection(settings.ConnectionString))
             using (var cmd = new SqlCommand(@"
                 SELECT p.PermissionKey FROM dbo.UserRole ur
                 JOIN dbo.RolePermission rp ON ur.RoleId = rp.RoleId
@@ -168,7 +212,6 @@ namespace AnmolDristi  // use your project namespace
                 cn.Open();
                 using (var rdr = cmd.ExecuteReader())
                 {
-                    // FIXED: We are now grabbing PermissionKey instead of PermissionName
                     while (rdr.Read())
                     {
                         var key = rdr.GetString(0);
@@ -176,7 +219,26 @@ namespace AnmolDristi  // use your project namespace
                     }
                 }
             }
-            Session[SessionPermSetKey] = perms;
+
+            return perms;
+        }
+
+        private static bool TryReadUserId(HttpSessionState session, out int userId)
+        {
+            userId = 0;
+            if (session == null)
+            {
+                return false;
+            }
+
+            if (session["CurrentUserId"] != null
+                && int.TryParse(session["CurrentUserId"].ToString(), out userId))
+            {
+                return true;
+            }
+
+            return session["USERID"] != null
+                && int.TryParse(session["USERID"].ToString(), out userId);
         }
 
         protected bool HasPermission(string permissionKey)

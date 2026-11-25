@@ -48,27 +48,24 @@ namespace AnmolDristi.ITSM.BLL
             int authorizedCompanyId,
             int? ticketCompanyId)
         {
-            if (IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode))
+            // Requester and assignee return before the approval query.
+            var pending = false;
+            if (!AttachmentAccessRules.IsRequesterOrAssignee(
+                actorCode,
+                requesterCode,
+                assigneeCode))
             {
-                return true;
+                pending = HasPendingApproval(context, ticketId, actorCode);
             }
 
-            if (HasPendingApproval(context, ticketId, actorCode))
-            {
-                return true;
-            }
-
-            // RBAC: ITSM.Ticket.View — tenant-scoped.
-            // Permission alone is not sufficient; the ticket must belong
-            // to the user's authorized company.
-            if (hasTicketViewPermission
-                && ticketCompanyId.HasValue
-                && ticketCompanyId.Value == authorizedCompanyId)
-            {
-                return true;
-            }
-
-            return false;
+            return AttachmentAccessRules.AllowsTicketView(
+                actorCode,
+                requesterCode,
+                assigneeCode,
+                pending,
+                hasTicketViewPermission,
+                authorizedCompanyId,
+                ticketCompanyId);
         }
 
         public static bool CanProcessTicket(
@@ -76,7 +73,10 @@ namespace AnmolDristi.ITSM.BLL
             string requesterCode,
             string assigneeCode)
         {
-            return IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode);
+            return AttachmentAccessRules.IsRequesterOrAssignee(
+                actorCode,
+                requesterCode,
+                assigneeCode);
         }
 
         public static bool CanApproveTicket(
@@ -96,25 +96,6 @@ namespace AnmolDristi.ITSM.BLL
             }
 
             return HasPendingApproval(context, ticketId, actorCode);
-        }
-
-        private static bool IsRequesterOrAssignee(
-            string actorCode,
-            string requesterCode,
-            string assigneeCode)
-        {
-            if (string.IsNullOrWhiteSpace(actorCode))
-            {
-                return false;
-            }
-
-            if (string.Equals(requesterCode, actorCode, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            return !string.IsNullOrWhiteSpace(assigneeCode)
-                && string.Equals(assigneeCode, actorCode, StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool HasPendingApproval(

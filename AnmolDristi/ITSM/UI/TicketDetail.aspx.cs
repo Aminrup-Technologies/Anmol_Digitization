@@ -294,6 +294,12 @@ namespace AnmolDristi.ITSM.UI
             gvAudit.DataSource = dto.AuditHistory;
             gvAudit.DataBind();
 
+            var attachments = dto.Attachments ?? new System.Collections.Generic.List<TicketAttachmentDto>();
+            lblNoAttachments.Visible = attachments.Count == 0;
+            rptAttachments.DataSource = attachments;
+            rptAttachments.DataBind();
+            ShowPendingAttachmentFailures(ticketId);
+
             hfRowVersion.Value = dto.RowVersion != null
                 ? Convert.ToBase64String(dto.RowVersion)
                 : string.Empty;
@@ -374,6 +380,33 @@ namespace AnmolDristi.ITSM.UI
             {
                 ShowMessage(result.Error, false);
             }
+        }
+
+        private void ShowPendingAttachmentFailures(int ticketId)
+        {
+            var notice = Session[ItsmAttachmentFeedback.FailureSessionKey] as AttachmentFailureNotice;
+            if (notice == null || notice.TicketId != ticketId || notice.Failures == null)
+            {
+                return;
+            }
+
+            Session.Remove(ItsmAttachmentFeedback.FailureSessionKey);
+            if (notice.Failures.Count == 0)
+            {
+                return;
+            }
+
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (var failure in notice.Failures)
+            {
+                var name = string.IsNullOrWhiteSpace(failure.FileName) ? "attachment" : failure.FileName;
+                var reason = string.IsNullOrWhiteSpace(failure.Reason)
+                    ? "The file could not be saved."
+                    : failure.Reason;
+                parts.Add(name + ": " + reason);
+            }
+
+            ShowMessage(string.Join(" | ", parts), false);
         }
 
         private void ShowNotFound()

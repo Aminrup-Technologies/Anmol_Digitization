@@ -39,6 +39,8 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.TextBox txtDescription;
 
+        protected global::System.Web.UI.WebControls.FileUpload fuAttachments;
+
         protected global::System.Web.UI.WebControls.Button btnSubmit;
 
         protected global::System.Web.UI.WebControls.Button btnReset;

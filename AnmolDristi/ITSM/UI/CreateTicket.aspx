@@ -15,6 +15,11 @@
               stay neutral Dristi dropdowns. Visual-only CSS/JS.
      Why:     Product UX — colour encodes meaning without changing postback,
               validation, HiddenFields, or server rendering of card IDs.
+     When:    2026-11-25 (R3 optional attachments)
+     What:    Optional multi-file input. The form posts multipart. A bad
+              file does not cancel submit; the server reports it after
+              the ticket exists.
+     Why:     Attachments are optional and must not block ticket creation.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Create Ticket" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="CreateTicket.aspx.cs"
@@ -416,6 +421,14 @@
                                     TextMode="MultiLine" Rows="5"
                                     placeholder="Describe the issue, steps to reproduce, and impact" />
                             </div>
+                            <div class="itsm-ct__field">
+                                <label class="itsm-ct__field-label" for="<%= fuAttachments.ClientID %>">
+                                    Attachments <span class="itsm-ct__label">optional, 20 MB each</span>
+                                </label>
+                                <asp:FileUpload ID="fuAttachments" runat="server" AllowMultiple="true"
+                                    CssClass="form-control itsm-ct__field-input"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.gif" />
+                            </div>
                         </div>
 
                         <%-- ============================================================
@@ -738,6 +751,8 @@
                 // Lock dependent sections
                 lockSection('secSubCategory');
                 lockSection('secItem');
+                var files = document.getElementById('<%= fuAttachments.ClientID %>');
+                if (files) files.value = '';
                 // Reset selects
                 var subDdl = document.getElementById('ddlSubCategoryClient');
                 if (subDdl) subDdl.innerHTML = '<option value="">-- Select Sub Category --</option>';
