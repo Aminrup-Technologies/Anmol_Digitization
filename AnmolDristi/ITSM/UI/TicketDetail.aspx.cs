@@ -308,8 +308,8 @@ namespace AnmolDristi.ITSM.UI
                 ddlTargetStatus.Items.Add(new ListItem(status.Name, status.Id.ToString()));
             }
 
-            divResolution.Visible = false;
-            divHoldClass.Visible = false;
+            divResolution.Visible = true;
+            divHoldClass.Visible = true;
             txtResolution.Text = string.Empty;
             ddlHoldClass.SelectedIndex = 0;
 
