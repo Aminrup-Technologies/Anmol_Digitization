@@ -1577,6 +1577,8 @@
     <Compile Include="ITSM\BLL\ItsmTenantContext.cs" />
     <Compile Include="ITSM\BLL\ItsmTicketAccess.cs" />
     <Compile Include="ITSM\BLL\TicketWorkflow.cs" />
+    <Compile Include="ITSM\BLL\TicketActionPolicy.cs" />
+    <Compile Include="ITSM\BLL\ItsmNotification.cs" />
     <Compile Include="ITSM\BLL\ApprovalConfigurationService.cs" />
     <Compile Include="ITSM\BLL\TicketListService.cs" />
     <Compile Include="ITSM\BLL\TicketDetailService.cs" />

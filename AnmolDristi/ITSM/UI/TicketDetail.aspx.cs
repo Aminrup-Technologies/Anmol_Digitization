@@ -49,7 +49,41 @@ namespace AnmolDristi.ITSM.UI
             var selectedText = ddlTargetStatus.SelectedItem != null
                 ? ddlTargetStatus.SelectedItem.Text
                 : string.Empty;
-            divResolution.Visible = string.Equals(selectedText, "Resolved", StringComparison.OrdinalIgnoreCase);
+            var currentStatus = hfStatusName.Value ?? string.Empty;
+            var needsText = string.Equals(selectedText, "Resolved", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(selectedText, "Cancelled", StringComparison.OrdinalIgnoreCase)
+                || (string.Equals(selectedText, "In Progress", StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(currentStatus, "Resolved", StringComparison.OrdinalIgnoreCase));
+            divResolution.Visible = needsText;
+            divHoldClass.Visible = string.Equals(selectedText, "On Hold", StringComparison.OrdinalIgnoreCase);
+            if (string.Equals(selectedText, "Resolved", StringComparison.OrdinalIgnoreCase))
+            {
+                lblActionReason.Text = "Resolution summary (1000 characters maximum)";
+            }
+            else if (string.Equals(selectedText, "Cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                lblActionReason.Text = "Cancellation reason";
+            }
+            else if (needsText)
+            {
+                lblActionReason.Text = "Reason for returning to processing";
+            }
+        }
+
+        protected void btnTakeOwnership_Click(object sender, EventArgs e)
+        {
+            ClearMessage();
+            int ticketId;
+            if (!TryGetTicketId(out ticketId))
+            {
+                return;
+            }
+
+            var result = new TicketUpdateService().TakeOwnership(
+                ticketId,
+                GetActorCode(),
+                GetRowVersion());
+            ApplyResult(result, ticketId, "You are now the assignee.");
         }
 
         protected void btnChangeStatus_Click(object sender, EventArgs e)
@@ -74,7 +108,8 @@ namespace AnmolDristi.ITSM.UI
                 targetStatusId,
                 GetActorCode(),
                 txtResolution.Text,
-                GetRowVersion());
+                GetRowVersion(),
+                ddlHoldClass.SelectedValue);
 
             ApplyResult(result, ticketId, "Status updated successfully.");
         }
@@ -98,7 +133,13 @@ namespace AnmolDristi.ITSM.UI
                 ticketId,
                 ddlReassignTo.SelectedValue,
                 GetActorCode(),
-                GetRowVersion());
+                GetRowVersion(),
+                txtReassignReason.Text);
+
+            if (result.Success)
+            {
+                txtReassignReason.Text = string.Empty;
+            }
 
             ApplyResult(result, ticketId, "Ticket reassigned successfully.");
         }
@@ -228,36 +269,38 @@ namespace AnmolDristi.ITSM.UI
             pnlTicketContent.Visible = true;
             pnlNotFound.Visible = false;
             pnlTenantBadge.Visible = true;
-            lblTenantBadge.Text = FormatTenantBadge(dto.CompanyName, dto.CompanyId);
+            lblTenantBadge.Text = Enc(FormatTenantBadge(dto.CompanyName, dto.CompanyId));
 
-            lblTicketNumber.Text = "#" + dto.TicketNumber;
-            lblTitle.Text = dto.Title;
-            lblRequestType.Text = dto.RequestTypeName;
-            lblRequester.Text = dto.RequesterName;
-            lblAssignee.Text = dto.AssigneeName;
-            lblCategory.Text = dto.CategoryName
-                + (string.IsNullOrEmpty(dto.SubCategoryName) ? "" : " > " + dto.SubCategoryName)
-                + (string.IsNullOrEmpty(dto.ItemName) ? "" : " > " + dto.ItemName);
-            lblBranch.Text = dto.BranchName;
-            lblImpactUrgency.Text = dto.ImpactName + " / " + dto.UrgencyName;
+            lblTicketNumber.Text = Enc("#" + dto.TicketNumber);
+            lblTitle.Text = Enc(dto.Title);
+            lblRequestType.Text = Enc(dto.RequestTypeName);
+            lblRequester.Text = Enc(dto.RequesterName);
+            lblAssignee.Text = Enc(dto.AssigneeName);
+            lblCategory.Text = Enc(dto.CategoryName)
+                + (string.IsNullOrEmpty(dto.SubCategoryName) ? "" : " > " + Enc(dto.SubCategoryName))
+                + (string.IsNullOrEmpty(dto.ItemName) ? "" : " > " + Enc(dto.ItemName));
+            lblBranch.Text = Enc(dto.BranchName);
+            lblImpactUrgency.Text = Enc(dto.ImpactName) + " / " + Enc(dto.UrgencyName);
             lblCreatedOn.Text = dto.CreatedOn.ToString("dd-MMM-yyyy HH:mm");
-            lblDescription.Text = string.IsNullOrEmpty(dto.Description)
+            lblDescription.Text = Enc(string.IsNullOrEmpty(dto.Description)
                 ? "(No description provided)"
-                : dto.Description;
+                : dto.Description);
 
             pnlResolution.Visible = !string.IsNullOrEmpty(dto.ResolutionText);
-            lblResolution.Text = dto.ResolutionText ?? string.Empty;
+            lblResolution.Text = Enc(dto.ResolutionText);
 
-            lblStatusBadge.Text = dto.StatusName;
-            lblStatusBadge.CssClass = "badge-status badge-"
-                + dto.StatusName.ToLower().Replace(" ", "-");
-            lblPriorityBadge.Text = dto.PriorityName;
+            lblStatusBadge.Text = Enc(dto.StatusName);
+            lblStatusBadge.CssClass = StatusCss(dto.StatusName);
+            lblPriorityBadge.Text = Enc(dto.PriorityName);
+            hfStatusName.Value = dto.StatusName ?? string.Empty;
 
             if (dto.CsatScore.HasValue)
             {
                 pnlCsat.Visible = true;
                 lblCsatScore.Text = dto.CsatScore.Value + " / 5";
-                lblCsatFeedback.Text = dto.CsatFeedback ?? "(No feedback)";
+                lblCsatFeedback.Text = Enc(string.IsNullOrEmpty(dto.CsatFeedback)
+                    ? "(No feedback)"
+                    : dto.CsatFeedback);
             }
             else
             {
@@ -273,14 +316,25 @@ namespace AnmolDristi.ITSM.UI
             }
 
             divResolution.Visible = false;
+            divHoldClass.Visible = false;
             txtResolution.Text = string.Empty;
+            ddlHoldClass.SelectedIndex = 0;
 
             BindAgentDropdown();
             BindPriorityDropdown();
 
-            pnlApprovalActions.Visible = dto.CanApprove;
-            pnlWorkActions.Visible = !dto.IsTerminal && dto.StatusName != "Pending Approval";
-            pnlActions.Visible = !dto.IsTerminal && (pnlWorkActions.Visible || pnlApprovalActions.Visible);
+            var hasStatusActions = dto.AvailableStatuses != null && dto.AvailableStatuses.Count > 0;
+            pnlStatusAction.Visible = hasStatusActions;
+            pnlAssigneeTools.Visible = dto.CanProcess;
+            pnlTakeOwnership.Visible = dto.CanTakeOwnership;
+            pnlWorkActions.Visible = hasStatusActions || dto.CanProcess || dto.CanTakeOwnership;
+            pnlApprovalActions.Visible = dto.CanApprove || dto.CanReject;
+            btnApprove.Visible = dto.CanApprove;
+            btnReject.Visible = dto.CanReject;
+            txtRejectionReason.Visible = dto.CanReject;
+            pnlActions.Visible = pnlWorkActions.Visible || pnlApprovalActions.Visible;
+            txtComment.Visible = dto.CanComment;
+            btnAddComment.Visible = dto.CanComment;
             chkInternal.Visible = dto.CanAddInternalNote;
             if (!dto.CanAddInternalNote)
             {
@@ -334,6 +388,35 @@ namespace AnmolDristi.ITSM.UI
             ddlOverridePriority.DataTextField = "Name";
             ddlOverridePriority.DataValueField = "Id";
             ddlOverridePriority.DataBind();
+        }
+
+        private static string Enc(string value)
+        {
+            return System.Web.HttpUtility.HtmlEncode(value ?? string.Empty);
+        }
+
+        private static string StatusCss(string statusName)
+        {
+            switch (statusName)
+            {
+                case "New":
+                    return "badge-status badge-queue";
+                case "In Progress":
+                    return "badge-status badge-progress";
+                case "Resolved":
+                    return "badge-status badge-resolved";
+                case "Closed":
+                    return "badge-status badge-closed";
+                case "Pending Approval":
+                    return "badge-status badge-pending";
+                case "On Hold":
+                    return "badge-status badge-hold";
+                case "Cancelled":
+                case "Rejected":
+                    return "badge-status badge-cancelled";
+                default:
+                    return "badge-status";
+            }
         }
 
         private string GetActorCode()
@@ -390,7 +473,7 @@ namespace AnmolDristi.ITSM.UI
 
         private void ShowMessage(string message, bool success)
         {
-            lblMessage.Text = message;
+            lblMessage.Text = Enc(message);
             lblMessage.ForeColor = success ? Color.Green : Color.Red;
         }
     }

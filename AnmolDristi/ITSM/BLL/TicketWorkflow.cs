@@ -23,7 +23,8 @@ namespace AnmolDristi.ITSM.BLL
                 { "New", new ReadOnlyCollection<string>(new[] { "In Progress", "On Hold", "Cancelled" }) },
                 { "In Progress", new ReadOnlyCollection<string>(new[] { "Resolved", "On Hold", "Cancelled" }) },
                 { "On Hold", new ReadOnlyCollection<string>(new[] { "In Progress", "Cancelled" }) },
-                { "Resolved", new ReadOnlyCollection<string>(new[] { "Closed", "In Progress" }) }
+                { "Resolved", new ReadOnlyCollection<string>(new[] { "Closed", "In Progress" }) },
+                { "Pending Approval", new ReadOnlyCollection<string>(new[] { "Cancelled" }) }
             };
             Transitions = new ReadOnlyDictionary<string, IReadOnlyList<string>>(map);
         }

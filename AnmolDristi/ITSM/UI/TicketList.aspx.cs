@@ -1,9 +1,9 @@
 // ========================================================================
 // When: 2026-08-21
-// What: Session gate WORKMAN+USERID+BRANCH. MyTickets/Approvals/branch
-//       lookup no longer use actor CompanyId. Queues stay DTO-bound.
-// Why: Shared-service queues must not be restricted by agent company.
-//      Session CompanyID is not the authentication model.
+// What: Session gate WORKMAN+USERID+BRANCH. Queues stay DTO-bound and
+//       are limited to the actor's MST_UserMaster.CompanyId, including Open.
+// Why: Ticket.CompanyId is the tenant. The employee code is the only
+//      identity passed in. Session CompanyID is not the authorization source.
 // When: 2026-08-25
 // What: Centralized server-side authorization for every queue operation.
 //       BindQueue() is the single chokepoint — it validates the active
@@ -65,6 +65,7 @@ namespace AnmolDristi.ITSM.UI
 
             tabMyQueue.Visible = hasQueueView;
             tabAllOpen.Visible = hasQueueView;
+            tabUnassigned.Visible = true;
             tabMyTickets.Visible = true; // all authenticated employees
             tabApprovals.Visible = hasApprovalView;
         }
@@ -85,6 +86,12 @@ namespace AnmolDristi.ITSM.UI
         protected void lnkMyQueue_Click(object sender, EventArgs e)
         {
             SetActiveTab("MyQueue");
+            BindQueue();
+        }
+
+        protected void lnkUnassigned_Click(object sender, EventArgs e)
+        {
+            SetActiveTab("Unassigned");
             BindQueue();
         }
 
@@ -138,10 +145,16 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
+            var item = e.Row.DataItem as TicketListItemDto;
+            if (item == null)
+            {
+                return;
+            }
+
             var lblPriority = e.Row.FindControl("lblPriorityBadge") as Label;
             if (lblPriority != null)
             {
-                var priorityName = lblPriority.Text.Trim().ToUpper();
+                var priorityName = (item.PriorityName ?? string.Empty).Trim().ToUpper();
                 if (priorityName.Contains("P1") || priorityName.Contains("CRITICAL"))
                 {
                     lblPriority.CssClass = "badge-priority badge-p1";
@@ -163,8 +176,31 @@ namespace AnmolDristi.ITSM.UI
             var lblStatus = e.Row.FindControl("lblStatusBadge") as Label;
             if (lblStatus != null)
             {
-                var statusName = lblStatus.Text.Trim().ToLower().Replace(" ", "-");
-                lblStatus.CssClass = "badge-status badge-" + statusName;
+                lblStatus.CssClass = StatusCss(item.StatusName);
+            }
+        }
+
+        private static string StatusCss(string statusName)
+        {
+            switch (statusName)
+            {
+                case "New":
+                    return "badge-status badge-queue";
+                case "In Progress":
+                    return "badge-status badge-progress";
+                case "Resolved":
+                    return "badge-status badge-resolved";
+                case "Closed":
+                    return "badge-status badge-closed";
+                case "Pending Approval":
+                    return "badge-status badge-pending";
+                case "On Hold":
+                    return "badge-status badge-hold";
+                case "Cancelled":
+                case "Rejected":
+                    return "badge-status badge-cancelled";
+                default:
+                    return "badge-status";
             }
         }
 
@@ -172,6 +208,7 @@ namespace AnmolDristi.ITSM.UI
         {
             ViewState[VS_ACTIVE_TAB] = tab;
             lnkMyQueue.CssClass = tab == "MyQueue" ? "active" : "";
+            lnkUnassigned.CssClass = tab == "Unassigned" ? "active" : "";
             lnkAllOpen.CssClass = tab == "AllOpen" ? "active" : "";
             lnkMyTickets.CssClass = tab == "MyTickets" ? "active" : "";
             lnkApprovals.CssClass = tab == "Approvals" ? "active" : "";
@@ -196,8 +233,9 @@ namespace AnmolDristi.ITSM.UI
                     return HasPermission("ITSM.Queue.View");
                 case "Approvals":
                     return HasPermission("ITSM.Approval.View");
+                case "Unassigned":
                 case "MyTickets":
-                    return true; // all authenticated employees
+                    return true;
                 default:
                     return false;
             }
@@ -274,8 +312,11 @@ namespace AnmolDristi.ITSM.UI
                     case "MyQueue":
                         gvTickets.DataSource = service.GetAgentQueue(workman, filter);
                         break;
+                    case "Unassigned":
+                        gvTickets.DataSource = service.GetMappedUnassignedQueue(workman, filter);
+                        break;
                     case "AllOpen":
-                        gvTickets.DataSource = service.GetOpenQueue(filter);
+                        gvTickets.DataSource = service.GetOpenQueue(workman, filter);
                         break;
                     case "MyTickets":
                         gvTickets.DataSource = service.GetMyTickets(workman, filter);
@@ -296,9 +337,9 @@ namespace AnmolDristi.ITSM.UI
                     lblTicketCount.Text = dataSource.Count + " ticket(s)";
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                ShowMessage("Error loading ticket queue: " + ex.Message, false);
+                ShowMessage("The ticket queue could not be loaded.", false);
             }
         }
 
@@ -333,7 +374,7 @@ namespace AnmolDristi.ITSM.UI
 
         private void ShowMessage(string message, bool success)
         {
-            lblMessage.Text = message;
+            lblMessage.Text = System.Web.HttpUtility.HtmlEncode(message);
             lblMessage.ForeColor = success ? Color.Green : Color.Red;
         }
     }

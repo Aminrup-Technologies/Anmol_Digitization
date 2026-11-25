@@ -1,6 +1,5 @@
 using System;
 using System.Data.Entity;
-using System.Data.SqlClient;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -112,6 +111,12 @@ namespace AnmolDristi.ITSM.BLL
                                 "Requester has no CompanyId on MST_UserMaster; ticket creation is blocked for tenant isolation.");
                         }
 
+                        if (requester.EmployeeStatus != "Active")
+                        {
+                            throw new InvalidOperationException(
+                                "Only an active employee can create a ticket.");
+                        }
+
                         var branch = context.Branches
                             .AsNoTracking()
                             .FirstOrDefault(b => b.Branch_ID == requester.BranchId);
@@ -152,6 +157,19 @@ namespace AnmolDristi.ITSM.BLL
                             requester.BranchId, createdOn, resolutionHours);
                         var assigneeCode = _dispatchService.ResolveAssignee(
                             resolvedBranchId, categoryId, subCategoryId, itemId);
+                        if (!string.IsNullOrWhiteSpace(assigneeCode))
+                        {
+                            var assigneeCompanyId = context.UserMasters
+                                .AsNoTracking()
+                                .Where(u => u.EmployeeCode == assigneeCode)
+                                .Select(u => u.CompanyId)
+                                .FirstOrDefault();
+                            if (!assigneeCompanyId.HasValue
+                                || assigneeCompanyId.Value != requester.CompanyId.Value)
+                            {
+                                assigneeCode = null;
+                            }
+                        }
                         OnEnd(onStageEnd, "Priority/SLA/dispatch");
 
                         // ── Ticket number generation ──────────────────────────
@@ -163,6 +181,41 @@ namespace AnmolDristi.ITSM.BLL
                         // ── Status resolution ─────────────────────────────────
                         var requiresManagerApproval = requestType.RequiresManagerApproval;
                         var requiresItHeadApproval = requestType.RequiresItHeadApproval;
+                        string itHeadCode = null;
+                        var skipDuplicateItHead = false;
+                        if (requiresItHeadApproval)
+                        {
+                            itHeadCode = ResolveActiveItHead(context);
+                            var itHeadIsActive = context.UserMasters
+                                .AsNoTracking()
+                                .Any(u => u.EmployeeCode == itHeadCode && u.EmployeeStatus == "Active");
+                            if (!itHeadIsActive)
+                            {
+                                throw new InvalidOperationException(
+                                    "IT Head approval is enabled for this request type, "
+                                    + "but no active IT Head approver is configured. "
+                                    + "Please contact an ITSM administrator.");
+                            }
+
+                            if (string.Equals(
+                                requester.EmployeeCode,
+                                itHeadCode,
+                                StringComparison.OrdinalIgnoreCase))
+                            {
+                                throw new InvalidOperationException(
+                                    "Requester cannot be the IT Head approver on their own ticket.");
+                            }
+
+                            if (requiresManagerApproval
+                                && string.Equals(
+                                    requester.ReportingManagerCode,
+                                    itHeadCode,
+                                    StringComparison.OrdinalIgnoreCase))
+                            {
+                                skipDuplicateItHead = true;
+                            }
+                        }
+
                         var statusId = ResolveInitialStatusId(
                             context, requiresManagerApproval || requiresItHeadApproval);
 
@@ -195,6 +248,13 @@ namespace AnmolDristi.ITSM.BLL
                         OnEnd(onStageEnd, "Ticket persist (SaveChanges)");
 
                         // ── Audit log ────────────────────────────────────────
+                        var createDetail = ticket.TicketNumber;
+                        if (skipDuplicateItHead)
+                        {
+                            createDetail = ticket.TicketNumber
+                                + "; IT Head row skipped because that employee is already the Manager approver.";
+                        }
+
                         context.TicketAuditLogs.Add(new TicketAuditLog
                         {
                             TicketId = ticket.Id,
@@ -203,7 +263,7 @@ namespace AnmolDristi.ITSM.BLL
                             OldValue = null,
                             NewValue = (requiresManagerApproval || requiresItHeadApproval)
                                 ? "Pending Approval" : "New",
-                            Detail = ticket.TicketNumber,
+                            Detail = createDetail,
                             ActorCode = requester.EmployeeCode,
                             ActionedOn = createdOn
                         });
@@ -241,26 +301,18 @@ namespace AnmolDristi.ITSM.BLL
                             OnBegin(onStageBegin, "Manager approval (SaveChanges)");
                             context.SaveChanges();
                             OnEnd(onStageEnd, "Manager approval (SaveChanges)");
+                            ItsmNotification.EnqueueForEmployee(
+                                context,
+                                ticket.Id,
+                                requester.ReportingManagerCode,
+                                "ITSM Approval Requested: " + ticket.TicketNumber,
+                                "Ticket " + ticket.TicketNumber + " is waiting for your approval.");
                         }
 
                         // ── IT Head approval row ─────────────────────────────
-                        if (requiresItHeadApproval)
+                        if (requiresItHeadApproval && !skipDuplicateItHead)
                         {
                             OnBegin(onStageBegin, "IT Head approval");
-                            var itHeadCode = ResolveActiveItHead(context);
-                            var itHeadEmployee = context.UserMasters
-                                .AsNoTracking()
-                                .FirstOrDefault(u => u.EmployeeCode == itHeadCode
-                                                     && u.EmployeeStatus == "Active");
-
-                            if (itHeadEmployee == null)
-                            {
-                                throw new InvalidOperationException(
-                                    "IT Head approval is enabled for this request type, "
-                                    + "but no active IT Head approver is configured. "
-                                    + "Please contact an ITSM administrator.");
-                            }
-
                             context.TicketApprovals.Add(new TicketApproval
                             {
                                 TicketId = ticket.Id,
@@ -272,6 +324,12 @@ namespace AnmolDristi.ITSM.BLL
                             OnBegin(onStageBegin, "IT Head approval (SaveChanges)");
                             context.SaveChanges();
                             OnEnd(onStageEnd, "IT Head approval (SaveChanges)");
+                            ItsmNotification.EnqueueForEmployee(
+                                context,
+                                ticket.Id,
+                                itHeadCode,
+                                "ITSM Approval Requested: " + ticket.TicketNumber,
+                                "Ticket " + ticket.TicketNumber + " is waiting for your approval.");
                             OnEnd(onStageEnd, "IT Head approval");
                         }
 
@@ -472,7 +530,7 @@ namespace AnmolDristi.ITSM.BLL
                 return;
             }
 
-            var ticketLink = "~/ITSM/UI/TicketDetail.aspx?id=" + ticket.Id;
+            var ticketLink = ItsmNotification.TicketUrl(ticket.Id);
             var body = new StringBuilder();
             body.Append("<p>A new ITSM ticket has been created.</p>");
             body.Append("<p><strong>Ticket:</strong> ").Append(ticket.TicketNumber).Append("<br/>");
@@ -488,19 +546,13 @@ namespace AnmolDristi.ITSM.BLL
             body.Append("To view or update this ticket, use the link above.");
             body.Append("</p>");
 
-            const string sql = @"
-INSERT INTO dbo.NotificationQueue
-    (FormSubmissionId, EscalationLevel, RecipientEmail, RecipientName, Subject, Body, NotificationType, Status, SourceModule)
-VALUES
-    (@FormSubmissionId, 0, @RecipientEmail, @RecipientName, @Subject, @Body, 'Email', 'Pending', 'ITSM')";
-
-            context.Database.ExecuteSqlCommand(
-                sql,
-                new SqlParameter("@FormSubmissionId", ticket.Id),
-                new SqlParameter("@RecipientEmail", recipientEmail),
-                new SqlParameter("@RecipientName", (object)recipientName ?? DBNull.Value),
-                new SqlParameter("@Subject", "ITSM Ticket Created: " + ticket.TicketNumber),
-                new SqlParameter("@Body", body.ToString()));
+            ItsmNotification.Enqueue(
+                context,
+                ticket.Id,
+                recipientEmail,
+                recipientName,
+                "ITSM Ticket Created: " + ticket.TicketNumber,
+                body.ToString());
         }
     }
 }
