@@ -146,7 +146,7 @@ namespace AnmolDristi.ITSM.BLL
 
             using (var context = new ItsmDbContext())
             {
-                return context.TicketApprovals
+                var query = context.TicketApprovals
                     .AsNoTracking()
                     .Where(a => a.ApproverCode == approverCode
                                 && a.ApprovalStatus == "Pending")
