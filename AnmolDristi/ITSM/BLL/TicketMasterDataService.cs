@@ -5,6 +5,13 @@
 //       UI delegates to this service — zero direct database access in code-behind.
 // Why:  Architecture enforcement: UI → BLL → DAL. Master data is company-scoped
 //       where applicable. Hierarchy validation is a single consolidated query.
+// When: 2026-11-25
+// What: Ticket create still reads the same three tables. Parent Category is
+//       itsm.MST_Category, Category is itsm.MST_SubCategory, and optional
+//       Sub-Category is itsm.MST_Item. ValidateHierarchy now rejects an
+//       inactive parent category. The catalog has no CompanyId.
+// Why:  Phase 1B R1. Inactive entries must not be accepted on a new ticket,
+//       including a posted id whose parent was deactivated after the page loaded.
 // ========================================================================
 
 using System.Collections.Generic;
@@ -88,9 +95,11 @@ namespace AnmolDristi.ITSM.BLL
     public class TicketMasterDataService
     {
         /// <summary>
-        /// Loads the full category → subcategory → item hierarchy as
-        /// strongly typed DTOs. Company-scoped reads are applied when
-        /// <paramref name="companyId"/> is provided (> 0).
+        /// Loads the active Parent Category → Category → Sub-Category tree.
+        /// Each level includes only active children of an active parent.
+        /// <paramref name="companyId"/> is not a filter: the catalog tables
+        /// have no CompanyId and stay global. The argument remains so the
+        /// Create Ticket call site does not change.
         /// </summary>
         public List<TicketCategoryDto> GetCategoryHierarchy(int companyId)
         {
@@ -186,13 +195,14 @@ namespace AnmolDristi.ITSM.BLL
         }
 
         /// <summary>
-        /// Validates the submitted category → subcategory → item hierarchy
-        /// in a single consolidated EF query. Returns a
-        /// <see cref="HierarchyValidationResult"/> with null Error on success.
+        /// Validates the submitted Parent Category → Category → optional
+        /// Sub-Category chain. Stored columns remain CategoryId,
+        /// SubCategoryId, and ItemId.
         ///
         /// Validation performed:
-        /// - SubCategory exists, is active, and belongs to Category
-        /// - Item (when supplied) exists, is active, and belongs to SubCategory
+        /// - Parent category exists and is active
+        /// - Category exists, is active, and belongs to that parent
+        /// - Sub-category, when supplied, exists, is active, and belongs to that category
         /// </summary>
         public HierarchyValidationResult ValidateHierarchy(
             int categoryId,
@@ -201,22 +211,28 @@ namespace AnmolDristi.ITSM.BLL
         {
             using (var context = new ItsmDbContext())
             {
-                // Single query: check subcategory existence + category ownership + active flag.
-                var subQuery = context.SubCategories
+                var categoryActive = context.Categories
                     .AsNoTracking()
-                    .Where(s => s.Id == subCategoryId
+                    .Any(c => c.Id == categoryId && c.IsActive);
+
+                if (!categoryActive)
+                {
+                    return HierarchyValidationResult.Fail(
+                        "The selected parent category is not available.");
+                }
+
+                bool subValid = context.SubCategories
+                    .AsNoTracking()
+                    .Any(s => s.Id == subCategoryId
                              && s.CategoryId == categoryId
                              && s.IsActive);
-
-                bool subValid = subQuery.Any();
 
                 if (!subValid)
                 {
                     return HierarchyValidationResult.Fail(
-                        "The selected sub category does not belong to the chosen category.");
+                        "The selected category does not belong to the chosen parent category.");
                 }
 
-                // Item validation (when supplied).
                 if (itemId.HasValue)
                 {
                     bool itemValid = context.Items
@@ -228,7 +244,7 @@ namespace AnmolDristi.ITSM.BLL
                     if (!itemValid)
                     {
                         return HierarchyValidationResult.Fail(
-                            "The selected item does not belong to the chosen sub category.");
+                            "The selected sub-category does not belong to the chosen category.");
                     }
                 }
             }
