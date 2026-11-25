@@ -22,6 +22,13 @@
               hfSelectedItemId, categoryCards, ddlSubCategoryClient, ddlItemClient.
      Why:     Phase 1B R1 names. The stored columns and control IDs do not change,
               so existing tickets and the current selection script keep working.
+     When:    2026-11-25 (R2 automatic title)
+     What:    The title textbox is filled in the browser from the displayed
+              Request Type, Parent Category, Category, and — only when
+              chosen — Sub-Category, joined by " / " and capped at 200
+              characters. A later selection replaces a manual edit. Submit
+              still posts txtTitle; the server does not rebuild the title.
+     Why:     Phase 1B R2. Existing tickets are not rewritten.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Create Ticket" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="CreateTicket.aspx.cs"
@@ -467,6 +474,7 @@
                 hfImpact: '<%= hfSelectedImpactId.ClientID %>',
                 hfUrgency: '<%= hfSelectedUrgencyId.ClientID %>',
                 hfRt: '<%= hfSelectedRequestTypeId.ClientID %>',
+                title: '<%= txtTitle.ClientID %>',
                 impactBtns: '<%= impactButtons.ClientID %>',
                 urgencyBtns: '<%= urgencyButtons.ClientID %>',
                 btnSubmit: '<%= btnSubmit.ClientID %>'
@@ -529,6 +537,7 @@
             function onRequestTypeSelect(id) {
                 document.getElementById(_el.hfRt).value = id;
                 selectOptionCards(_el.rtCards, id);
+                refreshTitle();
             }
 
             function onCategoryClick(categoryId) {
@@ -539,6 +548,7 @@
                 unlockSection('secSubCategory');
                 populateSubCategories(categoryId);
                 lockSection('secItem');
+                refreshTitle();
             }
 
             function populateSubCategories(catId) {
@@ -566,6 +576,7 @@
                 } else {
                     lockSection('secItem');
                 }
+                refreshTitle();
             }
 
             function populateItems(subId) {
@@ -591,7 +602,10 @@
                 }
             }
 
-            function onItemChange(val) { document.getElementById(_el.hfItem).value = val; }
+            function onItemChange(val) {
+                document.getElementById(_el.hfItem).value = val;
+                refreshTitle();
+            }
 
             function semanticLevel(text, index) {
                 var t = (text || '').toLowerCase();
@@ -690,6 +704,66 @@
                 }
             }
 
+            // R2: title is the displayed labels, in selection order.
+            // Sub-Category is omitted unless one is selected. Segments that
+            // do not fit in 200 characters are dropped from the right as
+            // whole segments, so the value never ends with " / " or a cut
+            // category name. A single label longer than 200 is clipped to
+            // 200 UTF-16 code units without splitting a surrogate pair.
+            var TITLE_MAX = 200;
+            var TITLE_SEP = ' / ';
+
+            function trimText(value) {
+                return (value || '').replace(/^\s+|\s+$/g, '');
+            }
+
+            function selectedCardName(containerId) {
+                var container = document.getElementById(containerId);
+                if (!container) return '';
+                var name = container.querySelector('.itsm-ct__option--selected .itsm-ct__option-name');
+                return name ? trimText(name.textContent) : '';
+            }
+
+            function selectedListName(selectId, hiddenId) {
+                var hidden = document.getElementById(hiddenId);
+                if (!hidden || !trimText(hidden.value)) return '';
+                var ddl = document.getElementById(selectId);
+                if (!ddl || ddl.selectedIndex < 0) return '';
+                var opt = ddl.options[ddl.selectedIndex];
+                if (!opt || !opt.value) return '';
+                return trimText(opt.text);
+            }
+
+            function clipTitle(text) {
+                if (text.length <= TITLE_MAX) return text;
+                var end = TITLE_MAX;
+                var code = text.charCodeAt(end - 1);
+                if (code >= 0xD800 && code <= 0xDBFF) end -= 1;
+                return text.substring(0, end);
+            }
+
+            function joinTitle(parts) {
+                var kept = [];
+                for (var i = 0; i < parts.length; i++) {
+                    if (parts[i]) kept.push(parts[i]);
+                }
+                while (kept.length > 1 && kept.join(TITLE_SEP).length > TITLE_MAX) {
+                    kept.pop();
+                }
+                return clipTitle(kept.join(TITLE_SEP));
+            }
+
+            function refreshTitle() {
+                var box = document.getElementById(_el.title);
+                if (!box) return;
+                box.value = joinTitle([
+                    selectedCardName(_el.rtCards),
+                    selectedCardName(_el.catCards),
+                    selectedListName('ddlSubCategoryClient', _el.hfSub),
+                    selectedListName('ddlItemClient', _el.hfItem)
+                ]);
+            }
+
             function onSubmit() {
                 hideError();
                 if (_submitting) {
@@ -750,6 +824,7 @@
                 if (subDdl) subDdl.innerHTML = '<option value="">-- Select Category --</option>';
                 var itemDdl = document.getElementById('ddlItemClient');
                 if (itemDdl) itemDdl.innerHTML = '<option value="">-- Select Sub-Category (optional) --</option>';
+                refreshTitle();
             }
 
             return {
