@@ -1,4 +1,9 @@
 // ========================================================================
+// When: 2026-11-25
+// What: R5 moves status mutation to dropdown selection with explicit
+//       client confirmation and a post-success confirmation popup.
+// Why: Remove the redundant Apply button while retaining BLL validation.
+// ========================================================================
 // When: 2026-08-21
 // What: Session gate WORKMAN+USERID+BRANCH; detail/update without actor
 //       CompanyId; tenant badge = MST_Company.Company_Description;
@@ -44,30 +49,46 @@ namespace AnmolDristi.ITSM.UI
             }
         }
 
+        // ====================================================================
+        // When: 2026-11-25
+        // What: R5 executes the selected status transition directly from the
+        //       dropdown postback and displays a completion confirmation.
+        // Why: Remove the separate Apply button while retaining server-side
+        //       transition, reason, authorization, tenant and RowVersion gates.
+        // ====================================================================
         protected void ddlTargetStatus_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var selectedText = ddlTargetStatus.SelectedItem != null
-                ? ddlTargetStatus.SelectedItem.Text
-                : string.Empty;
-            var currentStatus = hfStatusName.Value ?? string.Empty;
-            var needsText = string.Equals(selectedText, "Resolved", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(selectedText, "Cancelled", StringComparison.OrdinalIgnoreCase)
-                || (string.Equals(selectedText, "In Progress", StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(currentStatus, "Resolved", StringComparison.OrdinalIgnoreCase));
-            divResolution.Visible = needsText;
-            divHoldClass.Visible = string.Equals(selectedText, "On Hold", StringComparison.OrdinalIgnoreCase);
-            if (string.Equals(selectedText, "Resolved", StringComparison.OrdinalIgnoreCase))
+            ClearMessage();
+            int ticketId;
+            int targetStatusId;
+            if (!TryGetTicketId(out ticketId)
+                || !int.TryParse(ddlTargetStatus.SelectedValue, out targetStatusId))
             {
-                lblActionReason.Text = "Resolution summary (1000 characters maximum)";
+                ShowMessage("Invalid ticket or status action.", false);
+                return;
             }
-            else if (string.Equals(selectedText, "Cancelled", StringComparison.OrdinalIgnoreCase))
+
+            var result = new TicketUpdateService().ChangeStatus(
+                ticketId,
+                targetStatusId,
+                GetActorCode(),
+                txtResolution.Text,
+                GetRowVersion(),
+                ddlHoldClass.SelectedValue);
+
+            if (!result.Success)
             {
-                lblActionReason.Text = "Cancellation reason";
+                LoadTicket(ticketId);
+                ShowMessage(result.Error, false);
+                return;
             }
-            else if (needsText)
-            {
-                lblActionReason.Text = "Reason for returning to processing";
-            }
+
+            ApplyResult(result, ticketId, "Status updated successfully.");
+            ClientScript.RegisterStartupScript(
+                GetType(),
+                "ItsmR5ActionConfirmation",
+                "window.alert('Action executed successfully.');",
+                true);
         }
 
         protected void btnTakeOwnership_Click(object sender, EventArgs e)
@@ -84,34 +105,6 @@ namespace AnmolDristi.ITSM.UI
                 GetActorCode(),
                 GetRowVersion());
             ApplyResult(result, ticketId, "You are now the assignee.");
-        }
-
-        protected void btnChangeStatus_Click(object sender, EventArgs e)
-        {
-            ClearMessage();
-            if (string.IsNullOrWhiteSpace(ddlTargetStatus.SelectedValue))
-            {
-                ShowMessage("Please select a target status action.", false);
-                return;
-            }
-
-            int ticketId;
-            int targetStatusId;
-            if (!TryGetTicketId(out ticketId) || !int.TryParse(ddlTargetStatus.SelectedValue, out targetStatusId))
-            {
-                ShowMessage("Invalid ticket or status.", false);
-                return;
-            }
-
-            var result = new TicketUpdateService().ChangeStatus(
-                ticketId,
-                targetStatusId,
-                GetActorCode(),
-                txtResolution.Text,
-                GetRowVersion(),
-                ddlHoldClass.SelectedValue);
-
-            ApplyResult(result, ticketId, "Status updated successfully.");
         }
 
         protected void btnReassign_Click(object sender, EventArgs e)
@@ -315,8 +308,8 @@ namespace AnmolDristi.ITSM.UI
                 ddlTargetStatus.Items.Add(new ListItem(status.Name, status.Id.ToString()));
             }
 
-            divResolution.Visible = false;
-            divHoldClass.Visible = false;
+            divResolution.Visible = true;
+            divHoldClass.Visible = true;
             txtResolution.Text = string.Empty;
             ddlHoldClass.SelectedIndex = 0;
 

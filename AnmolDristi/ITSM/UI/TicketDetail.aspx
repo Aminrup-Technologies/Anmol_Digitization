@@ -1,3 +1,11 @@
+<!-- ========================================================================
+     When: 2026-11-25
+     What: R5 status Action Panel auto-trigger: selection prompts for any
+           mandatory detail, confirms intent, then posts directly to the
+           server transition handler; no Apply/Save button.
+     Why: The approved R5 interaction executes from the dropdown and gives
+          the user a confirmation after the state change.
+     ======================================================================== -->
 <%-- ========================================================================
      File:    TicketDetail.aspx
      Layer:   UI — Presentation
@@ -119,6 +127,56 @@
             margin-top: 10px;
         }
     </style>
+    <script type="text/javascript">
+        // R5: Selecting a status action is the trigger; mandatory input and
+        // confirmation are collected before the single server-side mutation.
+        function itsmStatusActionSelected(select) {
+            if (!select || !select.value) return false;
+
+            var actionName = select.options[select.selectedIndex].text;
+            var currentStatus = document.getElementById('<%= hfStatusName.ClientID %>').value || '';
+            var reasonBox = document.getElementById('<%= txtResolution.ClientID %>');
+            var holdBox = document.getElementById('<%= ddlHoldClass.ClientID %>');
+            var needsReason = actionName === 'Resolved' || actionName === 'Cancelled'
+                || (actionName === 'In Progress' && currentStatus === 'Resolved');
+
+            if (needsReason) {
+                var promptLabel = actionName === 'Resolved' ? 'Resolution summary (required)'
+                    : actionName === 'Cancelled' ? 'Cancellation reason (required)'
+                    : 'Reason for returning to processing (required)';
+                var reason = window.prompt(promptLabel, reasonBox.value || '');
+                if (reason === null || !reason.trim()) {
+                    select.selectedIndex = 0;
+                    return false;
+                }
+                reasonBox.value = reason.trim();
+            }
+
+            if (actionName === 'On Hold') {
+                var holdReason = window.prompt('Select hold reason: Requester, Vendor, or Internal', '');
+                if (holdReason === null) {
+                    select.selectedIndex = 0;
+                    return false;
+                }
+                holdReason = holdReason.trim();
+                if (holdReason !== 'Requester' && holdReason !== 'Vendor' && holdReason !== 'Internal') {
+                    window.alert('Enter exactly Requester, Vendor, or Internal.');
+                    select.selectedIndex = 0;
+                    return false;
+                }
+                holdBox.value = holdReason;
+            }
+
+            if (!window.confirm('Execute "' + actionName + '" now?')) {
+                select.selectedIndex = 0;
+                return false;
+            }
+
+            __doPostBack('<%= ddlTargetStatus.UniqueID %>', '');
+            return false;
+        }
+    </script>
+
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -246,12 +304,13 @@
                                         <asp:DropDownList ID="ddlTargetStatus" runat="server"
                                             CssClass="form-control input-sm"
                                             AppendDataBoundItems="true" Width="180px"
-                                            AutoPostBack="true"
+                                            AutoPostBack="false"
+                                            onchange="return itsmStatusActionSelected(this);"
                                             OnSelectedIndexChanged="ddlTargetStatus_SelectedIndexChanged">
                                             <asp:ListItem Text="-- Select Action --" Value="" />
                                         </asp:DropDownList>
                                     </div>
-                                    <div class="form-group" id="divHoldClass" runat="server" visible="false">
+                                    <div class="form-group" id="divHoldClass" runat="server" visible="true" style="display: none;">
                                         <label>Hold reason <span class="text-danger">*</span></label>
                                         <asp:DropDownList ID="ddlHoldClass" runat="server"
                                             CssClass="form-control input-sm" Width="180px">
@@ -261,17 +320,13 @@
                                             <asp:ListItem Text="Internal" Value="Internal" />
                                         </asp:DropDownList>
                                     </div>
-                                    <div class="form-group" id="divResolution" runat="server" visible="false">
+                                    <div class="form-group" id="divResolution" runat="server" visible="true" style="display: none;">
                                         <label><asp:Label ID="lblActionReason" runat="server" Text="Resolution summary" /> <span class="text-danger">*</span></label>
                                         <asp:TextBox ID="txtResolution" runat="server" CssClass="form-control input-sm"
                                             TextMode="MultiLine" Rows="3" Width="350px" MaxLength="1000"
                                             placeholder="Required" />
                                     </div>
-                                    <div class="form-group" style="padding-top: 22px;">
-                                        <asp:Button ID="btnChangeStatus" runat="server" Text="Apply"
-                                            CssClass="btn btn-primary btn-sm"
-                                            OnClick="btnChangeStatus_Click" />
-                                    </div>
+
                                 </div>
                                 </asp:Panel>
 
