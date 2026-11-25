@@ -1,4 +1,10 @@
 // ========================================================================
+// When: 2026-11-25
+// What: Apply the approved R4 queue order consistently and add a stable
+//       ticket-ID tie-breaker after priority and creation timestamp.
+// Why: Equal-priority/equal-time tickets must not jump between pages or
+//      queue views. Sort in the query before materializing the result.
+// ========================================================================
 // When: 2026-08-21
 // What: Queue reads stay AsNoTracking projections and require the actor's
 //       MST_UserMaster.CompanyId. Open is company-scoped. A missing company
@@ -149,10 +155,8 @@ namespace AnmolDristi.ITSM.BLL
                         approval => approval.TicketId,
                         ticket => ticket.Id,
                         (approval, ticket) => ticket)
-                    .Distinct()
-                    .OrderBy(t => t.PrioritySortOrder)
-                    .ThenByDescending(t => t.CreatedOn)
-                    .ToList();
+                    .Distinct();
+                return SortQueue(query).ToList();
             }
         }
 
@@ -218,6 +222,7 @@ namespace AnmolDristi.ITSM.BLL
                     })
                     .OrderBy(t => t.PrioritySortOrder)
                     .ThenByDescending(t => t.CreatedOn)
+                    .ThenByDescending(t => t.Id)
                     .ToList();
             }
         }
@@ -370,7 +375,8 @@ namespace AnmolDristi.ITSM.BLL
         {
             return query
                 .OrderBy(t => t.PrioritySortOrder)
-                .ThenByDescending(t => t.CreatedOn);
+                .ThenByDescending(t => t.CreatedOn)
+                .ThenByDescending(t => t.Id);
         }
     }
 }
