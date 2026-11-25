@@ -5,7 +5,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace AnmolDristi.ITSM.DAL.Entities
 {
     /// <summary>
-    /// Maps to itsm.MST_SubCategory — second-tier taxonomy under Category.
+    /// Maps to itsm.MST_SubCategory — Category under a Parent Category.
+    /// Deactivate with IsActive. Do not change CategoryId once a ticket references the row.
     /// </summary>
     [Table("MST_SubCategory", Schema = "itsm")]
     public class SubCategory

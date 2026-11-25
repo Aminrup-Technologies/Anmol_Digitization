@@ -15,6 +15,13 @@
               stay neutral Dristi dropdowns. Visual-only CSS/JS.
      Why:     Product UX — colour encodes meaning without changing postback,
               validation, HiddenFields, or server rendering of card IDs.
+     When:    2026-11-25
+     What:    Visible labels now say Parent Category, Category, and optional
+              Sub-Category. Selection still uses the same cards, selects,
+              and hidden fields: hfSelectedCategoryId, hfSelectedSubCategoryId,
+              hfSelectedItemId, categoryCards, ddlSubCategoryClient, ddlItemClient.
+     Why:     Phase 1B R1 names. The stored columns and control IDs do not change,
+              so existing tickets and the current selection script keep working.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Create Ticket" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="CreateTicket.aspx.cs"
@@ -114,7 +121,7 @@
             background: #3498DB; background: var(--itsm-blue);
         }
 
-        /* Root Category — Dristi green */
+        /* Parent Category — Dristi green */
         .itsm-ct__options--category .itsm-ct__option-icon { color: #1ABB9C; color: var(--itsm-green); }
         .itsm-ct__options--category .itsm-ct__option:hover {
             border-color: #1ABB9C; border-color: var(--itsm-green);
@@ -315,11 +322,11 @@
                         </div>
 
                         <%-- ============================================================
-                             STEP 2 — Root Category (clickable cards)
+                             STEP 2 — Parent Category (clickable cards)
                              ============================================================ --%>
                         <div class="itsm-ct__section" id="secCategory">
                             <div class="itsm-ct__heading">
-                                <span class="itsm-ct__step">2</span> Root Category
+                                <span class="itsm-ct__step">2</span> Parent Category
                                 <span class="itsm-ct__label">* required</span>
                             </div>
                             <div class="itsm-ct__options itsm-ct__options--category" id="categoryCards" runat="server">
@@ -331,37 +338,37 @@
                         </div>
 
                         <%-- ============================================================
-                             STEP 3 — Sub Category (client-side filtered dropdown)
+                             STEP 3 — Category (client-side filtered dropdown)
                              ============================================================ --%>
                         <div class="itsm-ct__section itsm-ct__dependent itsm-ct__dependent--locked" id="secSubCategory">
                             <div class="itsm-ct__heading">
-                                <span class="itsm-ct__step">3</span> Sub Category
+                                <span class="itsm-ct__step">3</span> Category
                                 <span class="itsm-ct__label">* required</span>
                             </div>
-                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a root category first</div>
+                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a parent category first</div>
                             <div class="itsm-ct__field">
                                 <select id="ddlSubCategoryClient"
                                     class="form-control itsm-ct__field-input"
                                     onchange="ITSM.CreateTicket.onSubCategoryChange(this.value)">
-                                    <option value="">-- Select Sub Category --</option>
+                                    <option value="">-- Select Category --</option>
                                 </select>
                             </div>
                         </div>
 
                         <%-- ============================================================
-                             STEP 4 — Item (client-side filtered, optional)
+                             STEP 4 — Sub-Category (client-side filtered, optional)
                              ============================================================ --%>
                         <div class="itsm-ct__section itsm-ct__dependent itsm-ct__dependent--locked" id="secItem">
                             <div class="itsm-ct__heading">
-                                <span class="itsm-ct__step">4</span> Item
+                                <span class="itsm-ct__step">4</span> Sub-Category
                                 <span class="itsm-ct__label">optional</span>
                             </div>
-                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a sub-category first</div>
+                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a category first</div>
                             <div class="itsm-ct__field">
                                 <select id="ddlItemClient"
                                     class="form-control itsm-ct__field-input"
                                     onchange="ITSM.CreateTicket.onItemChange(this.value)">
-                                    <option value="">-- Select Item (optional) --</option>
+                                    <option value="">-- Select Sub-Category (optional) --</option>
                                 </select>
                             </div>
                         </div>
@@ -536,7 +543,7 @@
 
             function populateSubCategories(catId) {
                 var ddl = document.getElementById('ddlSubCategoryClient');
-                ddl.innerHTML = '<option value="">-- Select Sub Category --</option>';
+                ddl.innerHTML = '<option value="">-- Select Category --</option>';
                 for (var i = 0; i < _catData.length; i++) {
                     if (_catData[i].Id === catId) {
                         var subs = _catData[i].SubCategories || [];
@@ -563,7 +570,7 @@
 
             function populateItems(subId) {
                 var ddl = document.getElementById('ddlItemClient');
-                ddl.innerHTML = '<option value="">-- Select Item (optional) --</option>';
+                ddl.innerHTML = '<option value="">-- Select Sub-Category (optional) --</option>';
                 var catId = parseInt(document.getElementById(_el.hfCat).value, 10);
                 for (var i = 0; i < _catData.length; i++) {
                     if (_catData[i].Id === catId) {
@@ -696,8 +703,8 @@
                 var urgency = document.getElementById(_el.hfUrgency).value;
 
                 if (!rt) { showError('Please select a request type.'); return false; }
-                if (!cat) { showError('Please select a category.'); return false; }
-                if (!sub) { showError('Please select a sub category.'); return false; }
+                if (!cat) { showError('Please select a parent category.'); return false; }
+                if (!sub) { showError('Please select a category.'); return false; }
                 if (!impact) { showError('Please select an impact level.'); return false; }
                 if (!urgency) { showError('Please select an urgency level.'); return false; }
 
@@ -740,9 +747,9 @@
                 lockSection('secItem');
                 // Reset selects
                 var subDdl = document.getElementById('ddlSubCategoryClient');
-                if (subDdl) subDdl.innerHTML = '<option value="">-- Select Sub Category --</option>';
+                if (subDdl) subDdl.innerHTML = '<option value="">-- Select Category --</option>';
                 var itemDdl = document.getElementById('ddlItemClient');
-                if (itemDdl) itemDdl.innerHTML = '<option value="">-- Select Item (optional) --</option>';
+                if (itemDdl) itemDdl.innerHTML = '<option value="">-- Select Sub-Category (optional) --</option>';
             }
 
             return {
