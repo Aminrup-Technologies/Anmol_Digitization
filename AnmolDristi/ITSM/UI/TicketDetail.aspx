@@ -320,11 +320,12 @@
                                             CssClass="form-control input-sm"
                                             AppendDataBoundItems="true" Width="180px"
                                             AutoPostBack="false"
+                                            onchange="return itsmStatusActionSelected(this);"
                                             OnSelectedIndexChanged="ddlTargetStatus_SelectedIndexChanged">
                                             <asp:ListItem Text="-- Select Action --" Value="" />
                                         </asp:DropDownList>
                                     </div>
-                                    <div class="form-group" id="divHoldClass" runat="server" visible="false">
+                                    <div class="form-group" id="divHoldClass" runat="server" visible="true" style="display: none;">
                                         <label>Hold reason <span class="text-danger">*</span></label>
                                         <asp:DropDownList ID="ddlHoldClass" runat="server"
                                             CssClass="form-control input-sm" Width="180px">
@@ -334,7 +335,7 @@
                                             <asp:ListItem Text="Internal" Value="Internal" />
                                         </asp:DropDownList>
                                     </div>
-                                    <div class="form-group" id="divResolution" runat="server" visible="false">
+                                    <div class="form-group" id="divResolution" runat="server" visible="true" style="display: none;">
                                         <label><asp:Label ID="lblActionReason" runat="server" Text="Resolution summary" /> <span class="text-danger">*</span></label>
                                         <asp:TextBox ID="txtResolution" runat="server" CssClass="form-control input-sm"
                                             TextMode="MultiLine" Rows="3" Width="350px" MaxLength="1000"
