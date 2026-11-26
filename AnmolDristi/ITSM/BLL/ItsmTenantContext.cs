@@ -1,8 +1,9 @@
 // ========================================================================
 // When: 2026-08-21
-// What: Documented as live UserMaster.CompanyId lookup only — not ticket tenant.
-// Why: Ticket.CompanyId is the authoritative tenant; this helper must not
-//      gate TicketDetail / TicketUpdate.
+// What: Live UserMaster.CompanyId for the authenticated employee code.
+// Why: Queue, detail, and mutation checks compare this value with
+//      Ticket.CompanyId. A missing or non-positive value fails closed.
+//      Session company keys and browser values are not a source.
 // ========================================================================
 
 using System.Data.Entity;
@@ -12,9 +13,9 @@ using AnmolDristi.ITSM.DAL;
 namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
-    /// Resolves the signed-in employee's current MST_UserMaster.CompanyId.
-    /// This is live HRMS data — not ticket tenant ownership. Do not use as
-    /// a TicketDetail / TicketUpdate authorization gate.
+    /// Resolves the signed-in employee's current MST_UserMaster.CompanyId
+    /// from the employee code. Returns 0 when the employee or company is
+    /// missing. Callers must fail closed on a non-positive result.
     /// </summary>
     public static class ItsmTenantContext
     {

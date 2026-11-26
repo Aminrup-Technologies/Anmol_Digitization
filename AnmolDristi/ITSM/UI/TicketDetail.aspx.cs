@@ -1,4 +1,9 @@
 // ========================================================================
+// When: 2026-11-25
+// What: R5 moves status mutation to dropdown selection with explicit
+//       client confirmation and a post-success confirmation popup.
+// Why: Remove the redundant Apply button while retaining BLL validation.
+// ========================================================================
 // When: 2026-08-21
 // What: Session gate WORKMAN+USERID+BRANCH; detail/update without actor
 //       CompanyId; tenant badge = MST_Company.Company_Description;
@@ -44,28 +49,22 @@ namespace AnmolDristi.ITSM.UI
             }
         }
 
+        // ====================================================================
+        // When: 2026-11-25
+        // What: R5 executes the selected status transition directly from the
+        //       dropdown postback and displays a completion confirmation.
+        // Why: Remove the separate Apply button while retaining server-side
+        //       transition, reason, authorization, tenant and RowVersion gates.
+        // ====================================================================
         protected void ddlTargetStatus_SelectedIndexChanged(object sender, EventArgs e)
         {
-            var selectedText = ddlTargetStatus.SelectedItem != null
-                ? ddlTargetStatus.SelectedItem.Text
-                : string.Empty;
-            divResolution.Visible = string.Equals(selectedText, "Resolved", StringComparison.OrdinalIgnoreCase);
-        }
-
-        protected void btnChangeStatus_Click(object sender, EventArgs e)
-        {
             ClearMessage();
-            if (string.IsNullOrWhiteSpace(ddlTargetStatus.SelectedValue))
-            {
-                ShowMessage("Please select a target status action.", false);
-                return;
-            }
-
             int ticketId;
             int targetStatusId;
-            if (!TryGetTicketId(out ticketId) || !int.TryParse(ddlTargetStatus.SelectedValue, out targetStatusId))
+            if (!TryGetTicketId(out ticketId)
+                || !int.TryParse(ddlTargetStatus.SelectedValue, out targetStatusId))
             {
-                ShowMessage("Invalid ticket or status.", false);
+                ShowMessage("Invalid ticket or status action.", false);
                 return;
             }
 
@@ -74,9 +73,38 @@ namespace AnmolDristi.ITSM.UI
                 targetStatusId,
                 GetActorCode(),
                 txtResolution.Text,
-                GetRowVersion());
+                GetRowVersion(),
+                ddlHoldClass.SelectedValue);
+
+            if (!result.Success)
+            {
+                LoadTicket(ticketId);
+                ShowMessage(result.Error, false);
+                return;
+            }
 
             ApplyResult(result, ticketId, "Status updated successfully.");
+            ClientScript.RegisterStartupScript(
+                GetType(),
+                "ItsmR5ActionConfirmation",
+                "window.alert('Action executed successfully.');",
+                true);
+        }
+
+        protected void btnTakeOwnership_Click(object sender, EventArgs e)
+        {
+            ClearMessage();
+            int ticketId;
+            if (!TryGetTicketId(out ticketId))
+            {
+                return;
+            }
+
+            var result = new TicketUpdateService().TakeOwnership(
+                ticketId,
+                GetActorCode(),
+                GetRowVersion());
+            ApplyResult(result, ticketId, "You are now the assignee.");
         }
 
         protected void btnReassign_Click(object sender, EventArgs e)
@@ -98,7 +126,13 @@ namespace AnmolDristi.ITSM.UI
                 ticketId,
                 ddlReassignTo.SelectedValue,
                 GetActorCode(),
-                GetRowVersion());
+                GetRowVersion(),
+                txtReassignReason.Text);
+
+            if (result.Success)
+            {
+                txtReassignReason.Text = string.Empty;
+            }
 
             ApplyResult(result, ticketId, "Ticket reassigned successfully.");
         }
@@ -228,36 +262,38 @@ namespace AnmolDristi.ITSM.UI
             pnlTicketContent.Visible = true;
             pnlNotFound.Visible = false;
             pnlTenantBadge.Visible = true;
-            lblTenantBadge.Text = FormatTenantBadge(dto.CompanyName, dto.CompanyId);
+            lblTenantBadge.Text = Enc(FormatTenantBadge(dto.CompanyName, dto.CompanyId));
 
-            lblTicketNumber.Text = "#" + dto.TicketNumber;
-            lblTitle.Text = dto.Title;
-            lblRequestType.Text = dto.RequestTypeName;
-            lblRequester.Text = dto.RequesterName;
-            lblAssignee.Text = dto.AssigneeName;
-            lblCategory.Text = dto.CategoryName
-                + (string.IsNullOrEmpty(dto.SubCategoryName) ? "" : " > " + dto.SubCategoryName)
-                + (string.IsNullOrEmpty(dto.ItemName) ? "" : " > " + dto.ItemName);
-            lblBranch.Text = dto.BranchName;
-            lblImpactUrgency.Text = dto.ImpactName + " / " + dto.UrgencyName;
+            lblTicketNumber.Text = Enc("#" + dto.TicketNumber);
+            lblTitle.Text = Enc(dto.Title);
+            lblRequestType.Text = Enc(dto.RequestTypeName);
+            lblRequester.Text = Enc(dto.RequesterName);
+            lblAssignee.Text = Enc(dto.AssigneeName);
+            lblCategory.Text = Enc(dto.CategoryName)
+                + (string.IsNullOrEmpty(dto.SubCategoryName) ? "" : " > " + Enc(dto.SubCategoryName))
+                + (string.IsNullOrEmpty(dto.ItemName) ? "" : " > " + Enc(dto.ItemName));
+            lblBranch.Text = Enc(dto.BranchName);
+            lblImpactUrgency.Text = Enc(dto.ImpactName) + " / " + Enc(dto.UrgencyName);
             lblCreatedOn.Text = dto.CreatedOn.ToString("dd-MMM-yyyy HH:mm");
-            lblDescription.Text = string.IsNullOrEmpty(dto.Description)
+            lblDescription.Text = Enc(string.IsNullOrEmpty(dto.Description)
                 ? "(No description provided)"
-                : dto.Description;
+                : dto.Description);
 
             pnlResolution.Visible = !string.IsNullOrEmpty(dto.ResolutionText);
-            lblResolution.Text = dto.ResolutionText ?? string.Empty;
+            lblResolution.Text = Enc(dto.ResolutionText);
 
-            lblStatusBadge.Text = dto.StatusName;
-            lblStatusBadge.CssClass = "badge-status badge-"
-                + dto.StatusName.ToLower().Replace(" ", "-");
-            lblPriorityBadge.Text = dto.PriorityName;
+            lblStatusBadge.Text = Enc(dto.StatusName);
+            lblStatusBadge.CssClass = StatusCss(dto.StatusName);
+            lblPriorityBadge.Text = Enc(dto.PriorityName);
+            hfStatusName.Value = dto.StatusName ?? string.Empty;
 
             if (dto.CsatScore.HasValue)
             {
                 pnlCsat.Visible = true;
                 lblCsatScore.Text = dto.CsatScore.Value + " / 5";
-                lblCsatFeedback.Text = dto.CsatFeedback ?? "(No feedback)";
+                lblCsatFeedback.Text = Enc(string.IsNullOrEmpty(dto.CsatFeedback)
+                    ? "(No feedback)"
+                    : dto.CsatFeedback);
             }
             else
             {
@@ -272,15 +308,26 @@ namespace AnmolDristi.ITSM.UI
                 ddlTargetStatus.Items.Add(new ListItem(status.Name, status.Id.ToString()));
             }
 
-            divResolution.Visible = false;
+            divResolution.Visible = true;
+            divHoldClass.Visible = true;
             txtResolution.Text = string.Empty;
+            ddlHoldClass.SelectedIndex = 0;
 
             BindAgentDropdown();
             BindPriorityDropdown();
 
-            pnlApprovalActions.Visible = dto.CanApprove;
-            pnlWorkActions.Visible = !dto.IsTerminal && dto.StatusName != "Pending Approval";
-            pnlActions.Visible = !dto.IsTerminal && (pnlWorkActions.Visible || pnlApprovalActions.Visible);
+            var hasStatusActions = dto.AvailableStatuses != null && dto.AvailableStatuses.Count > 0;
+            pnlStatusAction.Visible = hasStatusActions;
+            pnlAssigneeTools.Visible = dto.CanProcess;
+            pnlTakeOwnership.Visible = dto.CanTakeOwnership;
+            pnlWorkActions.Visible = hasStatusActions || dto.CanProcess || dto.CanTakeOwnership;
+            pnlApprovalActions.Visible = dto.CanApprove || dto.CanReject;
+            btnApprove.Visible = dto.CanApprove;
+            btnReject.Visible = dto.CanReject;
+            txtRejectionReason.Visible = dto.CanReject;
+            pnlActions.Visible = pnlWorkActions.Visible || pnlApprovalActions.Visible;
+            txtComment.Visible = dto.CanComment;
+            btnAddComment.Visible = dto.CanComment;
             chkInternal.Visible = dto.CanAddInternalNote;
             if (!dto.CanAddInternalNote)
             {
@@ -293,6 +340,12 @@ namespace AnmolDristi.ITSM.UI
             rptApprovals.DataBind();
             gvAudit.DataSource = dto.AuditHistory;
             gvAudit.DataBind();
+
+            var attachments = dto.Attachments ?? new System.Collections.Generic.List<TicketAttachmentDto>();
+            lblNoAttachments.Visible = attachments.Count == 0;
+            rptAttachments.DataSource = attachments;
+            rptAttachments.DataBind();
+            ShowPendingAttachmentFailures(ticketId);
 
             hfRowVersion.Value = dto.RowVersion != null
                 ? Convert.ToBase64String(dto.RowVersion)
@@ -336,6 +389,35 @@ namespace AnmolDristi.ITSM.UI
             ddlOverridePriority.DataBind();
         }
 
+        private static string Enc(string value)
+        {
+            return System.Web.HttpUtility.HtmlEncode(value ?? string.Empty);
+        }
+
+        private static string StatusCss(string statusName)
+        {
+            switch (statusName)
+            {
+                case "New":
+                    return "badge-status badge-queue";
+                case "In Progress":
+                    return "badge-status badge-progress";
+                case "Resolved":
+                    return "badge-status badge-resolved";
+                case "Closed":
+                    return "badge-status badge-closed";
+                case "Pending Approval":
+                    return "badge-status badge-pending";
+                case "On Hold":
+                    return "badge-status badge-hold";
+                case "Cancelled":
+                case "Rejected":
+                    return "badge-status badge-cancelled";
+                default:
+                    return "badge-status";
+            }
+        }
+
         private string GetActorCode()
         {
             return Session["WORKMAN"] != null ? Session["WORKMAN"].ToString() : string.Empty;
@@ -376,6 +458,33 @@ namespace AnmolDristi.ITSM.UI
             }
         }
 
+        private void ShowPendingAttachmentFailures(int ticketId)
+        {
+            var notice = Session[ItsmAttachmentFeedback.FailureSessionKey] as AttachmentFailureNotice;
+            if (notice == null || notice.TicketId != ticketId || notice.Failures == null)
+            {
+                return;
+            }
+
+            Session.Remove(ItsmAttachmentFeedback.FailureSessionKey);
+            if (notice.Failures.Count == 0)
+            {
+                return;
+            }
+
+            var parts = new System.Collections.Generic.List<string>();
+            foreach (var failure in notice.Failures)
+            {
+                var name = string.IsNullOrWhiteSpace(failure.FileName) ? "attachment" : failure.FileName;
+                var reason = string.IsNullOrWhiteSpace(failure.Reason)
+                    ? "The file could not be saved."
+                    : failure.Reason;
+                parts.Add(name + ": " + reason);
+            }
+
+            ShowMessage(string.Join(" | ", parts), false);
+        }
+
         private void ShowNotFound()
         {
             pnlNotFound.Visible = true;
@@ -390,7 +499,7 @@ namespace AnmolDristi.ITSM.UI
 
         private void ShowMessage(string message, bool success)
         {
-            lblMessage.Text = message;
+            lblMessage.Text = Enc(message);
             lblMessage.ForeColor = success ? Color.Green : Color.Red;
         }
     }

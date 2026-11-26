@@ -29,6 +29,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Web;
 using System.Web.Script.Serialization;
 using System.Web.UI.HtmlControls;
 using System.Web.UI.WebControls;
@@ -63,6 +64,10 @@ namespace AnmolDristi.ITSM.UI
             }
 
             RestoreSubmitButton();
+            if (Page.Form != null)
+            {
+                Page.Form.Enctype = "multipart/form-data";
+            }
 
             // Dynamic HtmlGenericControl cards/buttons are not restored from
             // ViewState. Recreate them on every request, including postback,
@@ -190,6 +195,21 @@ namespace AnmolDristi.ITSM.UI
                     onBllEnd);
 
                 diag.EndStage();
+
+                var attachmentFailures = new TicketAttachmentService().SaveAfterCreate(
+                    newTicketId,
+                    requesterCode,
+                    Server.MapPath("~/UploadedFiles/ITSM"),
+                    ReadIncomingAttachments());
+                if (attachmentFailures.Count > 0)
+                {
+                    Session[ItsmAttachmentFeedback.FailureSessionKey] =
+                        new AttachmentFailureNotice
+                        {
+                            TicketId = newTicketId,
+                            Failures = attachmentFailures
+                        };
+                }
 
                 diag.Complete();
                 System.Diagnostics.Trace.TraceInformation(diag.GetSummary());
@@ -442,6 +462,27 @@ namespace AnmolDristi.ITSM.UI
             txtTitle.Text = string.Empty;
             txtDescription.Text = string.Empty;
             hfSelectedRequestTypeId.Value = string.Empty;
+        }
+
+        private List<IncomingAttachment> ReadIncomingAttachments()
+        {
+            var incoming = new List<IncomingAttachment>();
+            foreach (HttpPostedFile posted in fuAttachments.PostedFiles)
+            {
+                if (posted == null)
+                {
+                    continue;
+                }
+
+                incoming.Add(new IncomingAttachment
+                {
+                    FileName = posted.FileName,
+                    DeclaredLength = posted.ContentLength,
+                    Content = posted.InputStream
+                });
+            }
+
+            return incoming;
         }
 
         private void ClearMessage()

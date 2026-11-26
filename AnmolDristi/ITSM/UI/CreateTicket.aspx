@@ -15,6 +15,25 @@
               stay neutral Dristi dropdowns. Visual-only CSS/JS.
      Why:     Product UX — colour encodes meaning without changing postback,
               validation, HiddenFields, or server rendering of card IDs.
+     When:    2026-11-25
+     What:    Visible labels now say Parent Category, Category, and optional
+              Sub-Category. Selection still uses the same cards, selects,
+              and hidden fields: hfSelectedCategoryId, hfSelectedSubCategoryId,
+              hfSelectedItemId, categoryCards, ddlSubCategoryClient, ddlItemClient.
+     Why:     Phase 1B R1 names. The stored columns and control IDs do not change,
+              so existing tickets and the current selection script keep working.
+     When:    2026-11-25 (R2 automatic title)
+     What:    The title textbox is filled in the browser from the displayed
+              Request Type, Parent Category, Category, and — only when
+              chosen — Sub-Category, joined by " / " and capped at 200
+              characters. A later selection replaces a manual edit. Submit
+              still posts txtTitle; the server does not rebuild the title.
+     Why:     Phase 1B R2. Existing tickets are not rewritten.
+     When:    2026-11-25 (R3 optional attachments)
+     What:    Optional multi-file input. The form posts multipart. A bad
+              file does not cancel submit; the server reports it after
+              the ticket exists.
+     Why:     Attachments are optional and must not block ticket creation.
      ======================================================================== --%>
 <%@ Page Title="ITSM | Create Ticket" Language="C#" MasterPageFile="~/Dristi.Master"
     AutoEventWireup="true" CodeBehind="CreateTicket.aspx.cs"
@@ -114,7 +133,7 @@
             background: #3498DB; background: var(--itsm-blue);
         }
 
-        /* Root Category — Dristi green */
+        /* Parent Category — Dristi green */
         .itsm-ct__options--category .itsm-ct__option-icon { color: #1ABB9C; color: var(--itsm-green); }
         .itsm-ct__options--category .itsm-ct__option:hover {
             border-color: #1ABB9C; border-color: var(--itsm-green);
@@ -315,11 +334,11 @@
                         </div>
 
                         <%-- ============================================================
-                             STEP 2 — Root Category (clickable cards)
+                             STEP 2 — Parent Category (clickable cards)
                              ============================================================ --%>
                         <div class="itsm-ct__section" id="secCategory">
                             <div class="itsm-ct__heading">
-                                <span class="itsm-ct__step">2</span> Root Category
+                                <span class="itsm-ct__step">2</span> Parent Category
                                 <span class="itsm-ct__label">* required</span>
                             </div>
                             <div class="itsm-ct__options itsm-ct__options--category" id="categoryCards" runat="server">
@@ -331,37 +350,37 @@
                         </div>
 
                         <%-- ============================================================
-                             STEP 3 — Sub Category (client-side filtered dropdown)
+                             STEP 3 — Category (client-side filtered dropdown)
                              ============================================================ --%>
                         <div class="itsm-ct__section itsm-ct__dependent itsm-ct__dependent--locked" id="secSubCategory">
                             <div class="itsm-ct__heading">
-                                <span class="itsm-ct__step">3</span> Sub Category
+                                <span class="itsm-ct__step">3</span> Category
                                 <span class="itsm-ct__label">* required</span>
                             </div>
-                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a root category first</div>
+                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a parent category first</div>
                             <div class="itsm-ct__field">
                                 <select id="ddlSubCategoryClient"
                                     class="form-control itsm-ct__field-input"
                                     onchange="ITSM.CreateTicket.onSubCategoryChange(this.value)">
-                                    <option value="">-- Select Sub Category --</option>
+                                    <option value="">-- Select Category --</option>
                                 </select>
                             </div>
                         </div>
 
                         <%-- ============================================================
-                             STEP 4 — Item (client-side filtered, optional)
+                             STEP 4 — Sub-Category (client-side filtered, optional)
                              ============================================================ --%>
                         <div class="itsm-ct__section itsm-ct__dependent itsm-ct__dependent--locked" id="secItem">
                             <div class="itsm-ct__heading">
-                                <span class="itsm-ct__step">4</span> Item
+                                <span class="itsm-ct__step">4</span> Sub-Category
                                 <span class="itsm-ct__label">optional</span>
                             </div>
-                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a sub-category first</div>
+                            <div class="itsm-ct__lock-msg"><i class="fa fa-lock"></i> Select a category first</div>
                             <div class="itsm-ct__field">
                                 <select id="ddlItemClient"
                                     class="form-control itsm-ct__field-input"
                                     onchange="ITSM.CreateTicket.onItemChange(this.value)">
-                                    <option value="">-- Select Item (optional) --</option>
+                                    <option value="">-- Select Sub-Category (optional) --</option>
                                 </select>
                             </div>
                         </div>
@@ -416,6 +435,14 @@
                                     TextMode="MultiLine" Rows="5"
                                     placeholder="Describe the issue, steps to reproduce, and impact" />
                             </div>
+                            <div class="itsm-ct__field">
+                                <label class="itsm-ct__field-label" for="<%= fuAttachments.ClientID %>">
+                                    Attachments <span class="itsm-ct__label">optional, 20 MB each</span>
+                                </label>
+                                <asp:FileUpload ID="fuAttachments" runat="server" AllowMultiple="true"
+                                    CssClass="form-control itsm-ct__field-input"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.gif" />
+                            </div>
                         </div>
 
                         <%-- ============================================================
@@ -460,6 +487,7 @@
                 hfImpact: '<%= hfSelectedImpactId.ClientID %>',
                 hfUrgency: '<%= hfSelectedUrgencyId.ClientID %>',
                 hfRt: '<%= hfSelectedRequestTypeId.ClientID %>',
+                title: '<%= txtTitle.ClientID %>',
                 impactBtns: '<%= impactButtons.ClientID %>',
                 urgencyBtns: '<%= urgencyButtons.ClientID %>',
                 btnSubmit: '<%= btnSubmit.ClientID %>'
@@ -522,6 +550,7 @@
             function onRequestTypeSelect(id) {
                 document.getElementById(_el.hfRt).value = id;
                 selectOptionCards(_el.rtCards, id);
+                refreshTitle();
             }
 
             function onCategoryClick(categoryId) {
@@ -532,11 +561,12 @@
                 unlockSection('secSubCategory');
                 populateSubCategories(categoryId);
                 lockSection('secItem');
+                refreshTitle();
             }
 
             function populateSubCategories(catId) {
                 var ddl = document.getElementById('ddlSubCategoryClient');
-                ddl.innerHTML = '<option value="">-- Select Sub Category --</option>';
+                ddl.innerHTML = '<option value="">-- Select Category --</option>';
                 for (var i = 0; i < _catData.length; i++) {
                     if (_catData[i].Id === catId) {
                         var subs = _catData[i].SubCategories || [];
@@ -559,11 +589,12 @@
                 } else {
                     lockSection('secItem');
                 }
+                refreshTitle();
             }
 
             function populateItems(subId) {
                 var ddl = document.getElementById('ddlItemClient');
-                ddl.innerHTML = '<option value="">-- Select Item (optional) --</option>';
+                ddl.innerHTML = '<option value="">-- Select Sub-Category (optional) --</option>';
                 var catId = parseInt(document.getElementById(_el.hfCat).value, 10);
                 for (var i = 0; i < _catData.length; i++) {
                     if (_catData[i].Id === catId) {
@@ -584,7 +615,10 @@
                 }
             }
 
-            function onItemChange(val) { document.getElementById(_el.hfItem).value = val; }
+            function onItemChange(val) {
+                document.getElementById(_el.hfItem).value = val;
+                refreshTitle();
+            }
 
             function semanticLevel(text, index) {
                 var t = (text || '').toLowerCase();
@@ -683,6 +717,66 @@
                 }
             }
 
+            // R2: title is the displayed labels, in selection order.
+            // Sub-Category is omitted unless one is selected. Segments that
+            // do not fit in 200 characters are dropped from the right as
+            // whole segments, so the value never ends with " / " or a cut
+            // category name. A single label longer than 200 is clipped to
+            // 200 UTF-16 code units without splitting a surrogate pair.
+            var TITLE_MAX = 200;
+            var TITLE_SEP = ' / ';
+
+            function trimText(value) {
+                return (value || '').replace(/^\s+|\s+$/g, '');
+            }
+
+            function selectedCardName(containerId) {
+                var container = document.getElementById(containerId);
+                if (!container) return '';
+                var name = container.querySelector('.itsm-ct__option--selected .itsm-ct__option-name');
+                return name ? trimText(name.textContent) : '';
+            }
+
+            function selectedListName(selectId, hiddenId) {
+                var hidden = document.getElementById(hiddenId);
+                if (!hidden || !trimText(hidden.value)) return '';
+                var ddl = document.getElementById(selectId);
+                if (!ddl || ddl.selectedIndex < 0) return '';
+                var opt = ddl.options[ddl.selectedIndex];
+                if (!opt || !opt.value) return '';
+                return trimText(opt.text);
+            }
+
+            function clipTitle(text) {
+                if (text.length <= TITLE_MAX) return text;
+                var end = TITLE_MAX;
+                var code = text.charCodeAt(end - 1);
+                if (code >= 0xD800 && code <= 0xDBFF) end -= 1;
+                return text.substring(0, end);
+            }
+
+            function joinTitle(parts) {
+                var kept = [];
+                for (var i = 0; i < parts.length; i++) {
+                    if (parts[i]) kept.push(parts[i]);
+                }
+                while (kept.length > 1 && kept.join(TITLE_SEP).length > TITLE_MAX) {
+                    kept.pop();
+                }
+                return clipTitle(kept.join(TITLE_SEP));
+            }
+
+            function refreshTitle() {
+                var box = document.getElementById(_el.title);
+                if (!box) return;
+                box.value = joinTitle([
+                    selectedCardName(_el.rtCards),
+                    selectedCardName(_el.catCards),
+                    selectedListName('ddlSubCategoryClient', _el.hfSub),
+                    selectedListName('ddlItemClient', _el.hfItem)
+                ]);
+            }
+
             function onSubmit() {
                 hideError();
                 if (_submitting) {
@@ -696,8 +790,8 @@
                 var urgency = document.getElementById(_el.hfUrgency).value;
 
                 if (!rt) { showError('Please select a request type.'); return false; }
-                if (!cat) { showError('Please select a category.'); return false; }
-                if (!sub) { showError('Please select a sub category.'); return false; }
+                if (!cat) { showError('Please select a parent category.'); return false; }
+                if (!sub) { showError('Please select a category.'); return false; }
                 if (!impact) { showError('Please select an impact level.'); return false; }
                 if (!urgency) { showError('Please select an urgency level.'); return false; }
 
@@ -738,11 +832,14 @@
                 // Lock dependent sections
                 lockSection('secSubCategory');
                 lockSection('secItem');
+                var files = document.getElementById('<%= fuAttachments.ClientID %>');
+                if (files) files.value = '';
                 // Reset selects
                 var subDdl = document.getElementById('ddlSubCategoryClient');
-                if (subDdl) subDdl.innerHTML = '<option value="">-- Select Sub Category --</option>';
+                if (subDdl) subDdl.innerHTML = '<option value="">-- Select Category --</option>';
                 var itemDdl = document.getElementById('ddlItemClient');
-                if (itemDdl) itemDdl.innerHTML = '<option value="">-- Select Item (optional) --</option>';
+                if (itemDdl) itemDdl.innerHTML = '<option value="">-- Select Sub-Category (optional) --</option>';
+                refreshTitle();
             }
 
             return {

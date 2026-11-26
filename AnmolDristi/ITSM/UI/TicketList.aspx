@@ -71,6 +71,10 @@
                                 <asp:LinkButton ID="lnkMyQueue" runat="server" OnClick="lnkMyQueue_Click"
                                     Text="My Queue" />
                             </li>
+                            <li id="tabUnassigned" runat="server" role="presentation">
+                                <asp:LinkButton ID="lnkUnassigned" runat="server" OnClick="lnkUnassigned_Click"
+                                    Text="Unassigned" />
+                            </li>
                             <li id="tabAllOpen" runat="server" visible="false" role="presentation">
                                 <asp:LinkButton ID="lnkAllOpen" runat="server" OnClick="lnkAllOpen_Click"
                                     Text="All Open" />
@@ -138,7 +142,7 @@
                                 <asp:TemplateField HeaderText="Ticket #">
                                     <ItemTemplate>
                                         <a href='TicketDetail.aspx?id=<%# Eval("Id") %>' class="ticket-link">
-                                            <%# Eval("TicketNumber") %>
+                                            <%# System.Web.HttpUtility.HtmlEncode(Eval("TicketNumber")) %>
                                         </a>
                                     </ItemTemplate>
                                 </asp:TemplateField>
@@ -148,13 +152,13 @@
                                 <asp:TemplateField HeaderText="Priority">
                                     <ItemTemplate>
                                         <asp:Label ID="lblPriorityBadge" runat="server" CssClass="badge-priority"
-                                            Text='<%# Eval("PriorityName") %>' />
+                                            Text='<%# System.Web.HttpUtility.HtmlEncode(Eval("PriorityName")) %>' />
                                     </ItemTemplate>
                                 </asp:TemplateField>
                                 <asp:TemplateField HeaderText="Status">
                                     <ItemTemplate>
                                         <asp:Label ID="lblStatusBadge" runat="server" CssClass="badge-status"
-                                            Text='<%# Eval("StatusName") %>' />
+                                            Text='<%# System.Web.HttpUtility.HtmlEncode(Eval("StatusName")) %>' />
                                     </ItemTemplate>
                                 </asp:TemplateField>
                                 <asp:BoundField DataField="RequesterName" HeaderText="Requester" />

@@ -253,7 +253,10 @@
     <Content Include="ITSM\UI\CreateTicket.aspx" />
     <Content Include="ITSM\UI\TicketList.aspx" />
     <Content Include="ITSM\UI\TicketDetail.aspx" />
+    <Content Include="ITSM\UI\DownloadAttachment.ashx" />
+    <Content Include="UploadedFiles\ITSM\web.config" />
     <Content Include="ITSM\UI\ApprovalConfig.aspx" />
+    <Content Include="ITSM\UI\CategoryConfig.aspx" />
     <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
@@ -1577,12 +1580,21 @@
     <Compile Include="ITSM\BLL\ItsmTenantContext.cs" />
     <Compile Include="ITSM\BLL\ItsmTicketAccess.cs" />
     <Compile Include="ITSM\BLL\TicketWorkflow.cs" />
+    <Compile Include="ITSM\BLL\TicketActionPolicy.cs" />
+    <Compile Include="ITSM\BLL\ItsmNotification.cs" />
     <Compile Include="ITSM\BLL\ApprovalConfigurationService.cs" />
+    <Compile Include="ITSM\BLL\CategoryAdministrationService.cs" />
     <Compile Include="ITSM\BLL\TicketListService.cs" />
     <Compile Include="ITSM\BLL\TicketDetailService.cs" />
     <Compile Include="ITSM\BLL\TicketUpdateService.cs" />
     <Compile Include="ITSM\BLL\TicketMasterDataService.cs" />
     <Compile Include="ITSM\BLL\CreateTicketDiagnostics.cs" />
+    <Compile Include="ITSM\BLL\AttachmentModels.cs" />
+    <Compile Include="ITSM\BLL\AttachmentValidationService.cs" />
+    <Compile Include="ITSM\BLL\AttachmentAccessRules.cs" />
+    <Compile Include="ITSM\BLL\AttachmentUploadService.cs" />
+    <Compile Include="ITSM\BLL\TicketAttachmentService.cs" />
+    <Compile Include="ITSM\UI\ItsmAttachmentFeedback.cs" />
     <Compile Include="ITSM\UI\CreateTicket.aspx.cs">
       <DependentUpon>CreateTicket.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -1604,12 +1616,22 @@
     <Compile Include="ITSM\UI\TicketDetail.aspx.designer.cs">
       <DependentUpon>TicketDetail.aspx</DependentUpon>
     </Compile>
+    <Compile Include="ITSM\UI\DownloadAttachment.ashx.cs">
+      <DependentUpon>DownloadAttachment.ashx</DependentUpon>
+    </Compile>
     <Compile Include="ITSM\UI\ApprovalConfig.aspx.cs">
       <DependentUpon>ApprovalConfig.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="ITSM\UI\ApprovalConfig.aspx.designer.cs">
       <DependentUpon>ApprovalConfig.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\CategoryConfig.aspx.cs">
+      <DependentUpon>CategoryConfig.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\CategoryConfig.aspx.designer.cs">
+      <DependentUpon>CategoryConfig.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />

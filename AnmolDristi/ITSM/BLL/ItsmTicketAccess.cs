@@ -4,6 +4,9 @@
 //       CanApproveTicket, CanProcessTicket. Pending approval is not
 //       general processing. Historical approval rows are not view/process.
 //       2026-08-24: Added RBAC-gated ITSM.Ticket.View authorization.
+//       2026-11-25: Process is the assignee. The mapped agent may view an
+//       unassigned ticket in order to take it. Requester comment and
+//       confirmation are separate from process.
 //       A user with the permission can view tickets belonging to their
 //       authorized tenant (Ticket.CompanyId), not arbitrary tickets.
 // Why: A TicketApprovals row must not make an approver a general processor.
@@ -28,15 +31,16 @@ namespace AnmolDristi.ITSM.BLL
     {
         /// <summary>
         /// Determines whether the actor may view ticket detail.
-        /// Authorization paths:
+        /// The ticket company must equal the actor company first. A missing
+        /// company denies access. Relationship and permission checks run
+        /// only after that match:
         ///   1. Actor is the ticket requester
         ///   2. Actor is the ticket assignee
         ///   3. Actor has a pending approval for the ticket
-        ///   4. Actor has ITSM.Ticket.View AND ticketCompanyId matches
-        ///      authorizedCompanyId (tenant-scoped permission)
-        /// The hasTicketViewPermission and authorizedCompanyId parameters
-        /// are resolved by the UI layer (BasePage.HasPermission + tenant
-        /// resolution). BLL never references System.Web.
+        ///   4. Actor has ITSM.Ticket.View
+        ///   5. Actor is the mapped agent of an unassigned ticket
+        /// authorizedCompanyId is the company resolved from the actor's
+        /// employee code. BLL never references System.Web.
         /// </summary>
         public static bool CanViewTicket(
             ItsmDbContext context,
@@ -46,8 +50,19 @@ namespace AnmolDristi.ITSM.BLL
             string assigneeCode,
             bool hasTicketViewPermission,
             int authorizedCompanyId,
-            int? ticketCompanyId)
+            int? ticketCompanyId,
+            int branchId,
+            int categoryId,
+            int subCategoryId,
+            int? itemId)
         {
+            if (authorizedCompanyId <= 0
+                || !ticketCompanyId.HasValue
+                || ticketCompanyId.Value != authorizedCompanyId)
+            {
+                return false;
+            }
+
             if (IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode))
             {
                 return true;
@@ -58,12 +73,14 @@ namespace AnmolDristi.ITSM.BLL
                 return true;
             }
 
-            // RBAC: ITSM.Ticket.View — tenant-scoped.
-            // Permission alone is not sufficient; the ticket must belong
-            // to the user's authorized company.
-            if (hasTicketViewPermission
-                && ticketCompanyId.HasValue
-                && ticketCompanyId.Value == authorizedCompanyId)
+            if (hasTicketViewPermission)
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(assigneeCode)
+                && DispatchService.IsMappedAgent(
+                    context, branchId, categoryId, subCategoryId, itemId, actorCode))
             {
                 return true;
             }
@@ -71,12 +88,26 @@ namespace AnmolDristi.ITSM.BLL
             return false;
         }
 
-        public static bool CanProcessTicket(
-            string actorCode,
-            string requesterCode,
-            string assigneeCode)
+        /// <summary>
+        /// Work actions belong to the current assignee. The requester is not
+        /// a processor. Taking an unassigned ticket is a separate check.
+        /// </summary>
+        public static bool CanProcessTicket(string actorCode, string assigneeCode)
         {
-            return IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode);
+            if (string.IsNullOrWhiteSpace(actorCode) || string.IsNullOrWhiteSpace(assigneeCode))
+            {
+                return false;
+            }
+
+            return string.Equals(assigneeCode.Trim(), actorCode.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool CanComment(string actorCode, string requesterCode, string assigneeCode)
+        {
+            return AttachmentAccessRules.IsRequesterOrAssignee(
+                actorCode,
+                requesterCode,
+                assigneeCode);
         }
 
         public static bool CanApproveTicket(

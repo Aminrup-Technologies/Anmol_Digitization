@@ -48,12 +48,28 @@ namespace AnmolDristi.ITSM.BLL
         public int? CompanyId { get; set; }
         public string CompanyName { get; set; }
         public bool CanApprove { get; set; }
+        public bool CanReject { get; set; }
+        public bool CanProcess { get; set; }
+        public bool CanTakeOwnership { get; set; }
+        public bool CanComment { get; set; }
         public bool CanAddInternalNote { get; set; }
+        public int BranchId { get; set; }
+        public int CategoryId { get; set; }
+        public int SubCategoryId { get; set; }
+        public int? ItemId { get; set; }
         public byte[] RowVersion { get; set; }
         public List<TicketCommentDto> Comments { get; set; }
         public List<TicketApprovalDto> Approvals { get; set; }
         public List<TicketAuditLogDto> AuditHistory { get; set; }
         public List<TicketStatusDto> AvailableStatuses { get; set; }
+        public List<TicketAttachmentDto> Attachments { get; set; }
+    }
+
+    public class TicketAttachmentDto
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; }
+        public DateTime UploadedOn { get; set; }
     }
 
     public class TicketCommentDto
@@ -114,10 +130,16 @@ namespace AnmolDristi.ITSM.BLL
                 throw new ArgumentException("Actor is required.", "actorCode");
             }
 
+            var actorCompanyId = ItsmTenantContext.ResolveCompanyId(actorCode);
+            if (actorCompanyId <= 0 || actorCompanyId != authorizedCompanyId)
+            {
+                return null;
+            }
+
             using (var context = new ItsmDbContext())
             {
                 var dto = (from t in context.Tickets.AsNoTracking()
-                           where t.Id == ticketId
+                           where t.Id == ticketId && t.CompanyId == actorCompanyId
                            join c in context.Companies.AsNoTracking()
                                on t.CompanyId equals (int?)c.Company_ID into companyJoin
                            from c in companyJoin.DefaultIfEmpty()
@@ -152,6 +174,10 @@ namespace AnmolDristi.ITSM.BLL
                                CreatedByCode = t.CreatedByCode,
                                CompanyId = t.CompanyId,
                                CompanyName = c != null ? c.Company_Description : null,
+                               BranchId = t.BranchId,
+                               CategoryId = t.CategoryId,
+                               SubCategoryId = t.SubCategoryId,
+                               ItemId = t.ItemId,
                                RowVersion = t.RowVersion
                            }).FirstOrDefault();
 
@@ -168,20 +194,48 @@ namespace AnmolDristi.ITSM.BLL
                     dto.AssigneeCode,
                     hasTicketViewPermission,
                     authorizedCompanyId,
-                    dto.CompanyId))
+                    dto.CompanyId,
+                    dto.BranchId,
+                    dto.CategoryId,
+                    dto.SubCategoryId,
+                    dto.ItemId))
                 {
                     return null;
                 }
 
-                dto.CanApprove = context.TicketApprovals
+                var pendingLevel = context.TicketApprovals
+                    .AsNoTracking()
+                    .Where(a => a.TicketId == ticketId
+                                && a.ApproverCode == actorCode
+                                && a.ApprovalStatus == "Pending")
+                    .Select(a => a.ApprovalLevel)
+                    .FirstOrDefault();
+                var managerStillPending = context.TicketApprovals
                     .AsNoTracking()
                     .Any(a => a.TicketId == ticketId
-                              && a.ApproverCode == actorCode
+                              && a.ApprovalLevel == "Manager"
                               && a.ApprovalStatus == "Pending");
-                dto.CanAddInternalNote =
-                    ItsmTicketAccess.CanProcessTicket(actorCode, dto.RequesterCode, dto.AssigneeCode)
-                    && (!string.Equals(dto.RequesterCode, actorCode, StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(dto.AssigneeCode, actorCode, StringComparison.OrdinalIgnoreCase));
+                var actorIsRequester = TicketActionPolicy.SameCode(actorCode, dto.RequesterCode);
+                dto.CanReject = pendingLevel != null
+                    && !actorIsRequester
+                    && dto.StatusName == "Pending Approval";
+                dto.CanApprove = dto.CanReject
+                    && !(string.Equals(pendingLevel, "ITHead", StringComparison.OrdinalIgnoreCase)
+                         && managerStillPending);
+                dto.CanProcess = ItsmTicketAccess.CanProcessTicket(actorCode, dto.AssigneeCode)
+                    && !dto.IsTerminal
+                    && dto.StatusName != "Pending Approval";
+                dto.CanComment = ItsmTicketAccess.CanComment(actorCode, dto.RequesterCode, dto.AssigneeCode);
+                dto.CanAddInternalNote = dto.CanProcess;
+                dto.CanTakeOwnership = string.IsNullOrWhiteSpace(dto.AssigneeCode)
+                    && !dto.IsTerminal
+                    && DispatchService.IsMappedAgent(
+                        context,
+                        dto.BranchId,
+                        dto.CategoryId,
+                        dto.SubCategoryId,
+                        dto.ItemId,
+                        actorCode);
 
                 var commentsQuery = context.TicketComments
                     .AsNoTracking()
@@ -239,10 +293,35 @@ namespace AnmolDristi.ITSM.BLL
                                         ActionedOn = a.ActionedOn
                                     }).ToList();
 
-                dto.AvailableStatuses = TicketWorkflow.GetAvailableStatuses(
-                    context,
+                dto.Attachments = context.TicketAttachments
+                    .AsNoTracking()
+                    .Where(a => a.TicketId == ticketId)
+                    .OrderBy(a => a.UploadedOn)
+                    .ThenBy(a => a.Id)
+                    .Select(a => new TicketAttachmentDto
+                    {
+                        Id = a.Id,
+                        FileName = a.FileName,
+                        UploadedOn = a.UploadedOn
+                    })
+                    .ToList();
+
+                var allowedNames = TicketActionPolicy.AllowedTargetNames(
                     dto.StatusName,
-                    dto.IsTerminal);
+                    dto.IsTerminal,
+                    actorCode,
+                    dto.RequesterCode,
+                    dto.AssigneeCode);
+                dto.AvailableStatuses = context.TicketStatuses
+                    .AsNoTracking()
+                    .Where(s => s.IsActive && allowedNames.Contains(s.Name))
+                    .OrderBy(s => s.Name)
+                    .Select(s => new TicketStatusDto
+                    {
+                        Id = s.Id,
+                        Name = s.Name
+                    })
+                    .ToList();
                 return dto;
             }
         }

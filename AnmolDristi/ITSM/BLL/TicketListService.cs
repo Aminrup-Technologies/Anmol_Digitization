@@ -1,9 +1,16 @@
 // ========================================================================
+// When: 2026-11-25
+// What: Apply the approved R4 queue order consistently and add a stable
+//       ticket-ID tie-breaker after priority and creation timestamp.
+// Why: Equal-priority/equal-time tickets must not jump between pages or
+//      queue views. Sort in the query before materializing the result.
+// ========================================================================
 // When: 2026-08-21
-// What: Removed actor/requester CompanyId from MyTickets, Approvals,
-//       GetBranches, GetActiveAgents. Queues stay AsNoTracking + Select.
-// Why: Shared-service queues and assignment must not be scoped by the
-//      agent's current CompanyId. Ticket.CompanyId is tenant ownership.
+// What: Queue reads stay AsNoTracking projections and require the actor's
+//       MST_UserMaster.CompanyId. Open is company-scoped. A missing company
+//       returns no rows.
+// Why: Ticket.CompanyId is the tenant. D-1 does not authorize a shared
+//      cross-company Open queue.
 // ========================================================================
 
 using System;
@@ -32,6 +39,10 @@ namespace AnmolDristi.ITSM.BLL
         public int PrioritySortOrder { get; set; }
         public string RequesterCode { get; set; }
         public string AssigneeCode { get; set; }
+        public int BranchId { get; set; }
+        public int CategoryId { get; set; }
+        public int SubCategoryId { get; set; }
+        public int? ItemId { get; set; }
     }
 
     public class TicketListFilter
@@ -39,10 +50,12 @@ namespace AnmolDristi.ITSM.BLL
         public int? StatusId { get; set; }
         public int? RequestTypeId { get; set; }
         public int? BranchId { get; set; }
+        public List<int> BranchIds { get; set; }
         public string AssigneeCode { get; set; }
         public string SearchText { get; set; }
         public int? PriorityId { get; set; }
         public bool OpenOnly { get; set; }
+        public bool UnassignedOnly { get; set; }
     }
 
     public class LookupItemDto
@@ -58,13 +71,19 @@ namespace AnmolDristi.ITSM.BLL
     }
 
     /// <summary>
-    /// Agent queues are tenant-agnostic (shared services). Ticket-level
-    /// authorization is enforced on detail and mutation, not on queue listing.
+    /// Every queue is limited to Ticket.CompanyId for the actor's current
+    /// MST_UserMaster.CompanyId. A missing company returns no rows.
     /// </summary>
     public class TicketListService
     {
         public List<TicketListItemDto> GetAgentQueue(string assigneeCode, TicketListFilter filter)
         {
+            var companyId = ItsmTenantContext.ResolveCompanyId(assigneeCode);
+            if (companyId <= 0)
+            {
+                return new List<TicketListItemDto>();
+            }
+
             if (filter == null)
             {
                 filter = new TicketListFilter();
@@ -75,12 +94,18 @@ namespace AnmolDristi.ITSM.BLL
 
             using (var context = new ItsmDbContext())
             {
-                return SortQueue(BuildQueueQuery(context, filter)).ToList();
+                return SortQueue(BuildQueueQuery(context, filter, companyId)).ToList();
             }
         }
 
-        public List<TicketListItemDto> GetOpenQueue(TicketListFilter filter)
+        public List<TicketListItemDto> GetOpenQueue(string actorCode, TicketListFilter filter)
         {
+            var companyId = ItsmTenantContext.ResolveCompanyId(actorCode);
+            if (companyId <= 0)
+            {
+                return new List<TicketListItemDto>();
+            }
+
             if (filter == null)
             {
                 filter = new TicketListFilter();
@@ -90,16 +115,22 @@ namespace AnmolDristi.ITSM.BLL
 
             using (var context = new ItsmDbContext())
             {
-                return SortQueue(BuildQueueQuery(context, filter)).ToList();
+                return SortQueue(BuildQueueQuery(context, filter, companyId)).ToList();
             }
         }
 
         public List<TicketListItemDto> GetMyTickets(string requesterCode, TicketListFilter filter)
         {
+            var companyId = ItsmTenantContext.ResolveCompanyId(requesterCode);
+            if (companyId <= 0)
+            {
+                return new List<TicketListItemDto>();
+            }
+
             using (var context = new ItsmDbContext())
             {
                 return SortQueue(
-                    BuildQueueQuery(context, filter)
+                    BuildQueueQuery(context, filter, companyId)
                         .Where(t => t.RequesterCode == requesterCode))
                     .ToList();
             }
@@ -107,20 +138,91 @@ namespace AnmolDristi.ITSM.BLL
 
         public List<TicketListItemDto> GetApprovalQueue(string approverCode)
         {
+            var companyId = ItsmTenantContext.ResolveCompanyId(approverCode);
+            if (companyId <= 0)
+            {
+                return new List<TicketListItemDto>();
+            }
+
             using (var context = new ItsmDbContext())
             {
-                return context.TicketApprovals
+                var query = context.TicketApprovals
                     .AsNoTracking()
                     .Where(a => a.ApproverCode == approverCode
                                 && a.ApprovalStatus == "Pending")
                     .Join(
-                        BuildQueueQuery(context, null),
+                        BuildQueueQuery(context, null, companyId),
                         approval => approval.TicketId,
                         ticket => ticket.Id,
                         (approval, ticket) => ticket)
+                    .Distinct();
+                return SortQueue(query).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Unassigned open tickets whose dispatch cascade names this employee.
+        /// The lowest active mapping Id wins at each step. Other agents on a
+        /// duplicate row are not given the ticket.
+        /// </summary>
+        public List<TicketListItemDto> GetMappedUnassignedQueue(string actorCode, TicketListFilter filter)
+        {
+            if (string.IsNullOrWhiteSpace(actorCode))
+            {
+                return new List<TicketListItemDto>();
+            }
+
+            var companyId = ItsmTenantContext.ResolveCompanyId(actorCode);
+            if (companyId <= 0)
+            {
+                return new List<TicketListItemDto>();
+            }
+
+            if (filter == null)
+            {
+                filter = new TicketListFilter();
+            }
+
+            filter.OpenOnly = true;
+            filter.UnassignedOnly = true;
+            filter.AssigneeCode = null;
+
+            using (var context = new ItsmDbContext())
+            {
+                var branchIds = context.SupportMappings
+                    .AsNoTracking()
+                    .Where(m => m.IsActive && m.SupportAgentCode == actorCode)
+                    .Select(m => m.BranchId)
                     .Distinct()
+                    .ToList();
+                if (branchIds.Count == 0)
+                {
+                    return new List<TicketListItemDto>();
+                }
+
+                filter.BranchIds = branchIds;
+
+                var mappings = context.SupportMappings
+                    .AsNoTracking()
+                    .Where(m => m.IsActive && branchIds.Contains(m.BranchId))
+                    .ToList();
+
+                var candidates = BuildQueueQuery(context, filter, companyId).ToList();
+
+                return candidates
+                    .Where(row =>
+                    {
+                        var resolved = DispatchService.ResolveFromMappings(
+                            mappings.Where(m => m.BranchId == row.BranchId),
+                            row.CategoryId,
+                            row.SubCategoryId,
+                            row.ItemId);
+                        return !string.IsNullOrWhiteSpace(resolved)
+                            && string.Equals(resolved.Trim(), actorCode.Trim(), StringComparison.OrdinalIgnoreCase);
+                    })
                     .OrderBy(t => t.PrioritySortOrder)
                     .ThenByDescending(t => t.CreatedOn)
+                    .ThenByDescending(t => t.Id)
                     .ToList();
             }
         }
@@ -186,9 +288,11 @@ namespace AnmolDristi.ITSM.BLL
 
         private static IQueryable<TicketListItemDto> BuildQueueQuery(
             ItsmDbContext context,
-            TicketListFilter filter)
+            TicketListFilter filter,
+            int actorCompanyId)
         {
-            IQueryable<Ticket> query = context.Tickets.AsNoTracking();
+            IQueryable<Ticket> query = context.Tickets.AsNoTracking()
+                .Where(t => t.CompanyId == actorCompanyId);
 
             if (filter != null)
             {
@@ -212,9 +316,20 @@ namespace AnmolDristi.ITSM.BLL
                     query = query.Where(t => t.BranchId == filter.BranchId.Value);
                 }
 
+                if (filter.BranchIds != null && filter.BranchIds.Count > 0)
+                {
+                    var limitedBranches = filter.BranchIds;
+                    query = query.Where(t => limitedBranches.Contains(t.BranchId));
+                }
+
                 if (!string.IsNullOrWhiteSpace(filter.AssigneeCode))
                 {
                     query = query.Where(t => t.AssigneeCode == filter.AssigneeCode);
+                }
+
+                if (filter.UnassignedOnly)
+                {
+                    query = query.Where(t => t.AssigneeCode == null || t.AssigneeCode == "");
                 }
 
                 if (filter.PriorityId.HasValue)
@@ -248,7 +363,11 @@ namespace AnmolDristi.ITSM.BLL
                 ResolvedOn = t.ResolvedOn,
                 PrioritySortOrder = t.Priority.SlaResolutionHours,
                 RequesterCode = t.RequesterCode,
-                AssigneeCode = t.AssigneeCode
+                AssigneeCode = t.AssigneeCode,
+                BranchId = t.BranchId,
+                CategoryId = t.CategoryId,
+                SubCategoryId = t.SubCategoryId,
+                ItemId = t.ItemId
             });
         }
 
@@ -256,7 +375,8 @@ namespace AnmolDristi.ITSM.BLL
         {
             return query
                 .OrderBy(t => t.PrioritySortOrder)
-                .ThenByDescending(t => t.CreatedOn);
+                .ThenByDescending(t => t.CreatedOn)
+                .ThenByDescending(t => t.Id);
         }
     }
 }

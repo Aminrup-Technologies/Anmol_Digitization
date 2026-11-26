@@ -258,6 +258,8 @@ namespace AnmolDristi
 
             // ITSM module is visible to every authenticated employee.
             // Individual ITSM capabilities remain gated by their own UI.*.View keys.
+            // ITSM_CategoryConfig is not forced visible. It stays hidden until
+            // UI.ITSM_CategoryConfig.View is granted to ITSMAdmin.
             if (ITSM_Module != null)
                 ITSM_Module.Visible = true;
             if (ITSM_TicketList != null)

@@ -5,7 +5,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace AnmolDristi.ITSM.DAL.Entities
 {
     /// <summary>
-    /// Maps to itsm.MST_Category — top-level taxonomy (Hardware, Software, Network, etc.).
+    /// Maps to itsm.MST_Category — Parent Category in the global ITSM catalog.
+    /// Deactivate with IsActive. There is no CompanyId on this table.
     /// </summary>
     [Table("MST_Category", Schema = "itsm")]
     public class Category
