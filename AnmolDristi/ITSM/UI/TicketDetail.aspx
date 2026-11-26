@@ -1,11 +1,11 @@
-<!-- ========================================================================
+<%-- ========================================================================
      When: 2026-11-25
      What: R5 status Action Panel auto-trigger: selection prompts for any
            mandatory detail, confirms intent, then posts directly to the
            server transition handler; no Apply/Save button.
      Why: The approved R5 interaction executes from the dropdown and gives
           the user a confirmation after the state change.
-     ======================================================================== -->
+     ======================================================================== --%>
 <%-- ========================================================================
      File:    TicketDetail.aspx
      Layer:   UI — Presentation
