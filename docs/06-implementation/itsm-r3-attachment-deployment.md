@@ -2,11 +2,11 @@
 
 R3 stores ticket files under the application path `~/UploadedFiles/ITSM/{ticketId}/{guid}{extension}` and records that relative path in the existing `itsm.TicketAttachments` table. Downloads in the application go through `ITSM/UI/DownloadAttachment.ashx`, which applies the existing ticket view rules.
 
-## Direct folder access is not blocked by this release
+## Direct folder access restriction included in the candidate
 
-This change does not deny anonymous or authenticated HTTP access to `/UploadedFiles/ITSM/`. A request that can guess or reuse a file URL may still be served by IIS as a static file. That was not verified in UAT, and this document does not claim that it is blocked.
+The candidate adds `UploadedFiles/ITSM/web.config`, scoped to the attachment storage folder, to deny HTTP handler access and IIS URL authorization. The application-pool identity retains filesystem access; the application download handler reads the file after its ticket/company authorization check. This configuration has not yet been verified on the UAT IIS site.
 
-Before R3 UAT, an authorized IIS or configuration change must deny direct access to `~/UploadedFiles/ITSM/`:
+Before R3 UAT, publish the scoped folder configuration and confirm the IIS URL Authorization feature is installed and active. If the host does not honor this configuration, an authorized IIS-level deny rule must be applied to `~/UploadedFiles/ITSM/`:
 
 - Script execution stays off for that folder.
 - A direct GET of a file in that folder is denied.
