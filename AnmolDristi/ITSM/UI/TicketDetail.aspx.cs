@@ -375,10 +375,10 @@ namespace AnmolDristi.ITSM.UI
 
             var listService = new TicketListService();
             if (dto != null
-                && dto.CanGroupAssign
                 && dto.SupportGroupId.HasValue
                 && dto.CompanyId.HasValue)
             {
+                // R6: group-scoped tickets offer active group members only.
                 ddlReassignTo.DataSource = listService.GetGroupActiveMembers(
                     dto.SupportGroupId.Value, dto.CompanyId.Value);
             }

@@ -51,14 +51,15 @@ namespace AnmolDristi.ITSM.BLL
                                attachment.FileName,
                                attachment.FilePath,
                                attachment.TicketId,
-                               ticket.RequesterCode,
-                               ticket.AssigneeCode,
-                               ticket.CompanyId,
-                               ticket.BranchId,
-                               ticket.CategoryId,
-                               ticket.SubCategoryId,
-                               ticket.ItemId
-                           }).FirstOrDefault();
+                              ticket.RequesterCode,
+                              ticket.AssigneeCode,
+                              ticket.CompanyId,
+                              ticket.BranchId,
+                              ticket.CategoryId,
+                              ticket.SubCategoryId,
+                              ticket.ItemId,
+                              ticket.SupportGroupId
+                          }).FirstOrDefault();
 
                 if (row == null)
                 {
@@ -77,7 +78,8 @@ namespace AnmolDristi.ITSM.BLL
                     row.BranchId,
                     row.CategoryId,
                     row.SubCategoryId,
-                    row.ItemId);
+                    row.ItemId,
+                    row.SupportGroupId);
 
                 if (AttachmentAccessRules.ConcealDownload(true, canView))
                 {
