@@ -46,7 +46,8 @@ namespace AnmolDristi.ITSM.BLL
             string assigneeCode,
             bool hasTicketViewPermission,
             int authorizedCompanyId,
-            int? ticketCompanyId)
+            int? ticketCompanyId,
+            int? supportGroupId = null)
         {
             if (IsRequesterOrAssignee(actorCode, requesterCode, assigneeCode))
             {
@@ -68,7 +69,65 @@ namespace AnmolDristi.ITSM.BLL
                 return true;
             }
 
+            // R6: active members of the snapshotted support group may view
+            // an unassigned group-queue ticket in the same company.
+            if (string.IsNullOrWhiteSpace(assigneeCode)
+                && supportGroupId.HasValue
+                && ticketCompanyId.HasValue
+                && ticketCompanyId.Value > 0
+                && IsActiveGroupMember(context, supportGroupId.Value, actorCode, ticketCompanyId.Value))
+            {
+                return true;
+            }
+
             return false;
+        }
+
+        public static bool IsActiveGroupMember(
+            ItsmDbContext context,
+            int supportGroupId,
+            string employeeCode,
+            int ticketCompanyId)
+        {
+            if (string.IsNullOrWhiteSpace(employeeCode) || ticketCompanyId <= 0)
+            {
+                return false;
+            }
+
+            return context.SupportGroupMembers.AsNoTracking()
+                .Any(m => m.SupportGroupId == supportGroupId
+                    && m.IsActive
+                    && m.EmployeeCode == employeeCode
+                    && m.Employee != null
+                    && m.Employee.EmployeeStatus == "Active"
+                    && m.Employee.CompanyId == ticketCompanyId
+                    && m.SupportGroup != null
+                    && m.SupportGroup.IsActive
+                    && m.SupportGroup.CompanyId == ticketCompanyId);
+        }
+
+        public static bool IsActiveTeamLeader(
+            ItsmDbContext context,
+            int supportGroupId,
+            string employeeCode,
+            int ticketCompanyId)
+        {
+            if (string.IsNullOrWhiteSpace(employeeCode) || ticketCompanyId <= 0)
+            {
+                return false;
+            }
+
+            return context.SupportGroupMembers.AsNoTracking()
+                .Any(m => m.SupportGroupId == supportGroupId
+                    && m.IsActive
+                    && m.IsTeamLeader
+                    && m.EmployeeCode == employeeCode
+                    && m.Employee != null
+                    && m.Employee.EmployeeStatus == "Active"
+                    && m.Employee.CompanyId == ticketCompanyId
+                    && m.SupportGroup != null
+                    && m.SupportGroup.IsActive
+                    && m.SupportGroup.CompanyId == ticketCompanyId);
         }
 
         public static bool CanProcessTicket(

@@ -79,6 +79,23 @@ namespace AnmolDristi.ITSM.UI
             ApplyResult(result, ticketId, "Status updated successfully.");
         }
 
+        protected void btnTakeOwnership_Click(object sender, EventArgs e)
+        {
+            ClearMessage();
+            int ticketId;
+            if (!TryGetTicketId(out ticketId))
+            {
+                return;
+            }
+
+            var result = new TicketUpdateService().TakeOwnership(
+                ticketId,
+                GetActorCode(),
+                GetRowVersion());
+
+            ApplyResult(result, ticketId, "Ticket claimed successfully.");
+        }
+
         protected void btnReassign_Click(object sender, EventArgs e)
         {
             ClearMessage();
@@ -275,12 +292,16 @@ namespace AnmolDristi.ITSM.UI
             divResolution.Visible = false;
             txtResolution.Text = string.Empty;
 
-            BindAgentDropdown();
+            BindAgentDropdown(dto);
             BindPriorityDropdown();
 
+            pnlTakeOwnership.Visible = dto.CanTakeOwnership;
             pnlApprovalActions.Visible = dto.CanApprove;
-            pnlWorkActions.Visible = !dto.IsTerminal && dto.StatusName != "Pending Approval";
-            pnlActions.Visible = !dto.IsTerminal && (pnlWorkActions.Visible || pnlApprovalActions.Visible);
+            pnlWorkActions.Visible = (!dto.IsTerminal && dto.StatusName != "Pending Approval"
+                && (!string.IsNullOrWhiteSpace(dto.AssigneeCode)
+                    || dto.CanGroupAssign));
+            pnlActions.Visible = !dto.IsTerminal
+                && (pnlWorkActions.Visible || pnlApprovalActions.Visible || pnlTakeOwnership.Visible);
             chkInternal.Visible = dto.CanAddInternalNote;
             if (!dto.CanAddInternalNote)
             {
@@ -314,12 +335,23 @@ namespace AnmolDristi.ITSM.UI
             return "Tenant not recorded";
         }
 
-        private void BindAgentDropdown()
+        private void BindAgentDropdown(TicketDetailDto dto)
         {
             ddlReassignTo.Items.Clear();
             ddlReassignTo.AppendDataBoundItems = true;
             ddlReassignTo.Items.Add(new ListItem("-- Select Agent --", string.Empty));
-            ddlReassignTo.DataSource = new TicketListService().GetActiveAgents();
+
+            var listService = new TicketListService();
+            if (dto.SupportGroupId.HasValue && dto.CompanyId.HasValue)
+            {
+                ddlReassignTo.DataSource = listService.GetGroupActiveMembers(
+                    dto.SupportGroupId.Value, dto.CompanyId.Value);
+            }
+            else
+            {
+                ddlReassignTo.DataSource = listService.GetActiveAgents();
+            }
+
             ddlReassignTo.DataTextField = "EmployeeName";
             ddlReassignTo.DataValueField = "EmployeeCode";
             ddlReassignTo.DataBind();

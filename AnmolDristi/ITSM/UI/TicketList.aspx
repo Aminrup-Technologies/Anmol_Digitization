@@ -75,6 +75,10 @@
                                 <asp:LinkButton ID="lnkAllOpen" runat="server" OnClick="lnkAllOpen_Click"
                                     Text="All Open" />
                             </li>
+                            <li id="tabUnassigned" runat="server" visible="false" role="presentation">
+                                <asp:LinkButton ID="lnkUnassigned" runat="server" OnClick="lnkUnassigned_Click"
+                                    Text="Unassigned" />
+                            </li>
                             <li id="tabMyTickets" runat="server" visible="false" role="presentation">
                                 <asp:LinkButton ID="lnkMyTickets" runat="server" OnClick="lnkMyTickets_Click"
                                     Text="My Tickets" />

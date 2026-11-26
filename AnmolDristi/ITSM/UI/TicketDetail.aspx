@@ -237,6 +237,13 @@
                         <asp:Panel ID="pnlActions" runat="server" Visible="true">
                             <div class="action-panel">
                                 <h4><i class="fa fa-cog"></i> Actions</h4>
+                                <asp:Panel ID="pnlTakeOwnership" runat="server" Visible="false"
+                                    style="margin-bottom: 10px;">
+                                    <asp:Button ID="btnTakeOwnership" runat="server" Text="Claim (Team Leader)"
+                                        CssClass="btn btn-success btn-sm"
+                                        OnClick="btnTakeOwnership_Click" />
+                                </asp:Panel>
+
                                 <asp:Panel ID="pnlWorkActions" runat="server">
                                 <div class="action-row">
                                     <div class="form-group">

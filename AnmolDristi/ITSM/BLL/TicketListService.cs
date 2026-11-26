@@ -32,6 +32,8 @@ namespace AnmolDristi.ITSM.BLL
         public int PrioritySortOrder { get; set; }
         public string RequesterCode { get; set; }
         public string AssigneeCode { get; set; }
+        public int? SupportGroupId { get; set; }
+        public int? CompanyId { get; set; }
     }
 
     public class TicketListFilter
@@ -109,18 +111,99 @@ namespace AnmolDristi.ITSM.BLL
         {
             using (var context = new ItsmDbContext())
             {
-                return context.TicketApprovals
+                return SortQueue(
+                    context.TicketApprovals
+                        .AsNoTracking()
+                        .Where(a => a.ApproverCode == approverCode
+                                    && a.ApprovalStatus == "Pending")
+                        .Join(
+                            BuildQueueQuery(context, null),
+                            approval => approval.TicketId,
+                            ticket => ticket.Id,
+                            (approval, ticket) => ticket)
+                        .Distinct())
+                    .ToList();
+            }
+        }
+
+        /// <summary>
+        /// R6 unclaimed group queue: open tickets with blank assignee whose
+        /// SupportGroupId lists the actor as an active member in the ticket company.
+        /// </summary>
+        public List<TicketListItemDto> GetGroupUnassignedQueue(string actorCode, TicketListFilter filter)
+        {
+            if (string.IsNullOrWhiteSpace(actorCode))
+            {
+                return new List<TicketListItemDto>();
+            }
+
+            if (filter == null)
+            {
+                filter = new TicketListFilter();
+            }
+
+            filter.OpenOnly = true;
+
+            using (var context = new ItsmDbContext())
+            {
+                // Keep membership + ticket filters on IQueryable so EF6 emits
+                // EXISTS / join SQL before materialization (AsNoTracking + Select).
+                var membershipQuery = context.SupportGroupMembers
                     .AsNoTracking()
-                    .Where(a => a.ApproverCode == approverCode
-                                && a.ApprovalStatus == "Pending")
-                    .Join(
-                        BuildQueueQuery(context, null),
-                        approval => approval.TicketId,
-                        ticket => ticket.Id,
-                        (approval, ticket) => ticket)
-                    .Distinct()
-                    .OrderBy(t => t.PrioritySortOrder)
-                    .ThenByDescending(t => t.CreatedOn)
+                    .Where(m => m.IsActive
+                        && m.EmployeeCode == actorCode
+                        && m.Employee != null
+                        && m.Employee.EmployeeStatus == "Active"
+                        && m.Employee.CompanyId != null
+                        && m.SupportGroup != null
+                        && m.SupportGroup.IsActive
+                        && m.SupportGroup.CompanyId == m.Employee.CompanyId.Value)
+                    .Select(m => new
+                    {
+                        m.SupportGroupId,
+                        CompanyId = m.Employee.CompanyId.Value
+                    });
+
+                var queue = BuildQueueQuery(context, filter)
+                    .Where(t => t.SupportGroupId != null
+                        && (t.AssigneeCode == null || t.AssigneeCode == "")
+                        && t.CompanyId != null
+                        && membershipQuery.Any(m =>
+                            m.SupportGroupId == t.SupportGroupId.Value
+                            && m.CompanyId == t.CompanyId.Value));
+
+                return SortQueue(queue).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Active members of the ticket's support group (same company).
+        /// </summary>
+        public List<AgentLookupDto> GetGroupActiveMembers(int supportGroupId, int ticketCompanyId)
+        {
+            if (supportGroupId <= 0 || ticketCompanyId <= 0)
+            {
+                return new List<AgentLookupDto>();
+            }
+
+            using (var context = new ItsmDbContext())
+            {
+                return context.SupportGroupMembers
+                    .AsNoTracking()
+                    .Where(m => m.SupportGroupId == supportGroupId
+                        && m.IsActive
+                        && m.Employee != null
+                        && m.Employee.EmployeeStatus == "Active"
+                        && m.Employee.CompanyId == ticketCompanyId
+                        && m.SupportGroup != null
+                        && m.SupportGroup.IsActive
+                        && m.SupportGroup.CompanyId == ticketCompanyId)
+                    .OrderBy(m => m.Employee.EmployeeName)
+                    .Select(m => new AgentLookupDto
+                    {
+                        EmployeeCode = m.EmployeeCode,
+                        EmployeeName = m.Employee.EmployeeName
+                    })
                     .ToList();
             }
         }
@@ -248,7 +331,9 @@ namespace AnmolDristi.ITSM.BLL
                 ResolvedOn = t.ResolvedOn,
                 PrioritySortOrder = t.Priority.SlaResolutionHours,
                 RequesterCode = t.RequesterCode,
-                AssigneeCode = t.AssigneeCode
+                AssigneeCode = t.AssigneeCode,
+                SupportGroupId = t.SupportGroupId,
+                CompanyId = t.CompanyId
             });
         }
 
@@ -256,7 +341,8 @@ namespace AnmolDristi.ITSM.BLL
         {
             return query
                 .OrderBy(t => t.PrioritySortOrder)
-                .ThenByDescending(t => t.CreatedOn);
+                .ThenByDescending(t => t.CreatedOn)
+                .ThenByDescending(t => t.Id);
         }
     }
 }

@@ -150,8 +150,14 @@ namespace AnmolDristi.ITSM.BLL
 
                         var sla = _slaService.CalculateSla(
                             requester.BranchId, createdOn, resolutionHours);
-                        var assigneeCode = _dispatchService.ResolveAssignee(
-                            resolvedBranchId, categoryId, subCategoryId, itemId);
+                        var dispatch = DispatchService.ResolveDispatch(
+                            context,
+                            requester.CompanyId.Value,
+                            resolvedBranchId,
+                            categoryId,
+                            subCategoryId,
+                            itemId);
+                        var assigneeCode = dispatch.AssigneeCode;
                         OnEnd(onStageEnd, "Priority/SLA/dispatch");
 
                         // ── Ticket number generation ──────────────────────────
@@ -175,6 +181,7 @@ namespace AnmolDristi.ITSM.BLL
                             Description = description,
                             RequesterCode = requester.EmployeeCode,
                             AssigneeCode = assigneeCode,
+                            SupportGroupId = dispatch.SupportGroupId,
                             PlantId = resolvedPlantId,
                             BranchId = resolvedBranchId,
                             CompanyId = requester.CompanyId,

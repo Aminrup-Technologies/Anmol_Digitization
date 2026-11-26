@@ -23,6 +23,10 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.LinkButton lnkAllOpen;
 
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabUnassigned;
+
+        protected global::System.Web.UI.WebControls.LinkButton lnkUnassigned;
+
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl tabMyTickets;
 
         protected global::System.Web.UI.WebControls.LinkButton lnkMyTickets;

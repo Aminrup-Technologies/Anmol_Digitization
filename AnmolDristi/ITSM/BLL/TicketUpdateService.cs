@@ -124,6 +124,78 @@ namespace AnmolDristi.ITSM.BLL
             }
         }
 
+        /// <summary>
+        /// R6: Team Leader claims an unassigned group-queue ticket.
+        /// </summary>
+        public TicketUpdateResult TakeOwnership(
+            int ticketId,
+            string actorCode,
+            byte[] rowVersion)
+        {
+            using (var context = new ItsmDbContext())
+            using (var transaction = context.Database.BeginTransaction())
+            {
+                try
+                {
+                    string loadError;
+                    var ticket = LoadMutableTicket(context, ticketId, rowVersion, out loadError);
+                    if (ticket == null)
+                    {
+                        return TicketUpdateResult.Fail(loadError);
+                    }
+
+                    ticket = RequireRecordedTenant(ticket, out loadError);
+                    if (ticket == null)
+                    {
+                        return TicketUpdateResult.Fail(loadError);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(ticket.AssigneeCode))
+                    {
+                        return TicketUpdateResult.Fail("This ticket already has an assignee.");
+                    }
+
+                    if (!ticket.SupportGroupId.HasValue)
+                    {
+                        return TicketUpdateResult.Fail("This ticket is not in a support group queue.");
+                    }
+
+                    var currentStatus = context.TicketStatuses
+                        .FirstOrDefault(s => s.Id == ticket.StatusId);
+                    if (currentStatus != null && currentStatus.IsTerminal)
+                    {
+                        return TicketUpdateResult.Fail("Cannot claim a ticket in terminal status.");
+                    }
+
+                    if (!ItsmTicketAccess.IsActiveTeamLeader(
+                        context, ticket.SupportGroupId.Value, actorCode, ticket.CompanyId.Value))
+                    {
+                        return TicketUpdateResult.Fail(
+                            "Only the active Team Leader may claim this group ticket.");
+                    }
+
+                    ticket.AssigneeCode = actorCode.Trim();
+                    ticket.ModifiedOn = DateTime.Now;
+                    ticket.ModifiedByCode = actorCode;
+
+                    AddAudit(context, ticket, "Reassignment",
+                        "Unassigned", ticket.AssigneeCode, "Accepted", actorCode);
+
+                    return Commit(context, transaction);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    transaction.Rollback();
+                    return ConcurrencyFail();
+                }
+                catch (Exception)
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+            }
+        }
+
         public TicketUpdateResult ReassignTicket(
             int ticketId,
             string newAssigneeCode,
@@ -136,23 +208,67 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
+                    var ticket = LoadMutableTicket(context, ticketId, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
                     }
 
+                    ticket = RequireRecordedTenant(ticket, out loadError);
+                    if (ticket == null)
+                    {
+                        return TicketUpdateResult.Fail(loadError);
+                    }
+
+                    var isGroupTlAssign = string.IsNullOrWhiteSpace(ticket.AssigneeCode)
+                        && ticket.SupportGroupId.HasValue
+                        && ItsmTicketAccess.IsActiveTeamLeader(
+                            context, ticket.SupportGroupId.Value, actorCode, ticket.CompanyId.Value);
+
+                    if (!isGroupTlAssign
+                        && !ItsmTicketAccess.CanProcessTicket(
+                            actorCode, ticket.RequesterCode, ticket.AssigneeCode))
+                    {
+                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                    }
+
+                    // Group TL assign requires a target member. Existing process
+                    // reassignment may still clear the assignee (Aug26 behavior).
+                    if (isGroupTlAssign && string.IsNullOrWhiteSpace(newAssigneeCode))
+                    {
+                        return TicketUpdateResult.Fail("Target assignee is required.");
+                    }
+
+                    string resolvedAssignee = null;
                     if (!string.IsNullOrWhiteSpace(newAssigneeCode))
                     {
-                        var assigneeOk = context.UserMasters
-                            .AsNoTracking()
-                            .Any(u => u.EmployeeCode == newAssigneeCode
-                                      && u.EmployeeStatus == "Active");
+                        resolvedAssignee = newAssigneeCode.Trim();
 
-                        if (!assigneeOk)
+                        var target = context.UserMasters
+                            .AsNoTracking()
+                            .FirstOrDefault(u => u.EmployeeCode == resolvedAssignee
+                                && u.EmployeeStatus == "Active");
+
+                        if (target == null)
+                        {
+                            return TicketUpdateResult.Fail("Target assignee is not an active user.");
+                        }
+
+                        if (!target.CompanyId.HasValue
+                            || target.CompanyId.Value != ticket.CompanyId.Value)
                         {
                             return TicketUpdateResult.Fail(
-                                "Target assignee is not an active user.");
+                                "Target assignee is not in the ticket company.");
+                        }
+
+                        if (ticket.SupportGroupId.HasValue)
+                        {
+                            if (!ItsmTicketAccess.IsActiveGroupMember(
+                                context, ticket.SupportGroupId.Value, resolvedAssignee, ticket.CompanyId.Value))
+                            {
+                                return TicketUpdateResult.Fail(
+                                    "Target must be an active member of the support group.");
+                            }
                         }
                     }
 
@@ -164,16 +280,15 @@ namespace AnmolDristi.ITSM.BLL
                     }
 
                     var oldAssigneeCode = ticket.AssigneeCode;
-                    ticket.AssigneeCode = string.IsNullOrWhiteSpace(newAssigneeCode)
-                        ? null
-                        : newAssigneeCode.Trim();
+                    ticket.AssigneeCode = resolvedAssignee;
                     ticket.ModifiedOn = DateTime.Now;
                     ticket.ModifiedByCode = actorCode;
 
                     AddAudit(context, ticket, "Reassignment",
                         oldAssigneeCode ?? "Unassigned",
                         ticket.AssigneeCode ?? "Unassigned",
-                        null, actorCode);
+                        isGroupTlAssign ? "GroupAssign" : null,
+                        actorCode);
 
                     return Commit(context, transaction);
                 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using AnmolDristi.ITSM.DAL;
@@ -6,121 +7,97 @@ using AnmolDristi.ITSM.DAL.Entities;
 namespace AnmolDristi.ITSM.BLL
 {
     /// <summary>
-    /// Intelligent Dispatch Matrix — resolves the default support agent for a new ticket
-    /// via cascading fallback on <c>itsm.MST_SupportMapping</c> (schema §5.2).
+    /// Intelligent Dispatch Matrix — R6 group precedence then individual cascade.
     /// </summary>
     public class DispatchService
     {
         /// <summary>
-        /// Cascading fallback (most specific wins):
-        /// 1. Item → BranchId + CategoryId + SubCategoryId + ItemId
-        /// 2. SubCategory → BranchId + CategoryId + SubCategoryId (ItemId IS NULL)
-        /// 3. Category → BranchId + CategoryId (SubCategoryId IS NULL)
-        /// 4. Branch Default → BranchId + IsBranchDefault = 1
-        /// Returns <c>SupportAgentCode</c>, or <c>null</c> if unassigned (supervisor queue).
+        /// Legacy wrapper: returns only the agent code (null on group win or unmapped).
+        /// Prefer <see cref="ResolveDispatch"/>.
         /// </summary>
         public string ResolveAssignee(int branchId, int categoryId, int subCategoryId, int? itemId)
         {
+            // Company-agnostic legacy path cannot see group mappings (they are company-scoped).
+            // Falls through to individual cascade only.
             using (var context = new ItsmDbContext())
             {
-                // 1. Most specific: Item-level mapping
-                if (itemId.HasValue)
-                {
-                    var itemAgent = FindMapping(
-                        context, branchId, categoryId, subCategoryId, itemId);
-                    if (itemAgent != null)
-                    {
-                        return itemAgent;
-                    }
-                }
-
-                // 2. SubCategory-level mapping (ItemId IS NULL)
-                var subAgent = FindMapping(
-                    context, branchId, categoryId, subCategoryId, itemId: null);
-                if (subAgent != null)
-                {
-                    return subAgent;
-                }
-
-                // 3. Category-level mapping (SubCategoryId IS NULL, ItemId IS NULL)
-                var catAgent = FindCategoryMapping(context, branchId, categoryId);
-                if (catAgent != null)
-                {
-                    return catAgent;
-                }
-
-                // 4. Branch default
-                var defaultAgent = FindBranchDefault(context, branchId);
-                if (defaultAgent != null)
-                {
-                    return defaultAgent;
-                }
-
-                return null; // Unassigned — supervisor queue
+                var individuals = LoadIndividuals(context, branchId);
+                return SupportGroupRules.ResolveIndividual(
+                    branchId, categoryId, subCategoryId, itemId, individuals);
             }
         }
 
-        private static string FindMapping(
-            ItsmDbContext context,
+        /// <summary>
+        /// R6 create-time dispatch with company isolation.
+        /// </summary>
+        public DispatchOutcome ResolveDispatch(
+            int companyId,
             int branchId,
             int categoryId,
             int subCategoryId,
             int? itemId)
         {
-            IQueryable<SupportMapping> query = context.SupportMappings
-                .AsNoTracking()
-                .Where(m =>
-                    m.IsActive
-                    && m.BranchId == branchId
-                    && m.CategoryId == categoryId
-                    && m.SubCategoryId == subCategoryId
-                    && !m.IsBranchDefault);
-
-            if (itemId.HasValue)
+            using (var context = new ItsmDbContext())
             {
-                query = query.Where(m => m.ItemId == itemId.Value);
+                return ResolveDispatch(context, companyId, branchId, categoryId, subCategoryId, itemId);
             }
-            else
-            {
-                query = query.Where(m => m.ItemId == null);
-            }
-
-            return query
-                .Select(m => m.SupportAgentCode)
-                .FirstOrDefault();
         }
 
-        private static string FindCategoryMapping(
+        internal static DispatchOutcome ResolveDispatch(
             ItsmDbContext context,
+            int companyId,
             int branchId,
-            int categoryId)
+            int categoryId,
+            int subCategoryId,
+            int? itemId)
         {
-            return context.SupportMappings
+            // Company, branch, taxonomy, and active-group filters stay on
+            // IQueryable (AsNoTracking + Select) before materialization.
+            var groups = context.SupportGroupMappings
                 .AsNoTracking()
-                .Where(m =>
-                    m.IsActive
+                .Where(m => m.IsActive
+                    && m.CompanyId == companyId
                     && m.BranchId == branchId
-                    && m.CategoryId == categoryId
-                    && m.SubCategoryId == null
-                    && m.ItemId == null
-                    && !m.IsBranchDefault)
-                .Select(m => m.SupportAgentCode)
-                .FirstOrDefault();
+                    && ((m.SubCategoryId == subCategoryId && m.CategoryId == categoryId)
+                        || (m.SubCategoryId == null && m.CategoryId == categoryId))
+                    && m.SupportGroup != null
+                    && m.SupportGroup.IsActive
+                    && m.SupportGroup.CompanyId == companyId
+                    && m.SupportGroup.BranchId == branchId)
+                .Select(m => new GroupMappingRow
+                {
+                    Id = m.Id,
+                    CompanyId = m.CompanyId,
+                    BranchId = m.BranchId,
+                    CategoryId = m.CategoryId,
+                    SubCategoryId = m.SubCategoryId,
+                    SupportGroupId = m.SupportGroupId,
+                    IsActive = m.IsActive
+                })
+                .ToList();
+
+            var individuals = LoadIndividuals(context, branchId);
+            return SupportGroupRules.ResolveDispatch(
+                companyId, branchId, categoryId, subCategoryId, itemId, groups, individuals);
         }
 
-        private static string FindBranchDefault(ItsmDbContext context, int branchId)
+        private static List<IndividualMappingRow> LoadIndividuals(ItsmDbContext context, int branchId)
         {
             return context.SupportMappings
                 .AsNoTracking()
-                .Where(m =>
-                    m.IsActive
-                    && m.BranchId == branchId
-                    && m.IsBranchDefault
-                    && m.CategoryId == null
-                    && m.SubCategoryId == null
-                    && m.ItemId == null)
-                .Select(m => m.SupportAgentCode)
-                .FirstOrDefault();
+                .Where(m => m.IsActive && m.BranchId == branchId)
+                .Select(m => new IndividualMappingRow
+                {
+                    Id = m.Id,
+                    BranchId = m.BranchId,
+                    CategoryId = m.CategoryId,
+                    SubCategoryId = m.SubCategoryId,
+                    ItemId = m.ItemId,
+                    SupportAgentCode = m.SupportAgentCode,
+                    IsBranchDefault = m.IsBranchDefault,
+                    IsActive = m.IsActive
+                })
+                .ToList();
         }
     }
 }

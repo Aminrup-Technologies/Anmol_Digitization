@@ -65,6 +65,8 @@ namespace AnmolDristi.ITSM.UI
 
             tabMyQueue.Visible = hasQueueView;
             tabAllOpen.Visible = hasQueueView;
+            // R6 group unclaimed queue — service filters by membership.
+            tabUnassigned.Visible = true;
             tabMyTickets.Visible = true; // all authenticated employees
             tabApprovals.Visible = hasApprovalView;
         }
@@ -91,6 +93,12 @@ namespace AnmolDristi.ITSM.UI
         protected void lnkAllOpen_Click(object sender, EventArgs e)
         {
             SetActiveTab("AllOpen");
+            BindQueue();
+        }
+
+        protected void lnkUnassigned_Click(object sender, EventArgs e)
+        {
+            SetActiveTab("Unassigned");
             BindQueue();
         }
 
@@ -173,6 +181,7 @@ namespace AnmolDristi.ITSM.UI
             ViewState[VS_ACTIVE_TAB] = tab;
             lnkMyQueue.CssClass = tab == "MyQueue" ? "active" : "";
             lnkAllOpen.CssClass = tab == "AllOpen" ? "active" : "";
+            lnkUnassigned.CssClass = tab == "Unassigned" ? "active" : "";
             lnkMyTickets.CssClass = tab == "MyTickets" ? "active" : "";
             lnkApprovals.CssClass = tab == "Approvals" ? "active" : "";
         }
@@ -196,8 +205,9 @@ namespace AnmolDristi.ITSM.UI
                     return HasPermission("ITSM.Queue.View");
                 case "Approvals":
                     return HasPermission("ITSM.Approval.View");
+                case "Unassigned":
                 case "MyTickets":
-                    return true; // all authenticated employees
+                    return true; // membership / requester predicates are in BLL
                 default:
                     return false;
             }
@@ -276,6 +286,9 @@ namespace AnmolDristi.ITSM.UI
                         break;
                     case "AllOpen":
                         gvTickets.DataSource = service.GetOpenQueue(filter);
+                        break;
+                    case "Unassigned":
+                        gvTickets.DataSource = service.GetGroupUnassignedQueue(workman, filter);
                         break;
                     case "MyTickets":
                         gvTickets.DataSource = service.GetMyTickets(workman, filter);

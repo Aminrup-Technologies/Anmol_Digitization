@@ -51,6 +51,10 @@ namespace AnmolDristi.ITSM.UI
 
         protected global::System.Web.UI.WebControls.Panel pnlActions;
 
+        protected global::System.Web.UI.WebControls.Panel pnlTakeOwnership;
+
+        protected global::System.Web.UI.WebControls.Button btnTakeOwnership;
+
         protected global::System.Web.UI.WebControls.Panel pnlWorkActions;
 
         protected global::System.Web.UI.WebControls.DropDownList ddlTargetStatus;

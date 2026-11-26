@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\EntityFramework.6.4.4\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.props')" />
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.Default.props" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.Default.props')" />
@@ -254,6 +254,7 @@
     <Content Include="ITSM\UI\TicketList.aspx" />
     <Content Include="ITSM\UI\TicketDetail.aspx" />
     <Content Include="ITSM\UI\ApprovalConfig.aspx" />
+    <Content Include="ITSM\UI\SupportGroupConfig.aspx" />
     <Content Include="ITSM\MENU_INTEGRATION.md" />
     <Content Include="datamastering_home.aspx" />
     <Content Include="DebugPermissions.aspx" />
@@ -878,6 +879,10 @@
       <DependentUpon>202608220132564_AddBranchLegacyId.cs</DependentUpon>
     </Compile>
     <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202611261430000_AddSupportGroups.cs" />
+    <Compile Include="ITSM\DAL\Migrations\202611261430000_AddSupportGroups.Designer.cs">
+      <DependentUpon>202611261430000_AddSupportGroups.cs</DependentUpon>
+    </Compile>
     <Compile Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.Designer.cs">
       <DependentUpon>202608240451107_AddApprovalConfiguration.cs</DependentUpon>
     </Compile>
@@ -1556,6 +1561,9 @@
     <Compile Include="ITSM\DAL\Entities\PriorityMatrix.cs" />
     <Compile Include="ITSM\DAL\Entities\TicketStatus.cs" />
     <Compile Include="ITSM\DAL\Entities\SupportMapping.cs" />
+    <Compile Include="ITSM\DAL\Entities\SupportGroup.cs" />
+    <Compile Include="ITSM\DAL\Entities\SupportGroupMember.cs" />
+    <Compile Include="ITSM\DAL\Entities\SupportGroupMapping.cs" />
     <Compile Include="ITSM\DAL\Entities\Ticket.cs" />
     <Compile Include="ITSM\DAL\Entities\TicketComment.cs" />
     <Compile Include="ITSM\DAL\Entities\TicketAttachment.cs" />
@@ -1572,6 +1580,8 @@
     <Compile Include="ITSM\DAL\ItsmDbContext.cs" />
     <Compile Include="ITSM\BLL\PriorityCalculationService.cs" />
     <Compile Include="ITSM\BLL\DispatchService.cs" />
+    <Compile Include="ITSM\BLL\SupportGroupRules.cs" />
+    <Compile Include="ITSM\BLL\SupportGroupAdminService.cs" />
     <Compile Include="ITSM\BLL\SlaService.cs" />
     <Compile Include="ITSM\BLL\TicketService.cs" />
     <Compile Include="ITSM\BLL\ItsmTenantContext.cs" />
@@ -1610,6 +1620,13 @@
     </Compile>
     <Compile Include="ITSM\UI\ApprovalConfig.aspx.designer.cs">
       <DependentUpon>ApprovalConfig.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ITSM\UI\SupportGroupConfig.aspx.cs">
+      <DependentUpon>SupportGroupConfig.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ITSM\UI\SupportGroupConfig.aspx.designer.cs">
+      <DependentUpon>SupportGroupConfig.aspx</DependentUpon>
     </Compile>
     <Compile Include="ClaimStatuses.cs" />
     <Compile Include="ClaimEditabilityHelper.cs" />
@@ -1816,6 +1833,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="ITSM\DAL\Migrations\202608240451107_AddApprovalConfiguration.resx">
       <DependentUpon>202608240451107_AddApprovalConfiguration.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ITSM\DAL\Migrations\202611261430000_AddSupportGroups.resx">
+      <DependentUpon>202611261430000_AddSupportGroups.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>

@@ -81,6 +81,13 @@ namespace AnmolDristi.ITSM.DAL.Entities
         public int? ItemId { get; set; }
 
         /// <summary>
+        /// R6: snapshot of the support group when create-time dispatch wins a
+        /// group queue. Null when an individual agent was assigned or unmapped.
+        /// Lets the unclaimed queue survive later mapping edits.
+        /// </summary>
+        public int? SupportGroupId { get; set; }
+
+        /// <summary>
         /// User-selected; drives priority calculation.
         /// </summary>
         [Required]
@@ -170,6 +177,9 @@ namespace AnmolDristi.ITSM.DAL.Entities
 
         [ForeignKey("ItemId")]
         public virtual Item Item { get; set; }
+
+        [ForeignKey("SupportGroupId")]
+        public virtual SupportGroup SupportGroup { get; set; }
 
         [ForeignKey("ImpactId")]
         public virtual Impact Impact { get; set; }

@@ -49,6 +49,9 @@ namespace AnmolDristi.ITSM.BLL
         public string CompanyName { get; set; }
         public bool CanApprove { get; set; }
         public bool CanAddInternalNote { get; set; }
+        public bool CanTakeOwnership { get; set; }
+        public bool CanGroupAssign { get; set; }
+        public int? SupportGroupId { get; set; }
         public byte[] RowVersion { get; set; }
         public List<TicketCommentDto> Comments { get; set; }
         public List<TicketApprovalDto> Approvals { get; set; }
@@ -152,6 +155,7 @@ namespace AnmolDristi.ITSM.BLL
                                CreatedByCode = t.CreatedByCode,
                                CompanyId = t.CompanyId,
                                CompanyName = c != null ? c.Company_Description : null,
+                               SupportGroupId = t.SupportGroupId,
                                RowVersion = t.RowVersion
                            }).FirstOrDefault();
 
@@ -168,7 +172,8 @@ namespace AnmolDristi.ITSM.BLL
                     dto.AssigneeCode,
                     hasTicketViewPermission,
                     authorizedCompanyId,
-                    dto.CompanyId))
+                    dto.CompanyId,
+                    dto.SupportGroupId))
                 {
                     return null;
                 }
@@ -182,6 +187,19 @@ namespace AnmolDristi.ITSM.BLL
                     ItsmTicketAccess.CanProcessTicket(actorCode, dto.RequesterCode, dto.AssigneeCode)
                     && (!string.Equals(dto.RequesterCode, actorCode, StringComparison.OrdinalIgnoreCase)
                         || string.Equals(dto.AssigneeCode, actorCode, StringComparison.OrdinalIgnoreCase));
+
+                dto.CanTakeOwnership = false;
+                dto.CanGroupAssign = false;
+                if (!dto.IsTerminal
+                    && dto.CompanyId.HasValue
+                    && dto.SupportGroupId.HasValue
+                    && string.IsNullOrWhiteSpace(dto.AssigneeCode)
+                    && ItsmTicketAccess.IsActiveTeamLeader(
+                        context, dto.SupportGroupId.Value, actorCode, dto.CompanyId.Value))
+                {
+                    dto.CanTakeOwnership = true;
+                    dto.CanGroupAssign = true;
+                }
 
                 var commentsQuery = context.TicketComments
                     .AsNoTracking()

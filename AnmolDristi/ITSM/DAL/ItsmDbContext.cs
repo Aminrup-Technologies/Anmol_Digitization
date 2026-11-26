@@ -66,6 +66,15 @@ namespace AnmolDristi.ITSM.DAL
         public DbSet<SupportMapping> SupportMappings { get; set; }
 
         /// <summary>
+        /// R6 support groups (company + branch scoped).
+        /// </summary>
+        public DbSet<SupportGroup> SupportGroups { get; set; }
+
+        public DbSet<SupportGroupMember> SupportGroupMembers { get; set; }
+
+        public DbSet<SupportGroupMapping> SupportGroupMappings { get; set; }
+
+        /// <summary>
         /// Global IT Head approver configuration. Only one active row permitted.
         /// </summary>
         public DbSet<ApprovalConfiguration> ApprovalConfigurations { get; set; }
