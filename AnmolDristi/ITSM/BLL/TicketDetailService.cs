@@ -51,12 +51,14 @@ namespace AnmolDristi.ITSM.BLL
         public bool CanReject { get; set; }
         public bool CanProcess { get; set; }
         public bool CanTakeOwnership { get; set; }
+        public bool CanGroupAssign { get; set; }
         public bool CanComment { get; set; }
         public bool CanAddInternalNote { get; set; }
         public int BranchId { get; set; }
         public int CategoryId { get; set; }
         public int SubCategoryId { get; set; }
         public int? ItemId { get; set; }
+        public int? SupportGroupId { get; set; }
         public byte[] RowVersion { get; set; }
         public List<TicketCommentDto> Comments { get; set; }
         public List<TicketApprovalDto> Approvals { get; set; }
@@ -178,6 +180,7 @@ namespace AnmolDristi.ITSM.BLL
                                CategoryId = t.CategoryId,
                                SubCategoryId = t.SubCategoryId,
                                ItemId = t.ItemId,
+                               SupportGroupId = t.SupportGroupId,
                                RowVersion = t.RowVersion
                            }).FirstOrDefault();
 
@@ -198,7 +201,8 @@ namespace AnmolDristi.ITSM.BLL
                     dto.BranchId,
                     dto.CategoryId,
                     dto.SubCategoryId,
-                    dto.ItemId))
+                    dto.ItemId,
+                    dto.SupportGroupId))
                 {
                     return null;
                 }
@@ -227,8 +231,9 @@ namespace AnmolDristi.ITSM.BLL
                     && dto.StatusName != "Pending Approval";
                 dto.CanComment = ItsmTicketAccess.CanComment(actorCode, dto.RequesterCode, dto.AssigneeCode);
                 dto.CanAddInternalNote = dto.CanProcess;
-                dto.CanTakeOwnership = string.IsNullOrWhiteSpace(dto.AssigneeCode)
-                    && !dto.IsTerminal
+
+                var isUnassigned = string.IsNullOrWhiteSpace(dto.AssigneeCode) && !dto.IsTerminal;
+                var isMappedAgent = isUnassigned
                     && DispatchService.IsMappedAgent(
                         context,
                         dto.BranchId,
@@ -236,6 +241,14 @@ namespace AnmolDristi.ITSM.BLL
                         dto.SubCategoryId,
                         dto.ItemId,
                         actorCode);
+                var isGroupTl = isUnassigned
+                    && dto.CompanyId.HasValue
+                    && dto.SupportGroupId.HasValue
+                    && ItsmTicketAccess.IsActiveTeamLeader(
+                        context, dto.SupportGroupId.Value, actorCode, dto.CompanyId.Value);
+
+                dto.CanTakeOwnership = isMappedAgent || isGroupTl;
+                dto.CanGroupAssign = isGroupTl;
 
                 var commentsQuery = context.TicketComments
                     .AsNoTracking()

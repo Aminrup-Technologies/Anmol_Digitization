@@ -16,7 +16,9 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Web.UI.WebControls;
 using AnmolDristi.ITSM.BLL;
 
@@ -65,6 +67,8 @@ namespace AnmolDristi.ITSM.UI
 
             tabMyQueue.Visible = hasQueueView;
             tabAllOpen.Visible = hasQueueView;
+            // R6 group unclaimed queue — service filters by membership.
+            // Digitization mapped-agent unassigned queue is also shown here.
             tabUnassigned.Visible = true;
             tabMyTickets.Visible = true; // all authenticated employees
             tabApprovals.Visible = hasApprovalView;
@@ -235,7 +239,7 @@ namespace AnmolDristi.ITSM.UI
                     return HasPermission("ITSM.Approval.View");
                 case "Unassigned":
                 case "MyTickets":
-                    return true;
+                    return true; // membership / requester predicates are in BLL
                 default:
                     return false;
             }
@@ -313,7 +317,9 @@ namespace AnmolDristi.ITSM.UI
                         gvTickets.DataSource = service.GetAgentQueue(workman, filter);
                         break;
                     case "Unassigned":
-                        gvTickets.DataSource = service.GetMappedUnassignedQueue(workman, filter);
+                        gvTickets.DataSource = MergeUnassignedQueues(
+                            service.GetMappedUnassignedQueue(workman, filter),
+                            service.GetGroupUnassignedQueue(workman, filter));
                         break;
                     case "AllOpen":
                         gvTickets.DataSource = service.GetOpenQueue(workman, filter);
@@ -341,6 +347,42 @@ namespace AnmolDristi.ITSM.UI
             {
                 ShowMessage("The ticket queue could not be loaded.", false);
             }
+        }
+
+        /// <summary>
+        /// Union Digitization mapped-agent queue with R6 group-membership
+        /// queue, deduped by ticket Id, keeping R4 sort order.
+        /// </summary>
+        private static List<TicketListItemDto> MergeUnassignedQueues(
+            List<TicketListItemDto> mapped,
+            List<TicketListItemDto> group)
+        {
+            var rows = new List<TicketListItemDto>();
+            var seen = new HashSet<int>();
+
+            foreach (var source in new[] { mapped, group })
+            {
+                if (source == null)
+                {
+                    continue;
+                }
+
+                foreach (var row in source)
+                {
+                    if (row == null || !seen.Add(row.Id))
+                    {
+                        continue;
+                    }
+
+                    rows.Add(row);
+                }
+            }
+
+            return rows
+                .OrderBy(t => t.PrioritySortOrder)
+                .ThenByDescending(t => t.CreatedOn)
+                .ThenByDescending(t => t.Id)
+                .ToList();
         }
 
         private void BindFilterLookups()

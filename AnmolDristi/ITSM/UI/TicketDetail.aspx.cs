@@ -313,14 +313,14 @@ namespace AnmolDristi.ITSM.UI
             txtResolution.Text = string.Empty;
             ddlHoldClass.SelectedIndex = 0;
 
-            BindAgentDropdown();
+            BindAgentDropdown(dto);
             BindPriorityDropdown();
 
             var hasStatusActions = dto.AvailableStatuses != null && dto.AvailableStatuses.Count > 0;
             pnlStatusAction.Visible = hasStatusActions;
-            pnlAssigneeTools.Visible = dto.CanProcess;
+            pnlAssigneeTools.Visible = dto.CanProcess || dto.CanGroupAssign;
             pnlTakeOwnership.Visible = dto.CanTakeOwnership;
-            pnlWorkActions.Visible = hasStatusActions || dto.CanProcess || dto.CanTakeOwnership;
+            pnlWorkActions.Visible = hasStatusActions || dto.CanProcess || dto.CanTakeOwnership || dto.CanGroupAssign;
             pnlApprovalActions.Visible = dto.CanApprove || dto.CanReject;
             btnApprove.Visible = dto.CanApprove;
             btnReject.Visible = dto.CanReject;
@@ -367,12 +367,26 @@ namespace AnmolDristi.ITSM.UI
             return "Tenant not recorded";
         }
 
-        private void BindAgentDropdown()
+        private void BindAgentDropdown(TicketDetailDto dto)
         {
             ddlReassignTo.Items.Clear();
             ddlReassignTo.AppendDataBoundItems = true;
             ddlReassignTo.Items.Add(new ListItem("-- Select Agent --", string.Empty));
-            ddlReassignTo.DataSource = new TicketListService().GetActiveAgents();
+
+            var listService = new TicketListService();
+            if (dto != null
+                && dto.CanGroupAssign
+                && dto.SupportGroupId.HasValue
+                && dto.CompanyId.HasValue)
+            {
+                ddlReassignTo.DataSource = listService.GetGroupActiveMembers(
+                    dto.SupportGroupId.Value, dto.CompanyId.Value);
+            }
+            else
+            {
+                ddlReassignTo.DataSource = listService.GetActiveAgents();
+            }
+
             ddlReassignTo.DataTextField = "EmployeeName";
             ddlReassignTo.DataValueField = "EmployeeCode";
             ddlReassignTo.DataBind();

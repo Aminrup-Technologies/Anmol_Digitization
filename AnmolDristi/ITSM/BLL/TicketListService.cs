@@ -43,6 +43,8 @@ namespace AnmolDristi.ITSM.BLL
         public int CategoryId { get; set; }
         public int SubCategoryId { get; set; }
         public int? ItemId { get; set; }
+        public int? SupportGroupId { get; set; }
+        public int? CompanyId { get; set; }
     }
 
     public class TicketListFilter
@@ -227,6 +229,94 @@ namespace AnmolDristi.ITSM.BLL
             }
         }
 
+        /// <summary>
+        /// R6 unclaimed group queue: open tickets with blank assignee whose
+        /// SupportGroupId lists the actor as an active member in the ticket company.
+        /// </summary>
+        public List<TicketListItemDto> GetGroupUnassignedQueue(string actorCode, TicketListFilter filter)
+        {
+            if (string.IsNullOrWhiteSpace(actorCode))
+            {
+                return new List<TicketListItemDto>();
+            }
+
+            var companyId = ItsmTenantContext.ResolveCompanyId(actorCode);
+            if (companyId <= 0)
+            {
+                return new List<TicketListItemDto>();
+            }
+
+            if (filter == null)
+            {
+                filter = new TicketListFilter();
+            }
+
+            filter.OpenOnly = true;
+
+            using (var context = new ItsmDbContext())
+            {
+                // Keep membership + ticket filters on IQueryable so EF6 emits
+                // EXISTS / join SQL before materialization (AsNoTracking + Select).
+                var membershipQuery = context.SupportGroupMembers
+                    .AsNoTracking()
+                    .Where(m => m.IsActive
+                        && m.EmployeeCode == actorCode
+                        && m.Employee != null
+                        && m.Employee.EmployeeStatus == "Active"
+                        && m.Employee.CompanyId != null
+                        && m.SupportGroup != null
+                        && m.SupportGroup.IsActive
+                        && m.SupportGroup.CompanyId == m.Employee.CompanyId.Value)
+                    .Select(m => new
+                    {
+                        m.SupportGroupId,
+                        CompanyId = m.Employee.CompanyId.Value
+                    });
+
+                var queue = BuildQueueQuery(context, filter, companyId)
+                    .Where(t => t.SupportGroupId != null
+                        && (t.AssigneeCode == null || t.AssigneeCode == "")
+                        && t.CompanyId != null
+                        && membershipQuery.Any(m =>
+                            m.SupportGroupId == t.SupportGroupId.Value
+                            && m.CompanyId == t.CompanyId.Value));
+
+                return SortQueue(queue).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Active members of the ticket's support group (same company).
+        /// </summary>
+        public List<AgentLookupDto> GetGroupActiveMembers(int supportGroupId, int ticketCompanyId)
+        {
+            if (supportGroupId <= 0 || ticketCompanyId <= 0)
+            {
+                return new List<AgentLookupDto>();
+            }
+
+            using (var context = new ItsmDbContext())
+            {
+                return context.SupportGroupMembers
+                    .AsNoTracking()
+                    .Where(m => m.SupportGroupId == supportGroupId
+                        && m.IsActive
+                        && m.Employee != null
+                        && m.Employee.EmployeeStatus == "Active"
+                        && m.Employee.CompanyId == ticketCompanyId
+                        && m.SupportGroup != null
+                        && m.SupportGroup.IsActive
+                        && m.SupportGroup.CompanyId == ticketCompanyId)
+                    .OrderBy(m => m.Employee.EmployeeName)
+                    .Select(m => new AgentLookupDto
+                    {
+                        EmployeeCode = m.EmployeeCode,
+                        EmployeeName = m.Employee.EmployeeName
+                    })
+                    .ToList();
+            }
+        }
+
         public List<LookupItemDto> GetActiveStatuses()
         {
             using (var context = new ItsmDbContext())
@@ -367,7 +457,9 @@ namespace AnmolDristi.ITSM.BLL
                 BranchId = t.BranchId,
                 CategoryId = t.CategoryId,
                 SubCategoryId = t.SubCategoryId,
-                ItemId = t.ItemId
+                ItemId = t.ItemId,
+                SupportGroupId = t.SupportGroupId,
+                CompanyId = t.CompanyId
             });
         }
 

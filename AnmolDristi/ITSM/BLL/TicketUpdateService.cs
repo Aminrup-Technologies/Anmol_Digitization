@@ -277,13 +277,18 @@ namespace AnmolDristi.ITSM.BLL
                         return TicketUpdateResult.Fail("Only an active employee can take a ticket.");
                     }
 
-                    if (!DispatchService.IsMappedAgent(
+                    var mappedAgent = DispatchService.IsMappedAgent(
                         context,
                         ticket.BranchId,
                         ticket.CategoryId,
                         ticket.SubCategoryId,
                         ticket.ItemId,
-                        actorCode))
+                        actorCode);
+                    var groupTl = ticket.SupportGroupId.HasValue
+                        && ticket.CompanyId.HasValue
+                        && ItsmTicketAccess.IsActiveTeamLeader(
+                            context, ticket.SupportGroupId.Value, actorCode, ticket.CompanyId.Value);
+                    if (!mappedAgent && !groupTl)
                     {
                         return TicketUpdateResult.Fail("Ticket not found or access denied.");
                     }
@@ -328,17 +333,6 @@ namespace AnmolDristi.ITSM.BLL
             byte[] rowVersion,
             string reason)
         {
-            var reassignReason = reason == null ? string.Empty : reason.Trim();
-            if (reassignReason.Length == 0)
-            {
-                return TicketUpdateResult.Fail("Reassignment requires a reason.");
-            }
-
-            if (reassignReason.Length > AuditDetailMax)
-            {
-                return TicketUpdateResult.Fail("Reassignment reason must be 1000 characters or fewer.");
-            }
-
             if (string.IsNullOrWhiteSpace(newAssigneeCode))
             {
                 return TicketUpdateResult.Fail("Select an active employee to reassign to.");
@@ -350,15 +344,51 @@ namespace AnmolDristi.ITSM.BLL
                 try
                 {
                     string loadError;
-                    var ticket = LoadForProcess(context, ticketId, actorCode, rowVersion, out loadError);
+                    var ticket = LoadMutableTicket(context, ticketId, actorCode, rowVersion, out loadError);
                     if (ticket == null)
                     {
                         return TicketUpdateResult.Fail(loadError);
                     }
 
+                    ticket = RequireRecordedTenant(ticket, out loadError);
+                    if (ticket == null)
+                    {
+                        return TicketUpdateResult.Fail(loadError);
+                    }
+
+                    var isGroupTlAssign = string.IsNullOrWhiteSpace(ticket.AssigneeCode)
+                        && ticket.SupportGroupId.HasValue
+                        && ItsmTicketAccess.IsActiveTeamLeader(
+                            context, ticket.SupportGroupId.Value, actorCode, ticket.CompanyId.Value);
+
+                    if (!isGroupTlAssign
+                        && !ItsmTicketAccess.CanProcessTicket(actorCode, ticket.AssigneeCode))
+                    {
+                        return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                    }
+
+                    var reassignReason = reason == null ? string.Empty : reason.Trim();
+                    if (isGroupTlAssign)
+                    {
+                        if (reassignReason.Length == 0)
+                        {
+                            reassignReason = "GroupAssign";
+                        }
+                    }
+                    else if (reassignReason.Length == 0)
+                    {
+                        return TicketUpdateResult.Fail("Reassignment requires a reason.");
+                    }
+
+                    if (reassignReason.Length > AuditDetailMax)
+                    {
+                        return TicketUpdateResult.Fail("Reassignment reason must be 1000 characters or fewer.");
+                    }
+
                     var currentStatus = context.TicketStatuses
                         .FirstOrDefault(s => s.Id == ticket.StatusId);
-                    if (currentStatus == null || currentStatus.IsTerminal || currentStatus.Name == "Pending Approval")
+                    if (currentStatus == null || currentStatus.IsTerminal
+                        || (!isGroupTlAssign && currentStatus.Name == "Pending Approval"))
                     {
                         return TicketUpdateResult.Fail("Cannot reassign this ticket.");
                     }
@@ -377,6 +407,14 @@ namespace AnmolDristi.ITSM.BLL
                         || assignee.CompanyId.Value != ticket.CompanyId.Value)
                     {
                         return TicketUpdateResult.Fail("Ticket not found or access denied.");
+                    }
+
+                    if (isGroupTlAssign
+                        && !ItsmTicketAccess.IsActiveGroupMember(
+                            context, ticket.SupportGroupId.Value, newAssigneeCode.Trim(), ticket.CompanyId.Value))
+                    {
+                        return TicketUpdateResult.Fail(
+                            "Target must be an active member of the support group.");
                     }
 
                     if (TicketActionPolicy.SameCode(ticket.AssigneeCode, newAssigneeCode))
