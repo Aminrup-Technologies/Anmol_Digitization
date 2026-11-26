@@ -10,9 +10,43 @@
 <%@ Page Title="ITSM Approval Configuration" Language="C#" MasterPageFile="~/Dristi.Master" AutoEventWireup="true" CodeBehind="ApprovalConfig.aspx.cs" Inherits="AnmolDristi.ITSM.UI.ApprovalConfig" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <style type="text/css">
+        .itsm-processing {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 20000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.72);
+        }
+        .itsm-processing[hidden] { display: none !important; }
+        .itsm-processing__panel {
+            width: 100%;
+            max-width: 280px;
+            padding: 18px 22px;
+            text-align: center;
+            color: #2A3F54;
+            background: #fff;
+            border: 1px solid #E6E9ED;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .itsm-processing__panel i { margin-right: 8px; }
+    </style>
 </asp:Content>
 
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id="itsmProcessing" class="itsm-processing" hidden="hidden" role="status" aria-live="polite" aria-busy="false">
+        <div class="itsm-processing__panel">
+            <i class="fa fa-spinner fa-spin" aria-hidden="true"></i>
+            <span>Processing...</span>
+        </div>
+    </div>
     <div class="right_col" role="main">
         <div class="row">
             <div class="col-md-12 col-sm-12 col-xs-12">
@@ -133,4 +167,84 @@
             </div>
         </div>
     </div>
+    <script type="text/javascript">
+        // When: 2026-11-26
+        // What: Show Processing while a full postback from this page is
+        //       in flight, and ignore a second submit.
+        // Why:  Save and Set as IT Head post the form. The employee list
+        //       does not. There is no UpdatePanel on this page.
+        (function () {
+            if (window.__itsmApprovalProcessing) {
+                return;
+            }
+            window.__itsmApprovalProcessing = true;
+            var overlay = document.getElementById('itsmProcessing');
+            var form = document.getElementById('form1') || document.forms[0];
+            var pending = false;
+
+            function showProcessing() {
+                if (!overlay || pending) {
+                    return;
+                }
+                pending = true;
+                overlay.hidden = false;
+                overlay.setAttribute('aria-busy', 'true');
+            }
+
+            function hideProcessing() {
+                pending = false;
+                if (!overlay) {
+                    return;
+                }
+                overlay.hidden = true;
+                overlay.setAttribute('aria-busy', 'false');
+            }
+
+            function bindProcessing() {
+                if (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (event.defaultPrevented) {
+                            hideProcessing();
+                            return;
+                        }
+                        if (pending) {
+                            event.preventDefault();
+                            return;
+                        }
+                        showProcessing();
+                    });
+                }
+
+                if (typeof window.__doPostBack === 'function' && !window.__doPostBack.__itsmApproval) {
+                    var postBack = window.__doPostBack;
+                    var guarded = function (target, argument) {
+                        if (pending) {
+                            return;
+                        }
+                        showProcessing();
+                        postBack(target, argument);
+                    };
+                    guarded.__itsmApproval = true;
+                    window.__doPostBack = guarded;
+                }
+
+                if (window.Sys && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+                    var manager = Sys.WebForms.PageRequestManager.getInstance();
+                    if (manager && !manager.__itsmApprovalProcessing) {
+                        manager.__itsmApprovalProcessing = true;
+                        manager.add_beginRequest(showProcessing);
+                        manager.add_endRequest(hideProcessing);
+                    }
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindProcessing);
+            } else {
+                bindProcessing();
+            }
+
+            window.addEventListener('pageshow', hideProcessing);
+        })();
+    </script>
 </asp:Content>
