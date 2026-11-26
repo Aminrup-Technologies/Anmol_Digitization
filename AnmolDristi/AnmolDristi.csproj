@@ -254,6 +254,7 @@
     <Content Include="ITSM\UI\TicketList.aspx" />
     <Content Include="ITSM\UI\TicketDetail.aspx" />
     <Content Include="ITSM\UI\DownloadAttachment.ashx" />
+    <Content Include="UploadedFiles\ITSM\web.config" />
     <Content Include="ITSM\UI\ApprovalConfig.aspx" />
     <Content Include="ITSM\UI\CategoryConfig.aspx" />
     <Content Include="ITSM\MENU_INTEGRATION.md" />
