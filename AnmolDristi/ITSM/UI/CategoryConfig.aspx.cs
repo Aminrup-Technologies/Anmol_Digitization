@@ -7,9 +7,11 @@
 // When: 2026-11-26
 // What: Page_Load requires USERID and the login branch id. Save reads
 //       the order box. The browser filter is not a server event.
+//       Support agent mapping uses the same permission and session keys.
 // Why:  Display order is saved only by the existing Save and Add buttons.
 //       Search must not post back. BRANCH is the BranchId from login;
-//       this application has no Session key named BranchID.
+//       this application has no Session key named BranchID. Mapping
+//       writes stay on the signed-in branch and company.
 // ========================================================================
 
 using System;
@@ -29,6 +31,7 @@ namespace AnmolDristi.ITSM.UI
 
         private List<CatalogOptionDto> _parentCategoryOptions = new List<CatalogOptionDto>();
         private List<CatalogOptionDto> _categoryOptions = new List<CatalogOptionDto>();
+        private List<MappingEmployeeDto> _mappingEmployees = new List<MappingEmployeeDto>();
 
         protected void Page_Load(object sender, EventArgs e)
         {
@@ -300,6 +303,280 @@ namespace AnmolDristi.ITSM.UI
             gvCategories.DataBind();
             gvSubCategories.DataSource = service.GetSubCategories();
             gvSubCategories.DataBind();
+            BindMappings();
+        }
+
+        protected void btnAddMapping_Click(object sender, EventArgs e)
+        {
+            if (!DemandManagePermission())
+            {
+                return;
+            }
+
+            ClearMappingMessage();
+            int legacyBranchId;
+            if (!TryReadSessionBranch(out legacyBranchId))
+            {
+                ShowMappingMessage("The signed-in branch is missing.", false);
+                return;
+            }
+
+            int? categoryId;
+            int? subCategoryId;
+            int? itemId;
+            string selectionError;
+            if (!TryReadNewMappingTarget(out categoryId, out subCategoryId, out itemId, out selectionError))
+            {
+                ShowMappingMessage(selectionError, false);
+                return;
+            }
+
+            var result = new SupportMappingAdminService().Add(
+                CurrentEmployeeCode,
+                legacyBranchId,
+                chkMappingBranchDefault.Checked,
+                categoryId,
+                subCategoryId,
+                itemId,
+                ddlMappingAgent.SelectedValue);
+            if (!result.Succeeded)
+            {
+                ShowMappingMessage(result.Error, false);
+                return;
+            }
+
+            chkMappingBranchDefault.Checked = false;
+            ShowMappingMessage("Support agent mapping saved.", true);
+            BindAll();
+        }
+
+        protected void gvMappings_RowCommand(object sender, GridViewCommandEventArgs e)
+        {
+            if (e.CommandName != "Save")
+            {
+                return;
+            }
+
+            if (!DemandManagePermission())
+            {
+                return;
+            }
+
+            ClearMappingMessage();
+            int legacyBranchId;
+            int id;
+            if (!TryReadSessionBranch(out legacyBranchId) || !TryReadId(e, out id))
+            {
+                ShowMappingMessage("Unable to read the mapping row.", false);
+                return;
+            }
+
+            var row = FindCommandRow(gvMappings, e);
+            var agentList = row == null ? null : row.FindControl("ddlAgent") as DropDownList;
+            var activeBox = row == null ? null : row.FindControl("chkActive") as CheckBox;
+            if (agentList == null || activeBox == null)
+            {
+                ShowMappingMessage("Unable to read the mapping row.", false);
+                return;
+            }
+
+            var result = new SupportMappingAdminService().Save(
+                CurrentEmployeeCode,
+                legacyBranchId,
+                id,
+                agentList.SelectedValue,
+                activeBox.Checked);
+            if (!result.Succeeded)
+            {
+                ShowMappingMessage(result.Error, false);
+                return;
+            }
+
+            ShowMappingMessage("Support agent mapping saved.", true);
+            BindAll();
+        }
+
+        protected void gvMappings_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            if (e.Row.RowType != DataControlRowType.DataRow)
+            {
+                return;
+            }
+
+            var entry = (SupportMappingRowDto)e.Row.DataItem;
+            var agentList = (DropDownList)e.Row.FindControl("ddlAgent");
+            agentList.Items.Clear();
+            var found = false;
+            foreach (var employee in _mappingEmployees)
+            {
+                agentList.Items.Add(new ListItem(
+                    EmployeeLabel(employee.EmployeeName, employee.EmployeeCode),
+                    employee.EmployeeCode));
+                if (string.Equals(employee.EmployeeCode, entry.AgentCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    found = true;
+                }
+            }
+
+            if (!found)
+            {
+                agentList.Items.Insert(0, new ListItem("-- Select support agent --", string.Empty));
+            }
+            else
+            {
+                var selected = agentList.Items.FindByValue(entry.AgentCode);
+                if (selected != null)
+                {
+                    agentList.ClearSelection();
+                    selected.Selected = true;
+                }
+            }
+
+            e.Row.Attributes["data-parent-id"] = entry.CategoryId.HasValue
+                ? entry.CategoryId.Value.ToString(CultureInfo.InvariantCulture)
+                : string.Empty;
+            e.Row.Attributes["data-category-id"] = entry.SubCategoryId.HasValue
+                ? entry.SubCategoryId.Value.ToString(CultureInfo.InvariantCulture)
+                : string.Empty;
+            e.Row.Attributes["data-agent"] = EmployeeLabel(entry.AgentName, entry.AgentCode);
+            e.Row.Attributes["data-active"] = entry.IsActive ? "1" : "0";
+            e.Row.Attributes["data-branch-default"] = entry.IsBranchDefault ? "1" : "0";
+        }
+
+        private void BindMappings()
+        {
+            int legacyBranchId;
+            if (!TryReadSessionBranch(out legacyBranchId))
+            {
+                ShowMappingMessage("The signed-in branch is missing.", false);
+                gvMappings.DataSource = new List<SupportMappingRowDto>();
+                gvMappings.DataBind();
+                return;
+            }
+
+            var page = new SupportMappingAdminService().GetForBranch(CurrentEmployeeCode, legacyBranchId);
+            _mappingEmployees = page.Employees ?? new List<MappingEmployeeDto>();
+            lblMappingBranch.Text = page.BranchName ?? string.Empty;
+            if (!string.IsNullOrEmpty(page.Error))
+            {
+                ShowMappingMessage(page.Error, false);
+            }
+
+            BindMappingChoices(ddlMappingParent, page.Parents, "-- Select parent category --");
+            BindMappingChoices(ddlMappingCategory, page.Categories, "-- Parent category only --");
+            BindMappingChoices(ddlMappingSubCategory, page.SubCategories, "-- Category only --");
+            ddlMappingAgent.Items.Clear();
+            ddlMappingAgent.Items.Add(new ListItem("-- Select support agent --", string.Empty));
+            foreach (var employee in _mappingEmployees)
+            {
+                ddlMappingAgent.Items.Add(new ListItem(
+                    EmployeeLabel(employee.EmployeeName, employee.EmployeeCode),
+                    employee.EmployeeCode));
+            }
+
+            gvMappings.DataSource = page.Rows ?? new List<SupportMappingRowDto>();
+            gvMappings.DataBind();
+        }
+
+        private static void BindMappingChoices(
+            DropDownList list,
+            IList<MappingChoiceDto> choices,
+            string placeholder)
+        {
+            list.Items.Clear();
+            list.Items.Add(new ListItem(placeholder, string.Empty));
+            if (choices == null)
+            {
+                return;
+            }
+
+            foreach (var choice in choices)
+            {
+                var item = new ListItem(choice.Name, choice.Id.ToString(CultureInfo.InvariantCulture));
+                if (choice.ParentId > 0)
+                {
+                    item.Attributes["data-parent"] = choice.ParentId.ToString(CultureInfo.InvariantCulture);
+                }
+
+                list.Items.Add(item);
+            }
+        }
+
+        private bool TryReadNewMappingTarget(
+            out int? categoryId,
+            out int? subCategoryId,
+            out int? itemId,
+            out string error)
+        {
+            categoryId = null;
+            subCategoryId = null;
+            itemId = null;
+            error = null;
+            if (chkMappingBranchDefault.Checked)
+            {
+                return true;
+            }
+
+            int parentId;
+            if (!int.TryParse(ddlMappingParent.SelectedValue, out parentId) || parentId <= 0)
+            {
+                error = "Select a parent category, or choose the branch default.";
+                return false;
+            }
+
+            categoryId = parentId;
+            int categorySelection;
+            if (int.TryParse(ddlMappingCategory.SelectedValue, out categorySelection) && categorySelection > 0)
+            {
+                subCategoryId = categorySelection;
+            }
+
+            int subCategorySelection;
+            if (int.TryParse(ddlMappingSubCategory.SelectedValue, out subCategorySelection) && subCategorySelection > 0)
+            {
+                if (!subCategoryId.HasValue)
+                {
+                    error = "Select a category before a sub-category.";
+                    return false;
+                }
+
+                itemId = subCategorySelection;
+            }
+
+            return true;
+        }
+
+        private bool TryReadSessionBranch(out int legacyBranchId)
+        {
+            legacyBranchId = 0;
+            return Session["BRANCH"] != null
+                && int.TryParse(
+                    Convert.ToString(Session["BRANCH"]),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out legacyBranchId)
+                && legacyBranchId > 0;
+        }
+
+        private static string EmployeeLabel(string name, string code)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return code ?? string.Empty;
+            }
+
+            return name + " (" + code + ")";
+        }
+
+        private void ClearMappingMessage()
+        {
+            lblMappingMessage.Text = string.Empty;
+        }
+
+        private void ShowMappingMessage(string message, bool success)
+        {
+            lblMappingMessage.Text = message ?? string.Empty;
+            lblMappingMessage.ForeColor = success ? Color.Green : Color.Red;
         }
 
         private static void BindAddList(DropDownList list, IList<CatalogOptionDto> options, string placeholder)

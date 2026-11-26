@@ -1584,6 +1584,7 @@
     <Compile Include="ITSM\BLL\ItsmNotification.cs" />
     <Compile Include="ITSM\BLL\ApprovalConfigurationService.cs" />
     <Compile Include="ITSM\BLL\CategoryAdministrationService.cs" />
+    <Compile Include="ITSM\BLL\SupportMappingAdminService.cs" />
     <Compile Include="ITSM\BLL\TicketListService.cs" />
     <Compile Include="ITSM\BLL\TicketDetailService.cs" />
     <Compile Include="ITSM\BLL\TicketUpdateService.cs" />

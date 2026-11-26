@@ -34,5 +34,23 @@ namespace AnmolDristi.ITSM.UI
         protected global::System.Web.UI.WebControls.Button btnAddSubCategory;
 
         protected global::System.Web.UI.WebControls.GridView gvSubCategories;
+
+        protected global::System.Web.UI.WebControls.Label lblMappingBranch;
+
+        protected global::System.Web.UI.WebControls.Label lblMappingMessage;
+
+        protected global::System.Web.UI.WebControls.CheckBox chkMappingBranchDefault;
+
+        protected global::System.Web.UI.WebControls.DropDownList ddlMappingParent;
+
+        protected global::System.Web.UI.WebControls.DropDownList ddlMappingCategory;
+
+        protected global::System.Web.UI.WebControls.DropDownList ddlMappingSubCategory;
+
+        protected global::System.Web.UI.WebControls.DropDownList ddlMappingAgent;
+
+        protected global::System.Web.UI.WebControls.Button btnAddMapping;
+
+        protected global::System.Web.UI.WebControls.GridView gvMappings;
     }
 }
