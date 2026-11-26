@@ -4,6 +4,12 @@
 //       ITSM.CategoryConfig.Manage on load and on every add or save.
 // Why:  Phase 1B R1. The catalog is global. This page does not create
 //       tickets and does not write ticket status or audit rows.
+// When: 2026-11-26
+// What: Page_Load requires USERID and the login branch id. Save reads
+//       the order box. The browser filter is not a server event.
+// Why:  Display order is saved only by the existing Save and Add buttons.
+//       Search must not post back. BRANCH is the BranchId from login;
+//       this application has no Session key named BranchID.
 // ========================================================================
 
 using System;
@@ -26,7 +32,9 @@ namespace AnmolDristi.ITSM.UI
 
         protected void Page_Load(object sender, EventArgs e)
         {
-            if (Session["USERID"] == null || Session["WORKMAN"] == null || Session["BRANCH"] == null)
+            // Catalog lists are not stored in ViewState. GridView keeps the
+            // posted row editors (id, name, order, active, parent id).
+            if (!HasSignedInUserAndBranch())
             {
                 RedirectToLogin();
                 return;
@@ -143,14 +151,22 @@ namespace AnmolDristi.ITSM.UI
             int id;
             string name;
             bool isActive;
+            int sortOrder;
+            string sortError;
             if (!TryReadId(e, out id) || !TryReadEditableRow(row, out name, out isActive))
             {
                 ShowMessage("Unable to read the catalog row.", false);
                 return;
             }
 
+            if (!TryReadSortOrder(row, out sortOrder, out sortError))
+            {
+                ShowMessage(sortError, false);
+                return;
+            }
+
             var result = new CategoryAdministrationService()
-                .SaveParentCategory(id, name, isActive, CurrentEmployeeCode);
+                .SaveParentCategory(id, name, isActive, sortOrder, CurrentEmployeeCode);
             FinishSave(result, "Parent category saved.");
         }
 
@@ -203,6 +219,21 @@ namespace AnmolDristi.ITSM.UI
                 ? _parentCategoryOptions
                 : _categoryOptions;
             BindChildParentCell(e.Row, entry, options);
+            StampCatalogRow(
+                e.Row,
+                sender == gvCategories ? "category" : "subcategory",
+                entry);
+        }
+
+        protected void gvParents_RowDataBound(object sender, GridViewRowEventArgs e)
+        {
+            var entry = e.Row.DataItem as CatalogEntryDto;
+            if (entry == null)
+            {
+                return;
+            }
+
+            StampCatalogRow(e.Row, "parent", entry);
         }
 
         private void SaveChildRow(GridView grid, GridViewCommandEventArgs e, bool categoryLevel)
@@ -218,7 +249,9 @@ namespace AnmolDristi.ITSM.UI
             string name;
             bool isActive;
             int parentId;
+            int sortOrder;
             string parentError = null;
+            string sortError;
             if (!TryReadId(e, out id)
                 || !TryReadEditableRow(row, out name, out isActive)
                 || !TryReadParentId(row, out parentId, out parentError))
@@ -227,10 +260,16 @@ namespace AnmolDristi.ITSM.UI
                 return;
             }
 
+            if (!TryReadSortOrder(row, out sortOrder, out sortError))
+            {
+                ShowMessage(sortError, false);
+                return;
+            }
+
             var service = new CategoryAdministrationService();
             var result = categoryLevel
-                ? service.SaveCategory(id, parentId, name, isActive, CurrentEmployeeCode)
-                : service.SaveSubCategory(id, parentId, name, isActive, CurrentEmployeeCode);
+                ? service.SaveCategory(id, parentId, name, isActive, sortOrder, CurrentEmployeeCode)
+                : service.SaveSubCategory(id, parentId, name, isActive, sortOrder, CurrentEmployeeCode);
             FinishSave(result, categoryLevel ? "Category saved." : "Sub-category saved.");
         }
 
@@ -369,6 +408,74 @@ namespace AnmolDristi.ITSM.UI
             name = textBox.Text;
             isActive = checkBox.Checked;
             return true;
+        }
+
+        private static bool TryReadSortOrder(GridViewRow row, out int sortOrder, out string error)
+        {
+            sortOrder = 0;
+            error = null;
+            var textBox = row.FindControl("txtSortOrder") as TextBox;
+            if (textBox == null)
+            {
+                error = "Unable to read the display order.";
+                return false;
+            }
+
+            var text = (textBox.Text ?? string.Empty).Trim();
+            if (!int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out sortOrder)
+                || sortOrder < 0
+                || sortOrder > 999999)
+            {
+                error = "Enter a whole number from 0 through 999999 for the display order.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private static void StampCatalogRow(GridViewRow row, string level, CatalogEntryDto entry)
+        {
+            if (row.RowType != DataControlRowType.DataRow)
+            {
+                return;
+            }
+
+            row.Attributes["data-level"] = level;
+            row.Attributes["data-id"] = entry.Id.ToString(CultureInfo.InvariantCulture);
+            row.Attributes["data-name"] = entry.Name ?? string.Empty;
+            row.Attributes["data-active"] = entry.IsActive ? "1" : "0";
+            row.Attributes["data-root-id"] = entry.RootCategoryId.ToString(CultureInfo.InvariantCulture);
+            if (level != "parent")
+            {
+                row.Attributes["data-parent-id"] = entry.ParentId.ToString(CultureInfo.InvariantCulture);
+                row.Attributes["data-parent-name"] = entry.ParentName ?? string.Empty;
+            }
+        }
+
+        private bool HasSignedInUserAndBranch()
+        {
+            if (Session["WORKMAN"] == null
+                || string.IsNullOrWhiteSpace(Convert.ToString(Session["WORKMAN"])))
+            {
+                return false;
+            }
+
+            int userId;
+            int branchId;
+            return Session["USERID"] != null
+                && int.TryParse(
+                    Convert.ToString(Session["USERID"]),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out userId)
+                && userId > 0
+                && Session["BRANCH"] != null
+                && int.TryParse(
+                    Convert.ToString(Session["BRANCH"]),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out branchId)
+                && branchId > 0;
         }
 
         private static bool TryReadParentId(GridViewRow row, out int parentId, out string error)

@@ -564,6 +564,7 @@
                 refreshTitle();
             }
 
+            // Display order is the array order from the server: SortOrder, then Id.
             function populateSubCategories(catId) {
                 var ddl = document.getElementById('ddlSubCategoryClient');
                 ddl.innerHTML = '<option value="">-- Select Category --</option>';
@@ -592,6 +593,7 @@
                 refreshTitle();
             }
 
+            // Item order is the array order from the server: SortOrder, then Id.
             function populateItems(subId) {
                 var ddl = document.getElementById('ddlItemClient');
                 ddl.innerHTML = '<option value="">-- Select Sub-Category (optional) --</option>';

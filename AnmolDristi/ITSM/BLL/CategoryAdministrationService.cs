@@ -8,6 +8,13 @@
 //       support mapping references the entry. No CompanyId filter: these
 //       tables are global. Does not write tickets, status, or audit rows,
 //       and does not write dbo.MST_Category.
+// When: 2026-11-26
+// What: Reads and saves SortOrder on the same three tables. Lists are
+//       ordered by SortOrder, then Id. New rows take the next number under
+//       their parent. Reads stay AsNoTracking Select projections.
+// Why:  Authorized admins set display order. Create Ticket uses the same
+//       columns. Filtering stays in the browser and never reaches this
+//       service. No CompanyId is added.
 // ========================================================================
 
 using System;
@@ -33,7 +40,20 @@ namespace AnmolDristi.ITSM.BLL
 
         public bool IsActive { get; set; }
 
+        /// <summary>
+        /// itsm.MST_Category.SortOrder, itsm.MST_SubCategory.SortOrder, or
+        /// itsm.MST_Item.SortOrder. Lower numbers appear first.
+        /// </summary>
+        public int SortOrder { get; set; }
+
         public int ParentId { get; set; }
+
+        /// <summary>
+        /// itsm.MST_Category.Id for this row. Not a separate column.
+        /// A parent row uses its own id. A category uses CategoryId.
+        /// A sub-category uses the category's parent id.
+        /// </summary>
+        public int RootCategoryId { get; set; }
 
         public string ParentName { get; set; }
 
@@ -92,12 +112,15 @@ namespace AnmolDristi.ITSM.BLL
                 var referenced = LoadReferencedParentIds(context);
                 var rows = context.Categories
                     .AsNoTracking()
-                    .OrderBy(c => c.Name)
+                    .OrderBy(c => c.SortOrder)
+                    .ThenBy(c => c.Id)
                     .Select(c => new CatalogEntryDto
                     {
                         Id = c.Id,
                         Name = c.Name,
                         IsActive = c.IsActive,
+                        SortOrder = c.SortOrder,
+                        RootCategoryId = c.Id,
                         ParentIsActive = true
                     })
                     .ToList();
@@ -114,14 +137,18 @@ namespace AnmolDristi.ITSM.BLL
                 var referenced = LoadReferencedCategoryIds(context);
                 var rows = context.SubCategories
                     .AsNoTracking()
-                    .OrderBy(s => s.Category.Name)
-                    .ThenBy(s => s.Name)
+                    .OrderBy(s => s.Category.SortOrder)
+                    .ThenBy(s => s.Category.Id)
+                    .ThenBy(s => s.SortOrder)
+                    .ThenBy(s => s.Id)
                     .Select(s => new CatalogEntryDto
                     {
                         Id = s.Id,
                         Name = s.Name,
                         IsActive = s.IsActive,
+                        SortOrder = s.SortOrder,
                         ParentId = s.CategoryId,
+                        RootCategoryId = s.CategoryId,
                         ParentName = s.Category.Name,
                         ParentIsActive = s.Category.IsActive
                     })
@@ -139,15 +166,20 @@ namespace AnmolDristi.ITSM.BLL
                 var referenced = LoadReferencedSubCategoryIds(context);
                 var rows = context.Items
                     .AsNoTracking()
-                    .OrderBy(i => i.SubCategory.Category.Name)
-                    .ThenBy(i => i.SubCategory.Name)
-                    .ThenBy(i => i.Name)
+                    .OrderBy(i => i.SubCategory.Category.SortOrder)
+                    .ThenBy(i => i.SubCategory.Category.Id)
+                    .ThenBy(i => i.SubCategory.SortOrder)
+                    .ThenBy(i => i.SubCategory.Id)
+                    .ThenBy(i => i.SortOrder)
+                    .ThenBy(i => i.Id)
                     .Select(i => new CatalogEntryDto
                     {
                         Id = i.Id,
                         Name = i.Name,
                         IsActive = i.IsActive,
+                        SortOrder = i.SortOrder,
                         ParentId = i.SubCategoryId,
+                        RootCategoryId = i.SubCategory.CategoryId,
                         ParentName = i.SubCategory.Category.Name + " / " + i.SubCategory.Name,
                         ParentIsActive = i.SubCategory.IsActive && i.SubCategory.Category.IsActive
                     })
@@ -168,7 +200,8 @@ namespace AnmolDristi.ITSM.BLL
                 return context.Categories
                     .AsNoTracking()
                     .Where(c => c.IsActive)
-                    .OrderBy(c => c.Name)
+                    .OrderBy(c => c.SortOrder)
+                    .ThenBy(c => c.Id)
                     .Select(c => new CatalogOptionDto
                     {
                         Id = c.Id,
@@ -189,8 +222,10 @@ namespace AnmolDristi.ITSM.BLL
                 return context.SubCategories
                     .AsNoTracking()
                     .Where(s => s.IsActive && s.Category.IsActive)
-                    .OrderBy(s => s.Category.Name)
-                    .ThenBy(s => s.Name)
+                    .OrderBy(s => s.Category.SortOrder)
+                    .ThenBy(s => s.Category.Id)
+                    .ThenBy(s => s.SortOrder)
+                    .ThenBy(s => s.Id)
                     .Select(s => new CatalogOptionDto
                     {
                         Id = s.Id,
@@ -222,25 +257,45 @@ namespace AnmolDristi.ITSM.BLL
                     return CatalogSaveResult.Fail(DuplicateNameMessage);
                 }
 
+                var sortOrder = NextSortOrder(
+                    context.Categories.Select(c => (int?)c.SortOrder));
+                var sortError = ValidateSortOrder(sortOrder);
+                if (sortError != null)
+                {
+                    return CatalogSaveResult.Fail(sortError);
+                }
+
                 using (var transaction = context.Database.BeginTransaction())
                 {
                     context.Categories.Add(new Category
                     {
                         Name = normalized,
-                        IsActive = true
+                        IsActive = true,
+                        SortOrder = sortOrder
                     });
                     return Commit(context, transaction);
                 }
             }
         }
 
-        public CatalogSaveResult SaveParentCategory(int id, string name, bool isActive, string actorCode)
+        public CatalogSaveResult SaveParentCategory(
+            int id,
+            string name,
+            bool isActive,
+            int sortOrder,
+            string actorCode)
         {
             var normalized = NormalizeName(name);
             var nameError = ValidateName(normalized);
             if (nameError != null)
             {
                 return CatalogSaveResult.Fail(nameError);
+            }
+
+            var sortError = ValidateSortOrder(sortOrder);
+            if (sortError != null)
+            {
+                return CatalogSaveResult.Fail(sortError);
             }
 
             using (var context = new ItsmDbContext())
@@ -266,6 +321,7 @@ namespace AnmolDristi.ITSM.BLL
                 {
                     current.Name = normalized;
                     current.IsActive = isActive;
+                    current.SortOrder = sortOrder;
                     return Commit(context, transaction);
                 }
             }
@@ -299,13 +355,24 @@ namespace AnmolDristi.ITSM.BLL
                     return CatalogSaveResult.Fail(DuplicateNameMessage);
                 }
 
+                var sortOrder = NextSortOrder(
+                    context.SubCategories
+                        .Where(s => s.CategoryId == parentCategoryId)
+                        .Select(s => (int?)s.SortOrder));
+                var sortError = ValidateSortOrder(sortOrder);
+                if (sortError != null)
+                {
+                    return CatalogSaveResult.Fail(sortError);
+                }
+
                 using (var transaction = context.Database.BeginTransaction())
                 {
                     context.SubCategories.Add(new SubCategory
                     {
                         CategoryId = parentCategoryId,
                         Name = normalized,
-                        IsActive = true
+                        IsActive = true,
+                        SortOrder = sortOrder
                     });
                     return Commit(context, transaction);
                 }
@@ -317,6 +384,7 @@ namespace AnmolDristi.ITSM.BLL
             int parentCategoryId,
             string name,
             bool isActive,
+            int sortOrder,
             string actorCode)
         {
             var normalized = NormalizeName(name);
@@ -324,6 +392,12 @@ namespace AnmolDristi.ITSM.BLL
             if (nameError != null)
             {
                 return CatalogSaveResult.Fail(nameError);
+            }
+
+            var sortError = ValidateSortOrder(sortOrder);
+            if (sortError != null)
+            {
+                return CatalogSaveResult.Fail(sortError);
             }
 
             using (var context = new ItsmDbContext())
@@ -361,6 +435,7 @@ namespace AnmolDristi.ITSM.BLL
                     current.CategoryId = parentCategoryId;
                     current.Name = normalized;
                     current.IsActive = isActive;
+                    current.SortOrder = sortOrder;
                     return Commit(context, transaction);
                 }
             }
@@ -394,13 +469,24 @@ namespace AnmolDristi.ITSM.BLL
                     return CatalogSaveResult.Fail(DuplicateNameMessage);
                 }
 
+                var sortOrder = NextSortOrder(
+                    context.Items
+                        .Where(i => i.SubCategoryId == categoryId)
+                        .Select(i => (int?)i.SortOrder));
+                var sortError = ValidateSortOrder(sortOrder);
+                if (sortError != null)
+                {
+                    return CatalogSaveResult.Fail(sortError);
+                }
+
                 using (var transaction = context.Database.BeginTransaction())
                 {
                     context.Items.Add(new Item
                     {
                         SubCategoryId = categoryId,
                         Name = normalized,
-                        IsActive = true
+                        IsActive = true,
+                        SortOrder = sortOrder
                     });
                     return Commit(context, transaction);
                 }
@@ -412,6 +498,7 @@ namespace AnmolDristi.ITSM.BLL
             int categoryId,
             string name,
             bool isActive,
+            int sortOrder,
             string actorCode)
         {
             var normalized = NormalizeName(name);
@@ -419,6 +506,12 @@ namespace AnmolDristi.ITSM.BLL
             if (nameError != null)
             {
                 return CatalogSaveResult.Fail(nameError);
+            }
+
+            var sortError = ValidateSortOrder(sortOrder);
+            if (sortError != null)
+            {
+                return CatalogSaveResult.Fail(sortError);
             }
 
             using (var context = new ItsmDbContext())
@@ -456,9 +549,38 @@ namespace AnmolDristi.ITSM.BLL
                     current.SubCategoryId = categoryId;
                     current.Name = normalized;
                     current.IsActive = isActive;
+                    current.SortOrder = sortOrder;
                     return Commit(context, transaction);
                 }
             }
+        }
+
+        private const int MaxSortOrder = 999999;
+
+        private static int NextSortOrder(IQueryable<int?> orders)
+        {
+            var max = orders.Max();
+            if (!max.HasValue)
+            {
+                return 0;
+            }
+
+            if (max.Value >= MaxSortOrder)
+            {
+                return MaxSortOrder;
+            }
+
+            return max.Value + 1;
+        }
+
+        private static string ValidateSortOrder(int sortOrder)
+        {
+            if (sortOrder < 0 || sortOrder > MaxSortOrder)
+            {
+                return "Enter a whole number from 0 through 999999 for the display order.";
+            }
+
+            return null;
         }
 
         private const string DuplicateNameMessage =

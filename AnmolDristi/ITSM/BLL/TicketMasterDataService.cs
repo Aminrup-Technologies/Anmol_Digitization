@@ -12,6 +12,11 @@
 //       inactive parent category. The catalog has no CompanyId.
 // Why:  Phase 1B R1. Inactive entries must not be accepted on a new ticket,
 //       including a posted id whose parent was deactivated after the page loaded.
+// When: 2026-11-26
+// What: GetCategoryHierarchy reads three flat AsNoTracking projections and
+//       orders each by SortOrder, then Id. companyId is still not a filter.
+// Why:  Create Ticket shows the display order saved on Category Config.
+//       The catalog tables have no CompanyId, so none is added.
 // ========================================================================
 
 using System.Collections.Generic;
@@ -100,41 +105,113 @@ namespace AnmolDristi.ITSM.BLL
         /// <paramref name="companyId"/> is not a filter: the catalog tables
         /// have no CompanyId and stay global. The argument remains so the
         /// Create Ticket call site does not change.
+        /// When: 2026-11-26. Order is SortOrder, then Id, at every level.
         /// </summary>
         public List<TicketCategoryDto> GetCategoryHierarchy(int companyId)
         {
             using (var context = new ItsmDbContext())
             {
-                var query = context.Categories.AsNoTracking()
-                    .Where(c => c.IsActive);
-
-                return query
-                    .OrderBy(c => c.Name)
+                var parents = context.Categories.AsNoTracking()
+                    .Where(c => c.IsActive)
+                    .OrderBy(c => c.SortOrder)
+                    .ThenBy(c => c.Id)
                     .Select(c => new TicketCategoryDto
                     {
                         Id = c.Id,
-                        Name = c.Name,
-                        SubCategories = context.SubCategories
-                            .Where(s => s.IsActive && s.CategoryId == c.Id)
-                            .OrderBy(s => s.Name)
-                            .Select(s => new TicketSubCategoryDto
-                            {
-                                Id = s.Id,
-                                Name = s.Name,
-                                Items = context.Items
-                                    .Where(i => i.IsActive && i.SubCategoryId == s.Id)
-                                    .OrderBy(i => i.Name)
-                                    .Select(i => new TicketItemDto
-                                    {
-                                        Id = i.Id,
-                                        Name = i.Name
-                                    })
-                                    .ToList()
-                            })
-                            .ToList()
+                        Name = c.Name
                     })
                     .ToList();
+
+                var categories = context.SubCategories.AsNoTracking()
+                    .Where(s => s.IsActive && s.Category.IsActive)
+                    .OrderBy(s => s.SortOrder)
+                    .ThenBy(s => s.Id)
+                    .Select(s => new CatalogFlatRow
+                    {
+                        Id = s.Id,
+                        Name = s.Name,
+                        ParentId = s.CategoryId
+                    })
+                    .ToList();
+
+                var items = context.Items.AsNoTracking()
+                    .Where(i => i.IsActive
+                        && i.SubCategory.IsActive
+                        && i.SubCategory.Category.IsActive)
+                    .OrderBy(i => i.SortOrder)
+                    .ThenBy(i => i.Id)
+                    .Select(i => new CatalogFlatRow
+                    {
+                        Id = i.Id,
+                        Name = i.Name,
+                        ParentId = i.SubCategoryId
+                    })
+                    .ToList();
+
+                return AssembleHierarchy(parents, categories, items);
             }
+        }
+
+        /// <summary>
+        /// Flat projection of a category or sub-category row. The list order
+        /// is already SortOrder, then Id. Grouping must keep that order.
+        /// </summary>
+        private sealed class CatalogFlatRow
+        {
+            public int Id { get; set; }
+
+            public string Name { get; set; }
+
+            public int ParentId { get; set; }
+        }
+
+        private static List<TicketCategoryDto> AssembleHierarchy(
+            List<TicketCategoryDto> parents,
+            List<CatalogFlatRow> categories,
+            List<CatalogFlatRow> items)
+        {
+            var byParent = new Dictionary<int, TicketCategoryDto>();
+            foreach (var parent in parents)
+            {
+                parent.SubCategories = new List<TicketSubCategoryDto>();
+                byParent[parent.Id] = parent;
+            }
+
+            var byCategory = new Dictionary<int, TicketSubCategoryDto>();
+            foreach (var row in categories)
+            {
+                TicketCategoryDto parent;
+                if (!byParent.TryGetValue(row.ParentId, out parent))
+                {
+                    continue;
+                }
+
+                var category = new TicketSubCategoryDto
+                {
+                    Id = row.Id,
+                    Name = row.Name,
+                    Items = new List<TicketItemDto>()
+                };
+                parent.SubCategories.Add(category);
+                byCategory[row.Id] = category;
+            }
+
+            foreach (var row in items)
+            {
+                TicketSubCategoryDto category;
+                if (!byCategory.TryGetValue(row.ParentId, out category))
+                {
+                    continue;
+                }
+
+                category.Items.Add(new TicketItemDto
+                {
+                    Id = row.Id,
+                    Name = row.Name
+                });
+            }
+
+            return parents;
         }
 
         /// <summary>

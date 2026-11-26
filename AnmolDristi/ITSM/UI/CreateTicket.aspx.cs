@@ -378,6 +378,9 @@ namespace AnmolDristi.ITSM.UI
         private void RenderCategoryCards(List<TicketCategoryDto> categories, int selectedId)
         {
             categoryCards.Controls.Clear();
+            // When: 2026-11-26
+            // What: Cards stay in the hierarchy list order.
+            // Why:  That order is SortOrder, then Id, from TicketMasterDataService.
             foreach (var cat in categories)
             {
                 var card = new HtmlGenericControl("div");
